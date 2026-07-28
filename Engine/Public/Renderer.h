@@ -1,0 +1,68 @@
+#pragma once
+
+#include "GameObject.h"
+
+/* 화면에 그려져야할 객체들을 그리는 순서에 따른 그룹별로 모아둔다. */
+/* 모아둔 순서대로 객체들의 드로우콜을 수행해준다.*/
+
+NS_BEGIN(Engine)
+
+class CRenderer final 
+{
+private:	
+	CRenderer(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+public:
+	~CRenderer();
+
+public:
+	HRESULT Initialize();
+	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
+	HRESULT Draw();
+
+#ifdef _DEBUG
+	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
+#endif
+
+private:
+	ComPtr<ID3D11Device>					m_pDevice = { nullptr };
+	ComPtr<ID3D11DeviceContext>				m_pContext = { nullptr };
+	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
+	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
+
+
+	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
+	shared_ptr<class CShader>				m_pShader = { nullptr };
+
+	float4x4_t								m_WorldMatrix{}, m_ViewMatrix{}, m_ProjMatrix{};
+
+#ifdef _DEBUG
+	list<shared_ptr<CComponent>>			m_DebugComponent;
+#endif
+
+private:
+	HRESULT Render_Priority();
+	HRESULT Render_Shadow();
+	HRESULT Render_NonBlend();
+	HRESULT Render_Lights();
+	HRESULT Render_Combined();
+	HRESULT Render_NonLight();
+	HRESULT Render_Blend();
+	HRESULT Render_UI();
+
+private:
+	HRESULT Ready_Shadow_DSV();
+	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
+
+#ifdef _DEBUG
+private:
+	HRESULT Render_Debug();
+#endif
+
+
+
+public:
+	static unique_ptr<CRenderer> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+
+};
+
+NS_END
