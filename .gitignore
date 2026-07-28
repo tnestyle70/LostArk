@@ -64,6 +64,8 @@
 
 # Required third-party inputs currently have no other canonical repository path.
 !/Engine/ThirdPartyLib/*.lib
+!/Engine/ThirdPartyLib/FMOD/Lib/fmod_vc.lib
+!/Engine/ThirdPartyLib/FMOD/Bin/fmod.dll
 !/Client/Bin/assimp-vc143-mt.dll
 !/Client/Bin/assimp-vc143-mtd.dll
 

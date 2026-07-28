@@ -42,6 +42,11 @@ public: /* For.Input_Device */
 	int8_t	Get_DIMouseState(DIM eMouse);
 	int32_t	Get_DIMouseMove(DIMM eMouseState);
 
+#ifdef _WIN64
+public: /* For.Sound_Manager */
+	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
+#endif
+
 
 public: /* For.Timer_Manager */
 	f32_t Get_TimeDelta(const wstring_t& strTimerTag);
@@ -117,6 +122,9 @@ private:
 	unique_ptr<class CTimer_Manager>		m_pTimer_Manager = { nullptr };
 	unique_ptr<class CGraphic_Device>		m_pGraphic_Device = { nullptr };
 	unique_ptr<class CInput_Device>			m_pInput_Device = { nullptr };
+#ifdef _WIN64
+	unique_ptr<class CSound_Manager>		m_pSound_Manager = { nullptr };
+#endif
 	unique_ptr<class CLevel_Manager>		m_pLevel_Manager = { nullptr };
 	unique_ptr<class CPrototype_Manager>	m_pPrototype_Manager = { nullptr };
 	unique_ptr<class CObject_Manager>		m_pObject_Manager = { nullptr };

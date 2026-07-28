@@ -178,6 +178,21 @@
     <Filter Include="02.Utility\11.Frustum">
       <UniqueIdentifier>{d033b686-7eee-4bd8-9068-21a40a6d7afa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="04. External">
+      <UniqueIdentifier>{9ce0fc9f-8fce-4bbf-b4c8-fe6a0cbecbfe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="04. External\imgui">
+      <UniqueIdentifier>{feb70539-97ca-4495-bd20-7c4169885c23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="04. External\imgui\backends">
+      <UniqueIdentifier>{fea74924-d492-4755-875a-70eca8cc6111}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Sound">
+      <UniqueIdentifier>{bc421e7e-bb93-46d8-b5de-847b35ce0891}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Sound">
+      <UniqueIdentifier>{7cfb14bd-e6a4-4832-97ea-34f61a76e45f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Engine_Defines.h">
@@ -357,6 +372,9 @@
     <ClInclude Include="..\public\Frustum.h">
       <Filter>02.Utility\11.Frustum</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Sound\Sound_Manager.h">
+      <Filter>Public\Sound</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\GameInstance.cpp">
@@ -517,6 +535,27 @@
     </ClCompile>
     <ClCompile Include="..\private\Frustum.cpp">
       <Filter>02.Utility\11.Frustum</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Sound\Sound_Manager.cpp">
+      <Filter>Private\Sound</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\imgui.cpp">
+      <Filter>04. External\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\imgui_draw.cpp">
+      <Filter>04. External\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\imgui_tables.cpp">
+      <Filter>04. External\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\imgui_widgets.cpp">
+      <Filter>04. External\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>04. External\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\External\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>04. External\imgui\backends</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -7,6 +7,9 @@
 #include "PipeLine.h"
 #include "Font_Manager.h"
 #include "Input_Device.h"
+#ifdef _WIN64
+#include "Sound/Sound_Manager.h"
+#endif
 #include "Light_Manager.h"
 #include "Timer_Manager.h"
 #include "Level_Manager.h"
@@ -34,6 +37,12 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 	m_pInput_Device = CInput_Device::Create(EngineDesc.hInstance, EngineDesc.hWnd);
 	if (nullptr == m_pInput_Device)
 		return E_FAIL;
+
+#ifdef _WIN64
+	m_pSound_Manager = CSound_Manager::Create();
+	if (nullptr == m_pSound_Manager)
+		return E_FAIL;
+#endif
 
 	m_pTarget_Manager = CTarget_Manager::Create(pOutDevice, pOutContext);
 	if (nullptr == m_pTarget_Manager)
@@ -91,6 +100,10 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	m_pPicking->Update();
 
 	m_pInput_Device->Update();
+
+#ifdef _WIN64
+	m_pSound_Manager->Update();
+#endif
 
 	m_pObject_Manager->Priority_Update(fTimeDelta);
 
@@ -157,6 +170,13 @@ int32_t CGameInstance::Get_DIMouseMove(DIMM eMouseState)
 {
 	return m_pInput_Device->Get_DIMouseMove(eMouseState);
 }
+
+#ifdef _WIN64
+HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
+{
+	return m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume);
+}
+#endif
 
 f32_t CGameInstance::Get_TimeDelta(const wstring_t& strTimerTag)
 {
@@ -361,6 +381,9 @@ void CGameInstance::Release_Engine()
 	m_pPrototype_Manager.reset();
 	m_pLevel_Manager.reset();
 	m_pTimer_Manager.reset();
+#ifdef _WIN64
+	m_pSound_Manager.reset();
+#endif
 	m_pInput_Device.reset();
 	m_pGraphic_Device->Shutdown();
 	m_pGraphic_Device.reset();

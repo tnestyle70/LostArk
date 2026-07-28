@@ -20,6 +20,12 @@ HRESULT CLevel_Logo::Initialize()
 	if (FAILED(Ready_Layer_BackGround(TEXT("Layer_BackGround"))))
 		return E_FAIL;
 
+#ifdef _WIN64
+	if (FAILED(CGameInstance::Get().Play_Sound(
+		TEXT("../Bin/Resources/Sound/Yasuo/Yasuo_Q.wav"), 0.8f)))
+		return E_FAIL;
+#endif
+
 	return S_OK;
 }
 
