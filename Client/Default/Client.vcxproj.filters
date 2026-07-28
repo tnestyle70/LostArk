@@ -76,6 +76,27 @@
     <Filter Include="02.GameObjects\Effect">
       <UniqueIdentifier>{45d58a49-8aa9-40ce-b3ad-36ef0fd02f66}</UniqueIdentifier>
     </Filter>
+    <Filter Include="03. Tools">
+      <UniqueIdentifier>{ba06c327-ea61-4e3a-8671-349b2cbe8ee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\00. Map">
+      <UniqueIdentifier>{1f961324-6c44-4b0c-9079-b04d64f14300}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\01. Boss">
+      <UniqueIdentifier>{4f3fa45e-b58d-4558-9c4b-9a0219ab36b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\02. Effect">
+      <UniqueIdentifier>{adf379c4-e0ce-4567-964a-62e2e0b4807c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\03. UI">
+      <UniqueIdentifier>{8a51f635-e0bc-45cf-88c5-524cac099261}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\04. Animation">
+      <UniqueIdentifier>{42322243-9f4d-4daa-9a43-c0122697c314}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\05. Cinematic">
+      <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
@@ -131,6 +152,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Effect.cpp">
       <Filter>02.GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapTool.cpp">
+      <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +223,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Effect.h">
       <Filter>02.GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapTool.h">
+      <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
