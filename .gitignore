@@ -52,10 +52,9 @@
 !/Engine/Bin/ShaderFiles/
 !/Engine/Bin/ShaderFiles/**
 
-# Client runtime directory: preserve authored/runtime data and shader source.
+# Client runtime directory: Resources are Drive-managed, not Git-managed.
 /Client/Bin/*
-!/Client/Bin/Resources/
-!/Client/Bin/Resources/**
+/Client/Bin/Resources/
 !/Client/Bin/DataFiles/
 !/Client/Bin/DataFiles/**
 !/Client/Bin/ShaderFiles/
