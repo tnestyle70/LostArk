@@ -61,12 +61,16 @@
 !/Client/Bin/ShaderFiles/**
 !/Client/Bin/*.dds
 
-# Required third-party inputs currently have no other canonical repository path.
+# Required prebuilt third-party inputs.
 !/Engine/ThirdPartyLib/*.lib
 !/Engine/ThirdPartyLib/FMOD/Lib/fmod_vc.lib
 !/Engine/ThirdPartyLib/FMOD/Bin/fmod.dll
-!/Client/Bin/assimp-vc143-mt.dll
-!/Client/Bin/assimp-vc143-mtd.dll
+!/Engine/ThirdPartyLib/Assimp/
+!/Engine/ThirdPartyLib/Assimp/Bin/
+!/Engine/ThirdPartyLib/Assimp/Bin/Debug/
+!/Engine/ThirdPartyLib/Assimp/Bin/Debug/assimp-vc143-mtd.dll
+!/Engine/ThirdPartyLib/Assimp/Bin/Release/
+!/Engine/ThirdPartyLib/Assimp/Bin/Release/assimp-vc143-mt.dll
 
 # Do not retain bundled viewer/runtime binaries inside resource folders.
 /Client/Bin/Resources/**/*.exe

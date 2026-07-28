@@ -31,6 +31,7 @@
     <ClInclude Include="..\public\Level_Logo.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
+    <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\Monster.h" />
     <ClInclude Include="..\public\Player.h" />
     <ClInclude Include="..\Public\Sky.h" />
@@ -54,6 +55,7 @@
     <ClCompile Include="..\private\Level_Logo.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\private\Player.cpp" />
     <ClCompile Include="..\Private\Sky.cpp" />
@@ -135,7 +137,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <!-- The project owns runtime deployment. Do not copy DLLs from a developer's vcpkg installation. -->
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\</OutDir>
   </PropertyGroup>
@@ -218,7 +223,64 @@
       <ShaderModel>5.0</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Engine\Default\Engine.vcxproj">
+      <Project>{922baefb-8a3c-4f15-9f51-bf7c7ecc1cd7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <PropertyGroup>
+    <EngineRoot>$(ProjectDir)..\..\Engine\</EngineRoot>
+    <EngineSdkRoot>$(ProjectDir)..\..\EngineSDK\</EngineSdkRoot>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
+    <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
+  </PropertyGroup>
+  <Target Name="PrepareEngineSdk"
+          BeforeTargets="ClCompile"
+          DependsOnTargets="ResolveProjectReferences"
+          Condition="'$(Platform)'=='x64'">
+    <ItemGroup>
+      <EnginePublicHeaders Include="$(EngineRoot)Public\**\*.*" />
+      <EngineSdkLibraries Include="$(EngineRoot)Bin\*.lib;$(EngineRoot)ThirdPartyLib\*.lib" />
+      <EngineShaderSources Include="$(EngineRoot)Bin\ShaderFiles\*.*" />
+    </ItemGroup>
+    <MakeDir Directories="$(EngineSdkRoot)inc;$(EngineSdkRoot)lib;$(EngineSdkRoot)hlsl;$(ProjectDir)..\Bin\ShaderFiles" />
+    <Copy SourceFiles="@(EnginePublicHeaders)"
+          DestinationFiles="@(EnginePublicHeaders->'$(EngineSdkRoot)inc\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineSdkLibraries)"
+          DestinationFolder="$(EngineSdkRoot)lib"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineShaderSources)"
+          DestinationFolder="$(EngineSdkRoot)hlsl"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineShaderSources)"
+          DestinationFolder="$(ProjectDir)..\Bin\ShaderFiles"
+          SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="DeployClientRuntimeDependencies"
+          AfterTargets="Build"
+          Condition="'$(Platform)'=='x64'">
+    <Error Condition="'$(AssimpRuntimeName)'==''"
+           Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
+    <Error Condition="!Exists('$(AssimpRuntimeSource)')"
+           Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
+    <Error Condition="!Exists('$(EngineRoot)Bin\Engine.dll')"
+           Text="Engine runtime was not built: $(EngineRoot)Bin\Engine.dll" />
+    <ItemGroup>
+      <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.dll" />
+      <ClientRuntimeDependencies Include="$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll" />
+      <ClientRuntimeDependencies Include="$(AssimpRuntimeSource)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ClientRuntimeDependencies)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+    <Message Text="Deployed $(AssimpRuntimeName), Engine.dll, and fmod.dll to $(TargetDir)"
+             Importance="high" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
