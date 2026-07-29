@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <limits>
 
 CModel::CModel(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CComponent { pDevice, pContext }
@@ -30,6 +32,9 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumAnimations { Prototype.m_iNumAnimations}
     // , m_Animations { Prototype.m_Animations }
     , m_isAnimLoop { Prototype.m_isAnimLoop }
+	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
+	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
+	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
 {
     for (auto& pPrototype : Prototype.m_Bones)
         m_Bones.push_back(pPrototype->Clone());
@@ -80,6 +85,7 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
 
     XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
     m_eType = eType;
+	Reset_LocalBounds();
 
     string extension = filesystem::path(pModelFilePath).extension().string();
     transform(extension.begin(), extension.end(), extension.begin(),
@@ -180,6 +186,18 @@ HRESULT CModel::Ready_Meshes()
 
     for (size_t i = 0; i < m_iNumMeshes; i++)
     {
+		if (MODEL::NONANIM == m_eType)
+		{
+			const aiMesh* pAIMesh = m_pAIScene->mMeshes[i];
+			for (uint32_t vertexIndex = 0; vertexIndex < pAIMesh->mNumVertices; ++vertexIndex)
+			{
+				float3_t position{};
+				memcpy(&position, &pAIMesh->mVertices[vertexIndex], sizeof(float3_t));
+				Include_LocalPosition(XMVector3TransformCoord(
+					XMLoadFloat3(&position), XMLoadFloat4x4(&m_PreTransformMatrix)));
+			}
+		}
+
         auto pMesh = CMesh::Create(m_pDevice, m_pContext, m_eType, m_pAIScene->mMeshes[i], m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
         if (nullptr == pMesh)
             return E_FAIL;
@@ -285,6 +303,15 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
     m_Meshes.reserve(m_iNumMeshes);
     for (const MODEL_MESH_DATA& mesh : asset.meshes)
     {
+		if (MODEL::NONANIM == m_eType)
+		{
+			for (const VTXMESH& vertex : mesh.vertices)
+			{
+				Include_LocalPosition(XMVector3TransformCoord(
+					XMLoadFloat3(&vertex.vPosition), XMLoadFloat4x4(&m_PreTransformMatrix)));
+			}
+		}
+
         auto pMesh = CMesh::Create(m_pDevice, m_pContext, m_eType,
             mesh, asset.skeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
         if (nullptr == pMesh)
@@ -292,6 +319,30 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
         m_Meshes.push_back(pMesh);
     }
     return S_OK;
+}
+
+void CModel::Reset_LocalBounds()
+{
+	const f32_t maximum = (numeric_limits<f32_t>::max)();
+	m_vLocalBoundsMin = float3_t(maximum, maximum, maximum);
+	m_vLocalBoundsMax = float3_t(-maximum, -maximum, -maximum);
+	m_bHasLocalBounds = false;
+}
+
+void CModel::Include_LocalPosition(fvector_t vPosition)
+{
+	float3_t position{};
+	XMStoreFloat3(&position, vPosition);
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z))
+		return;
+
+	m_vLocalBoundsMin.x = (min)(m_vLocalBoundsMin.x, position.x);
+	m_vLocalBoundsMin.y = (min)(m_vLocalBoundsMin.y, position.y);
+	m_vLocalBoundsMin.z = (min)(m_vLocalBoundsMin.z, position.z);
+	m_vLocalBoundsMax.x = (max)(m_vLocalBoundsMax.x, position.x);
+	m_vLocalBoundsMax.y = (max)(m_vLocalBoundsMax.y, position.y);
+	m_vLocalBoundsMax.z = (max)(m_vLocalBoundsMax.z, position.z);
+	m_bHasLocalBounds = true;
 }
 
 HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)

@@ -6,6 +6,8 @@
 #include "Body_Valtan.h"
 #include "LanceMaster.h"
 #include "Body_LanceMaster.h"
+#include "MapAssetCatalog.h"
+#include "MapAssetObject.h"
 
 
 #include "Sky.h"
@@ -143,7 +145,37 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             VTXANIMMESH::iNumElements))))
         return E_FAIL;
 
-    const matrix_t preTransform = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Shader_VtxMeshBinary"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
+            VTXMESH::Elements,
+            VTXMESH::iNumElements))))
+        return E_FAIL;
+
+    CMapAssetCatalog mapCatalog;
+    if (!mapCatalog.Load_Default())
+    {
+        OutputDebugStringA(("[MapAsset] " + mapCatalog.Get_Status() + "\n").c_str());
+        return E_FAIL;
+    }
+
+    for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
+    {
+        const string modelPath = entry.resolvedModelPath.string();
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            ETOUI(LEVEL::ASSET_TEST), entry.prototypeTag,
+            CModel::Create(m_pDevice, m_pContext,
+                MODEL::NONANIM, modelPath.c_str(), XMMatrixIdentity()))))
+        {
+            OutputDebugStringA(("[MapAsset] Prototype registration failed: " +
+                entry.id + "\n").c_str());
+            return E_FAIL;
+        }
+    }
+
+    const matrix_t preTransform = XMMatrixScaling(0.001f, 0.001f, 0.001f);
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Model_Valtan"),
@@ -169,6 +201,12 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_Valtan"),
         CValtan::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_MapAsset"),
+        CMapAssetObject::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
     lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 로딩이 완료되었습니다."));

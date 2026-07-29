@@ -6,12 +6,28 @@
 #ifdef _DEBUG
 #include "ImGuiLayer.h"
 #include "MapTool.h"
+#include "Effect_Tool.h"
+#endif
+
+#ifdef _DEBUG
+namespace
+{
+    bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
+    {
+        if (nullptr == hWnd)
+            return false;
+
+        DWORD dwProcessId = {};
+        if (0 == GetWindowThreadProcessId(hWnd, &dwProcessId))
+            return false;
+
+        return GetCurrentProcessId() == dwProcessId;
+    }
+}
 #endif
 
 Client::CMainApp::CMainApp()
 {
-
-
     /* wireframe or solid, cullmode -> cw, ccw */
    // D3D11_RASTERIZER_DESC           RSDesc{};
    // ComPtr<ID3D11RasterizerState>    pRSState = {};
@@ -22,11 +38,11 @@ Client::CMainApp::CMainApp()
     
    // m_pContext->RSSetState(pRSState.Get());
 
-   // /* ±íÀÌ ºñ±³ x or o, ±íÀÌ ±â·Ï x or o */
+   // /* ê¹Šì´ ë¹„êµ x or o, ê¹Šì´ ê¸°ë¡ x or o */
    // D3D11_DEPTH_STENCIL_DESC
    // m_pContext->OMSetDepthStencilState();
 
-   // /* ºí·»µù¿¡ ´ëÇÑ ¼³Á¤. */
+   // /* ë¸”ë Œë”©ì— ëŒ€í•œ ì„¤ì •. */
    // D3D11_BLEND_DESC
    // m_pContext->OMSetBlendState();
    // 
@@ -41,11 +57,6 @@ Client::CMainApp::CMainApp()
    // //ID3D11SamplerState* pSamplerState = {};
 
    // //m_pDevice->CreateSamplerState(&SamplerDesc, &pSamplerState);
-
-   // 
-    
-
-
 }
 
 Client::CMainApp::~CMainApp()
@@ -95,15 +106,28 @@ void CMainApp::Update(f32_t fTimeDelta)
         m_pImGuiLayer->BeginFrame();
 
     const bool_t bMapToolOpen = nullptr != m_pMapTool && m_pMapTool->IsOpen();
+    const HWND hForegroundWindow = GetForegroundWindow();
+    const bool_t bExternalToolFocused = bMapToolOpen &&
+        nullptr != hForegroundWindow &&
+        hForegroundWindow != g_hWnd &&
+        IsWindowOwnedByCurrentProcess(hForegroundWindow);
+
     const bool_t bKeyboardCaptured = bMapToolOpen &&
-        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureKeyboard();
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
     const bool_t bMouseCaptured = bMapToolOpen &&
-        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureMouse();
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureMouse() || bExternalToolFocused);
 
     CGameInstance::Get().SetInputBlocked(bKeyboardCaptured, bMouseCaptured);
 #endif
 
     CGameInstance::Get().Update_Engine(fTimeDelta);
+
+#ifdef _DEBUG
+    if (nullptr != m_pMapTool)
+        m_pMapTool->Update(fTimeDelta);
+#endif
 }
 
 HRESULT CMainApp::Render()
@@ -129,7 +153,7 @@ HRESULT CMainApp::Render()
     }
 
 #ifndef _DEBUG
-    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("ÇÑ±Û ÀÌ´Ù12abd"), float2_t(0.f, 0.f));
+    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("í•œê¸€ ì´ë‹¤12abd"), float2_t(0.f, 0.f));
 #endif
 
 #ifdef _DEBUG
@@ -137,6 +161,14 @@ HRESULT CMainApp::Render()
     {
         if (nullptr != m_pMapTool)
             m_pMapTool->Render();
+
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
+            nullptr != m_pEffectTool)
+        {
+            m_pEffectTool->Render();
+        }
+
         m_pImGuiLayer->EndFrame();
     }
 #endif
@@ -225,12 +257,6 @@ HRESULT CMainApp::Ready_Gara()
         }
     }
 
-
-
-
-
-
-
     if (FAILED(DirectX::SaveDDSTextureToFile(m_pContext.Get(), pTexture2D.Get(), TEXT("../Bin/Resources/Textures/Terrain/MyMask.dds"))))
         return E_FAIL;
 
@@ -240,7 +266,7 @@ HRESULT CMainApp::Ready_Gara()
 HRESULT CMainApp::Ready_Fonts()
 {
     /*
-MakeSpriteFont "³Ø½¼lv1°íµñ Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
+MakeSpriteFont "ë„¥ìŠ¨lv1ê³ ë”• Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
 */
 
 
@@ -289,12 +315,15 @@ HRESULT CMainApp::ReadyDebugTools()
     }
 
     m_pMapTool = std::make_unique<CMapTool>();
+    m_pEffectTool = std::make_unique<CEffect_Tool>();
+
     return S_OK;
 }
 
 void CMainApp::UpdateDebugToolShortcut()
 {
-    const bool_t bWindowFocused = GetForegroundWindow() == g_hWnd;
+    const bool_t bWindowFocused =
+        IsWindowOwnedByCurrentProcess(GetForegroundWindow());
     const bool_t bF1Down = bWindowFocused &&
         0 != (GetAsyncKeyState(VK_F1) & 0x8000);
 
@@ -323,6 +352,7 @@ void CMainApp::Free()
 #ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
 
+    m_pEffectTool.reset();
     m_pMapTool.reset();
 
     if (nullptr != m_pImGuiLayer)

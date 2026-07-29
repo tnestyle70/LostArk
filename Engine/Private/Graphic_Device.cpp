@@ -17,6 +17,9 @@ HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, int32_t iWinSiz
 {
 	int32_t		iFlag = 0;
 
+	m_iWinSizeX = iWinSizeX;
+	m_iWinSizeY = iWinSizeY;
+
 #ifdef _DEBUG
 	iFlag = D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -49,25 +52,8 @@ HRESULT CGraphic_Device::Initialize(HWND hWnd, WINMODE eWinMode, int32_t iWinSiz
 
 	/* 장치에 바인드해놓을 렌더 타겟들과 뎁스스텐실뷰를 세팅한다. */
 	/* 장치는 동시에 최대 4->8개의 렌더타겟을 들고 있을 수 있다. */
-	ID3D11RenderTargetView*		pRTVs[] = {
-		m_pBackBufferRTV.Get(),
-	};
-
-	
-	/* 렌더타겟의 픽셀 수와 깊이스텐실버퍼의 픽셀수가 서로 다르다면 절대 렌더링이 불가능해진다. */
-	m_pDeviceContext->OMSetRenderTargets(1, pRTVs,
-		m_pDepthStencilView.Get());		
-	
-	D3D11_VIEWPORT			ViewPortDesc;
-	ZeroMemory(&ViewPortDesc, sizeof(D3D11_VIEWPORT));
-	ViewPortDesc.TopLeftX = 0;
-	ViewPortDesc.TopLeftY = 0;
-	ViewPortDesc.Width = static_cast<f32_t>(iWinSizeX);
-	ViewPortDesc.Height = static_cast<f32_t>(iWinSizeY);
-	ViewPortDesc.MinDepth = 0.f;
-	ViewPortDesc.MaxDepth = 1.f;
-
-	m_pDeviceContext->RSSetViewports(1, &ViewPortDesc);
+	if (FAILED(Bind_MainRenderTarget()))
+		return E_FAIL;
 
 	pOutDevice = m_pDevice;
 	pOutContext = m_pDeviceContext;
@@ -81,6 +67,9 @@ HRESULT CGraphic_Device::Clear_BackBuffer_View(const float4_t* pClearColor)
 	if (nullptr == m_pDeviceContext)
 		return E_FAIL;
 
+	if (FAILED(Bind_MainRenderTarget()))
+		return E_FAIL;
+
 	/* DX9기준 : Clear함수는 백버퍼, 깊이스텐실버퍼를 한꺼번에 지운다.  */
 	// m_pGraphic_Device->Clear(어떤 영역만큼 지울까, 어떤 것들을 지울까? , 뭘로 지울가. );	
 
@@ -88,6 +77,35 @@ HRESULT CGraphic_Device::Clear_BackBuffer_View(const float4_t* pClearColor)
 	m_pDeviceContext->ClearRenderTargetView(m_pBackBufferRTV.Get(), reinterpret_cast<const f32_t*>(pClearColor));
 
  	return S_OK;
+}
+
+HRESULT CGraphic_Device::Bind_MainRenderTarget()
+{
+	if (nullptr == m_pDeviceContext ||
+		nullptr == m_pBackBufferRTV ||
+		nullptr == m_pDepthStencilView)
+		return E_FAIL;
+
+	ID3D11RenderTargetView* pRTVs[] = {
+		m_pBackBufferRTV.Get(),
+	};
+
+	m_pDeviceContext->OMSetRenderTargets(
+		1,
+		pRTVs,
+		m_pDepthStencilView.Get());
+
+	D3D11_VIEWPORT ViewPortDesc{};
+	ViewPortDesc.TopLeftX = 0.f;
+	ViewPortDesc.TopLeftY = 0.f;
+	ViewPortDesc.Width = static_cast<f32_t>(m_iWinSizeX);
+	ViewPortDesc.Height = static_cast<f32_t>(m_iWinSizeY);
+	ViewPortDesc.MinDepth = 0.f;
+	ViewPortDesc.MaxDepth = 1.f;
+
+	m_pDeviceContext->RSSetViewports(1, &ViewPortDesc);
+
+	return S_OK;
 }
 
 HRESULT CGraphic_Device::Clear_DepthStencil_View()

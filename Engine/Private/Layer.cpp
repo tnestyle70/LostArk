@@ -53,6 +53,19 @@ HRESULT CLayer::Add_GameObject(shared_ptr<CGameObject> pGameObject)
 	return S_OK;
 }
 
+HRESULT CLayer::Remove_GameObject(const shared_ptr<CGameObject>& pGameObject)
+{
+	if (nullptr == pGameObject)
+		return E_FAIL;
+
+	auto iter = find(m_GameObjects.begin(), m_GameObjects.end(), pGameObject);
+	if (iter == m_GameObjects.end())
+		return E_FAIL;
+
+	m_GameObjects.erase(iter);
+	return S_OK;
+}
+
 void CLayer::Priority_Update(f32_t fTimeDelta)
 {
 	for (auto& pGameObject : m_GameObjects)

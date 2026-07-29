@@ -27,6 +27,7 @@
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\Public\Effect.h" />
+    <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
     <ClInclude Include="..\Public\LanceMaster.h" />
@@ -37,6 +38,8 @@
     <ClInclude Include="..\Public\Level_Test2.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
+    <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapAssetObject.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\Monster.h" />
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
@@ -59,6 +62,7 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
+    <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
     <ClCompile Include="..\Private\LanceMaster.cpp" />
@@ -69,6 +73,8 @@
     <ClCompile Include="..\Private\Level_Test2.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapAssetObject.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
@@ -89,6 +95,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Client.vcxproj" />
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets" />
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
@@ -97,6 +105,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxNorTex.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl" />
   </ItemGroup>
