@@ -1,5 +1,7 @@
 #include "Bone.h"
 
+#include "BinaryAsset/ModelAssetData.h"
+
 CBone::CBone()
 {
 	
@@ -20,6 +22,18 @@ HRESULT CBone::Initialize(const aiNode* pAINode, int32_t iParentBoneIndex)
 
 	XMStoreFloat4x4(&m_CombinedTransformationMatrix, XMMatrixIdentity());
 
+	return S_OK;
+}
+
+HRESULT CBone::Initialize(const MODEL_BONE_DATA& bone)
+{
+	if (bone.name.empty() || bone.name.size() >= MAX_PATH)
+		return E_FAIL;
+
+	strcpy_s(m_szName, bone.name.c_str());
+	m_iParentBoneIndex = bone.parentIndex;
+	m_TransformationMatrix = bone.restLocal;
+	XMStoreFloat4x4(&m_CombinedTransformationMatrix, XMMatrixIdentity());
 	return S_OK;
 }
 
@@ -54,6 +68,17 @@ shared_ptr<CBone> CBone::Create(const aiNode* pAINode, int32_t iParentBoneIndex)
 		return nullptr;
 	}
 
+	return pInstance;
+}
+
+shared_ptr<CBone> CBone::Create(const MODEL_BONE_DATA& bone)
+{
+	auto pInstance = shared_ptr<CBone>(new CBone());
+	if (FAILED(pInstance->Initialize(bone)))
+	{
+		MSG_BOX("Failed to Created : CBone");
+		return nullptr;
+	}
 	return pInstance;
 }
 

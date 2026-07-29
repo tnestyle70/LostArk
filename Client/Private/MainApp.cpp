@@ -132,7 +132,6 @@ HRESULT CMainApp::Render()
     CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("한글 이다12abd"), float2_t(0.f, 0.f));
 #endif
 
-
 #ifdef _DEBUG
     if (nullptr != m_pImGuiLayer)
     {

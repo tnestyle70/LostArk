@@ -1,5 +1,7 @@
 #include "BinaryAsset/WModelDecoder.h"
 
+#include "BinaryAsset/BinaryReader.h"
+
 #include "Winters/WAnimationReader.h"
 #include "Winters/WFormatTypes.h"
 #include "Winters/WMaterialReader.h"
@@ -7,6 +9,7 @@
 #include "Winters/WSkeletonReader.h"
 
 #include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <unordered_set>
 
@@ -39,6 +42,217 @@ namespace
 			mesh.vertexKind = MODEL_VERTEX_KIND::STATIC;
 		}
 	}
+
+	struct MODEL_SECTION_VIEW
+	{
+		MODEL_SECTION_TYPE type{};
+		uint32_t index = {};
+		string name;
+		const uint8_t* pData = { nullptr };
+		size_t size = {};
+	};
+
+	string ReadFixedName(const char_t* pName, size_t capacity)
+	{
+		size_t length = {};
+		while (length < capacity && '\0' != pName[length])
+			++length;
+		return string(pName, length);
+	}
+
+	bool_t ValidateMeshSkeleton(W_MESH_READ_RESULT& meshResult,
+		MODEL_ASSET_DATA& outAsset,
+		MODEL_DECODE_REPORT& outReport)
+	{
+		if (meshResult.bones.size() != outAsset.skeleton.bones.size())
+		{
+			outReport.error = "WMSH and WSKL bone counts do not match.";
+			return false;
+		}
+
+		for (uint32_t i = 0; i < meshResult.bones.size(); ++i)
+		{
+			if (meshResult.bones[i].nameHash != outAsset.skeleton.bones[i].nameHash)
+			{
+				outReport.error = "WMSH and WSKL bone order or name hash does not match.";
+				return false;
+			}
+			outAsset.skeleton.bones[i].inverseBind = meshResult.bones[i].inverseBind;
+		}
+		return true;
+	}
+
+	bool_t DecodeWModelPackage(const MODEL_ASSET_LOAD_DESC& desc,
+		MODEL_ASSET_DATA& outAsset,
+		MODEL_DECODE_REPORT& outReport)
+	{
+		vector<uint8_t> bytes;
+		if (!CBinaryReader::LoadFile(desc.meshPath, bytes))
+		{
+			outReport.error = "Could not open the WModel package.";
+			return false;
+		}
+
+		try
+		{
+			CBinaryReader fileReader(bytes.data(), bytes.size());
+			const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
+			if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
+				1 != fileHeader.versionMajor || 0 != fileHeader.flags ||
+				fileHeader.contentSize != fileReader.Remaining())
+			{
+				outReport.error = "Invalid WINT WModel file header.";
+				return false;
+			}
+
+			const uint8_t* pContent = fileReader.Peek();
+			CBinaryReader reader(pContent, fileHeader.contentSize);
+			const MODEL_META_HEADER modelHeader = reader.Read<MODEL_META_HEADER>();
+			if (!HasMagic(modelHeader.magic, WMODEL_MAGIC) ||
+				modelHeader.sectionCount < 2 || modelHeader.sectionCount > MAX_MODEL_SECTIONS ||
+				modelHeader.animationCount > modelHeader.sectionCount)
+			{
+				outReport.error = "Invalid WMOD metadata.";
+				return false;
+			}
+
+			if (sizeof(MODEL_SECTION_DESC) > reader.Remaining() / modelHeader.sectionCount)
+			{
+				outReport.error = "WMOD section table is truncated.";
+				return false;
+			}
+
+			vector<MODEL_SECTION_DESC> descriptors(modelHeader.sectionCount);
+			reader.ReadBytes(descriptors.data(), descriptors.size() * sizeof(MODEL_SECTION_DESC));
+			vector<MODEL_SECTION_VIEW> sections;
+			sections.reserve(descriptors.size());
+			uint32_t animationCount = {};
+			for (const MODEL_SECTION_DESC& source : descriptors)
+			{
+				if (source.offset > fileHeader.contentSize ||
+					source.size > fileHeader.contentSize - source.offset ||
+					source.size > SIZE_MAX)
+				{
+					outReport.error = "A WMOD section points outside the package.";
+					return false;
+				}
+
+				const MODEL_SECTION_TYPE type = static_cast<MODEL_SECTION_TYPE>(source.type);
+				if (type < MODEL_SECTION_TYPE::MESH || type > MODEL_SECTION_TYPE::ANIMATION)
+				{
+					outReport.error = "WMOD contains an unknown section type.";
+					return false;
+				}
+				if (MODEL_SECTION_TYPE::ANIMATION == type)
+					++animationCount;
+
+				sections.push_back(MODEL_SECTION_VIEW{
+					type,
+					source.index,
+					ReadFixedName(source.name, sizeof(source.name)),
+					pContent + static_cast<size_t>(source.offset),
+					static_cast<size_t>(source.size) });
+			}
+
+			if (animationCount != modelHeader.animationCount)
+			{
+				outReport.error = "WMOD animation count does not match its section table.";
+				return false;
+			}
+
+			const auto FindSection = [&](MODEL_SECTION_TYPE type) -> const MODEL_SECTION_VIEW*
+			{
+				const MODEL_SECTION_VIEW* pResult = { nullptr };
+				for (const MODEL_SECTION_VIEW& section : sections)
+				{
+					if (section.type != type)
+						continue;
+					if (nullptr != pResult)
+						return nullptr;
+					pResult = &section;
+				}
+				return pResult;
+			};
+
+			const MODEL_SECTION_VIEW* pMesh = FindSection(MODEL_SECTION_TYPE::MESH);
+			const MODEL_SECTION_VIEW* pMaterial = FindSection(MODEL_SECTION_TYPE::MATERIAL);
+			if (nullptr == pMesh || nullptr == pMaterial)
+			{
+				outReport.error = "WMOD requires exactly one mesh and one material section.";
+				return false;
+			}
+
+			W_MESH_READ_RESULT meshResult{};
+			if (!CWMeshReader{}.ReadMemory(pMesh->pData, pMesh->size, meshResult, outReport))
+				return false;
+			if (!CWMaterialReader{}.ReadMemory(
+				pMaterial->pData, pMaterial->size, desc, desc.meshPath,
+				meshResult.materialCount, outAsset.materials, outReport))
+				return false;
+
+			outAsset.meshes = move(meshResult.meshes);
+			const MODEL_SECTION_VIEW* pSkeleton = FindSection(MODEL_SECTION_TYPE::SKELETON);
+			if (meshResult.skinned)
+			{
+				if (nullptr == pSkeleton ||
+					!CWSkeletonReader{}.ReadMemory(
+						pSkeleton->pData, pSkeleton->size, outAsset.skeleton, outReport))
+				{
+					if (outReport.error.empty())
+						outReport.error = "A skinned WMOD requires one skeleton section.";
+					return false;
+				}
+				if (!ValidateMeshSkeleton(meshResult, outAsset, outReport))
+					return false;
+				outAsset.hasSkeleton = true;
+
+				vector<const MODEL_SECTION_VIEW*> animations;
+				for (const MODEL_SECTION_VIEW& section : sections)
+				{
+					if (MODEL_SECTION_TYPE::ANIMATION == section.type)
+						animations.push_back(&section);
+				}
+				sort(animations.begin(), animations.end(), [](const auto* pLeft, const auto* pRight)
+					{ return pLeft->index < pRight->index; });
+
+				unordered_set<string> animationNames;
+				outAsset.animations.reserve(animations.size());
+				for (const MODEL_SECTION_VIEW* pAnimation : animations)
+				{
+					if (pAnimation->name.empty() || !animationNames.emplace(pAnimation->name).second)
+					{
+						outReport.error = "WMOD contains an unnamed or duplicate animation clip.";
+						return false;
+					}
+
+					MODEL_ANIMATION_DATA animation{};
+					if (!CWAnimationReader{}.ReadMemory(
+						pAnimation->pData, pAnimation->size, pAnimation->name,
+						outAsset.skeleton, animation, outReport))
+						return false;
+					outAsset.animations.push_back(move(animation));
+				}
+			}
+			else if (nullptr != pSkeleton || 0 != animationCount)
+			{
+				outReport.error = "A static WMOD cannot contain skeleton or animation sections.";
+				return false;
+			}
+
+			outReport.usedSkinnedBindPose = meshResult.skinned && outAsset.animations.empty();
+			outReport.meshCount = static_cast<uint32_t>(outAsset.meshes.size());
+			outReport.materialCount = static_cast<uint32_t>(outAsset.materials.size());
+			outReport.boneCount = static_cast<uint32_t>(outAsset.skeleton.bones.size());
+			outReport.animationCount = static_cast<uint32_t>(outAsset.animations.size());
+			outReport.succeeded = true;
+			return true;
+		}
+		catch (const exception& exception)
+		{
+			outReport.error = exception.what();
+			return false;
+		}
+	}
 }
 
 const char_t* CWModelDecoder::Get_Name() const
@@ -56,7 +270,9 @@ bool_t CWModelDecoder::CanDecode(const filesystem::path& meshPath) const
 	if (!stream.read(probe, sizeof(probe)))
 		return false;
 
-	return HasMagic(probe, WINTERS_MAGIC) && HasMagic(probe + sizeof(FILE_HEADER), WMESH_MAGIC);
+	return HasMagic(probe, WINTERS_MAGIC) &&
+		(HasMagic(probe + sizeof(FILE_HEADER), WMESH_MAGIC) ||
+			HasMagic(probe + sizeof(FILE_HEADER), WMODEL_MAGIC));
 }
 
 bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
@@ -66,6 +282,16 @@ bool_t CWModelDecoder::Decode(const MODEL_ASSET_LOAD_DESC& desc,
 	outAsset = {};
 	outReport.meshPath = desc.meshPath;
 	outReport.decoderName = Get_Name();
+
+	ifstream stream(desc.meshPath, ios::binary);
+	char_t probe[20]{};
+	if (!stream.read(probe, sizeof(probe)))
+	{
+		outReport.error = "Could not probe the Winters model asset.";
+		return false;
+	}
+	if (HasMagic(probe + sizeof(FILE_HEADER), WMODEL_MAGIC))
+		return DecodeWModelPackage(desc, outAsset, outReport);
 
 	W_MESH_READ_RESULT meshResult{};
 	if (!CWMeshReader{}.Read(desc.meshPath, meshResult, outReport))

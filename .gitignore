@@ -52,6 +52,7 @@
 *.wmat
 *.wskel
 *.wanim
+*.wmodel
 
 # Engine output directory: preserve shader source, ignore built binaries.
 /Engine/Bin/*
@@ -91,5 +92,5 @@
 
 # Shared Winters asset converter bundle. Runtime resources remain Drive-managed.
 !/Tools/
-!/Tools/WintersAssetConverter/
-!/Tools/WintersAssetConverter/**
+!/Tools/ModelAssetConverter/
+!/Tools/ModelAssetConverter/**

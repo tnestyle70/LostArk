@@ -54,18 +54,30 @@ bool_t CWSkeletonReader::Read(const filesystem::path& skeletonPath,
 	MODEL_SKELETON_DATA& outSkeleton,
 	MODEL_DECODE_REPORT& outReport) const
 {
-	outSkeleton = {};
-
 	vector<uint8_t> bytes;
 	if (!CBinaryReader::LoadFile(skeletonPath, bytes))
 	{
 		outReport.error = "Could not open the companion WSKL file.";
 		return false;
 	}
+	return ReadMemory(bytes.data(), bytes.size(), outSkeleton, outReport);
+}
+
+bool_t CWSkeletonReader::ReadMemory(const uint8_t* pData,
+	size_t dataSize,
+	MODEL_SKELETON_DATA& outSkeleton,
+	MODEL_DECODE_REPORT& outReport) const
+{
+	outSkeleton = {};
+	if (nullptr == pData || dataSize < sizeof(FILE_HEADER))
+	{
+		outReport.error = "The embedded WSKL section is empty or truncated.";
+		return false;
+	}
 
 	try
 	{
-		CBinaryReader fileReader(bytes.data(), bytes.size());
+		CBinaryReader fileReader(pData, dataSize);
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			1 != fileHeader.versionMajor || 0 != fileHeader.flags ||

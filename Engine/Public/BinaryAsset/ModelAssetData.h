@@ -10,6 +10,13 @@ struct MODEL_MATERIAL_DATA
 {
 	filesystem::path diffusePath;
 	filesystem::path normalPath;
+	filesystem::path specularPath;
+	filesystem::path emissivePath;
+	filesystem::path opacityPath;
+	filesystem::path ormPath;
+	filesystem::path metallicPath;
+	filesystem::path roughnessPath;
+	filesystem::path ambientOcclusionPath;
 };
 
 enum class MODEL_VERTEX_KIND : uint8_t
