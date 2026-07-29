@@ -2,15 +2,17 @@
 
 #include "Client_Defines.h"
 #include "MapAssetCatalog.h"
+#include "MapAssetPreview.h"
+#include "MapPlacementDocument.h"
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 NS_BEGIN(Client)
 
 class CMapAssetObject;
-
 class CMapTool final
 {
 private:
@@ -22,12 +24,17 @@ private:
 
 	struct PLACED_ENTRY
 	{
-		uint64_t placementId = {};
-		std::string assetId;
+		MAP_PLACEMENT_RECORD record;
+		std::wstring layerTag;
 		shared_ptr<CMapAssetObject> object;
 	};
 
 public:
+	~CMapTool();
+
+	HRESULT Initialize(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+
 	void Toggle();
 	void Update(f32_t fTimeDelta);
 	void Render();
@@ -38,18 +45,23 @@ private:
 	void Handle_LevelTransition(bool_t isAssetTest);
 	bool_t Try_PickPlacementPosition(float3_t& outPosition) const;
 	bool_t Try_PlaceSelected();
-	bool_t Create_Placement(uint64_t placementId, const std::string& assetId,
-		const float3_t& position, const float3_t& rotationDegrees,
-		const float3_t& scale, bool_t visible, PLACED_ENTRY& outEntry);
+	bool_t Create_Placement(const MAP_PLACEMENT_RECORD& record,
+		PLACED_ENTRY& outEntry);
 	bool_t Remove_Placement(uint64_t placementId);
 	void Remove_AllPlacements();
 	bool_t Save_Placements();
 	bool_t Load_Placements();
+	uint64_t Allocate_EditorPlacementId();
+	std::wstring Make_LayerTag(const std::string& sourceLevel) const;
+
+	void Select_Asset(const MAP_ASSET_ENTRY& asset);
+	void Arm_SelectedAsset();
 
 	void Render_Toolbar();
-	void Render_Palette();
-	void Render_Hierarchy();
+	void Render_Palette(f32_t childHeight);
+	void Render_Hierarchy(f32_t childHeight);
 	void Render_Inspector();
+	void Render_AssetPreview();
 	void Render_DecoderReport() const;
 
 	PLACED_ENTRY* Find_Placement(uint64_t placementId);
@@ -63,9 +75,11 @@ private:
 	PLACEMENT_STATE m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	CMapAssetCatalog m_Catalog;
+	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
 	std::string m_Status = "Enter AssetTest with F2";
 	char m_Filter[128]{};
+	std::unordered_set<std::string> m_FavoriteAssetIds;
 
 	vector<PLACED_ENTRY> m_Placements;
 	uint64_t m_iSelectedPlacementId = {};

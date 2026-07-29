@@ -19,7 +19,6 @@ public:
 		return m_isFinished;
 	}
 	
-
 #ifdef _DEBUG
 public:
 	void Print_Text();

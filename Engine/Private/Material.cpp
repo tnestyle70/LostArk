@@ -169,6 +169,36 @@ namespace
 		textures[type].push_back(resource);
 		return S_OK;
 	}
+
+	HRESULT AddSolidTexture(ComPtr<ID3D11Device> pDevice,
+		uint32_t rgba,
+		aiTextureType type,
+		vector<ComPtr<ID3D11ShaderResourceView>> (&textures)[AI_TEXTURE_TYPE_MAX])
+	{
+		D3D11_TEXTURE2D_DESC textureDesc{};
+		textureDesc.Width = 1;
+		textureDesc.Height = 1;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
+		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+		D3D11_SUBRESOURCE_DATA initialData{};
+		initialData.pSysMem = &rgba;
+		initialData.SysMemPitch = sizeof(rgba);
+
+		ComPtr<ID3D11Texture2D> texture;
+		if (FAILED(pDevice->CreateTexture2D(&textureDesc, &initialData, &texture)))
+			return E_FAIL;
+
+		ComPtr<ID3D11ShaderResourceView> resource;
+		if (FAILED(pDevice->CreateShaderResourceView(texture.Get(), nullptr, &resource)))
+			return E_FAIL;
+		textures[type].push_back(resource);
+		return S_OK;
+	}
 }
 
 CMaterial::CMaterial(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -240,9 +270,17 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 	const filesystem::path& compatibleDiffusePath = material.diffusePath.empty()
 		? material.emissivePath
 		: material.diffusePath;
-	if (FAILED(AddTexture(m_pDevice, compatibleDiffusePath,
-		aiTextureType_DIFFUSE, m_Textures)) ||
-		FAILED(AddTexture(m_pDevice, material.normalPath,
+	if (compatibleDiffusePath.empty())
+	{
+		if (FAILED(AddSolidTexture(m_pDevice, 0xff4d4d4d,
+			aiTextureType_DIFFUSE, m_Textures)))
+			return E_FAIL;
+	}
+	else if (FAILED(AddTexture(m_pDevice, compatibleDiffusePath,
+		aiTextureType_DIFFUSE, m_Textures)))
+		return E_FAIL;
+
+	if (FAILED(AddTexture(m_pDevice, material.normalPath,
 			aiTextureType_NORMALS, m_Textures)) ||
 		FAILED(AddTexture(m_pDevice, material.specularPath,
 			aiTextureType_SPECULAR, m_Textures)) ||

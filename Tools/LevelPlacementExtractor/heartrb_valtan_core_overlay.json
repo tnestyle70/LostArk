@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "status": "reconstruction-overlay-pending-deploydata-proof",
+  "basis": "Three BG_RAD_VALTAN_A direct exports share one source-space Origin. The half-width outer rail is placed at 0 and 180 degrees; the brick sectors share the same world anchor at the SL00 HeartRB boss-arena center. The exact SL00 circlefloor placement owns the center cap.",
+  "assets": [
+    {
+      "assetId": "BG_RAD_VALTAN_FLOOR01_SM",
+      "label": "Valtan Outer Boundary",
+      "modelPath": "Map/BG_RAD_VALTAN_A/BG_RAD_VALTAN_FLOOR01_SM/BG_RAD_VALTAN_FLOOR01_SM.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_BG_RAD_VALTAN_FLOOR01_SM",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-core-overlay",
+      "groupLabel": "Valtan Core Reconstruction Overlay",
+      "evidence": "BG_RAD_VALTAN_A direct export; shared source-space Origin; outer rail half"
+    },
+    {
+      "assetId": "BG_RAD_VALTAN_FLOOR01A_SM",
+      "label": "Valtan Brick Boundary A",
+      "modelPath": "Map/BG_RAD_VALTAN_A/BG_RAD_VALTAN_FLOOR01A_SM/BG_RAD_VALTAN_FLOOR01A_SM.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_BG_RAD_VALTAN_FLOOR01A_SM",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-core-overlay",
+      "groupLabel": "Valtan Core Reconstruction Overlay",
+      "evidence": "BG_RAD_VALTAN_A direct export; shared source-space Origin; brick boundary sector A"
+    },
+    {
+      "assetId": "BG_RAD_VALTAN_FLOOR01B_SM",
+      "label": "Valtan Brick Boundary B",
+      "modelPath": "Map/BG_RAD_VALTAN_A/BG_RAD_VALTAN_FLOOR01B_SM/BG_RAD_VALTAN_FLOOR01B_SM.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_BG_RAD_VALTAN_FLOOR01B_SM",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-core-overlay",
+      "groupLabel": "Valtan Core Reconstruction Overlay",
+      "evidence": "BG_RAD_VALTAN_A direct export; shared source-space Origin; brick boundary sector B"
+    }
+  ],
+  "placements": [
+    {
+      "placementId": 7000000000000000001,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01_sm",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    },
+    {
+      "placementId": 7000000000000000002,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01a_sm",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01A_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    },
+    {
+      "placementId": 7000000000000000003,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01b_sm",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01B_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    },
+    {
+      "placementId": 7000000000000000005,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01_sm:yaw180",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 1.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    }
+  ]
+}

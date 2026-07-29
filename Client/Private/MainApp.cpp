@@ -176,11 +176,13 @@ HRESULT CMainApp::Render()
             nullptr != m_pAnimationTool)
         {
             m_pAnimationTool->Render();
+        }
 
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
             nullptr != m_pHUDLayoutTool)
         {
             m_pHUDLayoutTool->Render();
-
         }
 
         m_pImGuiLayer->EndFrame();
@@ -328,13 +330,15 @@ HRESULT CMainApp::ReadyDebugTools()
         return E_FAIL;
     }
 
-    m_pMapTool = std::make_unique<CMapTool>();
+    auto mapTool = std::make_unique<CMapTool>();
+    if (FAILED(mapTool->Initialize(m_pDevice, m_pContext)))
+        return E_FAIL;
+    m_pMapTool = std::move(mapTool);
 
     m_pAnimationTool = std::make_unique<CAnimation_Tool>();
 
     m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
     m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
-
 
     return S_OK;
 }

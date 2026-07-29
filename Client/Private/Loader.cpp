@@ -9,6 +9,7 @@
 #include "Weapon_LanceMaster.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
+#include "MapAssetPreview.h"
 
 
 #include "Sky.h"
@@ -155,10 +156,24 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             VTXMESH::iNumElements))))
         return E_FAIL;
 
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        CMapAssetPreview::SHADER_PROTOTYPE_TAG,
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxMeshPreview.hlsl"),
+            VTXMESH::Elements,
+            VTXMESH::iNumElements))))
+        return E_FAIL;
+
+    const matrix_t lostArkAssetPreTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
+
+    const matrix_t mapAssetTransform =
+        XMMatrixScaling(0.01f, 0.01f, 0.01f);
+
     CMapAssetCatalog mapCatalog;
     if (!mapCatalog.Load_Default())
     {
-        OutputDebugStringA(("[MapAsset] " + mapCatalog.Get_Status() + "\n").c_str());
         return E_FAIL;
     }
 
@@ -168,22 +183,19 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         if (FAILED(CGameInstance::Get().Add_Prototype(
             ETOUI(LEVEL::ASSET_TEST), entry.prototypeTag,
             CModel::Create(m_pDevice, m_pContext,
-                MODEL::NONANIM, modelPath.c_str(), XMMatrixIdentity()))))
+                MODEL::NONANIM, modelPath.c_str(), mapAssetTransform))))
         {
-            OutputDebugStringA(("[MapAsset] Prototype registration failed: " +
-                entry.id + "\n").c_str());
             return E_FAIL;
         }
     }
 
-    const matrix_t preTransform = XMMatrixScaling(0.001f, 0.001f, 0.001f);
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Model_Valtan"),
         CModel::Create(m_pDevice, m_pContext,
             MODEL::ANIM,
             "../Bin/Resources/LostArk/Character/MN_RPBF_01/MN_RPBF_01.wmodel",
-            preTransform))))
+            lostArkAssetPreTransform))))
         return E_FAIL;
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
@@ -211,6 +223,7 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         return E_FAIL;
 
     lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 로딩이 완료되었습니다."));
+
     m_isFinished = true;
 
     return S_OK;

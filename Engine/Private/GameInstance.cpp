@@ -394,7 +394,6 @@ bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRa
 	return m_pFrustum->isIn_Frustum_InWorldSpace(vWorldPoint, fRange);
 }
 
-
 void CGameInstance::Release_Engine()
 {	
 	m_pFrustum.reset();

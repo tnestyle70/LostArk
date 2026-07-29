@@ -3,6 +3,7 @@
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -12,20 +13,25 @@
 namespace
 {
 	constexpr const char* CATALOG_MAGIC = "LOSTARK_MAP_ASSET_CATALOG";
-	constexpr uint32_t CATALOG_VERSION = 1;
+	constexpr uint32_t LEGACY_CATALOG_VERSION = 1;
+	constexpr uint32_t CATALOG_VERSION = 2;
 	constexpr uint32_t MAX_ASSET_COUNT = 512;
+	constexpr size_t MAX_GROUP_ID_LENGTH = 64;
+	constexpr size_t MAX_GROUP_LABEL_LENGTH = 128;
+	constexpr size_t MAX_EVIDENCE_LENGTH = 512;
 
-	std::filesystem::path GetDataFilePath(const wchar_t* pFileName)
+	struct PARSED_MAP_ASSET_ROW
 	{
-		wchar_t modulePath[32768]{};
-		const DWORD length = GetModuleFileNameW(
-			nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
-		if (0 == length || length >= std::size(modulePath))
-			return {};
-
-		return (std::filesystem::path(modulePath).parent_path() /
-			L"DataFiles" / L"Map" / pFileName).lexically_normal();
-	}
+		std::string id;
+		std::string label;
+		std::string modelPath;
+		std::string prototypeTag;
+		float3_t defaultScale = float3_t(1.f, 1.f, 1.f);
+		std::string anchor;
+		std::string groupId;
+		std::string groupLabel;
+		std::string evidence;
+	};
 
 	bool_t IsInsideRoot(const std::filesystem::path& root,
 		const std::filesystem::path& candidate)
@@ -46,19 +52,70 @@ namespace
 			std::isfinite(scale.z) && scale.x > 0.f &&
 			scale.y > 0.f && scale.z > 0.f;
 	}
+
+	bool_t IsValidGroupId(const std::string& groupId)
+	{
+		if (groupId.empty() || groupId.size() > MAX_GROUP_ID_LENGTH)
+			return false;
+
+		return std::all_of(groupId.begin(), groupId.end(), [](const char value)
+		{
+			const unsigned char character = static_cast<unsigned char>(value);
+			return 0 != std::isalnum(character) || value == '_' ||
+				value == '-' || value == '.';
+		});
+	}
+
+	bool_t IsValidDisplayText(const std::string& text, const size_t maximumLength)
+	{
+		if (text.empty() || text.size() > maximumLength)
+			return false;
+
+		return std::none_of(text.begin(), text.end(), [](const char value)
+		{
+			return 0 != std::iscntrl(static_cast<unsigned char>(value));
+		});
+	}
 }
 
 bool_t CMapAssetCatalog::Load_Default()
 {
-	return Load(Get_DefaultCatalogPath());
+	const std::filesystem::path selectionPath = Get_AreaSelectionPath();
+	std::ifstream input(selectionPath, std::ios::binary);
+	std::string magic;
+	std::string selectedAreaId;
+	uint32_t version = {};
+	if (!input || !(input >> magic >> version >> std::quoted(selectedAreaId)) ||
+		magic != "LOSTARK_MAP_AREA_SELECTION" || version != 1 ||
+		!IsValidGroupId(selectedAreaId))
+	{
+		m_Status = "Active map area selection is invalid: " +
+			selectionPath.string();
+		return false;
+	}
+
+	std::string trailing;
+	if (input >> trailing)
+	{
+		m_Status = "Active map area selection has trailing data";
+		return false;
+	}
+
+	const std::filesystem::path mapRoot = Get_MapDataRoot();
+	const std::filesystem::path catalogPath = mapRoot /
+		(std::filesystem::path(selectedAreaId).wstring() + L".mapassets");
+	if (!Load(catalogPath, selectedAreaId))
+		return false;
+
+	m_CatalogPath = catalogPath;
+	m_PlacementPath = mapRoot /
+		(std::filesystem::path(selectedAreaId).wstring() + L".mapplacements");
+	return true;
 }
 
-bool_t CMapAssetCatalog::Load(const std::filesystem::path& path)
+bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
+	const std::string& expectedAreaId)
 {
-	m_Entries.clear();
-	m_AreaId.clear();
-	m_bReady = false;
-
 	std::ifstream input(path, std::ios::binary);
 	if (!input)
 	{
@@ -69,11 +126,56 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path)
 	std::string magic;
 	uint32_t version = {};
 	uint32_t count = {};
-	if (!(input >> magic >> version >> std::quoted(m_AreaId) >> count) ||
-		magic != CATALOG_MAGIC || version != CATALOG_VERSION ||
-		m_AreaId.empty() || 0 == count || count > MAX_ASSET_COUNT)
+	std::string stagedAreaId;
+	if (!(input >> magic >> version >> std::quoted(stagedAreaId) >> count) ||
+		magic != CATALOG_MAGIC ||
+		(version != LEGACY_CATALOG_VERSION && version != CATALOG_VERSION) ||
+		stagedAreaId.empty() ||
+		(!expectedAreaId.empty() && stagedAreaId != expectedAreaId) ||
+		0 == count || count > MAX_ASSET_COUNT)
 	{
 		m_Status = "Catalog header is invalid";
+		return false;
+	}
+
+	std::vector<PARSED_MAP_ASSET_ROW> parsedRows;
+	parsedRows.reserve(count);
+	for (uint32_t index = 0; index < count; ++index)
+	{
+		PARSED_MAP_ASSET_ROW row{};
+		if (!(input >> std::quoted(row.id) >> std::quoted(row.label) >>
+			std::quoted(row.modelPath) >> std::quoted(row.prototypeTag) >>
+			row.defaultScale.x >> row.defaultScale.y >> row.defaultScale.z >>
+			row.anchor))
+		{
+			m_Status = "Catalog row is truncated at index " + std::to_string(index);
+			return false;
+		}
+
+		if (version == CATALOG_VERSION)
+		{
+			if (!(input >> std::quoted(row.groupId) >>
+				std::quoted(row.groupLabel) >> std::quoted(row.evidence)))
+			{
+				m_Status = "Catalog metadata is truncated at index " +
+					std::to_string(index);
+				return false;
+			}
+		}
+		else
+		{
+			row.groupId = "legacy";
+			row.groupLabel = "Legacy Catalog";
+			row.evidence = "catalog-v1";
+		}
+
+		parsedRows.push_back(std::move(row));
+	}
+
+	std::string trailing;
+	if (input >> trailing)
+	{
+		m_Status = "Catalog contains unexpected trailing data";
 		return false;
 	}
 
@@ -86,37 +188,35 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path)
 
 	std::unordered_set<std::string> ids;
 	std::unordered_set<std::wstring> prototypeTags;
-	m_Entries.reserve(count);
+	std::vector<MAP_ASSET_ENTRY> stagedEntries;
+	stagedEntries.reserve(count);
 	for (uint32_t index = 0; index < count; ++index)
 	{
+		const PARSED_MAP_ASSET_ROW& row = parsedRows[index];
 		MAP_ASSET_ENTRY entry{};
-		std::string modelPath;
-		std::string prototypeTag;
-		std::string anchor;
-		if (!(input >> std::quoted(entry.id) >> std::quoted(entry.label) >>
-			std::quoted(modelPath) >> std::quoted(prototypeTag) >>
-			entry.defaultScale.x >> entry.defaultScale.y >> entry.defaultScale.z >> anchor))
-		{
-			m_Status = "Catalog row is truncated at index " + std::to_string(index);
-			m_Entries.clear();
-			return false;
-		}
-
-		entry.modelRelativePath = std::filesystem::path(modelPath).lexically_normal();
+		entry.id = row.id;
+		entry.label = row.label;
+		entry.groupId = row.groupId;
+		entry.groupLabel = row.groupLabel;
+		entry.evidence = row.evidence;
+		entry.defaultScale = row.defaultScale;
+		entry.modelRelativePath = std::filesystem::path(row.modelPath).lexically_normal();
 		entry.resolvedModelPath = CRuntimeAssetRoot::Resolve(entry.modelRelativePath);
-		entry.prototypeTag.assign(prototypeTag.begin(), prototypeTag.end());
-		if (anchor == "Origin")
+		entry.prototypeTag.assign(row.prototypeTag.begin(), row.prototypeTag.end());
+		if (row.anchor == "Origin")
 			entry.anchor = MAP_ASSET_ANCHOR::ORIGIN;
-		else if (anchor == "BottomCenter")
+		else if (row.anchor == "BottomCenter")
 			entry.anchor = MAP_ASSET_ANCHOR::BOTTOM_CENTER;
 		else
 		{
 			m_Status = "Unknown placement anchor for " + entry.id;
-			m_Entries.clear();
 			return false;
 		}
 
 		if (entry.id.empty() || entry.label.empty() || entry.prototypeTag.empty() ||
+			!IsValidGroupId(entry.groupId) ||
+			!IsValidDisplayText(entry.groupLabel, MAX_GROUP_LABEL_LENGTH) ||
+			!IsValidDisplayText(entry.evidence, MAX_EVIDENCE_LENGTH) ||
 			entry.modelRelativePath.is_absolute() ||
 			entry.modelRelativePath.extension() != L".wmodel" ||
 			!IsValidScale(entry.defaultScale) || !ids.insert(entry.id).second ||
@@ -125,23 +225,20 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path)
 			!std::filesystem::exists(entry.resolvedModelPath))
 		{
 			m_Status = "Catalog validation failed for " + entry.id;
-			m_Entries.clear();
 			return false;
 		}
 
-		m_Entries.push_back(std::move(entry));
+		stagedEntries.push_back(std::move(entry));
 	}
 
-	std::string trailing;
-	if (input >> trailing)
-	{
-		m_Status = "Catalog contains unexpected trailing data";
-		m_Entries.clear();
-		return false;
-	}
-
+	m_Entries = std::move(stagedEntries);
+	m_AreaId = std::move(stagedAreaId);
+	m_CatalogPath = path;
+	m_PlacementPath = path.parent_path() /
+		(std::filesystem::path(m_AreaId).wstring() + L".mapplacements");
 	m_bReady = true;
-	m_Status = "Catalog ready: " + std::to_string(m_Entries.size());
+	m_Status = "Catalog ready (v" + std::to_string(version) + "): " +
+		std::to_string(m_Entries.size());
 	return true;
 }
 
@@ -152,12 +249,19 @@ const MAP_ASSET_ENTRY* CMapAssetCatalog::Find(const std::string& assetId) const
 	return iter == m_Entries.end() ? nullptr : &*iter;
 }
 
-std::filesystem::path CMapAssetCatalog::Get_DefaultCatalogPath()
+std::filesystem::path CMapAssetCatalog::Get_MapDataRoot()
 {
-	return GetDataFilePath(L"BG_RAD_VALTAN_A.mapassets");
+	wchar_t modulePath[32768]{};
+	const DWORD length = GetModuleFileNameW(
+		nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
+	if (0 == length || length >= std::size(modulePath))
+		return {};
+
+	return (std::filesystem::path(modulePath).parent_path() /
+		L"DataFiles" / L"Map").lexically_normal();
 }
 
-std::filesystem::path CMapAssetCatalog::Get_DefaultPlacementPath()
+std::filesystem::path CMapAssetCatalog::Get_AreaSelectionPath()
 {
-	return GetDataFilePath(L"BG_RAD_VALTAN_A.mapplacements");
+	return Get_MapDataRoot() / L"ACTIVE.maparea";
 }

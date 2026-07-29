@@ -98,7 +98,6 @@ namespace
 		}
 		if (iLength <= 0)
 			return {};
-		s
 		wstring strWide(static_cast<size_t>(iLength), L'\0');
 		MultiByteToWideChar(iCodePage, iFlags, strValue.c_str(), -1,
 			strWide.data(), iLength);

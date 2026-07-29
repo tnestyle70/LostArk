@@ -5,44 +5,26 @@
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "GameInstance.h"
 #include "MapAssetObject.h"
+#include "MapAssetPreview.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
+#include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
 {
-	constexpr const char* PLACEMENT_MAGIC = "LOSTARK_MAP_PLACEMENTS";
-	constexpr uint32_t PLACEMENT_VERSION = 1;
-	constexpr uint32_t MAX_PLACEMENT_COUNT = 10000;
-	constexpr const wchar_t* MAP_LAYER_TAG = L"Layer_MapAsset";
-
-	struct STORED_PLACEMENT
-	{
-		uint64_t placementId = {};
-		std::string assetId;
-		float3_t position = {};
-		float3_t rotationDegrees = {};
-		float3_t scale = float3_t(1.f, 1.f, 1.f);
-		bool_t visible = true;
-	};
-
 	bool_t IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
-	}
-
-	bool_t IsValidStoredPlacement(const STORED_PLACEMENT& placement)
-	{
-		return 0 != placement.placementId && !placement.assetId.empty() &&
-			IsFinite(placement.position) && IsFinite(placement.rotationDegrees) &&
-			IsFinite(placement.scale) && placement.scale.x > 0.f &&
-			placement.scale.y > 0.f && placement.scale.z > 0.f;
 	}
 
 	bool_t MatchesFilter(const std::string& text, const char* pFilter)
@@ -58,92 +40,20 @@ namespace
 			[](unsigned char value) { return static_cast<char>(std::tolower(value)); });
 		return std::string::npos != haystack.find(needle);
 	}
+}
 
-	bool_t ReadPlacementDocument(const std::filesystem::path& path,
-		const CMapAssetCatalog& catalog, vector<STORED_PLACEMENT>& outPlacements,
-		std::string& outStatus)
-	{
-		outPlacements.clear();
-		std::error_code fileError;
-		if (!std::filesystem::exists(path, fileError))
-		{
-			outStatus = "No saved placement file; starting with an empty map";
-			return true;
-		}
+Client::CMapTool::~CMapTool() = default;
 
-		std::ifstream input(path, std::ios::binary);
-		if (!input)
-		{
-			outStatus = "Could not open placement file: " + path.string();
-			return false;
-		}
+HRESULT Client::CMapTool::Initialize(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	auto preview = std::make_unique<CMapAssetPreview>();
+	if (FAILED(preview->Initialize(pDevice, pContext)))
+		return E_FAIL;
 
-		std::string magic;
-		std::string areaId;
-		uint32_t version = {};
-		uint32_t count = {};
-		if (!(input >> magic >> version >> std::quoted(areaId) >> count) ||
-			magic != PLACEMENT_MAGIC || version != PLACEMENT_VERSION ||
-			areaId != catalog.Get_AreaId() || count > MAX_PLACEMENT_COUNT)
-		{
-			outStatus = "Placement header is invalid or belongs to another area";
-			return false;
-		}
-
-		std::unordered_set<uint64_t> ids;
-		outPlacements.reserve(count);
-		for (uint32_t index = 0; index < count; ++index)
-		{
-			STORED_PLACEMENT placement{};
-			int32_t visible = {};
-			if (!(input >> placement.placementId >> std::quoted(placement.assetId) >>
-				placement.position.x >> placement.position.y >> placement.position.z >>
-				placement.rotationDegrees.x >> placement.rotationDegrees.y >> placement.rotationDegrees.z >>
-				placement.scale.x >> placement.scale.y >> placement.scale.z >> visible))
-			{
-				outStatus = "Placement row is truncated at index " + std::to_string(index);
-				outPlacements.clear();
-				return false;
-			}
-
-			placement.visible = 0 != visible;
-			if (!IsValidStoredPlacement(placement) ||
-				nullptr == catalog.Find(placement.assetId) ||
-				!ids.insert(placement.placementId).second)
-			{
-				outStatus = "Placement validation failed at index " + std::to_string(index);
-				outPlacements.clear();
-				return false;
-			}
-			outPlacements.push_back(std::move(placement));
-		}
-
-		std::string trailing;
-		if (input >> trailing)
-		{
-			outStatus = "Placement file contains unexpected trailing data";
-			outPlacements.clear();
-			return false;
-		}
-
-		outStatus = "Placement document validated";
-		return true;
-	}
-
-	bool_t CommitTemporaryFile(const std::filesystem::path& destination,
-		const std::filesystem::path& temporary)
-	{
-		std::error_code existsError;
-		if (std::filesystem::exists(destination, existsError))
-		{
-			if (ReplaceFileW(destination.c_str(), temporary.c_str(), nullptr,
-				REPLACEFILE_WRITE_THROUGH, nullptr, nullptr))
-				return true;
-		}
-
-		return MoveFileExW(temporary.c_str(), destination.c_str(),
-			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-	}
+	m_pAssetPreview = std::move(preview);
+	return S_OK;
 }
 
 void Client::CMapTool::Toggle()
@@ -183,7 +93,7 @@ void Client::CMapTool::Render()
 	if (!m_bOpen)
 		return;
 
-	ImGui::SetNextWindowSize(ImVec2(900.f, 620.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(1180.f, 900.f), ImGuiCond_FirstUseEver);
 	if (!ImGui::Begin("LostArk Map Tool", &m_bOpen))
 	{
 		ImGui::End();
@@ -201,6 +111,10 @@ void Client::CMapTool::Render()
 	ImGui::BeginDisabled(!isAssetTest || !m_Catalog.Is_Ready());
 	Render_Toolbar();
 
+	const f32_t availableHeight = ImGui::GetContentRegionAvail().y;
+	const f32_t topPanelHeight = (std::max)(
+		280.f, (std::min)(480.f, availableHeight * 0.48f));
+
 	if (ImGui::BeginTable("MapEditorColumns", 3,
 		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
 	{
@@ -209,16 +123,16 @@ void Client::CMapTool::Render()
 		ImGui::TableSetupColumn("Inspector", ImGuiTableColumnFlags_WidthStretch, 0.35f);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
-		Render_Palette();
+		Render_Palette(topPanelHeight);
 		ImGui::TableSetColumnIndex(1);
-		Render_Hierarchy();
+		Render_Hierarchy(topPanelHeight);
 		ImGui::TableSetColumnIndex(2);
 		Render_Inspector();
 		ImGui::EndTable();
 	}
+	Render_AssetPreview();
 	ImGui::EndDisabled();
 
-	Render_DecoderReport();
 	ImGui::End();
 }
 
@@ -236,6 +150,8 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	m_iSelectedPlacementId = 0;
 	m_SelectedAssetId.clear();
+	if (nullptr != m_pAssetPreview)
+		m_pAssetPreview->Reset_LevelResources();
 
 	if (!isAssetTest)
 	{
@@ -314,45 +230,87 @@ bool_t Client::CMapTool::Try_PlaceSelected()
 		return false;
 	}
 
+	const uint64_t placementId = Allocate_EditorPlacementId();
+	if (0 == placementId)
+	{
+		m_Status = "No editor placement ID is available";
+		return false;
+	}
+
+	MAP_PLACEMENT_RECORD record{};
+	record.placementId = placementId;
+	record.sourcePlacementId = "editor:" + m_Catalog.Get_AreaId() +
+		":" + std::to_string(placementId);
+	record.sourceLevel = "EDITOR";
+	record.transformSource = "editor";
+	record.assetId = pAsset->id;
+	record.position = position;
+	record.rotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
+	record.signedScale = pAsset->defaultScale;
+	record.visible = true;
+
 	PLACED_ENTRY placed{};
-	if (!Create_Placement(m_iNextPlacementId, pAsset->id, position,
-		float3_t(0.f, 0.f, 0.f), pAsset->defaultScale, true, placed))
+	if (!Create_Placement(record, placed))
 	{
 		m_Status = "Failed to clone map object for " + pAsset->id;
 		return false;
 	}
 
-	m_iSelectedPlacementId = m_iNextPlacementId++;
+	m_iSelectedPlacementId = placementId;
 	m_Placements.push_back(std::move(placed));
-	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	m_bDirty = true;
-	m_Status = "Placed " + pAsset->label;
+	m_Status = "Placed " + pAsset->label +
+		"; placement remains armed (Esc cancels).";
 	return true;
 }
 
-bool_t Client::CMapTool::Create_Placement(uint64_t placementId,
-	const std::string& assetId, const float3_t& position,
-	const float3_t& rotationDegrees, const float3_t& scale,
-	bool_t visible, PLACED_ENTRY& outEntry)
+uint64_t Client::CMapTool::Allocate_EditorPlacementId()
 {
-	const MAP_ASSET_ENTRY* pAsset = m_Catalog.Find(assetId);
-	if (nullptr == pAsset)
+	for (size_t attempt = 0; attempt <= m_Placements.size(); ++attempt)
+	{
+		if (0 == m_iNextPlacementId ||
+			m_iNextPlacementId > CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
+			m_iNextPlacementId = 1;
+
+		const uint64_t candidate = m_iNextPlacementId++;
+		if (nullptr == Find_Placement(candidate))
+			return candidate;
+	}
+
+	return 0;
+}
+
+std::wstring Client::CMapTool::Make_LayerTag(
+	const std::string& sourceLevel) const
+{
+	std::wstring layerTag = L"Layer_MapAsset_";
+	layerTag.append(sourceLevel.begin(), sourceLevel.end());
+	return layerTag;
+}
+
+bool_t Client::CMapTool::Create_Placement(
+	const MAP_PLACEMENT_RECORD& record, PLACED_ENTRY& outEntry)
+{
+	const MAP_ASSET_ENTRY* pAsset = m_Catalog.Find(record.assetId);
+	if (nullptr == pAsset ||
+		!CMapPlacementDocument::Is_Valid(record, m_Catalog))
 		return false;
 
+	const std::wstring layerTag = Make_LayerTag(record.sourceLevel);
 	CMapAssetObject::MAP_ASSET_DESC desc{};
-	desc.placementId = placementId;
+	desc.placementId = record.placementId;
 	desc.assetId = pAsset->id;
 	desc.modelPrototypeTag = pAsset->prototypeTag;
-	desc.position = position;
-	desc.rotationDegrees = rotationDegrees;
-	desc.scale = scale;
+	desc.position = record.position;
+	desc.rotationQuaternion = record.rotationQuaternion;
+	desc.signedScale = record.signedScale;
 	desc.applyBottomCenter = MAP_ASSET_ANCHOR::BOTTOM_CENTER == pAsset->anchor;
-	desc.visible = visible;
+	desc.visible = record.visible;
 
 	shared_ptr<CGameObject> pGameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
 		ETOUI(LEVEL::ASSET_TEST), L"Prototype_GameObject_MapAsset",
-		ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG, &desc, &pGameObject)))
+		ETOUI(LEVEL::ASSET_TEST), layerTag, &desc, &pGameObject)))
 		return false;
 
 	shared_ptr<CMapAssetObject> pMapObject =
@@ -360,12 +318,12 @@ bool_t Client::CMapTool::Create_Placement(uint64_t placementId,
 	if (nullptr == pMapObject)
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG, pGameObject);
+			ETOUI(LEVEL::ASSET_TEST), layerTag, pGameObject);
 		return false;
 	}
 
-	outEntry.placementId = placementId;
-	outEntry.assetId = assetId;
+	outEntry.record = record;
+	outEntry.layerTag = layerTag;
 	outEntry.object = std::move(pMapObject);
 	return true;
 }
@@ -375,13 +333,13 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 	const auto iter = std::find_if(m_Placements.begin(), m_Placements.end(),
 		[placementId](const PLACED_ENTRY& entry)
 		{
-			return entry.placementId == placementId;
+			return entry.record.placementId == placementId;
 		});
 	if (iter == m_Placements.end())
 		return false;
 
 	if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
-		ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG,
+		ETOUI(LEVEL::ASSET_TEST), iter->layerTag,
 		static_pointer_cast<CGameObject>(iter->object))))
 		return false;
 
@@ -397,9 +355,10 @@ void Client::CMapTool::Remove_AllPlacements()
 	for (const PLACED_ENTRY& entry : m_Placements)
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG,
+			ETOUI(LEVEL::ASSET_TEST), entry.layerTag,
 			static_pointer_cast<CGameObject>(entry.object));
 	}
+
 	m_Placements.clear();
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
@@ -408,24 +367,23 @@ void Client::CMapTool::Remove_AllPlacements()
 
 bool_t Client::CMapTool::Save_Placements()
 {
-	vector<STORED_PLACEMENT> document;
+	vector<MAP_PLACEMENT_RECORD> document;
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
 	{
-		if (nullptr == entry.object || nullptr == m_Catalog.Find(entry.assetId))
+		if (nullptr == entry.object ||
+			nullptr == m_Catalog.Find(entry.record.assetId))
 		{
 			m_Status = "Save aborted: placement references are invalid";
 			return false;
 		}
 
-		STORED_PLACEMENT stored{};
-		stored.placementId = entry.placementId;
-		stored.assetId = entry.assetId;
+		MAP_PLACEMENT_RECORD stored = entry.record;
 		stored.position = entry.object->Get_Position();
-		stored.rotationDegrees = entry.object->Get_RotationDegrees();
-		stored.scale = entry.object->Get_Scale();
+		stored.rotationQuaternion = entry.object->Get_RotationQuaternion();
+		stored.signedScale = entry.object->Get_SignedScale();
 		stored.visible = entry.object->Is_Visible();
-		if (!IsValidStoredPlacement(stored))
+		if (!CMapPlacementDocument::Is_Valid(stored, m_Catalog))
 		{
 			m_Status = "Save aborted: a transform is invalid";
 			return false;
@@ -433,47 +391,12 @@ bool_t Client::CMapTool::Save_Placements()
 		document.push_back(std::move(stored));
 	}
 
-	const std::filesystem::path destination = CMapAssetCatalog::Get_DefaultPlacementPath();
-	const std::filesystem::path temporary = destination.wstring() + L".tmp";
-	std::error_code directoryError;
-	std::filesystem::create_directories(destination.parent_path(), directoryError);
-	if (directoryError)
-	{
-		m_Status = "Could not create placement directory";
+	if (!CMapPlacementDocument::Write(
+		m_Catalog.Get_PlacementPath(), m_Catalog.Get_AreaId(),
+		document, m_Catalog, m_Status))
 		return false;
-	}
-
-	std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-	if (!output)
-	{
-		m_Status = "Could not create temporary placement file";
-		return false;
-	}
-
-	output << PLACEMENT_MAGIC << ' ' << PLACEMENT_VERSION << ' '
-		<< std::quoted(m_Catalog.Get_AreaId()) << ' ' << document.size() << '\n';
-	output << std::setprecision(9);
-	for (const STORED_PLACEMENT& placement : document)
-	{
-		output << placement.placementId << ' ' << std::quoted(placement.assetId) << ' '
-			<< placement.position.x << ' ' << placement.position.y << ' ' << placement.position.z << ' '
-			<< placement.rotationDegrees.x << ' ' << placement.rotationDegrees.y << ' ' << placement.rotationDegrees.z << ' '
-			<< placement.scale.x << ' ' << placement.scale.y << ' ' << placement.scale.z << ' '
-			<< (placement.visible ? 1 : 0) << '\n';
-	}
-	output.flush();
-	const bool_t wroteSuccessfully = output.good();
-	output.close();
-	if (!wroteSuccessfully || !CommitTemporaryFile(destination, temporary))
-	{
-		std::error_code removeError;
-		std::filesystem::remove(temporary, removeError);
-		m_Status = "Failed to commit placement file atomically";
-		return false;
-	}
 
 	m_bDirty = false;
-	m_Status = "Saved " + std::to_string(document.size()) + " placements";
 	return true;
 }
 
@@ -482,49 +405,58 @@ bool_t Client::CMapTool::Load_Placements()
 	if (!m_Catalog.Is_Ready())
 		return false;
 
-	vector<STORED_PLACEMENT> document;
+	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	if (!ReadPlacementDocument(CMapAssetCatalog::Get_DefaultPlacementPath(),
-		m_Catalog, document, loadStatus))
+	if (!CMapPlacementDocument::Read(
+		m_Catalog.Get_PlacementPath(), m_Catalog, document, loadStatus))
 	{
 		m_Status = loadStatus;
 		return false;
 	}
 
-	vector<PLACED_ENTRY> created;
-	created.reserve(document.size());
-	for (const STORED_PLACEMENT& placement : document)
+	vector<PLACED_ENTRY> staged;
+	staged.reserve(document.size());
+	for (const MAP_PLACEMENT_RECORD& record : document)
 	{
 		PLACED_ENTRY entry{};
-		if (!Create_Placement(placement.placementId, placement.assetId,
-			placement.position, placement.rotationDegrees, placement.scale,
-			placement.visible, entry))
+		if (!Create_Placement(record, entry))
 		{
-			for (const PLACED_ENTRY& rollback : created)
+			for (const PLACED_ENTRY& rollback : staged)
 			{
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG,
+					ETOUI(LEVEL::ASSET_TEST), rollback.layerTag,
 					static_pointer_cast<CGameObject>(rollback.object));
 			}
-			m_Status = "Load rolled back: could not clone " + placement.assetId;
+			m_Status = "Load rolled back at " + record.sourcePlacementId;
 			return false;
 		}
-		created.push_back(std::move(entry));
+		staged.push_back(std::move(entry));
 	}
 
 	for (const PLACED_ENTRY& old : m_Placements)
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), MAP_LAYER_TAG,
+			ETOUI(LEVEL::ASSET_TEST), old.layerTag,
 			static_pointer_cast<CGameObject>(old.object));
 	}
-	m_Placements = std::move(created);
+
+	m_Placements = std::move(staged);
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
 	for (const PLACED_ENTRY& entry : m_Placements)
-		m_iNextPlacementId = (std::max)(m_iNextPlacementId, entry.placementId + 1);
+	{
+		if ((entry.record.transformSource == "editor" ||
+			entry.record.transformSource == "legacy") &&
+			entry.record.placementId <=
+			CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
+		{
+			m_iNextPlacementId = (std::max)(
+				m_iNextPlacementId, entry.record.placementId + 1);
+		}
+	}
 	m_bDirty = false;
-	m_Status = "Loaded " + std::to_string(m_Placements.size()) + " placements";
+	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
+		" exact placements from " + m_Catalog.Get_AreaId();
 	return true;
 }
 
@@ -539,7 +471,14 @@ void Client::CMapTool::Render_Toolbar()
 	if (ImGui::Button("Clear"))
 		ImGui::OpenPopup("Clear all placements?");
 	ImGui::SameLine();
-	ImGui::Text("Objects: %zu%s", m_Placements.size(), m_bDirty ? "  *unsaved" : "");
+	ImGui::BeginDisabled(nullptr == Get_SelectedAsset() ||
+		PLACEMENT_STATE::ARMED == m_ePlacementState);
+	if (ImGui::Button("Arm placement"))
+		Arm_SelectedAsset();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::Text("Objects: %zu%s", m_Placements.size(),
+		m_bDirty ? "  *unsaved" : "");
 
 	if (ImGui::BeginPopupModal("Clear all placements?", nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
@@ -565,50 +504,146 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::Separator();
 }
 
-void Client::CMapTool::Render_Palette()
+void Client::CMapTool::Render_Palette(f32_t childHeight)
 {
 	ImGui::TextUnformatted("Palette");
 	ImGui::SetNextItemWidth(-FLT_MIN);
-	ImGui::InputTextWithHint("##AssetFilter", "filter 17 Valtan parts", m_Filter, sizeof(m_Filter));
-	ImGui::BeginChild("AssetPaletteList", ImVec2(0.f, 440.f), true);
-	for (const MAP_ASSET_ENTRY& asset : m_Catalog.Get_Entries())
-	{
-		if (!MatchesFilter(asset.label + " " + asset.id, m_Filter))
-			continue;
+	ImGui::InputTextWithHint("##AssetFilter",
+		"search name, id, group, evidence...", m_Filter, sizeof(m_Filter));
 
+	const f32_t listHeight = (std::max)(120.f, childHeight -
+		ImGui::GetTextLineHeightWithSpacing() * 2.f);
+	ImGui::BeginChild("AssetPaletteList", ImVec2(0.f, listHeight), true);
+
+	const auto renderAssetRow = [&](const MAP_ASSET_ENTRY& asset)
+	{
+		ImGui::PushID(asset.id.c_str());
+		const bool_t favorite = m_FavoriteAssetIds.contains(asset.id);
+		if (ImGui::SmallButton(favorite ? "*" : "+"))
+		{
+			if (favorite)
+				m_FavoriteAssetIds.erase(asset.id);
+			else
+				m_FavoriteAssetIds.insert(asset.id);
+		}
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip(favorite ? "Remove from candidate board" :
+				"Add to candidate board");
+		ImGui::SameLine();
 		const bool_t selected = asset.id == m_SelectedAssetId;
 		if (ImGui::Selectable(asset.label.c_str(), selected))
+			Select_Asset(asset);
+		if (ImGui::IsItemHovered() &&
+			ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 		{
-			m_SelectedAssetId = asset.id;
-			m_ePlacementState = PLACEMENT_STATE::ARMED;
-			m_Status = "Selected " + asset.label + "; click the rendered surface or Y=0 plane";
+			if (!selected)
+				Select_Asset(asset);
+			Arm_SelectedAsset();
 		}
 		if (ImGui::IsItemHovered())
 		{
 			ImGui::BeginTooltip();
 			ImGui::TextUnformatted(asset.id.c_str());
 			ImGui::TextWrapped("%s", asset.modelRelativePath.string().c_str());
+			ImGui::TextWrapped("Evidence: %s", asset.evidence.c_str());
+			ImGui::TextDisabled(
+				"Single click: preview | Double click: arm placement");
 			ImGui::EndTooltip();
 		}
+		ImGui::PopID();
+	};
+
+	const bool_t hasFilter = '\0' != m_Filter[0];
+	if (!m_FavoriteAssetIds.empty())
+	{
+		size_t visibleFavorites = 0;
+		for (const MAP_ASSET_ENTRY& asset : m_Catalog.Get_Entries())
+		{
+			if (m_FavoriteAssetIds.contains(asset.id) &&
+				MatchesFilter(asset.label + " " + asset.id + " " +
+					asset.groupLabel + " " + asset.evidence, m_Filter))
+				++visibleFavorites;
+		}
+		if (0 != visibleFavorites)
+		{
+			if (hasFilter)
+				ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+			const std::string header = "Candidate Board (" +
+				std::to_string(visibleFavorites) + ")###favorite-assets";
+			if (ImGui::CollapsingHeader(header.c_str(),
+				ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				for (const MAP_ASSET_ENTRY& asset : m_Catalog.Get_Entries())
+				if (m_FavoriteAssetIds.contains(asset.id) &&
+					MatchesFilter(asset.label + " " + asset.id + " " +
+						asset.groupLabel + " " + asset.evidence, m_Filter))
+					renderAssetRow(asset);
+			}
+		}
+	}
+
+	vector<std::string> groupOrder;
+	std::unordered_map<std::string, vector<const MAP_ASSET_ENTRY*>> groups;
+	for (const MAP_ASSET_ENTRY& asset : m_Catalog.Get_Entries())
+	{
+		if (!MatchesFilter(asset.label + " " + asset.id + " " +
+			asset.groupLabel + " " + asset.evidence, m_Filter))
+			continue;
+		if (!groups.contains(asset.groupId))
+			groupOrder.push_back(asset.groupId);
+		groups[asset.groupId].push_back(&asset);
+	}
+
+	for (const std::string& groupId : groupOrder)
+	{
+		const vector<const MAP_ASSET_ENTRY*>& assets = groups[groupId];
+		if (assets.empty())
+			continue;
+		if (hasFilter)
+			ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		const std::string header = assets.front()->groupLabel + " (" +
+			std::to_string(assets.size()) + ")###group-" + groupId;
+		const ImGuiTreeNodeFlags flags =
+			"valtan-confirmed" == groupId ?
+			ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None;
+		if (ImGui::CollapsingHeader(header.c_str(), flags))
+			for (const MAP_ASSET_ENTRY* pAsset : assets)
+				renderAssetRow(*pAsset);
 	}
 	ImGui::EndChild();
 }
 
-void Client::CMapTool::Render_Hierarchy()
+void Client::CMapTool::Render_Hierarchy(f32_t childHeight)
 {
 	ImGui::TextUnformatted("Hierarchy");
-	ImGui::BeginChild("PlacementHierarchy", ImVec2(0.f, 475.f), true);
-	for (const PLACED_ENTRY& entry : m_Placements)
+	const f32_t listHeight = (std::max)(120.f, childHeight -
+		ImGui::GetTextLineHeightWithSpacing());
+	ImGui::BeginChild("PlacementHierarchy", ImVec2(0.f, listHeight), true);
+	ImGuiListClipper clipper;
+	clipper.Begin(static_cast<int>(m_Placements.size()));
+	while (clipper.Step())
 	{
-		const MAP_ASSET_ENTRY* pAsset = m_Catalog.Find(entry.assetId);
-		const std::string label = nullptr == pAsset ? entry.assetId : pAsset->label;
-		ImGui::PushID(reinterpret_cast<void*>(static_cast<uintptr_t>(entry.placementId)));
-		const bool_t selected = entry.placementId == m_iSelectedPlacementId;
-		if (ImGui::Selectable(label.c_str(), selected))
-			m_iSelectedPlacementId = entry.placementId;
-		ImGui::SameLine();
-		ImGui::TextDisabled("#%llu", static_cast<unsigned long long>(entry.placementId));
-		ImGui::PopID();
+		for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
+		{
+			const PLACED_ENTRY& entry = m_Placements[index];
+			const MAP_ASSET_ENTRY* pAsset =
+				m_Catalog.Find(entry.record.assetId);
+			const std::string assetLabel = nullptr == pAsset ?
+				entry.record.assetId : pAsset->label;
+			const std::string label = "[" + entry.record.sourceLevel + "] " +
+				assetLabel + "###placement-" +
+				std::to_string(entry.record.placementId);
+			ImGui::PushID(reinterpret_cast<void*>(
+				static_cast<uintptr_t>(entry.record.placementId)));
+			const bool_t selected =
+				entry.record.placementId == m_iSelectedPlacementId;
+			if (ImGui::Selectable(label.c_str(), selected))
+				m_iSelectedPlacementId = entry.record.placementId;
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("%s",
+					entry.record.sourcePlacementId.c_str());
+			ImGui::PopID();
+		}
 	}
 	ImGui::EndChild();
 }
@@ -624,40 +659,190 @@ void Client::CMapTool::Render_Inspector()
 	}
 
 	CMapAssetObject& object = *pEntry->object;
-	ImGui::Text("Placement #%llu", static_cast<unsigned long long>(pEntry->placementId));
-	ImGui::TextWrapped("Asset: %s", pEntry->assetId.c_str());
+	ImGui::Text("Placement #%llu",
+		static_cast<unsigned long long>(pEntry->record.placementId));
+	ImGui::TextWrapped("Source: %s",
+		pEntry->record.sourcePlacementId.c_str());
+	ImGui::Text("Level: %s | Transform: %s",
+		pEntry->record.sourceLevel.c_str(),
+		pEntry->record.transformSource.c_str());
+	ImGui::TextWrapped("Asset: %s", pEntry->record.assetId.c_str());
 
 	float3_t position = object.Get_Position();
-	float3_t rotation = object.Get_RotationDegrees();
-	float3_t scale = object.Get_Scale();
+	float4_t quaternion = object.Get_RotationQuaternion();
+	float3_t scale = object.Get_SignedScale();
 	bool_t visible = object.Is_Visible();
-	bool_t changed = false;
-	changed |= ImGui::DragFloat3("Position", &position.x, 0.1f);
-	changed |= ImGui::DragFloat3("Rotation", &rotation.x, 0.5f);
-	if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.001f, 1000.f))
+	const bool_t positionChanged =
+		ImGui::DragFloat3("Position", &position.x, 0.1f);
+	const bool_t rotationChanged =
+		ImGui::DragFloat4("Rotation quaternion", &quaternion.x, 0.0025f);
+	const bool_t scaleChanged =
+		ImGui::DragFloat3("Signed scale", &scale.x, 0.01f, -1000.f, 1000.f);
+	if (positionChanged || rotationChanged || scaleChanged)
 	{
-		scale.x = (std::max)(scale.x, 0.001f);
-		scale.y = (std::max)(scale.y, 0.001f);
-		scale.z = (std::max)(scale.z, 0.001f);
-		changed = true;
+		const vector_t rawQuaternion = XMLoadFloat4(&quaternion);
+		const float quaternionLength =
+			XMVectorGetX(XMVector4Length(rawQuaternion));
+		const bool_t scaleIsValid =
+			std::abs(scale.x) >= 0.000001f &&
+			std::abs(scale.y) >= 0.000001f &&
+			std::abs(scale.z) >= 0.000001f;
+		if (!std::isfinite(quaternionLength) ||
+			quaternionLength < 0.000001f || !scaleIsValid)
+		{
+			m_Status =
+				"Transform edit rejected: zero quaternion/scale axis";
+		}
+		else
+		{
+			XMStoreFloat4(&quaternion,
+				XMQuaternionNormalize(rawQuaternion));
+			object.Set_PlacementTransform(position, quaternion, scale);
+			pEntry->record.position = position;
+			pEntry->record.rotationQuaternion =
+				object.Get_RotationQuaternion();
+			pEntry->record.signedScale = scale;
+			m_bDirty = true;
+		}
 	}
-	if (changed)
-	{
-		object.Set_PlacementTransform(position, rotation, scale);
-		m_bDirty = true;
-	}
+
 	if (ImGui::Checkbox("Visible", &visible))
 	{
 		object.Set_Visible(visible);
+		pEntry->record.visible = visible;
 		m_bDirty = true;
 	}
+	ImGui::Text("Mirrored pass: %s",
+		object.Is_Mirrored() ? "YES" : "NO");
 
 	if (ImGui::Button("Delete selected"))
 	{
-		const uint64_t deletedId = pEntry->placementId;
+		const uint64_t deletedId = pEntry->record.placementId;
 		if (Remove_Placement(deletedId))
-			m_Status = "Deleted placement #" + std::to_string(deletedId);
+			m_Status = "Deleted placement #" +
+				std::to_string(deletedId);
 	}
+}
+
+void Client::CMapTool::Select_Asset(const MAP_ASSET_ENTRY& asset)
+{
+	m_SelectedAssetId = asset.id;
+	m_ePlacementState = PLACEMENT_STATE::IDLE;
+
+	if (nullptr == m_pAssetPreview ||
+		FAILED(m_pAssetPreview->Select_Asset(asset)))
+	{
+		m_Status = nullptr == m_pAssetPreview ?
+			"Preview service is not initialized." :
+			m_pAssetPreview->Get_Status();
+		return;
+	}
+
+	m_Status = "Previewing " + asset.label +
+		"; use Arm placement or double-click the Palette row to place it.";
+}
+
+void Client::CMapTool::Arm_SelectedAsset()
+{
+	const MAP_ASSET_ENTRY* pAsset = Get_SelectedAsset();
+	if (nullptr == pAsset)
+	{
+		m_Status = "Select an asset before arming placement.";
+		return;
+	}
+
+	m_ePlacementState = PLACEMENT_STATE::ARMED;
+	m_Status = "Placement armed for " + pAsset->label +
+		"; click the rendered surface or Y=0 plane.";
+}
+
+void Client::CMapTool::Render_AssetPreview()
+{
+	ImGui::SeparatorText("Selected Asset Preview");
+
+	const MAP_ASSET_ENTRY* pAsset = Get_SelectedAsset();
+	if (nullptr == pAsset || nullptr == m_pAssetPreview ||
+		!m_pAssetPreview->Has_Asset())
+	{
+		ImGui::BeginChild("AssetPreviewEmpty", ImVec2(0.f, 280.f), true);
+		ImGui::TextDisabled(
+			"Select an asset from a folder. No world placement is required.");
+		if (nullptr != m_pAssetPreview)
+			ImGui::TextWrapped("%s", m_pAssetPreview->Get_Status().c_str());
+		Render_DecoderReport();
+		ImGui::EndChild();
+		return;
+	}
+
+	const f32_t panelHeight = (std::max)(320.f,
+		ImGui::GetContentRegionAvail().y);
+	ImGui::BeginChild("AssetPreviewPanel", ImVec2(0.f, panelHeight), true);
+	if (ImGui::BeginTable("AssetPreviewColumns", 2,
+		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+	{
+		ImGui::TableSetupColumn("Preview Image",
+			ImGuiTableColumnFlags_WidthStretch, 0.68f);
+		ImGui::TableSetupColumn("Preview Information",
+			ImGuiTableColumnFlags_WidthStretch, 0.32f);
+		ImGui::TableNextRow();
+
+		ImGui::TableSetColumnIndex(0);
+		const ImVec2 available = ImGui::GetContentRegionAvail();
+		const ImVec2 imageSize(
+			(std::max)(256.f, available.x),
+			(std::max)(256.f, panelHeight - 12.f));
+		m_pAssetPreview->Render(
+			static_cast<uint32_t>(imageSize.x),
+			static_cast<uint32_t>(imageSize.y));
+
+		ID3D11ShaderResourceView* pTexture =
+			m_pAssetPreview->Get_TextureView();
+		if (nullptr != pTexture)
+		{
+			const ImTextureID textureId =
+				static_cast<ImTextureID>(
+					reinterpret_cast<uintptr_t>(pTexture));
+			ImGui::Image(ImTextureRef(textureId), imageSize,
+				ImVec2(0.f, 0.f), ImVec2(1.f, 1.f));
+			if (ImGui::IsItemHovered())
+			{
+				const ImGuiIO& io = ImGui::GetIO();
+				if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+					m_pAssetPreview->Orbit(io.MouseDelta.x, io.MouseDelta.y);
+				if (0.f != io.MouseWheel)
+					m_pAssetPreview->Zoom(io.MouseWheel);
+			}
+		}
+		else
+			ImGui::TextWrapped("Preview texture is unavailable: %s",
+				m_pAssetPreview->Get_Status().c_str());
+
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextWrapped("%s", m_pAssetPreview->Get_Label().c_str());
+		ImGui::Separator();
+		ImGui::TextWrapped("Group: %s", pAsset->groupLabel.c_str());
+		ImGui::TextWrapped("Evidence: %s", pAsset->evidence.c_str());
+		ImGui::TextWrapped("Asset ID: %s",
+			m_pAssetPreview->Get_AssetId().c_str());
+		ImGui::TextWrapped("Model: %s",
+			m_pAssetPreview->Get_ModelPath().c_str());
+		const float3_t dimensions = m_pAssetPreview->Get_Dimensions();
+		ImGui::Text("Meshes: %u", m_pAssetPreview->Get_MeshCount());
+		ImGui::Text("Bounds: %.3f x %.3f x %.3f",
+			dimensions.x, dimensions.y, dimensions.z);
+		ImGui::TextWrapped("Preview: %s",
+			m_pAssetPreview->Get_Status().c_str());
+
+		if (ImGui::Button("Reset view"))
+			m_pAssetPreview->Reset_Camera();
+		ImGui::SameLine();
+		if (ImGui::Button("Arm placement"))
+			Arm_SelectedAsset();
+		ImGui::TextDisabled("LMB drag: orbit | Mouse wheel: zoom");
+		Render_DecoderReport();
+		ImGui::EndTable();
+	}
+	ImGui::EndChild();
 }
 
 void Client::CMapTool::Render_DecoderReport() const
@@ -689,7 +874,7 @@ Client::CMapTool::PLACED_ENTRY* Client::CMapTool::Find_Placement(uint64_t placem
 	const auto iter = std::find_if(m_Placements.begin(), m_Placements.end(),
 		[placementId](const PLACED_ENTRY& entry)
 		{
-			return entry.placementId == placementId;
+			return entry.record.placementId == placementId;
 		});
 	return iter == m_Placements.end() ? nullptr : &*iter;
 }

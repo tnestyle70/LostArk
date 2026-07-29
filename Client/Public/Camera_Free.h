@@ -28,6 +28,8 @@ public:
 
 private:
 	f32_t				m_fMouseSensor = {};
+	bool_t				m_bMovementLocked = false;
+	bool_t				m_bTabDown = false;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

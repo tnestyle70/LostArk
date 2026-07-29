@@ -481,7 +481,7 @@ bool_t Client::CAnimation_Tool::Save_Events()
 			evt.clipName.c_str(), evt.iStartFrame, evt.iEndFrame, evt.iHitCount);
 	}
 
-	fclose(pFile); 
+	fclose(pFile);
 
 	m_bDirty = false;
 	m_Status = "Saved " + std::to_string(m_Events.size()) + " event(s) to " + path;

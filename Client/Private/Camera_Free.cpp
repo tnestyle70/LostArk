@@ -29,30 +29,42 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 
 void CCamera_Free::Priority_Update(f32_t fTimeDelta)
 {
-	if(CGameInstance::Get().Get_DIKeyState(DIK_W) & 0x80)
+	const bool_t bTabDown =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_TAB) & 0x80);
+	if (bTabDown && !m_bTabDown)
+		m_bMovementLocked = !m_bMovementLocked;
+	m_bTabDown = bTabDown;
+
+	if (!m_bMovementLocked &&
+		(CGameInstance::Get().Get_DIKeyState(DIK_W) & 0x80))
 	{
 		m_pTransformCom->Go_Straight(fTimeDelta);
 	}
-	if (CGameInstance::Get().Get_DIKeyState(DIK_S) & 0x80)
+	if (!m_bMovementLocked &&
+		(CGameInstance::Get().Get_DIKeyState(DIK_S) & 0x80))
 	{
 		m_pTransformCom->Go_Backward(fTimeDelta);
 	}
-	if (CGameInstance::Get().Get_DIKeyState(DIK_A) & 0x80)
+	if (!m_bMovementLocked &&
+		(CGameInstance::Get().Get_DIKeyState(DIK_A) & 0x80))
 	{
 		m_pTransformCom->Go_Left(fTimeDelta);
 	}
-	if (CGameInstance::Get().Get_DIKeyState(DIK_D) & 0x80)
+	if (!m_bMovementLocked &&
+		(CGameInstance::Get().Get_DIKeyState(DIK_D) & 0x80))
 	{
 		m_pTransformCom->Go_Right(fTimeDelta);
 	}
 
 	int32_t			iMouseMove = {};
 
-	if (iMouseMove = CGameInstance::Get().Get_DIMouseMove(DIMM::X))
+	if (!m_bMovementLocked &&
+		(iMouseMove = CGameInstance::Get().Get_DIMouseMove(DIMM::X)))
 	{
 		m_pTransformCom->Turn(XMVectorSet(0.f, 1.f, 0.f, 0.f), m_fMouseSensor * iMouseMove * fTimeDelta);
 	}
-	if (iMouseMove = CGameInstance::Get().Get_DIMouseMove(DIMM::Y))
+	if (!m_bMovementLocked &&
+		(iMouseMove = CGameInstance::Get().Get_DIMouseMove(DIMM::Y)))
 	{
 		m_pTransformCom->Turn(m_pTransformCom->Get_State(STATE::RIGHT), m_fMouseSensor * iMouseMove * fTimeDelta);
 	}

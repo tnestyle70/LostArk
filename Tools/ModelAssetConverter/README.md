@@ -1,6 +1,6 @@
 # ModelAssetConverter 사용법
 
-`ModelAssetConverter`는 FBX를 게임 실행 중에 바로 읽지 않도록 미리 조리(cook)해서, LostArk 엔진의 `CModel`이 읽는 단일 모델 파일인 `.wmodel`을 만드는 도구입니다.
+`ModelAssetConverter`는 FBX/glTF를 미리 조리(cook)해서, LostArk 엔진의 `CModel`이 읽는 단일 모델 파일인 `.wmodel`을 만드는 도구입니다.
 
 이 도구는 Winters의 Assimp 임포트와 WINT 바이너리 writer를 기반으로 만들었지만, LostArk에서는 결과물을 하나의 `.wmodel`로 묶고 `CModel::Create`에 경로 하나만 등록하도록 변경했습니다.
 
@@ -16,6 +16,13 @@ FBX
 ```
 
 `.wmodel` 안에는 mesh, material, skeleton, animation 데이터가 들어갑니다. 이미지 자체는 `.wmodel`에 넣지 않고, 옆의 `textures` 폴더에 외부 파일로 둡니다. 컨버터가 찾은 텍스처는 출력 폴더의 `textures`로 복사하고 바이너리에는 `textures/파일명` 상대 경로를 기록합니다.
+
+### 런타임 경계
+
+- 신규 런타임의 정본은 `CModel -> CMesh / CMaterial / CBone / CAnimation`입니다.
+- `CCookedModel`과 `CBinaryAssetObject`는 레거시 검증 경로이며 새 기능에서 사용하거나 확장하지 않습니다.
+- `.wmodel`의 WMaterial v2는 텍스처 경로를 보존하지만 glTF의 `baseColorFactor` 같은 상수 색은 저장하지 않습니다.
+- diffuse와 emissive 경로가 모두 없는 경우 `CMaterial`이 1×1 회색 diffuse를 제공하지만, 이는 형상 확인용 안전망입니다. 최종 에셋은 실제 diffuse 경로를 가져야 합니다.
 
 ## 실행 파일
 
@@ -100,6 +107,10 @@ LostArk 캐릭터의 `hero_mi`, `hero_1_mi` 같은 재질명과 `hero_d`, `hero-
 
 맵 FBX의 재질명이 `dummy_material_0`이면 파일명만으로 어느 텍스처가 몇 번 재질인지 확정할 수 없습니다. 이 경우 자동 탐색을 끄고 슬롯을 명시합니다.
 
+UModel을 `-notex`로 실행하면 glTF의 0.3 회색 `baseColorFactor`만 남을 수 있습니다. 이것은 diffuse 이미지가 아닙니다. 여기에 `--no-auto-textures`까지 사용하면 명시적 remap 없이는 textureless `.wmodel`이 만들어집니다.
+
+UModel `lostark_v7`의 실제 머티리얼을 복구할 때는 `-notex`를 빼고 `-obj=<mesh-name>`으로 한 object만 export합니다. 생성된 Material Instance `.props.txt`에서 `texture_diffuse`, `texture_normal`, `texture_emissive`, `texture_orm`을 읽어 각 remap에 전달합니다. 파일명만 보고 `_p`를 ORM으로 추측하지 않습니다.
+
 Diffuse 맵 예시:
 
 ```powershell
@@ -136,6 +147,19 @@ Emissive 전용 맵 예시:
 --ao-remap
 ```
 
+UModel glTF는 좌표가 meter입니다. 현재 맵 Loader가 기존 centimeter 자산에 `0.01f`를 적용하므로 UModel glTF는 cook할 때 `--scale 100`을 함께 사용합니다.
+
+```powershell
+.\Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
+  '<umodel-source.gltf>' `
+  -o '<output.wmodel>' `
+  --pretransform --no-auto-textures --scale 100 `
+  --material-remap '<material>=<diffuse.dds>' `
+  --normal-remap '<material>=<normal.dds>'
+```
+
+크기 계약은 `glTF meters × 100 × Loader 0.01 = 게임 월드 meters`입니다.
+
 ## 결과 검사
 
 ```powershell
@@ -143,6 +167,8 @@ Emissive 전용 맵 예시:
 ```
 
 section 수, skeleton 유무, animation 수, 재질 버전과 첫 재질의 텍스처 슬롯을 출력합니다. 정적 모델은 보통 `sections=2`, 애니메이션 모델은 mesh/material/skeleton과 animation 수만큼 section이 나옵니다.
+
+맵 에셋은 header 검사만으로 배포하지 않습니다. `info`에서 모든 사용 머티리얼의 base/diffuse 경로가 비어 있지 않은지, 해당 파일이 runtime root에 존재하는지, UModel glTF 입력이라면 bounds가 원본의 약 100배인지도 검사합니다.
 
 ## 게임에 Prototype 등록
 
