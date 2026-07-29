@@ -78,6 +78,33 @@ bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop)
     return false;
 }
 
+const char_t* CModel::Get_AnimationName(uint32_t iAnimIndex) const
+{
+    if (iAnimIndex >= m_Animations.size())
+        return nullptr;
+
+    return m_Animations[iAnimIndex]->Get_Name();
+}
+
+bool_t CModel::Get_AnimationProgress(uint32_t iAnimIndex, f32_t& fOutPosition, f32_t& fOutDuration) const
+{
+    if (iAnimIndex >= m_Animations.size())
+        return false;
+
+    fOutPosition = m_Animations[iAnimIndex]->Get_CurrentTrackPosition();
+    fOutDuration = m_Animations[iAnimIndex]->Get_Duration();
+    return true;
+}
+
+bool_t CModel::Set_AnimTrackPosition(uint32_t iAnimIndex, f32_t fTrackPosition)
+{
+    if (iAnimIndex >= m_Animations.size())
+        return false;
+
+    m_Animations[iAnimIndex]->Set_TrackPosition(fTrackPosition);
+    return true;
+}
+
 HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix)
 {
     if (nullptr == pModelFilePath)
@@ -142,7 +169,10 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     bool_t      isFinished = { false };
     /* 내가 로드한 애니메이션 중, 
     현재 취해야하는 애니메이션의 포즈뼈들의 m_TransformationMatrix를 갱신해준다. */
-    isFinished = m_Animations[m_iCurrentAnimIndex]->Update_TransformationMatrix(fTimeDelta, m_Bones, m_isAnimLoop);
+    /* 일시정지 중에는 재생 위치를 전진시키지 않되, 뼈 행렬은 그대로 다시 계산해
+    현재 프레임의 포즈를 유지한다. */
+    isFinished = m_Animations[m_iCurrentAnimIndex]->Update_TransformationMatrix(
+        m_isAnimPaused ? 0.f : fTimeDelta, m_Bones, m_isAnimLoop);
 
     /* 뼈들 자체 행렬은 갱신이 됐지만, 최종행렬은 아직 미완성(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
     for (auto& pBone : m_Bones)
