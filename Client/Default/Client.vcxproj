@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\public\BackGround.h" />
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
+    <ClInclude Include="..\Public\Body_LanceMaster.h" />
     <ClInclude Include="..\Public\Body_Player.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
@@ -28,6 +29,7 @@
     <ClInclude Include="..\Public\Effect.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
+    <ClInclude Include="..\Public\LanceMaster.h" />
     <ClInclude Include="..\Public\Level_GamePlay.h" />
     <ClInclude Include="..\Public\Level_AssetTest.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
@@ -52,12 +54,14 @@
   <ItemGroup>
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
+    <ClCompile Include="..\Private\Body_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Body_Player.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
+    <ClCompile Include="..\Private\LanceMaster.cpp" />
     <ClCompile Include="..\Private\Level_GamePlay.cpp" />
     <ClCompile Include="..\Private\Level_AssetTest.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />

@@ -4,6 +4,8 @@
 #include "Body_Player.h"
 #include "Valtan.h"
 #include "Body_Valtan.h"
+#include "LanceMaster.h"
+#include "Body_LanceMaster.h"
 
 
 #include "Sky.h"
@@ -183,6 +185,37 @@ HRESULT CLoader::Ready_For_Test_Level2()
         ETOUI(LEVEL::TEST_LEVEL2),
         TEXT("Prototype_GameObject_Camera_Free"),
         CCamera_Free::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+            VTXANIMMESH::Elements,
+            VTXANIMMESH::iNumElements))))
+        return E_FAIL;
+
+    const matrix_t preTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Model_LanceMaster"),
+        CModel::Create(m_pDevice, m_pContext,
+            MODEL::ANIM,
+            "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster.wmodel",
+            preTransform))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_Body_LanceMaster"),
+        CBody_LanceMaster::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_LanceMaster"),
+        CLanceMaster::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
     lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));

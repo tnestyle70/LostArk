@@ -109,6 +109,9 @@
     <Filter Include="02.GameObjects\01. LostArk\Valtan">
       <UniqueIdentifier>{a88bfda4-375a-4ff5-825b-2dcf85008ea0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\01. LostArk\LanceMaster">
+      <UniqueIdentifier>{8568fd34-878d-477a-b1fb-09bafecb0a67}</UniqueIdentifier>
+    </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
@@ -204,6 +207,12 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\LanceMaster.cpp">
+      <Filter>02.GameObjects\01. LostArk\LanceMaster</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Body_LanceMaster.cpp">
+      <Filter>02.GameObjects\01. LostArk\LanceMaster</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -292,6 +301,12 @@
     </ClInclude>
     <ClInclude Include="..\Public\Body_Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\LanceMaster.h">
+      <Filter>02.GameObjects\01. LostArk\LanceMaster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Body_LanceMaster.h">
+      <Filter>02.GameObjects\01. LostArk\LanceMaster</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
