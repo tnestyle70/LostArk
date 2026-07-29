@@ -29,6 +29,7 @@
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
+    <ClInclude Include="..\Public\HUDLayoutTool.h" />
     <ClInclude Include="..\Public\Level_GamePlay.h" />
     <ClInclude Include="..\Public\Level_AssetTest.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
@@ -62,6 +63,7 @@
     <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
+    <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
     <ClCompile Include="..\Private\Level_GamePlay.cpp" />
     <ClCompile Include="..\Private\Level_AssetTest.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />

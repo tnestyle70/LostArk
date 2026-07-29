@@ -7,6 +7,7 @@
 #include "ImGuiLayer.h"
 #include "MapTool.h"
 #include "Effect_Tool.h"
+#include "HUDLayoutTool.h"
 #endif
 
 #ifdef _DEBUG
@@ -169,6 +170,13 @@ HRESULT CMainApp::Render()
             m_pEffectTool->Render();
         }
 
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
+            nullptr != m_pHUDLayoutTool)
+        {
+            m_pHUDLayoutTool->Render();
+        }
+
         m_pImGuiLayer->EndFrame();
     }
 #endif
@@ -316,6 +324,7 @@ HRESULT CMainApp::ReadyDebugTools()
 
     m_pMapTool = std::make_unique<CMapTool>();
     m_pEffectTool = std::make_unique<CEffect_Tool>();
+    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
 
     return S_OK;
 }
@@ -353,6 +362,7 @@ void CMainApp::Free()
     CGameInstance::Get().SetInputBlocked(false, false);
 
     m_pEffectTool.reset();
+    m_pHUDLayoutTool.reset();
     m_pMapTool.reset();
 
     if (nullptr != m_pImGuiLayer)
