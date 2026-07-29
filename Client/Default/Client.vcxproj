@@ -26,6 +26,7 @@
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\Public\Effect.h" />
+    <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
     <ClInclude Include="..\Public\Level_GamePlay.h" />
@@ -58,6 +59,7 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
+    <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
     <ClCompile Include="..\Private\Level_GamePlay.cpp" />

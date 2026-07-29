@@ -10,6 +10,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapTool;
+class CEffect_Tool;
 
 class CMainApp final
 {
@@ -30,6 +31,7 @@ private:
 #ifdef _DEBUG
 	std::unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	std::unique_ptr<CMapTool> m_pMapTool = { nullptr };
+	std::unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	bool m_bF1Down = false;
 #endif
 

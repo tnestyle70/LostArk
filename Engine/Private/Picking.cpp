@@ -58,32 +58,48 @@ void CPicking::Update()
 
 bool_t CPicking::Picking(float4_t& vOut)
 {
-	if (nullptr == m_pWorldPositions)
-		return false;
+    if (nullptr == m_pWorldPositions)
+        return false;
 
-    ::POINT           ptMouse = {};
-    if (!GetCursorPos(&ptMouse) || !ScreenToClient(m_hWnd, &ptMouse))
-		return false;
+    ::POINT ptMouse = {};
 
-	const LONG viewportWidth = static_cast<LONG>(m_vViewportSize.x);
-	const LONG viewportHeight = static_cast<LONG>(m_vViewportSize.y);
-	if (ptMouse.x < 0 || ptMouse.y < 0 ||
-		ptMouse.x >= viewportWidth || ptMouse.y >= viewportHeight)
-		return false;
+    if (FALSE == GetCursorPos(&ptMouse) ||
+        FALSE == ScreenToClient(m_hWnd, &ptMouse))
+        return false;
 
-    uint32_t        iIndex = ptMouse.y * static_cast<uint32_t>(m_vViewportSize.x) + ptMouse.x;
-	const uint32_t pixelCount = static_cast<uint32_t>(m_vViewportSize.x) *
-		static_cast<uint32_t>(m_vViewportSize.y);
-	if (iIndex >= pixelCount)
-		return false;
+    const LONG iViewportWidth =
+        static_cast<LONG>(m_vViewportSize.x);
+    const LONG iViewportHeight =
+        static_cast<LONG>(m_vViewportSize.y);
 
-    if (0 != m_pWorldPositions[iIndex].w)
+    if (iViewportWidth <= 0 || iViewportHeight <= 0)
+        return false;
+
+    if (ptMouse.x < 0 ||
+        ptMouse.y < 0 ||
+        ptMouse.x >= iViewportWidth ||
+        ptMouse.y >= iViewportHeight)
+        return false;
+
+    const size_t iIndex =
+        static_cast<size_t>(ptMouse.y) *
+        static_cast<size_t>(iViewportWidth) +
+        static_cast<size_t>(ptMouse.x);
+
+    const size_t iPixelCount =
+        static_cast<size_t>(iViewportWidth) *
+        static_cast<size_t>(iViewportHeight);
+
+    if (iIndex >= iPixelCount)
+        return false;
+
+    if (0.f != m_pWorldPositions[iIndex].w)
     {
         vOut = m_pWorldPositions[iIndex];
         return true;
     }
-    else
-        return false;    
+
+    return false;
 }
 
 unique_ptr<CPicking> CPicking::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, HWND hWnd)
