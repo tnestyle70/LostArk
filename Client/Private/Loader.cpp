@@ -2,6 +2,8 @@
 
 #include "Player.h"
 #include "Body_Player.h"
+#include "Valtan.h"
+#include "Body_Valtan.h"
 
 
 #include "Sky.h"
@@ -14,7 +16,6 @@
 #include "Explosion.h"
 #include "BackGround.h"
 #include "Camera_Free.h"
-#include "BinaryAssetObject.h"
 
 #include "GameInstance.h"
 
@@ -49,7 +50,7 @@ HRESULT CLoader::Initialize(LEVEL eNextLevelID)
 
     InitializeCriticalSection(&m_CriticalSection);
 
-    /* ½º·¹µå¸¦ »ı¼ºÇÑ´Ù. */
+    /* ìŠ¤ë ˆë“œë¥¼ ìƒì„±í•œë‹¤. */
     m_hThread = (HANDLE)_beginthreadex(nullptr, 0, ThreadMain, this, 0, nullptr);
     if (0 == m_hThread)
         return E_FAIL;    
@@ -61,7 +62,7 @@ HRESULT CLoader::Start_Loading()
 {
     
 
-    /*³» ½º·¹µå°¡ ÀÓ°è¿µ¿ª¿¡ ÀÏÀ» Á» ÇÒ²¨¾ß! */
+    /*ë‚´ ìŠ¤ë ˆë“œê°€ ì„ê³„ì˜ì—­ì— ì¼ì„ ì¢€ í• êº¼ì•¼! */
     EnterCriticalSection(&m_CriticalSection);
 
     HRESULT hr = {};
@@ -79,7 +80,7 @@ HRESULT CLoader::Start_Loading()
         break;
     }
 
-    /* ³» ½º·¹µå°¡ ÀÓ°è¿µ¿ª¿¡ ÇØ¾ßÇÒ ÀÏÀ» ³¡³Â¾î. */
+    /* ë‚´ ìŠ¤ë ˆë“œê°€ ì„ê³„ì˜ì—­ì— í•´ì•¼í•  ì¼ì„ ëëƒˆì–´. */
     LeaveCriticalSection(&m_CriticalSection);
 
     if (FAILED(hr))
@@ -97,27 +98,27 @@ void CLoader::Print_Text()
 
 HRESULT CLoader::Ready_For_Level_Logo()
 {
-    lstrcpy(m_szLoadingText, TEXT("ÅØ½ºÃÄ¸¦ ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("í…ìŠ¤ì³ë¥¼ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_Texture_BackGround */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::LOGO), TEXT("Prototype_Component_Texture_BackGround"),
         CTexture::Create(m_pDevice, m_pContext, TEXT("../Bin/Resources/Textures/Default%d.jpg"), 2))))
         return E_FAIL;
 
 
-    lstrcpy(m_szLoadingText, TEXT("¸ğµ¨À» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ëª¨ë¸ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
 
 
-    lstrcpy(m_szLoadingText, TEXT("¼ÎÀÌ´õ¸¦ ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ì…°ì´ë”ë¥¼ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
 
 
-    lstrcpy(m_szLoadingText, TEXT("°´Ã¼¿øÇüÀ» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ê°ì²´ì›í˜•ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
 
     /* For.Prototype_GameObject_BackGround */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_GameObject_BackGround"),
         CBackGround::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
-    lstrcpy(m_szLoadingText, TEXT("·ÎµùÀÌ ¿Ï·áµÇ¾ú½À´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ë¡œë”©ì´ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤."));
 
     m_isFinished = true;
 
@@ -126,15 +127,25 @@ HRESULT CLoader::Ready_For_Level_Logo()
 
 HRESULT CLoader::Ready_For_Level_AssetTest()
 {
-    lstrcpy(m_szLoadingText, TEXT("¹ÙÀÌ³Ê¸® ¿¡¼Â Å×½ºÆ® ÀÚ¿øÀ» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ë°”ì´ë„ˆë¦¬ ì—ì…‹ í…ŒìŠ¤íŠ¸ ìì›ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
-        TEXT("Prototype_Component_Shader_VtxMesh"),
+        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
         CShader::Create(m_pDevice, m_pContext,
-            TEXT("../Bin/ShaderFiles/Shader_VtxMesh.hlsl"),
-            VTXMESH::Elements,
-            VTXMESH::iNumElements))))
+            TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+            VTXANIMMESH::Elements,
+            VTXANIMMESH::iNumElements))))
+        return E_FAIL;
+
+    const matrix_t preTransform = XMMatrixScaling(0.01f, 0.01f, 0.01f);
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Model_Valtan"),
+        CModel::Create(m_pDevice, m_pContext,
+            MODEL::ANIM,
+            "../Bin/Resources/LostArk/Character/MN_RPBF_01/MN_RPBF_01.wmodel",
+            preTransform))))
         return E_FAIL;
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
@@ -145,11 +156,17 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
-        TEXT("Prototype_GameObject_BinaryAsset"),
-        CBinaryAssetObject::Create(m_pDevice, m_pContext))))
+        TEXT("Prototype_GameObject_Body_Valtan"),
+        CBody_Valtan::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
-    lstrcpy(m_szLoadingText, TEXT("¹ÙÀÌ³Ê¸® ¿¡¼Â Å×½ºÆ® ·ÎµùÀÌ ¿Ï·áµÇ¾ú½À´Ï´Ù."));
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_Valtan"),
+        CValtan::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    lstrcpy(m_szLoadingText, TEXT("ë°”ì´ë„ˆë¦¬ ì—ì…‹ í…ŒìŠ¤íŠ¸ ë¡œë”©ì´ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤."));
     m_isFinished = true;
 
     return S_OK;
@@ -157,7 +174,7 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
 HRESULT CLoader::Ready_For_Level_GamePlay()
 {
-    lstrcpy(m_szLoadingText, TEXT("ÅØ½ºÃÄ¸¦ ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("í…ìŠ¤ì³ë¥¼ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_Texture_Terrain */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_Component_Texture_Terrain"),
         CTexture::Create(m_pDevice, m_pContext, TEXT("../Bin/Resources/Textures/Terrain/Tile%d.dds"), 2))))
@@ -186,7 +203,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
 
 
 
-    lstrcpy(m_szLoadingText, TEXT("¸ğµ¨À» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ëª¨ë¸ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_VIBuffer_Terrain */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_Component_VIBuffer_Terrain"),
         CVIBuffer_Terrain::Create(m_pDevice, m_pContext, TEXT("../Bin/Resources/Textures/Terrain/Height.bmp")))))
@@ -242,7 +259,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
         return E_FAIL;
 
 
-    lstrcpy(m_szLoadingText, TEXT("¼ÎÀÌ´õ¸¦ ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ì…°ì´ë”ë¥¼ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_Shader_VtxNorTex */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_Component_Shader_VtxNorTex"),
         CShader::Create(m_pDevice, m_pContext, TEXT("../Bin/ShaderFiles/Shader_VtxNorTex.hlsl"), VTXNORTEX::Elements, VTXNORTEX::iNumElements))))
@@ -274,7 +291,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
         return E_FAIL;
 
 
-    lstrcpy(m_szLoadingText, TEXT("³×ÀÌ°ÔÀÌ¼ÇÀ» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ë„¤ì´ê²Œì´ì…˜ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_Navigation */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_Component_Navigation"),
         CNavigation::Create(m_pDevice, m_pContext, TEXT("../Bin/DataFiles/Navigation.dat")))))
@@ -285,7 +302,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
         CNavigation::Create(m_pDevice, m_pContext, TEXT("../Bin/DataFiles/TerrainNavigation.dat"), TEXT("../Bin/DataFiles/NavigationNeighbors.dat")))))
         return E_FAIL;
 
-    lstrcpy(m_szLoadingText, TEXT("Ãæµ¹Ã¼¸¦ ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ì¶©ëŒì²´ë¥¼ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_Component_Collider_AABB */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_Component_Collider_AABB"),
         CCollider::Create(m_pDevice, m_pContext, COLLIDER::AABB))))
@@ -303,7 +320,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
 
 
 
-    lstrcpy(m_szLoadingText, TEXT("°´Ã¼¿øÇüÀ» ·ÎµùÁßÀÔ´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ê°ì²´ì›í˜•ì„ ë¡œë”©ì¤‘ì…ë‹ˆë‹¤."));
     /* For.Prototype_GameObject_Terrain */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::GAMEPLAY), TEXT("Prototype_GameObject_Terrain"),
         CTerrain::Create(m_pDevice, m_pContext))))
@@ -361,7 +378,7 @@ HRESULT CLoader::Ready_For_Level_GamePlay()
 
 
 
-    lstrcpy(m_szLoadingText, TEXT("·ÎµùÀÌ ¿Ï·áµÇ¾ú½À´Ï´Ù."));
+    lstrcpy(m_szLoadingText, TEXT("ë¡œë”©ì´ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤."));
 
     m_isFinished = true;
     return S_OK;

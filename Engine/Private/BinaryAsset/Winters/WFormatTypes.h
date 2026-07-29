@@ -7,8 +7,10 @@ namespace Engine::WintersFormat
 	constexpr char WINTERS_MAGIC[4] = { 'W', 'I', 'N', 'T' };
 	constexpr char WMESH_MAGIC[4] = { 'W', 'M', 'S', 'H' };
 	constexpr char WMAT_MAGIC[4] = { 'W', 'M', 'A', 'T' };
+	constexpr char WMAT_V2_MAGIC[4] = { 'W', 'M', 'A', '2' };
 	constexpr char WSKEL_MAGIC[4] = { 'W', 'S', 'K', 'L' };
 	constexpr char WANIM_MAGIC[4] = { 'W', 'A', 'N', 'M' };
+	constexpr char WMODEL_MAGIC[4] = { 'W', 'M', 'O', 'D' };
 
 	constexpr uint32_t VF_BONE_WEIGHT = 1u << 4;
 	constexpr uint32_t STRIDE_STATIC = 48;
@@ -21,6 +23,15 @@ namespace Engine::WintersFormat
 	constexpr uint32_t MAX_ANIMATION_CHANNELS = 1024;
 	constexpr uint32_t MAX_ANIMATION_KEYS = 1'000'000;
 	constexpr uint32_t MAX_ANIMATION_EVENTS = 100'000;
+	constexpr uint32_t MAX_MODEL_SECTIONS = 4096;
+
+	enum class MODEL_SECTION_TYPE : uint32_t
+	{
+		MESH = 1,
+		MATERIAL = 2,
+		SKELETON = 3,
+		ANIMATION = 4,
+	};
 
 #pragma pack(push, 1)
 	struct FILE_HEADER
@@ -30,6 +41,24 @@ namespace Engine::WintersFormat
 		uint16_t versionMinor;
 		uint32_t flags;
 		uint32_t contentSize;
+	};
+
+	struct MODEL_META_HEADER
+	{
+		char magic[4];
+		uint32_t sectionCount;
+		uint32_t animationCount;
+		uint32_t flags;
+		uint32_t reserved[4];
+	};
+
+	struct MODEL_SECTION_DESC
+	{
+		uint32_t type;
+		uint32_t index;
+		uint64_t offset;
+		uint64_t size;
+		char name[40];
 	};
 
 	struct MESH_META_HEADER
@@ -79,6 +108,22 @@ namespace Engine::WintersFormat
 		uint64_t materialHash;
 		char name[64];
 		wchar_t diffusePath[260];
+	};
+
+	struct MATERIAL_ENTRY_V2
+	{
+		uint32_t materialIndex;
+		uint64_t materialHash;
+		char name[64];
+		wchar_t baseColorPath[260];
+		wchar_t normalPath[260];
+		wchar_t specularPath[260];
+		wchar_t emissivePath[260];
+		wchar_t opacityPath[260];
+		wchar_t ormPath[260];
+		wchar_t metallicPath[260];
+		wchar_t roughnessPath[260];
+		wchar_t ambientOcclusionPath[260];
 	};
 
 	struct SKELETON_META_HEADER
@@ -176,10 +221,13 @@ namespace Engine::WintersFormat
 #pragma pack(pop)
 
 	static_assert(sizeof(FILE_HEADER) == 16);
+	static_assert(sizeof(MODEL_META_HEADER) == 32);
+	static_assert(sizeof(MODEL_SECTION_DESC) == 64);
 	static_assert(sizeof(MESH_META_HEADER) == 36);
 	static_assert(sizeof(SUBMESH_DESC) == 48);
 	static_assert(sizeof(MESH_BONE_ENTRY) == 128);
 	static_assert(sizeof(MATERIAL_ENTRY) == 596);
+	static_assert(sizeof(MATERIAL_ENTRY_V2) == 4756);
 	static_assert(sizeof(SKELETON_META_HEADER) == 32);
 	static_assert(sizeof(SKELETON_BONE_NODE) == 256);
 	static_assert(sizeof(GLOBAL_ROOT_MATRIX) == 128);

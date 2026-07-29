@@ -133,18 +133,30 @@ bool_t CWMeshReader::Read(const filesystem::path& meshPath,
 	W_MESH_READ_RESULT& outMesh,
 	MODEL_DECODE_REPORT& outReport) const
 {
-	outMesh = {};
-
 	vector<uint8_t> bytes;
 	if (!CBinaryReader::LoadFile(meshPath, bytes))
 	{
 		outReport.error = "Could not open the binary mesh file.";
 		return false;
 	}
+	return ReadMemory(bytes.data(), bytes.size(), outMesh, outReport);
+}
+
+bool_t CWMeshReader::ReadMemory(const uint8_t* pData,
+	size_t dataSize,
+	W_MESH_READ_RESULT& outMesh,
+	MODEL_DECODE_REPORT& outReport) const
+{
+	outMesh = {};
+	if (nullptr == pData || dataSize < sizeof(FILE_HEADER))
+	{
+		outReport.error = "The embedded WMSH section is empty or truncated.";
+		return false;
+	}
 
 	try
 	{
-		CBinaryReader fileReader(bytes.data(), bytes.size());
+		CBinaryReader fileReader(pData, dataSize);
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			1 != fileHeader.versionMajor || 0 != fileHeader.flags ||

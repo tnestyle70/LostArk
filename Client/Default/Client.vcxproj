@@ -22,6 +22,7 @@
     <ClInclude Include="..\public\BackGround.h" />
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Body_Player.h" />
+    <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\Public\Effect.h" />
@@ -31,6 +32,7 @@
     <ClInclude Include="..\Public\Level_AssetTest.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
     <ClInclude Include="..\public\Level_Logo.h" />
+    <ClInclude Include="..\Public\Level_Test2.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
     <ClInclude Include="..\Public\MapTool.h" />
@@ -40,6 +42,7 @@
     <ClInclude Include="..\Public\Sky.h" />
     <ClInclude Include="..\Public\Snow.h" />
     <ClInclude Include="..\Public\Terrain.h" />
+    <ClInclude Include="..\Public\Valtan.h" />
     <ClInclude Include="..\Public\Weapon.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="framework.h" />
@@ -50,6 +53,7 @@
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Body_Player.cpp" />
+    <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
@@ -58,11 +62,13 @@
     <ClCompile Include="..\Private\Level_AssetTest.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
     <ClCompile Include="..\private\Level_Logo.cpp" />
+    <ClCompile Include="..\Private\Level_Test2.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
+    <ClCompile Include="..\Private\Valtan.cpp" />
     <ClCompile Include="..\private\Player.cpp" />
     <ClCompile Include="..\Private\Sky.cpp" />
     <ClCompile Include="..\Private\Snow.cpp" />
@@ -82,6 +88,7 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl" />
@@ -244,10 +251,7 @@
     <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
   </PropertyGroup>
-  <Target Name="PrepareEngineSdk"
-          BeforeTargets="ClCompile"
-          DependsOnTargets="ResolveProjectReferences"
-          Condition="'$(Platform)'=='x64'">
+  <Target Name="PrepareEngineSdk" BeforeTargets="ClCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Platform)'=='x64'">
     <ItemGroup>
       <EnginePublicHeaders Include="$(EngineRoot)Public\**\*.*" />
       <ImGuiPublicHeaders Include="$(EngineRoot)External\imgui\imgui.h;$(EngineRoot)External\imgui\imconfig.h" />
@@ -255,49 +259,26 @@
       <EngineShaderSources Include="$(EngineRoot)Bin\ShaderFiles\*.*" />
     </ItemGroup>
     <MakeDir Directories="$(EngineSdkRoot)inc;$(EngineSdkRoot)lib;$(EngineSdkRoot)hlsl;$(ProjectDir)..\Bin\ShaderFiles" />
-    <Copy SourceFiles="@(EnginePublicHeaders)"
-          DestinationFiles="@(EnginePublicHeaders->'$(EngineSdkRoot)inc\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(ImGuiPublicHeaders)"
-          DestinationFolder="$(EngineSdkRoot)inc"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(EngineSdkLibraries)"
-          DestinationFolder="$(EngineSdkRoot)lib"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(EngineShaderSources)"
-          DestinationFolder="$(EngineSdkRoot)hlsl"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(EngineShaderSources)"
-          DestinationFolder="$(ProjectDir)..\Bin\ShaderFiles"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EnginePublicHeaders)" DestinationFiles="@(EnginePublicHeaders->'$(EngineSdkRoot)inc\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ImGuiPublicHeaders)" DestinationFolder="$(EngineSdkRoot)inc" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineSdkLibraries)" DestinationFolder="$(EngineSdkRoot)lib" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(EngineSdkRoot)hlsl" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(ProjectDir)..\Bin\ShaderFiles" SkipUnchangedFiles="true" />
   </Target>
-  <Target Name="DeployClientRuntimeDependencies"
-          AfterTargets="Build"
-          Condition="'$(Platform)'=='x64'">
-    <Error Condition="'$(AssimpRuntimeName)'==''"
-           Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
-    <Error Condition="!Exists('$(AssimpRuntimeSource)')"
-           Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
-    <Error Condition="!Exists('$(EngineRoot)Bin\Engine.dll')"
-           Text="Engine runtime was not built: $(EngineRoot)Bin\Engine.dll" />
-    <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineRoot)Bin\Engine.pdb')"
-           Text="Engine debug symbols were not built: $(EngineRoot)Bin\Engine.pdb" />
+  <Target Name="DeployClientRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
+    <Error Condition="!Exists('$(AssimpRuntimeSource)')" Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
+    <Error Condition="!Exists('$(EngineRoot)Bin\Engine.dll')" Text="Engine runtime was not built: $(EngineRoot)Bin\Engine.dll" />
+    <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineRoot)Bin\Engine.pdb')" Text="Engine debug symbols were not built: $(EngineRoot)Bin\Engine.pdb" />
     <ItemGroup>
       <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.dll" />
-      <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.pdb"
-                                 Condition="'$(Configuration)'=='Debug'" />
+      <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
       <ClientRuntimeDependencies Include="$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll" />
       <ClientRuntimeDependencies Include="$(AssimpRuntimeSource)" />
     </ItemGroup>
-    <Copy SourceFiles="@(ClientRuntimeDependencies)"
-          DestinationFolder="$(TargetDir)"
-          SkipUnchangedFiles="true" />
-    <Message Condition="'$(Configuration)'=='Debug'"
-             Text="Deployed $(AssimpRuntimeName), Engine.dll, Engine.pdb, and fmod.dll to $(TargetDir)"
-             Importance="high" />
-    <Message Condition="'$(Configuration)'!='Debug'"
-             Text="Deployed $(AssimpRuntimeName), Engine.dll, and fmod.dll to $(TargetDir)"
-             Importance="high" />
+    <Copy SourceFiles="@(ClientRuntimeDependencies)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Message Condition="'$(Configuration)'=='Debug'" Text="Deployed $(AssimpRuntimeName), Engine.dll, Engine.pdb, and fmod.dll to $(TargetDir)" Importance="high" />
+    <Message Condition="'$(Configuration)'!='Debug'" Text="Deployed $(AssimpRuntimeName), Engine.dll, and fmod.dll to $(TargetDir)" Importance="high" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

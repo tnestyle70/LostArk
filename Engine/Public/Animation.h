@@ -4,6 +4,8 @@
 
 NS_BEGIN(Engine)
 
+struct MODEL_ANIMATION_DATA;
+
 class CAnimation final
 {
 private:
@@ -13,13 +15,16 @@ public:
 
 public:
 	HRESULT Initialize(const aiAnimation* pAIAnimation, const vector<shared_ptr<class CBone>>& Bones);
+	HRESULT Initialize(const MODEL_ANIMATION_DATA& animation,
+		const vector<shared_ptr<class CBone>>& Bones);
 	bool_t	Update_TransformationMatrix(f32_t fTimeDelta, const vector<shared_ptr<class CBone>>& Bones, bool_t isLoop);
+	bool_t Compare_Name(const char_t* pName) const { return !strcmp(pName, m_szName); }
 
 private:
 	char_t				m_szName[MAX_PATH] = {};
-	f32_t				m_fDuration = {}; // ÇöÀç ¾Ö´Ï¸ŞÀÌ¼ÇÀÇ ÀüÃ¼ ±æÀÌ. 
-	f32_t				m_fTickPerSecond = {}; // ÃÊ´ç ¾Ö´Ï¸ŞÀÌ¼ÇÀÇ Àç»ı ¼Óµµ. 
-	f32_t				m_fCurrentTrackPosition = {}; // ÇöÀç Àç»ı À§Ä¡. 
+	f32_t				m_fDuration = {}; // í˜„ì¬ ì• ë‹ˆë©”ì´ì…˜ì˜ ì „ì²´ ê¸¸ì´. 
+	f32_t				m_fTickPerSecond = {}; // ì´ˆë‹¹ ì• ë‹ˆë©”ì´ì…˜ì˜ ì¬ìƒ ì†ë„. 
+	f32_t				m_fCurrentTrackPosition = {}; // í˜„ì¬ ì¬ìƒ ìœ„ì¹˜. 
 	
 private:
 	uint32_t							m_iNumChannels = {};
@@ -29,6 +34,8 @@ private:
 
 public:
 	static shared_ptr<CAnimation> Create(const aiAnimation* pAIAnimation, const vector<shared_ptr<class CBone>>& Bones);
+	static shared_ptr<CAnimation> Create(const MODEL_ANIMATION_DATA& animation,
+		const vector<shared_ptr<class CBone>>& Bones);
 	shared_ptr<CAnimation> Clone();
 };
 

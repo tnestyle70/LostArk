@@ -1,10 +1,15 @@
 #include "Model.h"
 
+#include "BinaryAsset/ModelAssetData.h"
+#include "BinaryAsset/WModelDecoder.h"
 #include "Mesh.h"
 #include "Bone.h"
 #include "Shader.h"
 #include "Material.h"
 #include "Animation.h"
+
+#include <algorithm>
+#include <cctype>
 
 CModel::CModel(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CComponent { pDevice, pContext }
@@ -21,8 +26,10 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumMaterials { Prototype.m_iNumMaterials }
     , m_Materials { Prototype.m_Materials }
    // , m_Bones { Prototype.m_Bones }
+    , m_iCurrentAnimIndex { Prototype.m_iCurrentAnimIndex }
     , m_iNumAnimations { Prototype.m_iNumAnimations}
     // , m_Animations { Prototype.m_Animations }
+    , m_isAnimLoop { Prototype.m_isAnimLoop }
 {
     for (auto& pPrototype : Prototype.m_Bones)
         m_Bones.push_back(pPrototype->Clone());
@@ -49,8 +56,37 @@ matrix_t CModel::Get_BoneMatrix(const char_t* pBoneName)
     return (*iter)->Get_CombinedTransformationMatrix();    
 }
 
+bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop)
+{
+    if (nullptr == pAnimationName)
+        return false;
+
+    for (uint32_t i = 0; i < m_Animations.size(); ++i)
+    {
+        if (!m_Animations[i]->Compare_Name(pAnimationName))
+            continue;
+
+        m_iCurrentAnimIndex = i;
+        m_isAnimLoop = isLoop;
+        return true;
+    }
+    return false;
+}
+
 HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix)
 {
+    if (nullptr == pModelFilePath)
+        return E_FAIL;
+
+    XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
+    m_eType = eType;
+
+    string extension = filesystem::path(pModelFilePath).extension().string();
+    transform(extension.begin(), extension.end(), extension.begin(),
+        [](unsigned char value) { return static_cast<char_t>(tolower(value)); });
+    if (".wmodel" == extension)
+        return Ready_BinaryModel(pModelFilePath);
+
     uint32_t  iFlag = { aiProcess_ConvertToLeftHanded | aiProcessPreset_TargetRealtime_Fast };
 
     if (MODEL::NONANIM == eType)
@@ -59,10 +95,6 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
     m_pAIScene = m_Importer.ReadFile(pModelFilePath, iFlag);
     if (nullptr == m_pAIScene)
         return E_FAIL;
-
-    XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
-
-    m_eType = eType;
 
     if (FAILED(Ready_Bones(m_pAIScene->mRootNode)))
         return E_FAIL;
@@ -98,12 +130,15 @@ HRESULT CModel::Render(uint32_t iMeshIndex)
 
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
+    if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())
+        return false;
+
     bool_t      isFinished = { false };
-    /* ³»°¡ ·ÎµåÇÑ ¾Ö´Ï¸ÞÀÌ¼Ç Áß, 
-    ÇöÀç ÃëÇØ¾ßÇÏ´Â ¾Ö´Ï¸ÞÀÌ¼ÇÀÇ Æ÷Áî»ÀµéÀÇ m_TransformationMatrix¸¦ °»½ÅÇØÁØ´Ù. */
+    /* ë‚´ê°€ ë¡œë“œí•œ ì• ë‹ˆë©”ì´ì…˜ ì¤‘, 
+    í˜„ìž¬ ì·¨í•´ì•¼í•˜ëŠ” ì• ë‹ˆë©”ì´ì…˜ì˜ í¬ì¦ˆë¼ˆë“¤ì˜ m_TransformationMatrixë¥¼ ê°±ì‹ í•´ì¤€ë‹¤. */
     isFinished = m_Animations[m_iCurrentAnimIndex]->Update_TransformationMatrix(fTimeDelta, m_Bones, m_isAnimLoop);
 
-    /* »Àµé ÀÚÃ¼ Çà·ÄÀº °»½ÅÀÌ µÆÁö¸¸, ÃÖÁ¾Çà·ÄÀº ¾ÆÁ÷ ¹Ì¿Ï¼º(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
+    /* ë¼ˆë“¤ ìžì²´ í–‰ë ¬ì€ ê°±ì‹ ì´ ëì§€ë§Œ, ìµœì¢…í–‰ë ¬ì€ ì•„ì§ ë¯¸ì™„ì„±(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
     for (auto& pBone : m_Bones)
     {
         pBone->Update_CombinedTransformationMatrix(m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
@@ -125,6 +160,18 @@ HRESULT CModel::Bind_Material(shared_ptr<class CShader> pShader, const char_t* p
         return E_FAIL;
 
     return m_Materials[iMaterialIndex]->Bind_Material(pShader, pConstantName, eType, iTextureIndex);
+}
+
+bool_t CModel::Has_MaterialTexture(uint32_t iMeshIndex,
+    aiTextureType eType,
+    uint32_t iTextureIndex) const
+{
+    if (iMeshIndex >= m_Meshes.size())
+        return false;
+
+    const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+    return materialIndex < m_Materials.size() &&
+        m_Materials[materialIndex]->Has_Texture(eType, iTextureIndex);
 }
 
 HRESULT CModel::Ready_Meshes()
@@ -190,6 +237,101 @@ HRESULT CModel::Ready_Animations()
         m_Animations.push_back(pAnimation);
     }
 
+    return S_OK;
+}
+
+HRESULT CModel::Ready_BinaryModel(const char_t* pModelFilePath)
+{
+    MODEL_ASSET_LOAD_DESC desc{};
+    desc.meshPath = filesystem::path(pModelFilePath).lexically_normal();
+
+    filesystem::path absolutePath = filesystem::absolute(desc.meshPath).lexically_normal();
+    for (filesystem::path current = absolutePath.parent_path();
+        !current.empty(); current = current.parent_path())
+    {
+        if (L"LostArk" == current.filename())
+        {
+            desc.assetRoot = current;
+            break;
+        }
+        if (current == current.root_path())
+            break;
+    }
+
+    MODEL_ASSET_DATA asset{};
+    MODEL_DECODE_REPORT report{};
+    if (!CWModelDecoder{}.Decode(desc, asset, report))
+        return E_FAIL;
+
+    if ((MODEL::ANIM == m_eType) != asset.hasSkeleton)
+        return E_FAIL;
+
+    if (FAILED(Ready_Bones(asset)) ||
+        FAILED(Ready_Meshes(asset)) ||
+        FAILED(Ready_Materials(asset)) ||
+        FAILED(Ready_Animations(asset)))
+        return E_FAIL;
+
+    for (auto& pBone : m_Bones)
+        pBone->Update_CombinedTransformationMatrix(
+            m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+
+    return S_OK;
+}
+
+HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
+{
+    m_iNumMeshes = static_cast<uint32_t>(asset.meshes.size());
+    m_Meshes.reserve(m_iNumMeshes);
+    for (const MODEL_MESH_DATA& mesh : asset.meshes)
+    {
+        auto pMesh = CMesh::Create(m_pDevice, m_pContext, m_eType,
+            mesh, asset.skeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
+        if (nullptr == pMesh)
+            return E_FAIL;
+        m_Meshes.push_back(pMesh);
+    }
+    return S_OK;
+}
+
+HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
+{
+    m_iNumMaterials = static_cast<uint32_t>(asset.materials.size());
+    m_Materials.reserve(m_iNumMaterials);
+    for (const MODEL_MATERIAL_DATA& material : asset.materials)
+    {
+        auto pMaterial = CMaterial::Create(m_pDevice, m_pContext, material);
+        if (nullptr == pMaterial)
+            return E_FAIL;
+        m_Materials.push_back(pMaterial);
+    }
+    return S_OK;
+}
+
+HRESULT CModel::Ready_Bones(const MODEL_ASSET_DATA& asset)
+{
+    m_Bones.reserve(asset.skeleton.bones.size());
+    for (const MODEL_BONE_DATA& bone : asset.skeleton.bones)
+    {
+        auto pBone = CBone::Create(bone);
+        if (nullptr == pBone)
+            return E_FAIL;
+        m_Bones.push_back(pBone);
+    }
+    return S_OK;
+}
+
+HRESULT CModel::Ready_Animations(const MODEL_ASSET_DATA& asset)
+{
+    m_iNumAnimations = static_cast<uint32_t>(asset.animations.size());
+    m_Animations.reserve(m_iNumAnimations);
+    for (const MODEL_ANIMATION_DATA& animation : asset.animations)
+    {
+        auto pAnimation = CAnimation::Create(animation, m_Bones);
+        if (nullptr == pAnimation)
+            return E_FAIL;
+        m_Animations.push_back(pAnimation);
+    }
     return S_OK;
 }
 

@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include "Bone.h"
 
 #include "Shader.h"
@@ -62,6 +63,85 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const ve
 		return E_FAIL;
 
 #pragma endregion
+
+	return S_OK;
+}
+
+HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
+	const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix)
+{
+	const bool_t isAnimated = MODEL::ANIM == eType;
+	if (mesh.name.size() >= MAX_PATH || mesh.indices.empty() ||
+		(isAnimated && mesh.vertexKind != MODEL_VERTEX_KIND::SKINNED) ||
+		(!isAnimated && mesh.vertexKind != MODEL_VERTEX_KIND::STATIC))
+		return E_FAIL;
+
+	strcpy_s(m_szName, mesh.name.c_str());
+	m_iMaterialIndex = mesh.materialIndex;
+	m_iVertexStride = isAnimated ? sizeof(VTXANIMMESH) : sizeof(VTXMESH);
+	m_iNumVertices = isAnimated
+		? static_cast<uint32_t>(mesh.skinnedVertices.size())
+		: static_cast<uint32_t>(mesh.vertices.size());
+	m_iIndexStride = sizeof(uint32_t);
+	m_iNumIndices = static_cast<uint32_t>(mesh.indices.size());
+	m_iNumVertexBuffers = 1;
+	m_eIndexFormat = DXGI_FORMAT_R32_UINT;
+	m_ePrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	if (0 == m_iNumVertices)
+		return E_FAIL;
+
+	D3D11_BUFFER_DESC vertexBufferDesc{};
+	vertexBufferDesc.ByteWidth = m_iVertexStride * m_iNumVertices;
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.StructureByteStride = m_iVertexStride;
+	D3D11_SUBRESOURCE_DATA vertexInitialData{};
+
+	vector<VTXMESH> staticVertices;
+	if (isAnimated)
+	{
+		vertexInitialData.pSysMem = mesh.skinnedVertices.data();
+		if (skeleton.bones.empty() || skeleton.bones.size() > 512)
+			return E_FAIL;
+
+		m_iNumBones = static_cast<uint32_t>(skeleton.bones.size());
+		m_BoneIndices.reserve(m_iNumBones);
+		m_OffsetMatrices.reserve(m_iNumBones);
+		for (uint32_t i = 0; i < m_iNumBones; ++i)
+		{
+			m_BoneIndices.push_back(i);
+			m_OffsetMatrices.push_back(skeleton.bones[i].inverseBind);
+		}
+	}
+	else
+	{
+		staticVertices = mesh.vertices;
+		for (VTXMESH& vertex : staticVertices)
+		{
+			XMStoreFloat3(&vertex.vPosition,
+				XMVector3TransformCoord(XMLoadFloat3(&vertex.vPosition), PreTransformMatrix));
+			XMStoreFloat3(&vertex.vNormal,
+				XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&vertex.vNormal), PreTransformMatrix)));
+			XMStoreFloat3(&vertex.vTangent,
+				XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&vertex.vTangent), PreTransformMatrix)));
+			XMStoreFloat3(&vertex.vBinormal,
+				XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&vertex.vBinormal), PreTransformMatrix)));
+		}
+		vertexInitialData.pSysMem = staticVertices.data();
+	}
+
+	if (FAILED(m_pDevice->CreateBuffer(&vertexBufferDesc, &vertexInitialData, &m_pVB)))
+		return E_FAIL;
+
+	D3D11_BUFFER_DESC indexBufferDesc{};
+	indexBufferDesc.ByteWidth = m_iIndexStride * m_iNumIndices;
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.StructureByteStride = m_iIndexStride;
+	D3D11_SUBRESOURCE_DATA indexInitialData{};
+	indexInitialData.pSysMem = mesh.indices.data();
+	if (FAILED(m_pDevice->CreateBuffer(&indexBufferDesc, &indexInitialData, &m_pIB)))
+		return E_FAIL;
 
 	return S_OK;
 }
@@ -176,10 +256,10 @@ HRESULT CMesh::Ready_VertexBuffer_Anim(const aiMesh* pAIMesh, const vector<share
 
 		m_BoneIndices.push_back(iTotalBoneIndex);
 
-		// pAIBone->mNumWeights : ¿Ã ª¿∞° ∏Ó∞≥ ¡§¡°ø°∞‘ øµ«‚¿ª ¡÷¥¬∞°? 
+		// pAIBone->mNumWeights : Ïù¥ ÎºàÍ∞Ä Î™áÍ∞ú Ï†ïÏ†êÏóêÍ≤å ÏòÅÌñ•ÏùÑ Ï£ºÎäîÍ∞Ä? 
 		for (uint32_t j = 0; j < pAIBone->mNumWeights; j++)
 		{
-			// pAIBone->mWeights[j].mVertexId : iπ¯¬∞ ª¿∞° øµ«‚¿ª ¡÷¥¬ ¡§¡°µÈ¡ﬂ jπ¯¬∞ øµ«‚¿ª ¡÷¥¬ ¡§¡°¿« ¿Œµ¶Ω∫ 
+			// pAIBone->mWeights[j].mVertexId : iÎ≤àÏß∏ ÎºàÍ∞Ä ÏòÅÌñ•ÏùÑ Ï£ºÎäî Ï†ïÏ†êÎì§Ï§ë jÎ≤àÏß∏ ÏòÅÌñ•ÏùÑ Ï£ºÎäî Ï†ïÏ†êÏùò Ïù∏Îç±Ïä§ 
 			if(0.f == pVertices[pAIBone->mWeights[j].mVertexId].vBlendWeights.x)
 			{ 
 				pVertices[pAIBone->mWeights[j].mVertexId].vBlendIndices.x = i;
@@ -247,6 +327,21 @@ shared_ptr<CMesh> CMesh::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11Devic
 		return nullptr;
 	}
 
+	return pInstance;
+}
+
+shared_ptr<CMesh> CMesh::Create(ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext, MODEL eType,
+	const MODEL_MESH_DATA& mesh, const MODEL_SKELETON_DATA& skeleton,
+	fmatrix_t PreTransformMatrix)
+{
+	auto pInstance = shared_ptr<CMesh>(new CMesh(pDevice, pContext));
+	if (FAILED(pInstance->Initialize_Prototype(
+		eType, mesh, skeleton, PreTransformMatrix)))
+	{
+		MSG_BOX("Failed to Created : CMesh");
+		return nullptr;
+	}
 	return pInstance;
 }
 

@@ -99,29 +99,44 @@ bool_t CWAnimationReader::Read(const filesystem::path& animationPath,
 	MODEL_ANIMATION_DATA& outAnimation,
 	MODEL_DECODE_REPORT& outReport) const
 {
-	outAnimation = {};
-	if (skeleton.bones.empty())
-	{
-		outReport.error = "WANM requires a decoded skeleton.";
-		return false;
-	}
-
 	vector<uint8_t> bytes;
 	if (!CBinaryReader::LoadFile(animationPath, bytes))
 	{
 		outReport.error = "Could not open a declared WANM file: " + animationPath.string();
 		return false;
 	}
+	return ReadMemory(bytes.data(), bytes.size(), animationPath.stem().string(),
+		skeleton, outAnimation, outReport);
+}
+
+bool_t CWAnimationReader::ReadMemory(const uint8_t* pData,
+	size_t dataSize,
+	const string& animationName,
+	const MODEL_SKELETON_DATA& skeleton,
+	MODEL_ANIMATION_DATA& outAnimation,
+	MODEL_DECODE_REPORT& outReport) const
+{
+	outAnimation = {};
+	if (skeleton.bones.empty())
+	{
+		outReport.error = "WANM requires a decoded skeleton.";
+		return false;
+	}
+	if (nullptr == pData || dataSize < sizeof(FILE_HEADER))
+	{
+		outReport.error = "The embedded WANM section is empty or truncated.";
+		return false;
+	}
 
 	try
 	{
-		CBinaryReader fileReader(bytes.data(), bytes.size());
+		CBinaryReader fileReader(pData, dataSize);
 		const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 		if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 			1 != fileHeader.versionMajor || 0 != fileHeader.flags ||
 			fileHeader.contentSize > fileReader.Remaining())
 		{
-			outReport.error = "Invalid WINT animation file header: " + animationPath.string();
+			outReport.error = "Invalid WINT animation file header: " + animationName;
 			return false;
 		}
 
@@ -134,7 +149,7 @@ bool_t CWAnimationReader::Read(const filesystem::path& animationPath,
 			!isfinite(animationHeader.durationTicks) || animationHeader.durationTicks <= 0.f ||
 			!isfinite(animationHeader.ticksPerSecond) || animationHeader.ticksPerSecond <= 0.f)
 		{
-			outReport.error = "Invalid WANM metadata: " + animationPath.string();
+			outReport.error = "Invalid WANM metadata: " + animationName;
 			return false;
 		}
 
@@ -163,7 +178,7 @@ bool_t CWAnimationReader::Read(const filesystem::path& animationPath,
 		for (uint32_t i = 0; i < skeleton.bones.size(); ++i)
 			boneIndices.emplace(skeleton.bones[i].nameHash, static_cast<int32_t>(i));
 
-		outAnimation.name = animationPath.stem().string();
+		outAnimation.name = animationName;
 		outAnimation.durationTicks = animationHeader.durationTicks;
 		outAnimation.ticksPerSecond = animationHeader.ticksPerSecond;
 		outAnimation.defaultLoop = 0 != animationHeader.isLoop;
