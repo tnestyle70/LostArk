@@ -78,6 +78,9 @@ HRESULT CLoader::Start_Loading()
     case LEVEL::ASSET_TEST:
         hr = Ready_For_Level_AssetTest();
         break;
+    case LEVEL::TEST_LEVEL2:
+        hr = Ready_For_Test_Level2();
+        break;
     }
 
     /* 내 스레드가 임계영역에 해야할 일을 끝냈어. */
@@ -167,6 +170,22 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         return E_FAIL;
 
     lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 로딩이 완료되었습니다."));
+    m_isFinished = true;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_For_Test_Level2()
+{
+    lstrcpy(m_szLoadingText, TEXT("Loading Test Level 2 resources."));
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_Camera_Free"),
+        CCamera_Free::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));
     m_isFinished = true;
 
     return S_OK;
