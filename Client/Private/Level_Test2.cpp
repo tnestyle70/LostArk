@@ -2,6 +2,7 @@
 
 #include "Camera_Free.h"
 #include "GameInstance.h"
+#include "LanceMaster.h"
 
 CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -18,6 +19,8 @@ HRESULT CLevel_Test2::Initialize()
 	if (FAILED(Ready_Lights()))
 		return E_FAIL;
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
+		return E_FAIL;
+	if (FAILED(Ready_Layer_Player(TEXT("Layer_Player"))))
 		return E_FAIL;
 	return S_OK;
 }
@@ -61,6 +64,19 @@ HRESULT CLevel_Test2::Ready_Layer_Camera(const wstring_t& strLayerTag)
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
 		TEXT("Prototype_GameObject_Camera_Free"),
 		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &CameraDesc)))
+		return E_FAIL;
+
+	return S_OK;
+}
+
+HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
+{
+	CLanceMaster::LANCEMASTER_DESC		LanceMasterDesc{};
+	LanceMasterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
+
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
+		TEXT("Prototype_GameObject_LanceMaster"),
+		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &LanceMasterDesc)))
 		return E_FAIL;
 
 	return S_OK;

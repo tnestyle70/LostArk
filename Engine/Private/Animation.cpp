@@ -78,6 +78,17 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 	return false;
 }
 
+void CAnimation::Set_TrackPosition(f32_t fTrackPosition)
+{
+	m_fCurrentTrackPosition = fTrackPosition < 0.f ? 0.f :
+		(fTrackPosition > m_fDuration ? m_fDuration : fTrackPosition);
+
+	/* 채널의 키프레임 커서는 앞으로만 전진하므로, 되감을 때 초기화하지 않으면
+	이전 위치보다 앞선 키프레임으로 보간해 포즈가 어긋난다. */
+	for (auto& iLeftKeyFrameIndex : m_iLeftKeyFrameIndices)
+		iLeftKeyFrameIndex = 0;
+}
+
 shared_ptr<CAnimation> CAnimation::Create(const aiAnimation* pAIAnimation, const vector<shared_ptr<class CBone>>& Bones)
 {
 	auto pInstance = shared_ptr<CAnimation>(new CAnimation());

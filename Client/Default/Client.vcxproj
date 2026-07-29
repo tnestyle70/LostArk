@@ -19,16 +19,26 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\public\BackGround.h" />
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
+    <ClInclude Include="..\Public\Body_LanceMaster.h" />
+    <ClInclude Include="..\Public\Weapon_LanceMaster.h" />
     <ClInclude Include="..\Public\Body_Player.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\Public\Effect.h" />
+    <ClInclude Include="..\Public\Effect_AssetIO.h" />
+    <ClInclude Include="..\Public\Effect_ParticleSimulator.h" />
+    <ClInclude Include="..\Public\Effect_ResourceCatalog.h" />
+    <ClInclude Include="..\Public\Effect_Runtime.h" />
+    <ClInclude Include="..\Public\Effect_Types.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
+    <ClInclude Include="..\Public\HUDLayoutTool.h" />
+    <ClInclude Include="..\Public\LanceMaster.h" />
     <ClInclude Include="..\Public\Level_GamePlay.h" />
     <ClInclude Include="..\Public\Level_AssetTest.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
@@ -54,16 +64,26 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
+
   <ItemGroup>
+    <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
+    <ClCompile Include="..\Private\Body_LanceMaster.cpp" />
+    <ClCompile Include="..\Private\Weapon_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Body_Player.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
+    <ClCompile Include="..\Private\Effect_AssetIO.cpp" />
+    <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp" />
+    <ClCompile Include="..\Private\Effect_ResourceCatalog.cpp" />
+    <ClCompile Include="..\Private\Effect_Runtime.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
+    <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
+    <ClCompile Include="..\Private\LanceMaster.cpp" />
     <ClCompile Include="..\Private\Level_GamePlay.cpp" />
     <ClCompile Include="..\Private\Level_AssetTest.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
@@ -99,6 +119,9 @@
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectPrimitive.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectSprite.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl" />

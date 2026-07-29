@@ -1,0 +1,23 @@
+LOSTARK_ANIM_EVENTS 2 "LanceMaster" 22
+"flm_sk_sharpswing_01" HIT start=0 end=10 count=1
+"flm_sk_sharpswing_02" HIT start=0 end=11 count=1
+"flm_sk_strongrotational_02" HIT start=2 end=23 count=3
+"flm_sk_strongrotational_01" HIT start=5 end=10 count=1
+"flm_sk_assault" HIT start=21 end=28 count=1
+"flm_sk_dragonkick" HIT start=11 end=15 count=1
+"flm_sk_crescentsweep" HIT start=5 end=22 count=2
+"flm_sk_crushingblow" HIT start=41 end=50 count=1
+"flm_sk_downwardhit" HIT start=8 end=30 count=3
+"flm_sk_ruffle_02" HIT start=0 end=20 count=3
+"flm_sk_pulverize" HIT start=35 end=40 count=1
+"flm_sk_stab" HIT start=11 end=17 count=1
+"flm_sk_talonstrike" HIT start=16 end=48 count=8
+"flm_sk_lastwhisper_end" HIT start=9 end=15 count=1
+"flm_sk_dragonupfly_02" HIT start=11 end=17 count=1
+"flm_sk_successionskill_02" HIT start=0 end=12 count=2
+"flm_sk_penetrationlunge_03" HIT start=9 end=15 count=1
+"flm_sk_gaebolg" HIT start=120 end=168 count=7
+"flm_sk_squalllance_01" HIT start=28 end=34 count=1
+"flm_sk_squalllance_02" HIT start=5 end=42 count=5
+"flm_sk_squalllance_02" HIT start=54 end=96 count=8
+"flm_sk_squalllance_03" HIT start=17 end=23 count=1

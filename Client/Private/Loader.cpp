@@ -4,6 +4,9 @@
 #include "Body_Player.h"
 #include "Valtan.h"
 #include "Body_Valtan.h"
+#include "LanceMaster.h"
+#include "Body_LanceMaster.h"
+#include "Weapon_LanceMaster.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapAssetPreview.h"
@@ -234,6 +237,69 @@ HRESULT CLoader::Ready_For_Test_Level2()
         ETOUI(LEVEL::TEST_LEVEL2),
         TEXT("Prototype_GameObject_Camera_Free"),
         CCamera_Free::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+            VTXANIMMESH::Elements,
+            VTXANIMMESH::iNumElements))))
+        return E_FAIL;
+
+    const matrix_t preTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Model_LanceMaster"),
+        CModel::Create(m_pDevice, m_pContext,
+            MODEL::ANIM,
+            "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster.wmodel",
+            preTransform))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Shader_VtxMeshBinary"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
+            VTXMESH::Elements,
+            VTXMESH::iNumElements))))
+        return E_FAIL;
+
+    /* The weapon carries no animation, so it is cooked with --pretransform as a
+    static mesh: CMesh rejects a skinned mesh loaded as NONANIM and vice versa.
+
+    The body came through psk -> Blender -> FBX and kept the raw unit scale
+    (~124 units tall), while the weapon was cooked straight from umodel's glTF,
+    whose exporter divides by 100 (~2.3 units long). Scaling the weapon by 100
+    puts it back in the body's unit space; the socket matrix then applies the
+    body's own pre-transform to both. */
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
+        CModel::Create(m_pDevice, m_pContext,
+            MODEL::NONANIM,
+            "../Bin/Resources/LostArk/Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+            XMMatrixScaling(100.f, 100.f, 100.f)))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_Body_LanceMaster"),
+        CBody_LanceMaster::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_Weapon_LanceMaster"),
+        CWeapon_LanceMaster::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_GameObject_LanceMaster"),
+        CLanceMaster::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
     lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));
