@@ -93,9 +93,6 @@ bool_t CWMaterialReader::Read(const MODEL_ASSET_LOAD_DESC& desc,
 	vector<MODEL_MATERIAL_DATA>& outMaterials,
 	MODEL_DECODE_REPORT& outReport) const
 {
-	outMaterials.clear();
-	outMaterials.resize(minimumCount);
-
 	filesystem::path materialPath = desc.materialPath;
 	if (materialPath.empty())
 	{
@@ -105,10 +102,38 @@ bool_t CWMaterialReader::Read(const MODEL_ASSET_LOAD_DESC& desc,
 
 	vector<uint8_t> bytes;
 	if (CBinaryReader::LoadFile(materialPath, bytes))
+		return ReadMemory(bytes.data(), bytes.size(), desc, materialPath,
+			minimumCount, outMaterials, outReport);
+
+	outMaterials.clear();
+	outMaterials.resize(minimumCount);
+	for (MODEL_MATERIAL_DATA& material : outMaterials)
 	{
-		try
-		{
-			CBinaryReader fileReader(bytes.data(), bytes.size());
+		if (material.diffusePath.empty() && !desc.fallbackDiffusePath.empty())
+			material.diffusePath = desc.fallbackDiffusePath;
+	}
+	return true;
+}
+
+bool_t CWMaterialReader::ReadMemory(const uint8_t* pData,
+	size_t dataSize,
+	const MODEL_ASSET_LOAD_DESC& desc,
+	const filesystem::path& containerPath,
+	uint32_t minimumCount,
+	vector<MODEL_MATERIAL_DATA>& outMaterials,
+	MODEL_DECODE_REPORT& outReport) const
+{
+	outMaterials.clear();
+	outMaterials.resize(minimumCount);
+	if (nullptr == pData || dataSize < sizeof(FILE_HEADER))
+	{
+		outReport.error = "The embedded WMAT section is empty or truncated.";
+		return false;
+	}
+
+	try
+	{
+			CBinaryReader fileReader(pData, dataSize);
 			const FILE_HEADER fileHeader = fileReader.Read<FILE_HEADER>();
 			if (!HasMagic(fileHeader.magic, WINTERS_MAGIC) ||
 				1 != fileHeader.versionMajor || 0 != fileHeader.flags ||
@@ -120,7 +145,9 @@ bool_t CWMaterialReader::Read(const MODEL_ASSET_LOAD_DESC& desc,
 
 			CBinaryReader reader(fileReader.Peek(), fileHeader.contentSize);
 			const MATERIAL_META_HEADER materialHeader = reader.Read<MATERIAL_META_HEADER>();
-			if (!HasMagic(materialHeader.magic, WMAT_MAGIC) || materialHeader.materialCount > MAX_MATERIALS)
+			const bool_t isV2 = HasMagic(materialHeader.magic, WMAT_V2_MAGIC);
+			if ((!HasMagic(materialHeader.magic, WMAT_MAGIC) && !isV2) ||
+				materialHeader.materialCount > MAX_MATERIALS)
 			{
 				outReport.error = "Invalid WMAT metadata.";
 				return false;
@@ -129,20 +156,44 @@ bool_t CWMaterialReader::Read(const MODEL_ASSET_LOAD_DESC& desc,
 			outMaterials.resize((max)(outMaterials.size(), static_cast<size_t>(materialHeader.materialCount)));
 			for (uint32_t i = 0; i < materialHeader.materialCount; ++i)
 			{
-				const MATERIAL_ENTRY entry = reader.Read<MATERIAL_ENTRY>();
-				if (entry.materialIndex >= outMaterials.size())
+				if (isV2)
 				{
-					outReport.error = "WMAT contains an out-of-range material index.";
-					return false;
+					const MATERIAL_ENTRY_V2 entry = reader.Read<MATERIAL_ENTRY_V2>();
+					if (entry.materialIndex >= outMaterials.size())
+					{
+						outReport.error = "WMA2 contains an out-of-range material index.";
+						return false;
+					}
+
+					MODEL_MATERIAL_DATA& material = outMaterials[entry.materialIndex];
+					material.diffusePath = ResolveTexturePath(desc, containerPath, entry.baseColorPath);
+					material.normalPath = ResolveTexturePath(desc, containerPath, entry.normalPath);
+					material.specularPath = ResolveTexturePath(desc, containerPath, entry.specularPath);
+					material.emissivePath = ResolveTexturePath(desc, containerPath, entry.emissivePath);
+					material.opacityPath = ResolveTexturePath(desc, containerPath, entry.opacityPath);
+					material.ormPath = ResolveTexturePath(desc, containerPath, entry.ormPath);
+					material.metallicPath = ResolveTexturePath(desc, containerPath, entry.metallicPath);
+					material.roughnessPath = ResolveTexturePath(desc, containerPath, entry.roughnessPath);
+					material.ambientOcclusionPath = ResolveTexturePath(
+						desc, containerPath, entry.ambientOcclusionPath);
 				}
-				outMaterials[entry.materialIndex].diffusePath = ResolveTexturePath(desc, materialPath, entry.diffusePath);
+				else
+				{
+					const MATERIAL_ENTRY entry = reader.Read<MATERIAL_ENTRY>();
+					if (entry.materialIndex >= outMaterials.size())
+					{
+						outReport.error = "WMAT contains an out-of-range material index.";
+						return false;
+					}
+					outMaterials[entry.materialIndex].diffusePath =
+						ResolveTexturePath(desc, containerPath, entry.diffusePath);
+				}
 			}
-		}
-		catch (const exception& exception)
-		{
-			outReport.error = exception.what();
-			return false;
-		}
+	}
+	catch (const exception& exception)
+	{
+		outReport.error = exception.what();
+		return false;
 	}
 
 	for (MODEL_MATERIAL_DATA& material : outMaterials)

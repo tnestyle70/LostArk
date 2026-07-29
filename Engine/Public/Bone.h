@@ -2,12 +2,14 @@
 
 #include "Engine_Defines.h"
 
-/* assimp : »À -> aiNode, aiBone, aiNodeAnim */
-/* aiNode : »ÀÀÇ »ó¼Ó ±¸Á¶ */ 
-/* aiBone : ÀÌ »À°¡ ¾î¶² Á¤Á¡¿¡°Ô, ¾ó¸¶³ª ¿µÇâÀ» ÁÖ´ÂÁö? */
-/* aiNodeAnim : Ã¤³Î, ÀÌ »À°¡ Æ¯Á¤ ¾Ö´Ï¸ŞÀÌ¼Ç ³»¿¡¼­ Àç»ıÀ§Ä¡¿¡ µû¶ó ¾î¶² »óÅÂµéÀ» ÃëÇØ¾ßÇÏ´Â°¡ */
+/* assimp : ë¼ˆ -> aiNode, aiBone, aiNodeAnim */
+/* aiNode : ë¼ˆì˜ ìƒì† êµ¬ì¡° */ 
+/* aiBone : ì´ ë¼ˆê°€ ì–´ë–¤ ì •ì ì—ê²Œ, ì–¼ë§ˆë‚˜ ì˜í–¥ì„ ì£¼ëŠ”ì§€? */
+/* aiNodeAnim : ì±„ë„, ì´ ë¼ˆê°€ íŠ¹ì • ì• ë‹ˆë©”ì´ì…˜ ë‚´ì—ì„œ ì¬ìƒìœ„ì¹˜ì— ë”°ë¼ ì–´ë–¤ ìƒíƒœë“¤ì„ ì·¨í•´ì•¼í•˜ëŠ”ê°€ */
 
 NS_BEGIN(Engine)
+
+struct MODEL_BONE_DATA;
 
 class CBone final
 {
@@ -22,6 +24,7 @@ public:
 	}
 public:
 	HRESULT Initialize(const aiNode* pAINode, int32_t iParentBoneIndex);
+	HRESULT Initialize(const MODEL_BONE_DATA& bone);
 	void Update_TransformationMatrix(fmatrix_t TransformationMatrix);
 	void Update_CombinedTransformationMatrix(const vector<shared_ptr<CBone>>& Bones, fmatrix_t PreTransformMatrix);
 
@@ -38,6 +41,7 @@ private:
 
 public:
 	static shared_ptr<CBone> Create(const aiNode* pAINode, int32_t iParentBoneIndex);
+	static shared_ptr<CBone> Create(const MODEL_BONE_DATA& bone);
 	shared_ptr<CBone> Clone();
 };
 

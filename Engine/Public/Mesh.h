@@ -4,6 +4,9 @@
 
 NS_BEGIN(Engine)
 
+struct MODEL_MESH_DATA;
+struct MODEL_SKELETON_DATA;
+
 class ENGINE_DLL CMesh final : public CVIBuffer
 {
 private:
@@ -18,6 +21,8 @@ public:
 
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones, fmatrix_t PreTransformMatrix);
+	HRESULT Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
+		const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix);
 	virtual HRESULT Initialize(void* pArg) override;
 
 public:
@@ -38,6 +43,10 @@ private:
 
 public:
 	static shared_ptr<CMesh> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones, fmatrix_t PreTransformMatrix);
+	static shared_ptr<CMesh> Create(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext, MODEL eType,
+		const MODEL_MESH_DATA& mesh, const MODEL_SKELETON_DATA& skeleton,
+		fmatrix_t PreTransformMatrix);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 };
 

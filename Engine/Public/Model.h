@@ -4,6 +4,8 @@
 
 NS_BEGIN(Engine)
 
+struct MODEL_ASSET_DATA;
+
 class ENGINE_DLL CModel final : public CComponent
 {
 private:
@@ -16,6 +18,9 @@ public:
 	uint32_t Get_NumMeshes() const {
 		return m_iNumMeshes;
 	}
+	uint32_t Get_NumAnimations() const {
+		return m_iNumAnimations;
+	}
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 
@@ -25,6 +30,7 @@ public:
 		m_isAnimLoop = isLoop;
 		m_iCurrentAnimIndex = iAnimIndex;
 	}
+	bool_t Set_Animation(const char_t* pAnimationName, bool_t isLoop = false);
 
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
@@ -35,6 +41,7 @@ public:
 	bool_t Play_Animation(f32_t fTimeDelta);
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
+	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };
@@ -61,6 +68,11 @@ private:
 	HRESULT Ready_Materials(const char_t* pModelFilePath);
 	HRESULT Ready_Bones(const aiNode* pAINode, int32_t iParentBoneIndex = -1);
 	HRESULT Ready_Animations();
+	HRESULT Ready_BinaryModel(const char_t* pModelFilePath);
+	HRESULT Ready_Meshes(const MODEL_ASSET_DATA& asset);
+	HRESULT Ready_Materials(const MODEL_ASSET_DATA& asset);
+	HRESULT Ready_Bones(const MODEL_ASSET_DATA& asset);
+	HRESULT Ready_Animations(const MODEL_ASSET_DATA& asset);
 
 public:
 	static unique_ptr<CModel> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);

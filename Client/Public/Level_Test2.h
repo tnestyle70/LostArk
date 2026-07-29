@@ -5,13 +5,13 @@
 
 NS_BEGIN(Client)
 
-class CLevel_AssetTest final : public CLevel
+class CLevel_Test2 final : public CLevel
 {
 private:
-	CLevel_AssetTest(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+	CLevel_Test2(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 
 public:
-	virtual ~CLevel_AssetTest();
+	virtual ~CLevel_Test2();
 
 public:
 	virtual HRESULT Initialize() override;
@@ -21,11 +21,11 @@ public:
 private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
-	HRESULT Ready_Valtan();
 
 public:
-	static unique_ptr<CLevel_AssetTest> Create(ComPtr<ID3D11Device> pDevice,
+	static unique_ptr<CLevel_Test2> Create(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
 };
 
 NS_END
+

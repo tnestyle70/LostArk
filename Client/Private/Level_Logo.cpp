@@ -49,6 +49,20 @@ void CLevel_Logo::Update(f32_t fTimeDelta)
 	}
 
 	if (!CGameInstance::Get().IsKeyboardInputBlocked() &&
+		(GetKeyState(VK_F3) & 0x8000))
+	{
+		if (FAILED(CGameInstance::Get().Change_Level(
+			ETOUI(LEVEL::LOADING),
+			CLevel_Loading::Create(m_pDevice, m_pContext, LEVEL::TEST_LEVEL2))))
+		{
+			MSG_BOX("Failed to Change Level");
+			return;
+		}
+
+		return;
+	}
+
+	if (!CGameInstance::Get().IsKeyboardInputBlocked() &&
 		(GetKeyState(VK_SPACE) & 0x8000))
 	{
 		if (FAILED(CGameInstance::Get().Change_Level(ETOUI(LEVEL::LOADING), CLevel_Loading::Create(m_pDevice, m_pContext, LEVEL::GAMEPLAY))))

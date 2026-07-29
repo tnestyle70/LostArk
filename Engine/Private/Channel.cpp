@@ -1,5 +1,55 @@
 #include "Channel.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include "Bone.h"
+
+#include <algorithm>
+
+namespace
+{
+	float3_t SampleVector(const vector<MODEL_VECTOR_KEY_DATA>& keys,
+		f32_t time, const float3_t& fallback)
+	{
+		if (keys.empty())
+			return fallback;
+		if (time <= keys.front().timeTicks)
+			return keys.front().value;
+		if (time >= keys.back().timeTicks)
+			return keys.back().value;
+
+		auto right = upper_bound(keys.begin(), keys.end(), time,
+			[](f32_t value, const MODEL_VECTOR_KEY_DATA& key)
+			{ return value < key.timeTicks; });
+		const auto left = right - 1;
+		const f32_t span = right->timeTicks - left->timeTicks;
+		const f32_t ratio = span > 0.f ? (time - left->timeTicks) / span : 0.f;
+		float3_t result{};
+		XMStoreFloat3(&result, XMVectorLerp(
+			XMLoadFloat3(&left->value), XMLoadFloat3(&right->value), ratio));
+		return result;
+	}
+
+	float4_t SampleQuaternion(const vector<MODEL_QUAT_KEY_DATA>& keys,
+		f32_t time)
+	{
+		if (keys.empty())
+			return float4_t(0.f, 0.f, 0.f, 1.f);
+		if (time <= keys.front().timeTicks)
+			return keys.front().value;
+		if (time >= keys.back().timeTicks)
+			return keys.back().value;
+
+		auto right = upper_bound(keys.begin(), keys.end(), time,
+			[](f32_t value, const MODEL_QUAT_KEY_DATA& key)
+			{ return value < key.timeTicks; });
+		const auto left = right - 1;
+		const f32_t span = right->timeTicks - left->timeTicks;
+		const f32_t ratio = span > 0.f ? (time - left->timeTicks) / span : 0.f;
+		float4_t result{};
+		XMStoreFloat4(&result, XMQuaternionSlerp(
+			XMLoadFloat4(&left->value), XMLoadFloat4(&right->value), ratio));
+		return result;
+	}
+}
 
 CChannel::CChannel()
 {
@@ -64,8 +114,44 @@ HRESULT CChannel::Initialize(const aiNodeAnim* pAIChannel, const vector<shared_p
 	return S_OK;
 }
 
+HRESULT CChannel::Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
+	const vector<shared_ptr<class CBone>>& Bones)
+{
+	if (channel.resolvedBoneIndex < 0 ||
+		channel.resolvedBoneIndex >= static_cast<int32_t>(Bones.size()))
+		return E_FAIL;
+	m_iBoneIndex = channel.resolvedBoneIndex;
+
+	vector<f32_t> times;
+	times.reserve(channel.positionKeys.size() + channel.rotationKeys.size() +
+		channel.scaleKeys.size());
+	for (const auto& key : channel.positionKeys) times.push_back(key.timeTicks);
+	for (const auto& key : channel.rotationKeys) times.push_back(key.timeTicks);
+	for (const auto& key : channel.scaleKeys) times.push_back(key.timeTicks);
+	if (times.empty())
+		return E_FAIL;
+
+	sort(times.begin(), times.end());
+	times.erase(unique(times.begin(), times.end()), times.end());
+	m_KeyFrames.reserve(times.size());
+	for (f32_t time : times)
+	{
+		KEYFRAME keyFrame{};
+		keyFrame.fTrackPosition = time;
+		keyFrame.vScale = SampleVector(channel.scaleKeys, time, float3_t(1.f, 1.f, 1.f));
+		keyFrame.vRotation = SampleQuaternion(channel.rotationKeys, time);
+		keyFrame.vTranslation = SampleVector(channel.positionKeys, time, float3_t(0.f, 0.f, 0.f));
+		m_KeyFrames.push_back(keyFrame);
+	}
+	m_iNumKeyFrames = static_cast<uint32_t>(m_KeyFrames.size());
+	return S_OK;
+}
+
 void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex)
 {
+	if (m_KeyFrames.empty() || nullptr == pLeftKeyFrameIndex)
+		return;
+
 	if (0.f == fCurrentTrackPosition)
 		(*pLeftKeyFrameIndex) = 0;
 
@@ -74,20 +160,25 @@ void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const ve
 
 	vector_t		vScale{}, vRotation{}, vTranslation{};
 
-	if (fCurrentTrackPosition >= LastKeyFrame.fTrackPosition) /* ¼±Çüº¸°£ÀÌ ÇÊ¿ä ¾ø´Â »óÅÂ */
+	if (1 == m_KeyFrames.size() || fCurrentTrackPosition >= LastKeyFrame.fTrackPosition) /* ì„ í˜•ë³´ê°„ì´ í•„ìš” ì—†ëŠ” ìƒíƒœ */
 	{
 		vScale = XMLoadFloat3(&LastKeyFrame.vScale);
 		vRotation = XMLoadFloat4(&LastKeyFrame.vRotation);
 		vTranslation = XMVectorSetW(XMLoadFloat3(&LastKeyFrame.vTranslation), 1.f);
 	}
 
-	else /* ¼±Çüº¸°£ÀÌ ÇÊ¿äÇÑ »óÅÂ */
+	else /* ì„ í˜•ë³´ê°„ì´ í•„ìš”í•œ ìƒíƒœ */
 	{
-		while(fCurrentTrackPosition >= m_KeyFrames[(*pLeftKeyFrameIndex) + 1].fTrackPosition)
+		(*pLeftKeyFrameIndex) = (min)(*pLeftKeyFrameIndex,
+			static_cast<uint32_t>(m_KeyFrames.size() - 2));
+		while ((*pLeftKeyFrameIndex) + 1 < m_KeyFrames.size() - 1 &&
+			fCurrentTrackPosition >= m_KeyFrames[(*pLeftKeyFrameIndex) + 1].fTrackPosition)
 			++(*pLeftKeyFrameIndex);
 
-		f32_t		fRatio = (fCurrentTrackPosition - m_KeyFrames[(*pLeftKeyFrameIndex)].fTrackPosition) / 
-			(m_KeyFrames[(*pLeftKeyFrameIndex) + 1].fTrackPosition - m_KeyFrames[(*pLeftKeyFrameIndex)].fTrackPosition);
+		const f32_t fSpan = m_KeyFrames[(*pLeftKeyFrameIndex) + 1].fTrackPosition -
+			m_KeyFrames[(*pLeftKeyFrameIndex)].fTrackPosition;
+		f32_t		fRatio = fSpan > 0.f ?
+			(fCurrentTrackPosition - m_KeyFrames[(*pLeftKeyFrameIndex)].fTrackPosition) / fSpan : 0.f;
 
 		vector_t	vLeftScale = XMLoadFloat3(&m_KeyFrames[(*pLeftKeyFrameIndex)].vScale);
 		vector_t	vRightScale = XMLoadFloat3(&m_KeyFrames[(*pLeftKeyFrameIndex) + 1].vScale);
@@ -117,5 +208,17 @@ shared_ptr<CChannel> CChannel::Create(const aiNodeAnim* pAIChannel, const vector
 		return nullptr;
 	}
 
+	return pInstance;
+}
+
+shared_ptr<CChannel> CChannel::Create(const MODEL_ANIMATION_CHANNEL_DATA& channel,
+	const vector<shared_ptr<class CBone>>& Bones)
+{
+	auto pInstance = shared_ptr<CChannel>(new CChannel());
+	if (FAILED(pInstance->Initialize(channel, Bones)))
+	{
+		MSG_BOX("Failed to Created : CChannel");
+		return nullptr;
+	}
 	return pInstance;
 }

@@ -49,9 +49,6 @@
     <Filter Include="03. Tools\04. Animation">
       <UniqueIdentifier>{42322243-9f4d-4daa-9a43-c0122697c314}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\00. AssetTest">
-      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
-    </Filter>
     <Filter Include="02.GameObjects\00. Character">
       <UniqueIdentifier>{d5864814-d199-42de-9bce-7329814f62a7}</UniqueIdentifier>
     </Filter>
@@ -106,6 +103,12 @@
     <Filter Include="02.GameObjects\98. TestBinaryAsset">
       <UniqueIdentifier>{1d1cb11f-147b-4124-aab5-36a9909bc25f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\01. LostArk">
+      <UniqueIdentifier>{bf280c62-d16e-4e4e-8d0c-e29d710de3e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\01. LostArk\Valtan">
+      <UniqueIdentifier>{a88bfda4-375a-4ff5-825b-2dcf85008ea0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
@@ -123,6 +126,12 @@
     </Filter>
     <Filter Include="02.GameObjects\05. Sequencer">
       <UniqueIdentifier>{19cfa3b4-8375-48d1-8633-986f0d4a9303}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\02. TestLevel2">
+      <UniqueIdentifier>{990193aa-479d-457b-a42f-b4ce68ccecd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\00. TestLevel1">
+      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -184,16 +193,25 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_AssetTest.cpp">
-      <Filter>01.Levels\00. AssetTest</Filter>
+      <Filter>01.Levels\00. TestLevel1</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BinaryAssetObject.cpp">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Valtan.cpp">
+      <Filter>02.GameObjects\01. LostArk\Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Body_Valtan.cpp">
+      <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Effect_Tool.cpp">
       <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_Test2.cpp">
+      <Filter>01.Levels\02. TestLevel2</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -267,16 +285,25 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_AssetTest.h">
-      <Filter>01.Levels\00. AssetTest</Filter>
+      <Filter>01.Levels\00. TestLevel1</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BinaryAssetObject.h">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Valtan.h">
+      <Filter>02.GameObjects\01. LostArk\Valtan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Body_Valtan.h">
+      <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Effect_Tool.h">
       <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_Test2.h">
+      <Filter>01.Levels\02. TestLevel2</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -308,6 +335,9 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl">

@@ -4,6 +4,8 @@
 
 NS_BEGIN(Engine)
 
+struct MODEL_MATERIAL_DATA;
+
 class CMaterial
 {
 private:
@@ -13,7 +15,9 @@ public:
 
 public:
 	HRESULT Initialize(const aiMaterial* pAIMaterial, const char_t* pModelFilePath);
+	HRESULT Initialize(const MODEL_MATERIAL_DATA& material);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, aiTextureType eType, uint32_t iTextureIndex);
+	bool_t Has_Texture(aiTextureType eType, uint32_t iTextureIndex = 0) const;
 
 private:
 	ComPtr<ID3D11Device>						m_pDevice = { nullptr };
@@ -23,6 +27,8 @@ private:
 
 public:
 	static shared_ptr<CMaterial> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const aiMaterial* pAIMaterial, const char_t* pModelFilePath);
+	static shared_ptr<CMaterial> Create(ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext, const MODEL_MATERIAL_DATA& material);
 };
 
 NS_END

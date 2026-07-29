@@ -25,6 +25,10 @@ public:
 	bool_t Read(const filesystem::path& meshPath,
 		W_MESH_READ_RESULT& outMesh,
 		MODEL_DECODE_REPORT& outReport) const;
+	bool_t ReadMemory(const uint8_t* pData,
+		size_t dataSize,
+		W_MESH_READ_RESULT& outMesh,
+		MODEL_DECODE_REPORT& outReport) const;
 };
 
 NS_END

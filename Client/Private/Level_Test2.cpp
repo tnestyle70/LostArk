@@ -1,20 +1,17 @@
-#include "Level_AssetTest.h"
+#include "Level_Test2.h"
 
 #include "Camera_Free.h"
 #include "GameInstance.h"
-#include "Valtan.h"
 
-CLevel_AssetTest::CLevel_AssetTest(ComPtr<ID3D11Device> pDevice,
+CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
-	: CLevel { pDevice, pContext }
-{
-}
+	: CLevel{ pDevice, pContext }
+{}
 
-CLevel_AssetTest::~CLevel_AssetTest()
-{
-}
+CLevel_Test2::~CLevel_Test2()
+{}
 
-HRESULT CLevel_AssetTest::Initialize()
+HRESULT CLevel_Test2::Initialize()
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
@@ -22,28 +19,23 @@ HRESULT CLevel_AssetTest::Initialize()
 		return E_FAIL;
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 		return E_FAIL;
-	if (FAILED(Ready_Valtan()))
-		return E_FAIL;
 	return S_OK;
 }
 
-void CLevel_AssetTest::Update(f32_t fTimeDelta)
+void CLevel_Test2::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
 }
 
-HRESULT CLevel_AssetTest::Render()
+HRESULT CLevel_Test2::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
-#ifdef _DEBUG
-	SetWindowText(g_hWnd, TEXT("Valtan WModel Asset Test"));
-#endif
 	return S_OK;
 }
 
-HRESULT CLevel_AssetTest::Ready_Lights()
+HRESULT CLevel_Test2::Ready_Lights()
 {
 	LIGHT_DESC light{};
 	light.eType = LIGHT::DIRECTIONAL;
@@ -54,7 +46,7 @@ HRESULT CLevel_AssetTest::Ready_Lights()
 	return CGameInstance::Get().Add_Light(light);
 }
 
-HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
+HRESULT CLevel_Test2::Ready_Layer_Camera(const wstring_t& strLayerTag)
 {
 	CCamera_Free::CAMERA_FREE_DESC		CameraDesc{};
 	CameraDesc.vEye = float3_t(-18.f, 10.f, -18.f);
@@ -66,32 +58,19 @@ HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
 	CameraDesc.fRotationPerSec = 90.f;
 	CameraDesc.fMouseSensor = 0.1f;
 
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::ASSET_TEST), 
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
 		TEXT("Prototype_GameObject_Camera_Free"),
-		ETOUI(LEVEL::ASSET_TEST), strLayerTag, &CameraDesc)))
+		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &CameraDesc)))
 		return E_FAIL;
 
 	return S_OK;
 }
 
-HRESULT CLevel_AssetTest::Ready_Valtan()
-{
-	CValtan::VALTAN_DESC desc{};
-	desc.vPosition = float3_t(0.f, 0.f, 0.f);
-
-	return CGameInstance::Get().Add_GameObject_to_Layer(
-		ETOUI(LEVEL::ASSET_TEST),
-		TEXT("Prototype_GameObject_Valtan"),
-		ETOUI(LEVEL::ASSET_TEST),
-		TEXT("Layer_Valtan"),
-		&desc);
-}
-
-unique_ptr<CLevel_AssetTest> CLevel_AssetTest::Create(
+unique_ptr<CLevel_Test2> CLevel_Test2::Create(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 {
-	auto pInstance = unique_ptr<CLevel_AssetTest>(new CLevel_AssetTest(pDevice, pContext));
+	auto pInstance = unique_ptr<CLevel_Test2>(new CLevel_Test2(pDevice, pContext));
 	if (FAILED(pInstance->Initialize()))
 		return nullptr;
 	return pInstance;
