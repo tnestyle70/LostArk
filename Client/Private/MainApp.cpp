@@ -323,7 +323,7 @@ HRESULT CMainApp::ReadyDebugTools()
     }
 
     m_pMapTool = std::make_unique<CMapTool>();
-    m_pEffectTool = std::make_unique<CEffect_Tool>();
+    m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
 
     return S_OK;
 }

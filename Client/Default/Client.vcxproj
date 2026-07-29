@@ -26,6 +26,11 @@
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\Public\Effect.h" />
+    <ClInclude Include="..\Public\Effect_AssetIO.h" />
+    <ClInclude Include="..\Public\Effect_ParticleSimulator.h" />
+    <ClInclude Include="..\Public\Effect_ResourceCatalog.h" />
+    <ClInclude Include="..\Public\Effect_Runtime.h" />
+    <ClInclude Include="..\Public\Effect_Types.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\public\Explosion.h" />
     <ClInclude Include="..\Public\ForkLift.h" />
@@ -57,6 +62,10 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
     <ClCompile Include="..\Private\Effect.cpp" />
+    <ClCompile Include="..\Private\Effect_AssetIO.cpp" />
+    <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp" />
+    <ClCompile Include="..\Private\Effect_ResourceCatalog.cpp" />
+    <ClCompile Include="..\Private\Effect_Runtime.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\private\Explosion.cpp" />
     <ClCompile Include="..\Private\ForkLift.cpp" />
@@ -89,6 +98,9 @@
     <None Include="Client.vcxproj" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectPrimitive.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectSprite.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl" />
