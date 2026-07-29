@@ -5,6 +5,8 @@
 #include "Client.h"
 
 #include "Client_Defines.h"
+#include "Effect_AssetIO.h"
+#include "Effect_ParticleSimulator.h"
 #include "MainApp.h"
 #include "GameInstance.h"
 
@@ -30,6 +32,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow){
+    if (nullptr != lpCmdLine &&
+        nullptr != wcsstr(lpCmdLine, L"--effect-phase2-test"))
+    {
+        const auto Result = Run_Phase2ParticleCountValidation();
+        EFFECT_ASSET_DESC EmptyAsset;
+        EmptyAsset.strAssetId = "headless_round_trip";
+        EmptyAsset.strName = "Headless Round Trip";
+        const filesystem::path TestRoot =
+            filesystem::temp_directory_path() /
+            "lostark_effect_tool_headless";
+        const filesystem::path JsonPath =
+            TestRoot / "roundtrip.effect.json";
+        const filesystem::path BinaryPath =
+            TestRoot / "roundtrip.weffect";
+        EFFECT_ASSET_DESC JsonLoaded;
+        EFFECT_ASSET_DESC BinaryLoaded;
+        const bool_t isRoundTripPassed =
+            CEffect_AssetIO::Validate_RoundTrip(EmptyAsset) &&
+            CEffect_AssetIO::Save_Json(JsonPath, EmptyAsset) &&
+            CEffect_AssetIO::Load_Json(JsonPath, JsonLoaded) &&
+            CEffect_AssetIO::Save_Binary(BinaryPath, JsonLoaded) &&
+            CEffect_AssetIO::Load_Binary(BinaryPath, BinaryLoaded) &&
+            BinaryLoaded.strAssetId == EmptyAsset.strAssetId;
+        error_code CleanupError;
+        filesystem::remove_all(TestRoot, CleanupError);
+        return Result.isPassed && isRoundTripPassed
+            ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+
 #ifdef _DEBUG
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif

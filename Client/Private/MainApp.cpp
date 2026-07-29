@@ -8,6 +8,7 @@
 #include "MapTool.h"
 #include "Animation_Tool.h"
 #include "Effect_Tool.h"
+#include "HUDLayoutTool.h"
 #endif
 
 #ifdef _DEBUG
@@ -175,6 +176,11 @@ HRESULT CMainApp::Render()
             nullptr != m_pAnimationTool)
         {
             m_pAnimationTool->Render();
+
+            nullptr != m_pHUDLayoutTool)
+        {
+            m_pHUDLayoutTool->Render();
+
         }
 
         m_pImGuiLayer->EndFrame();
@@ -323,8 +329,12 @@ HRESULT CMainApp::ReadyDebugTools()
     }
 
     m_pMapTool = std::make_unique<CMapTool>();
-    m_pEffectTool = std::make_unique<CEffect_Tool>();
+
     m_pAnimationTool = std::make_unique<CAnimation_Tool>();
+
+    m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
+    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
+
 
     return S_OK;
 }
@@ -363,6 +373,7 @@ void CMainApp::Free()
 
     m_pAnimationTool.reset();
     m_pEffectTool.reset();
+    m_pHUDLayoutTool.reset();
     m_pMapTool.reset();
 
     if (nullptr != m_pImGuiLayer)
