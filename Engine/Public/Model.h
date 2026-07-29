@@ -21,6 +21,9 @@ public:
 	uint32_t Get_NumAnimations() const {
 		return m_iNumAnimations;
 	}
+	bool_t Has_LocalBounds() const { return m_bHasLocalBounds; }
+	const float3_t& Get_LocalBoundsMin() const { return m_vLocalBoundsMin; }
+	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 
@@ -62,6 +65,9 @@ private:
 	uint32_t								m_iNumAnimations = {};
 	vector<shared_ptr<class CAnimation>>	m_Animations;
 	bool_t									m_isAnimLoop = { false };
+	bool_t									m_bHasLocalBounds = { false };
+	float3_t								m_vLocalBoundsMin = {};
+	float3_t								m_vLocalBoundsMax = {};
 
 private:
 	HRESULT Ready_Meshes();
@@ -73,6 +79,8 @@ private:
 	HRESULT Ready_Materials(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Bones(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Animations(const MODEL_ASSET_DATA& asset);
+	void Reset_LocalBounds();
+	void Include_LocalPosition(fvector_t vPosition);
 
 public:
 	static unique_ptr<CModel> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);

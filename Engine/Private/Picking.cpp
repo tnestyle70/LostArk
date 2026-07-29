@@ -42,10 +42,10 @@ HRESULT CPicking::Initialize(HWND hWnd)
 
 void CPicking::Update()
 {    
-    /* ÇÈÅ·ÀÌ µÉ ÇÈ¼¿ÀÇ ¿ùµåÀ§Ä¡¸¦ ±×·Á³õÀº ·»´õÅ¸°ÙÀ» µ¿ÀûÀÎ ÅØ½ºÃÄ¿¡ º¹»çÇØÁØ´Ù. */
+    /* í”½í‚¹ì´ ë  í”½ì…€ì˜ ì›”ë“œìœ„ì¹˜ë¥¼ ê·¸ë ¤ë†“ì€ ë Œë”íƒ€ê²Ÿì„ ë™ì ì¸ í…ìŠ¤ì³ì— ë³µì‚¬í•´ì¤€ë‹¤. */
     CGameInstance::Get().Copy_RT_Resource(TEXT("Target_PickPos"), m_pTexture2D);
 
-    /* º¹»çÇÑ ÅØ½ºÃÄÀÇ ¶ô, ¾ð¶ôÀ» È£ÃâÇØ¼­ ÅØ½ºÃÄ¿¡ ÀúÀåµÇ¾îÀÖ´Â ¿ùµåÀ§Ä¡¸¦ ¹Ì¸® ´Ù ²¨³»³õÀÚ. */
+    /* ë³µì‚¬í•œ í…ìŠ¤ì³ì˜ ë½, ì–¸ë½ì„ í˜¸ì¶œí•´ì„œ í…ìŠ¤ì³ì— ì €ìž¥ë˜ì–´ìžˆëŠ” ì›”ë“œìœ„ì¹˜ë¥¼ ë¯¸ë¦¬ ë‹¤ êº¼ë‚´ë†“ìž. */
     D3D11_MAPPED_SUBRESOURCE            MappedSubResource{};
 
     if (FAILED(m_pContext->Map(m_pTexture2D.Get(), 0, D3D11_MAP_READ_WRITE, 0, &MappedSubResource)))
@@ -58,13 +58,22 @@ void CPicking::Update()
 
 bool_t CPicking::Picking(float4_t& vOut)
 {
+    if (nullptr == m_pWorldPositions)
+        return false;
+
     ::POINT ptMouse = {};
+
     if (FALSE == GetCursorPos(&ptMouse) ||
         FALSE == ScreenToClient(m_hWnd, &ptMouse))
         return false;
 
-    const LONG iViewportWidth = static_cast<LONG>(m_vViewportSize.x);
-    const LONG iViewportHeight = static_cast<LONG>(m_vViewportSize.y);
+    const LONG iViewportWidth =
+        static_cast<LONG>(m_vViewportSize.x);
+    const LONG iViewportHeight =
+        static_cast<LONG>(m_vViewportSize.y);
+
+    if (iViewportWidth <= 0 || iViewportHeight <= 0)
+        return false;
 
     if (ptMouse.x < 0 ||
         ptMouse.y < 0 ||
@@ -73,8 +82,16 @@ bool_t CPicking::Picking(float4_t& vOut)
         return false;
 
     const size_t iIndex =
-        static_cast<size_t>(ptMouse.y) * static_cast<size_t>(iViewportWidth) +
+        static_cast<size_t>(ptMouse.y) *
+        static_cast<size_t>(iViewportWidth) +
         static_cast<size_t>(ptMouse.x);
+
+    const size_t iPixelCount =
+        static_cast<size_t>(iViewportWidth) *
+        static_cast<size_t>(iViewportHeight);
+
+    if (iIndex >= iPixelCount)
+        return false;
 
     if (0.f != m_pWorldPositions[iIndex].w)
     {

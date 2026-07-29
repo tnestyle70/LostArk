@@ -26,6 +26,7 @@ public:
 	static bool_t HandleWindowMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 private:
+	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	bool_t m_bInitialized = false;
 	bool_t m_bFrameStarted = false;
 };

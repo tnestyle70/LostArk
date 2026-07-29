@@ -7,6 +7,7 @@
 #include "ImGuiLayer.h"
 #include "MapTool.h"
 #include "Effect_Tool.h"
+#include "HUDLayoutTool.h"
 #endif
 
 #ifdef _DEBUG
@@ -28,8 +29,6 @@ namespace
 
 Client::CMainApp::CMainApp()
 {
-
-
     /* wireframe or solid, cullmode -> cw, ccw */
    // D3D11_RASTERIZER_DESC           RSDesc{};
    // ComPtr<ID3D11RasterizerState>    pRSState = {};
@@ -40,11 +39,11 @@ Client::CMainApp::CMainApp()
     
    // m_pContext->RSSetState(pRSState.Get());
 
-   // /* ±íÀÌ ºñ±³ x or o, ±íÀÌ ±â·Ï x or o */
+   // /* ê¹Šì´ ë¹„êµ x or o, ê¹Šì´ ê¸°ë¡ x or o */
    // D3D11_DEPTH_STENCIL_DESC
    // m_pContext->OMSetDepthStencilState();
 
-   // /* ºí·»µù¿¡ ´ëÇÑ ¼³Á¤. */
+   // /* ë¸”ë Œë”©ì— ëŒ€í•œ ì„¤ì •. */
    // D3D11_BLEND_DESC
    // m_pContext->OMSetBlendState();
    // 
@@ -59,11 +58,6 @@ Client::CMainApp::CMainApp()
    // //ID3D11SamplerState* pSamplerState = {};
 
    // //m_pDevice->CreateSamplerState(&SamplerDesc, &pSamplerState);
-
-   // 
-    
-
-
 }
 
 Client::CMainApp::~CMainApp()
@@ -130,6 +124,11 @@ void CMainApp::Update(f32_t fTimeDelta)
 #endif
 
     CGameInstance::Get().Update_Engine(fTimeDelta);
+
+#ifdef _DEBUG
+    if (nullptr != m_pMapTool)
+        m_pMapTool->Update(fTimeDelta);
+#endif
 }
 
 HRESULT CMainApp::Render()
@@ -155,7 +154,7 @@ HRESULT CMainApp::Render()
     }
 
 #ifndef _DEBUG
-    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("ÇÑ±Û ÀÌ´Ù12abd"), float2_t(0.f, 0.f));
+    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("í•œê¸€ ì´ë‹¤12abd"), float2_t(0.f, 0.f));
 #endif
 
 #ifdef _DEBUG
@@ -169,6 +168,13 @@ HRESULT CMainApp::Render()
             nullptr != m_pEffectTool)
         {
             m_pEffectTool->Render();
+        }
+
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
+            nullptr != m_pHUDLayoutTool)
+        {
+            m_pHUDLayoutTool->Render();
         }
 
         m_pImGuiLayer->EndFrame();
@@ -259,12 +265,6 @@ HRESULT CMainApp::Ready_Gara()
         }
     }
 
-
-
-
-
-
-
     if (FAILED(DirectX::SaveDDSTextureToFile(m_pContext.Get(), pTexture2D.Get(), TEXT("../Bin/Resources/Textures/Terrain/MyMask.dds"))))
         return E_FAIL;
 
@@ -274,7 +274,7 @@ HRESULT CMainApp::Ready_Gara()
 HRESULT CMainApp::Ready_Fonts()
 {
     /*
-MakeSpriteFont "³Ø½¼lv1°íµñ Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
+MakeSpriteFont "ë„¥ìŠ¨lv1ê³ ë”• Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
 */
 
 
@@ -324,6 +324,7 @@ HRESULT CMainApp::ReadyDebugTools()
 
     m_pMapTool = std::make_unique<CMapTool>();
     m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
+    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
 
     return S_OK;
 }
@@ -361,6 +362,7 @@ void CMainApp::Free()
     CGameInstance::Get().SetInputBlocked(false, false);
 
     m_pEffectTool.reset();
+    m_pHUDLayoutTool.reset();
     m_pMapTool.reset();
 
     if (nullptr != m_pImGuiLayer)
