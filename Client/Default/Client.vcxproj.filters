@@ -222,8 +222,22 @@
     <ClCompile Include="..\Private\Level_Test2.cpp">
       <Filter>01.Levels\02. TestLevel2</Filter>
     </ClCompile>
+
+    <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_AssetIO.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_ResourceCatalog.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Runtime.cpp">
+      <Filter>02.GameObjects\03. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
+
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -293,6 +307,15 @@
     <ClInclude Include="..\Public\Effect.h">
       <Filter>02.GameObjects\99. 수업\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Effect_Types.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_ParticleSimulator.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_AssetIO.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -323,8 +346,16 @@
     <ClInclude Include="..\Public\Level_Test2.h">
       <Filter>01.Levels\02. TestLevel2</Filter>
     </ClInclude>
+
+    <ClInclude Include="..\Public\Effect_ResourceCatalog.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Runtime.h">
+      <Filter>02.GameObjects\03. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
+
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -352,6 +383,15 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectPrimitive.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectSprite.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>

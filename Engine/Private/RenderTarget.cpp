@@ -63,6 +63,8 @@ HRESULT CRenderTarget::Copy_Resource(ComPtr<ID3D11Texture2D> pTexture2D)
 	return S_OK;
 }
 
+#ifdef _DEBUG
+
 HRESULT CRenderTarget::Ready_DebugDesc(f32_t fX, f32_t fY, f32_t fSizeX, f32_t fSizeY)
 {
 	float2_t		vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -75,8 +77,6 @@ HRESULT CRenderTarget::Ready_DebugDesc(f32_t fX, f32_t fY, f32_t fSizeX, f32_t f
 
 	return S_OK;
 }
-
-#ifdef _DEBUG
 
 HRESULT CRenderTarget::Render(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer)
 {

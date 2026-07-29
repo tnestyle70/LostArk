@@ -360,6 +360,8 @@ HRESULT CGameInstance::Render_MRT(const wstring_t& strMRTTag, shared_ptr<class C
 	return m_pTarget_Manager->Render_MRT(strMRTTag, pShader, pVIBuffer);
 }
 
+#endif
+
 bool_t CGameInstance::Picking(float4_t& vOut)
 {
 	return m_pPicking->Picking(vOut);	
@@ -391,8 +393,6 @@ bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRa
 {
 	return m_pFrustum->isIn_Frustum_InWorldSpace(vWorldPoint, fRange);
 }
-
-#endif
 
 
 void CGameInstance::Release_Engine()
