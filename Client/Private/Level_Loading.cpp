@@ -4,6 +4,7 @@
 #include "Level_Logo.h"
 #include "Level_GamePlay.h"
 #include "Level_AssetTest.h"
+#include "Level_Test2.h"
 #include "GameInstance.h"
 
 CLevel_Loading::CLevel_Loading(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -50,6 +51,9 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 			break;
 		case LEVEL::ASSET_TEST:
 			pNewLevel = CLevel_AssetTest::Create(m_pDevice, m_pContext);
+			break;
+		case LEVEL::TEST_LEVEL2:
+			pNewLevel = CLevel_Test2::Create(m_pDevice, m_pContext);
 			break;
 		}	
 

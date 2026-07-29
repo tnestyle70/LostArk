@@ -43,6 +43,7 @@ private:
 	HRESULT Ready_For_Level_Logo();
 	HRESULT Ready_For_Level_GamePlay();
 	HRESULT Ready_For_Level_AssetTest();
+	HRESULT Ready_For_Test_Level2();
 
 public:
 	static unique_ptr<CLoader> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID);
