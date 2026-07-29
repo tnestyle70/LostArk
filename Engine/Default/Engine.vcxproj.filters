@@ -187,11 +187,29 @@
     <Filter Include="04. External\imgui\backends">
       <UniqueIdentifier>{fea74924-d492-4755-875a-70eca8cc6111}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Public\Sound">
-      <UniqueIdentifier>{bc421e7e-bb93-46d8-b5de-847b35ce0891}</UniqueIdentifier>
+    <Filter Include="05. Editor">
+      <UniqueIdentifier>{577ee151-b3da-4519-8e98-85d6dedf44de}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Private\Sound">
-      <UniqueIdentifier>{7cfb14bd-e6a4-4832-97ea-34f61a76e45f}</UniqueIdentifier>
+    <Filter Include="02.Utility\12.BinaryAsset">
+      <UniqueIdentifier>{d52c6e6b-472e-4c1f-a2d7-99cc8d997203}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\00. Core">
+      <UniqueIdentifier>{4e135e76-f3ab-49c3-811e-8aa38e3fe790}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\01. Data">
+      <UniqueIdentifier>{7ab74c72-1410-4f0c-8cf3-1b59a6611d90}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\02. Registry">
+      <UniqueIdentifier>{4c9c9aec-4036-4d9f-9772-23c238845dbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\03. Formats">
+      <UniqueIdentifier>{276dee6b-c1cb-4e82-9398-94da20556895}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\03. Formats\00. Winters">
+      <UniqueIdentifier>{e7ed0196-8ec1-44df-a43f-1faff5ed6609}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\12.BinaryAsset\04. Runtime">
+      <UniqueIdentifier>{58b0473d-771a-4c2d-856f-9389f0878f0e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -372,8 +390,42 @@
     <ClInclude Include="..\public\Frustum.h">
       <Filter>02.Utility\11.Frustum</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Sound\Sound_Manager.h">
-      <Filter>Public\Sound</Filter>
+    <ClInclude Include="..\Public\Sound\Sound_Manager.h" />
+    <ClInclude Include="..\Public\ImGuiLayer.h">
+      <Filter>05. Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\BinaryReader.h">
+      <Filter>02.Utility\12.BinaryAsset\00. Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\ModelAssetData.h">
+      <Filter>02.Utility\12.BinaryAsset\01. Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\ModelDecoderRegistry.h">
+      <Filter>02.Utility\12.BinaryAsset\02. Registry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\ModelDecoder.h">
+      <Filter>02.Utility\12.BinaryAsset\02. Registry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\WModelDecoder.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAsset\CookedModel.h">
+      <Filter>02.Utility\12.BinaryAsset\04. Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WFormatTypes.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WMeshReader.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WMaterialReader.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WSkeletonReader.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WAnimationReader.h">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -536,9 +588,6 @@
     <ClCompile Include="..\private\Frustum.cpp">
       <Filter>02.Utility\11.Frustum</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Sound\Sound_Manager.cpp">
-      <Filter>Private\Sound</Filter>
-    </ClCompile>
     <ClCompile Include="..\External\imgui\imgui.cpp">
       <Filter>04. External\imgui</Filter>
     </ClCompile>
@@ -556,6 +605,34 @@
     </ClCompile>
     <ClCompile Include="..\External\imgui\backends\imgui_impl_win32.cpp">
       <Filter>04. External\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Sound\Sound_Manager.cpp" />
+    <ClCompile Include="..\Private\ImGuiLayer.cpp">
+      <Filter>05. Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\BinaryReader.cpp">
+      <Filter>02.Utility\12.BinaryAsset\00. Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\ModelDecoderRegistry.cpp">
+      <Filter>02.Utility\12.BinaryAsset\02. Registry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\WModelDecoder.cpp">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\CookedModel.cpp">
+      <Filter>02.Utility\12.BinaryAsset\04. Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WMeshReader.cpp">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WMaterialReader.cpp">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WSkeletonReader.cpp">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WAnimationReader.cpp">
+      <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

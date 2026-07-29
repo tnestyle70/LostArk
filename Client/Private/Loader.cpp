@@ -14,6 +14,7 @@
 #include "Explosion.h"
 #include "BackGround.h"
 #include "Camera_Free.h"
+#include "BinaryAssetObject.h"
 
 #include "GameInstance.h"
 
@@ -73,6 +74,9 @@ HRESULT CLoader::Start_Loading()
     case LEVEL::GAMEPLAY:
         hr = Ready_For_Level_GamePlay();
         break;
+    case LEVEL::ASSET_TEST:
+        hr = Ready_For_Level_AssetTest();
+        break;
     }
 
     /* 내 스레드가 임계영역에 해야할 일을 끝냈어. */
@@ -115,6 +119,37 @@ HRESULT CLoader::Ready_For_Level_Logo()
 
     lstrcpy(m_szLoadingText, TEXT("로딩이 완료되었습니다."));
 
+    m_isFinished = true;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_For_Level_AssetTest()
+{
+    lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 자원을 로딩중입니다."));
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Shader_VtxMesh"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxMesh.hlsl"),
+            VTXMESH::Elements,
+            VTXMESH::iNumElements))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_Camera_Free"),
+        CCamera_Free::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_BinaryAsset"),
+        CBinaryAssetObject::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 로딩이 완료되었습니다."));
     m_isFinished = true;
 
     return S_OK;

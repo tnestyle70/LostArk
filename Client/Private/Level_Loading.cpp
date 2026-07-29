@@ -3,6 +3,7 @@
 
 #include "Level_Logo.h"
 #include "Level_GamePlay.h"
+#include "Level_AssetTest.h"
 #include "GameInstance.h"
 
 CLevel_Loading::CLevel_Loading(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -33,7 +34,8 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 	if (nullptr == m_pLoader)
 		return;
 
-	if (GetKeyState(VK_RETURN) & 0x8000 && 
+	if (!CGameInstance::Get().IsKeyboardInputBlocked() &&
+		(GetKeyState(VK_RETURN) & 0x8000) &&
 		true == m_pLoader->Finished())
 	{
 		unique_ptr<CLevel>		pNewLevel = { nullptr };
@@ -46,7 +48,16 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 		case LEVEL::GAMEPLAY:
 			pNewLevel = CLevel_GamePlay::Create(m_pDevice, m_pContext);
 			break;
+		case LEVEL::ASSET_TEST:
+			pNewLevel = CLevel_AssetTest::Create(m_pDevice, m_pContext);
+			break;
 		}	
+
+		if (nullptr == pNewLevel)
+		{
+			MSG_BOX("Failed to Create Level");
+			return;
+		}
 
 		if (FAILED(CGameInstance::Get().Change_Level(ETOUI(m_eNextLevelID), move(pNewLevel))))
 		{

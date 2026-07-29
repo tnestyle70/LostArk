@@ -41,6 +41,9 @@ public: /* For.Input_Device */
 	int8_t	Get_DIKeyState(uint8_t byKeyID);
 	int8_t	Get_DIMouseState(DIM eMouse);
 	int32_t	Get_DIMouseMove(DIMM eMouseState);
+	void SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocked);
+	bool_t IsKeyboardInputBlocked() const;
+	bool_t IsMouseInputBlocked() const;
 
 #ifdef _WIN64
 public: /* For.Sound_Manager */

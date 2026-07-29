@@ -47,12 +47,18 @@
 /_work/
 /out/
 
+# Cooked runtime resources are distributed through the shared Drive pack.
+*.wmesh
+*.wmat
+*.wskel
+*.wanim
+
 # Engine output directory: preserve shader source, ignore built binaries.
 /Engine/Bin/*
 !/Engine/Bin/ShaderFiles/
 !/Engine/Bin/ShaderFiles/**
 
-# Client runtime directory: Resources are Drive-managed, not Git-managed.
+# Client runtime directory: Resources are shared through Drive, not Git or Git LFS.
 /Client/Bin/*
 /Client/Bin/Resources/
 !/Client/Bin/DataFiles/

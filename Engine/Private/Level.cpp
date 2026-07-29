@@ -19,6 +19,9 @@ HRESULT CLevel::Initialize()
 
 void CLevel::Update(f32_t fTimeDelta)
 {
+#ifdef _DEBUG
+	[[maybe_unused]] volatile f32_t fDebugTimeDelta = fTimeDelta;
+#endif
 }
 
 HRESULT CLevel::Render()
