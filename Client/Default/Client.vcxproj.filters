@@ -216,6 +216,9 @@
     <ClCompile Include="..\private\Effect_Tool.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\HUDLayoutTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Level_Test2.cpp">
       <Filter>01.Levels\02. TestLevel2</Filter>
     </ClCompile>
@@ -313,6 +316,9 @@
     </ClInclude>
     <ClInclude Include="..\public\Effect_Tool.h">
       <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\HUDLayoutTool.h">
+      <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_Test2.h">
       <Filter>01.Levels\02. TestLevel2</Filter>
