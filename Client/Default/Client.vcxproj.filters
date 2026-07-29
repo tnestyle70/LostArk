@@ -192,6 +192,9 @@
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\private\Effect_Tool.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -271,6 +274,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\public\Effect_Tool.h">
+      <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

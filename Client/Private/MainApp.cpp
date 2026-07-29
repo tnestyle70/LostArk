@@ -6,6 +6,24 @@
 #ifdef _DEBUG
 #include "ImGuiLayer.h"
 #include "MapTool.h"
+#include "Effect_Tool.h"
+#endif
+
+#ifdef _DEBUG
+namespace
+{
+    bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
+    {
+        if (nullptr == hWnd)
+            return false;
+
+        DWORD dwProcessId = {};
+        if (0 == GetWindowThreadProcessId(hWnd, &dwProcessId))
+            return false;
+
+        return GetCurrentProcessId() == dwProcessId;
+    }
+}
 #endif
 
 Client::CMainApp::CMainApp()
@@ -95,10 +113,18 @@ void CMainApp::Update(f32_t fTimeDelta)
         m_pImGuiLayer->BeginFrame();
 
     const bool_t bMapToolOpen = nullptr != m_pMapTool && m_pMapTool->IsOpen();
+    const HWND hForegroundWindow = GetForegroundWindow();
+    const bool_t bExternalToolFocused = bMapToolOpen &&
+        nullptr != hForegroundWindow &&
+        hForegroundWindow != g_hWnd &&
+        IsWindowOwnedByCurrentProcess(hForegroundWindow);
+
     const bool_t bKeyboardCaptured = bMapToolOpen &&
-        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureKeyboard();
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
     const bool_t bMouseCaptured = bMapToolOpen &&
-        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureMouse();
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureMouse() || bExternalToolFocused);
 
     CGameInstance::Get().SetInputBlocked(bKeyboardCaptured, bMouseCaptured);
 #endif
@@ -138,6 +164,14 @@ HRESULT CMainApp::Render()
     {
         if (nullptr != m_pMapTool)
             m_pMapTool->Render();
+
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
+            nullptr != m_pEffectTool)
+        {
+            m_pEffectTool->Render();
+        }
+
         m_pImGuiLayer->EndFrame();
     }
 #endif
@@ -290,12 +324,15 @@ HRESULT CMainApp::ReadyDebugTools()
     }
 
     m_pMapTool = std::make_unique<CMapTool>();
+    m_pEffectTool = std::make_unique<CEffect_Tool>();
+
     return S_OK;
 }
 
 void CMainApp::UpdateDebugToolShortcut()
 {
-    const bool_t bWindowFocused = GetForegroundWindow() == g_hWnd;
+    const bool_t bWindowFocused =
+        IsWindowOwnedByCurrentProcess(GetForegroundWindow());
     const bool_t bF1Down = bWindowFocused &&
         0 != (GetAsyncKeyState(VK_F1) & 0x8000);
 
@@ -324,6 +361,7 @@ void CMainApp::Free()
 #ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
 
+    m_pEffectTool.reset();
     m_pMapTool.reset();
 
     if (nullptr != m_pImGuiLayer)

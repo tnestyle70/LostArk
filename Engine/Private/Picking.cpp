@@ -58,19 +58,31 @@ void CPicking::Update()
 
 bool_t CPicking::Picking(float4_t& vOut)
 {
-    ::POINT           ptMouse = {};
-    GetCursorPos(&ptMouse);
-    ScreenToClient(m_hWnd, &ptMouse);
+    ::POINT ptMouse = {};
+    if (FALSE == GetCursorPos(&ptMouse) ||
+        FALSE == ScreenToClient(m_hWnd, &ptMouse))
+        return false;
 
-    uint32_t        iIndex = ptMouse.y * static_cast<uint32_t>(m_vViewportSize.x) + ptMouse.x;
+    const LONG iViewportWidth = static_cast<LONG>(m_vViewportSize.x);
+    const LONG iViewportHeight = static_cast<LONG>(m_vViewportSize.y);
 
-    if (0 != m_pWorldPositions[iIndex].w)
+    if (ptMouse.x < 0 ||
+        ptMouse.y < 0 ||
+        ptMouse.x >= iViewportWidth ||
+        ptMouse.y >= iViewportHeight)
+        return false;
+
+    const size_t iIndex =
+        static_cast<size_t>(ptMouse.y) * static_cast<size_t>(iViewportWidth) +
+        static_cast<size_t>(ptMouse.x);
+
+    if (0.f != m_pWorldPositions[iIndex].w)
     {
         vOut = m_pWorldPositions[iIndex];
         return true;
     }
-    else
-        return false;    
+
+    return false;
 }
 
 unique_ptr<CPicking> CPicking::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, HWND hWnd)
