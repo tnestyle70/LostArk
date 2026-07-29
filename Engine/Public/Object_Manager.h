@@ -2,8 +2,8 @@
 
 #include "Layer.h"
 
-/* »çº»°´Ã¼µéÀ» ·¹º§º°·Î ±×·ì(CLayer)Áö¾î¼­ º¸°üÇÑ´Ù. */
-/* º¸°üÇÏ°í ÀÖ´Â°´Ã¼µéÀÇ ¹İº¹ÀûÀÎ ¾÷µ¥ÀÌÆ® È£ÃâÀ» ´ã´çÇÑ´Ù. */
+/* ì‚¬ë³¸ê°ì²´ë“¤ì„ ë ˆë²¨ë³„ë¡œ ê·¸ë£¹(CLayer)ì§€ì–´ì„œ ë³´ê´€í•œë‹¤. */
+/* ë³´ê´€í•˜ê³  ìˆëŠ”ê°ì²´ë“¤ì˜ ë°˜ë³µì ì¸ ì—…ë°ì´íŠ¸ í˜¸ì¶œì„ ë‹´ë‹¹í•œë‹¤. */
 
 NS_BEGIN(Engine)
 
@@ -21,7 +21,8 @@ public:
 
 public:
 	HRESULT Initialize(uint32_t iNumLevels);
-	HRESULT Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg);
+	HRESULT Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg, shared_ptr<CGameObject>* pOutGameObject = nullptr);
+	HRESULT Remove_GameObject_from_Layer(uint32_t iLevelIndex, const wstring_t& strLayerTag, const shared_ptr<CGameObject>& pGameObject);
 	void Priority_Update(f32_t fTimeDelta);
 	void Update(f32_t fTimeDelta);
 	void Late_Update(f32_t fTimeDelta);

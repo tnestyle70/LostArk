@@ -103,12 +103,6 @@
     <Filter Include="02.GameObjects\98. TestBinaryAsset">
       <UniqueIdentifier>{1d1cb11f-147b-4124-aab5-36a9909bc25f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="02.GameObjects\01. LostArk">
-      <UniqueIdentifier>{bf280c62-d16e-4e4e-8d0c-e29d710de3e6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\01. LostArk\Valtan">
-      <UniqueIdentifier>{a88bfda4-375a-4ff5-825b-2dcf85008ea0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
@@ -117,6 +111,9 @@
     </Filter>
     <Filter Include="02.GameObjects\02. World">
       <UniqueIdentifier>{5f174343-f8c8-48ca-9e8a-611019312830}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\02. World\Map">
+      <UniqueIdentifier>{7a44eaf0-e8d2-45cd-99f8-c9c5ddf4475c}</UniqueIdentifier>
     </Filter>
     <Filter Include="02.GameObjects\03. Effect">
       <UniqueIdentifier>{baeaae57-d96c-42f0-877b-403bbb88d842}</UniqueIdentifier>
@@ -132,6 +129,12 @@
     </Filter>
     <Filter Include="01.Levels\00. TestLevel1">
       <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles">
+      <UniqueIdentifier>{aacfd472-6475-47c4-bad3-af1e9a17105e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Map">
+      <UniqueIdentifier>{a6622e2c-78fc-4fbb-b1db-d57f8e2947aa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -192,14 +195,17 @@
     <ClCompile Include="..\Private\MapTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapAssetCatalog.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapAssetObject.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Level_AssetTest.cpp">
       <Filter>01.Levels\00. TestLevel1</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BinaryAssetObject.cpp">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Valtan.cpp">
-      <Filter>02.GameObjects\01. LostArk\Valtan</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Body_Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
@@ -209,6 +215,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Level_Test2.cpp">
       <Filter>01.Levels\02. TestLevel2</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Valtan.cpp">
+      <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -281,14 +290,17 @@
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MapAssetCatalog.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapAssetObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Level_AssetTest.h">
       <Filter>01.Levels\00. TestLevel1</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BinaryAssetObject.h">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Valtan.h">
-      <Filter>02.GameObjects\01. LostArk\Valtan</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Body_Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
@@ -298,6 +310,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Level_Test2.h">
       <Filter>01.Levels\02. TestLevel2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Valtan.h">
+      <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -317,6 +332,12 @@
     <None Include="Client.vcxproj">
       <Filter>98.Default</Filter>
     </None>
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets">
+      <Filter>96.DataFiles\Map</Filter>
+    </None>
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements">
+      <Filter>96.DataFiles\Map</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">
@@ -326,6 +347,9 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl">

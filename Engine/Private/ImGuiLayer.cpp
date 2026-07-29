@@ -47,6 +47,7 @@ bool_t CImGuiLayer::Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceCon
 		return false;
 	}
 
+	m_pContext = pContext;
 	m_bInitialized = true;
 	return true;
 }
@@ -74,8 +75,19 @@ void CImGuiLayer::EndFrame()
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
+		ComPtr<ID3D11RenderTargetView> pPreviousRTV;
+		ComPtr<ID3D11DepthStencilView> pPreviousDSV;
+		if (nullptr != m_pContext)
+			m_pContext->OMGetRenderTargets(1, &pPreviousRTV, &pPreviousDSV);
+
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
+
+		if (nullptr != m_pContext)
+		{
+			ID3D11RenderTargetView* pRTV = pPreviousRTV.Get();
+			m_pContext->OMSetRenderTargets(1, &pRTV, pPreviousDSV.Get());
+		}
 	}
 
 	m_bFrameStarted = false;
@@ -102,6 +114,7 @@ void CImGuiLayer::Shutdown()
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
+	m_pContext.Reset();
 	m_bInitialized = false;
 }
 
