@@ -12,6 +12,7 @@ public:
 		int32_t		iStartCellIndex = {-1};
 		shared_ptr<class CTransform> pTransformCom;
 	}NAVIGATION_DESC;
+
 private:
 	CNavigation(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 public:

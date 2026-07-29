@@ -314,7 +314,10 @@ HRESULT CMainApp::ReadyDebugTools()
         return E_FAIL;
     }
 
-    m_pMapTool = std::make_unique<CMapTool>();
+    auto mapTool = std::make_unique<CMapTool>();
+    if (FAILED(mapTool->Initialize(m_pDevice, m_pContext)))
+        return E_FAIL;
+    m_pMapTool = std::move(mapTool);
     m_pEffectTool = std::make_unique<CEffect_Tool>();
 
     return S_OK;

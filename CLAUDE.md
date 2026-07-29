@@ -1,6 +1,11 @@
 # CLAUDE.md
 
-이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 지침이다.
+이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 LostArk 코드베이스 설명이다.
+공통 에이전트 행동 규칙의 정본은 `AGENTS.md`이며, 작업 시작 시 먼저 읽는다.
+계획서·설계서 요청은 `.md/계획서작성규칙.md`를 추가로 읽고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다. 계획서는 C1~C8, 문제 해결 ①~⑤, 자료구조·알고리즘, 파일 목록, 전체 구현 코드 순서로 작성한다.
+LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md`를 먼저 읽는다.
+
+@AGENTS.md
 
 ## 프로젝트 개요
 
@@ -72,11 +77,11 @@
 
 `Engine/`, `Client/`의 **C++ 소스는 CP949(ANSI)로 저장되어 있고, 주석이 한국어다.** 편집할 때 기존 인코딩을 유지할 것. 파일 전체를 UTF-8로 다시 저장하면 한 줄만 고쳐도 전체가 변경된 것으로 보여 팀원의 diff/merge를 망가뜨린다.
 
-반대로 `.md/plan/*.md` 문서와 이 파일은 UTF-8이다.
+반대로 `.md/GB/**/*.md` 문서와 이 파일은 UTF-8이다.
 
 ### 작업 문서
 
-`.md/plan/`에 `YYYY-MM-DD_주제_PLAN.md` / `_RESULT.md` 형식으로 작업 계획과 결과를 남기는 관례가 있다. 규모 있는 작업을 할 때는 기존 문서를 먼저 읽고, 같은 형식으로 남긴다.
+`.md/GB/<MM-DD>/`에 `YYYY-MM-DD_주제_PLAN.md` / `_RESULT.md` 형식으로 작업 계획과 결과를 남긴다. 규모 있는 작업을 할 때는 기존 문서를 먼저 읽고, 같은 형식으로 남긴다.
 
 ## 아키텍처
 
@@ -151,18 +156,20 @@ enum class LEVEL { STATIC, LOADING, LOGO, GAMEPLAY, ASSET_TEST, END };
 
 ### 바이너리 에셋 파이프라인
 
-Assimp로 FBX를 런타임 파싱하는 기존 경로와, 미리 쿠킹된 **W-포맷(`.wmesh/.wmat/.wskel/.wanim`)** 을 읽는 경로가 공존한다.
+런타임 모델 입구는 `CModel` 하나로 통합한다. `CModel::Create()`는 FBX를 Assimp로 읽고, `.wmodel`은 `CWModelDecoder`로 읽은 뒤 모두 기존 `CMesh / CMaterial / CBone / CAnimation`으로 변환한다.
 
-- `Engine/Public/BinaryAsset/` — `CBinaryReader`, `IModelDecoder`, `CWModelDecoder`, `CModelDecoderRegistry`, `CCookedModel`
-- `CModelDecoderRegistry::Get()`에 디코더를 등록하고 `Decode(desc, outAsset)`로 판독한다. 실패 원인은 `Get_LastReport()`로 확인한다. 새 포맷은 `IModelDecoder` 구현을 추가해 등록하는 방식으로 붙인다.
-- 클라이언트 쪽 소비자는 `CBinaryAssetObject`이고, `LEVEL::ASSET_TEST`가 검증용 레벨이다. **공유 에셋이 없어도 레벨과 F1 진단창은 떠야 한다** — 로드 실패를 치명적 오류로 처리하지 말 것.
+- **`CCookedModel`과 `CBinaryAssetObject`는 레거시 검증 경로다. 신규 기능을 추가하거나 MapTool·GameObject가 이 경로를 사용하게 하지 않는다.**
+- `Engine/Public/BinaryAsset/`의 `CBinaryReader`, `IModelDecoder`, `CWModelDecoder` 등 decode 기반 코드는 `CModel` 내부의 `.wmodel` 입력을 지원한다.
+- 신규 맵·캐릭터·보스 모델은 `CLoader -> CModel Prototype -> GameObject의 CModel Component` 계약을 사용한다.
+- `.wmodel` 머티리얼에 diffuse와 emissive가 모두 없으면 `CMaterial`이 1×1 회색 diffuse를 만들어 형상 확인을 보장한다. 이는 안전망일 뿐이며 최종 에셋은 실제 텍스처 경로를 가져야 한다.
+- 추출·스케일·텍스처 복구의 상세 주의사항은 `.md/GB/07-29/gotchas.md`를 따른다.
 
 ### 런타임 에셋 루트
 
 `CRuntimeAssetRoot::Get()`이 Drive 공유 팩의 루트를 해석한다.
 
 1. 환경 변수 `LOSTARK_SHARED_ASSET_ROOT`가 있으면 그 경로
-2. 없으면 `<exe 폴더>/Resources/LostArk/Packs/dev-lol-annie`
+2. 없으면 `<exe 폴더>/Resources/LostArk`
 
 팀원마다 팩 위치가 다를 수 있으므로 **공유 에셋 경로를 코드에 하드코딩하지 말고 `CRuntimeAssetRoot::Resolve()`를 쓴다.**
 
