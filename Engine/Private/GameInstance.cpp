@@ -214,6 +214,11 @@ HRESULT CGameInstance::Change_Level(uint32_t iCurrentLevelID, unique_ptr<class C
 	return m_pLevel_Manager->Change_Level(iCurrentLevelID, move(pNewLevel));
 }
 
+uint32_t CGameInstance::Get_CurrentLevelID() const
+{
+	return nullptr == m_pLevel_Manager ? 0u : m_pLevel_Manager->Get_CurrentLevelID();
+}
+
 HRESULT CGameInstance::Add_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, unique_ptr<class CPrototype> pPrototype)
 {
 	return m_pPrototype_Manager->Add_Prototype(iLevelIndex, strPrototypeTag, move(pPrototype));
@@ -234,9 +239,14 @@ shared_ptr<CComponent> CGameInstance::Get_Component(uint32_t iLevelIndex, const 
 	return m_pObject_Manager->Get_Component(iLevelIndex, strLayerTag, strPartTag, strComponentTag, iIndex);
 }
 
-HRESULT CGameInstance::Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg)
+HRESULT CGameInstance::Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg, shared_ptr<CGameObject>* pOutGameObject)
 {
-	return m_pObject_Manager->Add_GameObject_to_Layer(iPrototypeLevelIndex, strPrototypeTag, iLayerLevelIndex, strLayerTag, pArg);
+	return m_pObject_Manager->Add_GameObject_to_Layer(iPrototypeLevelIndex, strPrototypeTag, iLayerLevelIndex, strLayerTag, pArg, pOutGameObject);
+}
+
+HRESULT CGameInstance::Remove_GameObject_from_Layer(uint32_t iLevelIndex, const wstring_t& strLayerTag, const shared_ptr<CGameObject>& pGameObject)
+{
+	return m_pObject_Manager->Remove_GameObject_from_Layer(iLevelIndex, strLayerTag, pGameObject);
 }
 
 HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject)
@@ -393,9 +403,10 @@ void CGameInstance::Release_Engine()
 	m_pLight_Manager.reset();
 	m_pPipeLine.reset();
 	m_pRenderer.reset();
+	/* 현재 Loading Level이 보유한 Loader 스레드를 먼저 종료시킨다. */
+	m_pLevel_Manager.reset();
 	m_pObject_Manager.reset();
 	m_pPrototype_Manager.reset();
-	m_pLevel_Manager.reset();
 	m_pTimer_Manager.reset();
 #ifdef _WIN64
 	m_pSound_Manager.reset();

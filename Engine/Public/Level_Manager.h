@@ -2,11 +2,11 @@
 
 #include "Level.h"
 
-/* 1. ÇöÀç ÇÒ´çµÈ ·¹º§À» º¸°üÇÑ´Ù. */
-/* 1_1. º¸°üÇÏ°í ÀÖ´Â ·¹º§ÀÇ ¹İº¹ÀûÀÎ Update, Render¸¦ È£ÃâÇÑ´Ù. */
+/* 1. í˜„ì¬ í• ë‹¹ëœ ë ˆë²¨ì„ ë³´ê´€í•œë‹¤. */
+/* 1_1. ë³´ê´€í•˜ê³  ìˆëŠ” ë ˆë²¨ì˜ ë°˜ë³µì ì¸ Update, Renderë¥¼ í˜¸ì¶œí•œë‹¤. */
 
-/* 2. ±³Ã¼µÈ ÀÌÀü ·¹º§À» »èÁ¦ÇÑ´Ù. */
-/* 2_1. ±âÁ¸ ·¹º§À» À§ÇØ ÇÒ´çµÆ´ø ´Ù¾çÇÑ ¸®¼Ò½ºµéÀ» »èÁ¦ÇÑ´Ù. */
+/* 2. êµì²´ëœ ì´ì „ ë ˆë²¨ì„ ì‚­ì œí•œë‹¤. */
+/* 2_1. ê¸°ì¡´ ë ˆë²¨ì„ ìœ„í•´ í• ë‹¹ëë˜ ë‹¤ì–‘í•œ ë¦¬ì†ŒìŠ¤ë“¤ì„ ì‚­ì œí•œë‹¤. */
 
 NS_BEGIN(Engine)
 
@@ -18,6 +18,7 @@ public:
 	~CLevel_Manager();
 
 public:
+	uint32_t Get_CurrentLevelID() const { return m_iCurrentLevelID; }
 	HRESULT Change_Level(uint32_t iCurrentLevelID, unique_ptr<class CLevel> pNewLevel);
 	void Update(f32_t fTimeDelta);
 	HRESULT Render();

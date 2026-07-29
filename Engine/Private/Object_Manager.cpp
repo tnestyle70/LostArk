@@ -45,31 +45,54 @@ HRESULT CObject_Manager::Initialize(uint32_t iNumLevels)
 	return S_OK;
 }
 
-HRESULT CObject_Manager::Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg)
+HRESULT CObject_Manager::Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg, shared_ptr<CGameObject>* pOutGameObject)
 {
+	if (iLayerLevelIndex >= m_iNumLevels)
+		return E_FAIL;
+
 	auto	pGameObject = CGameInstance::Get().Clone_Prototype(iPrototypeLevelIndex, strPrototypeTag, pArg);
 	if (nullptr == pGameObject)
+		return E_FAIL;
+
+	auto pClonedGameObject = dynamic_pointer_cast<CGameObject>(pGameObject);
+	if (nullptr == pClonedGameObject)
 		return E_FAIL;
 
 	auto		pLayer = Find_Layer(iLayerLevelIndex, strLayerTag);
 	
 	if (nullptr == pLayer)
 	{
-		/* ·¹ÀÌ¾î¸¦ »õ·Î »ý¼ºÇÏ¿© Ãß°¡ÇÑ´Ù. */
+		/* ë ˆì´ì–´ë¥¼ ìƒˆë¡œ ìƒì„±í•˜ì—¬ ì¶”ê°€í•œë‹¤. */
 		auto	pNewLayer = CLayer::Create();
 
-		if (FAILED(pNewLayer->Add_GameObject(dynamic_pointer_cast<CGameObject>(pGameObject))))
+		if (FAILED(pNewLayer->Add_GameObject(pClonedGameObject)))
 			return E_FAIL;
 
 		m_pLayers[iLayerLevelIndex].emplace(strLayerTag, pNewLayer);
 	}
 	else
 	{
-		/* ±âÁ¸ ·¹ÀÌ¾î¿¡ ±×³É Ãß°¡ÇÑ´Ù. */
-		pLayer->Add_GameObject(dynamic_pointer_cast<CGameObject>(pGameObject));
+		/* ê¸°ì¡´ ë ˆì´ì–´ì— ê·¸ëƒ¥ ì¶”ê°€í•œë‹¤. */
+		if (FAILED(pLayer->Add_GameObject(pClonedGameObject)))
+			return E_FAIL;
 	}
 
+	if (nullptr != pOutGameObject)
+		*pOutGameObject = pClonedGameObject;
+
 	return S_OK;
+}
+
+HRESULT CObject_Manager::Remove_GameObject_from_Layer(uint32_t iLevelIndex, const wstring_t& strLayerTag, const shared_ptr<CGameObject>& pGameObject)
+{
+	if (iLevelIndex >= m_iNumLevels)
+		return E_FAIL;
+
+	CLayer* pLayer = Find_Layer(iLevelIndex, strLayerTag);
+	if (nullptr == pLayer)
+		return E_FAIL;
+
+	return pLayer->Remove_GameObject(pGameObject);
 }
 
 void CObject_Manager::Priority_Update(f32_t fTimeDelta)
@@ -121,6 +144,9 @@ HRESULT CObject_Manager::Clear(uint32_t iClearLevelID)
 
 CLayer* CObject_Manager::Find_Layer(uint32_t iLevelIndex, const wstring_t& strLayerTag)
 {
+	if (iLevelIndex >= m_iNumLevels || nullptr == m_pLayers)
+		return nullptr;
+
 	auto    iter = m_pLayers[iLevelIndex].find(strLayerTag);
 
 	if (iter == m_pLayers[iLevelIndex].end())

@@ -19,10 +19,10 @@ HRESULT CLevel_Manager::Change_Level(uint32_t iCurrentLevelID, unique_ptr<class 
 			return E_FAIL;
 	}
 
-	/* ±âÁ¸¿¡ ÇÒ´çµÇ¾îÀÖ´ø ·¹º§À» »èÁ¦ÇÑ´Ù.*/
+	/* ê¸°ì¡´ì— í• ë‹¹ë˜ì–´ìžˆë˜ ë ˆë²¨ì„ ì‚­ì œí•œë‹¤.*/
 	Safe_Reset(m_pCurrentLevel);	
 
-	/* »õ·Î¿î ·¹º§·Î ±³Ã¼ÇÑ´Ù. */
+	/* ìƒˆë¡œìš´ ë ˆë²¨ë¡œ êµì²´í•œë‹¤. */
 	m_pCurrentLevel = std::move(pNewLevel);
 
 	m_iCurrentLevelID = iCurrentLevelID;

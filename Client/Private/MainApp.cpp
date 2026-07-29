@@ -28,8 +28,6 @@ namespace
 
 Client::CMainApp::CMainApp()
 {
-
-
     /* wireframe or solid, cullmode -> cw, ccw */
    // D3D11_RASTERIZER_DESC           RSDesc{};
    // ComPtr<ID3D11RasterizerState>    pRSState = {};
@@ -40,11 +38,11 @@ Client::CMainApp::CMainApp()
     
    // m_pContext->RSSetState(pRSState.Get());
 
-   // /* ±Ì¿Ã ∫Ò±≥ x or o, ±Ì¿Ã ±‚∑œ x or o */
+   // /* ÍπäÏù¥ ÎπÑÍµê x or o, ÍπäÏù¥ Í∏∞Î°ù x or o */
    // D3D11_DEPTH_STENCIL_DESC
    // m_pContext->OMSetDepthStencilState();
 
-   // /* ∫Ì∑ªµ˘ø° ¥Î«— º≥¡§. */
+   // /* Î∏îÎ†åÎî©Ïóê ÎåÄÌïú ÏÑ§Ï†ï. */
    // D3D11_BLEND_DESC
    // m_pContext->OMSetBlendState();
    // 
@@ -59,11 +57,6 @@ Client::CMainApp::CMainApp()
    // //ID3D11SamplerState* pSamplerState = {};
 
    // //m_pDevice->CreateSamplerState(&SamplerDesc, &pSamplerState);
-
-   // 
-    
-
-
 }
 
 Client::CMainApp::~CMainApp()
@@ -130,6 +123,11 @@ void CMainApp::Update(f32_t fTimeDelta)
 #endif
 
     CGameInstance::Get().Update_Engine(fTimeDelta);
+
+#ifdef _DEBUG
+    if (nullptr != m_pMapTool)
+        m_pMapTool->Update(fTimeDelta);
+#endif
 }
 
 HRESULT CMainApp::Render()
@@ -155,7 +153,7 @@ HRESULT CMainApp::Render()
     }
 
 #ifndef _DEBUG
-    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("«—±€ ¿Ã¥Ÿ12abd"), float2_t(0.f, 0.f));
+    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("ÌïúÍ∏Ä Ïù¥Îã§12abd"), float2_t(0.f, 0.f));
 #endif
 
 #ifdef _DEBUG
@@ -259,12 +257,6 @@ HRESULT CMainApp::Ready_Gara()
         }
     }
 
-
-
-
-
-
-
     if (FAILED(DirectX::SaveDDSTextureToFile(m_pContext.Get(), pTexture2D.Get(), TEXT("../Bin/Resources/Textures/Terrain/MyMask.dds"))))
         return E_FAIL;
 
@@ -274,7 +266,7 @@ HRESULT CMainApp::Ready_Gara()
 HRESULT CMainApp::Ready_Fonts()
 {
     /*
-MakeSpriteFont "≥ÿΩºlv1∞ÌµÒ Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
+MakeSpriteFont "ÎÑ•Ïä®lv1Í≥†Îîï Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
 */
 
 

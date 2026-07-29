@@ -36,6 +36,8 @@
     <ClInclude Include="..\Public\Level_Test2.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
+    <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapAssetObject.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\Monster.h" />
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
@@ -67,6 +69,8 @@
     <ClCompile Include="..\Private\Level_Test2.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapAssetObject.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
@@ -87,6 +91,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Client.vcxproj" />
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets" />
+    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
@@ -95,6 +101,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxNorTex.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl" />
   </ItemGroup>
