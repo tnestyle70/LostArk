@@ -86,7 +86,7 @@ HRESULT CLevel_AssetTest::Ready_BinaryAsset()
 		asset.asset.meshPath = characterRoot / L"MN_RPBF_01.wmesh";
 		asset.asset.materialPath = characterRoot / L"MN_RPBF_01.wmat";
 		asset.asset.skeletonPath = characterRoot / L"MN_RPBF_01.wskel";
-		asset.asset.defaultAnimationName = "idle_normal_1";
+		asset.asset.defaultAnimationName = "idle_battle_1";
 
 		const filesystem::path animationRoot = characterRoot / L"anims";
 		if (filesystem::exists(animationRoot))

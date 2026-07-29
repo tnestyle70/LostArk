@@ -19,7 +19,7 @@ filesystem::path CRuntimeAssetRoot::Get()
 		return {};
 
 	return (filesystem::path(modulePath).parent_path() /
-		L"Resources" / L"LostArk" / L"Packs" / L"dev-lol-annie").lexically_normal();
+		L"Resources" / L"LostArk").lexically_normal();
 }
 
 filesystem::path CRuntimeAssetRoot::Resolve(const filesystem::path& relativePath)

@@ -14,6 +14,37 @@ namespace
 		return 0 == memcmp(pValue, pMagic, 4);
 	}
 
+	filesystem::path ResolveBelowAssetRoot(const MODEL_ASSET_LOAD_DESC& desc,
+		const filesystem::path& storedPath)
+	{
+		if (desc.assetRoot.empty())
+			return {};
+
+		const wstring genericPath = storedPath.generic_wstring();
+		constexpr const wchar_t* lostArkPrefixes[] =
+		{
+			L"Resource/LostArk/",
+			L"Resources/LostArk/"
+		};
+
+		for (const wchar_t* pPrefix : lostArkPrefixes)
+		{
+			const wstring prefix = pPrefix;
+			const size_t prefixPosition = genericPath.find(prefix);
+			if (wstring::npos == prefixPosition)
+				continue;
+
+			const filesystem::path relativeToLostArk =
+				genericPath.substr(prefixPosition + prefix.size());
+			const filesystem::path candidate =
+				(desc.assetRoot / relativeToLostArk).lexically_normal();
+			if (filesystem::exists(candidate))
+				return candidate;
+		}
+
+		return {};
+	}
+
 	filesystem::path ResolveTexturePath(const MODEL_ASSET_LOAD_DESC& desc,
 		const filesystem::path& materialPath,
 		const wchar_t* pValue)
@@ -26,7 +57,14 @@ namespace
 
 		const filesystem::path storedPath(wstring(pValue, length));
 		if (storedPath.is_absolute())
-			return storedPath.lexically_normal();
+		{
+			const filesystem::path normalizedPath = storedPath.lexically_normal();
+			if (filesystem::exists(normalizedPath))
+				return normalizedPath;
+
+			const filesystem::path relocatedPath = ResolveBelowAssetRoot(desc, storedPath);
+			return relocatedPath.empty() ? normalizedPath : relocatedPath;
+		}
 
 		const filesystem::path besideMaterial =
 			(materialPath.parent_path() / storedPath).lexically_normal();
@@ -40,17 +78,10 @@ namespace
 			if (filesystem::exists(belowAssetRoot))
 				return belowAssetRoot;
 
-			const wstring genericPath = storedPath.generic_wstring();
-			const wstring lostArkPrefix = L"Resource/LostArk/";
-			if (0 == genericPath.rfind(lostArkPrefix, 0))
-			{
-				const filesystem::path relativeToLostArk =
-					genericPath.substr(lostArkPrefix.size());
-				const filesystem::path belowLostArkRoot =
-					(desc.assetRoot / relativeToLostArk).lexically_normal();
-				if (filesystem::exists(belowLostArkRoot))
-					return belowLostArkRoot;
-			}
+
+			const filesystem::path relocatedPath = ResolveBelowAssetRoot(desc, storedPath);
+			if (!relocatedPath.empty())
+				return relocatedPath;
 		}
 
 		return besideMaterial;
