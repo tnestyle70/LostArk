@@ -6,6 +6,7 @@
 #ifdef _DEBUG
 #include "ImGuiLayer.h"
 #include "MapTool.h"
+#include "Animation_Tool.h"
 #include "Effect_Tool.h"
 #endif
 
@@ -169,6 +170,13 @@ HRESULT CMainApp::Render()
             m_pEffectTool->Render();
         }
 
+        if (nullptr != m_pMapTool &&
+            m_pMapTool->IsOpen() &&
+            nullptr != m_pAnimationTool)
+        {
+            m_pAnimationTool->Render();
+        }
+
         m_pImGuiLayer->EndFrame();
     }
 #endif
@@ -316,6 +324,7 @@ HRESULT CMainApp::ReadyDebugTools()
 
     m_pMapTool = std::make_unique<CMapTool>();
     m_pEffectTool = std::make_unique<CEffect_Tool>();
+    m_pAnimationTool = std::make_unique<CAnimation_Tool>();
 
     return S_OK;
 }
@@ -352,6 +361,7 @@ void CMainApp::Free()
 #ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
 
+    m_pAnimationTool.reset();
     m_pEffectTool.reset();
     m_pMapTool.reset();
 

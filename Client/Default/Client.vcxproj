@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\public\BackGround.h" />
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Body_LanceMaster.h" />
@@ -55,6 +56,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Body_LanceMaster.cpp" />

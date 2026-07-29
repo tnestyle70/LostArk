@@ -11,6 +11,7 @@ NS_BEGIN(Client)
 
 class CMapTool;
 class CEffect_Tool;
+class CAnimation_Tool;
 
 class CMainApp final
 {
@@ -32,6 +33,7 @@ private:
 	std::unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	std::unique_ptr<CMapTool> m_pMapTool = { nullptr };
 	std::unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
+	std::unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
 	bool m_bF1Down = false;
 #endif
 
