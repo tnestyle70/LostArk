@@ -1,7 +1,7 @@
 #include "Engine_Shader_Defines.hlsli"
 
 float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
-texture2D   g_DiffuseTexture;
+Texture2D   g_DiffuseTexture;
 matrix      g_BoneMatrices[512];
 
 
@@ -29,12 +29,10 @@ VS_OUT VS_MAIN(VS_IN In)
 {
     VS_OUT Out;
     
-    float fWeightW = 1.f - (In.vBlendWeights.x + In.vBlendWeights.y + In.vBlendWeights.z);
-    
     matrix BoneMatrix = g_BoneMatrices[In.vBlendIndices.x] * In.vBlendWeights.x +
          g_BoneMatrices[In.vBlendIndices.y] * In.vBlendWeights.y + 
          g_BoneMatrices[In.vBlendIndices.z] * In.vBlendWeights.z + 
-         g_BoneMatrices[In.vBlendIndices.w] * fWeightW;
+         g_BoneMatrices[In.vBlendIndices.w] * In.vBlendWeights.w;
     
     vector vPosition = mul(vector(In.vPosition, 1.f), BoneMatrix);
     vector vNormal = mul(vector(In.vNormal, 0.f), BoneMatrix);
@@ -48,7 +46,7 @@ VS_OUT VS_MAIN(VS_IN In)
     Out.vPosition = mul(vPosition, matWVP);
     Out.vNormal = normalize(mul(vNormal, g_WorldMatrix));
     Out.vTexcoord = In.vTexcoord;
-    Out.vWorldPos = mul(vector(In.vPosition, 1.f), g_WorldMatrix);
+    Out.vWorldPos = mul(vPosition, g_WorldMatrix);
     Out.vProjPos = Out.vPosition;
     
     return Out;
@@ -72,6 +70,7 @@ struct PS_OUT
     float4 vDiffuse : SV_TARGET0;
     float4 vNormal : SV_TARGET1;
     float4 vDepth : SV_TARGET2;
+    float4 vPickPos : SV_TARGET3;
 };
 
 struct PS_OUT_SHADOW
@@ -96,6 +95,7 @@ PS_OUT PS_MAIN(PS_IN In)
     /* 노멀렌더타겟 각 성분의 최소~최대 => 0 ~ 1 */
     Out.vNormal = vector((In.vNormal.xyz * 0.5f) + 0.5f, 0.f);    
     Out.vDepth = vector(In.vProjPos.z / In.vProjPos.w, In.vProjPos.w / 1000.f, 0.f, 0.f);
+    Out.vPickPos = In.vWorldPos;
    
     return Out;    
 }

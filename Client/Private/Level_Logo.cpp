@@ -1,7 +1,8 @@
-#include "Level_Logo.h"
+ï»¿#include "Level_Logo.h"
 
 #include "Level_Loading.h"
 #include "GameInstance.h"
+#include "RuntimeAssetRoot.h"
 
 CLevel_Logo::CLevel_Logo(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel { pDevice, pContext }
@@ -21,8 +22,10 @@ HRESULT CLevel_Logo::Initialize()
 		return E_FAIL;
 
 #ifdef _WIN64
+	const filesystem::path soundPath =
+		CRuntimeAssetRoot::Resolve(L"Sound/Yasuo/Yasuo_Q.wav");
 	if (FAILED(CGameInstance::Get().Play_Sound(
-		TEXT("../Bin/Resources/Sound/Yasuo/Yasuo_Q.wav"), 0.8f)))
+		soundPath.wstring(), 0.8f)))
 		return E_FAIL;
 #endif
 
@@ -67,7 +70,7 @@ HRESULT CLevel_Logo::Render()
 		return E_FAIL;
 
 #ifdef _DEBUG
-	SetWindowText(g_hWnd, TEXT("·Î°í·¹º§ÀÔ´Ï´Ù."));
+	SetWindowText(g_hWnd, TEXT("ë¡œê³ ë ˆë²¨ìž…ë‹ˆë‹¤."));
 #endif
 
 	return S_OK;

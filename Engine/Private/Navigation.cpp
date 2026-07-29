@@ -1,7 +1,32 @@
-#include "Navigation.h"
+Ôªø#include "Navigation.h"
 #include "Cell.h"
 
 #include "GameInstance.h"
+
+#include <filesystem>
+
+namespace
+{
+	std::filesystem::path ResolveNavigationDataPath(const tchar_t* pDataFile)
+	{
+		if (nullptr == pDataFile || L'\0' == pDataFile[0])
+			return {};
+
+		const std::filesystem::path requestedPath = pDataFile;
+		if (requestedPath.is_absolute() || std::filesystem::exists(requestedPath))
+			return requestedPath.lexically_normal();
+
+		wchar_t modulePath[32768]{};
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr,
+			modulePath,
+			static_cast<DWORD>(size(modulePath)));
+		if (0 == moduleLength || moduleLength >= size(modulePath))
+			return requestedPath.lexically_normal();
+
+		return (std::filesystem::path(modulePath).parent_path() / requestedPath).lexically_normal();
+	}
+}
 
 CNavigation::CNavigation(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CComponent { pDevice, pContext }
@@ -15,26 +40,41 @@ CNavigation::~CNavigation()
 HRESULT CNavigation::Initialize_Prototype(const tchar_t* pNavigationDataFiles, const tchar_t* pNeighborDataFile)
 {
 	uint32_t        iByte = {};
-	HANDLE          hFile = CreateFile(pNavigationDataFiles, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-	if (0 == hFile)
+	const std::filesystem::path navigationPath = ResolveNavigationDataPath(pNavigationDataFiles);
+	HANDLE          hFile = CreateFile(navigationPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	if (INVALID_HANDLE_VALUE == hFile)
 		return E_FAIL;
 
 	while (true)
 	{
 		float3_t		vPoints[3] = {};
 
-		ReadFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
+		if (FALSE == ReadFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr))
+		{
+			CloseHandle(hFile);
+			return E_FAIL;
+		}
 		if (0 == iByte)
 			break;
+		if (sizeof(float3_t) * 3 != iByte)
+		{
+			CloseHandle(hFile);
+			return E_FAIL;
+		}
 
 		auto		pCell = CCell::Create(m_pDevice, m_pContext, vPoints, m_Cells.size());
 		if (nullptr == pCell)
+		{
+			CloseHandle(hFile);
 			return E_FAIL;
+		}
 
 		m_Cells.push_back(pCell);
 	}
 
 	CloseHandle(hFile);
+	if (m_Cells.empty())
+		return E_FAIL;
 
 	if (FAILED(nullptr == pNeighborDataFile ? SetUp_Neighbors() : SetUp_Neighbors(pNeighborDataFile)))
 		return E_FAIL;
@@ -54,7 +94,9 @@ HRESULT CNavigation::Initialize(void* pArg)
 
 	auto		pDesc = static_cast<NAVIGATION_DESC*>(pArg);
 
-	if (m_Cells.size() <= pDesc->iStartCellIndex)
+	if (pDesc->iStartCellIndex < 0 ||
+		m_Cells.size() <= static_cast<size_t>(pDesc->iStartCellIndex) ||
+		nullptr == pDesc->pTransformCom)
 		return E_FAIL;
 
 	m_iCurrentCellIndex = pDesc->iStartCellIndex;
@@ -91,15 +133,21 @@ HRESULT CNavigation::SetUp_Neighbors()
 HRESULT CNavigation::SetUp_Neighbors(const tchar_t* pNeighborDataFile)
 {
 	uint32_t        iByte = {};
-	HANDLE          hFile = CreateFile(pNeighborDataFile, GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-	if (0 == hFile)
+	const std::filesystem::path neighborPath = ResolveNavigationDataPath(pNeighborDataFile);
+	HANDLE          hFile = CreateFile(neighborPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+	if (INVALID_HANDLE_VALUE == hFile)
 		return E_FAIL;
 
 	int32_t		iNeighborIndices[3] = {};
 
 	for (auto& pCell : m_Cells)
 	{
-		ReadFile(hFile, iNeighborIndices, sizeof(int32_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
+		if (FALSE == ReadFile(hFile, iNeighborIndices, sizeof(int32_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr) ||
+			sizeof(int32_t) * 3 != iByte)
+		{
+			CloseHandle(hFile);
+			return E_FAIL;
+		}
 
 		pCell->Set_Neighbor(iNeighborIndices);
 	}
@@ -113,15 +161,15 @@ bool_t CNavigation::isMove(fvector_t vResultPos)
 {
 	int32_t			iNeighborIndex = { -1 };
 
-	/* «ˆ¿Á ¡∏¿Á«œ∞Ì ¿÷¥¯ ºø æ»ø°º≠ øÚ¡˜ø¥¥Ÿ. */
+	/* ÌòÑÏû¨ Ï°¥Ïû¨ÌïòÍ≥† ÏûàÎçò ÏÖÄ ÏïàÏóêÏÑú ÏõÄÏßÅÏòÄÎã§. */
 	if (true == m_Cells[m_iCurrentCellIndex]->isIn(vResultPos, &iNeighborIndex))
 	{
 		return true;
 	}
-	/* «ˆ¿Á ¡∏¿Á«œ∞Ì ¿÷¥¯ ºø π€¿∏∑Œ øÚ¡˜ø¥¥Ÿ. */
+	/* ÌòÑÏû¨ Ï°¥Ïû¨ÌïòÍ≥† ÏûàÎçò ÏÖÄ Î∞ñÏúºÎ°ú ÏõÄÏßÅÏòÄÎã§. */
 	else
 	{
-		/* ≥™∞£πÊ«‚ø° ¿ÃøÙ¿Ã ¿÷¥Ÿ∏È. */
+		/* ÎÇòÍ∞ÑÎ∞©Ìñ•Ïóê Ïù¥ÏõÉÏù¥ ÏûàÎã§Î©¥. */
 		if(-1 != iNeighborIndex)
 		{
 			while (true)
@@ -137,7 +185,7 @@ bool_t CNavigation::isMove(fvector_t vResultPos)
 			}
 		}
 
-		/* ≥™∞£πÊ«‚ø° ¿ÃøÙ¿Ã æ¯§ß¥Ÿ∏È. */
+		/* ÎÇòÍ∞ÑÎ∞©Ìñ•Ïóê Ïù¥ÏõÉÏù¥ ÏóÜ„Ñ∑Îã§Î©¥. */
 		else
 			return false;
 	}
