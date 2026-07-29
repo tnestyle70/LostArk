@@ -216,6 +216,9 @@
     <ClCompile Include="..\Private\Body_LanceMaster.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Weapon_LanceMaster.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -321,6 +324,9 @@
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Body_LanceMaster.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Weapon_LanceMaster.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">

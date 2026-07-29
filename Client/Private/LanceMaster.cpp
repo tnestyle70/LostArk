@@ -1,6 +1,7 @@
 #include "LanceMaster.h"
 
 #include "Body_LanceMaster.h"
+#include "Weapon_LanceMaster.h"
 
 CLanceMaster::CLanceMaster(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -59,11 +60,28 @@ HRESULT CLanceMaster::Ready_PartObjects()
 	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 	bodyDesc.pParentState = &m_iState;
 
-	return __super::Add_PartObject(
+	if (FAILED(__super::Add_PartObject(
 		ETOUI(LEVEL::TEST_LEVEL2),
 		TEXT("Prototype_GameObject_Body_LanceMaster"),
 		TEXT("Part_Body"),
-		&bodyDesc);
+		&bodyDesc)))
+		return E_FAIL;
+
+	/* The weapon rides a bone of the body's skeleton, so the body has to exist first. */
+	CWeapon_LanceMaster::WEAPON_LANCEMASTER_DESC weaponDesc{};
+	weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+	weaponDesc.pSocketModel = dynamic_pointer_cast<CModel>(
+		__super::Get_Component(TEXT("Part_Body"), TEXT("Com_Model")));
+	weaponDesc.pSocketBoneName = "b_weapon_rhand";
+
+	if (nullptr == weaponDesc.pSocketModel)
+		return E_FAIL;
+
+	return __super::Add_PartObject(
+		ETOUI(LEVEL::TEST_LEVEL2),
+		TEXT("Prototype_GameObject_Weapon_LanceMaster"),
+		TEXT("Part_Weapon_R"),
+		&weaponDesc);
 }
 
 unique_ptr<CLanceMaster> CLanceMaster::Create(ComPtr<ID3D11Device> pDevice,
