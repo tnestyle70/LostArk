@@ -46,23 +46,25 @@ void CPlayer::Priority_Update(f32_t fTimeDelta)
 
 void CPlayer::Update(f32_t fTimeDelta)
 {
-	if (GetKeyState(VK_DOWN) & 0x8000)
+	const bool_t bKeyboardBlocked = CGameInstance::Get().IsKeyboardInputBlocked();
+
+	if (!bKeyboardBlocked && (GetKeyState(VK_DOWN) & 0x8000))
 	{
 		m_pTransformCom->Go_Backward(fTimeDelta);
 	}
 
-	if (GetKeyState(VK_LEFT) & 0x8000)
+	if (!bKeyboardBlocked && (GetKeyState(VK_LEFT) & 0x8000))
 	{
 		m_pTransformCom->Turn(XMVectorSet(0.f, 1.f, 0.f, 0.f), fTimeDelta * -1.f);
 	}
 
-	if (GetKeyState(VK_RIGHT) & 0x8000)
+	if (!bKeyboardBlocked && (GetKeyState(VK_RIGHT) & 0x8000))
 	{
 		m_pTransformCom->Turn(XMVectorSet(0.f, 1.f, 0.f, 0.f), fTimeDelta);
 	}
 
 
-	if (GetKeyState(VK_UP) & 0x8000)
+	if (!bKeyboardBlocked && (GetKeyState(VK_UP) & 0x8000))
 	{
 		m_pTransformCom->Go_Straight(fTimeDelta, m_pNavigationCom);
 
@@ -80,7 +82,8 @@ void CPlayer::Update(f32_t fTimeDelta)
 	}
 
 	float4_t		vPickPos = {};
-	if (GetKeyState(VK_LBUTTON) & 0x8000 && 
+	if (!CGameInstance::Get().IsMouseInputBlocked() &&
+		(GetKeyState(VK_LBUTTON) & 0x8000) &&
 		true == CGameInstance::Get().Picking(vPickPos))
 	{
 		m_pTransformCom->Set_State(STATE::POSITION, XMLoadFloat4(&vPickPos));

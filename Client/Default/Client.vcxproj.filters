@@ -28,53 +28,8 @@
     <Filter Include="02.GameObjects">
       <UniqueIdentifier>{4c84a0ed-a665-4d3f-ab10-9cf28db3ef67}</UniqueIdentifier>
     </Filter>
-    <Filter Include="02.GameObjects\BackGround">
-      <UniqueIdentifier>{5299cef0-2d1b-4e90-8285-2fff6d1c03c1}</UniqueIdentifier>
-    </Filter>
     <Filter Include="97.ShaderFiles">
       <UniqueIdentifier>{7dcb7381-90c8-40c3-8bdf-1d48e55d2e74}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Terrain">
-      <UniqueIdentifier>{e9edaa3a-8381-4767-8cde-47a663fa4020}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Camera">
-      <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Camera\Free">
-      <UniqueIdentifier>{ab809c0d-7e47-4143-8399-63dabb6b67ae}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Monster">
-      <UniqueIdentifier>{93f4303c-4368-4120-baea-660eb6c0a42f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Player">
-      <UniqueIdentifier>{64d83a7d-83f0-46fb-ac3c-2a186eb1bc54}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Player\Body">
-      <UniqueIdentifier>{2581ad90-3861-4b08-8fe4-2a4eec721a57}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Player\Weapon">
-      <UniqueIdentifier>{3082fe5f-2734-439e-9ea4-ecfc85e5611f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Player\Effect">
-      <UniqueIdentifier>{69d1e5bf-b1a1-49c8-841f-839bfb9bd47b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Sky">
-      <UniqueIdentifier>{744925d8-bca9-4088-b18f-7db2c9da36f2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Particle">
-      <UniqueIdentifier>{f3dc0a69-5bee-47a5-8849-e917b43fe84c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Particle\Snow">
-      <UniqueIdentifier>{55da8be6-2e61-4d65-9760-a85b79af04b5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Particle\Explosion">
-      <UniqueIdentifier>{02b2a18a-7d02-415b-abd4-4fdcf0b9da4f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\ForkLift">
-      <UniqueIdentifier>{2617b32f-2b18-46e5-9501-7124dfb4dd61}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\Effect">
-      <UniqueIdentifier>{45d58a49-8aa9-40ce-b3ad-36ef0fd02f66}</UniqueIdentifier>
     </Filter>
     <Filter Include="03. Tools">
       <UniqueIdentifier>{ba06c327-ea61-4e3a-8671-349b2cbe8ee1}</UniqueIdentifier>
@@ -94,8 +49,80 @@
     <Filter Include="03. Tools\04. Animation">
       <UniqueIdentifier>{42322243-9f4d-4daa-9a43-c0122697c314}</UniqueIdentifier>
     </Filter>
-    <Filter Include="03. Tools\05. Cinematic">
+    <Filter Include="01.Levels\00. AssetTest">
+      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\00. Character">
+      <UniqueIdentifier>{d5864814-d199-42de-9bce-7329814f62a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업">
+      <UniqueIdentifier>{ae7694ce-b8e0-498a-82aa-fa5e6cfa93ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\BackGround">
+      <UniqueIdentifier>{5299cef0-2d1b-4e90-8285-2fff6d1c03c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Camera">
+      <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Camera\Free">
+      <UniqueIdentifier>{ab809c0d-7e47-4143-8399-63dabb6b67ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Effect">
+      <UniqueIdentifier>{45d58a49-8aa9-40ce-b3ad-36ef0fd02f66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\ForkLift">
+      <UniqueIdentifier>{2617b32f-2b18-46e5-9501-7124dfb4dd61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Monster">
+      <UniqueIdentifier>{93f4303c-4368-4120-baea-660eb6c0a42f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Particle">
+      <UniqueIdentifier>{f3dc0a69-5bee-47a5-8849-e917b43fe84c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Particle\Snow">
+      <UniqueIdentifier>{55da8be6-2e61-4d65-9760-a85b79af04b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Particle\Explosion">
+      <UniqueIdentifier>{02b2a18a-7d02-415b-abd4-4fdcf0b9da4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Player">
+      <UniqueIdentifier>{64d83a7d-83f0-46fb-ac3c-2a186eb1bc54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Player\Body">
+      <UniqueIdentifier>{2581ad90-3861-4b08-8fe4-2a4eec721a57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Player\Weapon">
+      <UniqueIdentifier>{3082fe5f-2734-439e-9ea4-ecfc85e5611f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Player\Effect">
+      <UniqueIdentifier>{69d1e5bf-b1a1-49c8-841f-839bfb9bd47b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Sky">
+      <UniqueIdentifier>{744925d8-bca9-4088-b18f-7db2c9da36f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\99. 수업\Terrain">
+      <UniqueIdentifier>{e9edaa3a-8381-4767-8cde-47a663fa4020}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\98. TestBinaryAsset">
+      <UniqueIdentifier>{1d1cb11f-147b-4124-aab5-36a9909bc25f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\01. Boss">
+      <UniqueIdentifier>{2d44837b-7b11-42f4-9d69-d18a0e209670}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\02. World">
+      <UniqueIdentifier>{5f174343-f8c8-48ca-9e8a-611019312830}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\03. Effect">
+      <UniqueIdentifier>{baeaae57-d96c-42f0-877b-403bbb88d842}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\04. UI">
+      <UniqueIdentifier>{57537602-afc9-4af5-9022-c48584d4bcb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\05. Sequencer">
+      <UniqueIdentifier>{19cfa3b4-8375-48d1-8633-986f0d4a9303}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -118,42 +145,51 @@
       <Filter>01.Levels\Loading\Loader</Filter>
     </ClCompile>
     <ClCompile Include="..\private\BackGround.cpp">
-      <Filter>02.GameObjects\BackGround</Filter>
+      <Filter>02.GameObjects\99. 수업\BackGround</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Terrain.cpp">
-      <Filter>02.GameObjects\Terrain</Filter>
+      <Filter>02.GameObjects\99. 수업\Terrain</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Camera_Free.cpp">
-      <Filter>02.GameObjects\Camera\Free</Filter>
+      <Filter>02.GameObjects\99. 수업\Camera\Free</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Monster.cpp">
-      <Filter>02.GameObjects\Monster</Filter>
+      <Filter>02.GameObjects\99. 수업\Monster</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Player.cpp">
-      <Filter>02.GameObjects\Player</Filter>
+      <Filter>02.GameObjects\99. 수업\Player</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Body_Player.cpp">
-      <Filter>02.GameObjects\Player\Body</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Body</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Weapon.cpp">
-      <Filter>02.GameObjects\Player\Weapon</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Weapon</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Sky.cpp">
-      <Filter>02.GameObjects\Sky</Filter>
+      <Filter>02.GameObjects\99. 수업\Sky</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Snow.cpp">
-      <Filter>02.GameObjects\Particle\Snow</Filter>
+      <Filter>02.GameObjects\99. 수업\Particle\Snow</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Explosion.cpp">
-      <Filter>02.GameObjects\Player\Effect</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ForkLift.cpp">
-      <Filter>02.GameObjects\ForkLift</Filter>
+      <Filter>02.GameObjects\99. 수업\ForkLift</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect.cpp">
-      <Filter>02.GameObjects\Effect</Filter>
+      <Filter>02.GameObjects\99. 수업\Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapTool.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_AssetTest.cpp">
+      <Filter>01.Levels\00. AssetTest</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BinaryAssetObject.cpp">
+      <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
   </ItemGroup>
@@ -189,42 +225,51 @@
       <Filter>01.Levels\Loading\Loader</Filter>
     </ClInclude>
     <ClInclude Include="..\public\BackGround.h">
-      <Filter>02.GameObjects\BackGround</Filter>
+      <Filter>02.GameObjects\99. 수업\BackGround</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Terrain.h">
-      <Filter>02.GameObjects\Terrain</Filter>
+      <Filter>02.GameObjects\99. 수업\Terrain</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Camera_Free.h">
-      <Filter>02.GameObjects\Camera\Free</Filter>
+      <Filter>02.GameObjects\99. 수업\Camera\Free</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Monster.h">
-      <Filter>02.GameObjects\Monster</Filter>
+      <Filter>02.GameObjects\99. 수업\Monster</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Player.h">
-      <Filter>02.GameObjects\Player</Filter>
+      <Filter>02.GameObjects\99. 수업\Player</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Body_Player.h">
-      <Filter>02.GameObjects\Player\Body</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Body</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Weapon.h">
-      <Filter>02.GameObjects\Player\Weapon</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Weapon</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Sky.h">
-      <Filter>02.GameObjects\Sky</Filter>
+      <Filter>02.GameObjects\99. 수업\Sky</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Snow.h">
-      <Filter>02.GameObjects\Particle\Snow</Filter>
+      <Filter>02.GameObjects\99. 수업\Particle\Snow</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Explosion.h">
-      <Filter>02.GameObjects\Player\Effect</Filter>
+      <Filter>02.GameObjects\99. 수업\Player\Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ForkLift.h">
-      <Filter>02.GameObjects\ForkLift</Filter>
+      <Filter>02.GameObjects\99. 수업\ForkLift</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect.h">
-      <Filter>02.GameObjects\Effect</Filter>
+      <Filter>02.GameObjects\99. 수업\Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapTool.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_AssetTest.h">
+      <Filter>01.Levels\00. AssetTest</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BinaryAssetObject.h">
+      <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
   </ItemGroup>

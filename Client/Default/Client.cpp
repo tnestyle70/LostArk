@@ -8,6 +8,10 @@
 #include "MainApp.h"
 #include "GameInstance.h"
 
+#ifdef _DEBUG
+#include "ImGuiLayer.h"
+#endif
+
 #define MAX_LOADSTRING 100
 
 // 전역 변수:
@@ -170,6 +174,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+#ifdef _DEBUG
+    if (CImGuiLayer::HandleWindowMessage(hWnd, message, wParam, lParam))
+        return 1;
+#endif
+
     switch (message)
     {
     case WM_COMMAND:

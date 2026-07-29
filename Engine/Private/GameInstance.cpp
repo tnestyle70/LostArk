@@ -171,6 +171,22 @@ int32_t CGameInstance::Get_DIMouseMove(DIMM eMouseState)
 	return m_pInput_Device->Get_DIMouseMove(eMouseState);
 }
 
+void CGameInstance::SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocked)
+{
+	if (nullptr != m_pInput_Device)
+		m_pInput_Device->SetInputBlocked(bKeyboardBlocked, bMouseBlocked);
+}
+
+bool_t CGameInstance::IsKeyboardInputBlocked() const
+{
+	return nullptr != m_pInput_Device && m_pInput_Device->IsKeyboardInputBlocked();
+}
+
+bool_t CGameInstance::IsMouseInputBlocked() const
+{
+	return nullptr != m_pInput_Device && m_pInput_Device->IsMouseInputBlocked();
+}
+
 #ifdef _WIN64
 HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
 {

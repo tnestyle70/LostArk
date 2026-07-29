@@ -3,6 +3,11 @@
 
 #include "Level_Loading.h"
 
+#ifdef _DEBUG
+#include "ImGuiLayer.h"
+#include "MapTool.h"
+#endif
+
 Client::CMainApp::CMainApp()
 {
 
@@ -61,6 +66,11 @@ HRESULT CMainApp::Initialize()
     if (FAILED(CGameInstance::Get().Initialize_Engine(EngineDesc, m_pDevice, m_pContext)))
         return E_FAIL;
 
+#ifdef _DEBUG
+    if (FAILED(ReadyDebugTools()))
+        return E_FAIL;
+#endif
+
     if (FAILED(Ready_Gara()))
         return E_FAIL;
 
@@ -78,6 +88,21 @@ HRESULT CMainApp::Initialize()
 
 void CMainApp::Update(f32_t fTimeDelta)
 {
+#ifdef _DEBUG
+    UpdateDebugToolShortcut();
+
+    if (nullptr != m_pImGuiLayer)
+        m_pImGuiLayer->BeginFrame();
+
+    const bool_t bMapToolOpen = nullptr != m_pMapTool && m_pMapTool->IsOpen();
+    const bool_t bKeyboardCaptured = bMapToolOpen &&
+        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureKeyboard();
+    const bool_t bMouseCaptured = bMapToolOpen &&
+        nullptr != m_pImGuiLayer && m_pImGuiLayer->WantsCaptureMouse();
+
+    CGameInstance::Get().SetInputBlocked(bKeyboardCaptured, bMouseCaptured);
+#endif
+
     CGameInstance::Get().Update_Engine(fTimeDelta);
 }
 
@@ -86,13 +111,36 @@ HRESULT CMainApp::Render()
     float4_t        vClearColor = { 0.f, 0.f, 1.f, 1.f };
 
     if (FAILED(CGameInstance::Get().Render_Begin(&vClearColor)))
+    {
+#ifdef _DEBUG
+        if (nullptr != m_pImGuiLayer)
+            m_pImGuiLayer->CancelFrame();
+#endif
         return E_FAIL;
+    }
 
     if (FAILED(CGameInstance::Get().Render()))
+    {
+#ifdef _DEBUG
+        if (nullptr != m_pImGuiLayer)
+            m_pImGuiLayer->CancelFrame();
+#endif
         return E_FAIL;
+    }
 
+#ifndef _DEBUG
     CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("한글 이다12abd"), float2_t(0.f, 0.f));
+#endif
 
+
+#ifdef _DEBUG
+    if (nullptr != m_pImGuiLayer)
+    {
+        if (nullptr != m_pMapTool)
+            m_pMapTool->Render();
+        m_pImGuiLayer->EndFrame();
+    }
+#endif
 
     if (FAILED(CGameInstance::Get().Render_End()))
         return E_FAIL;
@@ -231,6 +279,33 @@ HRESULT CMainApp::Start_Level(LEVEL eStartLevelID)
     return S_OK;
 }
 
+#ifdef _DEBUG
+HRESULT CMainApp::ReadyDebugTools()
+{
+    m_pImGuiLayer = std::make_unique<Engine::CImGuiLayer>();
+    if (!m_pImGuiLayer->Initialize(g_hWnd, m_pDevice.Get(), m_pContext.Get()))
+    {
+        OutputDebugStringA("[ImGui] Failed to initialize Win32/DX11 runtime.\n");
+        return E_FAIL;
+    }
+
+    m_pMapTool = std::make_unique<CMapTool>();
+    return S_OK;
+}
+
+void CMainApp::UpdateDebugToolShortcut()
+{
+    const bool_t bWindowFocused = GetForegroundWindow() == g_hWnd;
+    const bool_t bF1Down = bWindowFocused &&
+        0 != (GetAsyncKeyState(VK_F1) & 0x8000);
+
+    if (bF1Down && !m_bF1Down && nullptr != m_pMapTool)
+        m_pMapTool->Toggle();
+
+    m_bF1Down = bF1Down;
+}
+#endif
+
 unique_ptr<CMainApp> CMainApp::Create()
 {
     auto pInstance = unique_ptr<CMainApp>(new CMainApp());
@@ -246,6 +321,15 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
-    CGameInstance::Get().Release_Engine();
+#ifdef _DEBUG
+    CGameInstance::Get().SetInputBlocked(false, false);
 
+    m_pMapTool.reset();
+
+    if (nullptr != m_pImGuiLayer)
+        m_pImGuiLayer->Shutdown();
+    m_pImGuiLayer.reset();
+#endif
+
+    CGameInstance::Get().Release_Engine();
 }

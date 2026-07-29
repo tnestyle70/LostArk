@@ -3,7 +3,13 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+NS_BEGIN(Engine)
+class CImGuiLayer;
+NS_END
+
 NS_BEGIN(Client)
+
+class CMapTool;
 
 class CMainApp final
 {
@@ -21,11 +27,22 @@ private:
 	ComPtr<ID3D11Device>			m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext>		m_pContext = { nullptr };
 
+#ifdef _DEBUG
+	std::unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
+	std::unique_ptr<CMapTool> m_pMapTool = { nullptr };
+	bool m_bF1Down = false;
+#endif
+
 private:
 	HRESULT Ready_Gara();
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();
 	HRESULT Start_Level(LEVEL eStartLevelID);
+
+#ifdef _DEBUG
+	HRESULT ReadyDebugTools();
+	void UpdateDebugToolShortcut();
+#endif
 
 public:
 	static unique_ptr<CMainApp> Create();

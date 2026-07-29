@@ -161,6 +161,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\public\Animation.h" />
+    <ClInclude Include="..\Public\BinaryAsset\BinaryReader.h" />
+    <ClInclude Include="..\Public\BinaryAsset\CookedModel.h" />
+    <ClInclude Include="..\Public\BinaryAsset\ModelAssetData.h" />
+    <ClInclude Include="..\Public\BinaryAsset\ModelDecoder.h" />
+    <ClInclude Include="..\Public\BinaryAsset\ModelDecoderRegistry.h" />
+    <ClInclude Include="..\Public\BinaryAsset\WModelDecoder.h" />
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WAnimationReader.h" />
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WFormatTypes.h" />
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WMaterialReader.h" />
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WMeshReader.h" />
+    <ClInclude Include="..\Private\BinaryAsset\Winters\WSkeletonReader.h" />
     <ClInclude Include="..\public\Bone.h" />
     <ClInclude Include="..\Public\Bounding_OBB.h" />
     <ClInclude Include="..\Public\Bounding_Sphere.h" />
@@ -185,6 +196,7 @@
     <ClInclude Include="..\public\GameInstance.h" />
     <ClInclude Include="..\public\GameObject.h" />
     <ClInclude Include="..\Public\Graphic_Device.h" />
+    <ClInclude Include="..\Public\ImGuiLayer.h" />
     <ClInclude Include="..\Public\Input_Device.h" />
     <ClInclude Include="..\public\Layer.h" />
     <ClInclude Include="..\public\Level.h" />
@@ -228,6 +240,14 @@
     <ClCompile Include="..\External\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\External\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\External\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\BinaryReader.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\CookedModel.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\ModelDecoderRegistry.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\WModelDecoder.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WAnimationReader.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WMaterialReader.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WMeshReader.cpp" />
+    <ClCompile Include="..\Private\BinaryAsset\Winters\WSkeletonReader.cpp" />
     <ClCompile Include="..\private\Animation.cpp" />
     <ClCompile Include="..\private\Bone.cpp" />
     <ClCompile Include="..\Private\Bounding_OBB.cpp" />
@@ -247,6 +267,7 @@
     <ClCompile Include="..\Private\GameInstance.cpp" />
     <ClCompile Include="..\private\GameObject.cpp" />
     <ClCompile Include="..\Private\Graphic_Device.cpp" />
+    <ClCompile Include="..\Private\ImGuiLayer.cpp" />
     <ClCompile Include="..\Private\Input_Device.cpp" />
     <ClCompile Include="..\private\Layer.cpp" />
     <ClCompile Include="..\private\Level.cpp" />
