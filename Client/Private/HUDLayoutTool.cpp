@@ -6,9 +6,26 @@
 #include <sstream>
 #include <filesystem>
 #include <cstring>
+#include <cmath>
 
 namespace
 {
+	struct DOCUMENT_DEF
+	{
+		const char*	szLabel;
+		const char*	szPath;
+		const char*	szTextureRoot;
+		bool		bPerClass;
+	};
+
+	constexpr DOCUMENT_DEF g_Documents[] =
+	{
+		{ "Combat HUD", "../Bin/Resources/LostArk/UI/HUD/HUD_Layout.cfg",      "../Bin/Resources/LostArk/UI/HUD/",      true  },
+		{ "Screen UI",  "../Bin/Resources/LostArk/UI/ScreenUI/ScreenUI.cfg",   "../Bin/Resources/LostArk/UI/ScreenUI/", false },
+	};
+
+	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
+
 	struct PALETTE_ENTRY
 	{
 		Client::CHUDLayoutTool::SLOT_TYPE	eType;
@@ -60,6 +77,36 @@ namespace
 
 		return strWide;
 	}
+
+	string Path_To_Utf8(const filesystem::path& Path)
+	{
+		const u8string strU8 = Path.u8string();
+		return string(strU8.begin(), strU8.end());
+	}
+
+	void Get_Rotated_Rect_Corners(const ImVec2& vTopLeft, const ImVec2& vBotRight, float fDegrees, ImVec2 outCorners[4])
+	{
+		outCorners[0] = vTopLeft;
+		outCorners[1] = ImVec2(vBotRight.x, vTopLeft.y);
+		outCorners[2] = vBotRight;
+		outCorners[3] = ImVec2(vTopLeft.x, vBotRight.y);
+
+		if (0.f == fDegrees)
+			return;
+
+		const ImVec2 vCenter((vTopLeft.x + vBotRight.x) * 0.5f, (vTopLeft.y + vBotRight.y) * 0.5f);
+		const float fRadians = fDegrees * (3.14159265f / 180.f);
+		const float fCos = cosf(fRadians);
+		const float fSin = sinf(fRadians);
+
+		for (int32_t i = 0; i < 4; ++i)
+		{
+			const float fDX = outCorners[i].x - vCenter.x;
+			const float fDY = outCorners[i].y - vCenter.y;
+			outCorners[i].x = vCenter.x + fDX * fCos - fDY * fSin;
+			outCorners[i].y = vCenter.y + fDX * fSin + fDY * fCos;
+		}
+	}
 }
 
 Client::CHUDLayoutTool::CHUDLayoutTool(ComPtr<ID3D11Device> pDevice)
@@ -68,10 +115,38 @@ Client::CHUDLayoutTool::CHUDLayoutTool(ComPtr<ID3D11Device> pDevice)
 	/* CreateWICTextureFromFile needs COM on the calling thread; the main thread never initializes it (only the level-loading worker thread does). */
 	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
-	Load(ms_szDefaultSavePath);
+	Load(Current_Save_Path());
 
 	if (m_Slots.empty())
 		Reset_Default();
+}
+
+const char* Client::CHUDLayoutTool::Current_Save_Path() const
+{
+	return g_Documents[m_iActiveDocument].szPath;
+}
+
+void Client::CHUDLayoutTool::Switch_Document(int32_t iDocument)
+{
+	if (iDocument < 0 || iDocument >= g_iDocumentCount)
+		return;
+	if (iDocument == m_iActiveDocument)
+		return;
+
+	/* Persist the document we are leaving so unsaved placement isn't lost on switch. */
+	Save(Current_Save_Path());
+
+	m_iActiveDocument = iDocument;
+
+	/* Start from an empty document; Load() fills it if the target file exists. */
+	m_Slots.clear();
+	m_ClassNames = vector<string>{ "Default" };
+	m_iSelectedClass = 0;
+	m_iSelectedSlot = -1;
+	m_SelectedSlots.clear();
+	m_iLastScannedClass = -1;
+
+	Load(Current_Save_Path());
 }
 
 void Client::CHUDLayoutTool::Render()
@@ -87,16 +162,35 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::TextUnformatted("F1: open / close the editor tool workspace   |   drag box body to move, drag yellow corner to resize.");
 	ImGui::TextUnformatted("Drag this window onto Map Tool to dock as a tab.");
 
+	if (ImGui::BeginTabBar("HUDDocuments"))
+	{
+		for (int32_t i = 0; i < g_iDocumentCount; ++i)
+		{
+			if (ImGui::BeginTabItem(g_Documents[i].szLabel))
+			{
+				if (i != m_iActiveDocument)
+					Switch_Document(i);
+				ImGui::EndTabItem();
+			}
+		}
+		ImGui::EndTabBar();
+	}
+
 	if (ImGui::Button("Save"))
-		Save(ms_szDefaultSavePath);
+		Save(Current_Save_Path());
 	ImGui::SameLine();
 	if (ImGui::Button("Load"))
-		Load(ms_szDefaultSavePath);
+		Load(Current_Save_Path());
 	ImGui::SameLine();
-	if (ImGui::Button("Reset to Default Layout"))
+	if (g_Documents[m_iActiveDocument].bPerClass && ImGui::Button("Reset to Default Layout"))
 		Reset_Default();
+	ImGui::SameLine();
+	ImGui::Checkbox("Preview Hover (all)", &m_bPreviewHover);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Forces every slot to its hover art.\nWithout this, mousing over a slot on the canvas previews just that one.");
 
-	Render_ClassBar();
+	if (g_Documents[m_iActiveDocument].bPerClass)
+		Render_ClassBar();
 	ImGui::Separator();
 
 	Render_Palette();
@@ -179,7 +273,107 @@ void Client::CHUDLayoutTool::Render_Palette()
 		ImGui::Spacing();
 	}
 
+	Render_ClassTexturePalette();
+
 	ImGui::EndChild();
+}
+
+void Client::CHUDLayoutTool::Render_ClassTexturePalette()
+{
+	if (m_iSelectedClass != m_iLastScannedClass)
+	{
+		Refresh_ClassTexturePalette();
+		m_iLastScannedClass = m_iSelectedClass;
+	}
+
+	const bool_t bPerClass = g_Documents[m_iActiveDocument].bPerClass;
+
+	ImGui::SeparatorText(bPerClass ? ("Textures: " + Current_Class()).c_str() : "Textures");
+	ImGui::TextWrapped("Drag a thumbnail onto a placed slot to add it as a layer.");
+
+	if (m_TextureAssetPaths.empty())
+	{
+		ImGui::TextWrapped("(no images found for this document)");
+		return;
+	}
+
+	for (int32_t i = 0; i < static_cast<int32_t>(m_TextureAssetPaths.size()); ++i)
+	{
+		const string& strPath = m_TextureAssetPaths[i];
+		const string strFileName = Path_To_Utf8(filesystem::path(Utf8_To_Wide(strPath)).filename());
+
+		ImGui::PushID(i);
+
+		ID3D11ShaderResourceView* pSRV = Get_Or_Load_Texture(strPath);
+
+		const ImVec2 vThumbSize(40.f, 40.f);
+		if (nullptr != pSRV)
+			ImGui::Image(pSRV, vThumbSize);
+		else
+			ImGui::Dummy(vThumbSize);
+
+		if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+		{
+			ImGui::SetDragDropPayload("HUD_TEXTURE_ASSET", &i, sizeof(i));
+			if (nullptr != pSRV)
+				ImGui::Image(pSRV, vThumbSize);
+			ImGui::TextUnformatted(strFileName.c_str());
+			ImGui::EndDragDropSource();
+		}
+
+		ImGui::SameLine();
+		ImGui::TextWrapped("%s", strFileName.c_str());
+
+		ImGui::PopID();
+	}
+}
+
+void Client::CHUDLayoutTool::Refresh_ClassTexturePalette()
+{
+	m_TextureAssetPaths.clear();
+
+	const DOCUMENT_DEF& Document = g_Documents[m_iActiveDocument];
+
+	/* Per-class documents browse just the current class's folder; global ones browse the whole
+	   document tree, since their art is grouped by purpose (QuickMenu, Top Menu, Currency) not by class. */
+	string strFolder = Document.szTextureRoot;
+	if (Document.bPerClass)
+	{
+		const string& strClass = Current_Class();
+		if (strClass.empty())
+			return;
+
+		strFolder += strClass;
+	}
+
+	error_code ec;
+	const filesystem::path Folder = Utf8_To_Wide(strFolder);
+
+	auto Fn_Collect = [this](const filesystem::directory_entry& Entry)
+	{
+		if (!Entry.is_regular_file())
+			return;
+
+		wstring strExt = Entry.path().extension().wstring();
+		for (wchar_t& ch : strExt)
+			ch = static_cast<wchar_t>(towlower(ch));
+
+		if (L".png" != strExt && L".dds" != strExt && L".jpg" != strExt)
+			return;
+
+		m_TextureAssetPaths.push_back(Path_To_Utf8(Entry.path()));
+	};
+
+	if (Document.bPerClass)
+	{
+		for (const filesystem::directory_entry& Entry : filesystem::directory_iterator(Folder, ec))
+			Fn_Collect(Entry);
+	}
+	else
+	{
+		for (const filesystem::directory_entry& Entry : filesystem::recursive_directory_iterator(Folder, ec))
+			Fn_Collect(Entry);
+	}
 }
 
 void Client::CHUDLayoutTool::Render_Canvas()
@@ -191,6 +385,10 @@ void Client::CHUDLayoutTool::Render_Canvas()
 	const ImVec2 vOrigin = ImGui::GetCursorScreenPos();
 	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
 
+	/* Hit-testing happens after drawing, so this frame's art uses last frame's hover result. */
+	const int32_t iHoveredLastFrame = m_iHoveredSlot;
+	m_iHoveredSlot = -1;
+
 	const ImVec2 vCanvasEnd(vOrigin.x + ms_fRefWidth * m_fCanvasScale, vOrigin.y + ms_fRefHeight * m_fCanvasScale);
 	pDrawList->AddRectFilled(vOrigin, vCanvasEnd, IM_COL32(110, 110, 116, 255));
 	pDrawList->AddRect(vOrigin, vCanvasEnd, IM_COL32(200, 200, 205, 255));
@@ -198,6 +396,55 @@ void Client::CHUDLayoutTool::Render_Canvas()
 	ImGui::SetCursorScreenPos(vOrigin);
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::InvisibleButton("CanvasBackground", ImVec2(vCanvasEnd.x - vOrigin.x, vCanvasEnd.y - vOrigin.y));
+
+	if (ImGui::IsItemActivated())
+	{
+		m_SelectedSlots.clear();
+		m_iSelectedSlot = -1;
+		m_bMarqueeActive = true;
+		const ImVec2 vMouse = ImGui::GetMousePos();
+		m_fMarqueeStartX = vMouse.x;
+		m_fMarqueeStartY = vMouse.y;
+	}
+
+	if (m_bMarqueeActive && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+	{
+		const ImVec2 vMouse = ImGui::GetMousePos();
+		const ImVec2 vMin((min)(m_fMarqueeStartX, vMouse.x), (min)(m_fMarqueeStartY, vMouse.y));
+		const ImVec2 vMax((max)(m_fMarqueeStartX, vMouse.x), (max)(m_fMarqueeStartY, vMouse.y));
+		pDrawList->AddRectFilled(vMin, vMax, IM_COL32(90, 160, 255, 60));
+		pDrawList->AddRect(vMin, vMax, IM_COL32(90, 160, 255, 200));
+	}
+
+	if (m_bMarqueeActive && ImGui::IsItemDeactivated())
+	{
+		const ImVec2 vMouse = ImGui::GetMousePos();
+		const ImVec2 vMin((min)(m_fMarqueeStartX, vMouse.x), (min)(m_fMarqueeStartY, vMouse.y));
+		const ImVec2 vMax((max)(m_fMarqueeStartX, vMouse.x), (max)(m_fMarqueeStartY, vMouse.y));
+
+		if (fabsf(vMouse.x - m_fMarqueeStartX) > 3.f || fabsf(vMouse.y - m_fMarqueeStartY) > 3.f)
+		{
+			for (int32_t i = 0; i < static_cast<int32_t>(m_Slots.size()); ++i)
+			{
+				const HUD_SLOT& Slot = m_Slots[i];
+				if (!Is_Slot_Visible(Slot))
+					continue;
+
+				const ImVec2 vSlotMin(vOrigin.x + Slot.fX * m_fCanvasScale, vOrigin.y + Slot.fY * m_fCanvasScale);
+				const ImVec2 vSlotMax(vSlotMin.x + Slot.fSizeX * m_fCanvasScale, vSlotMin.y + Slot.fSizeY * m_fCanvasScale);
+
+				const bool_t bOverlaps = (vSlotMin.x <= vMax.x && vSlotMax.x >= vMin.x &&
+					vSlotMin.y <= vMax.y && vSlotMax.y >= vMin.y);
+
+				if (bOverlaps)
+					m_SelectedSlots.push_back(i);
+			}
+
+			m_iSelectedSlot = m_SelectedSlots.empty() ? -1 : m_SelectedSlots.back();
+		}
+
+		m_bMarqueeActive = false;
+	}
 
 	if (ImGui::BeginDragDropTarget())
 	{
@@ -215,81 +462,214 @@ void Client::CHUDLayoutTool::Render_Canvas()
 		ImGui::EndDragDropTarget();
 	}
 
+	/* Visual pass: back-to-front (array order), draws images/labels only. */
 	for (int32_t i = 0; i < static_cast<int32_t>(m_Slots.size()); ++i)
 	{
 		HUD_SLOT& Slot = m_Slots[i];
+		if (!Is_Slot_Visible(Slot))
+			continue;
 
 		const ImVec2 vTopLeft(vOrigin.x + Slot.fX * m_fCanvasScale, vOrigin.y + Slot.fY * m_fCanvasScale);
 		const ImVec2 vBotRight(vTopLeft.x + Slot.fSizeX * m_fCanvasScale, vTopLeft.y + Slot.fSizeY * m_fCanvasScale);
 
-		const bool_t bSelected = (i == m_iSelectedSlot);
-		const ImU32 iFillColor = Slot.bPerClass
+		ImVec2 Corners[4];
+		Get_Rotated_Rect_Corners(vTopLeft, vBotRight, Slot.fRotation, Corners);
+
+		const bool_t bSelected = Is_Slot_Selected(i);
+		const ImU32 iFillColor = !Slot.strOwnerClass.empty()
 			? IM_COL32(120, 70, 170, bSelected ? 200 : 120)
 			: IM_COL32(60, 130, 190, bSelected ? 200 : 110);
-		const ImU32 iBorderColor = bSelected ? IM_COL32(255, 220, 90, 255) : IM_COL32(200, 200, 210, 180);
+		const ImU32 iBorderColor = IM_COL32(255, 220, 90, 255);
 
 		bool_t bAnyLayerDrawn = false;
 
-		for (const string& strLayerPath : Slot.TextureLayers)
+		/* Fire animation renders first (furthest back), enlarged, only while previewing the "on" state. */
+		if (Slot.bAnimationOn)
 		{
-			if (strLayerPath.empty())
-				continue;
-
-			ID3D11ShaderResourceView* pLayerSRV = Get_Or_Load_Texture(strLayerPath);
-			if (nullptr == pLayerSRV)
-				continue;
-
-			pDrawList->AddImage(pLayerSRV, vTopLeft, vBotRight);
-			bAnyLayerDrawn = true;
-		}
-
-		if (Slot.bPerClass)
-		{
-			auto ClassTexIter = Slot.ClassTextures.find(Current_Class());
-			if (Slot.ClassTextures.end() != ClassTexIter && !ClassTexIter->second.empty())
+			if (!Slot.AnimationFrames.empty())
 			{
-				ID3D11ShaderResourceView* pClassSRV = Get_Or_Load_Texture(ClassTexIter->second);
-				if (nullptr != pClassSRV)
+				const vector<string>& Frames = Slot.AnimationFrames;
+				const int32_t iFrameCount = static_cast<int32_t>(Frames.size());
+
+				/* Continuous ping-pong position in [0, N-1], then cross-fade the two bracketing frames.
+				   With only a few source frames a hard cut reads as a strobe/flicker; the dissolve makes it flow. */
+				float fPos = 0.f;
+				if (iFrameCount > 1)
 				{
-					pDrawList->AddImage(pClassSRV, vTopLeft, vBotRight);
-					bAnyLayerDrawn = true;
+					const float fPeriod = 2.f * (iFrameCount - 1);
+					float fCycle = fmodf(static_cast<float>(ImGui::GetTime()) * Slot.fAnimationFPS, fPeriod);
+					if (fCycle < 0.f)
+						fCycle += fPeriod;
+					fPos = (fCycle <= iFrameCount - 1) ? fCycle : (fPeriod - fCycle);
+				}
+
+				const int32_t iFrameA = static_cast<int32_t>(fPos);
+				const int32_t iFrameB = (iFrameA + 1 < iFrameCount) ? iFrameA + 1 : iFrameA;
+				const float fBlend = fPos - iFrameA;
+
+				const ImVec2 vSlotCenter((vTopLeft.x + vBotRight.x) * 0.5f, (vTopLeft.y + vBotRight.y) * 0.5f);
+				const ImVec2 vFireCenter(
+					vSlotCenter.x + Slot.fAnimationOffsetX * m_fCanvasScale,
+					vSlotCenter.y + Slot.fAnimationOffsetY * m_fCanvasScale);
+
+				const float fHalfWidth = (vBotRight.x - vTopLeft.x) * 0.5f * Slot.fAnimationScale;
+				const float fHalfHeight = (vBotRight.y - vTopLeft.y) * 0.5f * Slot.fAnimationScale;
+
+				const ImVec2 vFireTopLeft(vFireCenter.x - fHalfWidth, vFireCenter.y - fHalfHeight);
+				const ImVec2 vFireBotRight(vFireCenter.x + fHalfWidth, vFireCenter.y + fHalfHeight);
+
+				ImVec2 FireCorners[4];
+				Get_Rotated_Rect_Corners(vFireTopLeft, vFireBotRight, Slot.fRotation, FireCorners);
+
+				/* Base frame at full opacity, next frame dissolved on top by the blend factor. */
+				ID3D11ShaderResourceView* pFrameA = Get_Or_Load_Texture(Frames[iFrameA]);
+				if (nullptr != pFrameA)
+					pDrawList->AddImageQuad(pFrameA, FireCorners[0], FireCorners[1], FireCorners[2], FireCorners[3]);
+
+				if (iFrameB != iFrameA && fBlend > 0.f)
+				{
+					ID3D11ShaderResourceView* pFrameB = Get_Or_Load_Texture(Frames[iFrameB]);
+					if (nullptr != pFrameB)
+					{
+						const int32_t iAlpha = static_cast<int32_t>(fBlend * 255.f);
+						pDrawList->AddImageQuad(pFrameB, FireCorners[0], FireCorners[1], FireCorners[2], FireCorners[3],
+							ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), IM_COL32(255, 255, 255, iAlpha));
+					}
 				}
 			}
 		}
 
-		if (!bAnyLayerDrawn)
-			pDrawList->AddRectFilled(vTopLeft, vBotRight, iFillColor);
+		const bool_t bShowHover = m_bPreviewHover || (i == iHoveredLastFrame);
 
-		pDrawList->AddRect(vTopLeft, vBotRight, iBorderColor);
-		pDrawList->AddText(ImVec2(vTopLeft.x + 3.f, vTopLeft.y + 2.f), IM_COL32(255, 255, 255, 255), Slot.strName.c_str());
+		for (const TEXTURE_LAYER& Layer : Slot.TextureLayers)
+		{
+			/* Layers without hover art (backgrounds, frames) keep their base image. */
+			const string& strDrawPath = (bShowHover && !Layer.strHoverPath.empty())
+				? Layer.strHoverPath : Layer.strPath;
+
+			if (strDrawPath.empty())
+				continue;
+
+			ID3D11ShaderResourceView* pLayerSRV = Get_Or_Load_Texture(strDrawPath);
+			if (nullptr == pLayerSRV)
+				continue;
+
+			const ImU32 iTint = ImGui::ColorConvertFloat4ToU32(
+				ImVec4(Layer.vTint[0], Layer.vTint[1], Layer.vTint[2], Layer.vTint[3]));
+
+			pDrawList->AddImageQuad(pLayerSRV, Corners[0], Corners[1], Corners[2], Corners[3],
+				ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), iTint);
+			bAnyLayerDrawn = true;
+		}
+
+		/* The "on" state swaps the topmost art for its lit variant (white gauge -> shine). */
+		if (Slot.bAnimationOn && !Slot.strShineTexture.empty())
+		{
+			ID3D11ShaderResourceView* pShineSRV = Get_Or_Load_Texture(Slot.strShineTexture);
+			if (nullptr != pShineSRV)
+			{
+				pDrawList->AddImageQuad(pShineSRV, Corners[0], Corners[1], Corners[2], Corners[3]);
+				bAnyLayerDrawn = true;
+			}
+		}
+
+		if (!bAnyLayerDrawn)
+			pDrawList->AddQuadFilled(Corners[0], Corners[1], Corners[2], Corners[3], iFillColor);
+
+		if (bSelected)
+		{
+			pDrawList->AddQuad(Corners[0], Corners[1], Corners[2], Corners[3], iBorderColor);
+			pDrawList->AddText(ImVec2(Corners[0].x + 3.f, Corners[0].y + 2.f), IM_COL32(255, 255, 255, 255), Slot.strName.c_str());
+		}
+	}
+
+	/* Interaction pass: front-to-back (reverse array order) so the topmost slot claims the click first. */
+	for (int32_t i = static_cast<int32_t>(m_Slots.size()) - 1; i >= 0; --i)
+	{
+		HUD_SLOT& Slot = m_Slots[i];
+		if (!Is_Slot_Visible(Slot))
+			continue;
+
+		const ImVec2 vTopLeft(vOrigin.x + Slot.fX * m_fCanvasScale, vOrigin.y + Slot.fY * m_fCanvasScale);
+		const ImVec2 vBotRight(vTopLeft.x + Slot.fSizeX * m_fCanvasScale, vTopLeft.y + Slot.fSizeY * m_fCanvasScale);
+
+		const bool_t bSelected = Is_Slot_Selected(i);
 
 		ImGui::PushID(i);
 
 		ImGui::SetCursorScreenPos(vTopLeft);
 		ImGui::InvisibleButton("body", ImVec2(vBotRight.x - vTopLeft.x, vBotRight.y - vTopLeft.y));
+		/* Front-to-back pass, so the first hit is the topmost slot. */
+		if (-1 == m_iHoveredSlot && ImGui::IsItemHovered())
+			m_iHoveredSlot = i;
 		if (ImGui::IsItemActivated())
-			m_iSelectedSlot = i;
+		{
+			if (ImGui::GetIO().KeyCtrl)
+				Toggle_Slot_Selection(i);
+			else if (!bSelected || m_SelectedSlots.size() <= 1)
+				Select_Slot_Exclusive(i);
+		}
 		if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 		{
-			const ImVec2 vDelta = ImGui::GetIO().MouseDelta;
-			Slot.fX += vDelta.x / m_fCanvasScale;
-			Slot.fY += vDelta.y / m_fCanvasScale;
+			ImVec2 vDelta = ImGui::GetIO().MouseDelta;
+
+			if (ImGui::GetIO().KeyShift)
+			{
+				const ImVec2 vTotalDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+				if (fabsf(vTotalDelta.x) >= fabsf(vTotalDelta.y))
+					vDelta.y = 0.f;
+				else
+					vDelta.x = 0.f;
+			}
+
+			if (Is_Slot_Selected(i) && m_SelectedSlots.size() > 1)
+			{
+				for (int32_t iSelected : m_SelectedSlots)
+				{
+					m_Slots[iSelected].fX += vDelta.x / m_fCanvasScale;
+					m_Slots[iSelected].fY += vDelta.y / m_fCanvasScale;
+				}
+			}
+			else
+			{
+				Slot.fX += vDelta.x / m_fCanvasScale;
+				Slot.fY += vDelta.y / m_fCanvasScale;
+			}
 		}
 
-		const float fHandle = 8.f;
-		const ImVec2 vHandleTopLeft(vBotRight.x - fHandle, vBotRight.y - fHandle);
-		ImGui::SetCursorScreenPos(vHandleTopLeft);
-		ImGui::InvisibleButton("resize", ImVec2(fHandle, fHandle));
-		pDrawList->AddRectFilled(vHandleTopLeft, vBotRight, IM_COL32(255, 220, 90, 220));
-		if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+		if (ImGui::BeginDragDropTarget())
 		{
-			const ImVec2 vDelta = ImGui::GetIO().MouseDelta;
-			Slot.fSizeX += vDelta.x / m_fCanvasScale;
-			Slot.fSizeY += vDelta.y / m_fCanvasScale;
-			if (Slot.fSizeX < 8.f)
-				Slot.fSizeX = 8.f;
-			if (Slot.fSizeY < 8.f)
-				Slot.fSizeY = 8.f;
+			if (const ImGuiPayload* pPayload = ImGui::AcceptDragDropPayload("HUD_TEXTURE_ASSET"))
+			{
+				const int32_t iAssetIndex = *static_cast<const int32_t*>(pPayload->Data);
+				if (iAssetIndex >= 0 && iAssetIndex < static_cast<int32_t>(m_TextureAssetPaths.size()))
+				{
+					TEXTURE_LAYER Layer{};
+					Layer.strPath = m_TextureAssetPaths[iAssetIndex];
+					Slot.TextureLayers.push_back(move(Layer));
+				}
+			}
+
+			ImGui::EndDragDropTarget();
+		}
+
+		if (bSelected && 1 == m_SelectedSlots.size())
+		{
+			const float fHandle = 8.f;
+			const ImVec2 vHandleTopLeft(vBotRight.x - fHandle, vBotRight.y - fHandle);
+			ImGui::SetCursorScreenPos(vHandleTopLeft);
+			ImGui::InvisibleButton("resize", ImVec2(fHandle, fHandle));
+			pDrawList->AddRectFilled(vHandleTopLeft, vBotRight, IM_COL32(255, 220, 90, 220));
+			if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+			{
+				const ImVec2 vDelta = ImGui::GetIO().MouseDelta;
+				Slot.fSizeX += vDelta.x / m_fCanvasScale;
+				Slot.fSizeY += vDelta.y / m_fCanvasScale;
+				if (Slot.fSizeX < 8.f)
+					Slot.fSizeX = 8.f;
+				if (Slot.fSizeY < 8.f)
+					Slot.fSizeY = 8.f;
+			}
 		}
 
 		ImGui::PopID();
@@ -307,14 +687,20 @@ void Client::CHUDLayoutTool::Render_Inspector()
 		ImGui::BeginChild("SlotList", ImVec2(0.f, 180.f), true);
 		for (int32_t i = 0; i < static_cast<int32_t>(m_Slots.size()); ++i)
 		{
+			if (!Is_Slot_Visible(m_Slots[i]))
+				continue;
+
 			ImGui::PushID(i);
-			const bool_t bSelected = (i == m_iSelectedSlot);
+			const bool_t bSelected = Is_Slot_Selected(i);
 			if (ImGui::Selectable(m_Slots[i].strName.c_str(), bSelected))
-				m_iSelectedSlot = i;
+				Select_Slot_Exclusive(i);
 			ImGui::PopID();
 		}
 		ImGui::EndChild();
 	}
+
+	if (m_SelectedSlots.size() > 1)
+		ImGui::TextWrapped("%d slots selected (drag any of them together; edit fields below apply to the last-clicked one).", static_cast<int32_t>(m_SelectedSlots.size()));
 
 	ImGui::SetNextItemWidth(160.f);
 	ImGui::InputText("##NewSlotName", m_szNewSlotName, sizeof(m_szNewSlotName));
@@ -339,12 +725,26 @@ void Client::CHUDLayoutTool::Render_Inspector()
 		ImGui::DragFloat("Y", &Slot.fY, 1.f, 0.f, ms_fRefHeight);
 		ImGui::DragFloat("Width", &Slot.fSizeX, 1.f, 4.f, ms_fRefWidth);
 		ImGui::DragFloat("Height", &Slot.fSizeY, 1.f, 4.f, ms_fRefHeight);
+		ImGui::DragFloat("Rotation", &Slot.fRotation, 1.f, -180.f, 180.f, "%.1f deg");
 
 		ImGui::SeparatorText("Texture Layers (bottom to top)");
 		for (int32_t iLayer = 0; iLayer < static_cast<int32_t>(Slot.TextureLayers.size()); ++iLayer)
 		{
+			TEXTURE_LAYER& Layer = Slot.TextureLayers[iLayer];
+
 			ImGui::PushID(iLayer);
-			ImGui::TextWrapped("%d: %s", iLayer, Slot.TextureLayers[iLayer].c_str());
+
+			/* Tint swatch first: monochrome mask icons are colored here rather than by swapping images. */
+			ImGui::ColorEdit4("##LayerTint", Layer.vTint,
+				ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaPreviewHalf);
+
+			ImGui::SameLine();
+			char szLayerBuf[260] = {};
+			strncpy_s(szLayerBuf, Layer.strPath.c_str(), sizeof(szLayerBuf) - 1);
+			ImGui::SetNextItemWidth(150.f);
+			if (ImGui::InputText("##LayerPath", szLayerBuf, sizeof(szLayerBuf)))
+				Layer.strPath = szLayerBuf;
+
 			ImGui::SameLine();
 			if (ImGui::SmallButton("Remove"))
 			{
@@ -352,30 +752,100 @@ void Client::CHUDLayoutTool::Render_Inspector()
 				ImGui::PopID();
 				break;
 			}
+
+			/* Optional hover swap for this layer; left blank the layer stays put on hover. */
+			char szHoverBuf[260] = {};
+			strncpy_s(szHoverBuf, Layer.strHoverPath.c_str(), sizeof(szHoverBuf) - 1);
+			ImGui::SetNextItemWidth(150.f);
+			if (ImGui::InputText("hover", szHoverBuf, sizeof(szHoverBuf)))
+				Layer.strHoverPath = szHoverBuf;
+
+			ImGui::PopID();
+		}
+
+		ImGui::SetNextItemWidth(160.f);
+		ImGui::InputText("##NewLayerPath", m_szNewLayerPathBuffer, sizeof(m_szNewLayerPathBuffer));
+		ImGui::SameLine();
+		if (ImGui::Button("Add Layer") && '\0' != m_szNewLayerPathBuffer[0])
+		{
+			TEXTURE_LAYER Layer{};
+			Layer.strPath = m_szNewLayerPathBuffer;
+			Slot.TextureLayers.push_back(move(Layer));
+			m_szNewLayerPathBuffer[0] = '\0';
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Animation On", &Slot.bAnimationOn);
+
+		if (g_Documents[m_iActiveDocument].bPerClass)
+		{
+			/* Owner decides which class this slot belongs to; shared slots show for every class. */
+			const char* szOwnerLabel = Slot.strOwnerClass.empty() ? "(shared by all classes)" : Slot.strOwnerClass.c_str();
+			if (ImGui::BeginCombo("Owner", szOwnerLabel))
+			{
+				if (ImGui::Selectable("(shared by all classes)", Slot.strOwnerClass.empty()))
+					Slot.strOwnerClass.clear();
+
+				for (const string& strClass : m_ClassNames)
+				{
+					const bool_t bSelectedOwner = (Slot.strOwnerClass == strClass);
+					if (ImGui::Selectable(strClass.c_str(), bSelectedOwner))
+						Slot.strOwnerClass = strClass;
+				}
+				ImGui::EndCombo();
+			}
+		}
+
+		char szShineBuf[260] = {};
+		strncpy_s(szShineBuf, Slot.strShineTexture.c_str(), sizeof(szShineBuf) - 1);
+		if (ImGui::InputText("Shine Texture (on-state)", szShineBuf, sizeof(szShineBuf)))
+			Slot.strShineTexture = szShineBuf;
+
+		ImGui::DragFloat("Fire Animation Scale", &Slot.fAnimationScale, 0.01f, 0.5f, 3.f);
+		ImGui::DragFloat("Fire Offset X", &Slot.fAnimationOffsetX, 0.5f, -100.f, 100.f);
+		ImGui::DragFloat("Fire Offset Y", &Slot.fAnimationOffsetY, 0.5f, -100.f, 100.f);
+
+		ImGui::SeparatorText("Animation Frames (plays behind, e.g. flickering flame)");
+
+		vector<string>& Frames = Slot.AnimationFrames;
+		for (int32_t iFrame = 0; iFrame < static_cast<int32_t>(Frames.size()); ++iFrame)
+		{
+			ImGui::PushID(iFrame);
+
+			char szFrameBuf[260] = {};
+			strncpy_s(szFrameBuf, Frames[iFrame].c_str(), sizeof(szFrameBuf) - 1);
+			ImGui::SetNextItemWidth(200.f);
+			if (ImGui::InputText("##FramePath", szFrameBuf, sizeof(szFrameBuf)))
+				Frames[iFrame] = szFrameBuf;
+
+			ImGui::SameLine();
+			if (ImGui::SmallButton("Remove"))
+			{
+				Frames.erase(Frames.begin() + iFrame);
+				ImGui::PopID();
+				break;
+			}
 			ImGui::PopID();
 		}
 
 		ImGui::SetNextItemWidth(-1.f);
-		ImGui::InputText("##NewLayerPath", m_szNewLayerPathBuffer, sizeof(m_szNewLayerPathBuffer));
-		if (ImGui::Button("Add Layer") && '\0' != m_szNewLayerPathBuffer[0])
+		ImGui::InputText("##NewAnimFramePath", m_szNewAnimFramePathBuffer, sizeof(m_szNewAnimFramePathBuffer));
+		if (ImGui::Button("Add Frame") && '\0' != m_szNewAnimFramePathBuffer[0])
 		{
-			Slot.TextureLayers.push_back(m_szNewLayerPathBuffer);
-			m_szNewLayerPathBuffer[0] = '\0';
+			Frames.push_back(m_szNewAnimFramePathBuffer);
+			m_szNewAnimFramePathBuffer[0] = '\0';
+		}
+		if (!Frames.empty())
+		{
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(80.f);
+			ImGui::DragFloat("FPS", &Slot.fAnimationFPS, 0.5f, 1.f, 60.f);
 		}
 
-		ImGui::Checkbox("Per-Class Texture", &Slot.bPerClass);
-
-		if (Slot.bPerClass && !m_ClassNames.empty())
-		{
-			const string& strClass = Current_Class();
-			string& strTexture = Slot.ClassTextures[strClass];
-
-			strncpy_s(m_szTexturePathBuffer, strTexture.c_str(), sizeof(m_szTexturePathBuffer) - 1);
-
-			ImGui::Text("Class: %s", strClass.c_str());
-			if (ImGui::InputText("Class Texture Path", m_szTexturePathBuffer, sizeof(m_szTexturePathBuffer)))
-				strTexture = m_szTexturePathBuffer;
-		}
+		if (ImGui::Button("Move Backward"))
+			Move_Slot_Backward(m_iSelectedSlot);
+		ImGui::SameLine();
+		if (ImGui::Button("Move Forward"))
+			Move_Slot_Forward(m_iSelectedSlot);
 
 		if (ImGui::Button("Duplicate Slot (same rect)"))
 			Duplicate_Slot(m_iSelectedSlot);
@@ -384,6 +854,7 @@ void Client::CHUDLayoutTool::Render_Inspector()
 		{
 			Delete_Slot(m_iSelectedSlot);
 			m_iSelectedSlot = -1;
+			m_SelectedSlots.clear();
 		}
 	}
 
@@ -414,7 +885,9 @@ void Client::CHUDLayoutTool::Add_Slot_From_Palette(SLOT_TYPE eType, float fDropC
 	Slot.eType = eType;
 	Slot.fSizeX = pEntry->fSizeX;
 	Slot.fSizeY = pEntry->fSizeY;
-	Slot.bPerClass = pEntry->bPerClass;
+	/* Class-specific palette entries (emblem, identity gauge) are born owned by the class being edited. */
+	if (pEntry->bPerClass && g_Documents[m_iActiveDocument].bPerClass)
+		Slot.strOwnerClass = Current_Class();
 	Slot.fX = fDropCenterX - Slot.fSizeX * 0.5f;
 	Slot.fY = fDropCenterY - Slot.fSizeY * 0.5f;
 
@@ -462,10 +935,94 @@ void Client::CHUDLayoutTool::Duplicate_Slot(int32_t iIndex)
 	HUD_SLOT Slot = m_Slots[iIndex];
 	Slot.strName = Generate_Unique_Name(m_Slots[iIndex].strName, true);
 	Slot.TextureLayers.clear();
-	Slot.ClassTextures.clear();
+	Slot.strShineTexture.clear();
+	Slot.AnimationFrames.clear();
 
 	m_Slots.push_back(move(Slot));
 	m_iSelectedSlot = static_cast<int32_t>(m_Slots.size()) - 1;
+}
+
+void Client::CHUDLayoutTool::Move_Slot_Forward(int32_t iIndex)
+{
+	if (iIndex < 0 || iIndex + 1 >= static_cast<int32_t>(m_Slots.size()))
+		return;
+
+	swap(m_Slots[iIndex], m_Slots[iIndex + 1]);
+
+	for (int32_t& iSelected : m_SelectedSlots)
+	{
+		if (iSelected == iIndex)
+			iSelected = iIndex + 1;
+		else if (iSelected == iIndex + 1)
+			iSelected = iIndex;
+	}
+
+	if (m_iSelectedSlot == iIndex)
+		m_iSelectedSlot = iIndex + 1;
+	else if (m_iSelectedSlot == iIndex + 1)
+		m_iSelectedSlot = iIndex;
+}
+
+void Client::CHUDLayoutTool::Move_Slot_Backward(int32_t iIndex)
+{
+	if (iIndex <= 0 || iIndex >= static_cast<int32_t>(m_Slots.size()))
+		return;
+
+	swap(m_Slots[iIndex], m_Slots[iIndex - 1]);
+
+	for (int32_t& iSelected : m_SelectedSlots)
+	{
+		if (iSelected == iIndex)
+			iSelected = iIndex - 1;
+		else if (iSelected == iIndex - 1)
+			iSelected = iIndex;
+	}
+
+	if (m_iSelectedSlot == iIndex)
+		m_iSelectedSlot = iIndex - 1;
+	else if (m_iSelectedSlot == iIndex - 1)
+		m_iSelectedSlot = iIndex;
+}
+
+bool_t Client::CHUDLayoutTool::Is_Slot_Visible(const HUD_SLOT& Slot) const
+{
+	/* Documents without classes (Screen UI) show everything; otherwise shared + current class only. */
+	if (!g_Documents[m_iActiveDocument].bPerClass)
+		return true;
+
+	return Slot.strOwnerClass.empty() || Slot.strOwnerClass == Current_Class();
+}
+
+bool_t Client::CHUDLayoutTool::Is_Slot_Selected(int32_t iIndex) const
+{
+	for (int32_t iSelected : m_SelectedSlots)
+		if (iSelected == iIndex)
+			return true;
+
+	return false;
+}
+
+void Client::CHUDLayoutTool::Toggle_Slot_Selection(int32_t iIndex)
+{
+	for (auto Iter = m_SelectedSlots.begin(); Iter != m_SelectedSlots.end(); ++Iter)
+	{
+		if (*Iter == iIndex)
+		{
+			m_SelectedSlots.erase(Iter);
+			m_iSelectedSlot = m_SelectedSlots.empty() ? -1 : m_SelectedSlots.back();
+			return;
+		}
+	}
+
+	m_SelectedSlots.push_back(iIndex);
+	m_iSelectedSlot = iIndex;
+}
+
+void Client::CHUDLayoutTool::Select_Slot_Exclusive(int32_t iIndex)
+{
+	m_SelectedSlots.clear();
+	m_SelectedSlots.push_back(iIndex);
+	m_iSelectedSlot = iIndex;
 }
 
 void Client::CHUDLayoutTool::Add_Class(const string& strName)
@@ -490,8 +1047,12 @@ void Client::CHUDLayoutTool::Delete_Class(int32_t iIndex)
 	const string strRemoved = m_ClassNames[iIndex];
 	m_ClassNames.erase(m_ClassNames.begin() + iIndex);
 
-	for (HUD_SLOT& Slot : m_Slots)
-		Slot.ClassTextures.erase(strRemoved);
+	/* Slots owned by the removed class would become unreachable, so drop them with it. */
+	for (auto Iter = m_Slots.begin(); Iter != m_Slots.end(); )
+		Iter = (Iter->strOwnerClass == strRemoved) ? m_Slots.erase(Iter) : Iter + 1;
+
+	m_iSelectedSlot = -1;
+	m_SelectedSlots.clear();
 
 	if (m_iSelectedClass >= static_cast<int32_t>(m_ClassNames.size()))
 		m_iSelectedClass = static_cast<int32_t>(m_ClassNames.size()) - 1;
@@ -550,26 +1111,51 @@ void Client::CHUDLayoutTool::Save(const string& strPath)
 
 	for (const HUD_SLOT& Slot : m_Slots)
 	{
+		/* "-" stands for a shared slot: an empty token can't survive whitespace-delimited parsing. */
 		File << "SLOT " << Slot.strName << " "
 			<< Slot.fX << " " << Slot.fY << " "
 			<< Slot.fSizeX << " " << Slot.fSizeY << " "
-			<< (Slot.bPerClass ? 1 : 0) << " "
-			<< static_cast<int32_t>(Slot.eType) << "\n";
+			<< (Slot.strOwnerClass.empty() ? "-" : Slot.strOwnerClass) << " "
+			<< static_cast<int32_t>(Slot.eType) << " "
+			<< Slot.fRotation << " "
+			<< (Slot.bAnimationOn ? 1 : 0) << " "
+			<< Slot.fAnimationScale << " "
+			<< Slot.fAnimationOffsetX << " "
+			<< Slot.fAnimationOffsetY << "\n";
 
-		for (const string& strLayerPath : Slot.TextureLayers)
+		for (int32_t iLayer = 0; iLayer < static_cast<int32_t>(Slot.TextureLayers.size()); ++iLayer)
 		{
-			if (strLayerPath.empty())
+			const TEXTURE_LAYER& Layer = Slot.TextureLayers[iLayer];
+			if (Layer.strPath.empty())
 				continue;
 
-			File << "TEXTURE " << Slot.strName << " " << strLayerPath << "\n";
+			File << "TEXTURE " << Slot.strName << " " << Layer.strPath << "\n";
+
+			if (!Layer.strHoverPath.empty())
+				File << "LAYERHOVER " << Slot.strName << " " << iLayer << " " << Layer.strHoverPath << "\n";
+
+			/* Only written when tinted, so untinted layouts stay readable and older files keep loading. */
+			if (1.f != Layer.vTint[0] || 1.f != Layer.vTint[1] ||
+				1.f != Layer.vTint[2] || 1.f != Layer.vTint[3])
+			{
+				File << "LAYERTINT " << Slot.strName << " " << iLayer << " "
+					<< Layer.vTint[0] << " " << Layer.vTint[1] << " "
+					<< Layer.vTint[2] << " " << Layer.vTint[3] << "\n";
+			}
 		}
 
-		for (const pair<const string, string>& ClassTexture : Slot.ClassTextures)
+		if (!Slot.strShineTexture.empty())
+			File << "SHINETEX " << Slot.strName << " " << Slot.strShineTexture << "\n";
+
+		if (!Slot.AnimationFrames.empty())
+			File << "ANIMFPS " << Slot.strName << " " << Slot.fAnimationFPS << "\n";
+
+		for (const string& strFramePath : Slot.AnimationFrames)
 		{
-			if (ClassTexture.second.empty())
+			if (strFramePath.empty())
 				continue;
 
-			File << "CLASSTEX " << Slot.strName << " " << ClassTexture.first << " " << ClassTexture.second << "\n";
+			File << "ANIMFRAME " << Slot.strName << " " << strFramePath << "\n";
 		}
 	}
 }
@@ -600,43 +1186,86 @@ void Client::CHUDLayoutTool::Load(const string& strPath)
 		else if ("SLOT" == strTag)
 		{
 			HUD_SLOT Slot{};
-			int32_t iPerClass = 0;
+			string strOwner;
 			int32_t iType = 0;
-			Stream >> Slot.strName >> Slot.fX >> Slot.fY >> Slot.fSizeX >> Slot.fSizeY >> iPerClass >> iType;
-			Slot.bPerClass = (0 != iPerClass);
+			int32_t iAnimationOn = 0;
+			Stream >> Slot.strName >> Slot.fX >> Slot.fY >> Slot.fSizeX >> Slot.fSizeY >> strOwner >> iType >> Slot.fRotation
+				>> iAnimationOn >> Slot.fAnimationScale >> Slot.fAnimationOffsetX >> Slot.fAnimationOffsetY;
+			if ("-" != strOwner)
+				Slot.strOwnerClass = strOwner;
 			Slot.eType = static_cast<SLOT_TYPE>(iType);
+			Slot.bAnimationOn = (0 != iAnimationOn);
 			Slots.push_back(move(Slot));
 		}
-		else if ("TEXTURE" == strTag)
+		/* Everything below decorates the slot most recently declared, so different classes may reuse
+		   the same slot name without their attributes bleeding into each other. */
+		else if (!Slots.empty())
 		{
-			string strSlotName, strTexturePath;
-			Stream >> strSlotName;
-			Stream >> ws;
-			getline(Stream, strTexturePath);
+			HUD_SLOT& Slot = Slots.back();
 
-			for (HUD_SLOT& Slot : Slots)
+			if ("TEXTURE" == strTag)
 			{
-				if (Slot.strName == strSlotName)
+				string strSlotName, strTexturePath;
+				Stream >> strSlotName;
+				Stream >> ws;
+				getline(Stream, strTexturePath);
+
+				TEXTURE_LAYER Layer{};
+				Layer.strPath = strTexturePath;
+				Slot.TextureLayers.push_back(move(Layer));
+			}
+			else if ("LAYERHOVER" == strTag)
+			{
+				string strSlotName, strHoverPath;
+				int32_t iLayer = -1;
+				Stream >> strSlotName >> iLayer;
+				Stream >> ws;
+				getline(Stream, strHoverPath);
+
+				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
+					Slot.TextureLayers[iLayer].strHoverPath = strHoverPath;
+			}
+			else if ("LAYERTINT" == strTag)
+			{
+				string strSlotName;
+				int32_t iLayer = -1;
+				float vTint[4] = { 1.f, 1.f, 1.f, 1.f };
+				Stream >> strSlotName >> iLayer >> vTint[0] >> vTint[1] >> vTint[2] >> vTint[3];
+
+				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
 				{
-					Slot.TextureLayers.push_back(strTexturePath);
-					break;
+					TEXTURE_LAYER& Layer = Slot.TextureLayers[iLayer];
+					Layer.vTint[0] = vTint[0];
+					Layer.vTint[1] = vTint[1];
+					Layer.vTint[2] = vTint[2];
+					Layer.vTint[3] = vTint[3];
 				}
 			}
-		}
-		else if ("CLASSTEX" == strTag)
-		{
-			string strSlotName, strClass, strTexturePath;
-			Stream >> strSlotName >> strClass;
-			Stream >> ws;
-			getline(Stream, strTexturePath);
-
-			for (HUD_SLOT& Slot : Slots)
+			else if ("SHINETEX" == strTag)
 			{
-				if (Slot.strName == strSlotName)
-				{
-					Slot.ClassTextures[strClass] = strTexturePath;
-					break;
-				}
+				string strSlotName, strTexturePath;
+				Stream >> strSlotName;
+				Stream >> ws;
+				getline(Stream, strTexturePath);
+
+				Slot.strShineTexture = strTexturePath;
+			}
+			else if ("ANIMFRAME" == strTag)
+			{
+				string strSlotName, strFramePath;
+				Stream >> strSlotName;
+				Stream >> ws;
+				getline(Stream, strFramePath);
+
+				Slot.AnimationFrames.push_back(strFramePath);
+			}
+			else if ("ANIMFPS" == strTag)
+			{
+				string strSlotName;
+				float fFPS = 10.f;
+				Stream >> strSlotName >> fFPS;
+
+				Slot.fAnimationFPS = fFPS;
 			}
 		}
 	}
@@ -658,7 +1287,7 @@ void Client::CHUDLayoutTool::Reset_Default()
 	m_iSelectedClass = 0;
 	m_iSelectedSlot = -1;
 
-	auto Fn_AddSlot = [this](const string& strName, float fX, float fY, float fW, float fH, bool_t bPerClass = false)
+	auto Fn_AddSlot = [this](const string& strName, float fX, float fY, float fW, float fH, const string& strOwnerClass = string())
 	{
 		HUD_SLOT Slot{};
 		Slot.strName = strName;
@@ -666,7 +1295,7 @@ void Client::CHUDLayoutTool::Reset_Default()
 		Slot.fY = fY;
 		Slot.fSizeX = fW;
 		Slot.fSizeY = fH;
-		Slot.bPerClass = bPerClass;
+		Slot.strOwnerClass = strOwnerClass;
 		m_Slots.push_back(move(Slot));
 	};
 
@@ -683,7 +1312,7 @@ void Client::CHUDLayoutTool::Reset_Default()
 	Fn_AddSlot("Skill_D", 520.f, 682.f, 46.f, 46.f);
 	Fn_AddSlot("Skill_F", 570.f, 682.f, 46.f, 46.f);
 
-	Fn_AddSlot("Identity", 592.f, 590.f, 96.f, 96.f, true);
+	Fn_AddSlot("Identity", 592.f, 590.f, 96.f, 96.f, "Default");
 
 	Fn_AddSlot("ManaBar", 712.f, 600.f, 258.f, 20.f);
 	Fn_AddSlot("Skill_F1", 968.f, 628.f, 46.f, 46.f);
