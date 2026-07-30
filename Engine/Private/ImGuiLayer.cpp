@@ -35,6 +35,19 @@ bool_t CImGuiLayer::Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceCon
 
 	ImGui::StyleColorsDark();
 
+	/* The stock atlas is ASCII only, so Korean tool labels (skill names and the
+	like) render as boxes. Malgun Gothic ships with Windows and its Korean glyph
+	range also carries Latin, so it can serve as the single UI font. If the file
+	is somehow absent we keep the default font rather than fail tool startup. */
+	{
+		const char_t* pKoreanFont = "C:\\Windows\\Fonts\\malgun.ttf";
+		if (INVALID_FILE_ATTRIBUTES != GetFileAttributesA(pKoreanFont))
+			io.Fonts->AddFontFromFileTTF(pKoreanFont, 16.f, nullptr,
+				io.Fonts->GetGlyphRangesKorean());
+		else
+			io.Fonts->AddFontDefault();
+	}
+
 	if (!ImGui_ImplWin32_Init(hWnd))
 	{
 		ImGui::DestroyContext();

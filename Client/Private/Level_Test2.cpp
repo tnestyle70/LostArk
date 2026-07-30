@@ -2,7 +2,8 @@
 
 #include "Camera_Free.h"
 #include "GameInstance.h"
-#include "LanceMaster.h"
+#include "Character.h"
+#include "Logic_LanceMaster.h"
 
 CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -71,12 +72,14 @@ HRESULT CLevel_Test2::Ready_Layer_Camera(const wstring_t& strLayerTag)
 
 HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
 {
-	CLanceMaster::LANCEMASTER_DESC		LanceMasterDesc{};
-	LanceMasterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
+	CCharacter::CHARACTER_DESC		CharacterDesc{};
+	CharacterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
+	CharacterDesc.pSpec = &Spec_LanceMaster;
+	CharacterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
 
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
-		TEXT("Prototype_GameObject_LanceMaster"),
-		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &LanceMasterDesc)))
+		TEXT("Prototype_GameObject_Character"),
+		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &CharacterDesc)))
 		return E_FAIL;
 
 	return S_OK;

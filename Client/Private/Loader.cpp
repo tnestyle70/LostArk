@@ -4,9 +4,9 @@
 #include "Body_Player.h"
 #include "Valtan.h"
 #include "Body_Valtan.h"
-#include "LanceMaster.h"
-#include "Body_LanceMaster.h"
-#include "Weapon_LanceMaster.h"
+#include "Part_Equipment.h"
+#include "Part_Body.h"
+#include "Character.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapAssetPreview.h"
@@ -233,12 +233,17 @@ HRESULT CLoader::Ready_For_Test_Level2()
 {
     lstrcpy(m_szLoadingText, TEXT("Loading Test Level 2 resources."));
 
+    const matrix_t preTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
+
+#pragma region CAMERA
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
         TEXT("Prototype_GameObject_Camera_Free"),
         CCamera_Free::Create(m_pDevice, m_pContext))))
         return E_FAIL;
+#pragma endregion
 
+#pragma region SHADER
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
         TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
@@ -246,16 +251,6 @@ HRESULT CLoader::Ready_For_Test_Level2()
             TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
             VTXANIMMESH::Elements,
             VTXANIMMESH::iNumElements))))
-        return E_FAIL;
-
-    const matrix_t preTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
-    if (FAILED(CGameInstance::Get().Add_Prototype(
-        ETOUI(LEVEL::TEST_LEVEL2),
-        TEXT("Prototype_Component_Model_LanceMaster"),
-        CModel::Create(m_pDevice, m_pContext,
-            MODEL::ANIM,
-            "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster.wmodel",
-            preTransform))))
         return E_FAIL;
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
@@ -266,15 +261,59 @@ HRESULT CLoader::Ready_For_Test_Level2()
             VTXMESH::Elements,
             VTXMESH::iNumElements))))
         return E_FAIL;
+#pragma endregion
 
+#pragma region SKELETON
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::TEST_LEVEL2),
+        TEXT("Prototype_Component_Model_LanceMaster"),
+        CModel::Create(m_pDevice, m_pContext,
+            MODEL::ANIM,
+            "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster.wmodel",
+            preTransform))))
+        return E_FAIL;
+#pragma endregion
+
+#pragma region EQUIPMENT
+    /* The armour pieces are cooked against the body's rig and borrow its bone
+    palette at render time, so they ship without animation data of their own. */
+    static const struct { const tchar_t* pTag; const char_t* pPath; } EquipmentModels[] =
+    {
+        /* For. LanceMaster */
+        { TEXT("Prototype_Component_Model_LanceMaster_Upper"),
+          "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster_Upper.wmodel" },
+        { TEXT("Prototype_Component_Model_LanceMaster_Lower"),
+          "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster_Lower.wmodel" },
+        { TEXT("Prototype_Component_Model_LanceMaster_Arm"),
+          "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster_Arm.wmodel" },
+        { TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
+          "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster_Shoulder.wmodel" },
+        { TEXT("Prototype_Component_Model_LanceMaster_Helmet"),
+          "../Bin/Resources/LostArk/Character/LanceMaster/LanceMaster_Helmet.wmodel" },
+    };
+
+    for (const auto& equipmentModel : EquipmentModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            ETOUI(LEVEL::TEST_LEVEL2),
+            equipmentModel.pTag,
+            CModel::Create(m_pDevice, m_pContext,
+                MODEL::ANIM,
+                equipmentModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
+#pragma endregion
+
+#pragma region WEAPON
     /* The weapon carries no animation, so it is cooked with --pretransform as a
-    static mesh: CMesh rejects a skinned mesh loaded as NONANIM and vice versa.
+static mesh: CMesh rejects a skinned mesh loaded as NONANIM and vice versa.
 
-    The body came through psk -> Blender -> FBX and kept the raw unit scale
-    (~124 units tall), while the weapon was cooked straight from umodel's glTF,
-    whose exporter divides by 100 (~2.3 units long). Scaling the weapon by 100
-    puts it back in the body's unit space; the socket matrix then applies the
-    body's own pre-transform to both. */
+The body came through psk -> Blender -> FBX and kept the raw unit scale
+(~124 units tall), while the weapon was cooked straight from umodel's glTF,
+whose exporter divides by 100 (~2.3 units long). Scaling the weapon by 100
+puts it back in the body's unit space; the socket matrix then applies the
+body's own pre-transform to both. */
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
         TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
@@ -283,24 +322,28 @@ HRESULT CLoader::Ready_For_Test_Level2()
             "../Bin/Resources/LostArk/Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
             XMMatrixScaling(100.f, 100.f, 100.f)))))
         return E_FAIL;
+#pragma endregion
 
+#pragma region GAMEOBJECT
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
-        TEXT("Prototype_GameObject_Body_LanceMaster"),
-        CBody_LanceMaster::Create(m_pDevice, m_pContext))))
+        TEXT("Prototype_GameObject_Part_Equipment"),
+        CPart_Equipment::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
-        TEXT("Prototype_GameObject_Weapon_LanceMaster"),
-        CWeapon_LanceMaster::Create(m_pDevice, m_pContext))))
+        TEXT("Prototype_GameObject_Part_Body"),
+        CPart_Body::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    /* Class-agnostic: the spec passed at clone time decides what it assembles. */
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::TEST_LEVEL2),
-        TEXT("Prototype_GameObject_LanceMaster"),
-        CLanceMaster::Create(m_pDevice, m_pContext))))
+        TEXT("Prototype_GameObject_Character"),
+        CCharacter::Create(m_pDevice, m_pContext))))
         return E_FAIL;
+#pragma endregion
 
     lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));
     m_isFinished = true;

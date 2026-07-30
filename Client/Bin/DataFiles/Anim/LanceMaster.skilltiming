@@ -1,0 +1,51 @@
+LOSTARK_SKILL_TIMING 1 "LanceMaster" 50
+34044 "이연격 [34040 변형]" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
+34047 "이연격 [34040 변형]" hits="1.445-1.521,1.58-1.663" freeze=0.45 push=0.2 multi=3 interval=0.3
+34048 "이연격 [34040 변형]" hits="0.3-0.316,1.657-1.744" freeze=0.45 push=0.2 multi=0 interval=0
+34060 "열공참" hits="1.295-1.363,1.445-1.521" freeze=0.325 push=0 multi=0 interval=0
+34070 "회선창" hits="0.3-0.316,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
+34072 "회선창 [34070 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0
+34087 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.11 multi=2 interval=0.1
+34088 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.16 multi=3 interval=0.3
+34090 "철량추" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0
+34097 "철량추 [34090 변형]" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0
+34098 "철량추 [34090 변형]" hits="0.3-0.316" freeze=0.45 push=0.2 multi=0 interval=0
+34100 "청룡출수" hits="1.39-1.463" freeze=0.325 push=0 multi=0 interval=0
+34104 "청룡출수 [34100 변형]" hits="" freeze=0.45 push=0 multi=2 interval=0.19
+34105 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0
+34108 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0
+34110 "반월섬" hits="1.857-1.955" freeze=0.45 push=0 multi=0 interval=0
+34115 "반월섬 [34110 변형]" hits="1.557-1.639,1.59-1.674" freeze=0.45 push=0 multi=0 interval=0
+34117 "반월섬 [34110 변형]" hits="" freeze=0.45 push=0.16 multi=2 interval=0.3
+34118 "반월섬 [34110 변형]" hits="1.39-1.463" freeze=0.325 push=0 multi=2 interval=0.3
+34120 "연환섬" hits="1.295-1.363,1.445-1.521,1.51-1.589" freeze=0.45 push=0 multi=0 interval=0
+34121 "연환섬 [34120 변형]" hits="1.195-1.258" freeze=0.45 push=0 multi=0 interval=0
+34130 "질풍참" hits="" freeze=0.45 push=0.11 multi=1 interval=0.2
+34131 "질풍참 [34130 변형]" hits="" freeze=0.45 push=0.08 multi=1 interval=0.2
+34142 "선풍참혼 [34140 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
+34150 "맹룡열파" hits="1.345-1.416,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
+34151 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416,1.445-1.521" freeze=0.6 push=0.28 multi=0 interval=0
+34152 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416" freeze=0.6 push=0.16 multi=0 interval=0
+34545 "나선창 [34540 변형]" hits="-0.5--0.526" freeze=0.45 push=0.13 multi=3 interval=0.3
+34546 "나선창 [34540 변형]" hits="0.945-0.995" freeze=0.45 push=0 multi=0 interval=0
+34547 "나선창 [34540 변형]" hits="1.39-1.463,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
+34548 "나선창 [34540 변형]" hits="-0.5--0.526,0.945-0.995" freeze=0.45 push=0.13 multi=3 interval=0.3
+34549 "나선창 [34540 변형]" hits="1.445-1.521,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
+34550 "사두룡격" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2
+34553 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2
+34554 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=3 interval=0.2
+34555 "사두룡격 [34550 변형]" hits="1.445-1.521" freeze=0.45 push=0.08 multi=2 interval=0.2
+34560 "굉열파" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0
+34564 "굉열파 [34560 변형]" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0
+34567 "굉열파 [34560 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
+34569 "굉열파 [34560 변형]" hits="0.2-0.211,1.59-1.674" freeze=0.45 push=0 multi=3 interval=0.3
+34570 "유성강천" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
+34578 "유성강천 [34570 변형]" hits="1.426-1.501" freeze=0.45 push=0 multi=0 interval=0
+34590 "적룡포" hits="1.595-1.679" freeze=0.6 push=0 multi=0 interval=0
+34601 "연가창식: 은하유성탄 [34600 변형]" hits="1.39-1.463" freeze=0.6 push=0 multi=0 interval=0
+34611 "연가창식: 적룡질풍격 [34610 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0
+34620 "연가창식: 은하비섬창" hits="1.93-2.032" freeze=0.8 push=0 multi=0 interval=0
+34630 "연가창식: 마룡합일섬" hits="1.445-1.521" freeze=0.6 push=0 multi=0 interval=0
+34640 "맹룡난무" hits="1.73-1.821" freeze=0.6 push=0 multi=0 interval=0
+34650 "적룡필살" hits="1.24-1.305" freeze=0.6 push=0 multi=0 interval=0
+34660 "연가비기" hits="1.314-1.383" freeze=0.45 push=0 multi=0 interval=0

@@ -6,6 +6,7 @@
 #include "Model.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 namespace
@@ -14,7 +15,9 @@ namespace
 	This resolution is the only place that knows the target; once the shared asset
 	catalog lands it replaces the body of Resolve_Model and nothing else. */
 	constexpr const tchar_t* LAYER_TAG = TEXT("Layer_Player");
-	constexpr const tchar_t* PART_TAG = TEXT("Part_Body");
+	/* CCharacter numbers its part tags so std::map updates them in the right
+	order (see the 07-30 RESULT doc), hence the "00" rather than plain "Part_Body". */
+	constexpr const tchar_t* PART_TAG = TEXT("Part_00_Body");
 	constexpr const tchar_t* COMPONENT_TAG = TEXT("Com_Model");
 
 	constexpr const char_t* EVENT_FILE_MAGIC = "LOSTARK_ANIM_EVENTS";
@@ -115,6 +118,17 @@ shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 	return dynamic_pointer_cast<Engine::CModel>(pComponent);
 }
 
+const char_t* Client::CAnimation_Tool::Kind_Name(EVENT_KIND eKind)
+{
+	switch (eKind)
+	{
+	case EVENT_KIND::SOUND:  return "SOUND";
+	case EVENT_KIND::EFFECT: return "EFFECT";
+	case EVENT_KIND::HIT:
+	default:                 return "HIT";
+	}
+}
+
 int32_t Client::CAnimation_Tool::Get_TickFrame(const ANIM_EVENT& evt, int32_t iTickIndex)
 {
 	if (evt.iHitCount <= 1 || iTickIndex <= 0)
@@ -148,6 +162,11 @@ std::string Client::CAnimation_Tool::Get_EventFilePath() const
 	return "../Bin/DataFiles/Anim/" + m_AssetName + ".animevents";
 }
 
+std::string Client::CAnimation_Tool::Get_SkillReferencePath() const
+{
+	return "../Bin/DataFiles/Anim/" + m_AssetName + ".skilltiming";
+}
+
 void Client::CAnimation_Tool::Render()
 {
 	ImGui::SetNextWindowSize(ImVec2(460.f, 720.f), ImGuiCond_FirstUseEver);
@@ -176,10 +195,19 @@ void Client::CAnimation_Tool::Render()
 		Load_Events();
 	}
 
+	/* The game-extracted skill timing is optional; a missing file just hides the
+	reference panel and never blocks event authoring. */
+	if (!m_bRefLoadAttempted)
+	{
+		m_bRefLoadAttempted = true;
+		Load_SkillReference();
+	}
+
 	ImGui::Text("Asset: %s   Animations: %u", m_AssetName.c_str(), pModel->Get_NumAnimations());
 
 	Render_Playback(pModel);
 	Render_HitEvents(pModel);
+	Render_SkillReference(pModel);
 
 	ImGui::SeparatorText("Clips");
 	ImGui::SetNextItemWidth(-1.f);
@@ -255,7 +283,7 @@ void Client::CAnimation_Tool::Render_Playback(const shared_ptr<Engine::CModel>& 
 
 void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>& pModel)
 {
-	ImGui::SeparatorText("Hit windows");
+	ImGui::SeparatorText("Events");
 
 	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
 	const char_t* pCurrentName = pModel->Get_AnimationName(iCurrentIndex);
@@ -271,17 +299,28 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 		pModel->Get_AnimationProgress(iCurrentIndex, fPosition, fDuration) && fDuration > 0.f;
 	const int32_t iFrame = static_cast<int32_t>(fPosition);
 
-	if (ImGui::Button("Add window at current frame"))
+	auto Add_Event = [&](EVENT_KIND eKind)
 	{
 		ANIM_EVENT evt{};
 		evt.clipName = pCurrentName;
-		evt.eKind = EVENT_KIND::HIT;
+		evt.eKind = eKind;
 		evt.iStartFrame = iFrame;
 		evt.iEndFrame = iFrame;
 		m_Events.push_back(evt);
 		m_iSelectedEvent = static_cast<int32_t>(m_Events.size()) - 1;
+		m_PayloadEdit[0] = '\0';
 		m_bDirty = true;
-	}
+	};
+
+	/* All three add at the current frame; HIT then grows into a window. */
+	if (ImGui::Button("Add hit"))
+		Add_Event(EVENT_KIND::HIT);
+	ImGui::SameLine();
+	if (ImGui::Button("Add sound"))
+		Add_Event(EVENT_KIND::SOUND);
+	ImGui::SameLine();
+	if (ImGui::Button("Add effect"))
+		Add_Event(EVENT_KIND::EFFECT);
 
 	ImGui::SameLine();
 	if (ImGui::Button("Save"))
@@ -302,7 +341,7 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 	if (!m_Status.empty())
 		ImGui::TextWrapped("%s", m_Status.c_str());
 
-	if (!ImGui::BeginChild("##hitlist", ImVec2(0.f, 150.f), ImGuiChildFlags_Borders))
+	if (!ImGui::BeginChild("##eventlist", ImVec2(0.f, 170.f), ImGuiChildFlags_Borders))
 	{
 		ImGui::EndChild();
 		return;
@@ -320,21 +359,27 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 		++iShown;
 		ImGui::PushID(i);
 
-		const int32_t iActiveTick = bHasTrack ? Get_ActiveTick(evt, iFrame) : -1;
-		const bool_t bActive = iActiveTick >= 0;
+		const bool_t bHit = EVENT_KIND::HIT == evt.eKind;
+
+		/* HIT highlights across its window; a point event only on its own frame. */
+		const int32_t iActiveTick = (bHit && bHasTrack) ? Get_ActiveTick(evt, iFrame) : -1;
+		const bool_t bActive = bHit ? (iActiveTick >= 0) : (evt.iStartFrame == iFrame);
 		if (bActive)
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 1.f, 0.4f, 1.f));
 
-		char_t szLabel[96]{};
-		if (evt.iHitCount > 1)
-			snprintf(szLabel, sizeof(szLabel), "HIT %d - %d  x%d%s",
-				evt.iStartFrame, evt.iEndFrame, evt.iHitCount,
-				bActive ? "" : "");
-		else
+		char_t szLabel[160]{};
+		if (bHit && evt.iHitCount > 1)
+			snprintf(szLabel, sizeof(szLabel), "HIT %d - %d  x%d",
+				evt.iStartFrame, evt.iEndFrame, evt.iHitCount);
+		else if (bHit)
 			snprintf(szLabel, sizeof(szLabel), "HIT %d - %d",
 				evt.iStartFrame, evt.iEndFrame);
+		else
+			snprintf(szLabel, sizeof(szLabel), "%s %d  %s",
+				Kind_Name(evt.eKind), evt.iStartFrame,
+				evt.sPayload.empty() ? "(unset)" : evt.sPayload.c_str());
 
-		if (bActive)
+		if (bHit && bActive)
 		{
 			char_t szActive[32]{};
 			snprintf(szActive, sizeof(szActive), "  <== tick %d/%d",
@@ -347,6 +392,8 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 			m_iSelectedEvent = i;
 			pModel->Set_AnimPaused(true);
 			pModel->Set_AnimTrackPosition(iCurrentIndex, static_cast<f32_t>(evt.iStartFrame));
+			/* Prime the payload editor with the row just opened. */
+			strncpy_s(m_PayloadEdit, evt.sPayload.c_str(), _TRUNCATE);
 		}
 
 		if (bActive)
@@ -355,41 +402,68 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 		if (i == m_iSelectedEvent)
 		{
 			const int32_t iMaxFrame = bHasTrack ? static_cast<int32_t>(fDuration) : 0;
-			ImGui::SetNextItemWidth(200.f);
-			if (ImGui::DragIntRange2("start / end", &evt.iStartFrame, &evt.iEndFrame,
-				0.2f, 0, iMaxFrame, "%d", "%d"))
-				m_bDirty = true;
 
-			ImGui::SameLine();
-			if (ImGui::Button("Remove"))
-				iRemoveIndex = i;
-
-			ImGui::SetNextItemWidth(120.f);
-			if (ImGui::DragInt("hits", &evt.iHitCount, 0.1f, 1, 64))
+			if (bHit)
 			{
-				if (evt.iHitCount < 1)
-					evt.iHitCount = 1;
-				m_bDirty = true;
-			}
+				ImGui::SetNextItemWidth(200.f);
+				if (ImGui::DragIntRange2("start / end", &evt.iStartFrame, &evt.iEndFrame,
+					0.2f, 0, iMaxFrame, "%d", "%d"))
+					m_bDirty = true;
 
-			if (evt.iHitCount > 1)
-			{
 				ImGui::SameLine();
-				const int32_t iSpan = evt.iEndFrame - evt.iStartFrame;
-				ImGui::Text("every %.1f frames", static_cast<f32_t>(iSpan) /
-					static_cast<f32_t>(evt.iHitCount - 1));
+				if (ImGui::Button("Remove"))
+					iRemoveIndex = i;
 
-				/* Spell the tick frames out so they can be checked against the pose. */
-				std::string ticks;
-				for (int32_t t = 0; t < evt.iHitCount && t < 16; ++t)
+				ImGui::SetNextItemWidth(120.f);
+				if (ImGui::DragInt("hits", &evt.iHitCount, 0.1f, 1, 64))
 				{
-					if (!ticks.empty())
-						ticks += ", ";
-					ticks += std::to_string(Get_TickFrame(evt, t));
+					if (evt.iHitCount < 1)
+						evt.iHitCount = 1;
+					m_bDirty = true;
 				}
-				if (evt.iHitCount > 16)
-					ticks += ", ...";
-				ImGui::TextWrapped("ticks: %s", ticks.c_str());
+
+				if (evt.iHitCount > 1)
+				{
+					ImGui::SameLine();
+					const int32_t iSpan = evt.iEndFrame - evt.iStartFrame;
+					ImGui::Text("every %.1f frames", static_cast<f32_t>(iSpan) /
+						static_cast<f32_t>(evt.iHitCount - 1));
+
+					/* Spell the tick frames out so they can be checked against the pose. */
+					std::string ticks;
+					for (int32_t t = 0; t < evt.iHitCount && t < 16; ++t)
+					{
+						if (!ticks.empty())
+							ticks += ", ";
+						ticks += std::to_string(Get_TickFrame(evt, t));
+					}
+					if (evt.iHitCount > 16)
+						ticks += ", ...";
+					ImGui::TextWrapped("ticks: %s", ticks.c_str());
+				}
+			}
+			else
+			{
+				/* Point event: a single frame plus the cue/effect key to fire. */
+				ImGui::SetNextItemWidth(120.f);
+				if (ImGui::DragInt("frame", &evt.iStartFrame, 0.2f, 0, iMaxFrame))
+				{
+					evt.iEndFrame = evt.iStartFrame;
+					m_bDirty = true;
+				}
+
+				ImGui::SameLine();
+				if (ImGui::Button("Remove"))
+					iRemoveIndex = i;
+
+				ImGui::SetNextItemWidth(-1.f);
+				if (ImGui::InputTextWithHint("##payload",
+					EVENT_KIND::SOUND == evt.eKind ? "sound cue key" : "effect / particle key",
+					m_PayloadEdit, sizeof(m_PayloadEdit)))
+				{
+					evt.sPayload = m_PayloadEdit;
+					m_bDirty = true;
+				}
 			}
 		}
 
@@ -397,7 +471,7 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 	}
 
 	if (0 == iShown)
-		ImGui::TextUnformatted("No hit window on this clip.");
+		ImGui::TextUnformatted("No event on this clip.");
 
 	ImGui::EndChild();
 
@@ -477,8 +551,14 @@ bool_t Client::CAnimation_Tool::Save_Events()
 
 	for (const ANIM_EVENT& evt : m_Events)
 	{
-		fprintf(pFile, "\"%s\" HIT start=%d end=%d count=%d\n",
-			evt.clipName.c_str(), evt.iStartFrame, evt.iEndFrame, evt.iHitCount);
+		const char_t* pKind = Kind_Name(evt.eKind);
+		if (EVENT_KIND::HIT == evt.eKind)
+			fprintf(pFile, "\"%s\" %s start=%d end=%d count=%d\n",
+				evt.clipName.c_str(), pKind, evt.iStartFrame, evt.iEndFrame, evt.iHitCount);
+		else
+			/* Point events store only the frame and the cue/effect key. */
+			fprintf(pFile, "\"%s\" %s start=%d payload=\"%s\"\n",
+				evt.clipName.c_str(), pKind, evt.iStartFrame, evt.sPayload.c_str());
 	}
 
 	fclose(pFile);
@@ -538,18 +618,23 @@ bool_t Client::CAnimation_Tool::Load_Events()
 		if (!Read_Quoted(p, clip) || !Read_Token(p, kind))
 			continue;
 
-		/* Unknown kinds are skipped rather than treated as fatal, so a file written
-		by a newer tool with sound/effect rows still loads its hit windows. */
-		if ("HIT" != kind)
-			continue;
-
 		ANIM_EVENT evt{};
 		evt.clipName = clip;
-		evt.eKind = EVENT_KIND::HIT;
+
+		/* Unknown kinds are skipped rather than treated as fatal, so a file written
+		by a still newer tool keeps loading the kinds this build understands. */
+		if ("HIT" == kind)
+			evt.eKind = EVENT_KIND::HIT;
+		else if ("SOUND" == kind)
+			evt.eKind = EVENT_KIND::SOUND;
+		else if ("EFFECT" == kind)
+			evt.eKind = EVENT_KIND::EFFECT;
+		else
+			continue;
 
 		if (1 == iVersion)
 		{
-			/* v1 stored the two frames as bare positional columns. */
+			/* v1 only ever wrote HIT rows as two bare positional columns. */
 			std::string startToken, endToken;
 			if (!Read_Token(p, startToken) || !Read_Token(p, endToken))
 				continue;
@@ -571,6 +656,8 @@ bool_t Client::CAnimation_Tool::Load_Events()
 					evt.iHitCount = atoi(value.c_str());
 				else if ("interval" == key)
 					iInterval = atoi(value.c_str());
+				else if ("payload" == key)
+					evt.sPayload = value;
 			}
 
 			/* interval is accepted as a hand-authored alternative to count and is
@@ -581,6 +668,10 @@ bool_t Client::CAnimation_Tool::Load_Events()
 				evt.iHitCount = 1;
 		}
 
+		/* A point event has no window; keep end pinned to start. */
+		if (EVENT_KIND::HIT != evt.eKind)
+			evt.iEndFrame = evt.iStartFrame;
+
 		loaded.push_back(evt);
 	}
 
@@ -590,4 +681,184 @@ bool_t Client::CAnimation_Tool::Load_Events()
 	m_bDirty = false;
 	m_Status = "Loaded " + std::to_string(m_Events.size()) + " event(s) from " + path;
 	return true;
+}
+
+bool_t Client::CAnimation_Tool::Load_SkillReference()
+{
+	m_SkillRef.clear();
+
+	const std::string path = Get_SkillReferencePath();
+
+	FILE* pFile = nullptr;
+	if (0 != fopen_s(&pFile, path.c_str(), "r") || nullptr == pFile)
+		return false;
+
+	char_t szLine[2048]{};
+	if (nullptr == fgets(szLine, sizeof(szLine), pFile))
+	{
+		fclose(pFile);
+		return false;
+	}
+
+	const char_t* p = szLine;
+	std::string magic, versionToken, owner, countToken;
+	if (!Read_Token(p, magic) || !Read_Token(p, versionToken) ||
+		!Read_Quoted(p, owner) || !Read_Token(p, countToken) ||
+		magic != "LOSTARK_SKILL_TIMING")
+	{
+		fclose(pFile);
+		return false;
+	}
+
+	while (nullptr != fgets(szLine, sizeof(szLine), pFile))
+	{
+		p = szLine;
+
+		std::string idToken, name;
+		if (!Read_Token(p, idToken) || !Read_Quoted(p, name))
+			continue;
+
+		SKILL_TIMING row{};
+		row.iSkillId = atoi(idToken.c_str());
+		row.name = name;
+
+		std::string key, value;
+		while (Read_Pair(p, key, value))
+		{
+			if ("freeze" == key)
+				row.fFreeze = static_cast<f32_t>(atof(value.c_str()));
+			else if ("push" == key)
+				row.fPush = static_cast<f32_t>(atof(value.c_str()));
+			else if ("multi" == key)
+				row.iMultiHit = atoi(value.c_str());
+			else if ("interval" == key)
+				row.fInterval = static_cast<f32_t>(atof(value.c_str()));
+			else if ("hits" == key)
+			{
+				/* value is "a-b,c-d": comma-separated second windows. */
+				size_t start = 0;
+				while (start <= value.size())
+				{
+					const size_t comma = value.find(',', start);
+					const std::string span = value.substr(start,
+						std::string::npos == comma ? std::string::npos : comma - start);
+
+					const size_t dash = span.find('-');
+					if (std::string::npos != dash)
+					{
+						const f32_t a = static_cast<f32_t>(atof(span.substr(0, dash).c_str()));
+						const f32_t b = static_cast<f32_t>(atof(span.substr(dash + 1).c_str()));
+						row.hitWindows.emplace_back(a, b);
+					}
+
+					if (std::string::npos == comma)
+						break;
+					start = comma + 1;
+				}
+			}
+		}
+
+		m_SkillRef.push_back(row);
+	}
+
+	fclose(pFile);
+	return true;
+}
+
+void Client::CAnimation_Tool::Render_SkillReference(const shared_ptr<Engine::CModel>& pModel)
+{
+	if (m_SkillRef.empty())
+		return;
+
+	if (!ImGui::CollapsingHeader("Skill timing reference (game-extracted)"))
+		return;
+
+	ImGui::TextWrapped("Times are seconds from the start of the whole skill cast (all its "
+		"clips in sequence). Set fps, and for a mid-cast clip set the offset to where that "
+		"clip begins in the cast so a stamp lands on the right local frame.");
+
+	ImGui::SetNextItemWidth(120.f);
+	ImGui::DragFloat("fps", &m_fFps, 0.5f, 1.f, 120.f, "%.0f");
+	if (m_fFps < 1.f)
+		m_fFps = 1.f;
+
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::DragInt("cast offset (frames)", &m_iCastOffset, 0.5f, 0, 100000);
+	if (m_iCastOffset < 0)
+		m_iCastOffset = 0;
+
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint("##reffilter", "filter by id or name", m_RefFilter, sizeof(m_RefFilter));
+
+	const uint32_t iCurrentIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* pCurrentName = pModel->Get_AnimationName(iCurrentIndex);
+
+	if (!ImGui::BeginChild("##reflist", ImVec2(0.f, 190.f), ImGuiChildFlags_Borders))
+	{
+		ImGui::EndChild();
+		return;
+	}
+
+	for (const SKILL_TIMING& row : m_SkillRef)
+	{
+		char_t szId[32]{};
+		snprintf(szId, sizeof(szId), "%d", row.iSkillId);
+		if (!Contains_NoCase(szId, m_RefFilter) && !Contains_NoCase(row.name.c_str(), m_RefFilter))
+			continue;
+
+		ImGui::PushID(row.iSkillId);
+
+		ImGui::Text("%d  %s", row.iSkillId, row.name.empty() ? "(no name)" : row.name.c_str());
+		if (row.fFreeze > 0.f || row.fPush > 0.f || row.iMultiHit > 1)
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("freeze %.3fs push %.3fs%s", row.fFreeze, row.fPush,
+				row.iMultiHit > 1 ? "  multi" : "");
+		}
+
+		for (size_t h = 0; h < row.hitWindows.size(); ++h)
+		{
+			const f32_t a = row.hitWindows[h].first;
+			const f32_t b = row.hitWindows[h].second;
+			/* Cast frame minus where the current clip starts in the cast. */
+			int32_t iStart = static_cast<int32_t>(a * m_fFps + 0.5f) - m_iCastOffset;
+			int32_t iEnd = static_cast<int32_t>(b * m_fFps + 0.5f) - m_iCastOffset;
+			if (iStart < 0)
+				iStart = 0;
+			if (iEnd < iStart)
+				iEnd = iStart;
+
+			ImGui::PushID(static_cast<int32_t>(h));
+
+			char_t szBtn[96]{};
+			snprintf(szBtn, sizeof(szBtn), "stamp hit  %.3f-%.3fs  ->  frame %d-%d",
+				a, b, iStart, iEnd);
+
+			ImGui::BeginDisabled(nullptr == pCurrentName);
+			if (ImGui::Button(szBtn))
+			{
+				ANIM_EVENT evt{};
+				evt.clipName = pCurrentName;
+				evt.eKind = EVENT_KIND::HIT;
+				evt.iStartFrame = iStart;
+				evt.iEndFrame = iEnd;
+				if (row.iMultiHit > 1)
+					evt.iHitCount = row.iMultiHit;
+				m_Events.push_back(evt);
+				m_iSelectedEvent = static_cast<int32_t>(m_Events.size()) - 1;
+				m_bDirty = true;
+				m_Status = "Stamped skill " + std::to_string(row.iSkillId) +
+					" onto " + pCurrentName;
+			}
+			ImGui::EndDisabled();
+
+			ImGui::PopID();
+		}
+
+		ImGui::Separator();
+		ImGui::PopID();
+	}
+
+	ImGui::EndChild();
 }
