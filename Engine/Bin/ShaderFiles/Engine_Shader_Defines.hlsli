@@ -34,6 +34,13 @@ RasterizerState RS_Cull_CW
     FrontCounterClockwise = false;
 };
 
+RasterizerState RS_Cull_None
+{
+    FillMode = Solid;
+    CullMode = None;
+    FrontCounterClockwise = false;
+};
+
 DepthStencilState DSS_Default
 {
     DepthEnable = true;
@@ -45,6 +52,13 @@ DepthStencilState DSS_ZNone
 {
     DepthEnable = false;
     DepthWriteMask = zero;    
+};
+
+DepthStencilState DSS_ReadOnly
+{
+    DepthEnable = true;
+    DepthWriteMask = zero;
+    DepthFunc = less_equal;
 };
 
 BlendState BS_Default
@@ -59,6 +73,14 @@ BlendState BS_AlphaBlend
     BlendEnable[0] = true;
     SrcBlend = Src_Alpha;
     DestBlend = Inv_Src_Alpha;
+    BlendOp = Add;
+};
+
+BlendState BS_Additive
+{
+    BlendEnable[0] = true;
+    SrcBlend = Src_Alpha;
+    DestBlend = One;
     BlendOp = Add;
 };
 

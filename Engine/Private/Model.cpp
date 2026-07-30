@@ -161,6 +161,19 @@ HRESULT CModel::Render(uint32_t iMeshIndex)
     return S_OK;
 }
 
+HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
+    ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride, uint32_t iNumInstances)
+{
+    if (iMeshIndex >= m_Meshes.size() ||
+        nullptr == m_Meshes[iMeshIndex])
+    {
+        return E_INVALIDARG;
+    }
+
+    return m_Meshes[iMeshIndex]->Render_Instanced(
+        pInstanceBuffer, iInstanceStride, iNumInstances);
+}
+
 bool_t CModel::Play_Animation(f32_t fTimeDelta)
 {
     if (m_Animations.empty() || m_iCurrentAnimIndex >= m_Animations.size())

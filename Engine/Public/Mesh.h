@@ -27,7 +27,8 @@ public:
 
 public:
 	HRESULT Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pConstantName, const vector<shared_ptr<class CBone>>& Bones);
-
+	HRESULT Render_Instanced(ID3D11Buffer* pInstanceBuffer,
+		uint32_t iInstanceStride, uint32_t iNumInstances);
 private:
 	char_t					m_szName[MAX_PATH] = {};
 	uint32_t				m_iMaterialIndex = {};

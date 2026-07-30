@@ -28,6 +28,9 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
+	/* 발탄 원본 모델의 전방축을 Engine의 LOOK(+Z) 기준에 맞춘다. */
+	m_pTransformCom->Rotation(0.f, -90.f, 0.f);
+
 	if (!m_pModelCom->Set_Animation("idle_battle_1", true))
 		m_pModelCom->Set_Animation(0u, true);
 	return S_OK;
@@ -39,7 +42,10 @@ void CBody_Valtan::Priority_Update(f32_t fTimeDelta)
 
 void CBody_Valtan::Update(f32_t fTimeDelta)
 {
-	if (nullptr != m_pParentState && (*m_pParentState & CValtan::VALTAN_STATE::IDLE))
+	if (nullptr != m_pParentState &&
+		(*m_pParentState &
+			(CValtan::VALTAN_STATE::IDLE |
+				CValtan::VALTAN_STATE::CHASE)))
 		m_pModelCom->Play_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(

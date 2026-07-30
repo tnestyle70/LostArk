@@ -15,6 +15,7 @@ shared_ptr<CComponent> CObject_Manager::Get_Component(uint32_t iLevelIndex, cons
 		return nullptr;
 
 	CLayer*		pLayer = Find_Layer(iLevelIndex, strLayerTag);
+
 	if (nullptr == pLayer)
 		return nullptr;
 
@@ -27,6 +28,7 @@ shared_ptr<CComponent> CObject_Manager::Get_Component(uint32_t iLevelIndex, cons
 		return nullptr;
 
 	CLayer* pLayer = Find_Layer(iLevelIndex, strLayerTag);
+
 	if (nullptr == pLayer)
 		return nullptr;
 

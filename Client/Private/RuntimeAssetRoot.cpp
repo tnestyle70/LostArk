@@ -18,8 +18,19 @@ filesystem::path CRuntimeAssetRoot::Get()
 	if (0 == moduleLength || moduleLength >= size(modulePath))
 		return {};
 
-	return (filesystem::path(modulePath).parent_path() /
-		L"Resources" / L"LostArk").lexically_normal();
+	const filesystem::path moduleDirectory =
+		filesystem::path(modulePath).parent_path();
+	const filesystem::path adjacentRoot =
+		moduleDirectory / L"Resources" / L"LostArk";
+	if (filesystem::exists(adjacentRoot))
+		return adjacentRoot.lexically_normal();
+
+	const filesystem::path parentRoot =
+		moduleDirectory.parent_path() / L"Resources" / L"LostArk";
+	if (filesystem::exists(parentRoot))
+		return parentRoot.lexically_normal();
+
+	return adjacentRoot.lexically_normal();
 }
 
 filesystem::path CRuntimeAssetRoot::Resolve(const filesystem::path& relativePath)

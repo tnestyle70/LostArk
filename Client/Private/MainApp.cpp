@@ -1,10 +1,16 @@
+#ifdef _DEBUG
+#include "imgui.h"
+#endif
+
 #include "MainApp.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 
 #include "Level_Loading.h"
 
 #ifdef _DEBUG
 #include "ImGuiLayer.h"
+#include "ProfilerCaptureIO.h"
 #include "MapTool.h"
 #include "Animation_Tool.h"
 #include "Effect_Tool.h"
@@ -114,10 +120,11 @@ void CMainApp::Update(f32_t fTimeDelta)
         hForegroundWindow != g_hWnd &&
         IsWindowOwnedByCurrentProcess(hForegroundWindow);
 
-    const bool_t bKeyboardCaptured = bMapToolOpen &&
+    const bool_t bImGuiPanelOpen = bMapToolOpen || m_bProfilerVisible;
+    const bool_t bKeyboardCaptured = bImGuiPanelOpen &&
         nullptr != m_pImGuiLayer &&
         (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
-    const bool_t bMouseCaptured = bMapToolOpen &&
+    const bool_t bMouseCaptured = bImGuiPanelOpen &&
         nullptr != m_pImGuiLayer &&
         (m_pImGuiLayer->WantsCaptureMouse() || bExternalToolFocused);
 
@@ -134,7 +141,7 @@ void CMainApp::Update(f32_t fTimeDelta)
 
 HRESULT CMainApp::Render()
 {
-    float4_t        vClearColor = { 0.f, 0.f, 1.f, 1.f };
+	float4_t        vClearColor = { 0.008f, 0.012f, 0.025f, 1.f };
 
     if (FAILED(CGameInstance::Get().Render_Begin(&vClearColor)))
     {
@@ -183,6 +190,12 @@ HRESULT CMainApp::Render()
             nullptr != m_pHUDLayoutTool)
         {
             m_pHUDLayoutTool->Render();
+        }
+
+        if (m_bProfilerVisible)
+        {
+            RenderProfilerOverlay();
+            RenderProfilerSettings();
         }
 
         m_pImGuiLayer->EndFrame();
@@ -340,20 +353,256 @@ HRESULT CMainApp::ReadyDebugTools()
     m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
     m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
 
+    if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+    {
+        pProfiler->Reset_History();
+        pProfiler->Set_Enabled(false);
+    }
+
     return S_OK;
+}
+
+void CMainApp::RenderProfilerOverlay()
+{
+    if (!m_bProfilerVisible)
+        return;
+
+    Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+    if (nullptr == pProfiler)
+        return;
+
+    Engine::FProfilerLiveStats stats{};
+    const bool_t bHasStats = pProfiler->Get_LiveStats(stats);
+    const ImGuiIO& io = ImGui::GetIO();
+	const ImGuiViewport* pViewport = ImGui::GetMainViewport();
+
+	ImGui::SetNextWindowViewport(pViewport->ID);
+	ImGui::SetNextWindowPos(
+		ImVec2(pViewport->WorkPos.x + 10.f, pViewport->WorkPos.y + 30.f),
+		ImGuiCond_Always);
+
+    constexpr ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoNav |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoInputs;
+
+    if (ImGui::Begin("##LostArkPerfOverlay", nullptr, flags))
+    {
+        ImGui::TextUnformatted("LostArk Profiler");
+        ImGui::Separator();
+        ImGui::Text(
+            "FPS: %.1f  (%.3f ms)",
+            io.Framerate,
+            io.Framerate > 0.f ? 1000.f / io.Framerate : 0.f);
+
+        if (!bHasStats)
+        {
+            ImGui::TextUnformatted("Waiting for first frame...");
+        }
+        else
+        {
+            ImGui::Text("CPU work: %.3f ms", stats.CpuFrameMs);
+            if (stats.GpuValid)
+            {
+                ImGui::Text(
+                    "GPU: %.3f ms  (%u-frame delayed)",
+                    stats.GpuFrameMs,
+                    stats.GpuLatencyFrames);
+            }
+            else
+            {
+                ImGui::TextUnformatted("GPU: warming up...");
+            }
+
+            const auto Counter = [&stats](Engine::EProfilerCounter counter)
+            {
+                return stats.Counters[static_cast<size_t>(counter)];
+            };
+
+            ImGui::Text(
+                "Draws: %llu  (instanced %llu)",
+                static_cast<unsigned long long>(Counter(
+                    Engine::EProfilerCounter::DrawCalls)),
+                static_cast<unsigned long long>(Counter(
+                    Engine::EProfilerCounter::InstancedDrawCalls)));
+            ImGui::Text(
+                "Indices: %llu  Instances: %llu",
+                static_cast<unsigned long long>(Counter(
+                    Engine::EProfilerCounter::Indices)),
+                static_cast<unsigned long long>(Counter(
+                    Engine::EProfilerCounter::Instances)));
+
+            if (stats.GpuValid)
+            {
+                ImGui::Text(
+                    "IA vertices: %llu  primitives: %llu",
+                    static_cast<unsigned long long>(stats.Pipeline.IAVertices),
+                    static_cast<unsigned long long>(stats.Pipeline.IAPrimitives));
+            }
+        }
+    }
+    ImGui::End();
+}
+
+void CMainApp::RenderProfilerSettings()
+{
+    if (!m_bProfilerVisible)
+        return;
+
+    if (!ImGui::Begin(
+        "LostArk Profiler Details",
+        nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+    Engine::FProfilerLiveStats stats{};
+    const bool_t bHasStats =
+        nullptr != pProfiler && pProfiler->Get_LiveStats(stats);
+
+    ImGui::TextUnformatted("F4: profiler on / off");
+    ImGui::Separator();
+
+    if (!bHasStats)
+    {
+        ImGui::TextUnformatted("Waiting for first captured frame...");
+    }
+    else
+    {
+        const auto Counter = [&stats](Engine::EProfilerCounter counter)
+        {
+            return stats.Counters[static_cast<size_t>(counter)];
+        };
+
+        ImGui::Text("Frame: %llu",
+            static_cast<unsigned long long>(stats.FrameNumber));
+        ImGui::Text("CPU: %.3f ms", stats.CpuFrameMs);
+        ImGui::Text("GPU: %s",
+            stats.GpuValid ? "available" : "warming up");
+        if (stats.GpuValid)
+        {
+            ImGui::SameLine();
+            ImGui::Text("%.3f ms", stats.GpuFrameMs);
+        }
+
+        ImGui::SeparatorText("Renderer");
+        ImGui::Text("Draw calls: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::DrawCalls)));
+        ImGui::Text("Instanced draws: %llu / instances: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::InstancedDrawCalls)),
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::Instances)));
+        ImGui::Text("Indices: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::Indices)));
+
+        ImGui::SeparatorText("Map");
+        ImGui::Text("Placements: %llu / visible: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::MapPlacements)),
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::MapVisibleInstances)));
+        ImGui::Text("Batches: %llu / fallback: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::MapBatchCount)),
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::MapFallbackObjects)));
+
+        ImGui::SeparatorText("Navigation");
+        ImGui::Text("Queries: %llu / expanded: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::NavigationQueries)),
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::NavigationExpandedNodes)));
+        ImGui::Text("Query time: %llu us / path cells: %llu",
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::NavigationQueryMicroseconds)),
+            static_cast<unsigned long long>(Counter(
+                Engine::EProfilerCounter::NavigationPathCells)));
+    }
+
+    if (ImGui::Button("Reset profiler history"))
+    {
+        if (nullptr != pProfiler)
+            pProfiler->Reset_History();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Save profiler JSON"))
+    {
+        if (nullptr == pProfiler)
+        {
+            m_strProfilerCaptureStatus = "Profiler is not available.";
+        }
+        else
+        {
+            const Engine::FProfilerCaptureSnapshot Snapshot =
+                pProfiler->Snapshot();
+            const uint64_t iFrameNumber = Snapshot.Frames.empty() ?
+                0 : Snapshot.Frames.back().FrameNumber;
+            const filesystem::path OutputPath =
+                CProfilerCaptureIO::Make_DefaultPath(iFrameNumber);
+            string strError;
+            if (CProfilerCaptureIO::Save_Json(
+                Snapshot,
+                OutputPath,
+                &strError))
+            {
+                m_strProfilerCaptureStatus =
+                    "Saved: " + OutputPath.string();
+            }
+            else
+            {
+                m_strProfilerCaptureStatus =
+                    "Save failed: " + strError;
+            }
+        }
+    }
+
+    if (false == m_strProfilerCaptureStatus.empty())
+        ImGui::TextWrapped("%s", m_strProfilerCaptureStatus.c_str());
+
+    ImGui::End();
 }
 
 void CMainApp::UpdateDebugToolShortcut()
 {
     const bool_t bWindowFocused =
         IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+
     const bool_t bF1Down = bWindowFocused &&
         0 != (GetAsyncKeyState(VK_F1) & 0x8000);
+
+    const bool_t bF4Down = bWindowFocused &&
+        0 != (GetAsyncKeyState(VK_F4) & 0x8000);
 
     if (bF1Down && !m_bF1Down && nullptr != m_pMapTool)
         m_pMapTool->Toggle();
 
+    if (bF4Down && !m_bF4Down)
+    {
+        m_bProfilerVisible = !m_bProfilerVisible;
+
+        if (Engine::CProfiler* pProfiler =
+            CGameInstance::Get().Get_Profiler())
+        {
+            if (m_bProfilerVisible)
+                pProfiler->Reset_History();
+            pProfiler->Set_Enabled(m_bProfilerVisible);
+        }
+    }
+
     m_bF1Down = bF1Down;
+    m_bF4Down = bF4Down;
 }
 #endif
 
@@ -374,6 +623,9 @@ void CMainApp::Free()
 {
 #ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
+
+    if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+        pProfiler->Set_Enabled(false);
 
     m_pAnimationTool.reset();
     m_pEffectTool.reset();

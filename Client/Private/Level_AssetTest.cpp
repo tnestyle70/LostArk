@@ -30,6 +30,10 @@ HRESULT CLevel_AssetTest::Initialize()
 void CLevel_AssetTest::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+#ifdef _DEBUG
+	Update_NavigationDebug();
+#endif
+	Update_ClickMove();
 }
 
 HRESULT CLevel_AssetTest::Render()
@@ -57,8 +61,8 @@ HRESULT CLevel_AssetTest::Ready_Lights()
 HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
 {
 	CCamera_Free::CAMERA_FREE_DESC		CameraDesc{};
-	CameraDesc.vEye = float3_t(-18.f, 10.f, -18.f);
-	CameraDesc.vAt = float3_t(0.f, 3.f, 0.f);
+	CameraDesc.vEye = float3_t(156.25f, 42.f, -150.f);
+	CameraDesc.vAt = float3_t(156.25f, 23.f, -121.75f);
 	CameraDesc.fFovy = 60.f;
 	CameraDesc.fNear = 0.1f;
 	CameraDesc.fFar = 1000.f;
@@ -77,15 +81,63 @@ HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
 HRESULT CLevel_AssetTest::Ready_Valtan()
 {
 	CValtan::VALTAN_DESC desc{};
-	desc.vPosition = float3_t(0.f, 0.f, 0.f);
+	desc.fSpeedPerSec = 5.f;
+	desc.fRotationPerSec = 180.f;
+	desc.pNavigationPrototypeTag =
+		TEXT("Prototype_Component_Navigation_ValtanArena");
+	desc.vPosition = float3_t(156.25f, 22.99751f, -121.75f);
 
-	return CGameInstance::Get().Add_GameObject_to_Layer(
+	shared_ptr<CGameObject> pGameObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
 		ETOUI(LEVEL::ASSET_TEST),
 		TEXT("Prototype_GameObject_Valtan"),
 		ETOUI(LEVEL::ASSET_TEST),
 		TEXT("Layer_Valtan"),
-		&desc);
+		&desc,
+		&pGameObject)))
+		return E_FAIL;
+
+	m_pValtan = dynamic_pointer_cast<CValtan>(pGameObject);
+	return nullptr != m_pValtan ? S_OK : E_FAIL;
 }
+
+void CLevel_AssetTest::Update_ClickMove()
+{
+	const bool_t isLeftMouseDown =
+		false == CGameInstance::Get().IsMouseInputBlocked() &&
+		0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80);
+
+	if (isLeftMouseDown && false == m_bLeftMouseDown &&
+		nullptr != m_pValtan)
+	{
+		float4_t vPickedPosition{};
+		if (CGameInstance::Get().Picking(vPickedPosition))
+			m_pValtan->Request_Move(XMLoadFloat4(&vPickedPosition));
+	}
+
+	m_bLeftMouseDown = isLeftMouseDown;
+}
+
+#ifdef _DEBUG
+
+void CLevel_AssetTest::Update_NavigationDebug()
+{
+	const bool_t isF5Down =
+		false == CGameInstance::Get().IsKeyboardInputBlocked() &&
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_F5) & 0x80);
+
+	if (isF5Down && false == m_bF5Down)
+	{
+		m_bNavigationDebugVisible = !m_bNavigationDebugVisible;
+		if (nullptr != m_pValtan)
+			m_pValtan->Set_NavigationDebugVisible(
+				m_bNavigationDebugVisible);
+	}
+
+	m_bF5Down = isF5Down;
+}
+
+#endif
 
 unique_ptr<CLevel_AssetTest> CLevel_AssetTest::Create(
 	ComPtr<ID3D11Device> pDevice,

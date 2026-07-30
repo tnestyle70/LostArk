@@ -123,6 +123,10 @@ public: /* For.Frustum */
 	void Update_Frustum_InLocalSpace(fmatrix_t WorldMatrix);
 	bool_t isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRange);
 	bool_t isIn_Frustum_InLocalSpace(fvector_t vLocalPoint, f32_t fRange);
+
+public: /* For.Profiler */
+	class CProfiler* Get_Profiler() const { return m_pProfiler.get(); }
+
 private:
 	unique_ptr<class CTimer_Manager>		m_pTimer_Manager = { nullptr };
 	unique_ptr<class CGraphic_Device>		m_pGraphic_Device = { nullptr };
@@ -141,6 +145,7 @@ private:
 	unique_ptr<class CPicking>				m_pPicking = { nullptr };
 	unique_ptr<class CShadow>				m_pShadow = { nullptr };
 	unique_ptr<class CFrustum>				m_pFrustum = { nullptr };
+	unique_ptr<class CProfiler>				m_pProfiler = { nullptr };
 
 private:
 	float2_t			m_vViewportDesc = {};

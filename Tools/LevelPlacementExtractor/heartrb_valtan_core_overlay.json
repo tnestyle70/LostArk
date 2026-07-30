@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "areaId": "LV_LUT_HEARTRB_ED",
-  "status": "reconstruction-overlay-pending-deploydata-proof",
-  "basis": "Three BG_RAD_VALTAN_A direct exports share one source-space Origin. The half-width outer rail is placed at 0 and 180 degrees; the brick sectors share the same world anchor at the SL00 HeartRB boss-arena center. The exact SL00 circlefloor placement owns the center cap.",
+  "status": "intact-arena-reconstruction-overlay-deploydata-audited",
+  "basis": "Three BG_RAD_VALTAN_A direct exports share one source-space Origin. The half-width outer rail and both brick sectors are placed as one intact-arena half at 0 and 180 degrees around the SL00 HeartRB boss-arena center. The exact SL00 circlefloor placement owns the center cap. DeployData props remain a separate gameplay-owned layer.",
   "assets": [
     {
       "assetId": "BG_RAD_VALTAN_FLOOR01_SM",
@@ -36,6 +36,72 @@
       "groupId": "valtan-core-overlay",
       "groupLabel": "Valtan Core Reconstruction Overlay",
       "evidence": "BG_RAD_VALTAN_A direct export; shared source-space Origin; brick boundary sector B"
+    },
+    {
+      "assetId": "VALTAN_PHASE_SPACEHOLE_CLOUD",
+      "label": "Valtan SpaceHole Cloud Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_SPACEHOLE_CLOUD/VALTAN_PHASE_SPACEHOLE_CLOUD.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_SPACEHOLE_CLOUD",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
+    },
+    {
+      "assetId": "VALTAN_PHASE_SPACEHOLE_CORE",
+      "label": "Valtan SpaceHole Core Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_SPACEHOLE_CORE/VALTAN_PHASE_SPACEHOLE_CORE.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_SPACEHOLE_CORE",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
+    },
+    {
+      "assetId": "VALTAN_PHASE_SPACEHOLE_STREAK",
+      "label": "Valtan SpaceHole Streak Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_SPACEHOLE_STREAK/VALTAN_PHASE_SPACEHOLE_STREAK.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_SPACEHOLE_STREAK",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_spacehole_03 exact texture and position; video-matched proxy plane topology"
+    },
+    {
+      "assetId": "VALTAN_PHASE_CHAOS_RING",
+      "label": "Valtan ChaosGate Ring Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_RING/VALTAN_PHASE_CHAOS_RING.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_RING",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
+    },
+    {
+      "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
+      "label": "Valtan ChaosGate Cloud Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_CLOUD/VALTAN_PHASE_CHAOS_CLOUD.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_CLOUD",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
+    },
+    {
+      "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
+      "label": "Valtan ChaosGate Electric Proxy",
+      "modelPath": "Map/ValtanPhase/VALTAN_PHASE_CHAOS_ELECTRIC/VALTAN_PHASE_CHAOS_ELECTRIC.wmodel",
+      "prototypeTag": "Prototype_Component_Model_Overlay_VALTAN_PHASE_CHAOS_ELECTRIC",
+      "defaultScale": [1.0, 1.0, 1.0],
+      "anchor": "Origin",
+      "groupId": "valtan-phase-proxy",
+      "groupLabel": "Valtan Phase Visual Proxies",
+      "evidence": "par_d_hugechaosgate_01 exact texture and position; video-matched proxy plane topology"
     }
   ],
   "placements": [
@@ -82,6 +148,94 @@
       "quaternion": [0.0, 1.0, 0.0, 0.0],
       "scale": [1.0, 1.0, 1.0],
       "visible": true
+    },
+    {
+      "placementId": 7000000000000000006,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01a_sm:yaw180",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01A_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 1.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    },
+    {
+      "placementId": 7000000000000000007,
+      "sourcePlacementId": "overlay:BG_RAD_VALTAN_A:bg_rad_valtan_floor01b_sm:yaw180",
+      "sourceLevel": "VALTAN_CORE_INTACT",
+      "transformSource": "overlay",
+      "assetId": "BG_RAD_VALTAN_FLOOR01B_SM",
+      "position": [156.279, 23.242, -121.977],
+      "quaternion": [0.0, 1.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "visible": true
+    },
+    {
+      "placementId": 7000000000000000101,
+      "sourcePlacementId": "phase:par_d_spacehole_03:cloud",
+      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_SPACEHOLE_CLOUD",
+      "position": [156.574375, 60.043125, -121.972969],
+      "quaternion": [-1.0, 0.0, 0.0, 0.0],
+      "scale": [8.0, 8.0, 8.0],
+      "visible": false
+    },
+    {
+      "placementId": 7000000000000000102,
+      "sourcePlacementId": "phase:par_d_spacehole_03:core",
+      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_SPACEHOLE_CORE",
+      "position": [156.574375, 60.063125, -121.972969],
+      "quaternion": [-1.0, 0.0, 0.0, 0.0],
+      "scale": [5.0, 5.0, 5.0],
+      "visible": false
+    },
+    {
+      "placementId": 7000000000000000103,
+      "sourcePlacementId": "phase:par_d_spacehole_03:streak",
+      "sourceLevel": "VALTAN_PHASE_SPACEHOLE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_SPACEHOLE_STREAK",
+      "position": [156.574375, 60.083125, -121.972969],
+      "quaternion": [-1.0, 0.0, 0.0, 0.0],
+      "scale": [3.0, 3.0, 3.0],
+      "visible": false
+    },
+    {
+      "placementId": 7000000000000000201,
+      "sourcePlacementId": "phase:par_d_hugechaosgate_01:ring",
+      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_CHAOS_RING",
+      "position": [158.42, 138.4, -125.12],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [10.0, 10.0, 10.0],
+      "visible": false
+    },
+    {
+      "placementId": 7000000000000000202,
+      "sourcePlacementId": "phase:par_d_hugechaosgate_01:cloud",
+      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
+      "position": [158.42, 138.42, -125.12],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [12.0, 12.0, 12.0],
+      "visible": false
+    },
+    {
+      "placementId": 7000000000000000203,
+      "sourcePlacementId": "phase:par_d_hugechaosgate_01:electric",
+      "sourceLevel": "VALTAN_PHASE_CHAOSGATE",
+      "transformSource": "overlay",
+      "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
+      "position": [158.42, 138.44, -125.12],
+      "quaternion": [0.0, 0.0, 0.0, 1.0],
+      "scale": [7.0, 7.0, 7.0],
+      "visible": false
     }
   ]
 }

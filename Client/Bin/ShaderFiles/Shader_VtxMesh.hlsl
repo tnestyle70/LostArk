@@ -62,10 +62,11 @@ struct PS_OUT
     float4 vNormal : SV_TARGET1;
     float4 vDepth : SV_TARGET2;
     float4 vPickPos : SV_TARGET3;
+    float4 vEmissive : SV_TARGET4;
 };
 
-/* ÇÈ¼¿ ¼ÎÀÌ´õ */ 
-/* Àü´Ş¹ŞÀº ÇÈ¼¿ÀÇ Á¤º¸¸¦ ¹ÙÅÁÀ¸·ÎÇÏ¿© ÇÈ¼¿ÀÇ »öÀ» °áÁ¤ÇÑ´Ù */ 
+/* í”½ì…€ ì…°ì´ë” */
+/* ì „ë‹¬ë°›ì€ í”½ì…€ì˜ ì •ë³´ë¥¼ ë°”íƒ•ìœ¼ë¡œí•˜ì—¬ í”½ì…€ì˜ ìƒ‰ì„ ê²°ì •í•œë‹¤ */
 
 PS_OUT PS_MAIN(PS_IN In)
 {
@@ -84,9 +85,10 @@ PS_OUT PS_MAIN(PS_IN In)
     vNormal = normalize(mul(vNormal, WorldMatrix));
     
     Out.vDiffuse = vMtrlDiffuse;
-    Out.vNormal = vector((vNormal * 0.5f) + 0.5f, 0.f);
+    Out.vNormal = vector((vNormal * 0.5f) + 0.5f, 1.f);
     Out.vDepth = vector(In.vProjPos.z / In.vProjPos.w, In.vProjPos.w / 1000.f, 0.f, 0.f);
     Out.vPickPos = In.vWorldPos;
+    Out.vEmissive = 0.f;
     
     return Out;    
 }

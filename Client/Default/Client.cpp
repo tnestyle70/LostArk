@@ -9,6 +9,7 @@
 #include "Effect_ParticleSimulator.h"
 #include "MainApp.h"
 #include "GameInstance.h"
+#include "Profiler.h"
 
 #ifdef _DEBUG
 #include "ImGuiLayer.h"
@@ -31,23 +32,31 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow){
+                     _In_ int       nCmdShow)
+{
     if (nullptr != lpCmdLine &&
         nullptr != wcsstr(lpCmdLine, L"--effect-phase2-test"))
     {
         const auto Result = Run_Phase2ParticleCountValidation();
+
         EFFECT_ASSET_DESC EmptyAsset;
         EmptyAsset.strAssetId = "headless_round_trip";
         EmptyAsset.strName = "Headless Round Trip";
+
         const filesystem::path TestRoot =
             filesystem::temp_directory_path() /
             "lostark_effect_tool_headless";
+
         const filesystem::path JsonPath =
             TestRoot / "roundtrip.effect.json";
+
         const filesystem::path BinaryPath =
             TestRoot / "roundtrip.weffect";
+
         EFFECT_ASSET_DESC JsonLoaded;
+
         EFFECT_ASSET_DESC BinaryLoaded;
+
         const bool_t isRoundTripPassed =
             CEffect_AssetIO::Validate_RoundTrip(EmptyAsset) &&
             CEffect_AssetIO::Save_Json(JsonPath, EmptyAsset) &&
@@ -55,8 +64,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             CEffect_AssetIO::Save_Binary(BinaryPath, JsonLoaded) &&
             CEffect_AssetIO::Load_Binary(BinaryPath, BinaryLoaded) &&
             BinaryLoaded.strAssetId == EmptyAsset.strAssetId;
+
         error_code CleanupError;
+
         filesystem::remove_all(TestRoot, CleanupError);
+
         return Result.isPassed && isRoundTripPassed
             ? EXIT_SUCCESS : EXIT_FAILURE;
     }
@@ -119,9 +131,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         {
             CGameInstance::Get().Update_TimeDelta(TEXT("Timer_60"));
 
-            pMainApp->Update(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")));
+            Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
+            if (nullptr != pProfiler)
+                pProfiler->Begin_Frame();
 
-            if (FAILED(pMainApp->Render()))
+            {
+                Engine::CProfilerScope scope(pProfiler, "Client.Update");
+                pMainApp->Update(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")));
+            }
+
+            HRESULT hRenderResult = S_OK;
+            {
+                Engine::CProfilerScope scope(pProfiler, "Client.Render");
+                hRenderResult = pMainApp->Render();
+            }
+
+            if (nullptr != pProfiler)
+                pProfiler->End_Frame();
+
+            if (FAILED(hRenderResult))
                 break;
 
             fTimeAcc = 0.f;

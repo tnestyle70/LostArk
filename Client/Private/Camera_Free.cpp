@@ -1,5 +1,7 @@
 #include "Camera_Free.h"
 
+#include "Transform.h"
+
 CCamera_Free::CCamera_Free(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : CCamera { pDevice, pContext }
     
@@ -20,6 +22,10 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 	auto	pDesc = static_cast<CAMERA_FREE_DESC*>(pArg);
 
 	m_fMouseSensor = pDesc->fMouseSensor;
+	m_pFollowTarget = pDesc->pFollowTarget;
+	m_vFollowOffset = pDesc->vFollowOffset;
+	m_vLookOffset = pDesc->vLookOffset;
+	m_bFollowEnabled = pDesc->isFollowEnabled;
 
 	if (FAILED(__super::Initialize(pArg)))
 		return E_FAIL;
@@ -29,6 +35,37 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 
 void CCamera_Free::Priority_Update(f32_t fTimeDelta)
 {
+	const bool_t isF6Down =
+		0 != (CGameInstance::Get().Get_DIKeyState(DIK_F6) & 0x80);
+	if (isF6Down && false == m_bF6Down && false == m_pFollowTarget.expired())
+		m_bFollowEnabled = !m_bFollowEnabled;
+	m_bF6Down = isF6Down;
+
+	if (m_bFollowEnabled)
+	{
+		shared_ptr<CTransform> pFollowTarget = m_pFollowTarget.lock();
+		if (nullptr == pFollowTarget)
+		{
+			m_bFollowEnabled = false;
+		}
+		else
+		{
+		const vector_t vTargetPosition =
+			pFollowTarget->Get_State(STATE::POSITION);
+		const vector_t vEye = XMVectorSetW(
+			vTargetPosition + XMLoadFloat3(&m_vFollowOffset),
+			1.f);
+		const vector_t vAt = XMVectorSetW(
+			vTargetPosition + XMLoadFloat3(&m_vLookOffset),
+			1.f);
+
+		m_pTransformCom->Set_State(STATE::POSITION, vEye);
+		m_pTransformCom->LookAt(vAt);
+		__super::Update_PipeLine();
+		return;
+		}
+	}
+
 	const bool_t bTabDown =
 		0 != (CGameInstance::Get().Get_DIKeyState(DIK_TAB) & 0x80);
 	if (bTabDown && !m_bTabDown)

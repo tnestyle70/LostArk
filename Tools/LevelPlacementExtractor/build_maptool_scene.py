@@ -245,12 +245,58 @@ def iter_placements(paths: Iterable[Path]) -> Iterable[dict[str, Any]]:
             yield placement
 
 
+def render_profile_text(profile: dict[str, Any] | None) -> str:
+    profile = {} if profile is None else profile
+    render_mode = str(profile.get("renderMode", "Opaque"))
+    cull_mode = str(profile.get("cullMode", "Back"))
+    if render_mode not in ("Opaque", "Alpha", "Sky", "Additive"):
+        raise ValueError(f"invalid renderMode: {render_mode}")
+    if cull_mode not in ("Back", "Front", "None"):
+        raise ValueError(f"invalid cullMode: {cull_mode}")
+    uv_scale = finite_vector(profile.get("uvScale", [1.0, 1.0]), 2, "uvScale")
+    uv_speed = finite_vector(profile.get("uvSpeed", [0.0, 0.0]), 2, "uvSpeed")
+    color_tint = finite_vector(
+        profile.get("colorTint", [1.0, 1.0, 1.0, 1.0]), 4, "colorTint"
+    )
+    opacity = float(profile.get("opacity", 1.0))
+    opacity_power = float(profile.get("opacityPower", 1.0))
+    emissive = float(profile.get("emissiveIntensity", 1.0))
+    specular = float(profile.get("specularIntensity", 1.0))
+    specular_power = float(profile.get("specularPower", 50.0))
+    scalars = (opacity, emissive, specular, specular_power, *color_tint)
+    if (
+        any(not math.isfinite(value) for value in (*uv_scale, *uv_speed, *scalars))
+        or any(value <= 0.0 for value in uv_scale)
+        or not 0.0 <= opacity <= 1.0
+        or not 0.01 <= opacity_power <= 64.0
+        or emissive < 0.0
+        or specular < 0.0
+        or specular_power < 1.0
+        or any(value < 0.0 for value in color_tint)
+    ):
+        raise ValueError("render profile contains an invalid numeric value")
+    values = (*uv_scale, *uv_speed, *scalars)
+    return " ".join(
+        (
+            render_mode,
+            cull_mode,
+            *(format(value, ".9g") for value in values),
+            format(opacity_power, ".9g"),
+        )
+    )
+
+
 def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     area_id = token(args.area_id, "areaId")
     asset_manifest = load_json(args.asset_manifest)
     runtime_manifest = load_json(args.runtime_manifest)
     overlay_manifest = (
         load_json(args.overlay_manifest) if args.overlay_manifest is not None else None
+    )
+    render_profile_manifest = (
+        load_json(args.render_profile_manifest)
+        if args.render_profile_manifest is not None
+        else None
     )
     assets = asset_manifest.get("assets", [])
     runtime_assets = runtime_manifest.get("assets", [])
@@ -261,6 +307,31 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         or overlay_manifest.get("areaId") != area_id
     ):
         raise ValueError("overlay manifest schema/areaId mismatch")
+    if render_profile_manifest is not None and (
+        render_profile_manifest.get("schemaVersion") != 1
+        or render_profile_manifest.get("areaId") != area_id
+    ):
+        raise ValueError("render profile manifest schema/areaId mismatch")
+
+    profiles = [] if render_profile_manifest is None else render_profile_manifest.get("profiles", [])
+    if not isinstance(profiles, list):
+        raise ValueError("render profile manifest profiles must be an array")
+    profiles_by_id = {str(profile["assetId"]): profile for profile in profiles}
+    if len(profiles_by_id) != len(profiles):
+        raise ValueError("duplicate render profile assetId")
+    visibility_overrides = (
+        []
+        if render_profile_manifest is None
+        else render_profile_manifest.get("visibilityOverrides", [])
+    )
+    if not isinstance(visibility_overrides, list):
+        raise ValueError("visibilityOverrides must be an array")
+    visibility_by_source = {
+        str(row["sourcePlacementId"]): bool(row["visible"])
+        for row in visibility_overrides
+    }
+    if len(visibility_by_source) != len(visibility_overrides):
+        raise ValueError("duplicate visibility override sourcePlacementId")
 
     assets_by_path = {str(asset["fullPath"]).lower(): asset for asset in assets}
     runtime_by_id = {str(asset["assetId"]): asset for asset in runtime_assets}
@@ -296,6 +367,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
                 quoted(asset_id), quoted(str(asset["objectName"])), quoted(model_path),
                 quoted(prototype_tag), "1 1 1 Origin",
                 quoted(source_group), quoted(str(asset["logicalPackage"])), quoted(evidence),
+                render_profile_text(profiles_by_id.get(asset_id)),
             ))
         )
 
@@ -335,8 +407,13 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
                 " ".join(format(value, ".9g") for value in default_scale),
                 anchor, quoted(group_id), quoted(str(asset["groupLabel"])),
                 quoted(str(asset["evidence"])),
+                render_profile_text(profiles_by_id.get(asset_id)),
             ))
         )
+
+    unknown_profile_ids = set(profiles_by_id) - catalog_ids
+    if unknown_profile_ids:
+        raise ValueError(f"render profiles reference unknown assets: {sorted(unknown_profile_ids)}")
 
     placement_rows: list[dict[str, Any]] = []
     seen_runtime_ids: dict[int, str] = {}
@@ -347,6 +424,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     hidden_category_counts: dict[str, int] = {}
     source_level_counts: dict[str, int] = {}
     central_result: dict[str, Any] | None = None
+    applied_visibility_overrides: set[str] = set()
     for placement in iter_placements(args.placements_dir.glob("*.placements.json")):
         source_id = str(placement["placementId"])
         if not source_id or source_id in seen_source_ids:
@@ -363,6 +441,10 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(f"asset join missing: {object_path}")
         hidden_category = classify_non_visual_asset(asset)
         visible = hidden_category is None
+        if source_id in visibility_by_source:
+            visible = visibility_by_source[source_id]
+            hidden_category = None if visible else (hidden_category or "runtime-profile-hidden")
+            applied_visibility_overrides.add(source_id)
         hidden_helper_count += int(hidden_category == "nav-helper")
         if hidden_category is not None:
             hidden_category_counts[hidden_category] = (
@@ -511,6 +593,12 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         )
     if args.golden_placement_id and central_result is None:
         raise ValueError("golden placement is missing")
+    missing_visibility_overrides = set(visibility_by_source) - applied_visibility_overrides
+    if missing_visibility_overrides:
+        raise ValueError(
+            "visibility overrides reference missing placements: "
+            f"{sorted(missing_visibility_overrides)}"
+        )
 
     requested_ids = set(args.include_source_id)
     requested_levels = set(args.include_level)
@@ -563,7 +651,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError(f"output hidden helper count mismatch: {output_hidden_helper}")
 
     catalog_text = (
-        f"LOSTARK_MAP_ASSET_CATALOG 2 {quoted(area_id)} {len(catalog_rows)}\n"
+        f"LOSTARK_MAP_ASSET_CATALOG 4 {quoted(area_id)} {len(catalog_rows)}\n"
         + "\n".join(catalog_rows) + "\n"
     )
     placement_text = (
@@ -581,6 +669,8 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         "overlayAssetCount": len(overlay_assets),
         "sourcePlacementCount": len(placement_rows) - len(overlay_rows),
         "overlayPlacementCount": len(overlay_rows),
+        "renderProfileCount": len(profiles_by_id),
+        "visibilityOverrideCount": len(applied_visibility_overrides),
         "placementCount": len(selected_rows),
         "sourceAnyNegativeScaleCount": any_negative_scale_count,
         "sourceReflectedCount": reflected_count,
@@ -607,6 +697,11 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
                 if args.overlay_manifest is not None
                 else None
             ),
+            "renderProfileManifest": (
+                sha256(args.render_profile_manifest)
+                if args.render_profile_manifest is not None
+                else None
+            ),
         },
         "outputs": {
             "catalog": sha256(args.catalog_output),
@@ -625,6 +720,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runtime-root", type=Path, required=True)
     parser.add_argument("--runtime-asset-root", type=Path)
     parser.add_argument("--overlay-manifest", type=Path)
+    parser.add_argument("--render-profile-manifest", type=Path)
     parser.add_argument("--placements-dir", type=Path, required=True)
     parser.add_argument("--catalog-output", type=Path, required=True)
     parser.add_argument("--placement-output", type=Path, required=True)

@@ -74,10 +74,10 @@
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\Bin\</OutDir>
+    <OutDir>..\Bin\Debug\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\Bin\</OutDir>
+    <OutDir>..\Bin\Release\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -160,6 +160,9 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\NavGrid.h" />
+    <ClInclude Include="..\Public\NavPathFollower.h" />
+    <ClInclude Include="..\Public\PathFinder.h" />
     <ClInclude Include="..\public\Animation.h" />
     <ClInclude Include="..\Public\BinaryAsset\BinaryReader.h" />
     <ClInclude Include="..\Public\BinaryAsset\CookedModel.h" />
@@ -211,6 +214,7 @@
     <ClInclude Include="..\public\PartObject.h" />
     <ClInclude Include="..\public\Picking.h" />
     <ClInclude Include="..\public\PipeLine.h" />
+    <ClInclude Include="..\Public\Profiler.h" />
     <ClInclude Include="..\public\Prototype.h" />
     <ClInclude Include="..\public\Prototype_Manager.h" />
     <ClInclude Include="..\public\Renderer.h" />
@@ -219,6 +223,7 @@
     <ClInclude Include="..\public\Shadow.h" />
     <ClInclude Include="..\public\Target_Manager.h" />
     <ClInclude Include="..\public\Texture.h" />
+    <ClInclude Include="..\Public\TextureResourceCache.h" />
     <ClInclude Include="..\Public\Timer.h" />
     <ClInclude Include="..\Public\Timer_Manager.h" />
     <ClInclude Include="..\public\Transform.h" />
@@ -282,6 +287,7 @@
     <ClCompile Include="..\private\PartObject.cpp" />
     <ClCompile Include="..\private\Picking.cpp" />
     <ClCompile Include="..\private\PipeLine.cpp" />
+    <ClCompile Include="..\Private\Profiler.cpp" />
     <ClCompile Include="..\private\Prototype.cpp" />
     <ClCompile Include="..\private\Prototype_Manager.cpp" />
     <ClCompile Include="..\private\Renderer.cpp" />
@@ -293,6 +299,7 @@
     </ClCompile>
     <ClCompile Include="..\private\Target_Manager.cpp" />
     <ClCompile Include="..\private\Texture.cpp" />
+    <ClCompile Include="..\Private\TextureResourceCache.cpp" />
     <ClCompile Include="..\Private\Timer.cpp" />
     <ClCompile Include="..\Private\Timer_Manager.cpp" />
     <ClCompile Include="..\private\Transform.cpp" />
@@ -305,6 +312,9 @@
     <ClCompile Include="..\Private\VIBuffer_Instance_Rect.cpp" />
     <ClCompile Include="..\Private\VIBuffer_Rect.cpp" />
     <ClCompile Include="..\Private\VIBuffer_Terrain.cpp" />
+    <ClCompile Include="..\Private\NavGrid.cpp" />
+    <ClCompile Include="..\Private\NavPathFollower.cpp" />
+    <ClCompile Include="..\Private\PathFinder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Engine_Shader_Defines.hlsli" />

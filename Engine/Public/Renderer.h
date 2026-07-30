@@ -29,7 +29,6 @@ private:
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
 	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
-
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
 

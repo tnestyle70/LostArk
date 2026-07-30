@@ -68,7 +68,8 @@ HRESULT CContainerObject::Add_PartObject(uint32_t iPrototypeLevelIndex, const ws
 	if (nullptr != Find_PartObject(strPartObjectTag))
 		return E_FAIL;
 
-	auto	pCloneObject = static_pointer_cast<CPartObject>(CGameInstance::Get().Clone_Prototype(iPrototypeLevelIndex, strPrototypeTag, pArg));
+	auto	pCloneObject = static_pointer_cast<CPartObject>(
+		CGameInstance::Get().Clone_Prototype(iPrototypeLevelIndex, strPrototypeTag, pArg));
 	if (nullptr == pCloneObject)
 		return E_FAIL;
 

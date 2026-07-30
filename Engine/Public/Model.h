@@ -58,6 +58,9 @@ public:
 
 public:
 	HRESULT Render(uint32_t iMeshIndex);
+	HRESULT Render_Instanced(
+		uint32_t iMeshIndex, ID3D11Buffer* pInstanceBuffer,
+		uint32_t iInstanceStride, uint32_t iNumInstances);
 	bool_t Play_Animation(f32_t fTimeDelta);
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);

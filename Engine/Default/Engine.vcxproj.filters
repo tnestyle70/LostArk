@@ -211,6 +211,12 @@
     <Filter Include="02.Utility\12.BinaryAsset\04. Runtime">
       <UniqueIdentifier>{58b0473d-771a-4c2d-856f-9389f0878f0e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.Utility\13. Profiler">
+      <UniqueIdentifier>{173c126c-dc76-40ea-a8d8-971fdd23d3ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.Utility\14. TextureResourceCache">
+      <UniqueIdentifier>{a93bbeb6-bef8-47d6-bd72-2e7f37b245fe}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Engine_Defines.h">
@@ -427,6 +433,21 @@
     <ClInclude Include="..\Private\BinaryAsset\Winters\WAnimationReader.h">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Profiler.h">
+      <Filter>02.Utility\13. Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\TextureResourceCache.h">
+      <Filter>02.Utility\14. TextureResourceCache</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NavGrid.h">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NavPathFollower.h">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PathFinder.h">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\GameInstance.cpp">
@@ -633,6 +654,21 @@
     </ClCompile>
     <ClCompile Include="..\Private\BinaryAsset\Winters\WAnimationReader.cpp">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Profiler.cpp">
+      <Filter>02.Utility\13. Profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\TextureResourceCache.cpp">
+      <Filter>02.Utility\14. TextureResourceCache</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NavGrid.cpp">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NavPathFollower.cpp">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PathFinder.cpp">
+      <Filter>02.Utility\04.Component\Navigation</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
