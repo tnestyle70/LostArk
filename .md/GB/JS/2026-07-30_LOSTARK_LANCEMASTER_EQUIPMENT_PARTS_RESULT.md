@@ -423,8 +423,10 @@ NS_END
 | 재질 오매칭 | `Dump-WModel.ps1` | 눈 재질이 `pc_ft_00_eye_baked_d.tga`로 교정됨 |
 | 스트레이 웨이트 | `Find-UnanimatedBones.ps1` | 머리카락이 `b_root` 없이 본 4개만 사용 |
 | 실행 | `LEVEL::TEST_LEVEL2` (LOGO에서 F3) | 방어구가 애니메이션 따라 변형, 창은 오른손 소켓 유지, 얼굴·눈동자 정상 |
-| z-fighting | 동상 | 마스킹 후 관통·깜빡임 없음 (정지 프레임 기준) |
+| z-fighting | 동상 | 마스킹 후 관통·깜빡임 없음 |
 | `CCharacter` | 동상 | 창술사를 레거시 클래스와 동일하게 조립 |
+| 머리카락 늘어남 | Animation Tool로 클립 순회 | 해결 확인 |
+| Animation Tool | `Part_00_Body` 태그로 조회 | 캐릭터 정상 인식 |
 
 머리카락의 형광 초록은 원본 색이 맞다(umodel 뷰어 대조 확인). 입·턱의 검은
 부분은 복면으로 의도된 디자인이다. 둘 다 버그가 아니다.
