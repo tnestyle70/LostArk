@@ -15,6 +15,35 @@ enum class MAP_ASSET_ANCHOR
 	BOTTOM_CENTER,
 };
 
+enum class MAP_ASSET_RENDER_MODE
+{
+	DEFERRED,
+	TRANSLUCENT,
+	BACKGROUND,
+	ADDITIVE,
+};
+
+enum class MAP_ASSET_CULL_MODE
+{
+	CULL_BACK,
+	CULL_FRONT,
+	TWO_SIDED,
+};
+
+struct MAP_ASSET_RENDER_PROFILE
+{
+	MAP_ASSET_RENDER_MODE renderMode = MAP_ASSET_RENDER_MODE::DEFERRED;
+	MAP_ASSET_CULL_MODE cullMode = MAP_ASSET_CULL_MODE::CULL_BACK;
+	float2_t uvScale = float2_t(1.f, 1.f);
+	float2_t uvSpeed = float2_t(0.f, 0.f);
+	float opacity = 1.f;
+	float opacityPower = 1.f;
+	float emissiveIntensity = 1.f;
+	float specularIntensity = 1.f;
+	float specularPower = 50.f;
+	float4_t colorTint = float4_t(1.f, 1.f, 1.f, 1.f);
+};
+
 struct MAP_ASSET_ENTRY
 {
 	std::string id;
@@ -27,6 +56,7 @@ struct MAP_ASSET_ENTRY
 	std::wstring prototypeTag;
 	float3_t defaultScale = float3_t(1.f, 1.f, 1.f);
 	MAP_ASSET_ANCHOR anchor = MAP_ASSET_ANCHOR::BOTTOM_CENTER;
+	MAP_ASSET_RENDER_PROFILE renderProfile;
 };
 
 class CMapAssetCatalog final

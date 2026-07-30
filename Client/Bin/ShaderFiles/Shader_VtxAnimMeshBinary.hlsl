@@ -62,6 +62,7 @@ struct PS_OUT
     float4 vNormal : SV_TARGET1;
     float4 vDepth : SV_TARGET2;
     float4 vPickPos : SV_TARGET3;
+    float4 vEmissive : SV_TARGET4;
 };
 
 struct PS_OUT_SHADOW
@@ -89,13 +90,14 @@ PS_OUT PS_MAIN(VS_OUT input)
     }
 
     output.vDiffuse = diffuse;
-    output.vNormal = float4(normal * 0.5f + 0.5f, 0.f);
+    output.vNormal = float4(normal * 0.5f + 0.5f, 1.f);
     output.vDepth = float4(
         input.vProjPos.z / input.vProjPos.w,
         input.vProjPos.w / 1000.f,
         0.f,
         0.f);
     output.vPickPos = input.vWorldPos;
+    output.vEmissive = 0.f;
     return output;
 }
 

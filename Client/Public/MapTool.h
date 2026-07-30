@@ -4,6 +4,7 @@
 #include "MapAssetCatalog.h"
 #include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
+#include "DeployPropCatalog.h"
 
 #include <memory>
 #include <string>
@@ -13,6 +14,8 @@
 NS_BEGIN(Client)
 
 class CMapAssetObject;
+class CMapStaticBatchObject;
+class CDeployPropObject;
 class CMapTool final
 {
 private:
@@ -27,6 +30,27 @@ private:
 		MAP_PLACEMENT_RECORD record;
 		std::wstring layerTag;
 		shared_ptr<CMapAssetObject> object;
+		shared_ptr<CMapStaticBatchObject> batch;
+	};
+
+	struct STATIC_BATCH_ENTRY
+	{
+		std::string assetId;
+		bool_t mirrored = false;
+		shared_ptr<CMapStaticBatchObject> object;
+	};
+
+	enum class ENVIRONMENT_PHASE
+	{
+		BASELINE,
+		SPACEHOLE,
+		CHAOS_GATE,
+	};
+
+	struct DEPLOY_ENTRY
+	{
+		DEPLOY_PROP_PLACEMENT record;
+		shared_ptr<CDeployPropObject> object;
 	};
 
 public:
@@ -47,10 +71,23 @@ private:
 	bool_t Try_PlaceSelected();
 	bool_t Create_Placement(const MAP_PLACEMENT_RECORD& record,
 		PLACED_ENTRY& outEntry);
+	bool_t Stage_PlacementRuntime(
+		const vector<MAP_PLACEMENT_RECORD>& records,
+		vector<PLACED_ENTRY>& outPlacements,
+		vector<STATIC_BATCH_ENTRY>& outBatches);
+	void Remove_PlacementRuntime(
+		vector<PLACED_ENTRY>& placements,
+		vector<STATIC_BATCH_ENTRY>& batches);
+	static bool_t Set_RuntimeVisible(
+		PLACED_ENTRY& entry, bool_t visible);
 	bool_t Remove_Placement(uint64_t placementId);
 	void Remove_AllPlacements();
 	bool_t Save_Placements();
 	bool_t Load_Placements();
+	bool_t Load_DeployProps();
+	void Remove_DeployProps();
+	void Set_DeployPhase(DEPLOY_PROP_STATE state);
+	void Set_EnvironmentPhase(ENVIRONMENT_PHASE phase);
 	uint64_t Allocate_EditorPlacementId();
 	std::wstring Make_LayerTag(const std::string& sourceLevel) const;
 
@@ -75,6 +112,7 @@ private:
 	PLACEMENT_STATE m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	CMapAssetCatalog m_Catalog;
+	CDeployPropCatalog m_DeployCatalog;
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
 	std::string m_Status = "Enter AssetTest with F2";
@@ -82,6 +120,10 @@ private:
 	std::unordered_set<std::string> m_FavoriteAssetIds;
 
 	vector<PLACED_ENTRY> m_Placements;
+	vector<STATIC_BATCH_ENTRY> m_StaticBatches;
+	vector<DEPLOY_ENTRY> m_DeployProps;
+	DEPLOY_PROP_STATE m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
+	ENVIRONMENT_PHASE m_EnvironmentPhase = ENVIRONMENT_PHASE::BASELINE;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 };

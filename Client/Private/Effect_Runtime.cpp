@@ -11,6 +11,7 @@
 #include "BinaryAsset/CookedModel.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Profiler.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
@@ -1400,6 +1401,12 @@ HRESULT CEffect_Runtime::Draw_PrimitiveVertices(
 		: 0u;
 	if (FAILED(m_pPrimitiveShader->Begin(iPass)))
 		return E_FAIL;
+
+	if (Engine::CProfiler* pProfiler =
+		Engine::CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(Engine::EProfilerCounter::DrawCalls);
+	}
 
 	m_pContext->Draw(
 		static_cast<uint32_t>(Vertices.size()), 0);

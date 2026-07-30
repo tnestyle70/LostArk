@@ -52,9 +52,9 @@ VS_OUT VS_MAIN(VS_IN In)
     return Out;
 }
 
-/* Åõ¿µº¯È¯ (Z³ª´©±â) */
-/* ºäÆ÷Æ® º¯È¯(À©µµ¿ìÁÂÇ¥·Î º¯È¯) */ 
-/* ·¡½ºÅÍ¶óÀÌÁî(ÇÈ¼¿ÀÇ Á¤º¸¸¦ »ý¼ºÇÑ´Ù.) */ 
+/* íˆ¬ì˜ë³€í™˜ (Zë‚˜ëˆ„ê¸°) */
+/* ë·°í¬íŠ¸ ë³€í™˜(ìœˆë„ìš°ì¢Œí‘œë¡œ ë³€í™˜) */
+/* ëž˜ìŠ¤í„°ë¼ì´ì¦ˆ(í”½ì…€ì˜ ì •ë³´ë¥¼ ìƒì„±í•œë‹¤.) */
 
 struct PS_IN
 {
@@ -71,6 +71,7 @@ struct PS_OUT
     float4 vNormal : SV_TARGET1;
     float4 vDepth : SV_TARGET2;
     float4 vPickPos : SV_TARGET3;
+    float4 vEmissive : SV_TARGET4;
 };
 
 struct PS_OUT_SHADOW
@@ -78,8 +79,8 @@ struct PS_OUT_SHADOW
     float4 vLightDepth : SV_TARGET0;  
 };
 
-/* ÇÈ¼¿ ¼ÎÀÌ´õ */ 
-/* Àü´Þ¹ÞÀº ÇÈ¼¿ÀÇ Á¤º¸¸¦ ¹ÙÅÁÀ¸·ÎÇÏ¿© ÇÈ¼¿ÀÇ »öÀ» °áÁ¤ÇÑ´Ù */ 
+/* í”½ì…€ ì…°ì´ë” */
+/* ì „ë‹¬ë°›ì€ í”½ì…€ì˜ ì •ë³´ë¥¼ ë°”íƒ•ìœ¼ë¡œí•˜ì—¬ í”½ì…€ì˜ ìƒ‰ì„ ê²°ì •í•œë‹¤ */
 
 PS_OUT PS_MAIN(PS_IN In)
 {
@@ -91,11 +92,12 @@ PS_OUT PS_MAIN(PS_IN In)
     
     Out.vDiffuse = vMtrlDiffuse;
     
-    /* ³ë¸Öº¤ÅÍÀÇ °¢ ¼ººÐÀÇ ÃÖ¼Ò~ÃÖ´ë => -1 ~ 1 */
-    /* ³ë¸Ö·»´õÅ¸°Ù °¢ ¼ººÐÀÇ ÃÖ¼Ò~ÃÖ´ë => 0 ~ 1 */
-    Out.vNormal = vector((In.vNormal.xyz * 0.5f) + 0.5f, 0.f);    
+    /* ë…¸ë©€ë²¡í„°ì˜ ê° ì„±ë¶„ì˜ ìµœì†Œ~ìµœëŒ€ => -1 ~ 1 */
+    /* ë…¸ë©€ë Œë”íƒ€ê²Ÿ ê° ì„±ë¶„ì˜ ìµœì†Œ~ìµœëŒ€ => 0 ~ 1 */
+    Out.vNormal = vector((In.vNormal.xyz * 0.5f) + 0.5f, 1.f);
     Out.vDepth = vector(In.vProjPos.z / In.vProjPos.w, In.vProjPos.w / 1000.f, 0.f, 0.f);
     Out.vPickPos = In.vWorldPos;
+    Out.vEmissive = 0.f;
    
     return Out;    
 }

@@ -28,7 +28,6 @@ HRESULT CPartObject::Initialize(void* pArg)
 }
 
 void CPartObject::Priority_Update(f32_t fTimeDelta)
-	
 {
 }
 

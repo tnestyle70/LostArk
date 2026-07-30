@@ -8,6 +8,7 @@ texture2D   g_Texture;
 texture2D   g_DiffuseTexture, g_ShadeTexture;
 texture2D   g_DepthTexture;
 texture2D   g_SpecularTexture;
+texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
 
 vector      g_vCamPosition;
@@ -71,8 +72,8 @@ struct PS_OUT_LIGHT
     float4 vSpecular : SV_TARGET1;
 };
 
-/* ÇÈ¼¿ ¼ÎÀÌ´õ */ 
-/* Àü´Þ¹ÞÀº ÇÈ¼¿ÀÇ Á¤º¸¸¦ ¹ÙÅÁÀ¸·ÎÇÏ¿© ÇÈ¼¿ÀÇ »öÀ» °áÁ¤ÇÑ´Ù */ 
+/* í”½ì…€ ì…°ì´ë” */
+/* ì „ë‹¬ë°›ì€ í”½ì…€ì˜ ì •ë³´ë¥¼ ë°”íƒ•ìœ¼ë¡œí•˜ì—¬ í”½ì…€ì˜ ìƒ‰ì„ ê²°ì •í•œë‹¤ */
 
 PS_OUT_BACKBUFFER PS_MAIN_DEBUG(PS_IN In)
 {
@@ -106,24 +107,25 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     
     vector vWorldPos;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä / w -> Åõ¿µ°ø°£»óÀÇ À§Ä¡ºÎÅÍ ±¸ÇÑ´Ù. */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ / w -> íˆ¬ì˜ê³µê°„ìƒì˜ ìœ„ì¹˜ë¶€í„° êµ¬í•œë‹¤. */
     vWorldPos.x = In.vTexcoord.x * 2.f - 1.f;
     vWorldPos.y = In.vTexcoord.y * -2.f + 1.f;
     vWorldPos.z = vDepthDesc.x;
     vWorldPos.w = 1.f;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ */
     vWorldPos = vWorldPos * fViewZ;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ */
     vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä  */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬  */
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
     
     vector vLook = vWorldPos - g_vCamPosition;
     
-    Out.vSpecular = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))), 50.f);    
+    const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
+    Out.vSpecular = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))), specularPower) * vNormalDesc.a;
     
     return Out;
 }
@@ -143,19 +145,19 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
     
     vector vWorldPos;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä / w -> Åõ¿µ°ø°£»óÀÇ À§Ä¡ºÎÅÍ ±¸ÇÑ´Ù. */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ / w -> íˆ¬ì˜ê³µê°„ìƒì˜ ìœ„ì¹˜ë¶€í„° êµ¬í•œë‹¤. */
     vWorldPos.x = In.vTexcoord.x * 2.f - 1.f;
     vWorldPos.y = In.vTexcoord.y * -2.f + 1.f;
     vWorldPos.z = vDepthDesc.x;
     vWorldPos.w = 1.f;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ */
     vWorldPos = vWorldPos * fViewZ;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ */
     vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä  */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬  */
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
     
     
@@ -172,7 +174,8 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
     
     vector vLook = vWorldPos - g_vCamPosition;
     
-    Out.vSpecular = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))), 50.f) * fAtt;
+    const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
+    Out.vSpecular = pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))), specularPower) * vNormalDesc.a * fAtt;
     
     return Out;
 }
@@ -190,28 +193,29 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     vector vShade = g_ShadeTexture.Sample(LinearSampler, In.vTexcoord);
     
     vector vSpecular = g_SpecularTexture.Sample(LinearSampler, In.vTexcoord);
+    vector vEmissive = g_EmissiveTexture.Sample(LinearSampler, In.vTexcoord);
     
     
-    Out.vBackBuffer = vDiffuse * vShade + vSpecular;
+    Out.vBackBuffer = vDiffuse * vShade + vSpecular + vEmissive;
     
     vector vDepthDesc = g_DepthTexture.Sample(LinearSampler, In.vTexcoord);
     float fViewZ = vDepthDesc.y * 1000.f;
     
     vector vWorldPos;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä / w -> Åõ¿µ°ø°£»óÀÇ À§Ä¡ºÎÅÍ ±¸ÇÑ´Ù. */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ / w -> íˆ¬ì˜ê³µê°„ìƒì˜ ìœ„ì¹˜ë¶€í„° êµ¬í•œë‹¤. */
     vWorldPos.x = In.vTexcoord.x * 2.f - 1.f;
     vWorldPos.y = In.vTexcoord.y * -2.f + 1.f;
     vWorldPos.z = vDepthDesc.x;
     vWorldPos.w = 1.f;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä * Åõ¿µÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ * íˆ¬ì˜í–‰ë ¬ */
     vWorldPos = vWorldPos * fViewZ;
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä * ºäÇà·Ä */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬ * ë·°í–‰ë ¬ */
     vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
     
-    /* ·ÎÄÃÀ§Ä¡ * ¿ùµåÇà·Ä  */ 
+    /* ë¡œì»¬ìœ„ì¹˜ * ì›”ë“œí–‰ë ¬  */
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
     
     vWorldPos = mul(vWorldPos, g_LightViewMatrix);
@@ -228,7 +232,7 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     float4      vOldZ = g_LightDepthTexture.Sample(LinearSampler, vTexcoord);
        
     
-    // if (ÇöÀç ±×¸®´Â ÇÈ¼¿ÀÇ ±¤¿ø±âÁØ ±íÀÌ°¡ >= ÀÌÀü¿¡ ±¤¿ø±âÁØÀ¸·Î ±×·ÁÁ®ÀÖ´ø ÇÈ¼¿ÀÇ ±íÀÌº¸´Ù. )
+    // if (í˜„ìž¬ ê·¸ë¦¬ëŠ” í”½ì…€ì˜ ê´‘ì›ê¸°ì¤€ ê¹Šì´ê°€ >= ì´ì „ì— ê´‘ì›ê¸°ì¤€ìœ¼ë¡œ ê·¸ë ¤ì ¸ìžˆë˜ í”½ì…€ì˜ ê¹Šì´ë³´ë‹¤. )
     if (vWorldPos.w - 0.1f >= vOldZ.x * 1000.f)
     {
         Out.vBackBuffer = Out.vBackBuffer * 0.3f;

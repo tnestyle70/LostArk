@@ -5,7 +5,10 @@
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "GameInstance.h"
 #include "MapAssetObject.h"
+#include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
+#include "DeployPropObject.h"
+#include "Model.h"
 
 #include <algorithm>
 #include <array>
@@ -16,15 +19,116 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace
 {
+	constexpr const wchar_t* MAP_BATCH_PROTOTYPE =
+		TEXT("Prototype_GameObject_MapStaticBatch");
+	constexpr const wchar_t* MAP_BATCH_LAYER =
+		TEXT("Layer_MapStaticBatch");
+
 	bool_t IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	bool_t IsBatchEligible(const MAP_ASSET_ENTRY& asset)
+	{
+		/* Alpha/Additive는 인스턴스 간 정렬이 필요하고 Background는 카메라를
+		   따라가므로 첫 단계에서는 고정된 Deferred 정적 배치만 허용한다. */
+		return MAP_ASSET_RENDER_MODE::DEFERRED ==
+			asset.renderProfile.renderMode;
+	}
+
+	HRESULT BuildStaticInstance(
+		const MAP_ASSET_ENTRY& asset,
+		const shared_ptr<CModel>& model,
+		const MAP_PLACEMENT_RECORD& record,
+		FMapStaticInstance& outInstance)
+	{
+		if (nullptr == model || !model->Has_LocalBounds())
+			return E_FAIL;
+
+		const float3_t& minimum = model->Get_LocalBoundsMin();
+		const float3_t& maximum = model->Get_LocalBoundsMax();
+		if (!IsFinite(minimum) || !IsFinite(maximum) ||
+			minimum.x > maximum.x || minimum.y > maximum.y ||
+			minimum.z > maximum.z)
+			return E_FAIL;
+
+		const float3_t localCenter(
+			(minimum.x + maximum.x) * 0.5f,
+			(minimum.y + maximum.y) * 0.5f,
+			(minimum.z + maximum.z) * 0.5f);
+		const vector_t halfExtents = XMVectorSet(
+			(maximum.x - minimum.x) * 0.5f,
+			(maximum.y - minimum.y) * 0.5f,
+			(maximum.z - minimum.z) * 0.5f, 0.f);
+		f32_t localRadius = XMVectorGetX(XMVector3Length(halfExtents));
+		localRadius = localRadius > 0.05f ? localRadius : 0.05f;
+
+		vector_t rotation = XMQuaternionNormalize(
+			XMLoadFloat4(&record.rotationQuaternion));
+		if (XMVectorGetW(rotation) < 0.f)
+			rotation = XMVectorNegate(rotation);
+
+		matrix_t world = XMMatrixScaling(
+			record.signedScale.x,
+			record.signedScale.y,
+			record.signedScale.z) * XMMatrixRotationQuaternion(rotation);
+
+		float3_t worldOrigin = record.position;
+		if (MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset.anchor)
+		{
+			const vector_t localAnchor = XMVectorSet(
+				localCenter.x, minimum.y, localCenter.z, 1.f);
+			float3_t anchorOffset{};
+			XMStoreFloat3(&anchorOffset,
+				XMVector3TransformCoord(localAnchor, world));
+			worldOrigin.x -= anchorOffset.x;
+			worldOrigin.y -= anchorOffset.y;
+			worldOrigin.z -= anchorOffset.z;
+		}
+
+		world.r[3] = XMVectorSet(
+			worldOrigin.x, worldOrigin.y, worldOrigin.z, 1.f);
+
+		matrix_t linearWorld = world;
+		linearWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+		const f32_t determinant = XMVectorGetX(
+			XMMatrixDeterminant(linearWorld));
+		if (!std::isfinite(determinant) ||
+			std::abs(determinant) < 0.000001f)
+			return E_FAIL;
+
+		const matrix_t worldInvTranspose = XMMatrixTranspose(
+			XMMatrixInverse(nullptr, linearWorld));
+		const f32_t maximumScale = (std::max)({
+			std::abs(record.signedScale.x),
+			std::abs(record.signedScale.y),
+			std::abs(record.signedScale.z) });
+		const f32_t worldRadius =
+			localRadius * maximumScale * 1.02f + 0.05f;
+		float3_t worldCenter{};
+		XMStoreFloat3(&worldCenter,
+			XMVector3TransformCoord(XMLoadFloat3(&localCenter), world));
+		if (!IsFinite(worldCenter) || !std::isfinite(worldRadius) ||
+			worldRadius <= 0.f)
+			return E_FAIL;
+
+		outInstance = {};
+		outInstance.PlacementId = record.placementId;
+		outInstance.Visible = record.visible;
+		outInstance.WorldBoundsCenter = worldCenter;
+		outInstance.WorldBoundsRadius = worldRadius;
+		XMStoreFloat4x4(&outInstance.World, world);
+		XMStoreFloat4x4(
+			&outInstance.WorldInvTranspose, worldInvTranspose);
+		return S_OK;
 	}
 
 	bool_t MatchesFilter(const std::string& text, const char* pFilter)
@@ -68,6 +172,24 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 	const bool_t isAssetTest =
 		ETOUI(LEVEL::ASSET_TEST) == CGameInstance::Get().Get_CurrentLevelID();
 	Handle_LevelTransition(isAssetTest);
+	if (isAssetTest && GetForegroundWindow() == g_hWnd)
+	{
+		if (0 != (GetAsyncKeyState(VK_F7) & 1))
+		{
+			Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+			m_Status = "Sky phase: Baseline (F7)";
+		}
+		else if (0 != (GetAsyncKeyState(VK_F8) & 1))
+		{
+			Set_EnvironmentPhase(ENVIRONMENT_PHASE::SPACEHOLE);
+			m_Status = "Sky phase: SpaceHole (F8)";
+		}
+		else if (0 != (GetAsyncKeyState(VK_F9) & 1))
+		{
+			Set_EnvironmentPhase(ENVIRONMENT_PHASE::CHAOS_GATE);
+			m_Status = "Sky phase: ChaosGate (F9)";
+		}
+	}
 
 	const bool_t mouseDown = 0 != (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 	const bool_t mousePressed = mouseDown && !m_bPreviousMouseDown;
@@ -156,6 +278,8 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 	if (!isAssetTest)
 	{
 		m_Placements.clear();
+		m_StaticBatches.clear();
+		m_DeployProps.clear();
 		m_iNextPlacementId = 1;
 		m_bDirty = false;
 		m_Status = "Enter AssetTest with F2";
@@ -169,7 +293,8 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 	}
 
 	m_Status = m_Catalog.Get_Status();
-	Load_Placements();
+	if (Load_Placements())
+		Load_DeployProps();
 }
 
 bool_t Client::CMapTool::Try_PickPlacementPosition(float3_t& outPosition) const
@@ -306,6 +431,7 @@ bool_t Client::CMapTool::Create_Placement(
 	desc.signedScale = record.signedScale;
 	desc.applyBottomCenter = MAP_ASSET_ANCHOR::BOTTOM_CENTER == pAsset->anchor;
 	desc.visible = record.visible;
+	desc.renderProfile = pAsset->renderProfile;
 
 	shared_ptr<CGameObject> pGameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
@@ -328,6 +454,163 @@ bool_t Client::CMapTool::Create_Placement(
 	return true;
 }
 
+bool_t Client::CMapTool::Stage_PlacementRuntime(
+	const vector<MAP_PLACEMENT_RECORD>& records,
+	vector<PLACED_ENTRY>& outPlacements,
+	vector<STATIC_BATCH_ENTRY>& outBatches)
+{
+	using BATCH_KEY = std::pair<std::string, bool_t>;
+	std::map<BATCH_KEY, vector<const MAP_PLACEMENT_RECORD*>> groups;
+
+	for (const MAP_PLACEMENT_RECORD& record : records)
+	{
+		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(record.assetId);
+		if (nullptr == asset)
+			return false;
+		if (!IsBatchEligible(*asset))
+			continue;
+
+		const bool_t mirrored = record.signedScale.x *
+			record.signedScale.y * record.signedScale.z < 0.f;
+		groups[{ record.assetId, mirrored }].push_back(&record);
+	}
+
+	std::unordered_map<uint64_t, shared_ptr<CMapStaticBatchObject>>
+		batchByPlacement;
+	batchByPlacement.reserve(records.size());
+
+	for (const auto& [key, placements] : groups)
+	{
+		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(key.first);
+		if (nullptr == asset)
+			return false;
+
+		shared_ptr<CModel> model = dynamic_pointer_cast<CModel>(
+			CGameInstance::Get().Clone_Prototype(
+				ETOUI(LEVEL::ASSET_TEST), asset->prototypeTag));
+		if (nullptr == model)
+			return false;
+
+		/* Bounds가 없는 모델은 기존 MapAssetObject 경로로 fail-open한다. */
+		if (!model->Has_LocalBounds())
+			continue;
+
+		CMapStaticBatchObject::DESC desc{};
+		desc.AssetId = asset->id;
+		desc.ModelPrototypeTag = asset->prototypeTag;
+		desc.RenderProfile = asset->renderProfile;
+		desc.Mirrored = key.second;
+		desc.Instances.reserve(placements.size());
+
+		bool_t batchIsValid = true;
+		for (const MAP_PLACEMENT_RECORD* record : placements)
+		{
+			FMapStaticInstance instance{};
+			if (nullptr == record || FAILED(BuildStaticInstance(
+				*asset, model, *record, instance)))
+			{
+				batchIsValid = false;
+				break;
+			}
+			desc.Instances.push_back(instance);
+		}
+		if (!batchIsValid)
+			continue;
+
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_PROTOTYPE,
+			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
+			&desc, &gameObject)))
+			return false;
+
+		shared_ptr<CMapStaticBatchObject> batch =
+			dynamic_pointer_cast<CMapStaticBatchObject>(gameObject);
+		if (nullptr == batch)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER, gameObject);
+			return false;
+		}
+
+		outBatches.push_back({ asset->id, key.second, batch });
+		for (const MAP_PLACEMENT_RECORD* record : placements)
+		{
+			const auto [iter, inserted] = batchByPlacement.emplace(
+				record->placementId, batch);
+			UNREFERENCED_PARAMETER(iter);
+			if (!inserted)
+				return false;
+		}
+	}
+
+	outPlacements.reserve(records.size());
+	for (const MAP_PLACEMENT_RECORD& record : records)
+	{
+		const auto batch = batchByPlacement.find(record.placementId);
+		if (batch != batchByPlacement.end())
+		{
+			PLACED_ENTRY entry{};
+			entry.record = record;
+			entry.layerTag = MAP_BATCH_LAYER;
+			entry.batch = batch->second;
+			outPlacements.push_back(std::move(entry));
+			continue;
+		}
+
+		PLACED_ENTRY fallback{};
+		if (!Create_Placement(record, fallback))
+			return false;
+		outPlacements.push_back(std::move(fallback));
+	}
+
+	return outPlacements.size() == records.size();
+}
+
+void Client::CMapTool::Remove_PlacementRuntime(
+	vector<PLACED_ENTRY>& placements,
+	vector<STATIC_BATCH_ENTRY>& batches)
+{
+	for (PLACED_ENTRY& entry : placements)
+	{
+		if (nullptr != entry.object)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::ASSET_TEST), entry.layerTag,
+				static_pointer_cast<CGameObject>(entry.object));
+		}
+	}
+
+	for (STATIC_BATCH_ENTRY& entry : batches)
+	{
+		if (nullptr != entry.object)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
+				static_pointer_cast<CGameObject>(entry.object));
+		}
+	}
+
+	placements.clear();
+	batches.clear();
+}
+
+bool_t Client::CMapTool::Set_RuntimeVisible(
+	PLACED_ENTRY& entry, bool_t visible)
+{
+	if (nullptr != entry.object)
+	{
+		entry.object->Set_Visible(visible);
+		return true;
+	}
+	if (nullptr != entry.batch)
+	{
+		return SUCCEEDED(entry.batch->Set_InstanceVisible(
+			entry.record.placementId, visible));
+	}
+	return false;
+}
+
 bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 {
 	const auto iter = std::find_if(m_Placements.begin(), m_Placements.end(),
@@ -338,9 +621,19 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 	if (iter == m_Placements.end())
 		return false;
 
-	if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
-		ETOUI(LEVEL::ASSET_TEST), iter->layerTag,
-		static_pointer_cast<CGameObject>(iter->object))))
+	if (nullptr != iter->object)
+	{
+		if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::ASSET_TEST), iter->layerTag,
+			static_pointer_cast<CGameObject>(iter->object))))
+			return false;
+	}
+	else if (nullptr != iter->batch)
+	{
+		if (FAILED(iter->batch->Set_InstanceVisible(placementId, false)))
+			return false;
+	}
+	else
 		return false;
 
 	m_Placements.erase(iter);
@@ -352,14 +645,7 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 
 void Client::CMapTool::Remove_AllPlacements()
 {
-	for (const PLACED_ENTRY& entry : m_Placements)
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), entry.layerTag,
-			static_pointer_cast<CGameObject>(entry.object));
-	}
-
-	m_Placements.clear();
+	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
 	m_bDirty = true;
@@ -371,18 +657,18 @@ bool_t Client::CMapTool::Save_Placements()
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
 	{
-		if (nullptr == entry.object ||
+		const bool_t hasObject = nullptr != entry.object;
+		const bool_t hasBatch = nullptr != entry.batch;
+		if (hasObject == hasBatch ||
 			nullptr == m_Catalog.Find(entry.record.assetId))
 		{
-			m_Status = "Save aborted: placement references are invalid";
+			m_Status = "Save aborted: runtime representation is invalid";
 			return false;
 		}
 
 		MAP_PLACEMENT_RECORD stored = entry.record;
-		stored.position = entry.object->Get_Position();
-		stored.rotationQuaternion = entry.object->Get_RotationQuaternion();
-		stored.signedScale = entry.object->Get_SignedScale();
-		stored.visible = entry.object->Is_Visible();
+		if (entry.record.sourceLevel.starts_with("VALTAN_PHASE_"))
+			stored.visible = false;
 		if (!CMapPlacementDocument::Is_Valid(stored, m_Catalog))
 		{
 			m_Status = "Save aborted: a transform is invalid";
@@ -414,33 +700,19 @@ bool_t Client::CMapTool::Load_Placements()
 		return false;
 	}
 
-	vector<PLACED_ENTRY> staged;
-	staged.reserve(document.size());
-	for (const MAP_PLACEMENT_RECORD& record : document)
+	vector<PLACED_ENTRY> stagedPlacements;
+	vector<STATIC_BATCH_ENTRY> stagedBatches;
+	if (!Stage_PlacementRuntime(
+		document, stagedPlacements, stagedBatches))
 	{
-		PLACED_ENTRY entry{};
-		if (!Create_Placement(record, entry))
-		{
-			for (const PLACED_ENTRY& rollback : staged)
-			{
-				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::ASSET_TEST), rollback.layerTag,
-					static_pointer_cast<CGameObject>(rollback.object));
-			}
-			m_Status = "Load rolled back at " + record.sourcePlacementId;
-			return false;
-		}
-		staged.push_back(std::move(entry));
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		m_Status = "Map runtime staging rolled back";
+		return false;
 	}
 
-	for (const PLACED_ENTRY& old : m_Placements)
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), old.layerTag,
-			static_pointer_cast<CGameObject>(old.object));
-	}
-
-	m_Placements = std::move(staged);
+	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
+	m_Placements = std::move(stagedPlacements);
+	m_StaticBatches = std::move(stagedBatches);
 	m_iSelectedPlacementId = 0;
 	m_iNextPlacementId = 1;
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -455,9 +727,123 @@ bool_t Client::CMapTool::Load_Placements()
 		}
 	}
 	m_bDirty = false;
+	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+	const size_t fallbackCount = static_cast<size_t>(std::count_if(
+		m_Placements.begin(), m_Placements.end(),
+		[](const PLACED_ENTRY& entry)
+		{
+			return nullptr != entry.object;
+		}));
 	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
-		" exact placements from " + m_Catalog.Get_AreaId();
+		" placements / " + std::to_string(m_StaticBatches.size()) +
+		" batches / " + std::to_string(fallbackCount) + " fallbacks";
 	return true;
+}
+
+bool_t Client::CMapTool::Load_DeployProps()
+{
+	if (!m_DeployCatalog.Load_Default(m_Catalog.Get_AreaId()))
+	{
+		m_Status = m_DeployCatalog.Get_Status();
+		return false;
+	}
+
+	vector<DEPLOY_ENTRY> staged;
+	staged.reserve(m_DeployCatalog.Get_Placements().size());
+	for (const DEPLOY_PROP_PLACEMENT& record :
+		m_DeployCatalog.Get_Placements())
+	{
+		const DEPLOY_PROP_ASSET_ENTRY* asset =
+			m_DeployCatalog.Find(record.assetId);
+		if (nullptr == asset)
+		{
+			for (const DEPLOY_ENTRY& rollback : staged)
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					static_pointer_cast<CGameObject>(rollback.object));
+			m_Status = "DeployProp staging lost asset " + record.assetId;
+			return false;
+		}
+		CDeployPropObject::DEPLOY_PROP_DESC desc{};
+		desc.placement = record;
+		desc.modelKind = asset->kind;
+		desc.intactPrototypeTag = asset->intactPrototypeTag;
+		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			ETOUI(LEVEL::ASSET_TEST),
+			TEXT("Prototype_GameObject_DeployProp"),
+			ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+			&desc, &gameObject)))
+		{
+			for (const DEPLOY_ENTRY& rollback : staged)
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					static_pointer_cast<CGameObject>(rollback.object));
+			m_Status = "DeployProp stage rolled back at " +
+				record.sourcePlacementId;
+			return false;
+		}
+		shared_ptr<CDeployPropObject> object =
+			dynamic_pointer_cast<CDeployPropObject>(gameObject);
+		if (nullptr == object)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"), gameObject);
+			for (const DEPLOY_ENTRY& rollback : staged)
+				CGameInstance::Get().Remove_GameObject_from_Layer(
+					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					static_pointer_cast<CGameObject>(rollback.object));
+			m_Status = "DeployProp clone type mismatch";
+			return false;
+		}
+		staged.push_back({ record, std::move(object) });
+	}
+
+	Remove_DeployProps();
+	m_DeployProps = std::move(staged);
+	Set_DeployPhase(DEPLOY_PROP_STATE::INTACT);
+	const size_t bindPoseOnly = static_cast<size_t>(std::count_if(
+		m_DeployProps.begin(), m_DeployProps.end(),
+		[](const DEPLOY_ENTRY& entry)
+		{
+			return entry.object->Is_AnimBindPoseOnly();
+		}));
+	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
+		" map placements + " + std::to_string(m_DeployProps.size()) +
+		" gameplay DeployProps (ITR_02326 bind-pose-only: " +
+		std::to_string(bindPoseOnly) + ")";
+	return true;
+}
+
+void Client::CMapTool::Remove_DeployProps()
+{
+	for (const DEPLOY_ENTRY& entry : m_DeployProps)
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+			static_pointer_cast<CGameObject>(entry.object));
+	m_DeployProps.clear();
+}
+
+void Client::CMapTool::Set_DeployPhase(DEPLOY_PROP_STATE state)
+{
+	m_DeployPhase = state;
+	for (DEPLOY_ENTRY& entry : m_DeployProps)
+		entry.object->Set_State(state);
+}
+
+void Client::CMapTool::Set_EnvironmentPhase(ENVIRONMENT_PHASE phase)
+{
+	m_EnvironmentPhase = phase;
+	for (PLACED_ENTRY& entry : m_Placements)
+	{
+		bool_t visible = entry.record.visible;
+		if (entry.record.sourceLevel == "VALTAN_PHASE_SPACEHOLE")
+			visible = phase != ENVIRONMENT_PHASE::BASELINE;
+		else if (entry.record.sourceLevel == "VALTAN_PHASE_CHAOSGATE")
+			visible = phase == ENVIRONMENT_PHASE::CHAOS_GATE;
+		Set_RuntimeVisible(entry, visible);
+	}
 }
 
 void Client::CMapTool::Render_Toolbar()
@@ -466,7 +852,10 @@ void Client::CMapTool::Render_Toolbar()
 		Save_Placements();
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
-		Load_Placements();
+	{
+		if (Load_Placements())
+			Load_DeployProps();
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Clear"))
 		ImGui::OpenPopup("Clear all placements?");
@@ -479,6 +868,32 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::SameLine();
 	ImGui::Text("Objects: %zu%s", m_Placements.size(),
 		m_bDirty ? "  *unsaved" : "");
+	ImGui::Text("Gameplay DeployProps: %zu | phase:", m_DeployProps.size());
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Intact##DeployPhase",
+		m_DeployPhase == DEPLOY_PROP_STATE::INTACT))
+		Set_DeployPhase(DEPLOY_PROP_STATE::INTACT);
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Fractured##DeployPhase",
+		m_DeployPhase == DEPLOY_PROP_STATE::FRACTURED))
+		Set_DeployPhase(DEPLOY_PROP_STATE::FRACTURED);
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Despawned##DeployPhase",
+		m_DeployPhase == DEPLOY_PROP_STATE::DESPAWNED))
+		Set_DeployPhase(DEPLOY_PROP_STATE::DESPAWNED);
+	ImGui::TextUnformatted("Sky phase (F7 Baseline / F8 SpaceHole / F9 ChaosGate):");
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Baseline##EnvironmentPhase",
+		m_EnvironmentPhase == ENVIRONMENT_PHASE::BASELINE))
+		Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+	ImGui::SameLine();
+	if (ImGui::RadioButton("SpaceHole##EnvironmentPhase",
+		m_EnvironmentPhase == ENVIRONMENT_PHASE::SPACEHOLE))
+		Set_EnvironmentPhase(ENVIRONMENT_PHASE::SPACEHOLE);
+	ImGui::SameLine();
+	if (ImGui::RadioButton("ChaosGate##EnvironmentPhase",
+		m_EnvironmentPhase == ENVIRONMENT_PHASE::CHAOS_GATE))
+		Set_EnvironmentPhase(ENVIRONMENT_PHASE::CHAOS_GATE);
 
 	if (ImGui::BeginPopupModal("Clear all placements?", nullptr,
 		ImGuiWindowFlags_AlwaysAutoResize))
@@ -652,13 +1067,12 @@ void Client::CMapTool::Render_Inspector()
 {
 	ImGui::TextUnformatted("Inspector");
 	PLACED_ENTRY* pEntry = Find_Placement(m_iSelectedPlacementId);
-	if (nullptr == pEntry || nullptr == pEntry->object)
+	if (nullptr == pEntry)
 	{
 		ImGui::TextDisabled("Select a placed object.");
 		return;
 	}
 
-	CMapAssetObject& object = *pEntry->object;
 	ImGui::Text("Placement #%llu",
 		static_cast<unsigned long long>(pEntry->record.placementId));
 	ImGui::TextWrapped("Source: %s",
@@ -667,11 +1081,13 @@ void Client::CMapTool::Render_Inspector()
 		pEntry->record.sourceLevel.c_str(),
 		pEntry->record.transformSource.c_str());
 	ImGui::TextWrapped("Asset: %s", pEntry->record.assetId.c_str());
+	ImGui::Text("Runtime: %s",
+		nullptr != pEntry->batch ? "Static Batch" : "Standalone Fallback");
 
-	float3_t position = object.Get_Position();
-	float4_t quaternion = object.Get_RotationQuaternion();
-	float3_t scale = object.Get_SignedScale();
-	bool_t visible = object.Is_Visible();
+	float3_t position = pEntry->record.position;
+	float4_t quaternion = pEntry->record.rotationQuaternion;
+	float3_t scale = pEntry->record.signedScale;
+	bool_t visible = pEntry->record.visible;
 	const bool_t positionChanged =
 		ImGui::DragFloat3("Position", &position.x, 0.1f);
 	const bool_t rotationChanged =
@@ -695,25 +1111,110 @@ void Client::CMapTool::Render_Inspector()
 		}
 		else
 		{
-			XMStoreFloat4(&quaternion,
-				XMQuaternionNormalize(rawQuaternion));
-			object.Set_PlacementTransform(position, quaternion, scale);
-			pEntry->record.position = position;
-			pEntry->record.rotationQuaternion =
-				object.Get_RotationQuaternion();
-			pEntry->record.signedScale = scale;
-			m_bDirty = true;
+			vector_t normalized = XMQuaternionNormalize(rawQuaternion);
+			if (XMVectorGetW(normalized) < 0.f)
+				normalized = XMVectorNegate(normalized);
+			XMStoreFloat4(&quaternion, normalized);
+
+			MAP_PLACEMENT_RECORD staged = pEntry->record;
+			staged.position = position;
+			staged.rotationQuaternion = quaternion;
+			staged.signedScale = scale;
+			bool_t applied = false;
+			const bool_t isValidPlacement =
+				CMapPlacementDocument::Is_Valid(staged, m_Catalog);
+
+			if (!isValidPlacement)
+			{
+				m_Status = "Transform edit rejected by placement validation";
+			}
+			else if (nullptr != pEntry->object)
+			{
+				pEntry->object->Set_PlacementTransform(
+					position, quaternion, scale);
+				applied = true;
+			}
+			else if (nullptr != pEntry->batch)
+			{
+				const bool_t oldMirrored = pEntry->record.signedScale.x *
+					pEntry->record.signedScale.y *
+					pEntry->record.signedScale.z < 0.f;
+				const bool_t newMirrored =
+					scale.x * scale.y * scale.z < 0.f;
+
+				if (oldMirrored == newMirrored)
+				{
+					const MAP_ASSET_ENTRY* asset =
+						m_Catalog.Find(staged.assetId);
+					shared_ptr<CModel> model;
+					if (nullptr != asset)
+					{
+						model = dynamic_pointer_cast<CModel>(
+							CGameInstance::Get().Clone_Prototype(
+								ETOUI(LEVEL::ASSET_TEST),
+								asset->prototypeTag));
+					}
+
+					FMapStaticInstance instance{};
+					if (nullptr != asset && nullptr != model &&
+						SUCCEEDED(BuildStaticInstance(
+							*asset, model, staged, instance)) &&
+						SUCCEEDED(pEntry->batch->Update_Instance(
+							staged.placementId, instance)))
+						applied = true;
+				}
+				else
+				{
+					/* Mirror parity가 바뀌면 기존 batch pass와 달라지므로
+					   안전하게 standalone으로 이동하고 Reload 때 재배치한다. */
+					PLACED_ENTRY migrated{};
+					if (Create_Placement(staged, migrated))
+					{
+						if (SUCCEEDED(pEntry->batch->Set_InstanceVisible(
+							staged.placementId, false)))
+						{
+							pEntry->layerTag = std::move(migrated.layerTag);
+							pEntry->object = std::move(migrated.object);
+							pEntry->batch.reset();
+							applied = true;
+						}
+						else
+						{
+							CGameInstance::Get().Remove_GameObject_from_Layer(
+								ETOUI(LEVEL::ASSET_TEST), migrated.layerTag,
+								static_pointer_cast<CGameObject>(migrated.object));
+						}
+					}
+				}
+			}
+
+			if (applied)
+			{
+				pEntry->record = std::move(staged);
+				m_bDirty = true;
+			}
+			else if (isValidPlacement)
+			{
+				m_Status = "Transform edit failed; previous state preserved";
+			}
 		}
 	}
 
 	if (ImGui::Checkbox("Visible", &visible))
 	{
-		object.Set_Visible(visible);
-		pEntry->record.visible = visible;
-		m_bDirty = true;
+		if (Set_RuntimeVisible(*pEntry, visible))
+		{
+			pEntry->record.visible = visible;
+			m_bDirty = true;
+			Set_EnvironmentPhase(m_EnvironmentPhase);
+		}
+		else
+			m_Status = "Visibility edit failed";
 	}
+	const bool_t mirrored = pEntry->record.signedScale.x *
+		pEntry->record.signedScale.y * pEntry->record.signedScale.z < 0.f;
 	ImGui::Text("Mirrored pass: %s",
-		object.Is_Mirrored() ? "YES" : "NO");
+		mirrored ? "YES" : "NO");
 
 	if (ImGui::Button("Delete selected"))
 	{

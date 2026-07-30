@@ -136,9 +136,15 @@
     <Filter Include="96.DataFiles\Map">
       <UniqueIdentifier>{a6622e2c-78fc-4fbb-b1db-d57f8e2947aa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
+      <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ProfilerCaptureIO.cpp">
       <Filter>00.MainApp</Filter>
     </ClCompile>
     <ClCompile Include="Client.cpp">
@@ -198,10 +204,16 @@
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\DeployPropCatalog.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapPlacementDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapAssetObject.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\DeployPropObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapAssetPreview.cpp">
@@ -258,9 +270,18 @@
     <ClCompile Include="..\Private\Part_Equipment.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapAssetRenderUtils.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
+      <Filter>00.MainApp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ProfilerCaptureIO.h">
       <Filter>00.MainApp</Filter>
     </ClInclude>
     <ClInclude Include="framework.h">
@@ -341,10 +362,16 @@
     <ClInclude Include="..\Public\MapAssetCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\DeployPropCatalog.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapPlacementDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DeployPropObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetPreview.h">
@@ -397,6 +424,12 @@
     </ClInclude>
     <ClInclude Include="..\Public\Part_Equipment.h">
       <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapAssetRenderUtils.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapStaticBatchObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -461,6 +494,9 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
   </ItemGroup>

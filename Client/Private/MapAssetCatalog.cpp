@@ -14,7 +14,9 @@ namespace
 {
 	constexpr const char* CATALOG_MAGIC = "LOSTARK_MAP_ASSET_CATALOG";
 	constexpr uint32_t LEGACY_CATALOG_VERSION = 1;
-	constexpr uint32_t CATALOG_VERSION = 2;
+	constexpr uint32_t METADATA_CATALOG_VERSION = 2;
+	constexpr uint32_t RENDER_PROFILE_CATALOG_VERSION = 3;
+	constexpr uint32_t CATALOG_VERSION = 4;
 	constexpr uint32_t MAX_ASSET_COUNT = 512;
 	constexpr size_t MAX_GROUP_ID_LENGTH = 64;
 	constexpr size_t MAX_GROUP_LABEL_LENGTH = 128;
@@ -31,6 +33,9 @@ namespace
 		std::string groupId;
 		std::string groupLabel;
 		std::string evidence;
+		std::string renderMode = "Opaque";
+		std::string cullMode = "Back";
+		MAP_ASSET_RENDER_PROFILE renderProfile;
 	};
 
 	bool_t IsInsideRoot(const std::filesystem::path& root,
@@ -75,6 +80,26 @@ namespace
 		{
 			return 0 != std::iscntrl(static_cast<unsigned char>(value));
 		});
+	}
+
+	bool_t IsValidRenderProfile(const MAP_ASSET_RENDER_PROFILE& profile)
+	{
+		const auto finite = [](const float value) { return std::isfinite(value); };
+		return finite(profile.uvScale.x) && finite(profile.uvScale.y) &&
+			profile.uvScale.x > 0.f && profile.uvScale.y > 0.f &&
+			finite(profile.uvSpeed.x) && finite(profile.uvSpeed.y) &&
+			finite(profile.opacity) && profile.opacity >= 0.f &&
+			profile.opacity <= 1.f && finite(profile.opacityPower) &&
+			profile.opacityPower >= 0.01f && profile.opacityPower <= 64.f &&
+			finite(profile.emissiveIntensity) &&
+			profile.emissiveIntensity >= 0.f &&
+			finite(profile.specularIntensity) &&
+			profile.specularIntensity >= 0.f &&
+			finite(profile.specularPower) && profile.specularPower >= 1.f &&
+			finite(profile.colorTint.x) && finite(profile.colorTint.y) &&
+			finite(profile.colorTint.z) && finite(profile.colorTint.w) &&
+			profile.colorTint.x >= 0.f && profile.colorTint.y >= 0.f &&
+			profile.colorTint.z >= 0.f && profile.colorTint.w >= 0.f;
 	}
 }
 
@@ -129,7 +154,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 	std::string stagedAreaId;
 	if (!(input >> magic >> version >> std::quoted(stagedAreaId) >> count) ||
 		magic != CATALOG_MAGIC ||
-		(version != LEGACY_CATALOG_VERSION && version != CATALOG_VERSION) ||
+		(version < LEGACY_CATALOG_VERSION || version > CATALOG_VERSION) ||
 		stagedAreaId.empty() ||
 		(!expectedAreaId.empty() && stagedAreaId != expectedAreaId) ||
 		0 == count || count > MAX_ASSET_COUNT)
@@ -152,7 +177,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 			return false;
 		}
 
-		if (version == CATALOG_VERSION)
+		if (version >= METADATA_CATALOG_VERSION)
 		{
 			if (!(input >> std::quoted(row.groupId) >>
 				std::quoted(row.groupLabel) >> std::quoted(row.evidence)))
@@ -167,6 +192,30 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 			row.groupId = "legacy";
 			row.groupLabel = "Legacy Catalog";
 			row.evidence = "catalog-v1";
+		}
+
+		if (version >= RENDER_PROFILE_CATALOG_VERSION)
+		{
+			if (!(input >> row.renderMode >> row.cullMode >>
+				row.renderProfile.uvScale.x >> row.renderProfile.uvScale.y >>
+				row.renderProfile.uvSpeed.x >> row.renderProfile.uvSpeed.y >>
+				row.renderProfile.opacity >> row.renderProfile.emissiveIntensity >>
+				row.renderProfile.specularIntensity >>
+				row.renderProfile.specularPower >>
+				row.renderProfile.colorTint.x >> row.renderProfile.colorTint.y >>
+				row.renderProfile.colorTint.z >> row.renderProfile.colorTint.w))
+			{
+				m_Status = "Catalog render profile is truncated at index " +
+					std::to_string(index);
+				return false;
+			}
+			if (version >= CATALOG_VERSION &&
+				!(input >> row.renderProfile.opacityPower))
+			{
+				m_Status = "Catalog opacity shaping is truncated at index " +
+					std::to_string(index);
+				return false;
+			}
 		}
 
 		parsedRows.push_back(std::move(row));
@@ -200,6 +249,7 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 		entry.groupLabel = row.groupLabel;
 		entry.evidence = row.evidence;
 		entry.defaultScale = row.defaultScale;
+		entry.renderProfile = row.renderProfile;
 		entry.modelRelativePath = std::filesystem::path(row.modelPath).lexically_normal();
 		entry.resolvedModelPath = CRuntimeAssetRoot::Resolve(entry.modelRelativePath);
 		entry.prototypeTag.assign(row.prototypeTag.begin(), row.prototypeTag.end());
@@ -212,6 +262,30 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 			m_Status = "Unknown placement anchor for " + entry.id;
 			return false;
 		}
+		if (row.renderMode == "Opaque")
+			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::DEFERRED;
+		else if (row.renderMode == "Alpha")
+			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
+		else if (row.renderMode == "Sky")
+			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::BACKGROUND;
+		else if (row.renderMode == "Additive")
+			entry.renderProfile.renderMode = MAP_ASSET_RENDER_MODE::ADDITIVE;
+		else
+		{
+			m_Status = "Unknown render mode for " + entry.id;
+			return false;
+		}
+		if (row.cullMode == "Back")
+			entry.renderProfile.cullMode = MAP_ASSET_CULL_MODE::CULL_BACK;
+		else if (row.cullMode == "Front")
+			entry.renderProfile.cullMode = MAP_ASSET_CULL_MODE::CULL_FRONT;
+		else if (row.cullMode == "None")
+			entry.renderProfile.cullMode = MAP_ASSET_CULL_MODE::TWO_SIDED;
+		else
+		{
+			m_Status = "Unknown cull mode for " + entry.id;
+			return false;
+		}
 
 		if (entry.id.empty() || entry.label.empty() || entry.prototypeTag.empty() ||
 			!IsValidGroupId(entry.groupId) ||
@@ -219,7 +293,9 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 			!IsValidDisplayText(entry.evidence, MAX_EVIDENCE_LENGTH) ||
 			entry.modelRelativePath.is_absolute() ||
 			entry.modelRelativePath.extension() != L".wmodel" ||
-			!IsValidScale(entry.defaultScale) || !ids.insert(entry.id).second ||
+			!IsValidScale(entry.defaultScale) ||
+			!IsValidRenderProfile(entry.renderProfile) ||
+			!ids.insert(entry.id).second ||
 			!prototypeTags.insert(entry.prototypeTag).second ||
 			!IsInsideRoot(assetRoot, entry.resolvedModelPath) ||
 			!std::filesystem::exists(entry.resolvedModelPath))
@@ -257,8 +333,19 @@ std::filesystem::path CMapAssetCatalog::Get_MapDataRoot()
 	if (0 == length || length >= std::size(modulePath))
 		return {};
 
-	return (std::filesystem::path(modulePath).parent_path() /
-		L"DataFiles" / L"Map").lexically_normal();
+	const std::filesystem::path moduleDirectory =
+		std::filesystem::path(modulePath).parent_path();
+	const std::filesystem::path adjacentRoot =
+		moduleDirectory / L"DataFiles" / L"Map";
+	if (std::filesystem::exists(adjacentRoot))
+		return adjacentRoot.lexically_normal();
+
+	const std::filesystem::path parentRoot =
+		moduleDirectory.parent_path() / L"DataFiles" / L"Map";
+	if (std::filesystem::exists(parentRoot))
+		return parentRoot.lexically_normal();
+
+	return adjacentRoot.lexically_normal();
 }
 
 std::filesystem::path CMapAssetCatalog::Get_AreaSelectionPath()

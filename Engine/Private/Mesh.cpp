@@ -3,6 +3,8 @@
 #include "Bone.h"
 
 #include "Shader.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 CMesh::CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer { pDevice, pContext }
@@ -163,6 +165,75 @@ HRESULT CMesh::Bind_Resource(shared_ptr<class CShader> pShader, const char_t* pC
 	}
 
 	return pShader->Bind_Matrices(pConstantName, m_BoneMatrices, m_iNumBones);	
+}
+
+HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
+	uint32_t iInstanceStride, uint32_t iNumInstances)
+{
+	if (nullptr == pInstanceBuffer ||
+		0 == iInstanceStride ||
+		0 == iNumInstances)
+	{
+		return E_INVALIDARG;
+	}
+
+	ID3D11Buffer* vertexBuffers[] =
+	{
+		m_pVB.Get(), pInstanceBuffer
+	};
+
+	const uint32_t strides[] =
+	{
+		m_iVertexStride,
+		iInstanceStride
+	};
+
+	const uint32_t offsets[] =
+	{
+		0,
+		0
+	};
+
+	m_pContext->IASetVertexBuffers(
+		0, 2, vertexBuffers, strides, offsets
+	);
+
+	m_pContext->IASetIndexBuffer(
+		m_pIB.Get(),
+		m_eIndexFormat,
+		0
+	);
+
+	m_pContext->IASetPrimitiveTopology(
+		m_ePrimitiveTopology);
+
+	if (CProfiler* pProfiler =
+		CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(
+			EProfilerCounter::DrawCalls);
+
+		pProfiler->Add_Counter(
+			EProfilerCounter::InstancedDrawCalls);
+
+		pProfiler->Add_Counter(
+			EProfilerCounter::Instances,
+			iNumInstances);
+
+		pProfiler->Add_Counter(
+			EProfilerCounter::Indices,
+			static_cast<uint64_t>(m_iNumIndices) *
+			iNumInstances);
+	}
+
+	m_pContext->DrawIndexedInstanced(
+		m_iNumIndices,
+		iNumInstances,
+		0,
+		0,
+		0);
+
+	return S_OK;
 }
 
 HRESULT CMesh::Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTransformMatrix)

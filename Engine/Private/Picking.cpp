@@ -48,10 +48,12 @@ void CPicking::Update()
     /* 복사한 텍스쳐의 락, 언락을 호출해서 텍스쳐에 저장되어있는 월드위치를 미리 다 꺼내놓자. */
     D3D11_MAPPED_SUBRESOURCE            MappedSubResource{};
 
-    if (FAILED(m_pContext->Map(m_pTexture2D.Get(), 0, D3D11_MAP_READ_WRITE, 0, &MappedSubResource)))
+    if (FAILED(m_pContext->Map(m_pTexture2D.Get(), 0, 
+        D3D11_MAP_READ_WRITE, 0, &MappedSubResource)))
         return;
 
-    memcpy(m_pWorldPositions.get(), MappedSubResource.pData, sizeof(float4_t) * m_vViewportSize.x * m_vViewportSize.y);
+    memcpy(m_pWorldPositions.get(), MappedSubResource.pData, 
+        sizeof(float4_t) * m_vViewportSize.x * m_vViewportSize.y);
 
     m_pContext->Unmap(m_pTexture2D.Get(), 0);
 }

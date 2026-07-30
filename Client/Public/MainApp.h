@@ -36,7 +36,11 @@ private:
 	std::unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	std::unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
 	std::unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
+
 	bool m_bF1Down = false;
+	bool m_bF4Down = false;
+	bool m_bProfilerVisible = false;
+	string m_strProfilerCaptureStatus;
 #endif
 
 private:
@@ -48,6 +52,8 @@ private:
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();
 	void UpdateDebugToolShortcut();
+	void RenderProfilerOverlay();
+	void RenderProfilerSettings();
 #endif
 
 public:

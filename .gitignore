@@ -46,6 +46,8 @@
 # Local extraction, cook, and generated workspaces
 /_work/
 /out/
+/.codex_tmp/
+/UmodelSaved/
 
 # Cooked runtime resources are distributed through the shared Drive pack.
 *.wmesh
@@ -86,9 +88,15 @@
 
 # Local tool state
 [Ii]mgui.ini
+__pycache__/
+*.py[cod]
 *.tmp
 *.bak
 *.orig
+
+# Personal planning style override. Shared agents fall back when it is absent.
+/.md/계획서작성규칙.local.md
+/.md/local.gotchas.md
 
 # Shared Winters asset converter bundle. Runtime resources remain Drive-managed.
 !/Tools/

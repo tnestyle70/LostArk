@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "GameObject.h"
+#include "MapAssetCatalog.h"
 
 NS_BEGIN(Engine)
 class CModel;
@@ -23,6 +24,7 @@ public:
 		float3_t signedScale = float3_t(1.f, 1.f, 1.f);
 		bool_t applyBottomCenter = false;
 		bool_t visible = true;
+		MAP_ASSET_RENDER_PROFILE renderProfile;
 	};
 
 private:
@@ -30,8 +32,11 @@ private:
 
 public:
 	virtual ~CMapAssetObject();
+
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;
+
+	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
@@ -53,17 +58,34 @@ private:
 	float3_t m_vPlacementPosition = {};
 	float4_t m_vRotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
 	float3_t m_vSignedScale = float3_t(1.f, 1.f, 1.f);
+
 	bool_t m_bApplyBottomCenter = false;
 	bool_t m_bVisible = true;
 	bool_t m_bMirrored = false;
+	//Frustum Culling을 위한 멤버 변수 추가 
+	bool_t m_bHasLocalCullBounds = false;
+	bool_t m_bHasWorldCullBounds = false;
+	float3_t m_vLocalCullCenter = {};
+	f32_t m_fLocalCullRadius = {};
+	float3_t m_vWorldCullCenter = {};
+	f32_t m_fWorldCullRadius = {};
+
+	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
+	f32_t m_fElapsedTime = {};
+
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 
 private:
 	HRESULT Ready_Components(const std::wstring& modelPrototypeTag);
 	HRESULT Bind_ShaderResources();
+	//Frustum Culling
+	void Ready_CullBounds();
+	void Update_WorldCullBounds();
+
 	float3_t Compute_WorldOrigin(const float3_t& placementPosition,
 		const float4_t& rotationQuaternion, const float3_t& signedScale) const;
+	uint32_t Select_ShaderPass() const;
 
 public:
 	static unique_ptr<CMapAssetObject> Create(ComPtr<ID3D11Device> pDevice,

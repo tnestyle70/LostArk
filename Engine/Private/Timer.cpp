@@ -25,6 +25,8 @@ HRESULT CTimer::Initialize()
 	return S_OK;
 }
 
+
+
 void CTimer::Update_Timer()
 {
 	QueryPerformanceCounter(&m_FrameTime);			// 1500
@@ -42,6 +44,7 @@ void CTimer::Update_Timer()
 
 unique_ptr<CTimer> CTimer::Create()
 {
+
 	auto pInstance = unique_ptr<CTimer>(new CTimer());
 
 	if (FAILED(pInstance->Initialize()))
@@ -49,4 +52,15 @@ unique_ptr<CTimer> CTimer::Create()
 
 	return pInstance;
 }
+
+
+
+ 
+
+
+
+
+
+
+
 

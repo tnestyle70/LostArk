@@ -17,6 +17,7 @@
 #include "Object_Manager.h"
 #include "Graphic_Device.h"
 #include "Prototype_Manager.h"
+#include "Profiler.h"
 
 CGameInstance::CGameInstance()
 {
@@ -90,6 +91,10 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 
 	m_pFrustum = CFrustum::Create();
 	if (nullptr == m_pFrustum)
+		return E_FAIL;
+
+	m_pProfiler = std::make_unique<CProfiler>();
+	if (FAILED(m_pProfiler->Initialize(pOutDevice, pOutContext)))
 		return E_FAIL;
 
 	return S_OK;
@@ -296,8 +301,6 @@ HRESULT CGameInstance::Bind_InverseTransform(shared_ptr<class CShader> pShader, 
 	return 	m_pPipeLine->Bind_Inverse_ShaderResource(pShader, pConstantName, eType);
 }
 
-
-
 HRESULT CGameInstance::Add_Light(const LIGHT_DESC& LightDesc)
 {
 	return m_pLight_Manager->Add_Light(LightDesc);
@@ -377,8 +380,6 @@ HRESULT CGameInstance::Bind_ShadowLight_ShaderResource(shared_ptr<class CShader>
 	return m_pShadow->Bind_ShaderResource(pShader, pConstantName, eType);
 }
 
-
-
 void CGameInstance::Update_Frustum_InLocalSpace(fmatrix_t WorldMatrix)
 {
 	m_pFrustum->Update_InLocalSpace(WorldMatrix);
@@ -386,7 +387,7 @@ void CGameInstance::Update_Frustum_InLocalSpace(fmatrix_t WorldMatrix)
 
 bool_t CGameInstance::isIn_Frustum_InLocalSpace(fvector_t vLocalPoint, f32_t fRange)
 {
-	return m_pFrustum->isIn_Frustum_InWorldSpace(vLocalPoint, fRange);
+	return m_pFrustum->isIn_Frustum_InLocalSpace(vLocalPoint, fRange);
 }
 
 bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRange)
@@ -396,6 +397,7 @@ bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRa
 
 void CGameInstance::Release_Engine()
 {	
+	m_pProfiler.reset();
 	m_pFrustum.reset();
 	m_pTarget_Manager.reset();
 	m_pFont_Manager.reset();

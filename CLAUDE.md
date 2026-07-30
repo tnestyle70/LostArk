@@ -30,19 +30,26 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 3) Client 빌드
 ```
 
-`UpdateLib.bat`은 `EngineSDK\`를 **재생성**한다.
+Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
+
+- Engine: `Engine\Bin\Debug\`, `Engine\Bin\Release\`
+- Client: `Client\Bin\Debug\`, `Client\Bin\Release\`
+- Engine import library: `EngineSDK\lib\Debug\`, `EngineSDK\lib\Release\`
+
+`UpdateLib.bat`은 선택한 구성의 Engine 산출물로 `EngineSDK\`와 Client runtime 폴더를 갱신한다.
 
 - `Engine\Public\*.*` → `EngineSDK\inc\`
-- `Engine\Bin\*.lib`, `Engine\ThirdPartyLib\*.lib` → `EngineSDK\lib\`
-- `Engine.dll`, `fmod.dll`, 구성에 맞는 `assimp-vc143-mt(d).dll` → `Client\Bin\`
+- `Engine\Bin\<Configuration>\*.lib` → `EngineSDK\lib\<Configuration>\`
+- `Engine\ThirdPartyLib\*.lib` → `EngineSDK\lib\`
+- `Engine.dll`, `fmod.dll`, 구성에 맞는 `assimp-vc143-mt(d).dll` → `Client\Bin\<Configuration>\`
 - `Engine\Bin\ShaderFiles\*` → `EngineSDK\hlsl\` → `Client\Bin\ShaderFiles\`
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone 직후에는 존재하지 않으므로 Client부터 빌드하면 반드시 실패한다.** 병렬 빌드(`/m`)로 한 번에 돌릴 때도 Engine → UpdateLib → Client 순서가 보장되지 않으면 race가 난다.
 
 ### 정리 스크립트
 
-- `CleanBuild.bat` — `.vs`, `EngineSDK`, `Engine\Bin\*`, 각 프로젝트의 `x64` 중간 산출물 삭제
-- `CleanBuildV2.bat` — 위와 동일하되 `Client\Bin`도 비운다(assimp DLL 2개는 보존)
+- `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
+- `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
 커맨드라인 빌드 스크립트(`BuildDebug.bat` 등)는 아직 없다. MSBuild로 직접 돌릴 경우에도 위 3단계를 그대로 따른다.
 

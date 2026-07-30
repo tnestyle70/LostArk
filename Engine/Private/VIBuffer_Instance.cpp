@@ -1,4 +1,6 @@
 #include "VIBuffer_Instance.h"
+#include "GameInstance.h"
+#include "Profiler.h"
 
 CVIBuffer_Instance::CVIBuffer_Instance(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CVIBuffer{ pDevice, pContext }
@@ -21,6 +23,16 @@ HRESULT CVIBuffer_Instance::Initialize(void* pArg)
 
 HRESULT CVIBuffer_Instance::Render()
 {
+	if (CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
+	{
+		pProfiler->Add_Counter(EProfilerCounter::DrawCalls);
+		pProfiler->Add_Counter(EProfilerCounter::InstancedDrawCalls);
+		pProfiler->Add_Counter(EProfilerCounter::Instances, m_iNumInstances);
+		pProfiler->Add_Counter(
+			EProfilerCounter::Indices,
+			static_cast<uint64_t>(m_iNumIndexPerInstance) * m_iNumInstances);
+	}
+
 	m_pContext->DrawIndexedInstanced(m_iNumIndexPerInstance, m_iNumInstances, 0, 0, 0);
 	
 	return S_OK;

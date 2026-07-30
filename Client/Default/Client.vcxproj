@@ -27,6 +27,8 @@
     <ClInclude Include="..\Public\Logic_LanceMaster.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
+    <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
+    <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Player.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
@@ -48,8 +50,11 @@
     <ClInclude Include="..\Public\Level_Test2.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
+    <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
     <ClInclude Include="..\Public\MapAssetObject.h" />
+    <ClInclude Include="..\Public\DeployPropCatalog.h" />
+    <ClInclude Include="..\Public\DeployPropObject.h" />
     <ClInclude Include="..\Public\MapAssetPreview.h" />
     <ClInclude Include="..\Public\MapPlacementDocument.h" />
     <ClInclude Include="..\Public\MapTool.h" />
@@ -66,7 +71,6 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
-
   <ItemGroup>
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\private\BackGround.cpp" />
@@ -75,6 +79,8 @@
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
+    <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
+    <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Player.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
@@ -94,8 +100,11 @@
     <ClCompile Include="..\Private\Level_Test2.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
     <ClCompile Include="..\Private\MapAssetObject.cpp" />
+    <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
+    <ClCompile Include="..\Private\DeployPropObject.cpp" />
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
@@ -132,6 +141,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxNorTex.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl" />
@@ -195,10 +205,10 @@
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\Bin\</OutDir>
+    <OutDir>..\Bin\Debug\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\Bin\</OutDir>
+    <OutDir>..\Bin\Release\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -240,7 +250,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../EngineSDK/lib/</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../EngineSDK/lib/Debug/;../../EngineSDK/lib/</AdditionalLibraryDirectories>
       <AdditionalDependencies>Engine.lib;DirectXTKd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
@@ -266,7 +276,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../EngineSDK/lib/</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../EngineSDK/lib/Release/;../../EngineSDK/lib/</AdditionalLibraryDirectories>
       <AdditionalDependencies>Engine.lib;DirectXTK.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
@@ -287,6 +297,8 @@
   <PropertyGroup>
     <EngineRoot>$(ProjectDir)..\..\Engine\</EngineRoot>
     <EngineSdkRoot>$(ProjectDir)..\..\EngineSDK\</EngineSdkRoot>
+    <EngineBinaryRoot>$(EngineRoot)Bin\$(Configuration)\</EngineBinaryRoot>
+    <EngineSdkConfigurationLibRoot>$(EngineSdkRoot)lib\$(Configuration)\</EngineSdkConfigurationLibRoot>
     <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
     <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
     <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
@@ -295,24 +307,26 @@
     <ItemGroup>
       <EnginePublicHeaders Include="$(EngineRoot)Public\**\*.*" />
       <ImGuiPublicHeaders Include="$(EngineRoot)External\imgui\imgui.h;$(EngineRoot)External\imgui\imconfig.h" />
-      <EngineSdkLibraries Include="$(EngineRoot)Bin\*.lib;$(EngineRoot)ThirdPartyLib\*.lib" />
+      <EngineSdkConfigurationLibraries Include="$(EngineBinaryRoot)*.lib" />
+      <EngineSdkThirdPartyLibraries Include="$(EngineRoot)ThirdPartyLib\*.lib" />
       <EngineShaderSources Include="$(EngineRoot)Bin\ShaderFiles\*.*" />
     </ItemGroup>
-    <MakeDir Directories="$(EngineSdkRoot)inc;$(EngineSdkRoot)lib;$(EngineSdkRoot)hlsl;$(ProjectDir)..\Bin\ShaderFiles" />
+    <MakeDir Directories="$(EngineSdkRoot)inc;$(EngineSdkRoot)lib;$(EngineSdkConfigurationLibRoot);$(EngineSdkRoot)hlsl;$(ProjectDir)..\Bin\ShaderFiles" />
     <Copy SourceFiles="@(EnginePublicHeaders)" DestinationFiles="@(EnginePublicHeaders->'$(EngineSdkRoot)inc\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ImGuiPublicHeaders)" DestinationFolder="$(EngineSdkRoot)inc" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(EngineSdkLibraries)" DestinationFolder="$(EngineSdkRoot)lib" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineSdkConfigurationLibraries)" DestinationFolder="$(EngineSdkConfigurationLibRoot)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(EngineSdkThirdPartyLibraries)" DestinationFolder="$(EngineSdkRoot)lib" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(EngineSdkRoot)hlsl" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(EngineShaderSources)" DestinationFolder="$(ProjectDir)..\Bin\ShaderFiles" SkipUnchangedFiles="true" />
   </Target>
   <Target Name="DeployClientRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
     <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
     <Error Condition="!Exists('$(AssimpRuntimeSource)')" Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
-    <Error Condition="!Exists('$(EngineRoot)Bin\Engine.dll')" Text="Engine runtime was not built: $(EngineRoot)Bin\Engine.dll" />
-    <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineRoot)Bin\Engine.pdb')" Text="Engine debug symbols were not built: $(EngineRoot)Bin\Engine.pdb" />
+    <Error Condition="!Exists('$(EngineBinaryRoot)Engine.dll')" Text="Engine runtime was not built for $(Configuration): $(EngineBinaryRoot)Engine.dll" />
+    <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineBinaryRoot)Engine.pdb')" Text="Engine debug symbols were not built: $(EngineBinaryRoot)Engine.pdb" />
     <ItemGroup>
-      <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.dll" />
-      <ClientRuntimeDependencies Include="$(EngineRoot)Bin\Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
+      <ClientRuntimeDependencies Include="$(EngineBinaryRoot)Engine.dll" />
+      <ClientRuntimeDependencies Include="$(EngineBinaryRoot)Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
       <ClientRuntimeDependencies Include="$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll" />
       <ClientRuntimeDependencies Include="$(AssimpRuntimeSource)" />
     </ItemGroup>

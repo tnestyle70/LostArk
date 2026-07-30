@@ -9,7 +9,11 @@
 #include "Character.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
+#include "MapStaticBatchObject.h"
+
 #include "MapAssetPreview.h"
+#include "DeployPropCatalog.h"
+#include "DeployPropObject.h"
 
 
 #include "Sky.h"
@@ -24,6 +28,7 @@
 #include "Camera_Free.h"
 
 #include "GameInstance.h"
+#include "Navigation.h"
 
 CLoader::CLoader(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : m_pDevice { pDevice } 
@@ -107,27 +112,27 @@ void CLoader::Print_Text()
 
 HRESULT CLoader::Ready_For_Level_Logo()
 {
-    lstrcpy(m_szLoadingText, TEXT("텍스쳐를 로딩중입니다."));
+    lstrcpy(m_szLoadingText, TEXT("Texture Loading"));
     /* For.Prototype_Component_Texture_BackGround */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::LOGO), TEXT("Prototype_Component_Texture_BackGround"),
         CTexture::Create(m_pDevice, m_pContext, TEXT("../Bin/Resources/Textures/Default%d.jpg"), 2))))
         return E_FAIL;
 
 
-    lstrcpy(m_szLoadingText, TEXT("모델을 로딩중입니다."));
+    lstrcpy(m_szLoadingText, TEXT("Model Loading"));
 
 
-    lstrcpy(m_szLoadingText, TEXT("셰이더를 로딩중입니다."));
+    lstrcpy(m_szLoadingText, TEXT("Shader Loading"));
 
 
-    lstrcpy(m_szLoadingText, TEXT("객체원형을 로딩중입니다."));
+    lstrcpy(m_szLoadingText, TEXT("Object Prototype Loading"));
 
     /* For.Prototype_GameObject_BackGround */
     if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_GameObject_BackGround"),
         CBackGround::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
-    lstrcpy(m_szLoadingText, TEXT("로딩이 완료되었습니다."));
+    lstrcpy(m_szLoadingText, TEXT("Loading Complete"));
 
     m_isFinished = true;
 
@@ -136,7 +141,7 @@ HRESULT CLoader::Ready_For_Level_Logo()
 
 HRESULT CLoader::Ready_For_Level_AssetTest()
 {
-    lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 자원을 로딩중입니다."));
+    lstrcpy(m_szLoadingText, TEXT("Loading Binary Asset"));
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
@@ -158,6 +163,15 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Shader_VtxMeshMapInstance"),
+        CShader::Create(m_pDevice, m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxMeshMapInstance.hlsl"),
+            VTXMESHINSTANCE::Elements,
+            VTXMESHINSTANCE::iNumElements))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
         CMapAssetPreview::SHADER_PROTOTYPE_TAG,
         CShader::Create(m_pDevice, m_pContext,
             TEXT("../Bin/ShaderFiles/Shader_VtxMeshPreview.hlsl"),
@@ -171,7 +185,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
     const matrix_t mapAssetTransform =
         XMMatrixScaling(0.01f, 0.01f, 0.01f);
 
+    //Valtan Raid 맵 기준 정적 에셋 카탈로그
     CMapAssetCatalog mapCatalog;
+
     if (!mapCatalog.Load_Default())
     {
         return E_FAIL;
@@ -180,12 +196,44 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
     for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
     {
         const string modelPath = entry.resolvedModelPath.string();
+
         if (FAILED(CGameInstance::Get().Add_Prototype(
             ETOUI(LEVEL::ASSET_TEST), entry.prototypeTag,
             CModel::Create(m_pDevice, m_pContext,
                 MODEL::NONANIM, modelPath.c_str(), mapAssetTransform))))
         {
             return E_FAIL;
+        }
+    }
+
+    //Valtan Raid 맵 기준 동적 에셋 카탈로그
+    CDeployPropCatalog deployCatalog;
+
+    if (deployCatalog.Load_Default(mapCatalog.Get_AreaId()))
+    {
+        for (const DEPLOY_PROP_ASSET_ENTRY& entry : deployCatalog.Get_Assets())
+        {
+            const MODEL modelKind =
+                entry.kind == DEPLOY_PROP_MODEL_KIND::ANIM ?
+                MODEL::ANIM : MODEL::NONANIM;
+
+            const string intactPath = entry.intactResolvedPath.string();
+
+            if (FAILED(CGameInstance::Get().Add_Prototype(
+                ETOUI(LEVEL::ASSET_TEST), entry.intactPrototypeTag,
+                CModel::Create(m_pDevice, m_pContext,
+                    modelKind, intactPath.c_str(), mapAssetTransform))))
+                return E_FAIL;
+
+            if (entry.kind == DEPLOY_PROP_MODEL_KIND::STATIC)
+            {
+                const string fracturedPath = entry.fracturedResolvedPath.string();
+                if (FAILED(CGameInstance::Get().Add_Prototype(
+                    ETOUI(LEVEL::ASSET_TEST), entry.fracturedPrototypeTag,
+                    CModel::Create(m_pDevice, m_pContext,
+                        MODEL::NONANIM, fracturedPath.c_str(), mapAssetTransform))))
+                    return E_FAIL;
+            }
         }
     }
 
@@ -196,6 +244,15 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             MODEL::ANIM,
             "../Bin/Resources/LostArk/Character/MN_RPBF_01/MN_RPBF_01.wmodel",
             lostArkAssetPreTransform))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Navigation_ValtanArena"),
+        CNavigation::Create_NavGrid(
+            m_pDevice,
+            m_pContext,
+            TEXT("../DataFiles/Navigation/ValtanArena.navgrid")))))
         return E_FAIL;
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
@@ -222,7 +279,19 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         CMapAssetObject::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
-    lstrcpy(m_szLoadingText, TEXT("바이너리 에셋 테스트 로딩이 완료되었습니다."));
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_MapStaticBatch"),
+        CMapStaticBatchObject::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_GameObject_DeployProp"),
+        CDeployPropObject::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    lstrcpy(m_szLoadingText, TEXT("Binary Asset Test Loading Complete"));
 
     m_isFinished = true;
 
