@@ -216,33 +216,21 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\LanceMaster.cpp">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Body_LanceMaster.cpp">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Weapon_LanceMaster.cpp">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Effect_Tool.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
-
     <ClCompile Include="..\Private\Animation_Tool.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\HUDLayoutTool.cpp">
       <Filter>03. Tools\03. UI</Filter>
-
     </ClCompile>
     <ClCompile Include="..\Private\Level_Test2.cpp">
       <Filter>01.Levels\02. TestLevel2</Filter>
     </ClCompile>
-
     <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -257,7 +245,18 @@
     </ClCompile>
     <ClCompile Include="..\Private\Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
-
+    </ClCompile>
+    <ClCompile Include="..\Private\Character.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Part_Body.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Part_Equipment.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -360,33 +359,21 @@
     <ClInclude Include="..\Public\Body_Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\LanceMaster.h">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Body_LanceMaster.h">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Weapon_LanceMaster.h">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Effect_Tool.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
-
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\HUDLayoutTool.h">
       <Filter>03. Tools\03. UI</Filter>
-
     </ClInclude>
     <ClInclude Include="..\Public\Level_Test2.h">
       <Filter>01.Levels\02. TestLevel2</Filter>
     </ClInclude>
-
     <ClInclude Include="..\Public\Effect_ResourceCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -395,7 +382,21 @@
     </ClInclude>
     <ClInclude Include="..\Public\Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
-
+    </ClInclude>
+    <ClInclude Include="..\Public\Character.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterSpec.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Logic_LanceMaster.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Part_Body.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Part_Equipment.h">
+      <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

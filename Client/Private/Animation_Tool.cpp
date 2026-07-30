@@ -14,7 +14,9 @@ namespace
 	This resolution is the only place that knows the target; once the shared asset
 	catalog lands it replaces the body of Resolve_Model and nothing else. */
 	constexpr const tchar_t* LAYER_TAG = TEXT("Layer_Player");
-	constexpr const tchar_t* PART_TAG = TEXT("Part_Body");
+	/* CCharacter numbers its part tags so std::map updates them in the right
+	order (see the 07-30 RESULT doc), hence the "00" rather than plain "Part_Body". */
+	constexpr const tchar_t* PART_TAG = TEXT("Part_00_Body");
 	constexpr const tchar_t* COMPONENT_TAG = TEXT("Com_Model");
 
 	constexpr const char_t* EVENT_FILE_MAGIC = "LOSTARK_ANIM_EVENTS";
