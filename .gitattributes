@@ -9,7 +9,6 @@
 *.jpeg filter=lfs diff=lfs merge=lfs -text
 *.spritefont filter=lfs diff=lfs merge=lfs -text
 *.dat filter=lfs diff=lfs merge=lfs -text
-*.navgrid filter=lfs diff=lfs merge=lfs -text
 
 # Cooked W-format resources are distributed through the shared Drive pack.
 # They are ignored by .gitignore instead of being stored in Git LFS.
