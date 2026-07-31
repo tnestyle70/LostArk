@@ -1,7 +1,9 @@
 #include "Level_Loading.h"
 #include "Loader.h"
 
+#include "Level_Lobby.h"
 #include "Level_Logo.h"
+#include "Level_Baren.h"
 #include "Level_GamePlay.h"
 #include "Level_AssetTest.h"
 #include "Level_Test2.h"
@@ -24,6 +26,7 @@ HRESULT CLevel_Loading::Initialize(LEVEL eNextLevelID)
 	m_eNextLevelID = eNextLevelID;
 
 	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
+
 	if (nullptr == m_pLoader)
 		return E_FAIL;
 
@@ -53,6 +56,12 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 		{
 		case LEVEL::LOGO:
 			pNewLevel = CLevel_Logo::Create(m_pDevice, m_pContext);
+			break;
+		case LEVEL::LOBBY:
+			pNewLevel = CLevel_Lobby::Create(m_pDevice, m_pContext);
+			break;
+		case LEVEL::BAREN:
+			pNewLevel = CLevel_Baren::Create(m_pDevice, m_pContext);
 			break;
 		case LEVEL::GAMEPLAY:
 			pNewLevel = CLevel_GamePlay::Create(m_pDevice, m_pContext);

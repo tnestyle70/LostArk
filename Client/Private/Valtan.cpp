@@ -5,6 +5,9 @@
 #include "Model.h"
 #include "Navigation.h"
 
+#include "Part_Equipment.h"
+#include "Transform.h"
+
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CContainerObject { pDevice, pContext }
@@ -25,6 +28,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	VALTAN_DESC desc{};
 	desc.fSpeedPerSec = 3.f;
 	desc.fRotationPerSec = 180.f;
+	desc.fScale = 1.5f;
 	if (nullptr != pArg)
 	{
 		desc = *static_cast<VALTAN_DESC*>(pArg);
@@ -32,6 +36,8 @@ HRESULT CValtan::Initialize(void* pArg)
 			desc.fSpeedPerSec = 3.f;
 		if (desc.fRotationPerSec <= 0.f)
 			desc.fRotationPerSec = 180.f;
+		if (desc.fScale <= 0.f)
+			desc.fScale = 1.5f;
 	}
 
 	m_fMoveSpeed = desc.fSpeedPerSec;
@@ -42,6 +48,8 @@ HRESULT CValtan::Initialize(void* pArg)
 
 	if (FAILED(__super::Initialize(&desc)))
 		return E_FAIL;
+
+	m_pTransformCom->Scale(desc.fScale, desc.fScale, desc.fScale);
 
 	m_pTransformCom->Set_State(STATE::POSITION,
 		XMVectorSet(desc.vPosition.x, desc.vPosition.y, desc.vPosition.z, 1.f));
@@ -59,54 +67,70 @@ void CValtan::Priority_Update(f32_t fTimeDelta)
 
 void CValtan::Update(f32_t fTimeDelta)
 {
-	shared_ptr<CTransform> pTargetTransform = m_pTargetTransform.lock();
-
 	if (nullptr == m_pNavigationCom)
 	{
 		m_PathFollower.Cancel();
+		m_hasLastPathGoal = false;
 		Set_ChaseState(false);
 		__super::Update(fTimeDelta);
 		return;
 	}
 
-	if (nullptr != pTargetTransform)
+	shared_ptr<CTransform> pTargetTransform = m_pTargetTransform.lock();
+	if (nullptr == pTargetTransform)
 	{
-		const vector_t vPosition = m_pTransformCom->Get_State(STATE::POSITION);
-		const vector_t vTargetPosition = pTargetTransform->Get_State(STATE::POSITION);
-		vector_t vHorizontalOffset = vTargetPosition - vPosition;
-		vHorizontalOffset = XMVectorSetY(vHorizontalOffset, 0.f);
-		const f32_t fTargetDistance = XMVectorGetX(
-			XMVector3Length(vHorizontalOffset));
+		m_PathFollower.Cancel();
+		m_hasLastPathGoal = false;
+		Set_ChaseState(false);
+		__super::Update(fTimeDelta);
+		return;
+	}
 
-		if (fTargetDistance <= m_fStopDistance)
+	const vector_t vPosition = m_pTransformCom->Get_State(STATE::POSITION);
+	const vector_t vTargetPosition = pTargetTransform->Get_State(STATE::POSITION);
+	const vector_t vHorizontalOffset =
+		XMVectorSetY(vTargetPosition - vPosition, 0.f);
+	const f32_t fTargetDistance = XMVectorGetX(
+		XMVector3Length(vHorizontalOffset));
+
+	if (fTargetDistance <= m_fStopDistance)
+	{
+		m_PathFollower.Cancel();
+		m_hasLastPathGoal = false;
+		Set_ChaseState(false);
+		__super::Update(fTimeDelta);
+		return;
+	}
+
+	m_fRepathTime -= fTimeDelta;
+	if (m_fRepathTime <= 0.f)
+	{
+		float3_t vCurrentGoal{};
+		XMStoreFloat3(&vCurrentGoal, vTargetPosition);
+		const f32_t fGoalDeltaX = vCurrentGoal.x - m_vLastPathGoal.x;
+		const f32_t fGoalDeltaZ = vCurrentGoal.z - m_vLastPathGoal.z;
+		const bool_t isNewGoal =
+			false == m_hasLastPathGoal ||
+			fGoalDeltaX * fGoalDeltaX + fGoalDeltaZ * fGoalDeltaZ >= 0.25f ||
+			false == m_PathFollower.Has_Path();
+
+		if (isNewGoal)
 		{
-			m_PathFollower.Cancel();
-			Set_ChaseState(false);
-			__super::Update(fTimeDelta);
-			return;
-		}
-
-		m_fRepathTime -= fTimeDelta;
-		if (m_fRepathTime <= 0.f)
-		{
-			float3_t vCurrentGoal{};
-			XMStoreFloat3(&vCurrentGoal, vTargetPosition);
-			const f32_t fGoalDeltaX = vCurrentGoal.x - m_vLastPathGoal.x;
-			const f32_t fGoalDeltaZ = vCurrentGoal.z - m_vLastPathGoal.z;
-			const bool_t isNewGoal =
-				false == m_hasLastPathGoal ||
-				fGoalDeltaX * fGoalDeltaX + fGoalDeltaZ * fGoalDeltaZ >= 0.25f ||
-				false == m_PathFollower.Has_Path();
-
-			if (isNewGoal &&
-				PATH_RESULT_CODE::SUCCESS == Request_Move(vTargetPosition))
+			const PATH_RESULT_CODE eResult =
+				Request_PathToTarget(vTargetPosition);
+			if (PATH_RESULT_CODE::SUCCESS == eResult)
 			{
 				m_vLastPathGoal = vCurrentGoal;
 				m_hasLastPathGoal = true;
 			}
-
-			m_fRepathTime = 0.35f;
+			else
+			{
+				m_PathFollower.Cancel();
+				m_hasLastPathGoal = false;
+			}
 		}
+
+		m_fRepathTime = 0.35f;
 	}
 
 	m_PathFollower.Update(
@@ -116,22 +140,6 @@ void CValtan::Update(f32_t fTimeDelta)
 	Set_ChaseState(m_PathFollower.Has_Path());
 
 	__super::Update(fTimeDelta);
-}
-
-PATH_RESULT_CODE CValtan::Request_Move(fvector_t vGoalPosition)
-{
-	if (nullptr == m_pNavigationCom || nullptr == m_pTransformCom)
-		return PATH_RESULT_CODE::INVALID_GRID;
-
-	const PATH_RESULT_CODE eResult = m_PathFollower.Request_Path(
-		m_pNavigationCom,
-		m_pTransformCom->Get_State(STATE::POSITION),
-		vGoalPosition);
-
-	if (PATH_RESULT_CODE::SUCCESS == eResult)
-		Set_ChaseState(m_PathFollower.Has_Path());
-
-	return eResult;
 }
 
 void CValtan::Late_Update(f32_t fTimeDelta)
@@ -162,9 +170,46 @@ HRESULT CValtan::Ready_PartObjects()
 		&bodyDesc)))
 		return E_FAIL;
 
-	m_pBodyModelCom = dynamic_pointer_cast<CModel>(
-		__super::Get_Component(TEXT("Part_Body"), TEXT("Com_Model")));
-	return nullptr != m_pBodyModelCom ? S_OK : E_FAIL;
+	m_pBodyModelCom =
+		dynamic_pointer_cast<CModel>(
+			__super::Get_Component(
+				TEXT("Part_Body"),
+				TEXT("Com_Model")));
+
+	const shared_ptr<CTransform> pBodyVisualRoot =
+		dynamic_pointer_cast<CTransform>(
+			__super::Get_Component(
+				TEXT("Part_Body"),
+				g_strTransformComTag));
+
+	if (nullptr == m_pBodyModelCom ||
+		nullptr == pBodyVisualRoot)
+		return E_FAIL;
+
+	CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
+
+	weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+
+	weaponDesc.iPrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
+
+	weaponDesc.strModelTag = TEXT("Prototype_Component_Model_ValtanWeapon");
+
+	weaponDesc.strShaderTag = TEXT("Prototype_Component_Shader_VtxMeshBinary");
+
+	weaponDesc.pSkeletonModel =
+		m_pBodyModelCom;
+
+	weaponDesc.pSocketBoneName =
+		"b_wp_r_01";
+
+	weaponDesc.pSocketRootMatrix =
+		pBodyVisualRoot->Get_WorldMatrixPtr();
+
+	return __super::Add_PartObject(
+		ETOUI(LEVEL::ASSET_TEST),
+		TEXT("Prototype_GameObject_Part_Equipment"),
+		TEXT("Part_Weapon_R"),
+		&weaponDesc);
 }
 
 HRESULT CValtan::Ready_Components()
@@ -177,6 +222,17 @@ HRESULT CValtan::Ready_Components()
 		m_strNavigationPrototypeTag,
 		TEXT("Com_Navigation"),
 		m_pNavigationCom);
+}
+
+PATH_RESULT_CODE CValtan::Request_PathToTarget(fvector_t vGoalPosition)
+{
+	if (nullptr == m_pNavigationCom || nullptr == m_pTransformCom)
+		return PATH_RESULT_CODE::INVALID_GRID;
+
+	return m_PathFollower.Request_Path(
+		m_pNavigationCom,
+		m_pTransformCom->Get_State(STATE::POSITION),
+		vGoalPosition);
 }
 
 void CValtan::Set_ChaseState(bool_t isChasing)

@@ -25,6 +25,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	const auto pDesc = static_cast<PART_EQUIPMENT_DESC*>(pArg);
 	m_pSkeletonModelCom = pDesc->pSkeletonModel;
 	m_pSocketBoneName = pDesc->pSocketBoneName;
+	m_pSocketRootMatrix = pDesc->pSocketRootMatrix;
 
 	/* Both kinds need the body's model: a socketed piece reads one bone from it,
 	a skinned piece borrows its whole palette. */
@@ -49,7 +50,14 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 	body's pre-transform. A skinned piece adds nothing here: its deformation lives
 	entirely in the bone palette bound at render time. */
 	if (nullptr != m_pSocketBoneName)
+	{
 		ChildMatrix = ChildMatrix * m_pSkeletonModelCom->Get_BoneMatrix(m_pSocketBoneName);
+
+		if (nullptr != m_pSocketRootMatrix)
+		{
+			ChildMatrix = ChildMatrix * XMLoadFloat4x4(m_pSocketRootMatrix);
+		}
+	}
 
 	__super::Update_CombinedWorldMatrix(ChildMatrix);
 }

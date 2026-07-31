@@ -24,6 +24,7 @@ public:
 		f32_t fTimeDelta);
 
 	void Cancel();
+
 	bool_t Has_Path() const;
 
 	PATH_RESULT_CODE Get_LastResult() const { return m_eLastResult; }
@@ -31,10 +32,12 @@ public:
 	uint32_t Get_NumWaypoints() const { return static_cast<uint32_t>(m_Waypoints.size()); }
 
 private:
+	weak_ptr<CNavigation> m_pNavigation;
 	vector<float3_t> m_Waypoints;
 	size_t m_iNextWaypoint = {};
 	PATH_RESULT_CODE m_eLastResult = { PATH_RESULT_CODE::INVALID_QUERY };
 	uint32_t m_iLastExpandedNodes = {};
+	uint64_t m_iPathRevision = {};
 };
 
 NS_END

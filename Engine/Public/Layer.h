@@ -12,6 +12,7 @@ public:
 	~CLayer();
 
 public:
+	shared_ptr<CGameObject> Get_GameObject(uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(const wstring_t& strComponentTag, uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(const wstring_t& strPartTag, const wstring_t& strComponentTag, uint32_t iIndex);
 

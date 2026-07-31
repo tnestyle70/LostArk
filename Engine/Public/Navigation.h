@@ -50,6 +50,15 @@ public:
 		vector<float3_t>& OutPath,
 		uint32_t iMaxExpandedNodes = 16384,
 		uint32_t* pOutExpandedNodes = nullptr);
+	bool_t Register_RuntimeBlocker(
+		const std::string& blockerId,
+		const vector<uint32_t>& cellIndices,
+		bool_t initiallyActive = false);
+	bool_t Set_RuntimeBlockerActive(
+		const std::string& blockerId,
+		bool_t active);
+	void Clear_RuntimeBlockers();
+	uint64_t Get_NavigationRevision() const;
 
 #ifdef _DEBUG
 public:
@@ -72,7 +81,7 @@ private:
 	MODE									m_eMode = { MODE::LEGACY_TRIANGLE };
 	vector<shared_ptr<class CCell>>			m_Cells;
 	int32_t									m_iCurrentCellIndex = { -1 };
-	shared_ptr<const CNavGrid>				m_pNavGrid = { nullptr };
+	shared_ptr<CNavGrid>						m_pNavGrid = { nullptr };
 	unique_ptr<CPathFinder>					m_pPathFinder = { nullptr };
 
 private:

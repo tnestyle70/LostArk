@@ -20,12 +20,25 @@ public:
 		return m_byKeyState[byKeyID];
 	}
 
+	bool_t Get_DIKeyPressed(uint8_t byKeyID)
+	{
+		if (m_bKeyboardBlocked)
+			return false;
+
+		return
+			0 != (m_byKeyState[byKeyID] & 0x80) &&
+			0 == (m_byPreviousKeyState[byKeyID] & 0x80);
+	}
+
 	int8_t	Get_DIMouseState(DIM eMouse)
 	{
-		if (m_bMouseBlocked)
+		const uint32_t index = ETOUI(eMouse);
+		if (m_bMouseBlocked ||
+			index >= ETOUI(DIM::END) ||
+			m_MouseButtonBlocked[index])
 			return 0;
 
-		return m_tMouseState.rgbButtons[ETOUI(eMouse)];
+		return m_tMouseState.rgbButtons[index];
 	}
 
 	// 현재 마우스의 특정 축 좌표를 반환
@@ -53,6 +66,13 @@ public:
 		m_bMouseBlocked = bMouseBlocked;
 	}
 
+	void SetMouseButtonBlocked(DIM eMouse, bool_t blocked)
+	{
+		const uint32_t index = ETOUI(eMouse);
+		if (index < ETOUI(DIM::END))
+			m_MouseButtonBlocked[index] = blocked;
+	}
+
 	bool_t IsKeyboardInputBlocked() const
 	{
 		return m_bKeyboardBlocked;
@@ -75,9 +95,11 @@ private:
 
 private:
 	int8_t					m_byKeyState[256] = {};		// 키보드에 있는 모든 키값을 저장하기 위한 변수
+	int8_t					m_byPreviousKeyState[256] = {};
 	DIMOUSESTATE			m_tMouseState = {};
 	bool_t m_bKeyboardBlocked = false;
 	bool_t m_bMouseBlocked = false;
+	bool_t m_MouseButtonBlocked[ETOUI(DIM::END)] = {};
 
 public:
 	static unique_ptr<CInput_Device> Create(HINSTANCE hInst, HWND hWnd);

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Public">
+      <UniqueIdentifier>{49D8F7EE-0874-4E46-B10D-C28D4DBBA46A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Network">
+      <UniqueIdentifier>{FA7865EE-9C52-4D8B-9165-A21FB39F70E1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private">
+      <UniqueIdentifier>{A16AD881-5291-4B14-934F-F578E797EF72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Network">
+      <UniqueIdentifier>{9E3E104B-6763-4827-8B64-1F54D73B117B}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\Network\PacketWriter.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketMessages.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketReader.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketType.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Network\PacketWriter.cpp">
+      <Filter>Private\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketReader.cpp">
+      <Filter>Private\Network</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

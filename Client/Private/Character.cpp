@@ -1,6 +1,7 @@
 #include "Character.h"
 
 #include "GameInstance.h"
+#include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 
@@ -32,6 +33,13 @@ HRESULT CCharacter::Initialize(void* pArg)
 	const auto pDesc = static_cast<CHARACTER_DESC*>(pArg);
 	m_pSpec = pDesc->pSpec;
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
+	m_fMoveSpeed = pDesc->fSpeedPerSec > 0.f ?
+		pDesc->fSpeedPerSec : 5.f;
+
+	if (nullptr != pDesc->pNavigationPrototypeTag)
+		m_strNavigationPrototypeTag =
+			pDesc->pNavigationPrototypeTag;
+
 	if (nullptr == m_pSpec)
 		return E_FAIL;
 
@@ -41,7 +49,8 @@ HRESULT CCharacter::Initialize(void* pArg)
 	m_pTransformCom->Set_State(STATE::POSITION,
 		XMVectorSet(pDesc->vPosition.x, pDesc->vPosition.y, pDesc->vPosition.z, 1.f));
 
-	if (FAILED(Ready_PartObjects()))
+	if (FAILED(Ready_Components()) ||
+		FAILED(Ready_PartObjects()))
 		return E_FAIL;
 
 	/* Optional: without the file the character simply has no skill chains. */
@@ -190,7 +199,10 @@ void CCharacter::Update_Chain()
 	{
 		m_pChain = nullptr;
 		m_iChainStep = 0;
-		Set_Animation(CHARACTER_ANIM::IDLE, true);
+		Set_Animation(
+			m_PathFollower.Has_Path() ?
+			CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
 		return;
 	}
 
@@ -221,6 +233,29 @@ bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	return m_pBodyModel->Set_Animation(pClipName, isLoop);
 }
 
+PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)
+{
+	//유효하지 않은 Grid return 예외처리
+	if (nullptr == m_pNavigationCom || nullptr == m_pTransformCom)
+		return PATH_RESULT_CODE::INVALID_GRID;
+	//PathFollower 객체에게 Path 요청
+	const PATH_RESULT_CODE eResult = m_PathFollower.Request_Path(
+		m_pNavigationCom,
+		m_pTransformCom->Get_State(STATE::POSITION),
+		vGoalPosition);
+
+	if (PATH_RESULT_CODE::SUCCESS == eResult)
+		Set_Locomotion(m_PathFollower.Has_Path());
+
+	return eResult;
+}
+
+void CCharacter::Cancel_Move()
+{
+	m_PathFollower.Cancel();
+	Set_Locomotion(false);
+}
+
 void CCharacter::Priority_Update(f32_t fTimeDelta)
 {
 	__super::Priority_Update(fTimeDelta);
@@ -228,6 +263,12 @@ void CCharacter::Priority_Update(f32_t fTimeDelta)
 
 void CCharacter::Update(f32_t fTimeDelta)
 {
+	m_PathFollower.Update(
+		m_pTransformCom,
+		m_fMoveSpeed,
+		fTimeDelta);
+	Set_Locomotion(m_PathFollower.Has_Path());
+
 	/* A running chain owns the clip until it ends, so it advances before the logic
 	gets a say and Is_PlayingSkill() is already correct when the logic reads it. */
 	Update_Chain();
@@ -243,11 +284,28 @@ void CCharacter::Update(f32_t fTimeDelta)
 void CCharacter::Late_Update(f32_t fTimeDelta)
 {
 	__super::Late_Update(fTimeDelta);
+
+#ifdef _DEBUG
+	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
+		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
+#endif
 }
 
 HRESULT CCharacter::Render()
 {
 	return S_OK;
+}
+
+HRESULT CCharacter::Ready_Components()
+{
+	if (m_strNavigationPrototypeTag.empty())
+		return S_OK;
+
+	return __super::Add_Component(
+		m_iPrototypeLevelIndex,
+		m_strNavigationPrototypeTag,
+		TEXT("Com_Navigation"),
+		m_pNavigationCom);
 }
 
 HRESULT CCharacter::Ready_PartObjects()
@@ -314,6 +372,20 @@ HRESULT CCharacter::Ready_PartObjects()
 	}
 
 	return S_OK;
+}
+
+void CCharacter::Set_Locomotion(bool_t isMoving)
+{
+	if (m_isMoving == isMoving)
+		return;
+
+	m_isMoving = isMoving;
+	if (Is_PlayingSkill())
+		return;
+
+	Set_Animation(
+		isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+		true);
 }
 
 unique_ptr<CCharacter> CCharacter::Create(ComPtr<ID3D11Device> pDevice,

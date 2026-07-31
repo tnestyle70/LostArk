@@ -217,6 +217,9 @@
     <Filter Include="02.Utility\14. TextureResourceCache">
       <UniqueIdentifier>{a93bbeb6-bef8-47d6-bd72-2e7f37b245fe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.Utility\15. Sound">
+      <UniqueIdentifier>{58401d24-5b8f-4705-b240-42ad67f1a8a3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Engine_Defines.h">
@@ -396,7 +399,6 @@
     <ClInclude Include="..\public\Frustum.h">
       <Filter>02.Utility\11.Frustum</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Sound\Sound_Manager.h" />
     <ClInclude Include="..\Public\ImGuiLayer.h">
       <Filter>05. Editor</Filter>
     </ClInclude>
@@ -447,6 +449,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\PathFinder.h">
       <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Sound\Sound_Manager.h">
+      <Filter>02.Utility\15. Sound</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -627,7 +632,6 @@
     <ClCompile Include="..\External\imgui\backends\imgui_impl_win32.cpp">
       <Filter>04. External\imgui\backends</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Sound\Sound_Manager.cpp" />
     <ClCompile Include="..\Private\ImGuiLayer.cpp">
       <Filter>05. Editor</Filter>
     </ClCompile>
@@ -669,6 +673,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\PathFinder.cpp">
       <Filter>02.Utility\04.Component\Navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Sound\Sound_Manager.cpp">
+      <Filter>02.Utility\15. Sound</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

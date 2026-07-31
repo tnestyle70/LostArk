@@ -11,6 +11,18 @@ CLayer::~CLayer()
 {
 }
 
+shared_ptr<CGameObject> CLayer::Get_GameObject(uint32_t iIndex)
+{
+	if (iIndex >= m_GameObjects.size())
+		return nullptr;
+
+	auto iter = m_GameObjects.begin();
+	for (uint32_t index = 0; index < iIndex; ++index)
+		++iter;
+
+	return iter != m_GameObjects.end() ? *iter : nullptr;
+}
+
 shared_ptr<CComponent> CLayer::Get_Component(const wstring_t& strComponentTag, uint32_t iIndex)
 {
 	if (iIndex >= m_GameObjects.size())

@@ -14,10 +14,11 @@ class CCamera_Free final : public CCamera
 public:
 	typedef struct tagCameraFreeDesc : public CCamera::CAMERA_DESC
 	{
-		f32_t		fMouseSensor;
+		f32_t		fMouseSensor = 0.1f;
 		shared_ptr<CTransform> pFollowTarget = { nullptr };
-		float3_t vFollowOffset = { -12.f, 16.f, -12.f };
+		float3_t vPositionOffset = { 0.4f, 7.5f, 4.5f };
 		float3_t vLookOffset = { 0.f, 1.2f, 0.f };
+		f32_t fFollowResponse = 18.f;
 		bool_t isFollowEnabled = { false };
 	}CAMERA_FREE_DESC;
 
@@ -34,15 +35,41 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
+public:
+	void Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget);
+
+	void Set_FollowEnabled(bool_t isEnabled);
+
+	bool_t Is_FollowEnabled() const
+	{
+		return m_bFollowEnabled;
+	}
+	bool_t Is_MouseLookEnabled() const
+	{
+		return m_bMouseLookEnabled;
+	}
+	void Set_PositionOffset(const float3_t& vPositionOffset);
+	const float3_t& Get_PositionOffset() const
+	{
+		return m_vPositionOffset;
+	}
+
 private:
-	f32_t				m_fMouseSensor = {};
-	bool_t				m_bMovementLocked = false;
-	bool_t				m_bTabDown = false;
+	void Update_Shortcuts();
+	void Update_FollowCamera(f32_t fTimeDelta);
+	void Update_FreeCamera(f32_t fTimeDelta);
+
+private:
+	f32_t				m_fMouseSensor = 0.1f;
 	bool_t				m_bFollowEnabled = false;
-	bool_t				m_bF6Down = false;
+	bool_t				m_bFollowInitialized = false;
+	bool_t				m_bMouseLookEnabled = true;
+	// 추적 대상의 수명은 Layer_Player가 소유하므로 카메라는 약한 참조만 유지한다.
 	weak_ptr<CTransform>	m_pFollowTarget;
-	float3_t			m_vFollowOffset = {};
-	float3_t			m_vLookOffset = {};
+	float3_t			m_vPositionOffset = { 0.4f, 7.5f, 4.5f };
+	float3_t			m_vLookOffset = { 0.f, 1.2f, 0.f };
+	float3_t			m_vCurrentLookAt = {};
+	f32_t				m_fFollowResponse = 18.f;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

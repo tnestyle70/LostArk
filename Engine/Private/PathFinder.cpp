@@ -120,7 +120,7 @@ PATH_RESULT CPathFinder::Find_Path(
 			true == CurrentState.isClosed ||
 			CurrentOpen.iCostFromStart != CurrentState.iBestCost)
 			continue;
-
+		//Expand Node 검사
 		if (Result.iExpandedNodes >= Query.iMaxExpandedNodes)
 		{
 			Result.eCode = PATH_RESULT_CODE::EXPANSION_LIMIT;

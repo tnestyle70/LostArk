@@ -46,11 +46,11 @@ Client::CMainApp::CMainApp()
     
    // m_pContext->RSSetState(pRSState.Get());
 
-   // /* ÍπäÏù¥ ÎπÑÍµê x or o, ÍπäÏù¥ Í∏∞Î°ù x or o */
+   // /* ±Ì¿Ã ∫Ò±≥ x or o, ±Ì¿Ã ±‚∑œ x or o */
    // D3D11_DEPTH_STENCIL_DESC
    // m_pContext->OMSetDepthStencilState();
 
-   // /* Î∏îÎ†åÎî©Ïóê ÎåÄÌïú ÏÑ§Ï†ï. */
+   // /* ∫Ì∑ªµ˘ø° ¥Î«— º≥¡§. */
    // D3D11_BLEND_DESC
    // m_pContext->OMSetBlendState();
    // 
@@ -104,7 +104,7 @@ HRESULT CMainApp::Initialize()
         nullptr != pCommandLine &&
         nullptr != wcsstr(pCommandLine, L"--hdr-readback")
         ? LEVEL::TEST_LEVEL2
-        : LEVEL::LOGO;
+        : LEVEL::LOBBY;
 
     if (FAILED(Start_Level(eStartLevel)))
         return E_FAIL;
@@ -131,11 +131,20 @@ void CMainApp::Update(f32_t fTimeDelta)
     const bool_t bKeyboardCaptured = bImGuiPanelOpen &&
         nullptr != m_pImGuiLayer &&
         (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
-    const bool_t bMouseCaptured = bImGuiPanelOpen &&
+    const bool_t bMouseCapturedByUi = bImGuiPanelOpen &&
         nullptr != m_pImGuiLayer &&
-        (m_pImGuiLayer->WantsCaptureMouse() || bExternalToolFocused);
+        (m_pImGuiLayer->WantsCaptureMouse() ||
+            bExternalToolFocused);
+    const bool_t bWorldLeftMouseConsumed =
+        nullptr != m_pMapTool &&
+        m_pMapTool->ConsumesWorldLeftMouse();
 
-    CGameInstance::Get().SetInputBlocked(bKeyboardCaptured, bMouseCaptured);
+    CGameInstance::Get().SetInputBlocked(
+        bKeyboardCaptured,
+        bMouseCapturedByUi);
+    CGameInstance::Get().SetMouseButtonBlocked(
+        DIM::LB,
+        bWorldLeftMouseConsumed);
 #endif
 
     CGameInstance::Get().Update_Engine(fTimeDelta);
@@ -169,7 +178,7 @@ HRESULT CMainApp::Render()
     }
 
 #ifndef _DEBUG
-    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("ÌïúÍ∏Ä Ïù¥Îã§12abd"), float2_t(0.f, 0.f));
+    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("«—±€ ¿Ã¥Ÿ12abd"), float2_t(0.f, 0.f));
 #endif
 
 #ifdef _DEBUG
@@ -302,7 +311,7 @@ HRESULT CMainApp::Ready_Gara()
 HRESULT CMainApp::Ready_Fonts()
 {
     /*
-MakeSpriteFont "ÎÑ•Ïä®lv1Í≥†Îîï Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
+MakeSpriteFont "≥ÿΩºlv1∞ÌµÒ Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
 */
 
 
