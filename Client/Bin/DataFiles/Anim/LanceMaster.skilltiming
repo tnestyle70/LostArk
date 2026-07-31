@@ -1,51 +1,221 @@
-LOSTARK_SKILL_TIMING 1 "LanceMaster" 50
-34044 "이연격 [34040 변형]" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
-34047 "이연격 [34040 변형]" hits="1.445-1.521,1.58-1.663" freeze=0.45 push=0.2 multi=3 interval=0.3
-34048 "이연격 [34040 변형]" hits="0.3-0.316,1.657-1.744" freeze=0.45 push=0.2 multi=0 interval=0
-34060 "열공참" hits="1.295-1.363,1.445-1.521" freeze=0.325 push=0 multi=0 interval=0
-34070 "회선창" hits="0.3-0.316,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
-34072 "회선창 [34070 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0
-34087 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.11 multi=2 interval=0.1
-34088 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.16 multi=3 interval=0.3
-34090 "철량추" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0
-34097 "철량추 [34090 변형]" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0
-34098 "철량추 [34090 변형]" hits="0.3-0.316" freeze=0.45 push=0.2 multi=0 interval=0
-34100 "청룡출수" hits="1.39-1.463" freeze=0.325 push=0 multi=0 interval=0
-34104 "청룡출수 [34100 변형]" hits="" freeze=0.45 push=0 multi=2 interval=0.19
-34105 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0
-34108 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0
-34110 "반월섬" hits="1.857-1.955" freeze=0.45 push=0 multi=0 interval=0
-34115 "반월섬 [34110 변형]" hits="1.557-1.639,1.59-1.674" freeze=0.45 push=0 multi=0 interval=0
-34117 "반월섬 [34110 변형]" hits="" freeze=0.45 push=0.16 multi=2 interval=0.3
-34118 "반월섬 [34110 변형]" hits="1.39-1.463" freeze=0.325 push=0 multi=2 interval=0.3
-34120 "연환섬" hits="1.295-1.363,1.445-1.521,1.51-1.589" freeze=0.45 push=0 multi=0 interval=0
-34121 "연환섬 [34120 변형]" hits="1.195-1.258" freeze=0.45 push=0 multi=0 interval=0
-34130 "질풍참" hits="" freeze=0.45 push=0.11 multi=1 interval=0.2
-34131 "질풍참 [34130 변형]" hits="" freeze=0.45 push=0.08 multi=1 interval=0.2
-34142 "선풍참혼 [34140 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
-34150 "맹룡열파" hits="1.345-1.416,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
-34151 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416,1.445-1.521" freeze=0.6 push=0.28 multi=0 interval=0
-34152 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416" freeze=0.6 push=0.16 multi=0 interval=0
-34545 "나선창 [34540 변형]" hits="-0.5--0.526" freeze=0.45 push=0.13 multi=3 interval=0.3
-34546 "나선창 [34540 변형]" hits="0.945-0.995" freeze=0.45 push=0 multi=0 interval=0
-34547 "나선창 [34540 변형]" hits="1.39-1.463,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
-34548 "나선창 [34540 변형]" hits="-0.5--0.526,0.945-0.995" freeze=0.45 push=0.13 multi=3 interval=0.3
-34549 "나선창 [34540 변형]" hits="1.445-1.521,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
-34550 "사두룡격" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2
-34553 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2
-34554 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=3 interval=0.2
-34555 "사두룡격 [34550 변형]" hits="1.445-1.521" freeze=0.45 push=0.08 multi=2 interval=0.2
-34560 "굉열파" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0
-34564 "굉열파 [34560 변형]" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0
-34567 "굉열파 [34560 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0
-34569 "굉열파 [34560 변형]" hits="0.2-0.211,1.59-1.674" freeze=0.45 push=0 multi=3 interval=0.3
-34570 "유성강천" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0
-34578 "유성강천 [34570 변형]" hits="1.426-1.501" freeze=0.45 push=0 multi=0 interval=0
-34590 "적룡포" hits="1.595-1.679" freeze=0.6 push=0 multi=0 interval=0
-34601 "연가창식: 은하유성탄 [34600 변형]" hits="1.39-1.463" freeze=0.6 push=0 multi=0 interval=0
-34611 "연가창식: 적룡질풍격 [34610 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0
-34620 "연가창식: 은하비섬창" hits="1.93-2.032" freeze=0.8 push=0 multi=0 interval=0
-34630 "연가창식: 마룡합일섬" hits="1.445-1.521" freeze=0.6 push=0 multi=0 interval=0
-34640 "맹룡난무" hits="1.73-1.821" freeze=0.6 push=0 multi=0 interval=0
-34650 "적룡필살" hits="1.24-1.305" freeze=0.6 push=0 multi=0 interval=0
-34660 "연가비기" hits="1.314-1.383" freeze=0.45 push=0 multi=0 interval=0
+LOSTARK_SKILL_TIMING 2 "LanceMaster" 50
+34044 "이연격 [34040 변형]" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=6000 base=34040
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34047 "이연격 [34040 변형]" hits="1.445-1.521,1.58-1.663" freeze=0.45 push=0.2 multi=3 interval=0.3 sa=0 move=0 cd=6000 base=34040
+  hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=200 pushr=30 area=3 ar=270 aa=120 ah=200 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=3 ar=250 aa=360 ah=200 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=1 t=1580 w=83 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=270 aa=360 ah=200 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=310 pushr=80 area=3 ar=270 aa=120 ah=200 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34048 "이연격 [34040 변형]" hits="0.3-0.316,1.657-1.744" freeze=0.45 push=0.2 multi=0 interval=0 sa=0 move=0 cd=6000 base=34040
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=200 pushr=30 area=3 ar=330 aa=120 ah=200 ax=-30 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=50 area=3 ar=220 aa=180 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=120 pushr=70 area=3 ar=250 aa=120 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34060 "열공참" hits="1.295-1.363,1.445-1.521" freeze=0.325 push=0 multi=0 interval=0 sa=0 move=0 cd=10000 base=34060
+  hit g=0 key=38 timed=1 t=1295 w=68 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=3 ar=240 aa=360 ah=200 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=3 ar=230 aa=360 ah=200 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=40 area=2 ar=250 aa=250 ah=200 ax=-50 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=280 aa=250 ah=200 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34070 "회선창" hits="0.3-0.316,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=14000 base=34070
+  hit g=0 key=38 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=35 area=2 ar=380 aa=180 ah=300 ax=-150 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=50 pushr=75 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34072 "회선창 [34070 변형]" hits="0.3-0.316" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=14000 base=34070
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=-60 pushr=0 area=2 ar=300 aa=200 ah=300 ax=-20 arem=0 maxt=0 hittype=8 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+34087 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.11 multi=2 interval=0.1 sa=1 move=0 cd=12000 base=34080
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=100 fz=325 fzin=200 fzout=200 fzcancel=1 push=110 pushr=30 area=2 ar=120 aa=180 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=100 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=30 area=2 ar=150 aa=180 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+34088 "일섬각 [34080 변형]" hits="" freeze=0.6 push=0.16 multi=3 interval=0.3 sa=1 move=0 cd=12000 base=34080
+  hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=300 fz=600 fzin=200 fzout=300 fzcancel=1 push=160 pushr=100 area=1 ar=150 aa=0 ah=150 ax=30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+34090 "철량추" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=10000 base=34090
+  hit g=0 key=1 timed=1 t=1730 w=91 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=280 aa=180 ah=230 ax=-70 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+34097 "철량추 [34090 변형]" hits="1.73-1.821" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=10000 base=34090
+  hit g=340970 key=1 timed=1 t=1730 w=91 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=180 ah=230 ax=-70 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+  hit g=340970 key=1 timed=1 t=1730 w=91 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=140 aa=180 ah=230 ax=140 arem=0 maxt=0 hittype=6 back=0 counter=1 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=280 pushr=170 area=2 ar=340 aa=180 ah=230 ax=-70 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset="SKHitted_INFIGHTER1"
+34098 "철량추 [34090 변형]" hits="0.3-0.316" freeze=0.45 push=0.2 multi=0 interval=0 sa=1 move=0 cd=10000 base=34090
+  hit g=0 key=1 timed=1 t=300 w=16 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=200 pushr=30 area=1 ar=200 aa=0 ah=400 ax=190 arem=0 maxt=0 hittype=8 back=0 counter=1 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+34100 "청룡출수" hits="1.39-1.463" freeze=0.325 push=0 multi=0 interval=0 sa=1 move=200 cd=20000 base=34100
+  hit g=0 key=38 timed=1 t=1390 w=73 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-90 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=190 aa=230 ah=200 ax=-50 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-90 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=250 aa=200 ah=200 ax=-50 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+34104 "청룡출수 [34100 변형]" hits="" freeze=0.45 push=0 multi=2 interval=0.19 sa=1 move=200 cd=20000 base=34100
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=190 fz=450 fzin=200 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=290 aa=270 ah=200 ax=-110 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=190 fz=450 fzin=200 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=363 aa=338 ah=200 ax=-150 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34105 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=200 cd=20000 base=34100
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=3 ar=365 aa=110 ah=200 ax=55 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=220 aa=270 ah=200 ax=-40 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=270 aa=200 ah=200 ax=70 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+34108 "청룡출수 [34100 변형]" hits="1.657-1.744" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=200 cd=20000 base=34100
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=3 ar=365 aa=110 ah=200 ax=-15 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+34110 "반월섬" hits="1.857-1.955" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=18000 base=34110
+  hit g=0 key=1 timed=1 t=1857 w=98 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=300 ah=150 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=30 area=2 ar=150 aa=250 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=30 area=2 ar=280 aa=250 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34115 "반월섬 [34110 변형]" hits="1.557-1.639,1.59-1.674" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=18000 base=34110
+  hit g=0 key=1 timed=1 t=1557 w=82 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=300 ah=250 ax=-30 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1590 w=84 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=300 ah=250 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34117 "반월섬 [34110 변형]" hits="" freeze=0.45 push=0.16 multi=2 interval=0.3 sa=1 move=0 cd=18000 base=34110
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=160 pushr=120 area=2 ar=200 aa=250 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34118 "반월섬 [34110 변형]" hits="1.39-1.463" freeze=0.325 push=0 multi=2 interval=0.3 sa=1 move=0 cd=18000 base=34110
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=2 repms=300 fz=325 fzin=200 fzout=200 fzcancel=1 push=0 pushr=0 area=1 ar=200 aa=0 ah=400 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_HARD1"
+34120 "연환섬" hits="1.295-1.363,1.445-1.521,1.51-1.589" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=10000 base=34120
+  hit g=0 key=38 timed=1 t=1295 w=68 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1510 w=79 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=220 aa=220 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=70 pushr=50 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=40 pushr=10 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=50 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+34121 "연환섬 [34120 변형]" hits="1.195-1.258" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=10000 base=34120
+  hit g=0 key=1 timed=1 t=1195 w=63 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=10 pushr=45 area=2 ar=160 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=40 pushr=10 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=3 ar=220 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34130 "질풍참" hits="" freeze=0.45 push=0.11 multi=1 interval=0.2 sa=0 move=0 cd=20000 base=34130
+  hit g=0 key=1 timed=1 t=0 w=0 rep=1 repms=200 fz=450 fzin=200 fzout=250 fzcancel=1 push=80 pushr=10 area=3 ar=270 aa=360 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=0 w=0 rep=1 repms=200 fz=450 fzin=200 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=530 aa=270 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=80 pushr=10 area=3 ar=280 aa=360 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34131 "질풍참 [34130 변형]" hits="" freeze=0.45 push=0.08 multi=1 interval=0.2 sa=0 move=0 cd=20000 base=34130
+  hit g=0 key=1 timed=1 t=0 w=0 rep=1 repms=200 fz=450 fzin=200 fzout=250 fzcancel=1 push=80 pushr=10 area=2 ar=530 aa=270 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=-50 area=2 ar=540 aa=270 ah=150 ax=-10 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34142 "선풍참혼 [34140 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=15000 base=34140
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=220 aa=240 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=3 ar=220 aa=240 ah=150 ax=230 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=800 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=3 ar=210 aa=320 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=800 fzin=200 fzout=300 fzcancel=1 push=240 pushr=200 area=3 ar=210 aa=320 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34150 "맹룡열파" hits="1.345-1.416,1.445-1.521" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34150
+  hit g=0 key=1 timed=1 t=1345 w=71 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1345 w=71 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=224 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34151 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416,1.445-1.521" freeze=0.6 push=0.28 multi=0 interval=0 sa=1 move=0 cd=24000 base=34150
+  hit g=0 key=1 timed=1 t=-100 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=160 pushr=100 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=-100 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=280 pushr=200 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=-100 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=280 pushr=200 area=3 ar=224 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1345 w=71 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1345 w=71 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=224 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=50 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34152 "맹룡열파 [34150 변형]" hits="-0.1--0.105,1.345-1.416" freeze=0.6 push=0.16 multi=0 interval=0 sa=1 move=0 cd=24000 base=34150
+  hit g=0 key=1 timed=1 t=-100 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=160 pushr=100 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1345 w=71 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=0 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=3 ar=280 aa=360 ah=150 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=7 timed=0 t=0 w=0 rep=0 repms=0 fz=0 fzin=0 fzout=0 fzcancel=1 push=0 pushr=0 area=1 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 hittype=1 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34545 "나선창 [34540 변형]" hits="-0.5--0.526" freeze=0.45 push=0.13 multi=3 interval=0.3 sa=0 move=0 cd=5000 base=34540
+  hit g=345451 key=1 timed=1 t=-500 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=130 pushr=100 area=2 ar=200 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345451 key=1 timed=1 t=-500 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=130 pushr=100 area=2 ar=120 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=130 pushr=100 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+34546 "나선창 [34540 변형]" hits="0.945-0.995" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=5000 base=34540
+  hit g=0 key=1 timed=1 t=945 w=50 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345461 key=1 timed=1 t=945 w=50 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345461 key=1 timed=1 t=945 w=50 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=120 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+34547 "나선창 [34540 변형]" hits="1.39-1.463,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=5000 base=34540
+  hit g=0 key=1 timed=1 t=1390 w=73 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345472 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345472 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=120 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345477 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345477 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=120 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+34548 "나선창 [34540 변형]" hits="-0.5--0.526,0.945-0.995" freeze=0.45 push=0.13 multi=3 interval=0.3 sa=0 move=0 cd=5000 base=34540
+  hit g=345451 key=1 timed=1 t=-500 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=130 pushr=100 area=2 ar=380 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=130 pushr=100 area=2 ar=580 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=945 w=50 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=-30 pushr=0 area=2 ar=580 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345461 key=1 timed=1 t=945 w=50 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=-30 pushr=0 area=2 ar=380 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=50 pushr=10 area=2 ar=580 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=250 pushr=200 area=2 ar=580 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345443 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=50 pushr=10 area=2 ar=380 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345445 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=250 pushr=200 area=2 ar=380 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+34549 "나선창 [34540 변형]" hits="1.445-1.521,1.657-1.744" freeze=0.45 push=0 multi=0 interval=0 sa=0 move=0 cd=5000 base=34540
+  hit g=0 key=38 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=3 ar=270 aa=120 ah=200 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=320 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345491 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=140 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=345491 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=120 aa=140 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=38 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=3 ar=270 aa=120 ah=200 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=1 hitset="SkHit_Normal1" sndset=""
+34550 "사두룡격" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2 sa=0 move=80 cd=16000 base=34550
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=350 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34553 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=2 interval=0.2 sa=0 move=80 cd=16000 base=34550
+  hit g=345530 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345530 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=170 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345532 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345532 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=190 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34554 "사두룡격 [34550 변형]" hits="" freeze=0.325 push=0.08 multi=3 interval=0.2 sa=0 move=80 cd=16000 base=34550
+  hit g=0 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=350 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345542 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345542 key=1 timed=1 t=0 w=0 rep=3 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=170 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345544 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345544 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=160 pushr=100 area=2 ar=190 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34555 "사두룡격 [34550 변형]" hits="1.445-1.521" freeze=0.45 push=0.08 multi=2 interval=0.2 sa=0 move=80 cd=16000 base=34550
+  hit g=0 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=350 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345552 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345552 key=1 timed=1 t=0 w=0 rep=2 repms=200 fz=325 fzin=200 fzout=200 fzcancel=1 push=80 pushr=20 area=2 ar=170 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=370 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345554 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=200 aa=180 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345554 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=2 ar=190 aa=180 ah=150 ax=180 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34560 "굉열파" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34560
+  hit g=0 key=1 timed=1 t=1245 w=66 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=0 pushr=0 area=2 ar=530 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=50 pushr=30 area=2 ar=500 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=30 area=2 ar=160 aa=160 ah=150 ax=-5 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34564 "굉열파 [34560 변형]" hits="1.245-1.311" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34560
+  hit g=345642 key=1 timed=1 t=1245 w=66 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=0 pushr=0 area=2 ar=230 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345642 key=1 timed=1 t=1245 w=66 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=0 pushr=0 area=2 ar=300 aa=160 ah=150 ax=230 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345640 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=-10 pushr=30 area=2 ar=200 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345640 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=-10 pushr=30 area=2 ar=300 aa=160 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34567 "굉열파 [34560 변형]" hits="1.445-1.521" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34560
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=-120 pushr=0 area=2 ar=530 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345674 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=-120 pushr=0 area=2 ar=230 aa=160 ah=150 ax=30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345674 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=0 push=-120 pushr=0 area=2 ar=320 aa=160 ah=150 ax=260 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=-10 pushr=30 area=2 ar=500 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345671 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=-10 pushr=30 area=2 ar=200 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345671 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=-10 pushr=30 area=2 ar=300 aa=160 ah=150 ax=180 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34569 "굉열파 [34560 변형]" hits="0.2-0.211,1.59-1.674" freeze=0.45 push=0 multi=3 interval=0.3 sa=1 move=0 cd=24000 base=34560
+  hit g=0 key=1 timed=1 t=200 w=11 rep=3 repms=300 fz=450 fzin=200 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=75 aa=0 ah=150 ax=0 arem=0 maxt=1 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1590 w=84 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=75 aa=0 ah=150 ax=0 arem=0 maxt=1 hittype=5 back=0 counter=0 hitset="" sndset="SKHitted_FIRE_BALL1"
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=325 fzin=125 fzout=200 fzcancel=1 push=110 pushr=30 area=2 ar=160 aa=160 ah=150 ax=-5 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34570 "유성강천" hits="1.657-1.744" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34570
+  hit g=0 key=1 timed=1 t=1657 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=180 aa=360 ah=150 ax=100 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+34578 "유성강천 [34570 변형]" hits="1.426-1.501" freeze=0.45 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34570
+  hit g=0 key=1 timed=1 t=1426 w=75 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=260 aa=360 ah=150 ax=100 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+  hit g=0 key=1 timed=1 t=1426 w=75 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=280 aa=360 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+  hit g=0 key=1 timed=1 t=1426 w=75 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=0 pushr=0 area=1 ar=336 aa=360 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_LANCE_HARD1"
+34590 "적룡포" hits="1.595-1.679" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=0 cd=24000 base=34590
+  hit g=0 key=2 timed=1 t=1595 w=84 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=800 aa=170 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=345907 key=2 timed=1 t=1595 w=84 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=500 aa=170 ah=150 ax=-20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=345907 key=2 timed=1 t=1595 w=84 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=300 aa=170 ah=150 ax=480 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=180 pushr=170 area=2 ar=600 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_FIRE_BALL1"
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=180 pushr=170 area=2 ar=600 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=210 pushr=300 area=2 ar=600 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+  hit g=345905 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=180 pushr=170 area=2 ar=350 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_FIRE_BALL1"
+  hit g=345905 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=180 pushr=170 area=2 ar=250 aa=160 ah=150 ax=330 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=345909 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=180 pushr=170 area=2 ar=350 aa=160 ah=150 ax=-20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_DECEPTIVE1"
+34601 "연가창식: 은하유성탄 [34600 변형]" hits="1.39-1.463" freeze=0.6 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=34600
+  hit g=0 key=2 timed=1 t=1390 w=73 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=3 ar=370 aa=360 ah=400 ax=20 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_FIRE_DOT1"
+  hit g=0 key=2 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=80 pushr=10 area=3 ar=330 aa=360 ah=400 ax=20 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset="SKHitted_FIRE_DOT1"
+34611 "연가창식: 적룡질풍격 [34610 변형]" hits="1.654-1.741" freeze=0.45 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=34610
+  hit g=0 key=1 timed=1 t=1654 w=87 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=-30 pushr=0 area=2 ar=555 aa=460 ah=150 ax=-100 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=50 pushr=10 area=2 ar=480 aa=220 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=50 pushr=10 area=2 ar=500 aa=240 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=80 pushr=30 area=2 ar=520 aa=260 ah=150 ax=-30 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34620 "연가창식: 은하비섬창" hits="1.93-2.032" freeze=0.8 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=34620
+  hit g=0 key=2 timed=1 t=1930 w=102 rep=0 repms=0 fz=800 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=550 aa=0 ah=150 ax=65 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34630 "연가창식: 마룡합일섬" hits="1.445-1.521" freeze=0.6 push=0 multi=0 interval=0 sa=3 move=0 cd=300000 base=34630
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=450 aa=300 ah=150 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=450 aa=300 ah=250 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1445 w=76 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=370 aa=500 ah=250 ax=-30 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34640 "맹룡난무" hits="1.73-1.821" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=0 cd=50000 base=34640
+  hit g=0 key=1 timed=1 t=1730 w=91 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=1 ar=320 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=6 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=750 fzin=200 fzout=300 fzcancel=1 push=110 pushr=50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=110 pushr=-50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=750 fzin=200 fzout=300 fzcancel=1 push=110 pushr=-50 area=1 ar=260 aa=0 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34650 "적룡필살" hits="1.24-1.305" freeze=0.6 push=0 multi=0 interval=0 sa=1 move=0 cd=55000 base=34650
+  hit g=0 key=1 timed=1 t=1240 w=65 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=260 aa=300 ah=200 ax=-150 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=1 t=1240 w=65 rep=0 repms=0 fz=600 fzin=200 fzout=300 fzcancel=1 push=0 pushr=0 area=2 ar=350 aa=300 ah=200 ax=-250 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=200 aa=200 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+  hit g=0 key=1 timed=0 t=0 w=0 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=110 pushr=50 area=2 ar=600 aa=160 ah=150 ax=0 arem=0 maxt=0 hittype=4 back=0 counter=0 hitset="SkHit_Normal1" sndset=""
+34660 "연가비기" hits="1.314-1.383" freeze=0.45 push=0 multi=0 interval=0 sa=2 move=0 cd=22000 base=34660
+  hit g=0 key=1 timed=1 t=1314 w=69 rep=0 repms=0 fz=450 fzin=150 fzout=250 fzcancel=1 push=-30 pushr=0 area=2 ar=400 aa=420 ah=200 ax=0 arem=0 maxt=0 hittype=5 back=0 counter=0 hitset="SkHit_Normal1" sndset=""

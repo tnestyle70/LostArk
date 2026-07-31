@@ -96,6 +96,16 @@ bool_t CModel::Get_AnimationProgress(uint32_t iAnimIndex, f32_t& fOutPosition, f
     return true;
 }
 
+/* 트랙 위치(틱)를 시간으로 환산할 때 쓴다. 유효하지 않으면 0을 돌려주므로
+호출부가 자체 기본값을 쓸지 판단할 수 있다. */
+f32_t CModel::Get_AnimationTickPerSecond(uint32_t iAnimIndex) const
+{
+    if (iAnimIndex >= m_Animations.size())
+        return 0.f;
+
+    return m_Animations[iAnimIndex]->Get_TickPerSecond();
+}
+
 bool_t CModel::Set_AnimTrackPosition(uint32_t iAnimIndex, f32_t fTrackPosition)
 {
     if (iAnimIndex >= m_Animations.size())
