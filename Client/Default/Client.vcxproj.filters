@@ -449,6 +449,9 @@
     <None Include="Client.vcxproj">
       <Filter>98.Default</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectMaterial.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets">
       <Filter>96.DataFiles\Map</Filter>
     </None>

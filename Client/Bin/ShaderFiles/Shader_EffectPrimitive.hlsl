@@ -7,6 +7,8 @@ float4x4 g_ProjMatrix;
 texture2D g_Texture;
 float4 g_vTint;
 
+#include "Shader_EffectMaterial.hlsli"
+
 RasterizerState RS_EffectCullNone
 {
     FillMode = Solid;
@@ -21,30 +23,6 @@ DepthStencilState DSS_EffectReadOnly
     DepthFunc = less_equal;
 };
 
-BlendState BS_EffectAlpha
-{
-    BlendEnable[0] = true;
-    SrcBlend = Src_Alpha;
-    DestBlend = Inv_Src_Alpha;
-    BlendOp = Add;
-    SrcBlendAlpha = One;
-    DestBlendAlpha = Inv_Src_Alpha;
-    BlendOpAlpha = Add;
-    RenderTargetWriteMask[0] = 0x0f;
-};
-
-BlendState BS_EffectAdditive
-{
-    BlendEnable[0] = true;
-    SrcBlend = Src_Alpha;
-    DestBlend = One;
-    BlendOp = Add;
-    SrcBlendAlpha = One;
-    DestBlendAlpha = One;
-    BlendOpAlpha = Add;
-    RenderTargetWriteMask[0] = 0x0f;
-};
-
 struct VS_IN
 {
     float3 vPosition : POSITION;
@@ -55,6 +33,7 @@ struct VS_OUT
 {
     float4 vPosition : SV_POSITION;
     float2 vTexcoord : TEXCOORD0;
+    float fViewZ : TEXCOORD1;
 };
 
 VS_OUT VS_MAIN(VS_IN In)
@@ -68,16 +47,18 @@ VS_OUT VS_MAIN(VS_IN In)
         g_ViewMatrix);
     Out.vPosition = mul(viewPosition, g_ProjMatrix);
     Out.vTexcoord = In.vTexcoord;
+    Out.fViewZ = viewPosition.z;
     return Out;
 }
 
-float4 PS_MAIN(VS_OUT In) : SV_TARGET0
+EFFECT_PS_OUT PS_MAIN(VS_OUT In)
 {
-    float4 color =
-        g_Texture.Sample(LinearSampler, In.vTexcoord) *
-        g_vTint;
-    clip(color.a - 0.001f);
-    return color;
+    return ShadeEffectMaterial(
+        In.vTexcoord,
+        float4(0.f, 0.f, 1.f, 1.f),
+        g_vTint,
+        In.fViewZ,
+        In.vPosition);
 }
 
 technique11 DefaultTechnique
@@ -87,7 +68,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_EffectCullNone);
         SetDepthStencilState(DSS_EffectReadOnly, 0);
         SetBlendState(
-            BS_EffectAlpha,
+            BS_EffectAlphaMRT,
             float4(0.f, 0.f, 0.f, 0.f),
             0xffffffff);
         VertexShader = compile vs_5_0 VS_MAIN();
@@ -100,7 +81,7 @@ technique11 DefaultTechnique
         SetRasterizerState(RS_EffectCullNone);
         SetDepthStencilState(DSS_EffectReadOnly, 0);
         SetBlendState(
-            BS_EffectAdditive,
+            BS_EffectAdditiveMRT,
             float4(0.f, 0.f, 0.f, 0.f),
             0xffffffff);
         VertexShader = compile vs_5_0 VS_MAIN();
