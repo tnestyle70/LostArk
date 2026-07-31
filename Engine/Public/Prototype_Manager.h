@@ -25,8 +25,10 @@ public:
 
 public:
 	HRESULT Initialize(uint32_t iNumLevels);	
-	HRESULT Add_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, unique_ptr<class CPrototype> pPrototype);
-	shared_ptr<CPrototype> Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg);
+	HRESULT Add_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, 
+		unique_ptr<class CPrototype> pPrototype);
+	shared_ptr<CPrototype> Clone_Prototype(uint32_t iLevelIndex, 
+		const wstring_t& strPrototypeTag, void* pArg);
 	HRESULT Clear(uint32_t iClearLevelID);
 
 private:

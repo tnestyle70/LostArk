@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace Engine;
 
@@ -129,6 +130,9 @@ HRESULT CNavGrid::Load(const tchar_t* pNavGridFilePath)
 
 	m_Desc = StagedDesc;
 	m_Cells = move(StagedCells);
+	m_RuntimeBlockCounts.assign(iNumCells, 0);
+	m_RuntimeBlockers.clear();
+	m_iRevision = 1;
 
 	return S_OK;
 }
@@ -154,7 +158,14 @@ bool_t CNavGrid::Is_Walkable(uint32_t iIndex) const
 	if (m_Cells.size() <= iIndex)
 		return false;
 
-	return m_Cells[iIndex].isWalkable;
+	return m_Cells[iIndex].isWalkable &&
+		!Is_RuntimeBlocked(iIndex);
+}
+
+bool_t CNavGrid::Is_RuntimeBlocked(uint32_t iIndex) const
+{
+	return iIndex < m_RuntimeBlockCounts.size() &&
+		0 != m_RuntimeBlockCounts[iIndex];
 }
 
 bool_t CNavGrid::Is_SegmentWalkable(
@@ -318,4 +329,146 @@ float3_t CNavGrid::Cell_ToWorld(uint32_t iIndex) const
 		m_Cells[iIndex].fHeight,
 		m_Desc.fOriginZ +
 		(static_cast<f32_t>(iZ) + 0.5f) * m_Desc.fCellSize);
+}
+
+bool_t CNavGrid::Register_RuntimeBlocker(
+	const std::string& blockerId,
+	const vector<uint32_t>& cellIndices,
+	bool_t initiallyActive)
+{
+	if (blockerId.empty() ||
+		cellIndices.empty() ||
+		m_Cells.empty() ||
+		m_RuntimeBlockCounts.size() != m_Cells.size())
+	{
+		return false;
+	}
+
+	vector<uint32_t> normalized = cellIndices;
+	std::sort(normalized.begin(), normalized.end());
+	normalized.erase(
+		std::unique(normalized.begin(), normalized.end()),
+		normalized.end());
+	if (normalized.empty() ||
+		std::any_of(
+			normalized.begin(),
+			normalized.end(),
+			[this](uint32_t index)
+			{
+				return index >= m_Cells.size();
+			}))
+	{
+		return false;
+	}
+
+	const auto existing = m_RuntimeBlockers.find(blockerId);
+	if (existing != m_RuntimeBlockers.end())
+	{
+		if (existing->second.CellIndices != normalized)
+			return false;
+		return Set_RuntimeBlockerActive(blockerId, initiallyActive);
+	}
+
+	if (initiallyActive &&
+		std::any_of(
+			normalized.begin(),
+			normalized.end(),
+			[this](uint32_t index)
+			{
+				return m_RuntimeBlockCounts[index] ==
+					(std::numeric_limits<uint16_t>::max)();
+			}))
+	{
+		return false;
+	}
+
+	RUNTIME_BLOCKER blocker{};
+	blocker.CellIndices = std::move(normalized);
+	blocker.isActive = initiallyActive;
+	const auto [iterator, inserted] =
+		m_RuntimeBlockers.emplace(blockerId, std::move(blocker));
+	if (!inserted)
+		return false;
+
+	if (initiallyActive)
+	{
+		for (const uint32_t index : iterator->second.CellIndices)
+			++m_RuntimeBlockCounts[index];
+		if (m_iRevision == (std::numeric_limits<uint64_t>::max)())
+			m_iRevision = 1;
+		else
+			++m_iRevision;
+	}
+
+	return true;
+}
+
+bool_t CNavGrid::Set_RuntimeBlockerActive(
+	const std::string& blockerId,
+	bool_t active)
+{
+	const auto iterator = m_RuntimeBlockers.find(blockerId);
+	if (iterator == m_RuntimeBlockers.end())
+		return false;
+
+	RUNTIME_BLOCKER& blocker = iterator->second;
+	if (blocker.isActive == active)
+		return true;
+
+	if (active)
+	{
+		if (std::any_of(
+			blocker.CellIndices.begin(),
+			blocker.CellIndices.end(),
+			[this](uint32_t index)
+			{
+				return m_RuntimeBlockCounts[index] ==
+					(std::numeric_limits<uint16_t>::max)();
+			}))
+		{
+			return false;
+		}
+
+		for (const uint32_t index : blocker.CellIndices)
+			++m_RuntimeBlockCounts[index];
+	}
+	else
+	{
+		if (std::any_of(
+			blocker.CellIndices.begin(),
+			blocker.CellIndices.end(),
+			[this](uint32_t index)
+			{
+				return 0 == m_RuntimeBlockCounts[index];
+			}))
+		{
+			return false;
+		}
+
+		for (const uint32_t index : blocker.CellIndices)
+			--m_RuntimeBlockCounts[index];
+	}
+
+	blocker.isActive = active;
+	if (m_iRevision == (std::numeric_limits<uint64_t>::max)())
+		m_iRevision = 1;
+	else
+		++m_iRevision;
+	return true;
+}
+
+void CNavGrid::Clear_RuntimeBlockers()
+{
+	if (m_RuntimeBlockers.empty())
+		return;
+
+	std::fill(
+		m_RuntimeBlockCounts.begin(),
+		m_RuntimeBlockCounts.end(),
+		static_cast<uint16_t>(0));
+	m_RuntimeBlockers.clear();
+	if (m_iRevision == (std::numeric_limits<uint64_t>::max)())
+		m_iRevision = 1;
+	else
+		++m_iRevision;
 }

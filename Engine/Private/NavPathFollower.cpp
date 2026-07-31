@@ -16,6 +16,10 @@ PATH_RESULT_CODE CNavPathFollower::Request_Path(
 	f32_t fMaxStepHeight,
 	uint32_t iMaxExpandedNodes)
 {
+	m_pNavigation.reset();
+	m_Waypoints.clear();
+	m_iNextWaypoint = 0;
+	m_iPathRevision = 0;
 	m_iLastExpandedNodes = 0;
 	if (nullptr == pNavigation)
 	{
@@ -59,6 +63,8 @@ PATH_RESULT_CODE CNavPathFollower::Request_Path(
 
 	m_Waypoints = move(stagedWaypoints);
 	m_iNextWaypoint = m_Waypoints.size() > 1 ? 1 : 0;
+	m_pNavigation = pNavigation;
+	m_iPathRevision = pNavigation->Get_NavigationRevision();
 	return m_eLastResult;
 }
 
@@ -67,6 +73,15 @@ bool_t CNavPathFollower::Update(
 	f32_t fMoveSpeed,
 	f32_t fTimeDelta)
 {
+	const shared_ptr<CNavigation> pNavigation = m_pNavigation.lock();
+	if (false == m_Waypoints.empty() &&
+		(nullptr == pNavigation ||
+			pNavigation->Get_NavigationRevision() != m_iPathRevision))
+	{
+		Cancel();
+		return false;
+	}
+
 	if (nullptr == pTransform ||
 		false == Has_Path() ||
 		fMoveSpeed <= 0.f ||
@@ -120,6 +135,8 @@ void CNavPathFollower::Cancel()
 {
 	m_Waypoints.clear();
 	m_iNextWaypoint = 0;
+	m_pNavigation.reset();
+	m_iPathRevision = 0;
 }
 
 bool_t CNavPathFollower::Has_Path() const

@@ -166,6 +166,11 @@ int8_t CGameInstance::Get_DIKeyState(uint8_t byKeyID)
 	return m_pInput_Device->Get_DIKeyState(byKeyID);
 }
 
+bool_t CGameInstance::Get_DIKeyPressed(uint8_t byKeyID)
+{
+	return m_pInput_Device->Get_DIKeyPressed(byKeyID);
+}
+
 int8_t CGameInstance::Get_DIMouseState(DIM eMouse)
 {
 	return m_pInput_Device->Get_DIMouseState(eMouse);
@@ -180,6 +185,12 @@ void CGameInstance::SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocke
 {
 	if (nullptr != m_pInput_Device)
 		m_pInput_Device->SetInputBlocked(bKeyboardBlocked, bMouseBlocked);
+}
+
+void CGameInstance::SetMouseButtonBlocked(DIM eMouse, bool_t blocked)
+{
+	if (nullptr != m_pInput_Device)
+		m_pInput_Device->SetMouseButtonBlocked(eMouse, blocked);
 }
 
 bool_t CGameInstance::IsKeyboardInputBlocked() const
@@ -232,6 +243,17 @@ HRESULT CGameInstance::Add_Prototype(uint32_t iLevelIndex, const wstring_t& strP
 shared_ptr<CPrototype> CGameInstance::Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg)
 {
 	return m_pPrototype_Manager->Clone_Prototype(iLevelIndex, strPrototypeTag, pArg);
+}
+
+shared_ptr<CGameObject> CGameInstance::Get_GameObject(
+	uint32_t iLevelIndex,
+	const wstring_t& strLayerTag,
+	uint32_t iIndex)
+{
+	return m_pObject_Manager->Get_GameObject(
+		iLevelIndex,
+		strLayerTag,
+		iIndex);
 }
 
 shared_ptr<CComponent> CGameInstance::Get_Component(uint32_t iLevelIndex, const wstring_t& strLayerTag, const wstring_t& strComponentTag, uint32_t iIndex)
@@ -404,7 +426,7 @@ void CGameInstance::Release_Engine()
 	m_pLight_Manager.reset();
 	m_pPipeLine.reset();
 	m_pRenderer.reset();
-	/* í˜„ì¬ Loading Levelì´ ë³´ìœ í•œ Loader ìŠ¤ë ˆë“œë¥¼ ë¨¼ì € ì¢…ë£Œì‹œí‚¨ë‹¤. */
+	/* ÇöÀç Loading LevelÀÌ º¸À¯ÇÑ Loader ½º·¹µå¸¦ ¸ÕÀú Á¾·á½ÃÅ²´Ù. */
 	m_pLevel_Manager.reset();
 	m_pObject_Manager.reset();
 	m_pPrototype_Manager.reset();

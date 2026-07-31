@@ -4,7 +4,6 @@ import argparse
 import json
 import math
 import shlex
-import struct
 from pathlib import Path
 from typing import Any
 
@@ -649,12 +648,12 @@ def load_exact_placements(
     return found
 
 
-def rasterize(
+def rasterize_height_source(
     triangles: np.ndarray,
     bounds_min: np.ndarray,
     bounds_max: np.ndarray,
     cell_size: float,
-    max_slope_degrees: float,
+    preferred_floor_slope_degrees: float,
 ) -> tuple[
     float,
     float,
@@ -662,6 +661,8 @@ def rasterize(
     int,
     np.ndarray,
     np.ndarray,
+    int,
+    int,
 ]:
     origin_x = (
         math.floor(
@@ -704,18 +705,30 @@ def rasterize(
             "NavGrid exceeds 1,000,000 cells"
         )
 
-    walkable = np.zeros(
+    preferred_resolved = np.zeros(
         (height, width),
         dtype=np.uint8,
     )
 
-    heights = np.zeros(
+    preferred_heights = np.zeros(
+        (height, width),
+        dtype=np.float32,
+    )
+
+    fallback_resolved = np.zeros(
+        (height, width),
+        dtype=np.uint8,
+    )
+
+    fallback_heights = np.zeros(
         (height, width),
         dtype=np.float32,
     )
 
     minimum_normal_y = math.cos(
-        math.radians(max_slope_degrees)
+        math.radians(
+            preferred_floor_slope_degrees
+        )
     )
 
     for triangle in triangles:
@@ -740,8 +753,9 @@ def rasterize(
             / normal_length
         )
 
-        if normal_y < minimum_normal_y:
-            continue
+        is_preferred = (
+            normal_y >= minimum_normal_y
+        )
 
         triangle_xz = triangle[:, [0, 2]]
 
@@ -817,6 +831,17 @@ def rasterize(
                 )
                 / cell_size
             ),
+        )
+
+        target_resolved = (
+            preferred_resolved
+            if is_preferred
+            else fallback_resolved
+        )
+        target_heights = (
+            preferred_heights
+            if is_preferred
+            else fallback_heights
         )
 
         for cell_z in range(
@@ -913,66 +938,81 @@ def rasterize(
                 # 같은 XZ 셀에 여러 표면이 겹치면
                 # 캐릭터가 서게 될 가장 높은 표면을 사용한다.
                 if (
-                    walkable[cell_z, cell_x] == 0
+                    target_resolved[cell_z, cell_x] == 0
                     or sample_y
-                    > heights[cell_z, cell_x]
+                    > target_heights[cell_z, cell_x]
                 ):
-                    walkable[cell_z, cell_x] = 1
-                    heights[cell_z, cell_x] = sample_y
+                    target_resolved[cell_z, cell_x] = 1
+                    target_heights[cell_z, cell_x] = sample_y
+
+    resolved = np.maximum(
+        preferred_resolved,
+        fallback_resolved,
+    )
+    heights = np.where(
+        preferred_resolved != 0,
+        preferred_heights,
+        fallback_heights,
+    ).astype(np.float32)
+    fallback_only = np.logical_and(
+        preferred_resolved == 0,
+        fallback_resolved != 0,
+    )
 
     return (
         origin_x,
         origin_z,
         width,
         height,
-        walkable,
+        resolved,
         heights,
+        int(preferred_resolved.sum()),
+        int(fallback_only.sum()),
     )
 
 
-def write_navgrid(
+def write_navsource(
     output: Path,
+    area_id: str,
     width: int,
     height: int,
     cell_size: float,
     origin_x: float,
     origin_z: float,
-    walkable: np.ndarray,
+    resolved: np.ndarray,
     heights: np.ndarray,
 ) -> None:
-    payload = bytearray()
-
-    # 현재 CNavGrid::Load() 계약:
-    # uint32 width
-    # uint32 height
-    # float cellSize
-    # float originX
-    # float originZ
-    payload.extend(
-        struct.pack(
-            "<IIfff",
-            width,
-            height,
-            cell_size,
-            origin_x,
-            origin_z,
+    cell_count = width * height
+    lines = [
+        (
+            "LOSTARK_NAVGRID_SOURCE 1 "
+            + json.dumps(
+                area_id,
+                ensure_ascii=False,
+            )
+            + f" {width} {height}"
+            + f" {cell_size:.9g}"
+            + f" {origin_x:.9g}"
+            + f" {origin_z:.9g}"
+            + f" {cell_count}"
         )
-    )
+    ]
 
-    # cell index = z * width + x
-    payload.extend(
-        walkable.astype(
-            "<u1",
-            copy=False,
-        ).tobytes(order="C")
-    )
-
-    payload.extend(
-        heights.astype(
-            "<f4",
-            copy=False,
-        ).tobytes(order="C")
-    )
+    for cell_z in range(height):
+        for cell_x in range(width):
+            is_resolved = int(
+                resolved[cell_z, cell_x]
+            )
+            cell_height = (
+                float(heights[cell_z, cell_x])
+                if is_resolved
+                else 0.0
+            )
+            lines.append(
+                f"{cell_x} {cell_z} "
+                f"{is_resolved} "
+                f"{cell_height:.9g}"
+            )
 
     output.parent.mkdir(
         parents=True,
@@ -984,7 +1024,11 @@ def write_navgrid(
     )
 
     try:
-        temporary.write_bytes(payload)
+        temporary.write_text(
+            "\n".join(lines) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
         temporary.replace(output)
     finally:
         if temporary.exists():
@@ -1049,9 +1093,14 @@ def main() -> int:
     )
 
     parser.add_argument(
-        "--max-slope",
+        "--preferred-floor-slope",
         type=float,
         default=45.0,
+    )
+
+    parser.add_argument(
+        "--area-id",
+        default="LV_LUT_HEARTRB_ED",
     )
 
     parser.add_argument(
@@ -1097,11 +1146,21 @@ def main() -> int:
         )
 
     if (
-        not math.isfinite(args.max_slope)
-        or not 0 <= args.max_slope < 90
+        not math.isfinite(
+            args.preferred_floor_slope
+        )
+        or not 0
+        <= args.preferred_floor_slope
+        < 90
     ):
         parser.error(
-            "max-slope must be in [0, 90)"
+            "preferred-floor-slope "
+            "must be in [0, 90)"
+        )
+
+    if not args.area_id:
+        parser.error(
+            "area-id must not be empty"
         )
 
     source_paths = {
@@ -1209,41 +1268,45 @@ def main() -> int:
         origin_z,
         width,
         height,
-        walkable,
+        height_resolved,
         heights,
-    ) = rasterize(
+        preferred_height_cells,
+        fallback_height_cells,
+    ) = rasterize_height_source(
         floor_triangles,
         bounds_min,
         bounds_max,
         args.cell_size,
-        args.max_slope,
+        args.preferred_floor_slope,
     )
 
-    walkable_count = int(
-        walkable.sum()
+    resolved_height_cells = int(
+        height_resolved.sum()
     )
 
-    if walkable_count == 0:
+    if resolved_height_cells == 0:
         raise ValueError(
-            "bake produced no walkable cells"
+            "bake produced no height samples"
         )
 
-    write_navgrid(
+    write_navsource(
         args.output,
+        args.area_id,
         width,
         height,
         args.cell_size,
         origin_x,
         origin_z,
-        walkable,
+        height_resolved,
         heights,
     )
 
-    walkable_heights = heights[
-        walkable != 0
+    resolved_heights = heights[
+        height_resolved != 0
     ]
 
     result = {
+        "areaId": args.area_id,
         "width": width,
         "height": height,
         "cellSize": args.cell_size,
@@ -1256,12 +1319,20 @@ def main() -> int:
         "triangleCount": int(
             len(floor_triangles)
         ),
-        "walkableCells": walkable_count,
-        "minWalkableHeight": float(
-            walkable_heights.min()
+        "preferredHeightCells":
+            preferred_height_cells,
+        "fallbackHeightCells":
+            fallback_height_cells,
+        "resolvedHeightCells":
+            resolved_height_cells,
+        "unresolvedHeightCells":
+            width * height
+            - resolved_height_cells,
+        "minResolvedHeight": float(
+            resolved_heights.min()
         ),
-        "maxWalkableHeight": float(
-            walkable_heights.max()
+        "maxResolvedHeight": float(
+            resolved_heights.max()
         ),
         "output": str(
             args.output.resolve()
@@ -1281,4 +1352,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

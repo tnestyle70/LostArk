@@ -2,8 +2,8 @@
 
 #include "Layer.h"
 
-/* ì‚¬ë³¸ê°ì²´ë“¤ì„ ë ˆë²¨ë³„ë¡œ ê·¸ë£¹(CLayer)ì§€ì–´ì„œ ë³´ê´€í•œë‹¤. */
-/* ë³´ê´€í•˜ê³  ìˆëŠ”ê°ì²´ë“¤ì˜ ë°˜ë³µì ì¸ ì—…ë°ì´íŠ¸ í˜¸ì¶œì„ ë‹´ë‹¹í•œë‹¤. */
+/* »çº»°´Ã¼µéÀ» ·¹º§º°·Î ±×·ì(CLayer)Áö¾î¼­ º¸°üÇÑ´Ù. */
+/* º¸°üÇÏ°í ÀÖ´Â°´Ã¼µéÀÇ ¹İº¹ÀûÀÎ ¾÷µ¥ÀÌÆ® È£ÃâÀ» ´ã´çÇÑ´Ù. */
 
 NS_BEGIN(Engine)
 
@@ -15,6 +15,7 @@ public:
 	~CObject_Manager();
 
 public:
+	shared_ptr<CGameObject> Get_GameObject(uint32_t iLevelIndex, const wstring_t& strLayerTag, uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(uint32_t iLevelIndex, const wstring_t& strLayerTag, const wstring_t& strComponentTag, uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(uint32_t iLevelIndex, const wstring_t& strLayerTag, const wstring_t& strPartTag, const wstring_t& strComponentTag, uint32_t iIndex);
 

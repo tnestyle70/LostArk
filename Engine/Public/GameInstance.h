@@ -1,7 +1,7 @@
 #pragma once
 
-/* ë¼ì´ë¸ŒëŸ¬ë¦¬ì˜ ê¸°ëŠ¥ì„ ì™¸ë¶€ ì‚¬ìš©ìì—ê²Œ ë³´ì—¬ì£¼ëŠ” ì—­í™œ. */
-/* ë¼ì´ë¸ŒëŸ¬ë¦¬ ê¸°ì¤€ ìœ ì¼ë¬´ì´í•œ ì‹±ê¸€í„´ê°ì²´. */
+/* ¶óÀÌºê·¯¸®ÀÇ ±â´ÉÀ» ¿ÜºÎ »ç¿ëÀÚ¿¡°Ô º¸¿©ÁÖ´Â ¿ªÈ°. */
+/* ¶óÀÌºê·¯¸® ±âÁØ À¯ÀÏ¹«ÀÌÇÑ ½Ì±ÛÅÏ°´Ã¼. */
 #include "Prototype_Manager.h"
 
 NS_BEGIN(Engine)
@@ -25,7 +25,7 @@ public:
 
 
 public:
-	/* ì—”ì§„ì˜ ê¸°ëŠ¥ì„ ì´ìš©í•  ìˆ˜ ìˆë„ë¡, í•„ìš”í•œ ì´ˆê¸°í™” ê³¼ì •ì„ ìˆ˜í–‰í•œë‹¤. */
+	/* ¿£ÁøÀÇ ±â´ÉÀ» ÀÌ¿ëÇÒ ¼ö ÀÖµµ·Ï, ÇÊ¿äÇÑ ÃÊ±âÈ­ °úÁ¤À» ¼öÇàÇÑ´Ù. */
 	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
 	void Update_Engine(f32_t fTimeDelta);
 	HRESULT Render_Begin(const float4_t* pClearColor);
@@ -33,15 +33,16 @@ public:
 	HRESULT Render_End();
 	HRESULT Clear_Resources(uint32_t iClearLevelID);
 
-
 public: /* For.Graphic_Device */
 
 
 public: /* For.Input_Device */
 	int8_t	Get_DIKeyState(uint8_t byKeyID);
+	bool_t Get_DIKeyPressed(uint8_t byKeyID);
 	int8_t	Get_DIMouseState(DIM eMouse);
 	int32_t	Get_DIMouseMove(DIMM eMouseState);
 	void SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocked);
+	void SetMouseButtonBlocked(DIM eMouse, bool_t blocked);
 	bool_t IsKeyboardInputBlocked() const;
 	bool_t IsMouseInputBlocked() const;
 
@@ -65,6 +66,7 @@ public: /* For.Prototype_Manager */
 	shared_ptr<CPrototype> Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg = nullptr);
 
 public: /* For.Object_Manager */
+	shared_ptr<class CGameObject> Get_GameObject(uint32_t iLevelIndex, const wstring_t& strLayerTag, uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(uint32_t iLevelIndex, const wstring_t& strLayerTag, const wstring_t& strComponentTag, uint32_t iIndex);
 	shared_ptr<CComponent> Get_Component(uint32_t iLevelIndex, const wstring_t& strLayerTag, const wstring_t& strPartTag, const wstring_t& strComponentTag, uint32_t iIndex);
 	HRESULT Add_GameObject_to_Layer(uint32_t iPrototypeLevelIndex, const wstring_t& strPrototypeTag, uint32_t iLayerLevelIndex, const wstring_t& strLayerTag, void* pArg = nullptr, shared_ptr<class CGameObject>* pOutGameObject = nullptr);

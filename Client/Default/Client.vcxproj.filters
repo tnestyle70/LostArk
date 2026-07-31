@@ -13,18 +13,6 @@
     <Filter Include="01.Levels">
       <UniqueIdentifier>{7bdb574f-1642-46a6-9c4a-2de9b918c674}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\Logo">
-      <UniqueIdentifier>{8c9bceda-8729-4fc0-9363-481cf65a577f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\GamePlay">
-      <UniqueIdentifier>{a57b5389-796b-4004-9549-86d2c642f5db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\Loading">
-      <UniqueIdentifier>{de01aad6-a07c-47d8-a504-d56ab362410e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\Loading\Loader">
-      <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
-    </Filter>
     <Filter Include="02.GameObjects">
       <UniqueIdentifier>{4c84a0ed-a665-4d3f-ab10-9cf28db3ef67}</UniqueIdentifier>
     </Filter>
@@ -57,12 +45,6 @@
     </Filter>
     <Filter Include="02.GameObjects\99. 수업\BackGround">
       <UniqueIdentifier>{5299cef0-2d1b-4e90-8285-2fff6d1c03c1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Camera">
-      <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Camera\Free">
-      <UniqueIdentifier>{ab809c0d-7e47-4143-8399-63dabb6b67ae}</UniqueIdentifier>
     </Filter>
     <Filter Include="02.GameObjects\99. 수업\Effect">
       <UniqueIdentifier>{45d58a49-8aa9-40ce-b3ad-36ef0fd02f66}</UniqueIdentifier>
@@ -124,12 +106,6 @@
     <Filter Include="02.GameObjects\05. Sequencer">
       <UniqueIdentifier>{19cfa3b4-8375-48d1-8633-986f0d4a9303}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\02. TestLevel2">
-      <UniqueIdentifier>{990193aa-479d-457b-a42f-b4ce68ccecd8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\00. TestLevel1">
-      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
-    </Filter>
     <Filter Include="96.DataFiles">
       <UniqueIdentifier>{aacfd472-6475-47c4-bad3-af1e9a17105e}</UniqueIdentifier>
     </Filter>
@@ -138,6 +114,48 @@
     </Filter>
     <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
       <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\06. Camera">
+      <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\06. Camera\Free">
+      <UniqueIdentifier>{ab809c0d-7e47-4143-8399-63dabb6b67ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\99. Legacy">
+      <UniqueIdentifier>{bc6ca31d-1f13-4118-bce4-e212eb41fcc5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\99. Legacy\00. TestLevel1">
+      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\99. Legacy\02. TestLevel2">
+      <UniqueIdentifier>{990193aa-479d-457b-a42f-b4ce68ccecd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\98. Loading">
+      <UniqueIdentifier>{de01aad6-a07c-47d8-a504-d56ab362410e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\98. Loading\Loader">
+      <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\02. Baren">
+      <UniqueIdentifier>{812b4a10-ea33-4813-90a1-6f295ebb9ae7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\03. ChaosDungeon">
+      <UniqueIdentifier>{1b9bf3b9-d645-45e1-ae1a-19bb9b4579a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\04. ValtanArena">
+      <UniqueIdentifier>{a4c9a668-668d-40d1-95bb-17c06b9257fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\01. Lobby">
+      <UniqueIdentifier>{82c14815-ff74-4634-8e69-11e1d363979b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\00. MainMenu">
+      <UniqueIdentifier>{a3654ea0-723c-450c-915e-8393c21876c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\99. Legacy\GamePlay">
+      <UniqueIdentifier>{a57b5389-796b-4004-9549-86d2c642f5db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\00. Logo">
+      <UniqueIdentifier>{8c9bceda-8729-4fc0-9363-481cf65a577f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -151,16 +169,16 @@
       <Filter>98.Default</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Level_Logo.cpp">
-      <Filter>01.Levels\Logo</Filter>
+      <Filter>01.Levels\00. Logo</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_GamePlay.cpp">
-      <Filter>01.Levels\GamePlay</Filter>
+      <Filter>01.Levels\99. Legacy\GamePlay</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_Loading.cpp">
-      <Filter>01.Levels\Loading</Filter>
+      <Filter>01.Levels\98. Loading</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Loader.cpp">
-      <Filter>01.Levels\Loading\Loader</Filter>
+      <Filter>01.Levels\98. Loading\Loader</Filter>
     </ClCompile>
     <ClCompile Include="..\private\BackGround.cpp">
       <Filter>02.GameObjects\99. 수업\BackGround</Filter>
@@ -169,7 +187,7 @@
       <Filter>02.GameObjects\99. 수업\Terrain</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Camera_Free.cpp">
-      <Filter>02.GameObjects\99. 수업\Camera\Free</Filter>
+      <Filter>02.GameObjects\06. Camera\Free</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Monster.cpp">
       <Filter>02.GameObjects\99. 수업\Monster</Filter>
@@ -201,6 +219,15 @@
     <ClCompile Include="..\Private\MapTool.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\NavGridBaker.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NavGridPaintDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -220,7 +247,7 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_AssetTest.cpp">
-      <Filter>01.Levels\00. TestLevel1</Filter>
+      <Filter>01.Levels\99. Legacy\00. TestLevel1</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BinaryAssetObject.cpp">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
@@ -241,7 +268,7 @@
       <Filter>03. Tools\03. UI</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_Test2.cpp">
-      <Filter>01.Levels\02. TestLevel2</Filter>
+      <Filter>01.Levels\99. Legacy\02. TestLevel2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp">
       <Filter>03. Tools\02. Effect</Filter>
@@ -276,6 +303,24 @@
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Valtan_Weapon.cpp">
+      <Filter>02.GameObjects\01. Boss</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_MainMenu.cpp">
+      <Filter>01.Levels\00. MainMenu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_Lobby.cpp">
+      <Filter>01.Levels\01. Lobby</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_Baren.cpp">
+      <Filter>01.Levels\02. Baren</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_ChaosDungeon.cpp">
+      <Filter>01.Levels\03. ChaosDungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_ValtanArena.cpp">
+      <Filter>01.Levels\04. ValtanArena</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -300,16 +345,16 @@
       <Filter>99.Defines</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Level_Logo.h">
-      <Filter>01.Levels\Logo</Filter>
+      <Filter>01.Levels\00. Logo</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_GamePlay.h">
-      <Filter>01.Levels\GamePlay</Filter>
+      <Filter>01.Levels\99. Legacy\GamePlay</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_Loading.h">
-      <Filter>01.Levels\Loading</Filter>
+      <Filter>01.Levels\98. Loading</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Loader.h">
-      <Filter>01.Levels\Loading\Loader</Filter>
+      <Filter>01.Levels\98. Loading\Loader</Filter>
     </ClInclude>
     <ClInclude Include="..\public\BackGround.h">
       <Filter>02.GameObjects\99. 수업\BackGround</Filter>
@@ -318,7 +363,7 @@
       <Filter>02.GameObjects\99. 수업\Terrain</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Camera_Free.h">
-      <Filter>02.GameObjects\99. 수업\Camera\Free</Filter>
+      <Filter>02.GameObjects\06. Camera\Free</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Monster.h">
       <Filter>02.GameObjects\99. 수업\Monster</Filter>
@@ -359,6 +404,15 @@
     <ClInclude Include="..\Public\MapTool.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\NavGridBaker.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NavGridPaintDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapAssetCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
@@ -378,7 +432,7 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_AssetTest.h">
-      <Filter>01.Levels\00. TestLevel1</Filter>
+      <Filter>01.Levels\99. Legacy\00. TestLevel1</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\BinaryAssetObject.h">
       <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
@@ -399,7 +453,7 @@
       <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_Test2.h">
-      <Filter>01.Levels\02. TestLevel2</Filter>
+      <Filter>01.Levels\99. Legacy\02. TestLevel2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_ResourceCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
@@ -431,6 +485,24 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Valtan_Weapon.h">
+      <Filter>02.GameObjects\01. Boss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_MainMenu.h">
+      <Filter>01.Levels\00. MainMenu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_Lobby.h">
+      <Filter>01.Levels\01. Lobby</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_Baren.h">
+      <Filter>01.Levels\02. Baren</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_ChaosDungeon.h">
+      <Filter>01.Levels\03. ChaosDungeon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_ValtanArena.h">
+      <Filter>01.Levels\04. ValtanArena</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Client.ico">
@@ -455,6 +527,8 @@
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements">
       <Filter>96.DataFiles\Map</Filter>
     </None>
+    <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />
+    <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navblockers" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl">

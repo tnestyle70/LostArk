@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+//0 9 8 커맨드로 해상도 런타임 조절 가능하게 구현
+
 NS_BEGIN(Engine)
 class CImGuiLayer;
 NS_END

@@ -56,7 +56,8 @@ CNavigation::~CNavigation()
 {
 }
 
-HRESULT CNavigation::Initialize_Prototype(const tchar_t* pNavigationDataFiles, const tchar_t* pNeighborDataFile)
+HRESULT CNavigation::Initialize_Prototype(const tchar_t* pNavigationDataFiles,
+	const tchar_t* pNeighborDataFile)
 {
 	uint32_t        iByte = {};
 	const std::filesystem::path navigationPath = ResolveNavigationDataPath(pNavigationDataFiles);
@@ -75,6 +76,7 @@ HRESULT CNavigation::Initialize_Prototype(const tchar_t* pNavigationDataFiles, c
 		}
 		if (0 == iByte)
 			break;
+
 		if (sizeof(float3_t) * 3 != iByte)
 		{
 			CloseHandle(hFile);
@@ -133,7 +135,7 @@ HRESULT CNavigation::Initialize_NavGrid_Prototype(const tchar_t* pNavGridFilePat
 		return E_FAIL;
 
 	auto pStagedPathFinder = make_unique<CPathFinder>();
-
+	//Debug용 F5 NavGrid Cell 띄우기
 #ifdef _DEBUG
 	auto pStagedBatch =
 		make_shared<PrimitiveBatch<VertexPositionColor>>(m_pContext.Get());
@@ -399,6 +401,7 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 {
 	if (nullptr != pOutExpandedNodes)
 		*pOutExpandedNodes = 0;
+
 	if (MODE::NAVGRID_ASTAR != m_eMode ||
 		nullptr == m_pNavGrid ||
 		nullptr == m_pPathFinder)
@@ -481,6 +484,43 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 	OutPath = move(StagedPath);
 
 	return PATH_RESULT_CODE::SUCCESS;
+}
+
+bool_t CNavigation::Register_RuntimeBlocker(
+	const std::string& blockerId,
+	const vector<uint32_t>& cellIndices,
+	bool_t initiallyActive)
+{
+	if (MODE::NAVGRID_ASTAR != m_eMode || nullptr == m_pNavGrid)
+		return false;
+
+	return m_pNavGrid->Register_RuntimeBlocker(
+		blockerId,
+		cellIndices,
+		initiallyActive);
+}
+
+bool_t CNavigation::Set_RuntimeBlockerActive(
+	const std::string& blockerId,
+	bool_t active)
+{
+	if (MODE::NAVGRID_ASTAR != m_eMode || nullptr == m_pNavGrid)
+		return false;
+
+	return m_pNavGrid->Set_RuntimeBlockerActive(blockerId, active);
+}
+
+void CNavigation::Clear_RuntimeBlockers()
+{
+	if (MODE::NAVGRID_ASTAR == m_eMode && nullptr != m_pNavGrid)
+		m_pNavGrid->Clear_RuntimeBlockers();
+}
+
+uint64_t CNavigation::Get_NavigationRevision() const
+{
+	return MODE::NAVGRID_ASTAR == m_eMode && nullptr != m_pNavGrid ?
+		m_pNavGrid->Get_Revision() :
+		0;
 }
 
 void CNavigation::Simplify_Path(

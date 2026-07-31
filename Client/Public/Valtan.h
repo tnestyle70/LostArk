@@ -20,6 +20,7 @@ public:
 		const tchar_t* pNavigationPrototypeTag = { nullptr };
 		shared_ptr<CTransform> pTargetTransform = { nullptr };
 		float3_t vPosition = {};
+		f32_t fScale = 1.5f;
 	} VALTAN_DESC;
 
 	enum VALTAN_STATE
@@ -40,7 +41,6 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
-	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
 
 	uint32_t Get_State() const { return m_iState; }
 	PATH_RESULT_CODE Get_PathResult() const { return m_PathFollower.Get_LastResult(); }
@@ -69,6 +69,7 @@ private:
 private:
 	HRESULT Ready_PartObjects();
 	HRESULT Ready_Components();
+	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 
 public:

@@ -24,6 +24,11 @@
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
+    <ClInclude Include="..\Public\Level_Baren.h" />
+    <ClInclude Include="..\Public\Level_ChaosDungeon.h" />
+    <ClInclude Include="..\Public\Level_Lobby.h" />
+    <ClInclude Include="..\Public\Level_MainMenu.h" />
+    <ClInclude Include="..\Public\Level_ValtanArena.h" />
     <ClInclude Include="..\Public\Logic_LanceMaster.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
@@ -58,6 +63,9 @@
     <ClInclude Include="..\Public\MapAssetPreview.h" />
     <ClInclude Include="..\Public\MapPlacementDocument.h" />
     <ClInclude Include="..\Public\MapTool.h" />
+    <ClInclude Include="..\Public\NavGridBaker.h" />
+    <ClInclude Include="..\Public\NavGridPaintDocument.h" />
+    <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h" />
     <ClInclude Include="..\Public\Monster.h" />
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
     <ClInclude Include="..\public\Player.h" />
@@ -65,6 +73,7 @@
     <ClInclude Include="..\Public\Snow.h" />
     <ClInclude Include="..\Public\Terrain.h" />
     <ClInclude Include="..\Public\Valtan.h" />
+    <ClInclude Include="..\Public\Valtan_Weapon.h" />
     <ClInclude Include="..\Public\Weapon.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="framework.h" />
@@ -76,6 +85,11 @@
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
+    <ClCompile Include="..\Private\Level_Baren.cpp" />
+    <ClCompile Include="..\Private\Level_ChaosDungeon.cpp" />
+    <ClCompile Include="..\Private\Level_Lobby.cpp" />
+    <ClCompile Include="..\Private\Level_MainMenu.cpp" />
+    <ClCompile Include="..\Private\Level_ValtanArena.cpp" />
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
@@ -108,6 +122,9 @@
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
+    <ClCompile Include="..\Private\NavGridBaker.cpp" />
+    <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />
+    <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp" />
     <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
     <ClCompile Include="..\Private\Valtan.cpp" />
@@ -115,6 +132,7 @@
     <ClCompile Include="..\Private\Sky.cpp" />
     <ClCompile Include="..\Private\Snow.cpp" />
     <ClCompile Include="..\Private\Terrain.cpp" />
+    <ClCompile Include="..\Private\Valtan_Weapon.cpp" />
     <ClCompile Include="..\Private\Weapon.cpp" />
     <ClCompile Include="Client.cpp" />
   </ItemGroup>
@@ -129,6 +147,8 @@
     <None Include="Client.vcxproj" />
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets" />
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
+    <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />
+    <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navblockers" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl" />

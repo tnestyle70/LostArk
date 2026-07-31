@@ -7,7 +7,6 @@
 
 /* 레벨 본역의 역활 + 다음 레벨에 대한 자원을 준비해준다.*/
 
-
 NS_BEGIN(Client)
 
 class CLevel_Loading final : public CLevel
@@ -26,10 +25,9 @@ private:
 	LEVEL							m_eNextLevelID = { LEVEL::END };
 	unique_ptr<class CLoader>		m_pLoader = { nullptr };
 
-
 public:
-	static unique_ptr<CLevel_Loading> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID);
-
+	static unique_ptr<CLevel_Loading> Create(ComPtr<ID3D11Device> pDevice, 
+		ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID);
 };
 
 NS_END
