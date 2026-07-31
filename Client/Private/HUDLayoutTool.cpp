@@ -151,7 +151,8 @@ void Client::CHUDLayoutTool::Switch_Document(int32_t iDocument)
 
 void Client::CHUDLayoutTool::Render()
 {
-	ImGui::SetNextWindowSize(ImVec2(1200.f, 640.f), ImGuiCond_FirstUseEver);
+	/* Wide enough for palette + canvas viewport + inspector side by side. */
+	ImGui::SetNextWindowSize(ImVec2(1450.f, 700.f), ImGuiCond_FirstUseEver);
 
 	if (!ImGui::Begin("LostArk HUD Layout Tool"))
 	{
@@ -188,6 +189,25 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::Checkbox("Preview Hover (all)", &m_bPreviewHover);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Forces every slot to its hover art.\nWithout this, mousing over a slot on the canvas previews just that one.");
+
+	/* One control drives every slot, so a charge state can be judged as a whole. */
+	if (ImGui::Button("Animation Stage"))
+		m_iPreviewStage = (m_iPreviewStage + 1) % (ms_iMaxStage + 1);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Click to cycle 0 -> 1 -> 2 -> 0.\nEach slot sets which stage its base and lit art appear at.");
+	ImGui::SameLine();
+	ImGui::Text("%d / %d   (0 = empty, higher = more charged)", m_iPreviewStage, ms_iMaxStage);
+
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::SliderFloat("Zoom", &m_fCanvasScale, ms_fMinZoom, ms_fMaxZoom, "%.2fx");
+	ImGui::SameLine();
+	if (ImGui::Button("100%"))
+		m_fCanvasScale = 1.f;
+	ImGui::SameLine();
+	if (ImGui::Button("Fit"))
+		m_fCanvasScale = ms_fViewportWidth / ms_fRefWidth;
+	ImGui::SameLine();
+	ImGui::TextDisabled("(ctrl+wheel to zoom at cursor, middle-drag to pan)");
 
 	if (g_Documents[m_iActiveDocument].bPerClass)
 		Render_ClassBar();
@@ -236,7 +256,7 @@ void Client::CHUDLayoutTool::Render_ClassBar()
 
 void Client::CHUDLayoutTool::Render_Palette()
 {
-	ImGui::BeginChild("Palette", ImVec2(190.f, ms_fRefHeight * m_fCanvasScale + 16.f), true);
+	ImGui::BeginChild("Palette", ImVec2(190.f, ms_fViewportHeight), true);
 
 	ImGui::SeparatorText("Slot Palette");
 	ImGui::TextWrapped("Drag a slot onto the canvas to place it.");
@@ -378,9 +398,10 @@ void Client::CHUDLayoutTool::Refresh_ClassTexturePalette()
 
 void Client::CHUDLayoutTool::Render_Canvas()
 {
-	ImGui::BeginChild("HUDCanvas",
-		ImVec2(ms_fRefWidth * m_fCanvasScale + 16.f, ms_fRefHeight * m_fCanvasScale + 16.f),
-		true, ImGuiWindowFlags_NoScrollbar);
+	/* Fixed viewport with scrollbars: the zoomed canvas can exceed it and is panned instead of
+	   forcing the whole tool window to grow. */
+	ImGui::BeginChild("HUDCanvas", ImVec2(ms_fViewportWidth, ms_fViewportHeight),
+		true, ImGuiWindowFlags_HorizontalScrollbar);
 
 	const ImVec2 vOrigin = ImGui::GetCursorScreenPos();
 	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
@@ -388,6 +409,33 @@ void Client::CHUDLayoutTool::Render_Canvas()
 	/* Hit-testing happens after drawing, so this frame's art uses last frame's hover result. */
 	const int32_t iHoveredLastFrame = m_iHoveredSlot;
 	m_iHoveredSlot = -1;
+
+	/* Ctrl + wheel zooms about the cursor: the content point under the mouse stays put. */
+	if (ImGui::IsWindowHovered() && ImGui::GetIO().KeyCtrl && 0.f != ImGui::GetIO().MouseWheel)
+	{
+		const ImVec2 vMouse = ImGui::GetMousePos();
+		const float fContentX = (vMouse.x - vOrigin.x) / m_fCanvasScale;
+		const float fContentY = (vMouse.y - vOrigin.y) / m_fCanvasScale;
+
+		const float fOldScale = m_fCanvasScale;
+		m_fCanvasScale *= (1.f + ImGui::GetIO().MouseWheel * 0.12f);
+		if (m_fCanvasScale < ms_fMinZoom)
+			m_fCanvasScale = ms_fMinZoom;
+		if (m_fCanvasScale > ms_fMaxZoom)
+			m_fCanvasScale = ms_fMaxZoom;
+
+		const float fScaleDelta = m_fCanvasScale - fOldScale;
+		ImGui::SetScrollX(ImGui::GetScrollX() + fContentX * fScaleDelta);
+		ImGui::SetScrollY(ImGui::GetScrollY() + fContentY * fScaleDelta);
+	}
+
+	/* Middle-drag pans, which beats chasing scrollbars while zoomed in. */
+	if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+	{
+		const ImVec2 vDelta = ImGui::GetIO().MouseDelta;
+		ImGui::SetScrollX(ImGui::GetScrollX() - vDelta.x);
+		ImGui::SetScrollY(ImGui::GetScrollY() - vDelta.y);
+	}
 
 	const ImVec2 vCanvasEnd(vOrigin.x + ms_fRefWidth * m_fCanvasScale, vOrigin.y + ms_fRefHeight * m_fCanvasScale);
 	pDrawList->AddRectFilled(vOrigin, vCanvasEnd, IM_COL32(110, 110, 116, 255));
@@ -476,15 +524,15 @@ void Client::CHUDLayoutTool::Render_Canvas()
 		Get_Rotated_Rect_Corners(vTopLeft, vBotRight, Slot.fRotation, Corners);
 
 		const bool_t bSelected = Is_Slot_Selected(i);
-		const ImU32 iFillColor = !Slot.strOwnerClass.empty()
-			? IM_COL32(120, 70, 170, bSelected ? 200 : 120)
-			: IM_COL32(60, 130, 190, bSelected ? 200 : 110);
 		const ImU32 iBorderColor = IM_COL32(255, 220, 90, 255);
 
 		bool_t bAnyLayerDrawn = false;
 
-		/* Fire animation renders first (furthest back), enlarged, only while previewing the "on" state. */
-		if (Slot.bAnimationOn)
+		const bool_t bBaseVisible = (m_iPreviewStage >= Slot.iBaseFromStage);
+		const bool_t bLitVisible = (m_iPreviewStage >= Slot.iShineFromStage);
+
+		/* Fire animation renders first (furthest back), enlarged, only once the slot is lit. */
+		if (bLitVisible)
 		{
 			if (!Slot.AnimationFrames.empty())
 			{
@@ -541,29 +589,32 @@ void Client::CHUDLayoutTool::Render_Canvas()
 
 		const bool_t bShowHover = m_bPreviewHover || (i == iHoveredLastFrame);
 
-		for (const TEXTURE_LAYER& Layer : Slot.TextureLayers)
+		if (bBaseVisible)
 		{
-			/* Layers without hover art (backgrounds, frames) keep their base image. */
-			const string& strDrawPath = (bShowHover && !Layer.strHoverPath.empty())
-				? Layer.strHoverPath : Layer.strPath;
+			for (const TEXTURE_LAYER& Layer : Slot.TextureLayers)
+			{
+				/* Layers without hover art (backgrounds, frames) keep their base image. */
+				const string& strDrawPath = (bShowHover && !Layer.strHoverPath.empty())
+					? Layer.strHoverPath : Layer.strPath;
 
-			if (strDrawPath.empty())
-				continue;
+				if (strDrawPath.empty())
+					continue;
 
-			ID3D11ShaderResourceView* pLayerSRV = Get_Or_Load_Texture(strDrawPath);
-			if (nullptr == pLayerSRV)
-				continue;
+				ID3D11ShaderResourceView* pLayerSRV = Get_Or_Load_Texture(strDrawPath);
+				if (nullptr == pLayerSRV)
+					continue;
 
-			const ImU32 iTint = ImGui::ColorConvertFloat4ToU32(
-				ImVec4(Layer.vTint[0], Layer.vTint[1], Layer.vTint[2], Layer.vTint[3]));
+				const ImU32 iTint = ImGui::ColorConvertFloat4ToU32(
+					ImVec4(Layer.vTint[0], Layer.vTint[1], Layer.vTint[2], Layer.vTint[3]));
 
-			pDrawList->AddImageQuad(pLayerSRV, Corners[0], Corners[1], Corners[2], Corners[3],
-				ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), iTint);
-			bAnyLayerDrawn = true;
+				pDrawList->AddImageQuad(pLayerSRV, Corners[0], Corners[1], Corners[2], Corners[3],
+					ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), iTint);
+				bAnyLayerDrawn = true;
+			}
 		}
 
-		/* The "on" state swaps the topmost art for its lit variant (white gauge -> shine). */
-		if (Slot.bAnimationOn && !Slot.strShineTexture.empty())
+		/* Lit state layers its variant over the base (white orb -> blue orb, gauge -> shine). */
+		if (bLitVisible && !Slot.strShineTexture.empty())
 		{
 			ID3D11ShaderResourceView* pShineSRV = Get_Or_Load_Texture(Slot.strShineTexture);
 			if (nullptr != pShineSRV)
@@ -573,8 +624,11 @@ void Client::CHUDLayoutTool::Render_Canvas()
 			}
 		}
 
-		if (!bAnyLayerDrawn)
-			pDrawList->AddQuadFilled(Corners[0], Corners[1], Corners[2], Corners[3], iFillColor);
+		/* A slot with nothing to show at this stage gets a faint outline so it stays findable while
+		   editing, but that marker is editor chrome: clicking the background clears the selection and
+		   with it every outline, leaving a clean preview of the layout itself. */
+		if (!bAnyLayerDrawn && !m_SelectedSlots.empty())
+			pDrawList->AddQuad(Corners[0], Corners[1], Corners[2], Corners[3], IM_COL32(150, 150, 160, 80));
 
 		if (bSelected)
 		{
@@ -680,7 +734,7 @@ void Client::CHUDLayoutTool::Render_Canvas()
 
 void Client::CHUDLayoutTool::Render_Inspector()
 {
-	ImGui::BeginChild("Inspector", ImVec2(300.f, ms_fRefHeight * m_fCanvasScale + 16.f), true);
+	ImGui::BeginChild("Inspector", ImVec2(300.f, ms_fViewportHeight), true);
 
 	ImGui::SeparatorText("Slot List");
 	{
@@ -773,8 +827,14 @@ void Client::CHUDLayoutTool::Render_Inspector()
 			Slot.TextureLayers.push_back(move(Layer));
 			m_szNewLayerPathBuffer[0] = '\0';
 		}
-		ImGui::SameLine();
-		ImGui::Checkbox("Animation On", &Slot.bAnimationOn);
+
+		ImGui::SeparatorText("Charge Stages");
+		ImGui::SliderInt("Base from stage", &Slot.iBaseFromStage, 0, ms_iMaxStage);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Stage at which this slot's base texture starts showing.\n0 = always visible.");
+		ImGui::SliderInt("Lit from stage", &Slot.iShineFromStage, 0, ms_iMaxStage);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Stage at which the shine texture and animation frames kick in.");
 
 		if (g_Documents[m_iActiveDocument].bPerClass)
 		{
@@ -1118,10 +1178,11 @@ void Client::CHUDLayoutTool::Save(const string& strPath)
 			<< (Slot.strOwnerClass.empty() ? "-" : Slot.strOwnerClass) << " "
 			<< static_cast<int32_t>(Slot.eType) << " "
 			<< Slot.fRotation << " "
-			<< (Slot.bAnimationOn ? 1 : 0) << " "
+			<< Slot.iBaseFromStage << " "
 			<< Slot.fAnimationScale << " "
 			<< Slot.fAnimationOffsetX << " "
-			<< Slot.fAnimationOffsetY << "\n";
+			<< Slot.fAnimationOffsetY << " "
+			<< Slot.iShineFromStage << "\n";
 
 		for (int32_t iLayer = 0; iLayer < static_cast<int32_t>(Slot.TextureLayers.size()); ++iLayer)
 		{
@@ -1188,13 +1249,12 @@ void Client::CHUDLayoutTool::Load(const string& strPath)
 			HUD_SLOT Slot{};
 			string strOwner;
 			int32_t iType = 0;
-			int32_t iAnimationOn = 0;
 			Stream >> Slot.strName >> Slot.fX >> Slot.fY >> Slot.fSizeX >> Slot.fSizeY >> strOwner >> iType >> Slot.fRotation
-				>> iAnimationOn >> Slot.fAnimationScale >> Slot.fAnimationOffsetX >> Slot.fAnimationOffsetY;
+				>> Slot.iBaseFromStage >> Slot.fAnimationScale >> Slot.fAnimationOffsetX >> Slot.fAnimationOffsetY
+				>> Slot.iShineFromStage;
 			if ("-" != strOwner)
 				Slot.strOwnerClass = strOwner;
 			Slot.eType = static_cast<SLOT_TYPE>(iType);
-			Slot.bAnimationOn = (0 != iAnimationOn);
 			Slots.push_back(move(Slot));
 		}
 		/* Everything below decorates the slot most recently declared, so different classes may reuse
