@@ -145,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Client.vcxproj" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectMaterial.hlsli" />
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets" />
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />

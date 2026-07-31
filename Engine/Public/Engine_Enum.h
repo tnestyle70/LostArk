@@ -19,7 +19,7 @@ namespace Engine
 
 	enum class COLLIDER { SPHERE, AABB, OBB, END };
 
-	enum class DEFERRED { DEBUG, DIRECTIONAL, POINT, COMBINED, END };
+	enum class DEFERRED { DEBUG, DIRECTIONAL, POINT, COMBINED, FINAL, BLOOM_EXTRACT, BLOOM_BLUR_H, BLOOM_BLUR_V, END };
 
 	//// Dynamic 컴포넌트 경우 매 프레임마다 갱신해야하는 컴포넌트 집단
 	//enum COMPONENTID { ID_DYNAMIC, ID_STATIC, ID_END };

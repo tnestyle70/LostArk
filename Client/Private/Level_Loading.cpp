@@ -38,8 +38,16 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 	if (nullptr == m_pLoader)
 		return;
 
-	if (!CGameInstance::Get().IsKeyboardInputBlocked() &&
-		(GetKeyState(VK_RETURN) & 0x8000) &&
+	const wchar_t* pCommandLine = GetCommandLineW();
+	const bool_t isHDRReadbackRequested =
+		nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+	const bool_t isContinueRequested =
+		isHDRReadbackRequested ||
+		(!CGameInstance::Get().IsKeyboardInputBlocked() &&
+			(GetKeyState(VK_RETURN) & 0x8000));
+
+	if (isContinueRequested &&
 		true == m_pLoader->Finished())
 	{
 		unique_ptr<CLevel>		pNewLevel = { nullptr };

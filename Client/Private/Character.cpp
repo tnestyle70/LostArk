@@ -53,10 +53,160 @@ HRESULT CCharacter::Initialize(void* pArg)
 		FAILED(Ready_PartObjects()))
 		return E_FAIL;
 
+	/* Optional: without the file the character simply has no skill chains. */
+	Load_ClipChains();
+
 	if (nullptr != m_pSpec->pCreateLogic)
 		m_pLogic = m_pSpec->pCreateLogic();
 
 	return S_OK;
+}
+
+/* Reads <asset>.clipseq, the clip order the game plays each skill in. Extracted
+from the game's Action table; see the 07-31 RESULT doc. */
+bool_t CCharacter::Load_ClipChains()
+{
+	m_Chains.clear();
+
+	if (nullptr == m_pSpec->pAssetName)
+		return false;
+
+	const std::string path =
+		std::string("../Bin/DataFiles/Anim/") + m_pSpec->pAssetName + ".clipseq";
+
+	FILE* pFile = nullptr;
+	if (0 != fopen_s(&pFile, path.c_str(), "r") || nullptr == pFile)
+		return false;
+
+	char_t szLine[2048]{};
+	/* header: LOSTARK_CLIP_SEQ <version> "<owner>" <count> */
+	if (nullptr == fgets(szLine, sizeof(szLine), pFile) ||
+		nullptr == strstr(szLine, "LOSTARK_CLIP_SEQ"))
+	{
+		fclose(pFile);
+		return false;
+	}
+
+	while (nullptr != fgets(szLine, sizeof(szLine), pFile))
+	{
+		CLIP_CHAIN chain{};
+		chain.iSkillId = atoi(szLine);
+
+		const char_t* pSeq = strstr(szLine, "seq=");
+		if (nullptr != pSeq)
+			chain.iSeqIndex = atoi(pSeq + 4);
+
+		const char_t* pMode = strstr(szLine, "mode=");
+		if (nullptr != pMode)
+		{
+			pMode += 5;
+			while ('\0' != *pMode && ' ' != *pMode && '\r' != *pMode && '\n' != *pMode)
+				chain.sMode.push_back(*pMode++);
+		}
+
+		/* clips="a,b,c" */
+		const char_t* pClips = strstr(szLine, "clips=\"");
+		if (nullptr == pClips || 0 == chain.iSkillId)
+			continue;
+
+		pClips += 7;
+		std::string one;
+		for (; '\0' != *pClips && '\"' != *pClips; ++pClips)
+		{
+			if (',' == *pClips)
+			{
+				if (!one.empty())
+					chain.clips.push_back(one);
+				one.clear();
+				continue;
+			}
+			one.push_back(*pClips);
+		}
+		if (!one.empty())
+			chain.clips.push_back(one);
+
+		if (!chain.clips.empty())
+			m_Chains.push_back(std::move(chain));
+	}
+
+	fclose(pFile);
+	return true;
+}
+
+bool_t CCharacter::Start_Clip(const char_t* pClipName)
+{
+	if (!Set_Animation(pClipName, false))
+		return false;
+
+	m_pBodyModel->Set_AnimTrackPosition(m_pBodyModel->Get_CurrentAnimIndex(), 0.f);
+	return true;
+}
+
+bool_t CCharacter::Is_ClipFinished() const
+{
+	if (nullptr == m_pBodyModel)
+		return false;
+
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	if (!m_pBodyModel->Get_AnimationProgress(
+		m_pBodyModel->Get_CurrentAnimIndex(), fPosition, fDuration))
+		return false;
+
+	/* Same test CAnimation uses to report a non-looping clip as done; the track
+	is left past the end rather than clamped. */
+	return fDuration > 0.f && fPosition >= fDuration;
+}
+
+bool_t CCharacter::Play_Skill(int32_t iSkillId, int32_t iSeqIndex)
+{
+	if (nullptr != m_pChain)
+		return false;
+
+	/* Sequence indices come from the game's own grouping, which is neither
+	contiguous nor always zero-based, so an exact miss falls back to the skill's
+	lowest chain rather than refusing to play. */
+	const CLIP_CHAIN* pPick = nullptr;
+	for (const CLIP_CHAIN& chain : m_Chains)
+	{
+		if (chain.iSkillId != iSkillId)
+			continue;
+		if (chain.iSeqIndex == iSeqIndex)
+		{
+			pPick = &chain;
+			break;
+		}
+		if (nullptr == pPick || chain.iSeqIndex < pPick->iSeqIndex)
+			pPick = &chain;
+	}
+
+	if (nullptr == pPick || !Start_Clip(pPick->clips[0].c_str()))
+		return false;
+
+	m_pChain = pPick;
+	m_iChainStep = 0;
+	return true;
+}
+
+void CCharacter::Update_Chain()
+{
+	if (nullptr == m_pChain || !Is_ClipFinished())
+		return;
+
+	++m_iChainStep;
+
+	if (m_iChainStep >= static_cast<int32_t>(m_pChain->clips.size()))
+	{
+		m_pChain = nullptr;
+		m_iChainStep = 0;
+		Set_Animation(
+			m_PathFollower.Has_Path() ?
+			CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+		return;
+	}
+
+	Start_Clip(m_pChain->clips[m_iChainStep].c_str());
 }
 
 shared_ptr<CModel> CCharacter::Get_BodyModel() const
@@ -119,7 +269,12 @@ void CCharacter::Update(f32_t fTimeDelta)
 		fTimeDelta);
 	Set_Locomotion(m_PathFollower.Has_Path());
 
-	/* Class-specific logic stays separate from common navigation locomotion. */
+	/* A running chain owns the clip until it ends, so it advances before the logic
+	gets a say and Is_PlayingSkill() is already correct when the logic reads it. */
+	Update_Chain();
+
+	/* The logic only decides what the character should be doing; the parts below
+	then move and draw themselves. */
 	if (nullptr != m_pLogic)
 		m_pLogic->Update(*this, fTimeDelta);
 
@@ -225,6 +380,9 @@ void CCharacter::Set_Locomotion(bool_t isMoving)
 		return;
 
 	m_isMoving = isMoving;
+	if (Is_PlayingSkill())
+		return;
+
 	Set_Animation(
 		isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 		true);

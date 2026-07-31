@@ -21,6 +21,20 @@ world-space goal and calls Request_Move(). */
 class CCharacter final : public CContainerObject
 {
 public:
+	/* One skill's clip chain, read from <asset>.clipseq. The game plays a skill
+	as a fixed run of clips; a skill has several chains because each tripod build
+	takes a different route, so a chain is picked by index. */
+	struct CLIP_CHAIN
+	{
+		int32_t iSkillId = {};
+		int32_t iSeqIndex = {};
+		/* COMBO advances a step per press, HOLD is a charge, ONESHOT/SEQUENCE
+		run to the end. Only carried for now -- every chain runs to the end. */
+		std::string sMode;
+		std::vector<std::string> clips;
+	};
+
+public:
 	typedef struct tagCharacterDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
 		uint32_t iPrototypeLevelIndex = {};
@@ -61,6 +75,16 @@ public:
 	}
 #endif
 
+	/* Starts the skill's chain and plays it through. Returns false when the skill
+	has no chain or one is already running. */
+	bool_t Play_Skill(int32_t iSkillId, int32_t iSeqIndex = 0);
+	bool_t Is_PlayingSkill() const {
+		return nullptr != m_pChain;
+	}
+	int32_t Get_PlayingSkillId() const {
+		return nullptr != m_pChain ? m_pChain->iSkillId : 0;
+	}
+
 public:
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;
@@ -84,10 +108,24 @@ private:
 	bool_t m_isNavigationDebugVisible = { false };
 #endif
 
+	std::vector<CLIP_CHAIN> m_Chains;
+	/* The chain being played, and how far into it. Null when idle. */
+	const CLIP_CHAIN* m_pChain = { nullptr };
+	int32_t m_iChainStep = {};
+
 private:
 	HRESULT Ready_Components();
 	HRESULT Ready_PartObjects();
 	void Set_Locomotion(bool_t isMoving);
+	bool_t Load_ClipChains();
+	/* Plays a clip from its first frame. Set_Animation alone only switches the
+	index, so a clip that already ran would resume at its end -- which chains
+	that repeat a clip do hit. */
+	bool_t Start_Clip(const char_t* pClipName);
+	bool_t Is_ClipFinished() const;
+	/* Moves to the next clip once the current one ends, and drops back to idle
+	after the last. */
+	void Update_Chain();
 
 public:
 	static unique_ptr<CCharacter> Create(ComPtr<ID3D11Device> pDevice,

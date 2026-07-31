@@ -3,6 +3,10 @@
 #include "Effect_Tool.h"
 #include "Effect_AssetIO.h"
 #include "Effect_Runtime.h"
+#include "RuntimeAssetRoot.h"
+
+#include <DirectXPackedVector.h>
+#include <fstream>
 
 namespace
 {
@@ -62,6 +66,8 @@ namespace
 			return "Beam";
 		case EFFECT_MODULE_TYPE::TRAIL:
 			return "Trail";
+		case EFFECT_MODULE_TYPE::DYNAMIC_PARAMETER:
+			return "Dynamic Parameter";
 		default:
 			return "Unknown";
 		}
@@ -78,6 +84,84 @@ namespace
 				return Module.eType == eType && Module.isEnabled;
 			});
 		return Iter == Emitter.Modules.end() ? nullptr : &*Iter;
+	}
+
+	f32_t CalculatePreviewDuration(const EFFECT_ASSET_DESC& Asset)
+	{
+		f32_t fPreviewDuration = max(0.f, Asset.fDuration);
+
+		for (const EFFECT_EMITTER_DESC& Emitter : Asset.Emitters)
+		{
+			if (!Emitter.isEnabled)
+				continue;
+
+			f32_t fMaxLifetime = {};
+			const EFFECT_MODULE_DESC* pLifetime =
+				FindModule(Emitter, EFFECT_MODULE_TYPE::LIFETIME);
+			if (nullptr != pLifetime)
+			{
+				const EFFECT_DISTRIBUTION_FLOAT_DESC& Lifetime =
+					pLifetime->Lifetime.Lifetime;
+				fMaxLifetime =
+					EFFECT_DISTRIBUTION_TYPE::UNIFORM_RANGE ==
+					Lifetime.eType
+					? max(Lifetime.fMin, Lifetime.fMax)
+					: Lifetime.fConstant;
+			}
+
+			const uint32_t iPreviewLoopCount =
+				EFFECT_LOOP_FOREVER == Emitter.iLoopCount
+				? 1u : max(1u, Emitter.iLoopCount);
+			const f32_t fEmitterEnd =
+				max(0.f, Emitter.fDelay) +
+				max(0.f, Emitter.fDuration) *
+				static_cast<f32_t>(iPreviewLoopCount) +
+				max(0.f, fMaxLifetime);
+			fPreviewDuration = max(fPreviewDuration, fEmitterEnd);
+		}
+
+		return fPreviewDuration;
+	}
+
+	filesystem::path ResolveToolAssetPath(const string& strAssetId)
+	{
+		if (strAssetId.empty())
+			return {};
+
+		string strNormalized = strAssetId;
+		replace(strNormalized.begin(), strNormalized.end(), '\\', '/');
+
+		constexpr string_view LEGACY_ROOT =
+			"../Bin/Resources/LostArk/";
+		string strRuntimeRelative = strNormalized;
+		if (strRuntimeRelative.starts_with(LEGACY_ROOT))
+			strRuntimeRelative.erase(0, LEGACY_ROOT.size());
+
+		const u8string Utf8Requested(
+			strNormalized.begin(), strNormalized.end());
+		const u8string Utf8Relative(
+			strRuntimeRelative.begin(), strRuntimeRelative.end());
+		const filesystem::path RequestedPath =
+			filesystem::path(Utf8Requested).lexically_normal();
+		const filesystem::path RuntimeRelativePath =
+			filesystem::path(Utf8Relative).lexically_normal();
+
+		const filesystem::path Candidates[] = {
+			RequestedPath,
+			CRuntimeAssetRoot::Resolve(RuntimeRelativePath),
+			CRuntimeAssetRoot::Resolve(
+				filesystem::path(L"Effect/Effect_Tool") /
+				RuntimeRelativePath)
+		};
+
+		error_code Error;
+		for (const filesystem::path& Candidate : Candidates)
+		{
+			Error.clear();
+			if (filesystem::is_regular_file(Candidate, Error))
+				return Candidate.lexically_normal();
+		}
+		return {};
 	}
 
 	wstring ConvertToWide(const string& strValue)
@@ -265,6 +349,16 @@ Client::CEffect_Tool::CEffect_Tool(ComPtr<ID3D11Device> pDevice)
 	Create_DefaultAsset();
 	Rebuild_Simulators();
 	Reload_SourceCatalog();
+	Refresh_AuthoredList();
+	Open_AssetFromCommandLine();
+
+	const wchar_t* pCommandLine = GetCommandLineW();
+	m_isHDRReadbackRequested =
+		nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+	m_isHDRAutoExitRequested =
+		m_isHDRReadbackRequested &&
+		nullptr != wcsstr(pCommandLine, L"--effect-auto-exit");
 
 	if (nullptr != m_pDevice)
 	{
@@ -293,26 +387,49 @@ void Client::CEffect_Tool::Render()
 {
 	const f32_t fFrameDelta = max(
 		0.f, ImGui::GetIO().DeltaTime * m_fTimeScale);
+	f32_t fSimulationDelta = {};
 	if (m_isPlaying)
 	{
-		m_fPreviewTime += fFrameDelta;
-		for (const auto& pSimulator : m_Simulators)
+		fSimulationDelta = fFrameDelta;
+		const f32_t fPreviewDuration =
+			CalculatePreviewDuration(m_Asset);
+		const f32_t fNextPreviewTime =
+			m_fPreviewTime + fFrameDelta;
+
+		if (m_isLooping && fPreviewDuration > 0.f &&
+			fNextPreviewTime >= fPreviewDuration)
 		{
-			pSimulator->Set_LODDistance(m_fPreviewDistance);
-			pSimulator->Update(fFrameDelta);
+			fSimulationDelta = fmodf(
+				fNextPreviewTime, fPreviewDuration);
+			Restart_Preview();
+			m_fPreviewTime = fSimulationDelta;
+		}
+		else
+		{
+			m_fPreviewTime = fNextPreviewTime;
 		}
 
-		if (m_isLooping && m_Asset.fDuration > 0.f &&
-			m_fPreviewTime >= m_Asset.fDuration)
+		for (const auto& pSimulator : m_Simulators)
 		{
-			Restart_Preview();
+			if (nullptr == pSimulator)
+				continue;
+			pSimulator->Set_LODDistance(m_fPreviewDistance);
+			pSimulator->Update(fSimulationDelta);
 		}
 	}
 
-	Update_WorldPreview(m_isPlaying ? fFrameDelta : 0.f);
+	Update_WorldPreview(fSimulationDelta);
+
+	/* ImGui 창 상태와 무관하게 돌아야 하므로 Begin 앞에서 호출한다. */
+	Capture_SceneHDR_Readback();
 
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 760.f),
 		ImGuiCond_FirstUseEver);
+	if (m_isFocusRequested)
+	{
+		ImGui::SetNextWindowFocus();
+		m_isFocusRequested = false;
+	}
 	if (!ImGui::Begin("LostArk Effect Tool"))
 	{
 		ImGui::End();
@@ -439,10 +556,16 @@ void Client::CEffect_Tool::Rebuild_Simulators()
 	m_Simulators.clear();
 	for (const EFFECT_EMITTER_DESC& Emitter : m_Asset.Emitters)
 	{
+		// A simulator refuses to initialize when the emitter has no enabled
+		// Spawn/Lifetime module or zero max particles. Imported recipes hit
+		// that often, so the failed slot is kept as nullptr: everything else
+		// pairs simulators with emitters by index, and dropping a slot would
+		// silently draw one emitter with another emitter's texture.
 		auto pSimulator = make_unique<CEffect_ParticleSimulator>();
-		if (pSimulator->Initialize(Emitter,
+		if (!pSimulator->Initialize(Emitter,
 			static_cast<uint32_t>(Emitter.iEmitterId)))
-			m_Simulators.push_back(move(pSimulator));
+			pSimulator.reset();
+		m_Simulators.push_back(move(pSimulator));
 	}
 	m_iSelectedEmitter = min(m_iSelectedEmitter,
 		max(0, static_cast<int32_t>(m_Asset.Emitters.size()) - 1));
@@ -451,11 +574,619 @@ void Client::CEffect_Tool::Rebuild_Simulators()
 	m_isWorldPreviewDirty = true;
 }
 
+void Client::CEffect_Tool::Refresh_NextElementId()
+{
+	uint64_t iHighest = {};
+	for (const EFFECT_EMITTER_DESC& Emitter : m_Asset.Emitters)
+	{
+		iHighest = max(iHighest, Emitter.iEmitterId);
+		for (const EFFECT_MODULE_DESC& Module : Emitter.Modules)
+			iHighest = max(iHighest, Module.iModuleId);
+	}
+	m_iNextElementId = iHighest + 1;
+}
+
+void Client::CEffect_Tool::Adopt_LoadedAsset(EFFECT_ASSET_DESC&& Loaded)
+{
+	m_Asset = move(Loaded);
+	// Order matters: the counter has to be correct before anything can add a
+	// new emitter or module on top of the loaded ids.
+	Refresh_NextElementId();
+	Rebuild_Simulators();
+	m_strSaveAsId = m_Asset.strAssetId;
+	// Imported assets span very different sizes, so start at a zoom that shows
+	// the whole effect instead of leaving it a few pixels wide.
+	m_fPreviewZoom = Estimate_PreviewZoom();
+}
+
+filesystem::path Client::CEffect_Tool::Resolve_AuthoredPath(
+	const string& strAssetId) const
+{
+	const u8string Utf8Id(strAssetId.begin(), strAssetId.end());
+	filesystem::path RelativePath(Utf8Id);
+	RelativePath += L".effect";
+	return CRuntimeAssetRoot::Resolve(
+		filesystem::path(L"Effect/Effect_Tool/Authored") /
+		RelativePath);
+}
+
+void Client::CEffect_Tool::Open_AssetFromCommandLine()
+{
+	const wchar_t* pCommandLine = GetCommandLineW();
+	if (nullptr == pCommandLine)
+		return;
+
+	const wchar_t* pFound = wcsstr(pCommandLine, L"--effect-open");
+	if (nullptr == pFound)
+		return;
+
+	const wchar_t* pCursor = pFound + wcslen(L"--effect-open");
+	while (L' ' == *pCursor || L'\t' == *pCursor)
+		++pCursor;
+
+	wstring_t strWideId;
+	if (L'"' == *pCursor)
+	{
+		++pCursor;
+		const wchar_t* pEnd = wcschr(pCursor, L'"');
+		if (nullptr == pEnd)
+			return;
+		strWideId.assign(pCursor, pEnd);
+	}
+	else
+	{
+		const wchar_t* pEnd = pCursor;
+		while (L'\0' != *pEnd && L' ' != *pEnd && L'\t' != *pEnd)
+			++pEnd;
+		strWideId.assign(pCursor, pEnd);
+	}
+
+	if (strWideId.empty())
+		return;
+
+	const string strAssetId = ConvertToUtf8(strWideId);
+	if (strAssetId.empty())
+		return;
+
+	EFFECT_ASSET_DESC Loaded;
+	string strError;
+	if (!CEffect_AssetIO::Load_Authoring(
+		Resolve_AuthoredPath(strAssetId), Loaded, &strError))
+	{
+		m_strFileStatus = "Command line open failed: " + strError;
+		return;
+	}
+
+	Adopt_LoadedAsset(move(Loaded));
+	m_fPreviewZoom = Estimate_PreviewZoom();
+	m_isWorldPreviewEnabled = true;
+	m_isWorldPreviewDirty = true;
+	m_isFocusRequested = true;
+	m_strFileStatus = "Opened from command line: " + strAssetId;
+}
+
+void Client::CEffect_Tool::Capture_SceneHDR_Readback()
+{
+	if (!m_isHDRReadbackRequested || m_isHDRReadbackDone ||
+		nullptr == m_pDevice)
+		return;
+
+	/*
+	 * 월드 프리뷰는 등록 시점 때문에 한 프레임 뒤에 그려진다. 첫 프레임을
+	 * 읽으면 빈 타깃이 나오므로 몇 프레임 지난 뒤에 한 번만 읽는다.
+	 */
+	/*
+	 * 레벨 전환 전에는 SceneHDR이 비어 있으므로 한 번 쏘고 끝내지 않는다.
+	 * 1을 넘는 값을 실제로 볼 때까지 주기적으로 다시 읽는다.
+	 */
+	// Loading and Logo do not provide the camera used by the world preview.
+	// Start the bounded wait only after the automated run reaches TEST_LEVEL2.
+	if (ETOUI(LEVEL::TEST_LEVEL2) !=
+		CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
+	constexpr uint32_t READBACK_INTERVAL = 30;
+	constexpr uint32_t READBACK_FRAME_LIMIT = 900;
+	constexpr uint64_t MIN_MATCHED_PIXELS = 16;
+	const uint32_t iReadbackFrame = ++m_iHDRReadbackFrame;
+	const bool_t isTimedOut = iReadbackFrame >= READBACK_FRAME_LIMIT;
+	if (!isTimedOut && 0 != iReadbackFrame % READBACK_INTERVAL)
+		return;
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const uint32_t iWidth = static_cast<uint32_t>(vViewportSize.x);
+	const uint32_t iHeight = static_cast<uint32_t>(vViewportSize.y);
+	f32_t fThirdMax[3]{};
+	f32_t fFrameMax = {};
+	const f32_t fExpected[3] = { 1.f, 5.f, 25.f };
+	const f32_t fTolerance[3] = { 0.25f, 0.75f, 3.75f };
+	f32_t fClosest[3]{};
+	f32_t fClosestDifference[3] = { 65504.f, 65504.f, 65504.f };
+	uint64_t iMatchedPixels[3]{};
+	uint64_t iFiniteScenePixels = {};
+	f32_t fBloomMax = {};
+	uint64_t iBloomNonZeroPixels = {};
+	string strBloomStatus = "BLOOM_NOT_MEASURED";
+	string strBloomReason;
+	f32_t fDistortionMax = {};
+	uint64_t iDistortionNonZeroPixels = {};
+	string strDistortionStatus = "DISTORTION_NOT_MEASURED";
+	string strDistortionReason;
+
+	auto WriteReport = [&](const string& strResult,
+		const string& strReason, const bool_t isFinal)
+	{
+		error_code Error;
+		const filesystem::path TempRoot =
+			filesystem::temp_directory_path(Error);
+		filesystem::path ReportPath;
+		if (!Error)
+		{
+			ReportPath = TempRoot /
+				"lostark_effect_roundtrip" / "hdr_readback.txt";
+			filesystem::create_directories(
+				ReportPath.parent_path(), Error);
+		}
+
+		ofstream Report(ReportPath, ios::trunc);
+		if (Report)
+		{
+			Report << "asset = " << m_Asset.strAssetId << "\n";
+			Report << "frame = " << iReadbackFrame << " / "
+				<< READBACK_FRAME_LIMIT << "\n";
+			Report << "target = Target_SceneHDR "
+				"(R16G16B16A16_FLOAT)\n";
+			Report << "viewport = " << iWidth << " x " << iHeight << "\n";
+			Report << "finite scene pixels = " << iFiniteScenePixels << "\n";
+			Report << "frame max = " << fFrameMax << "\n";
+			const char* pThirdNames[3] = { "left", "middle", "right" };
+			for (uint32_t i = 0; i < 3; ++i)
+			{
+				Report << pThirdNames[i]
+					<< " expected=" << fExpected[i]
+					<< " tolerance=" << fTolerance[i]
+					<< " closest=" << fClosest[i]
+					<< " max=" << fThirdMax[i]
+					<< " matched_pixels=" << iMatchedPixels[i]
+					<< "\n";
+			}
+			Report << "bloom target = Target_BloomResult "
+				"(R11G11B10_FLOAT)\n";
+			Report << "bloom max = " << fBloomMax << "\n";
+			Report << "bloom nonzero pixels = "
+				<< iBloomNonZeroPixels << "\n";
+			Report << "BLOOM_RESULT = " << strBloomStatus << "\n";
+			if (!strBloomReason.empty())
+				Report << "bloom reason = " << strBloomReason << "\n";
+			Report << "distortion target = Target_Distortion "
+				"(R16G16B16A16_FLOAT)\n";
+			Report << "distortion abs max = " << fDistortionMax << "\n";
+			Report << "distortion nonzero pixels = "
+				<< iDistortionNonZeroPixels << "\n";
+			Report << "DISTORTION_RESULT = "
+				<< strDistortionStatus << "\n";
+			if (!strDistortionReason.empty())
+				Report << "distortion reason = "
+					<< strDistortionReason << "\n";
+			Report << "RESULT = " << strResult << "\n";
+			Report << "reason = " << strReason << "\n";
+		}
+
+		if (!isFinal)
+			return;
+
+		m_isHDRReadbackDone = true;
+		m_strFileStatus = ReportPath.empty()
+			? "SceneHDR readback finished; report path unavailable"
+			: "SceneHDR readback written: " + ReportPath.string();
+		if (m_isHDRAutoExitRequested && nullptr != g_hWnd)
+			PostMessageW(g_hWnd, WM_CLOSE, 0, 0);
+	};
+
+	if (0 == iWidth || 0 == iHeight)
+	{
+		WriteReport(
+			isTimedOut ? "NO_GEOMETRY" : "WAITING",
+			"viewport size is zero", isTimedOut);
+		return;
+	}
+
+	auto EnsureStagingTexture = [this](
+		ComPtr<ID3D11Texture2D>& pTexture,
+		const uint32_t iTextureWidth,
+		const uint32_t iTextureHeight,
+		const DXGI_FORMAT eFormat)
+	{
+		if (nullptr != pTexture.Get())
+		{
+			D3D11_TEXTURE2D_DESC ExistingDesc{};
+			pTexture->GetDesc(&ExistingDesc);
+			if (ExistingDesc.Width == iTextureWidth &&
+				ExistingDesc.Height == iTextureHeight &&
+				ExistingDesc.Format == eFormat)
+			{
+				return true;
+			}
+			pTexture.Reset();
+		}
+
+		D3D11_TEXTURE2D_DESC Desc{};
+		Desc.Width = iTextureWidth;
+		Desc.Height = iTextureHeight;
+		Desc.MipLevels = 1;
+		Desc.ArraySize = 1;
+		Desc.Format = eFormat;
+		Desc.SampleDesc.Count = 1;
+		Desc.Usage = D3D11_USAGE_STAGING;
+		Desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		return SUCCEEDED(m_pDevice->CreateTexture2D(
+			&Desc, nullptr, pTexture.GetAddressOf()));
+	};
+
+	if (!EnsureStagingTexture(
+		m_pSceneHDRStaging, iWidth, iHeight,
+		DXGI_FORMAT_R16G16B16A16_FLOAT))
+	{
+		WriteReport("READBACK_ERROR",
+			"failed to create SceneHDR staging texture", true);
+		return;
+	}
+
+	if (FAILED(CGameInstance::Get().Copy_RT_Resource(
+		TEXT("Target_SceneHDR"), m_pSceneHDRStaging)))
+	{
+		WriteReport(
+			isTimedOut ? "READBACK_ERROR" : "WAITING",
+			"failed to copy Target_SceneHDR", isTimedOut);
+		return;
+	}
+
+	ComPtr<ID3D11DeviceContext> pContext;
+	m_pDevice->GetImmediateContext(&pContext);
+	if (nullptr == pContext.Get())
+	{
+		WriteReport("READBACK_ERROR",
+			"immediate device context is unavailable", true);
+		return;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE Mapped{};
+	if (FAILED(pContext->Map(
+		m_pSceneHDRStaging.Get(), 0, D3D11_MAP_READ, 0, &Mapped)))
+	{
+		WriteReport(
+			isTimedOut ? "READBACK_ERROR" : "WAITING",
+			"failed to map Target_SceneHDR staging texture", isTimedOut);
+		return;
+	}
+
+	const auto* pBytes = static_cast<const uint8_t*>(Mapped.pData);
+	for (uint32_t iY = 0; iY < iHeight; ++iY)
+	{
+		const auto* pRow = reinterpret_cast<const uint16_t*>(
+			pBytes + static_cast<size_t>(iY) * Mapped.RowPitch);
+		for (uint32_t iX = 0; iX < iWidth; ++iX)
+		{
+			using DirectX::PackedVector::XMConvertHalfToFloat;
+			const f32_t fR = XMConvertHalfToFloat(pRow[iX * 4 + 0]);
+			const f32_t fG = XMConvertHalfToFloat(pRow[iX * 4 + 1]);
+			const f32_t fB = XMConvertHalfToFloat(pRow[iX * 4 + 2]);
+			if (!isfinite(fR) || !isfinite(fG) || !isfinite(fB))
+				continue;
+
+			++iFiniteScenePixels;
+			const f32_t fPixelMax = max(fR, max(fG, fB));
+			const f32_t fPixelMin = min(fR, min(fG, fB));
+			const f32_t fSignal = (fR + fG + fB) / 3.f;
+			fFrameMax = max(fFrameMax, fPixelMax);
+			const uint32_t iThird = min(2u, iX * 3u / iWidth);
+			fThirdMax[iThird] = max(fThirdMax[iThird], fPixelMax);
+			const f32_t fDifference =
+				fabsf(fSignal - fExpected[iThird]);
+			if (fDifference < fClosestDifference[iThird])
+			{
+				fClosestDifference[iThird] = fDifference;
+				fClosest[iThird] = fSignal;
+			}
+			if (fDifference <= fTolerance[iThird] &&
+				fPixelMax - fPixelMin <= fTolerance[iThird])
+			{
+				++iMatchedPixels[iThird];
+			}
+		}
+	}
+	pContext->Unmap(m_pSceneHDRStaging.Get(), 0);
+
+	const uint32_t iBloomWidth = max(1u, iWidth / 2u);
+	const uint32_t iBloomHeight = max(1u, iHeight / 2u);
+	if (!EnsureStagingTexture(
+		m_pBloomResultStaging, iBloomWidth, iBloomHeight,
+		DXGI_FORMAT_R11G11B10_FLOAT))
+	{
+		strBloomReason = "failed to create bloom staging texture";
+	}
+	else if (FAILED(CGameInstance::Get().Copy_RT_Resource(
+		TEXT("Target_BloomResult"), m_pBloomResultStaging)))
+	{
+		strBloomReason = "failed to copy Target_BloomResult";
+	}
+	else
+	{
+		D3D11_MAPPED_SUBRESOURCE BloomMapped{};
+		if (FAILED(pContext->Map(
+			m_pBloomResultStaging.Get(), 0,
+			D3D11_MAP_READ, 0, &BloomMapped)))
+		{
+			strBloomReason =
+				"failed to map Target_BloomResult staging texture";
+		}
+		else
+		{
+			const auto* pBloomBytes =
+				static_cast<const uint8_t*>(BloomMapped.pData);
+			for (uint32_t iY = 0; iY < iBloomHeight; ++iY)
+			{
+				const auto* pRow = reinterpret_cast<
+					const DirectX::PackedVector::XMFLOAT3PK*>(
+					pBloomBytes +
+					static_cast<size_t>(iY) * BloomMapped.RowPitch);
+				for (uint32_t iX = 0; iX < iBloomWidth; ++iX)
+				{
+					DirectX::XMFLOAT3 vBloom{};
+					DirectX::XMStoreFloat3(
+						&vBloom,
+						DirectX::PackedVector::XMLoadFloat3PK(
+							&pRow[iX]));
+					if (!isfinite(vBloom.x) ||
+						!isfinite(vBloom.y) ||
+						!isfinite(vBloom.z))
+					{
+						continue;
+					}
+					const f32_t fPixelMax = max(
+						vBloom.x, max(vBloom.y, vBloom.z));
+					fBloomMax = max(fBloomMax, fPixelMax);
+					if (0.000001f < fPixelMax)
+						++iBloomNonZeroPixels;
+				}
+			}
+			pContext->Unmap(m_pBloomResultStaging.Get(), 0);
+			strBloomStatus = 0 < iBloomNonZeroPixels
+				? "BLOOM_OK" : "BLOOM_ZERO";
+			strBloomReason = 0 < iBloomNonZeroPixels
+				? "bright-pass and blur produced non-zero energy"
+				: "bloom result contains no non-zero pixels";
+		}
+	}
+
+	if (!EnsureStagingTexture(
+		m_pDistortionStaging, iWidth, iHeight,
+		DXGI_FORMAT_R16G16B16A16_FLOAT))
+	{
+		strDistortionReason =
+			"failed to create distortion staging texture";
+	}
+	else if (FAILED(CGameInstance::Get().Copy_RT_Resource(
+		TEXT("Target_Distortion"), m_pDistortionStaging)))
+	{
+		strDistortionReason = "failed to copy Target_Distortion";
+	}
+	else
+	{
+		D3D11_MAPPED_SUBRESOURCE DistortionMapped{};
+		if (FAILED(pContext->Map(
+			m_pDistortionStaging.Get(), 0,
+			D3D11_MAP_READ, 0, &DistortionMapped)))
+		{
+			strDistortionReason =
+				"failed to map Target_Distortion staging texture";
+		}
+		else
+		{
+			const auto* pDistortionBytes =
+				static_cast<const uint8_t*>(DistortionMapped.pData);
+			for (uint32_t iY = 0; iY < iHeight; ++iY)
+			{
+				const auto* pRow = reinterpret_cast<const uint16_t*>(
+					pDistortionBytes +
+					static_cast<size_t>(iY) * DistortionMapped.RowPitch);
+				for (uint32_t iX = 0; iX < iWidth; ++iX)
+				{
+					using DirectX::PackedVector::XMConvertHalfToFloat;
+					const f32_t fX = XMConvertHalfToFloat(
+						pRow[iX * 4 + 0]);
+					const f32_t fY = XMConvertHalfToFloat(
+						pRow[iX * 4 + 1]);
+					if (!isfinite(fX) || !isfinite(fY))
+						continue;
+					const f32_t fAbsMax = max(fabsf(fX), fabsf(fY));
+					fDistortionMax = max(fDistortionMax, fAbsMax);
+					if (0.000001f < fAbsMax)
+						++iDistortionNonZeroPixels;
+				}
+			}
+			pContext->Unmap(m_pDistortionStaging.Get(), 0);
+			strDistortionStatus = 0 < iDistortionNonZeroPixels
+				? "DISTORTION_OK" : "DISTORTION_ZERO";
+			strDistortionReason = 0 < iDistortionNonZeroPixels
+				? "effect shader wrote signed UV offsets"
+				: "distortion target contains no non-zero pixels";
+		}
+	}
+
+	const bool_t hasAllReferenceLevels =
+		iMatchedPixels[0] >= MIN_MATCHED_PIXELS &&
+		iMatchedPixels[1] >= MIN_MATCHED_PIXELS &&
+		iMatchedPixels[2] >= MIN_MATCHED_PIXELS;
+	const bool_t hasBloomOutput = 0 < iBloomNonZeroPixels;
+	const bool_t hasDistortionOutput = 0 < iDistortionNonZeroPixels;
+	if (hasAllReferenceLevels && 1.f < fFrameMax &&
+		hasBloomOutput && hasDistortionOutput)
+	{
+		WriteReport("HDR_OK",
+			"SceneHDR preserved 1, 5, and 25; bloom and distortion "
+			"targets both contain non-zero output", true);
+		return;
+	}
+
+	if (!isTimedOut)
+	{
+		string strWaitReason;
+		if (0.f >= fFrameMax)
+			strWaitReason = "waiting for scene geometry and effect render";
+		else if (1.f >= fFrameMax)
+			strWaitReason =
+				"scene is visible but no HDR value above 1 is present yet";
+		else if (!hasAllReferenceLevels)
+			strWaitReason =
+				"HDR is present but one or more reference levels are missing";
+		else if (!hasBloomOutput)
+			strWaitReason = "waiting for non-zero bloom output";
+		else
+			strWaitReason = "waiting for non-zero distortion output";
+		WriteReport("WAITING", strWaitReason, false);
+		return;
+	}
+
+	if (0.f >= fFrameMax)
+	{
+		WriteReport("NO_GEOMETRY",
+			"frame limit reached and Target_SceneHDR max is zero", true);
+	}
+	else if (1.f >= fFrameMax)
+	{
+		WriteReport("CLAMPED",
+			"frame limit reached and nothing above 1 was stored", true);
+	}
+	else if (!hasAllReferenceLevels)
+	{
+		WriteReport("TIMEOUT_MISSING_REFERENCE_LEVELS",
+			"frame limit reached before all 1, 5, and 25 levels matched",
+			true);
+	}
+	else if (!hasBloomOutput)
+	{
+		WriteReport("BLOOM_FAILED",
+			strBloomReason.empty()
+			? "frame limit reached with zero bloom output"
+			: strBloomReason,
+			true);
+	}
+	else if (!hasDistortionOutput)
+	{
+		WriteReport("DISTORTION_FAILED",
+			strDistortionReason.empty()
+			? "frame limit reached with zero distortion output"
+			: strDistortionReason,
+			true);
+	}
+	else
+	{
+		WriteReport("READBACK_ERROR",
+			"unexpected HDR validation state", true);
+	}
+}
+
+void Client::CEffect_Tool::Refresh_AuthoredList()
+{
+	m_AuthoredAssets.clear();
+	m_iSelectedAuthoredAsset = -1;
+
+	error_code Error;
+	const filesystem::path Root = CRuntimeAssetRoot::Resolve(
+		L"Effect/Effect_Tool/Authored");
+	if (!filesystem::exists(Root, Error))
+		return;
+
+	// Recursive so a skill can own a folder: the converter writes one folder
+	// per skill family and the id keeps the folder, e.g. "talonstrike/par_...".
+	for (const filesystem::directory_entry& Entry :
+		filesystem::recursive_directory_iterator(Root, Error))
+	{
+		if (!Entry.is_regular_file() || ".effect" != Entry.path().extension())
+			continue;
+		filesystem::path Relative =
+			filesystem::relative(Entry.path(), Root, Error);
+		if (Error)
+			continue;
+		Relative.replace_extension();
+		string strId = Relative.generic_string();
+		if (!strId.empty())
+			m_AuthoredAssets.push_back(move(strId));
+	}
+	sort(m_AuthoredAssets.begin(), m_AuthoredAssets.end());
+}
+
+f32_t Client::CEffect_Tool::Estimate_PreviewZoom() const
+{
+	// Half of a typical canvas. The zoom only has to land in the right order
+	// of magnitude; the slider covers the rest.
+	constexpr f32_t TARGET_HALF_PIXELS = 180.f;
+	f32_t fExtent = 0.01f;
+
+	for (const EFFECT_EMITTER_DESC& Emitter : m_Asset.Emitters)
+	{
+		if (!Emitter.isEnabled)
+			continue;
+
+		f32_t fLifetime = 1.f;
+		for (const EFFECT_MODULE_DESC& Module : Emitter.Modules)
+		{
+			if (EFFECT_MODULE_TYPE::LIFETIME == Module.eType)
+			{
+				fLifetime = max(fLifetime,
+					max(Module.Lifetime.Lifetime.fConstant,
+						Module.Lifetime.Lifetime.fMax));
+			}
+		}
+
+		for (const EFFECT_MODULE_DESC& Module : Emitter.Modules)
+		{
+			if (!Module.isEnabled)
+				continue;
+
+			switch (Module.eType)
+			{
+			case EFFECT_MODULE_TYPE::INITIAL_LOCATION:
+			{
+				const float3_t& vMax = Module.InitialLocation.Location.vMax;
+				fExtent = max(fExtent, max(fabsf(vMax.x),
+					max(fabsf(vMax.y), fabsf(vMax.z))));
+				if (EFFECT_LOCATION_SHAPE::BOX !=
+					Module.InitialLocation.eShape)
+				{
+					fExtent = max(fExtent,
+						max(Module.InitialLocation.fRadius,
+							Module.InitialLocation.fHeight * 0.5f));
+				}
+				break;
+			}
+			case EFFECT_MODULE_TYPE::INITIAL_SIZE:
+			{
+				const float3_t& vMax = Module.InitialSize.Size.vMax;
+				fExtent = max(fExtent, max(fabsf(vMax.x), fabsf(vMax.y)));
+				break;
+			}
+			case EFFECT_MODULE_TYPE::INITIAL_VELOCITY:
+			{
+				const float3_t& vMax = Module.InitialVelocity.Velocity.vMax;
+				const f32_t fSpeed = max(fabsf(vMax.x),
+					max(fabsf(vMax.y), fabsf(vMax.z)));
+				fExtent = max(fExtent, fSpeed * fLifetime);
+				break;
+			}
+			}
+		}
+	}
+	return min(4000.f, max(1.f, TARGET_HALF_PIXELS / fExtent));
+}
+
 void Client::CEffect_Tool::Restart_Preview()
 {
 	m_fPreviewTime = 0.f;
 	for (const auto& pSimulator : m_Simulators)
-		pSimulator->Reset();
+		if (nullptr != pSimulator)
+			pSimulator->Reset();
 	m_isWorldPreviewDirty = true;
 }
 
@@ -477,11 +1208,19 @@ void Client::CEffect_Tool::Render_Toolbar()
 	ImGui::SetNextItemWidth(90.f);
 	ImGui::DragFloat("Speed", &m_fTimeScale, 0.05f, 0.f, 4.f);
 	ImGui::SameLine();
-	ImGui::Text("%.2f / %.2f sec", m_fPreviewTime, m_Asset.fDuration);
+	ImGui::Text("%.2f / %.2f sec",
+		m_fPreviewTime, CalculatePreviewDuration(m_Asset));
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(90.f);
 	ImGui::DragFloat("LOD Distance", &m_fPreviewDistance,
 		1.f, 0.f, 10000.f);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(110.f);
+	ImGui::DragFloat("Zoom px/m", &m_fPreviewZoom, 5.f, 1.f, 4000.f,
+		"%.0f", ImGuiSliderFlags_Logarithmic);
+	ImGui::SameLine();
+	if (ImGui::Button("Fit"))
+		m_fPreviewZoom = Estimate_PreviewZoom();
 	if (m_isWorldPreviewEnabled)
 	{
 		if (ImGui::DragFloat3("World Position",
@@ -494,24 +1233,23 @@ void Client::CEffect_Tool::Render_Toolbar()
 			"Rendered by CEffect_Runtime in RENDERGROUP::BLEND");
 	}
 
-	if (ImGui::Button("Save JSON"))
+	if (ImGui::Button("Save"))
 	{
 		string strError;
-		m_strFileStatus = CEffect_AssetIO::Save_Json(
-			m_strJsonPath, m_Asset, &strError)
-			? "JSON saved + round trip ready" : strError;
+		m_strFileStatus = CEffect_AssetIO::Save_Authoring(
+			m_strAuthoringPath, m_Asset, &strError)
+			? "Saved to working.effect" : strError;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Load JSON"))
+	if (ImGui::Button("Load"))
 	{
 		string strError;
 		EFFECT_ASSET_DESC Loaded;
-		if (CEffect_AssetIO::Load_Json(
-			m_strJsonPath, Loaded, &strError))
+		if (CEffect_AssetIO::Load_Authoring(
+			m_strAuthoringPath, Loaded, &strError))
 		{
-			m_Asset = move(Loaded);
-			Rebuild_Simulators();
-			m_strFileStatus = "JSON loaded";
+			Adopt_LoadedAsset(move(Loaded));
+			m_strFileStatus = "Loaded working.effect";
 		}
 		else
 			m_strFileStatus = strError;
@@ -532,8 +1270,7 @@ void Client::CEffect_Tool::Render_Toolbar()
 		if (CEffect_AssetIO::Load_Binary(
 			m_strBinaryPath, Loaded, &strError))
 		{
-			m_Asset = move(Loaded);
-			Rebuild_Simulators();
+			Adopt_LoadedAsset(move(Loaded));
 			m_strFileStatus = ".weffect loaded";
 		}
 		else
@@ -544,6 +1281,66 @@ void Client::CEffect_Tool::Render_Toolbar()
 	ImGui::SameLine();
 	if (ImGui::Button("Source Catalog"))
 		m_isSourceCatalogOpen = !m_isSourceCatalogOpen;
+
+	// Save As / Open by asset id. Each asset gets its own file so building
+	// several skills no longer means overwriting the single working file.
+	ImGui::SetNextItemWidth(240.f);
+	EditString("Asset Id", m_strSaveAsId);
+	ImGui::SameLine();
+	if (ImGui::Button("Save As"))
+	{
+		if (m_strSaveAsId.empty())
+			m_strFileStatus = "Asset Id is empty.";
+		else
+		{
+			string strError;
+			if (CEffect_AssetIO::Save_Authoring(
+				Resolve_AuthoredPath(m_strSaveAsId), m_Asset, &strError))
+			{
+				m_strFileStatus = "Saved " + m_strSaveAsId + ".effect";
+				Refresh_AuthoredList();
+			}
+			else
+				m_strFileStatus = strError;
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Refresh List"))
+		Refresh_AuthoredList();
+
+	ImGui::SetNextItemWidth(240.f);
+	if (ImGui::BeginListBox("Authored", ImVec2(240.f, 68.f)))
+	{
+		for (int32_t i = 0;
+			i < static_cast<int32_t>(m_AuthoredAssets.size()); ++i)
+		{
+			const bool_t isSelected = (i == m_iSelectedAuthoredAsset);
+			if (ImGui::Selectable(m_AuthoredAssets[i].c_str(), isSelected))
+				m_iSelectedAuthoredAsset = i;
+			if (isSelected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndListBox();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Open Selected") &&
+		m_iSelectedAuthoredAsset >= 0 &&
+		m_iSelectedAuthoredAsset <
+			static_cast<int32_t>(m_AuthoredAssets.size()))
+	{
+		const string& strAssetId =
+			m_AuthoredAssets[m_iSelectedAuthoredAsset];
+		string strError;
+		EFFECT_ASSET_DESC Loaded;
+		if (CEffect_AssetIO::Load_Authoring(
+			Resolve_AuthoredPath(strAssetId), Loaded, &strError))
+		{
+			Adopt_LoadedAsset(move(Loaded));
+			m_strFileStatus = "Opened " + strAssetId + ".effect";
+		}
+		else
+			m_strFileStatus = strError;
+	}
 }
 
 void Client::CEffect_Tool::Reload_SourceCatalog()
@@ -832,6 +1629,7 @@ void Client::CEffect_Tool::Render_PropertyPanel()
 	switch (Module.eType)
 	{
 	case EFFECT_MODULE_TYPE::REQUIRED:
+	{
 		EditString("Texture Asset ID", Module.Required.strTextureAssetId);
 		ImGui::SameLine();
 		if (ImGui::Button("Browse Texture") &&
@@ -862,12 +1660,102 @@ void Client::CEffect_Tool::Render_PropertyPanel()
 		{
 			m_isWorldPreviewDirty = true;
 		}
+		{
+			// Cascade ScreenAlignment. Square forces one size on both axes,
+			// Rectangle keeps X/Y, Velocity turns the sprite along its motion.
+			static const char* AlignmentNames[] = {
+				"Square", "Rectangle", "Velocity"
+			};
+			int32_t iAlignment = static_cast<int32_t>(
+				Module.Required.eScreenAlignment);
+			if (ImGui::Combo("Screen Alignment", &iAlignment,
+				AlignmentNames, IM_ARRAYSIZE(AlignmentNames)))
+			{
+				Module.Required.eScreenAlignment =
+					static_cast<EFFECT_SCREEN_ALIGNMENT>(iAlignment);
+				m_isWorldPreviewDirty = true;
+			}
+		}
 		if (ImGui::Button("Reload Resource"))
 			Reload_TextureResource(Emitter);
 		ImGui::SameLine();
 		ImGui::TextWrapped("%s",
 			Get_TextureResourceStatus(Emitter).c_str());
+
+		ImGui::SeparatorText("Effect Material");
+		bool_t isMaterialChanged = false;
+		auto EditMaterialString = [&isMaterialChanged](
+			const char* pLabel, string& strValue)
+		{
+			const string strBefore = strValue;
+			EditString(pLabel, strValue);
+			isMaterialChanged |= strBefore != strValue;
+		};
+		EFFECT_MATERIAL_DESC& Material = Module.Required.Material;
+
+		EditMaterialString("Opacity Texture",
+			Material.strOpacityTextureAssetId);
+		ImGui::SameLine();
+		if (ImGui::Button("Browse Opacity") &&
+			BrowseResourceFile(
+				L"Effect Textures\0*.dds;*.png;*.jpg;*.jpeg;*.bmp;"
+					L"*.tif;*.tiff\0All Files\0*.*\0\0",
+				Material.strOpacityTextureAssetId))
+		{
+			isMaterialChanged = true;
+		}
+
+		EditMaterialString("Dissolve Texture",
+			Material.strDissolveTextureAssetId);
+		ImGui::SameLine();
+		if (ImGui::Button("Browse Dissolve") &&
+			BrowseResourceFile(
+				L"Effect Textures\0*.dds;*.png;*.jpg;*.jpeg;*.bmp;"
+					L"*.tif;*.tiff\0All Files\0*.*\0\0",
+				Material.strDissolveTextureAssetId))
+		{
+			isMaterialChanged = true;
+		}
+
+		EditMaterialString("Distortion Texture",
+			Material.strDistortionTextureAssetId);
+		ImGui::SameLine();
+		if (ImGui::Button("Browse Distortion") &&
+			BrowseResourceFile(
+				L"Effect Textures\0*.dds;*.png;*.jpg;*.jpeg;*.bmp;"
+					L"*.tif;*.tiff\0All Files\0*.*\0\0",
+				Material.strDistortionTextureAssetId))
+		{
+			isMaterialChanged = true;
+		}
+
+		isMaterialChanged |= ImGui::DragFloat2("UV Tiling",
+			reinterpret_cast<float*>(&Material.vUVTiling),
+			0.01f, -100.f, 100.f);
+		isMaterialChanged |= ImGui::DragFloat2("UV Offset",
+			reinterpret_cast<float*>(&Material.vUVOffset), 0.01f);
+		isMaterialChanged |= ImGui::DragFloat2("UV Panner / sec",
+			reinterpret_cast<float*>(&Material.vUVPanner), 0.01f);
+		isMaterialChanged |= ImGui::DragFloat("Emissive Strength",
+			&Material.fEmissiveStrength, 0.05f, 0.f, 10000.f);
+		isMaterialChanged |= ImGui::DragFloat("Opacity Threshold",
+			&Material.fOpacityMaskThreshold, 0.005f, 0.f, 1.f);
+		isMaterialChanged |= ImGui::DragFloat("Dissolve Amount",
+			&Material.fDissolveAmount, 0.005f, 0.f, 1.f);
+		isMaterialChanged |= ImGui::DragFloat("Dissolve Edge Width",
+			&Material.fDissolveEdgeWidth, 0.0025f, 0.0001f, 1.f);
+		isMaterialChanged |= ImGui::ColorEdit4("Dissolve Edge Color",
+			reinterpret_cast<float*>(&Material.vDissolveEdgeColor),
+			ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		isMaterialChanged |= ImGui::DragFloat("Soft Particle Distance",
+			&Material.fSoftParticleDistance, 0.01f, 0.f, 1000.f);
+		isMaterialChanged |= ImGui::DragFloat("Distortion Strength (UV)",
+			&Material.fDistortionStrength, 0.0001f, -1.f, 1.f,
+			"%.4f");
+		if (isMaterialChanged)
+			m_isWorldPreviewDirty = true;
 		break;
+	}
 	case EFFECT_MODULE_TYPE::SPAWN:
 		ImGui::DragFloat("Rate / sec", &Module.Spawn.fRatePerSecond,
 			0.5f, 0.f, 10000.f);
@@ -881,11 +1769,40 @@ void Client::CEffect_Tool::Render_PropertyPanel()
 			&Module.Lifetime.Lifetime.fConstant, 0.05f, 0.01f, 60.f);
 		break;
 	case EFFECT_MODULE_TYPE::INITIAL_LOCATION:
+	{
+		static const char* ShapeNames[] = { "Box", "Sphere", "Cylinder" };
+		int32_t iShape =
+			static_cast<int32_t>(Module.InitialLocation.eShape);
+		if (ImGui::Combo("Shape", &iShape,
+			ShapeNames, IM_ARRAYSIZE(ShapeNames)))
+		{
+			Module.InitialLocation.eShape =
+				static_cast<EFFECT_LOCATION_SHAPE>(iShape);
+			m_isWorldPreviewDirty = true;
+		}
 		ImGui::DragFloat3("Location Min",
 			reinterpret_cast<float*>(&Module.InitialLocation.Location.vMin), 0.1f);
 		ImGui::DragFloat3("Location Max",
 			reinterpret_cast<float*>(&Module.InitialLocation.Location.vMax), 0.1f);
+		if (EFFECT_LOCATION_SHAPE::BOX != Module.InitialLocation.eShape)
+		{
+			ImGui::DragFloat("Radius",
+				&Module.InitialLocation.fRadius, 0.05f, 0.f, 10000.f);
+			ImGui::DragFloat("Inner Radius",
+				&Module.InitialLocation.fInnerRadius, 0.05f, 0.f, 10000.f);
+			if (EFFECT_LOCATION_SHAPE::CYLINDER ==
+				Module.InitialLocation.eShape)
+			{
+				ImGui::DragFloat("Height",
+					&Module.InitialLocation.fHeight, 0.05f, 0.f, 10000.f);
+			}
+			ImGui::Checkbox("Surface Only",
+				&Module.InitialLocation.isSurfaceOnly);
+			ImGui::TextDisabled(
+				"Min/Max is the spawn offset when a shape is used.");
+		}
 		break;
+	}
 	case EFFECT_MODULE_TYPE::INITIAL_VELOCITY:
 		ImGui::DragFloat3("Velocity Min",
 			reinterpret_cast<float*>(&Module.InitialVelocity.Velocity.vMin), 0.1f);
@@ -898,9 +1815,11 @@ void Client::CEffect_Tool::Render_PropertyPanel()
 		break;
 	case EFFECT_MODULE_TYPE::INITIAL_COLOR:
 		ImGui::ColorEdit4("Color Min",
-			reinterpret_cast<float*>(&Module.InitialColor.Color.vMin));
+			reinterpret_cast<float*>(&Module.InitialColor.Color.vMin),
+			ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		ImGui::ColorEdit4("Color Max",
-			reinterpret_cast<float*>(&Module.InitialColor.Color.vMax));
+			reinterpret_cast<float*>(&Module.InitialColor.Color.vMax),
+			ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		break;
 	case EFFECT_MODULE_TYPE::SIZE_OVER_LIFE:
 		EditCurve(Module.SizeOverLife.Curve);
@@ -1064,6 +1983,24 @@ void Client::CEffect_Tool::Render_PropertyPanel()
 		EditString("Source Bone", Module.Trail.strSourceBone);
 		EditString("Target Bone", Module.Trail.strTargetBone);
 		break;
+	case EFFECT_MODULE_TYPE::DYNAMIC_PARAMETER:
+		ImGui::TextUnformatted("X: Emissive multiplier");
+		ImGui::PushID("DynamicParameterX");
+		EditCurve(Module.DynamicParameter.X);
+		ImGui::PopID();
+		ImGui::TextUnformatted("Y: Opacity multiplier");
+		ImGui::PushID("DynamicParameterY");
+		EditCurve(Module.DynamicParameter.Y);
+		ImGui::PopID();
+		ImGui::TextUnformatted("Z: Dissolve offset");
+		ImGui::PushID("DynamicParameterZ");
+		EditCurve(Module.DynamicParameter.Z);
+		ImGui::PopID();
+		ImGui::TextUnformatted("W: Distortion multiplier");
+		ImGui::PushID("DynamicParameterW");
+		EditCurve(Module.DynamicParameter.W);
+		ImGui::PopID();
+		break;
 	default:
 		break;
 	}
@@ -1076,6 +2013,8 @@ void Client::CEffect_Tool::Render_PreviewPanel()
 	uint64_t iEventCount = {};
 	for (const auto& pSimulator : m_Simulators)
 	{
+		if (nullptr == pSimulator)
+			continue;
 		iAliveCount += pSimulator->Get_Stats().iAliveCount;
 		iCollisionCount += pSimulator->Get_Stats().iCollisionCount;
 		iEventCount += pSimulator->Get_Stats().iEventCount;
@@ -1090,7 +2029,7 @@ void Client::CEffect_Tool::Render_PreviewPanel()
 	pDrawList->AddRectFilled(vOrigin,
 		ImVec2(vOrigin.x + vSize.x, vOrigin.y + vSize.y),
 		IM_COL32(15, 18, 25, 255));
-	Draw_Particles(pDrawList, vOrigin, vSize, 18.f);
+	Draw_Particles(pDrawList, vOrigin, vSize, m_fPreviewZoom);
 	ImGui::InvisibleButton("PreviewCanvas", vSize);
 }
 
@@ -1112,7 +2051,7 @@ void Client::CEffect_Tool::Draw_Particles(
 		iEmitter < m_Asset.Emitters.size(); ++iEmitter)
 	{
 		const EFFECT_EMITTER_DESC& Emitter = m_Asset.Emitters[iEmitter];
-		if (!Emitter.isEnabled)
+		if (!Emitter.isEnabled || nullptr == m_Simulators[iEmitter])
 			continue;
 
 		ID3D11ShaderResourceView* pTextureResource = nullptr;
@@ -1252,11 +2191,12 @@ Client::CEffect_Tool::Resolve_TextureResource(
 		return nullptr;
 	}
 
-	const wstring strPath = ConvertToWide(strAssetId);
-	if (strPath.empty())
+	const filesystem::path TexturePath =
+		ResolveToolAssetPath(strAssetId);
+	if (TexturePath.empty())
 	{
 		Resource.strStatus =
-			"Texture load failed: invalid UTF-8/ANSI path";
+			"Texture load failed: file not found: " + strAssetId;
 		return nullptr;
 	}
 
@@ -1268,13 +2208,13 @@ Client::CEffect_Tool::Resolve_TextureResource(
 	if (0 == _stricmp(strExtension.c_str(), ".dds"))
 	{
 		hResult = DirectX::CreateDDSTextureFromFile(
-			m_pDevice.Get(), strPath.c_str(), nullptr,
+			m_pDevice.Get(), TexturePath.c_str(), nullptr,
 			Resource.pShaderResourceView.ReleaseAndGetAddressOf());
 	}
 	else
 	{
 		hResult = DirectX::CreateWICTextureFromFile(
-			m_pDevice.Get(), strPath.c_str(), nullptr,
+			m_pDevice.Get(), TexturePath.c_str(), nullptr,
 			Resource.pShaderResourceView.ReleaseAndGetAddressOf());
 	}
 

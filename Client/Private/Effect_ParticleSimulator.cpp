@@ -217,6 +217,22 @@ void Client::CEffect_ParticleSimulator::Update(const f32_t fTimeDelta)
 				: Particle.vInitialColor.w * fAlphaScale;
 		}
 
+		const EFFECT_MODULE_DESC* pDynamicParameter =
+			Find_Module(EFFECT_MODULE_TYPE::DYNAMIC_PARAMETER);
+		if (nullptr != pDynamicParameter)
+		{
+			Particle.vDynamicParameter = {
+				Evaluate(pDynamicParameter->DynamicParameter.X,
+					Particle.fRelativeTime),
+				Evaluate(pDynamicParameter->DynamicParameter.Y,
+					Particle.fRelativeTime),
+				Evaluate(pDynamicParameter->DynamicParameter.Z,
+					Particle.fRelativeTime),
+				Evaluate(pDynamicParameter->DynamicParameter.W,
+					Particle.fRelativeTime)
+			};
+		}
+
 		const EFFECT_MODULE_DESC* pSubUV =
 			Find_Module(EFFECT_MODULE_TYPE::SUB_UV);
 		if (nullptr != pSubUV)
@@ -415,6 +431,45 @@ f32_t Client::CEffect_ParticleSimulator::Next_Random01()
 		static_cast<f32_t>(0x00ffffffu);
 }
 
+float3_t Client::CEffect_ParticleSimulator::Sample_Location(
+	const EFFECT_INITIAL_LOCATION_MODULE_DESC& Desc)
+{
+	// The authored distribution is the offset of the whole volume. For BOX it
+	// is also the volume itself, so nothing else is added.
+	const float3_t vOffset = Sample(Desc.Location);
+	if (EFFECT_LOCATION_SHAPE::BOX == Desc.eShape)
+		return vOffset;
+
+	const f32_t fOuter = max(0.f, Desc.fRadius);
+	const f32_t fInner = min(max(0.f, Desc.fInnerRadius), fOuter);
+	// Cube root keeps a solid sphere uniformly filled instead of clumping the
+	// particles toward the centre. Surface only pins every particle to fOuter.
+	const f32_t fUnit = Desc.isSurfaceOnly ? 1.f : powf(Next_Random01(),
+		(EFFECT_LOCATION_SHAPE::SPHERE == Desc.eShape) ? (1.f / 3.f) : 0.5f);
+	const f32_t fRadius = fInner + (fOuter - fInner) * fUnit;
+
+	constexpr f32_t TWO_PI = 6.28318530718f;
+	const f32_t fTheta = Next_Random01() * TWO_PI;
+	if (EFFECT_LOCATION_SHAPE::CYLINDER == Desc.eShape)
+	{
+		return {
+			vOffset.x + fRadius * cosf(fTheta),
+			vOffset.y + (Next_Random01() - 0.5f) * Desc.fHeight,
+			vOffset.z + fRadius * sinf(fTheta)
+		};
+	}
+
+	// Sphere: sample the polar angle through its cosine so the points spread
+	// evenly instead of bunching at the poles.
+	const f32_t fCosPhi = 1.f - 2.f * Next_Random01();
+	const f32_t fSinPhi = sqrtf(max(0.f, 1.f - fCosPhi * fCosPhi));
+	return {
+		vOffset.x + fRadius * fSinPhi * cosf(fTheta),
+		vOffset.y + fRadius * fCosPhi,
+		vOffset.z + fRadius * fSinPhi * sinf(fTheta)
+	};
+}
+
 f32_t Client::CEffect_ParticleSimulator::Evaluate(
 	const EFFECT_CURVE_FLOAT_DESC& Curve,
 	const f32_t fNormalizedTime) const
@@ -469,6 +524,8 @@ void Client::CEffect_ParticleSimulator::Spawn(const uint32_t iCount)
 		Find_Module(EFFECT_MODULE_TYPE::ROTATION_RATE);
 	const EFFECT_MODULE_DESC* pSubUV =
 		Find_Module(EFFECT_MODULE_TYPE::SUB_UV);
+	const EFFECT_MODULE_DESC* pDynamicParameter =
+		Find_Module(EFFECT_MODULE_TYPE::DYNAMIC_PARAMETER);
 
 	const uint32_t iAliveCount =
 		static_cast<uint32_t>(m_Particles.size());
@@ -483,7 +540,8 @@ void Client::CEffect_ParticleSimulator::Spawn(const uint32_t iCount)
 	{
 		EFFECT_PARTICLE Particle;
 		Particle.vPosition =
-			(nullptr != pLocation) ? Sample(pLocation->InitialLocation.Location)
+			(nullptr != pLocation)
+			? Sample_Location(pLocation->InitialLocation)
 			: float3_t{};
 		Particle.vVelocity =
 			(nullptr != pVelocity) ? Sample(pVelocity->InitialVelocity.Velocity)
@@ -510,6 +568,15 @@ void Client::CEffect_ParticleSimulator::Spawn(const uint32_t iCount)
 				MIN_PARTICLE_LIFETIME);
 		Particle.iRandomSeed = m_iRandomState;
 		Particle.isAlive = true;
+		if (nullptr != pDynamicParameter)
+		{
+			Particle.vDynamicParameter = {
+				Evaluate(pDynamicParameter->DynamicParameter.X, 0.f),
+				Evaluate(pDynamicParameter->DynamicParameter.Y, 0.f),
+				Evaluate(pDynamicParameter->DynamicParameter.Z, 0.f),
+				Evaluate(pDynamicParameter->DynamicParameter.W, 0.f)
+			};
+		}
 		if (nullptr != pSubUV)
 		{
 			Particle.iSubUVFrame =

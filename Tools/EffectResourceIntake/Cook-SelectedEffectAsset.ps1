@@ -10,7 +10,10 @@ param(
     [string]$MeshPath = '',
 
     [Parameter()]
-    [string]$OutputRoot = 'Client/Bin/Resources/LostArk/Effect/Cooked',
+    [string]$OutputRoot = 'Client/Bin/Resources/LostArk/Effect/Effect_Tool',
+
+    [Parameter()]
+    [string]$Category = '',
 
     [Parameter()]
     [string]$ConverterPath = 'Tools/WintersAssetConverter/Bin/WintersAssetConverter.exe',
@@ -108,6 +111,15 @@ $repositoryRoot = (Resolve-Path -LiteralPath (
 $resolvedOutputRoot = Resolve-RepositoryPath `
     -PathValue $OutputRoot `
     -RepositoryRoot $repositoryRoot
+
+# Category groups cooked assets by class folder, e.g. Effect_Tool/Glaivier.
+# ASCII names only: the converter breaks on non-ASCII path segments.
+if (-not [string]::IsNullOrWhiteSpace($Category)) {
+    if ($Category -notmatch '^[A-Za-z0-9_-]+$') {
+        throw "Category must be a single ASCII folder name: $Category"
+    }
+    $resolvedOutputRoot = Join-Path -Path $resolvedOutputRoot -ChildPath $Category
+}
 
 if (Test-Path -LiteralPath $resolvedOutputRoot -PathType Leaf) {
     throw "OutputRoot points to a file: $resolvedOutputRoot"

@@ -10,6 +10,21 @@ texture2D   g_DepthTexture;
 texture2D   g_SpecularTexture;
 texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
+texture2D   g_SceneHDRTexture;
+texture2D   g_PostProcessTexture;
+texture2D   g_BloomTexture;
+texture2D   g_DistortionTexture;
+
+float2      g_vBloomTexelSize;
+
+/* Post effects must not wrap energy from one screen edge to the opposite edge. */
+sampler PostProcessSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+};
 
 vector      g_vCamPosition;
 
@@ -243,6 +258,123 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 }
 
 
+float3 Sanitize_HDR(float3 vColor)
+{
+    // FP16 SceneHDR can contain INF after heavy additive overlap.  Keep the
+    // post chain finite before division in bright-pass and Hable tone mapping.
+    return min(max(vColor, 0.f), 60000.f);
+}
+
+float3 Extract_Bloom(float3 vColor)
+{
+    const float fThreshold = 1.f;
+    const float fSoftKnee = 0.5f;
+
+    float fBrightness = max(vColor.r, max(vColor.g, vColor.b));
+    float fSoft = clamp(
+        fBrightness - fThreshold + fSoftKnee,
+        0.f, 2.f * fSoftKnee);
+    fSoft = fSoft * fSoft / (4.f * fSoftKnee + 0.00001f);
+
+    float fContribution = max(fBrightness - fThreshold, fSoft) /
+        max(fBrightness, 0.00001f);
+    return vColor * fContribution;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_BLOOM_EXTRACT(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float3 vScene = Sanitize_HDR(g_PostProcessTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rgb);
+    Out.vBackBuffer = float4(Extract_Bloom(vScene), 1.f);
+    return Out;
+}
+
+float3 Blur_Bloom(float2 vTexcoord, float2 vDirection)
+{
+    float2 vStep = g_vBloomTexelSize * vDirection;
+    float3 vResult = g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord).rgb * 0.2270270270f;
+
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord + vStep).rgb * 0.1945945946f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord - vStep).rgb * 0.1945945946f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord + vStep * 2.f).rgb * 0.1216216216f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord - vStep * 2.f).rgb * 0.1216216216f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord + vStep * 3.f).rgb * 0.0540540541f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord - vStep * 3.f).rgb * 0.0540540541f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord + vStep * 4.f).rgb * 0.0162162162f;
+    vResult += g_PostProcessTexture.Sample(
+        PostProcessSampler, vTexcoord - vStep * 4.f).rgb * 0.0162162162f;
+    return vResult;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_BLOOM_BLUR_H(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    Out.vBackBuffer = float4(
+        Blur_Bloom(In.vTexcoord, float2(1.f, 0.f)), 1.f);
+    return Out;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_BLOOM_BLUR_V(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    Out.vBackBuffer = float4(
+        Blur_Bloom(In.vTexcoord, float2(0.f, 1.f)), 1.f);
+    return Out;
+}
+
+/* Hable(Uncharted 2) 필름 커브. 씬 컬러는 선형이고 1을 넘을 수 있다. */
+float3 Tonemap_Hable(float3 vColor)
+{
+    const float A = 0.15f;
+    const float B = 0.50f;
+    const float C = 0.10f;
+    const float D = 0.20f;
+    const float E = 0.02f;
+    const float F = 0.30f;
+
+    return ((vColor * (A * vColor + C * B) + D * E) /
+            (vColor * (A * vColor + B) + D * F)) - E / F;
+}
+
+/* SceneHDR을 백버퍼로 옮기는 유일한 지점. 톤매핑과 감마를 여기서 한 번만 한다. */
+PS_OUT_BACKBUFFER PS_MAIN_FINAL(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+
+    float2 vDistortion = clamp(g_DistortionTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rg, -0.05f, 0.05f);
+    float2 vSceneTexcoord = In.vTexcoord + vDistortion;
+
+    float3 vScene = Sanitize_HDR(g_SceneHDRTexture.Sample(
+        PostProcessSampler, vSceneTexcoord).rgb);
+    float3 vBloom = Sanitize_HDR(g_BloomTexture.Sample(
+        PostProcessSampler, vSceneTexcoord).rgb);
+
+    const float fBloomIntensity = 0.8f;
+    float3 vSceneWithBloom = vScene + vBloom * fBloomIntensity;
+
+    const float fExposureBias = 2.f;
+    const float fWhitePoint = 11.2f;
+
+    float3 vMapped = Tonemap_Hable(vSceneWithBloom * fExposureBias) /
+                     Tonemap_Hable(fWhitePoint.xxx);
+
+    /* 선형 -> 디스플레이. 파이프라인 전체에서 감마는 이 한 줄이 전부다. */
+    Out.vBackBuffer = float4(pow(saturate(vMapped), 1.f / 2.2f), 1.f);
+
+    return Out;
+}
+
+
 technique11 DefaultTechnique
 {
     pass Debug
@@ -285,6 +417,47 @@ technique11 DefaultTechnique
         PixelShader = compile ps_5_0 PS_MAIN_COMBINED();
     }
 
+    /* DEFERRED::FINAL == 4. 반드시 Combined 다음 순서를 유지할 것. */
+    pass Final
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_FINAL();
+    }
+
+    /* FINAL stays at index 4; bloom passes are invoked before it by CRenderer. */
+    pass BloomExtract
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_BLOOM_EXTRACT();
+    }
+
+    pass BloomBlurHorizontal
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_BLOOM_BLUR_H();
+    }
+
+    pass BloomBlurVertical
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_BLOOM_BLUR_V();
+    }
 
 }
 

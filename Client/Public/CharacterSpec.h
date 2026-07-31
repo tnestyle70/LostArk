@@ -32,6 +32,10 @@ struct EQUIPMENT_PART_SPEC
 that class's logic; CCharacter itself stays class-agnostic. */
 struct CHARACTER_SPEC
 {
+	/* Names the data files that belong to this class, e.g. "LanceMaster" finds
+	../Bin/DataFiles/Anim/LanceMaster.clipseq. */
+	const char_t* pAssetName;
+
 	const tchar_t* pBodyModelTag;
 	const tchar_t* pShaderTag;
 

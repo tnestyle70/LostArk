@@ -42,7 +42,11 @@ public:
 		float				fRotation = 0.f;
 		vector<TEXTURE_LAYER>	TextureLayers;
 
-		bool				bAnimationOn = false;
+		/* Charge stages: a slot's base art appears once the previewed stage reaches iBaseFromStage,
+		   and its lit art (shine + animation) once it reaches iShineFromStage. Defaults reproduce the
+		   old on/off behaviour: base always visible, lit from stage 1. */
+		int32_t				iBaseFromStage = 0;
+		int32_t				iShineFromStage = 1;
 		string				strShineTexture;
 		vector<string>		AnimationFrames;
 		float				fAnimationFPS = 10.f;
@@ -108,6 +112,9 @@ private:
 	bool				m_bPreviewHover = false;
 	int32_t				m_iHoveredSlot = -1;
 
+	/* Which charge stage the canvas is previewing; one control drives every slot at once. */
+	int32_t				m_iPreviewStage = 0;
+
 	bool_t				m_bMarqueeActive = false;
 	float				m_fMarqueeStartX = 0.f;
 	float				m_fMarqueeStartY = 0.f;
@@ -128,6 +135,13 @@ private:
 private:
 	static constexpr float ms_fRefWidth = 1280.f;
 	static constexpr float ms_fRefHeight = 720.f;
+
+	/* The canvas viewport stays a fixed size and scrolls, so zooming in doesn't grow the tool window. */
+	static constexpr float ms_fViewportWidth = 912.f;
+	static constexpr float ms_fViewportHeight = 520.f;
+	static constexpr float ms_fMinZoom = 0.25f;
+	static constexpr float ms_fMaxZoom = 8.f;
+	static constexpr int32_t ms_iMaxStage = 2;
 };
 
 NS_END

@@ -34,6 +34,10 @@ private:
 	f32_t Sample(const EFFECT_DISTRIBUTION_FLOAT_DESC& Desc);
 	float3_t Sample(const EFFECT_DISTRIBUTION_VECTOR_DESC& Desc);
 	float4_t Sample(const EFFECT_DISTRIBUTION_COLOR_DESC& Desc);
+	// Spawn offset for the module shape: the uniform range for BOX, a point
+	// inside the volume for SPHERE and CYLINDER.
+	float3_t Sample_Location(
+		const EFFECT_INITIAL_LOCATION_MODULE_DESC& Desc);
 	f32_t Evaluate(const EFFECT_CURVE_FLOAT_DESC& Curve,
 		f32_t fNormalizedTime) const;
 	f32_t Next_Random01();

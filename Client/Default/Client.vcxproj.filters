@@ -288,9 +288,6 @@
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Part_Body.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -320,6 +317,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Level_ValtanArena.cpp">
       <Filter>01.Levels\04. ValtanArena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
+      <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -470,9 +470,6 @@
     <ClInclude Include="..\Public\CharacterSpec.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Logic_LanceMaster.h">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\Part_Body.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -503,6 +500,9 @@
     <ClInclude Include="..\Public\Level_ValtanArena.h">
       <Filter>01.Levels\04. ValtanArena</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Logic_LanceMaster.h">
+      <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Client.ico">
@@ -520,6 +520,9 @@
   <ItemGroup>
     <None Include="Client.vcxproj">
       <Filter>98.Default</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectMaterial.hlsli">
+      <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets">
       <Filter>96.DataFiles\Map</Filter>

@@ -27,12 +27,16 @@ private:
 	ComPtr<ID3D11Device>					m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext>				m_pContext = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
+	ComPtr<ID3D11DepthStencilView>			m_pBloomDSV = { nullptr };
 	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
 
 	float4x4_t								m_WorldMatrix{}, m_ViewMatrix{}, m_ProjMatrix{};
+	uint32_t								m_iBloomWidth = {};
+	uint32_t								m_iBloomHeight = {};
+	float2_t								m_vBloomTexelSize = {};
 
 #ifdef _DEBUG
 	list<shared_ptr<CComponent>>			m_DebugComponent;
@@ -46,10 +50,15 @@ private:
 	HRESULT Render_Combined();
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
+	HRESULT Render_Bloom();
+	HRESULT Render_BloomPass(const wstring_t& strMRTTag,
+		const wstring_t& strSourceTargetTag, DEFERRED ePass);
+	HRESULT Render_Final();
 	HRESULT Render_UI();
 
 private:
 	HRESULT Ready_Shadow_DSV();
+	HRESULT Ready_Bloom_DSV();
 	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
 
 #ifdef _DEBUG
