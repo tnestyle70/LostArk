@@ -302,6 +302,31 @@ HRESULT CLoader::Ready_For_Test_Level2()
 {
     lstrcpy(m_szLoadingText, TEXT("Loading Test Level 2 resources."));
 
+    /*
+     * The HDR regression only needs a camera.  Loading the full LanceMaster
+     * character makes the renderer test depend on optional Drive-managed
+     * models and currently blocks at CModel::Create when they are absent.
+     * Normal TEST_LEVEL2 startup still follows the complete path below.
+     */
+    const wchar_t* pCommandLine = GetCommandLineW();
+    const bool_t isHDRReadbackRequested =
+        nullptr != pCommandLine &&
+        nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+    if (isHDRReadbackRequested)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            ETOUI(LEVEL::TEST_LEVEL2),
+            TEXT("Prototype_GameObject_Camera_Free"),
+            CCamera_Free::Create(m_pDevice, m_pContext))))
+        {
+            return E_FAIL;
+        }
+
+        lstrcpy(m_szLoadingText, TEXT("HDR validation loading complete."));
+        m_isFinished = true;
+        return S_OK;
+    }
+
     const matrix_t preTransform = XMMatrixScaling(0.0001f, 0.0001f, 0.0001f);
 
 #pragma region CAMERA

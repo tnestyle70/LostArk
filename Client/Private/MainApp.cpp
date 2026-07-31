@@ -99,7 +99,14 @@ HRESULT CMainApp::Initialize()
     if (FAILED(Ready_Prototype_For_Static()))
         return E_FAIL;
 
-    if (FAILED(Start_Level(LEVEL::LOGO)))
+    const wchar_t* pCommandLine = GetCommandLineW();
+    const LEVEL eStartLevel =
+        nullptr != pCommandLine &&
+        nullptr != wcsstr(pCommandLine, L"--hdr-readback")
+        ? LEVEL::TEST_LEVEL2
+        : LEVEL::LOGO;
+
+    if (FAILED(Start_Level(eStartLevel)))
         return E_FAIL;
 
     return S_OK;
@@ -353,11 +360,24 @@ HRESULT CMainApp::ReadyDebugTools()
     m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
     m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
 
+    const wchar_t* pCommandLine = GetCommandLineW();
+    const bool_t isEffectProfileRequested =
+        nullptr != pCommandLine &&
+        nullptr != wcsstr(pCommandLine, L"--effect-profile");
+    if (nullptr != pCommandLine &&
+        nullptr != wcsstr(pCommandLine, L"--effect-open") &&
+        nullptr != m_pMapTool &&
+        !m_pMapTool->IsOpen())
+    {
+        m_pMapTool->Toggle();
+    }
+
     if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
     {
         pProfiler->Reset_History();
-        pProfiler->Set_Enabled(false);
+        pProfiler->Set_Enabled(isEffectProfileRequested);
     }
+    m_bProfilerVisible = isEffectProfileRequested;
 
     return S_OK;
 }

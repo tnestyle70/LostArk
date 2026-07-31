@@ -31,7 +31,11 @@ bool_t CImGuiLayer::Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceCon
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	io.IniFilename = "imgui.ini";
+	const wchar_t* pCommandLine = GetCommandLineW();
+	io.IniFilename =
+		nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--effect-reset-layout")
+		? nullptr : "imgui.ini";
 
 	ImGui::StyleColorsDark();
 

@@ -15,6 +15,11 @@ CRenderer::~CRenderer()
 HRESULT CRenderer::Initialize()
 {
 	float2_t		vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	m_iBloomWidth = max(1u, static_cast<uint32_t>(vViewportSize.x) / 2u);
+	m_iBloomHeight = max(1u, static_cast<uint32_t>(vViewportSize.y) / 2u);
+	m_vBloomTexelSize = float2_t(
+		1.f / static_cast<f32_t>(m_iBloomWidth),
+		1.f / static_cast<f32_t>(m_iBloomHeight));
 
 	/* For.Target_Diffuse */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Diffuse"), vViewportSize.x, vViewportSize.y,
@@ -56,7 +61,31 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(1.f, 1.f, 1.f, 1.f))))
 		return E_FAIL;
 
+	/* For.Target_SceneHDR */
+	/* Scene colour before tone mapping. FP16 so values above 1 survive. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SceneHDR"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	/* Signed RG offsets written by distortion-capable effect shaders. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Distortion"), vViewportSize.x, vViewportSize.y,
+		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
+	/* Half-resolution bloom chain. R11G11B10 preserves positive HDR energy. */
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_BloomExtract"), m_iBloomWidth, m_iBloomHeight,
+		DXGI_FORMAT_R11G11B10_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_BloomPing"), m_iBloomWidth, m_iBloomHeight,
+		DXGI_FORMAT_R11G11B10_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_BloomResult"), m_iBloomWidth, m_iBloomHeight,
+		DXGI_FORMAT_R11G11B10_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
+		return E_FAIL;
+
 	if (FAILED(Ready_Shadow_DSV()))
+		return E_FAIL;
+	if (FAILED(Ready_Bloom_DSV()))
 		return E_FAIL;
 
 
@@ -77,6 +106,20 @@ HRESULT CRenderer::Initialize()
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_LightAcc"), TEXT("Target_Shade"))))
 		return E_FAIL;
 	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_LightAcc"), TEXT("Target_Specular"))))
+		return E_FAIL;
+
+	/* MRT_SceneHDR */
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SceneHDR"), TEXT("Target_SceneHDR"))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_SceneHDR"), TEXT("Target_Distortion"))))
+		return E_FAIL;
+
+	/* Half-resolution bloom ping-pong targets. */
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_BloomExtract"), TEXT("Target_BloomExtract"))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_BloomPing"), TEXT("Target_BloomPing"))))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Add_MRT(TEXT("MRT_BloomResult"), TEXT("Target_BloomResult"))))
 		return E_FAIL;
 
 	/* MRT_ShadowObject */
@@ -126,20 +169,40 @@ HRESULT CRenderer::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGame
 
 HRESULT CRenderer::Draw()
 {
-	if (FAILED(Render_Priority()))
-		return E_FAIL;
 	if (FAILED(Render_Shadow()))
 		return E_FAIL;
 	if (FAILED(Render_NonBlend()))
 		return E_FAIL;
 	if (FAILED(Render_Lights()))
 		return E_FAIL;
-	if (FAILED(Render_Combined()))
+
+	/* Scene colour is accumulated in FP16 so lighting and effect values above 1 */
+	/* survive until tone mapping. Sky/background join the same target, or the   */
+	/* final blit would overwrite them with black.                               */
+	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"))))
 		return E_FAIL;
-	if (FAILED(Render_NonLight()))
+
+	HRESULT hSceneResult = Render_Priority();
+	if (SUCCEEDED(hSceneResult))
+		hSceneResult = Render_Combined();
+	if (SUCCEEDED(hSceneResult))
+		hSceneResult = Render_NonLight();
+	if (SUCCEEDED(hSceneResult))
+		hSceneResult = Render_Blend();
+
+	/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
+	const HRESULT hEndSceneResult = CGameInstance::Get().End_MRT();
+	if (FAILED(hSceneResult) || FAILED(hEndSceneResult))
 		return E_FAIL;
-	if (FAILED(Render_Blend()))
+
+	if (FAILED(Render_Bloom()))
 		return E_FAIL;
+
+	/* The one and only place tone mapping and gamma are applied. */
+	if (FAILED(Render_Final()))
+		return E_FAIL;
+
+	/* UI is authored in display space, so it stays out of the HDR target. */
 	if (FAILED(Render_UI()))
 		return E_FAIL;
 
@@ -223,36 +286,26 @@ HRESULT CRenderer::Render_Lights()
 	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_LightAcc"))))
 		return E_FAIL;
 
-	/* 빛 정보를 셰이더로 던진다. */
-	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")))
-		return E_FAIL;	
-	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")))
-		return E_FAIL;
+	HRESULT hResult = S_OK;
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Normal"), m_pShader, "g_NormalTexture")) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
+		FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse", CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW))) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrixInverse", CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))) ||
+		FAILED(m_pShader->Bind_RawValue("g_vCamPosition", CGameInstance::Get().Get_CamPosition(), sizeof(float4_t))) ||
+		FAILED(m_pVIBuffer->Bind_Resources()) ||
+		FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer)))
+	{
+		hResult = E_FAIL;
+	}
 
-
-	if (FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)))
-		return E_FAIL;
-	if (FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)))
-		return E_FAIL;
-	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
-		return E_FAIL;
-	if (FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse", CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW))))
-		return E_FAIL;
-	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrixInverse", CGameInstance::Get().Get_InverseTransform(D3DTS::PROJ))))
-		return E_FAIL;
-	if (FAILED(m_pShader->Bind_RawValue("g_vCamPosition", CGameInstance::Get().Get_CamPosition(), sizeof(float4_t))))
-		return E_FAIL;
-
-	if (FAILED(m_pVIBuffer->Bind_Resources()))
-		return E_FAIL;
-
-	if (FAILED(CGameInstance::Get().Render_Lights(m_pShader, m_pVIBuffer)))
-		return E_FAIL;
-
+	/* Always restore the back buffer even when a light bind or draw fails. */
 	if (FAILED(CGameInstance::Get().End_MRT()))
-		return E_FAIL;
+		hResult = E_FAIL;
 
-	return S_OK;
+	return hResult;
 }
 
 HRESULT CRenderer::Render_Combined()
@@ -318,6 +371,97 @@ HRESULT CRenderer::Render_Blend()
 	return S_OK;
 }
 
+HRESULT CRenderer::Render_Bloom()
+{
+	D3D11_VIEWPORT OriginalViewports[
+		D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
+	UINT iViewportCount = _countof(OriginalViewports);
+	m_pContext->RSGetViewports(&iViewportCount, OriginalViewports);
+
+	SetUp_ViewportDesc(m_iBloomWidth, m_iBloomHeight);
+
+	HRESULT hResult = Render_BloomPass(
+		TEXT("MRT_BloomExtract"), TEXT("Target_SceneHDR"),
+		DEFERRED::BLOOM_EXTRACT);
+	if (SUCCEEDED(hResult))
+	{
+		hResult = Render_BloomPass(
+			TEXT("MRT_BloomPing"), TEXT("Target_BloomExtract"),
+			DEFERRED::BLOOM_BLUR_H);
+	}
+	if (SUCCEEDED(hResult))
+	{
+		hResult = Render_BloomPass(
+			TEXT("MRT_BloomResult"), TEXT("Target_BloomPing"),
+			DEFERRED::BLOOM_BLUR_V);
+	}
+
+	/* Restore every viewport exactly as it was before the half-resolution pass. */
+	if (0 < iViewportCount)
+		m_pContext->RSSetViewports(iViewportCount, OriginalViewports);
+	else
+		m_pContext->RSSetViewports(0, nullptr);
+
+	return hResult;
+}
+
+HRESULT CRenderer::Render_BloomPass(const wstring_t& strMRTTag,
+	const wstring_t& strSourceTargetTag, DEFERRED ePass)
+{
+	if (FAILED(CGameInstance::Get().Begin_MRT(strMRTTag, m_pBloomDSV)))
+		return E_FAIL;
+
+	HRESULT hResult = S_OK;
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(
+			strSourceTargetTag, m_pShader, "g_PostProcessTexture")) ||
+		FAILED(m_pShader->Bind_RawValue(
+			"g_vBloomTexelSize", &m_vBloomTexelSize,
+			sizeof(m_vBloomTexelSize))) ||
+		FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)) ||
+		FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)) ||
+		FAILED(m_pShader->Begin(ETOUI(ePass))) ||
+		FAILED(m_pVIBuffer->Bind_Resources()) ||
+		FAILED(m_pVIBuffer->Render()))
+	{
+		hResult = E_FAIL;
+	}
+
+	/* Keep render-target state balanced even if binding or drawing failed. */
+	if (FAILED(CGameInstance::Get().End_MRT()))
+		hResult = E_FAIL;
+
+	return hResult;
+}
+
+HRESULT CRenderer::Render_Final()
+{
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_SceneHDR"), m_pShader, "g_SceneHDRTexture")))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_BloomResult"), m_pShader, "g_BloomTexture")))
+		return E_FAIL;
+	if (FAILED(CGameInstance::Get().Bind_RT_SRV(TEXT("Target_Distortion"), m_pShader, "g_DistortionTexture")))
+		return E_FAIL;
+
+	if (FAILED(m_pShader->Bind_Matrix("g_WorldMatrix", &m_WorldMatrix)))
+		return E_FAIL;
+	if (FAILED(m_pShader->Bind_Matrix("g_ViewMatrix", &m_ViewMatrix)))
+		return E_FAIL;
+	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
+		return E_FAIL;
+
+	if (FAILED(m_pShader->Begin(ETOUI(DEFERRED::FINAL))))
+		return E_FAIL;
+
+	if (FAILED(m_pVIBuffer->Bind_Resources()))
+		return E_FAIL;
+
+	if (FAILED(m_pVIBuffer->Render()))
+		return E_FAIL;
+
+	return S_OK;
+}
+
 HRESULT CRenderer::Render_UI()
 {
 	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::UI)])
@@ -363,6 +507,35 @@ HRESULT CRenderer::Ready_Shadow_DSV()
 	if (FAILED(m_pDevice->CreateDepthStencilView(pDepthStencilTexture.Get(), nullptr, m_pShadowDSV.GetAddressOf())))
 		return E_FAIL;
 
+
+	return S_OK;
+}
+
+HRESULT CRenderer::Ready_Bloom_DSV()
+{
+	ComPtr<ID3D11Texture2D> pDepthStencilTexture = { nullptr };
+
+	D3D11_TEXTURE2D_DESC TextureDesc{};
+	TextureDesc.Width = m_iBloomWidth;
+	TextureDesc.Height = m_iBloomHeight;
+	TextureDesc.MipLevels = 1;
+	TextureDesc.ArraySize = 1;
+	TextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	TextureDesc.SampleDesc.Count = 1;
+	TextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	TextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+	if (FAILED(m_pDevice->CreateTexture2D(
+		&TextureDesc, nullptr, pDepthStencilTexture.GetAddressOf())))
+	{
+		return E_FAIL;
+	}
+
+	if (FAILED(m_pDevice->CreateDepthStencilView(
+		pDepthStencilTexture.Get(), nullptr, m_pBloomDSV.GetAddressOf())))
+	{
+		return E_FAIL;
+	}
 
 	return S_OK;
 }

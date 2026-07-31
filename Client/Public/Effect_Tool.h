@@ -32,6 +32,21 @@ private:
 
 	void Create_DefaultAsset();
 	void Rebuild_Simulators();
+	// A loaded asset brings its own element ids. Without this the counter
+	// would restart at 1 and hand out ids that already exist.
+	void Refresh_NextElementId();
+	void Adopt_LoadedAsset(EFFECT_ASSET_DESC&& Loaded);
+	filesystem::path Resolve_AuthoredPath(const string& strAssetId) const;
+	void Refresh_AuthoredList();
+	// --effect-open <assetId> lets a capture or regression run reach a specific
+	// authored asset without driving the ImGui list by hand.
+	void Open_AssetFromCommandLine();
+	// --hdr-readback samples SceneHDR and Bloom after TEST_LEVEL2 is ready. It
+	// proves the 1/5/25 reference levels numerically and stops after a bounded
+	// number of frames; --effect-auto-exit closes only that automated run.
+	void Capture_SceneHDR_Readback();
+	// Zoom that makes the current asset fill the preview canvas.
+	f32_t Estimate_PreviewZoom() const;
 	void Restart_Preview();
 	void Render_Toolbar();
 	void Render_EmitterPanel();
@@ -65,13 +80,20 @@ private:
 	f32_t m_fPreviewTime = {};
 	f32_t m_fTimeScale = { 1.f };
 	f32_t m_fPreviewDistance = {};
+	// Pixels per world metre in the 2D preview. Imported effects are authored
+	// in centimetres and convert down to fractions of a metre, so the canvas
+	// needs to zoom instead of the asset being scaled up.
+	f32_t m_fPreviewZoom = { 18.f };
 	float3_t m_vWorldPreviewPosition = { 0.f, 2.f, 0.f };
-	string m_strJsonPath = {
-		"../Bin/Resources/LostArk/Effect/Effect_Tool/Editor/working.effect.json"
+	string m_strAuthoringPath = {
+		"../Bin/Resources/LostArk/Effect/Effect_Tool/Editor/working.effect"
 	};
 	string m_strBinaryPath = {
 		"../Bin/Resources/LostArk/Effect/Effect_Tool/Editor/working.weffect"
 	};
+	string m_strSaveAsId;
+	vector<string> m_AuthoredAssets;
+	int32_t m_iSelectedAuthoredAsset = { -1 };
 	string m_strFileStatus;
 	string m_strSourceCatalogGroup = "Bard";
 	string m_strSourceCatalogFilter;
@@ -82,7 +104,14 @@ private:
 	bool_t m_isWorldPreviewEnabled = { false };
 	bool_t m_isWorldPreviewDirty = { true };
 	bool_t m_isSourceCatalogOpen = { true };
+	bool_t m_isFocusRequested = { false };
+	ComPtr<ID3D11Texture2D> m_pSceneHDRStaging = { nullptr };
+	ComPtr<ID3D11Texture2D> m_pDistortionStaging = { nullptr };
+	uint32_t m_iHDRReadbackFrame = {};
+	bool_t m_isHDRReadbackRequested = { false };
+	bool_t m_isHDRReadbackDone = { false };
+	bool_t m_isHDRAutoExitRequested = { false };
+	ComPtr<ID3D11Texture2D> m_pBloomResultStaging = { nullptr };
 };
 
 NS_END
-

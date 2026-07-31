@@ -21,8 +21,16 @@ HRESULT CLevel_Test2::Initialize()
 		return E_FAIL;
 	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 		return E_FAIL;
-	if (FAILED(Ready_Layer_Player(TEXT("Layer_Player"))))
+
+	const wchar_t* pCommandLine = GetCommandLineW();
+	const bool_t isHDRReadbackRequested =
+		nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+	if (!isHDRReadbackRequested &&
+		FAILED(Ready_Layer_Player(TEXT("Layer_Player"))))
+	{
 		return E_FAIL;
+	}
 	return S_OK;
 }
 

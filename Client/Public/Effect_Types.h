@@ -5,7 +5,7 @@
 
 NS_BEGIN(Client)
 
-constexpr uint32_t EFFECT_ASSET_SCHEMA_VERSION = 3;
+constexpr uint32_t EFFECT_ASSET_SCHEMA_VERSION = 5;
 constexpr uint64_t INVALID_EFFECT_ELEMENT_ID = 0;
 constexpr uint32_t EFFECT_LOOP_FOREVER = 0;
 constexpr uint32_t EFFECT_MAX_EMITTERS = 128;
@@ -57,6 +57,7 @@ enum class EFFECT_MODULE_TYPE : uint8_t
 	MESH_ANIMATION,
 	BEAM,
 	TRAIL,
+	DYNAMIC_PARAMETER,
 	END
 };
 
@@ -90,6 +91,33 @@ enum class EFFECT_SORT_MODE : uint8_t
 	END
 };
 
+/*
+ * Mirrors the UE3 Cascade EParticleScreenAlignment values that the extracted
+ * recipes actually use. SQUARE forces one size for both axes, RECTANGLE keeps
+ * the authored X/Y, and VELOCITY turns the sprite so its local up axis follows
+ * the particle velocity on screen.
+ */
+enum class EFFECT_SCREEN_ALIGNMENT : uint8_t
+{
+	SQUARE,
+	RECTANGLE,
+	VELOCITY,
+	END
+};
+
+/*
+ * Cascade spawn volumes. BOX keeps the original uniform range behaviour;
+ * SPHERE and CYLINDER match ParticleModuleLocationPrimitiveSphere/Cylinder,
+ * which the extracted recipes use heavily.
+ */
+enum class EFFECT_LOCATION_SHAPE : uint8_t
+{
+	BOX,
+	SPHERE,
+	CYLINDER,
+	END
+};
+
 struct EFFECT_DISTRIBUTION_FLOAT_DESC
 {
 	EFFECT_DISTRIBUTION_TYPE eType = { EFFECT_DISTRIBUTION_TYPE::CONSTANT };
@@ -114,11 +142,34 @@ struct EFFECT_DISTRIBUTION_COLOR_DESC
 	float4_t vMax = { 1.f, 1.f, 1.f, 1.f };
 };
 
+struct EFFECT_MATERIAL_DESC
+{
+	string strOpacityTextureAssetId;
+	string strDissolveTextureAssetId;
+	string strDistortionTextureAssetId;
+	float2_t vUVTiling = { 1.f, 1.f };
+	float2_t vUVOffset = {};
+	float2_t vUVPanner = {};
+	f32_t fEmissiveStrength = { 1.f };
+	f32_t fOpacityMaskThreshold = {};
+	f32_t fDissolveAmount = {};
+	f32_t fDissolveEdgeWidth = { 0.05f };
+	float4_t vDissolveEdgeColor = {};
+	f32_t fSoftParticleDistance = {};
+	f32_t fDistortionStrength = {};
+};
+
 struct EFFECT_REQUIRED_MODULE_DESC
 {
 	string strTextureAssetId;
 	string strMeshAssetId;
 	string strMaterialAssetId;
+	// Cascade keeps ScreenAlignment on the required module, so the importer can
+	// map the extracted value straight across without inventing a new owner.
+	EFFECT_SCREEN_ALIGNMENT eScreenAlignment = {
+		EFFECT_SCREEN_ALIGNMENT::RECTANGLE
+	};
+	EFFECT_MATERIAL_DESC Material;
 };
 
 struct EFFECT_SPAWN_MODULE_DESC
@@ -137,7 +188,16 @@ struct EFFECT_LIFETIME_MODULE_DESC
 
 struct EFFECT_INITIAL_LOCATION_MODULE_DESC
 {
+	// Used as the spawn offset for every shape, and as the whole spawn volume
+	// when eShape is BOX.
 	EFFECT_DISTRIBUTION_VECTOR_DESC Location;
+	EFFECT_LOCATION_SHAPE eShape = { EFFECT_LOCATION_SHAPE::BOX };
+	f32_t fRadius = { 1.f };
+	// Hollow start radius. Equal to fRadius means a shell.
+	f32_t fInnerRadius = {};
+	// CYLINDER only, measured along Y.
+	f32_t fHeight = { 1.f };
+	bool_t isSurfaceOnly = { false };
 };
 
 struct EFFECT_INITIAL_VELOCITY_MODULE_DESC
@@ -256,6 +316,22 @@ struct EFFECT_TRAIL_MODULE_DESC
 	string strTargetBone;
 };
 
+struct EFFECT_DYNAMIC_PARAMETER_MODULE_DESC
+{
+	EFFECT_CURVE_FLOAT_DESC X = { {
+		{ 0.f, 1.f }, { 1.f, 1.f }
+	} };
+	EFFECT_CURVE_FLOAT_DESC Y = { {
+		{ 0.f, 1.f }, { 1.f, 1.f }
+	} };
+	EFFECT_CURVE_FLOAT_DESC Z = { {
+		{ 0.f, 0.f }, { 1.f, 0.f }
+	} };
+	EFFECT_CURVE_FLOAT_DESC W = { {
+		{ 0.f, 1.f }, { 1.f, 1.f }
+	} };
+};
+
 struct EFFECT_MODULE_DESC
 {
 	uint64_t iModuleId = { INVALID_EFFECT_ELEMENT_ID };
@@ -289,6 +365,7 @@ struct EFFECT_MODULE_DESC
 	EFFECT_MESH_ANIMATION_MODULE_DESC MeshAnimation;
 	EFFECT_BEAM_MODULE_DESC Beam;
 	EFFECT_TRAIL_MODULE_DESC Trail;
+	EFFECT_DYNAMIC_PARAMETER_MODULE_DESC DynamicParameter;
 };
 
 struct EFFECT_EMITTER_DESC
@@ -333,6 +410,7 @@ struct EFFECT_PARTICLE
 	f32_t fRelativeTime = {};
 	uint32_t iRandomSeed = {};
 	uint32_t iSubUVFrame = {};
+	float4_t vDynamicParameter = { 1.f, 1.f, 0.f, 1.f };
 	bool_t isEventTriggered = { false };
 	bool_t isAlive = { false };
 };

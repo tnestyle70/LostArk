@@ -466,6 +466,15 @@ bool_t CEffect_Runtime::Rebuild(
 		{
 			Runtime.pTextureSRV = Load_Texture(
 				pRequired->Required.strTextureAssetId);
+			Runtime.pOpacityTextureSRV = Load_Texture(
+				pRequired->Required.Material.strOpacityTextureAssetId);
+			Runtime.pDissolveTextureSRV = Load_Texture(
+				pRequired->Required.Material.strDissolveTextureAssetId);
+			Runtime.pDistortionTextureSRV =
+				pRequired->Required.Material.strDistortionTextureAssetId.empty()
+				? Runtime.pTextureSRV
+				: Load_Texture(
+					pRequired->Required.Material.strDistortionTextureAssetId);
 
 			if (EFFECT_EMITTER_TYPE::MESH == Runtime.Desc.eType)
 			{
@@ -520,6 +529,12 @@ bool_t CEffect_Runtime::Rebuild(
 
 		if (nullptr == Runtime.pTextureSRV.Get())
 			Runtime.pTextureSRV = m_pFallbackTextureSRV;
+		if (nullptr == Runtime.pOpacityTextureSRV.Get())
+			Runtime.pOpacityTextureSRV = m_pFallbackTextureSRV;
+		if (nullptr == Runtime.pDissolveTextureSRV.Get())
+			Runtime.pDissolveTextureSRV = m_pFallbackTextureSRV;
+		if (nullptr == Runtime.pDistortionTextureSRV.Get())
+			Runtime.pDistortionTextureSRV = Runtime.pTextureSRV;
 
 		m_EmitterRuntimes.push_back(move(Runtime));
 	}
@@ -850,22 +865,71 @@ HRESULT CEffect_Runtime::Render_SpriteEmitter(
 		? 1u
 		: 0u;
 
+	/*
+	 * Cascade ScreenAlignment. The billboard basis already lives in the vertex
+	 * shader, so Square only has to equalise the two size axes and Velocity
+	 * only has to fold the on-screen motion angle into the existing rotation
+	 * constant. No shader change is needed for either.
+	 */
+	const EFFECT_MODULE_DESC* pAlignSource = Find_Module(
+		Runtime.Desc, EFFECT_MODULE_TYPE::REQUIRED);
+	const EFFECT_SCREEN_ALIGNMENT eAlignment =
+		(nullptr != pAlignSource)
+		? pAlignSource->Required.eScreenAlignment
+		: EFFECT_SCREEN_ALIGNMENT::RECTANGLE;
+
+	float3_t vCameraRight = { 1.f, 0.f, 0.f };
+	float3_t vCameraUp = { 0.f, 1.f, 0.f };
+	if (EFFECT_SCREEN_ALIGNMENT::VELOCITY == eAlignment)
+	{
+		const float4x4_t* pInverseView =
+			CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+		if (nullptr != pInverseView)
+		{
+			vCameraRight = {
+				pInverseView->_11, pInverseView->_12, pInverseView->_13
+			};
+			vCameraUp = {
+				pInverseView->_21, pInverseView->_22, pInverseView->_23
+			};
+		}
+	}
+
 	for (const EFFECT_PARTICLE* pParticle : SortedParticles)
 	{
 		const float3_t vPosition = To_WorldPosition(*pParticle);
 		const float4_t vCenter = {
 			vPosition.x, vPosition.y, vPosition.z, 1.f
 		};
+		const f32_t fSizeX = max(0.0001f, fabsf(pParticle->vSize.x));
 		const float4_t vSize = {
-			max(0.0001f, fabsf(pParticle->vSize.x)),
-			max(0.0001f, fabsf(pParticle->vSize.y)),
+			fSizeX,
+			(EFFECT_SCREEN_ALIGNMENT::SQUARE == eAlignment)
+				? fSizeX
+				: max(0.0001f, fabsf(pParticle->vSize.y)),
 			0.f,
 			0.f
 		};
 		const float4_t vUVRect =
 			Calculate_UVRect(Runtime.Desc, *pParticle);
-		const f32_t fRotationRadians =
+
+		f32_t fRotationRadians =
 			XMConvertToRadians(pParticle->vRotation.z);
+		if (EFFECT_SCREEN_ALIGNMENT::VELOCITY == eAlignment)
+		{
+			// The shader maps the sprite local +Y axis to (-sin, cos) in the
+			// camera plane, so this angle points +Y along the velocity.
+			const f32_t fRight =
+				pParticle->vVelocity.x * vCameraRight.x +
+				pParticle->vVelocity.y * vCameraRight.y +
+				pParticle->vVelocity.z * vCameraRight.z;
+			const f32_t fUp =
+				pParticle->vVelocity.x * vCameraUp.x +
+				pParticle->vVelocity.y * vCameraUp.y +
+				pParticle->vVelocity.z * vCameraUp.z;
+			if (0.000001f < fRight * fRight + fUp * fUp)
+				fRotationRadians += atan2f(-fRight, fUp);
+		}
 
 		if (FAILED(m_pSpriteShader->Bind_RawValue(
 				"g_vParticleCenter", &vCenter, sizeof(vCenter))) ||
@@ -879,6 +943,9 @@ HRESULT CEffect_Runtime::Render_SpriteEmitter(
 			FAILED(m_pSpriteShader->Bind_RawValue(
 				"g_fRotation", &fRotationRadians,
 				sizeof(fRotationRadians))) ||
+			FAILED(Bind_DynamicParameter(
+				m_pSpriteShader,
+				pParticle->vDynamicParameter)) ||
 			FAILED(m_pSpriteShader->Begin(iPass)) ||
 			FAILED(m_pRectBuffer->Render()))
 		{
@@ -901,7 +968,9 @@ HRESULT CEffect_Runtime::Render_MeshEmitter(
 	if (FAILED(CGameInstance::Get().Bind_Transform(
 			m_pMeshShader, "g_ViewMatrix", D3DTS::VIEW)) ||
 		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pMeshShader, "g_ProjMatrix", D3DTS::PROJ)))
+			m_pMeshShader, "g_ProjMatrix", D3DTS::PROJ)) ||
+		FAILED(Bind_EffectMaterialResources(
+			m_pMeshShader, Runtime)))
 	{
 		return E_FAIL;
 	}
@@ -933,7 +1002,10 @@ HRESULT CEffect_Runtime::Render_MeshEmitter(
 			"g_WorldMatrix", &WorldMatrixFloat)) ||
 			FAILED(m_pMeshShader->Bind_RawValue(
 				"g_vTint", &Particle.vColor,
-				sizeof(Particle.vColor))))
+				sizeof(Particle.vColor))) ||
+			FAILED(Bind_DynamicParameter(
+				m_pMeshShader,
+				Particle.vDynamicParameter)))
 		{
 			return E_FAIL;
 		}
@@ -1008,6 +1080,8 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 	{
 		return E_FAIL;
 	}
+	if (FAILED(Bind_EffectMaterialResources(pShader, Runtime)))
+		return E_FAIL;
 
 	const uint32_t iPass =
 		(EFFECT_BLEND_MODE::ADDITIVE == Runtime.Desc.eBlendMode)
@@ -1042,7 +1116,9 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 			FAILED(pShader->Bind_RawValue(
 				"g_vTint",
 				&Particle.vColor,
-				sizeof(Particle.vColor))))
+				sizeof(Particle.vColor))) ||
+			FAILED(Bind_DynamicParameter(
+				pShader, Particle.vDynamicParameter)))
 		{
 			return E_FAIL;
 		}
@@ -1244,8 +1320,29 @@ HRESULT CEffect_Runtime::Render_PrimitiveEmitter(
 		vTint.w *= fInverseCount;
 	}
 
+	float4_t vDynamicParameter = { 1.f, 1.f, 0.f, 1.f };
+	const vector<EFFECT_PARTICLE>& DynamicParticles =
+		Runtime.Simulator.Get_Particles();
+	if (!DynamicParticles.empty())
+	{
+		vDynamicParameter = {};
+		for (const EFFECT_PARTICLE& Particle : DynamicParticles)
+		{
+			vDynamicParameter.x += Particle.vDynamicParameter.x;
+			vDynamicParameter.y += Particle.vDynamicParameter.y;
+			vDynamicParameter.z += Particle.vDynamicParameter.z;
+			vDynamicParameter.w += Particle.vDynamicParameter.w;
+		}
+		const f32_t fInverseCount =
+			1.f / static_cast<f32_t>(DynamicParticles.size());
+		vDynamicParameter.x *= fInverseCount;
+		vDynamicParameter.y *= fInverseCount;
+		vDynamicParameter.z *= fInverseCount;
+		vDynamicParameter.w *= fInverseCount;
+	}
+
 	return Draw_PrimitiveVertices(
-		Vertices, Runtime, vTint);
+		Vertices, Runtime, vTint, vDynamicParameter);
 }
 
 HRESULT CEffect_Runtime::Bind_CommonSpriteResources(
@@ -1261,7 +1358,9 @@ HRESULT CEffect_Runtime::Bind_CommonSpriteResources(
 			"g_Texture",
 			(nullptr != Runtime.pTextureSRV.Get())
 			? Runtime.pTextureSRV
-			: m_pFallbackTextureSRV)))
+			: m_pFallbackTextureSRV)) ||
+		FAILED(Bind_EffectMaterialResources(
+			m_pSpriteShader, Runtime)))
 	{
 		return E_FAIL;
 	}
@@ -1288,11 +1387,108 @@ HRESULT CEffect_Runtime::Bind_CommonPrimitiveResources(
 			"g_Texture",
 			(nullptr != Runtime.pTextureSRV.Get())
 			? Runtime.pTextureSRV
-			: m_pFallbackTextureSRV)))
+			: m_pFallbackTextureSRV)) ||
+		FAILED(Bind_EffectMaterialResources(
+			m_pPrimitiveShader, Runtime)))
 	{
 		return E_FAIL;
 	}
 	return S_OK;
+}
+
+HRESULT CEffect_Runtime::Bind_EffectMaterialResources(
+	shared_ptr<Engine::CShader> pShader,
+	const EFFECT_EMITTER_RUNTIME& Runtime)
+{
+	if (nullptr == pShader)
+		return E_FAIL;
+
+	EFFECT_MATERIAL_DESC Material{};
+	const EFFECT_MODULE_DESC* pRequired = Find_Module(
+		Runtime.Desc, EFFECT_MODULE_TYPE::REQUIRED);
+	if (nullptr != pRequired)
+		Material = pRequired->Required.Material;
+
+	const float4_t vDefaultDynamicParameter = {
+		1.f, 1.f, 0.f, 1.f
+	};
+	const f32_t fEffectTime = Runtime.Simulator.Get_ElapsedTime();
+	const float2_t vViewportSize =
+		CGameInstance::Get().Get_ViewportSize();
+
+	if (FAILED(pShader->Bind_Texture(
+			"g_OpacityTexture",
+			(nullptr != Runtime.pOpacityTextureSRV.Get())
+			? Runtime.pOpacityTextureSRV
+			: m_pFallbackTextureSRV)) ||
+		FAILED(pShader->Bind_Texture(
+			"g_DissolveTexture",
+			(nullptr != Runtime.pDissolveTextureSRV.Get())
+			? Runtime.pDissolveTextureSRV
+			: m_pFallbackTextureSRV)) ||
+		FAILED(pShader->Bind_Texture(
+			"g_DistortionTexture",
+			(nullptr != Runtime.pDistortionTextureSRV.Get())
+			? Runtime.pDistortionTextureSRV
+			: m_pFallbackTextureSRV)) ||
+		FAILED(CGameInstance::Get().Bind_RT_SRV(
+			TEXT("Target_Depth"), pShader, "g_EffectDepthTexture")) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vUVTiling", &Material.vUVTiling,
+			sizeof(Material.vUVTiling))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vUVOffset", &Material.vUVOffset,
+			sizeof(Material.vUVOffset))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vUVPanner", &Material.vUVPanner,
+			sizeof(Material.vUVPanner))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vEffectViewportSize", &vViewportSize,
+			sizeof(vViewportSize))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vDissolveEdgeColor", &Material.vDissolveEdgeColor,
+			sizeof(Material.vDissolveEdgeColor))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_vDynamicParameter", &vDefaultDynamicParameter,
+			sizeof(vDefaultDynamicParameter))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fEffectTime", &fEffectTime,
+			sizeof(fEffectTime))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fEmissiveStrength", &Material.fEmissiveStrength,
+			sizeof(Material.fEmissiveStrength))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fOpacityMaskThreshold",
+			&Material.fOpacityMaskThreshold,
+			sizeof(Material.fOpacityMaskThreshold))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fDissolveAmount", &Material.fDissolveAmount,
+			sizeof(Material.fDissolveAmount))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fDissolveEdgeWidth", &Material.fDissolveEdgeWidth,
+			sizeof(Material.fDissolveEdgeWidth))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fSoftParticleDistance", &Material.fSoftParticleDistance,
+			sizeof(Material.fSoftParticleDistance))) ||
+		FAILED(pShader->Bind_RawValue(
+			"g_fDistortionStrength", &Material.fDistortionStrength,
+			sizeof(Material.fDistortionStrength))))
+	{
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+HRESULT CEffect_Runtime::Bind_DynamicParameter(
+	shared_ptr<Engine::CShader> pShader,
+	const float4_t& vDynamicParameter)
+{
+	if (nullptr == pShader)
+		return E_FAIL;
+	return pShader->Bind_RawValue(
+		"g_vDynamicParameter", &vDynamicParameter,
+		sizeof(vDynamicParameter));
 }
 
 HRESULT CEffect_Runtime::Ensure_PrimitiveBuffer(
@@ -1349,7 +1545,8 @@ HRESULT CEffect_Runtime::Ensure_PrimitiveBuffer(
 HRESULT CEffect_Runtime::Draw_PrimitiveVertices(
 	const vector<VTXTEX>& Vertices,
 	const EFFECT_EMITTER_RUNTIME& Runtime,
-	const float4_t& vTint)
+	const float4_t& vTint,
+	const float4_t& vDynamicParameter)
 {
 	if (Vertices.empty())
 		return S_OK;
@@ -1378,7 +1575,9 @@ HRESULT CEffect_Runtime::Draw_PrimitiveVertices(
 	m_pContext->Unmap(m_pPrimitiveVertexBuffer.Get(), 0);
 
 	if (FAILED(Bind_CommonPrimitiveResources(
-		Runtime, vTint, XMMatrixIdentity())))
+		Runtime, vTint, XMMatrixIdentity())) ||
+		FAILED(Bind_DynamicParameter(
+			m_pPrimitiveShader, vDynamicParameter)))
 	{
 		return E_FAIL;
 	}

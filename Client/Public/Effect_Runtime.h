@@ -43,6 +43,9 @@ private:
 		EFFECT_EMITTER_DESC Desc;
 		CEffect_ParticleSimulator Simulator;
 		ComPtr<ID3D11ShaderResourceView> pTextureSRV;
+		ComPtr<ID3D11ShaderResourceView> pOpacityTextureSRV;
+		ComPtr<ID3D11ShaderResourceView> pDissolveTextureSRV;
+		ComPtr<ID3D11ShaderResourceView> pDistortionTextureSRV;
 		shared_ptr<CModel> pModel;
 		shared_ptr<CCookedModel> pCookedModel;
 		bool_t isSimulationReady = { false };
@@ -103,11 +106,18 @@ private:
 		const EFFECT_EMITTER_RUNTIME& Runtime,
 		const float4_t& vTint,
 		fmatrix_t WorldMatrix);
+	HRESULT Bind_EffectMaterialResources(
+		shared_ptr<Engine::CShader> pShader,
+		const EFFECT_EMITTER_RUNTIME& Runtime);
+	HRESULT Bind_DynamicParameter(
+		shared_ptr<Engine::CShader> pShader,
+		const float4_t& vDynamicParameter);
 	HRESULT Ensure_PrimitiveBuffer(uint32_t iVertexCount);
 	HRESULT Draw_PrimitiveVertices(
 		const vector<VTXTEX>& Vertices,
 		const EFFECT_EMITTER_RUNTIME& Runtime,
-		const float4_t& vTint);
+		const float4_t& vTint,
+		const float4_t& vDynamicParameter);
 
 	float3_t Get_WorldOrigin() const;
 	float3_t To_WorldPosition(const EFFECT_PARTICLE& Particle) const;
