@@ -21,6 +21,7 @@ public:
 	bool_t Compare_Name(const char_t* pName) const { return !strcmp(pName, m_szName); }
 	const char_t* Get_Name() const { return m_szName; }
 	f32_t Get_Duration() const { return m_fDuration; }
+	f32_t Get_TickPerSecond() const { return m_fTickPerSecond; }
 	f32_t Get_CurrentTrackPosition() const { return m_fCurrentTrackPosition; }
 	void Set_TrackPosition(f32_t fTrackPosition);
 

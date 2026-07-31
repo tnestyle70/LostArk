@@ -29,6 +29,7 @@ public:
 	}
 	const char_t* Get_AnimationName(uint32_t iAnimIndex) const;
 	bool_t Get_AnimationProgress(uint32_t iAnimIndex, f32_t& fOutPosition, f32_t& fOutDuration) const;
+	f32_t Get_AnimationTickPerSecond(uint32_t iAnimIndex) const;
 
 	void Set_AnimPaused(bool_t isPaused) {
 		m_isAnimPaused = isPaused;

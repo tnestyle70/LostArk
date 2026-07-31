@@ -261,9 +261,6 @@
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Part_Body.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -275,6 +272,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
+      <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -416,9 +416,6 @@
     <ClInclude Include="..\Public\CharacterSpec.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Logic_LanceMaster.h">
-      <Filter>02.GameObjects\00. Character</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\Part_Body.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -430,6 +427,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\MapStaticBatchObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Logic_LanceMaster.h">
+      <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
