@@ -45,7 +45,12 @@ private:
 	HRESULT Ready_For_Level_GamePlay();
 	HRESULT Ready_For_Level_AssetTest();
 	HRESULT Ready_For_Test_Level2();
+	/* The character GameObject and its part classes are shared by every playable
+	class, and Add_Prototype rejects a duplicate tag, so this registers them once
+	per level -- call it before any of the per-class model helpers below. */
+	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_LanceMaster_Prototypes(uint32_t iLevelIndex);
+	HRESULT Ready_GunSlinger_Prototypes(uint32_t iLevelIndex);
 
 public:
 	static unique_ptr<CLoader> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID);

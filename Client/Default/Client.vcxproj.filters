@@ -115,6 +115,9 @@
     <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
       <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\00. Character\01. GunSlinger">
+      <UniqueIdentifier>{3b7c1f42-6d95-4a08-b1e7-2c9048a5f6d1}</UniqueIdentifier>
+    </Filter>
     <Filter Include="02.GameObjects\06. Camera">
       <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
     </Filter>
@@ -321,6 +324,9 @@
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp">
       <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Logic_GunSlinger.cpp">
+      <Filter>02.GameObjects\00. Character\01. GunSlinger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -502,6 +508,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Logic_LanceMaster.h">
       <Filter>02.GameObjects\00. Character\00. LanceMaster</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Logic_GunSlinger.h">
+      <Filter>02.GameObjects\00. Character\01. GunSlinger</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
