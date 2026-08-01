@@ -9,6 +9,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CCharacter;
+
 class CAnimation_Tool final
 {
 private:
@@ -144,6 +146,12 @@ public:
 
 private:
 	shared_ptr<Engine::CModel> Resolve_Model() const;
+	/* The character owning that model. Its spec names the data files, so the tool
+	follows whichever class the level placed instead of assuming one. */
+	shared_ptr<CCharacter> Resolve_Character() const;
+	/* Points the file paths at the resolved character's asset and drops anything
+	loaded for a previous one. */
+	void Sync_AssetName();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitEvents(const shared_ptr<Engine::CModel>& pModel);
@@ -193,7 +201,8 @@ private:
 	bool_t m_bLoop = true;
 
 	std::vector<ANIM_EVENT> m_Events;
-	std::string m_AssetName = "LanceMaster";
+	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */
+	std::string m_AssetName;
 	std::string m_Status;
 	bool_t m_bDirty = false;
 	bool_t m_bLoadAttempted = false;

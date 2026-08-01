@@ -2,6 +2,7 @@
 
 #include "Animation_Tool.h"
 
+#include "Character.h"
 #include "GameInstance.h"
 #include "Model.h"
 
@@ -122,6 +123,41 @@ shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 		ETOUI(LEVEL::TEST_LEVEL2), LAYER_TAG, PART_TAG, COMPONENT_TAG, 0);
 
 	return dynamic_pointer_cast<Engine::CModel>(pComponent);
+}
+
+shared_ptr<Client::CCharacter> Client::CAnimation_Tool::Resolve_Character() const
+{
+	if (ETOUI(LEVEL::TEST_LEVEL2) != CGameInstance::Get().Get_CurrentLevelID())
+		return nullptr;
+
+	return dynamic_pointer_cast<CCharacter>(CGameInstance::Get().Get_GameObject(
+		ETOUI(LEVEL::TEST_LEVEL2), LAYER_TAG, 0));
+}
+
+void Client::CAnimation_Tool::Sync_AssetName()
+{
+	const shared_ptr<CCharacter> pCharacter = Resolve_Character();
+	const CHARACTER_SPEC* pSpec = nullptr == pCharacter ? nullptr : pCharacter->Get_Spec();
+	const char_t* pAssetName = nullptr == pSpec ? nullptr : pSpec->pAssetName;
+	if (nullptr == pAssetName || m_AssetName == pAssetName)
+		return;
+
+	/* A different class means every loaded file belongs to the wrong asset. Drop
+	them rather than mixing two classes' clips in one list. */
+	m_AssetName = pAssetName;
+	m_Events.clear();
+	m_SkillRef.clear();
+	m_ClipMap.clear();
+	m_ClipNotify.clear();
+	m_ClipLength.clear();
+	m_ClipSeqs.clear();
+	m_iSelectedEvent = -1;
+	m_bDirty = false;
+	m_bLoadAttempted = false;
+	m_bRefLoadAttempted = false;
+	m_bClipMapLoadAttempted = false;
+	m_bClipNotifyLoadAttempted = false;
+	m_bClipSeqLoadAttempted = false;
 }
 
 bool_t Client::CAnimation_Tool::Is_Window(EVENT_KIND eKind)
@@ -300,6 +336,14 @@ void Client::CAnimation_Tool::Render()
 		ImGui::TextUnformatted("No animated character resolved.");
 		ImGui::Separator();
 		ImGui::TextUnformatted("Enter TEST_LEVEL2 with F3 from the logo level.");
+		ImGui::End();
+		return;
+	}
+
+	Sync_AssetName();
+	if (m_AssetName.empty())
+	{
+		ImGui::TextUnformatted("Character spec carries no asset name.");
 		ImGui::End();
 		return;
 	}
