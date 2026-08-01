@@ -7,6 +7,7 @@
 #include "Part_Equipment.h"
 #include "Part_Body.h"
 #include "Character.h"
+#include "Npc.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapStaticBatchObject.h"
@@ -474,6 +475,10 @@ HRESULT CLoader::Ready_For_Test_Level2()
         ETOUI(LEVEL::TEST_LEVEL2))))
         return E_FAIL;
 
+    if (FAILED(Ready_Npc_Prototypes(
+        ETOUI(LEVEL::TEST_LEVEL2))))
+        return E_FAIL;
+
     lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));
     m_isFinished = true;
 
@@ -571,6 +576,56 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(uint32_t iLevelIndex)
         TEXT("Prototype_GameObject_Character"),
         CCharacter::Create(m_pDevice, m_pContext))))
         return E_FAIL;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_Npc_Prototypes(uint32_t iLevelIndex)
+{
+    /* Same cook units as the playable classes: centimetre out of the converter,
+    metres in the world, facing -Z until rotated. */
+    const matrix_t preTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+        XMMatrixRotationY(
+            XMConvertToRadians(-90.f));
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_GameObject_Npc"),
+        CNpc::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    /* The cook merges each NPC's body and head into one model, so one tag is one
+    NPC. Heads are shared upstream in the source data, not here. */
+    static const struct
+    {
+        const tchar_t* pTag;
+        const char_t* pPath;
+    } NpcModels[] =
+    {
+        { TEXT("Prototype_Component_Model_Npc_Aylara"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Aylara/Npc_Aylara.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Forman"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Forman/Npc_Forman.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Schmidt"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Schmidt/Npc_Schmidt.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Beda"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Beda/Npc_Beda.wmodel" },
+    };
+
+    for (const auto& npcModel : NpcModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            npcModel.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::ANIM,
+                npcModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
 
     return S_OK;
 }
