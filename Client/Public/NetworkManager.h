@@ -1,0 +1,88 @@
+#pragma once
+
+#include <WinSock2.h>
+
+#include "Network/PacketFrame.h"
+#include "Network/PacketMessages.h"
+#include "Network/PacketStreamParser.h"
+
+//왜 이 헤더들이 추가된 걸까? 멀티쓰레드 때문에? 멀티 쓰레드를 지금 활용을 하고 있는 구조인가?
+#include <atomic>
+#include <deque>
+#include <mutex>
+#include <thread>
+
+#include <cstdint>
+#include <span>
+#include <string_view>
+
+class CNetworkManager final
+{
+public:
+	CNetworkManager() = default;
+	CNetworkManager(const CNetworkManager&) = delete;
+	CNetworkManager& operator=(const CNetworkManager&) = delete;
+
+private:
+	~CNetworkManager() = default;
+
+public:
+	static CNetworkManager& Get();
+
+	bool Initialize();
+	void Shutdown();
+
+	void Update();
+
+	bool Connect_To_Server(std::uint16_t port);
+
+	bool Send_EnterWorld(
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+		std::string_view nickName);
+
+	bool Try_Consume_EnterAccepted(
+		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
+
+	void Close_ServerConnection();
+
+	[[nodiscard]] bool Is_Connected() const;
+	[[nodiscard]] int Get_LastErrorCode() const;
+	[[nodiscard]] LostArk::Shared::PLAYER_ID Get_LocalPlayerId() const;
+	[[nodiscard]] LostArk::Shared::NET_ENTITY_ID Get_LocalEntityId() const;
+
+
+private:
+	bool Send_All(std::span<const std::uint8_t> bytes);
+	//수신 worker 하나가 4096-byte 지역 버퍼로 Server의 TCP byte stream을 읽는다.
+	void Receive_Loop();
+
+	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
+
+private:
+	SOCKET m_hServerSocket = INVALID_SOCKET;
+	//main thread와 Receive worker가 오류 코드를 함께 읽고 쓰므로 atomic으로 보호한다.
+	std::atomic<int> m_iLastErrorCode{ 0 };
+	bool m_isWinSocketInitialized = false;
+
+	std::thread m_ReceiveThread;
+
+	std::atomic_bool m_isReceiveRunning{ false };
+
+	LostArk::Shared::CPacketStreamParser m_StreamParser;
+
+	std::mutex m_InboundMutex;
+
+	std::deque<LostArk::Shared::PACKET_FRAME> m_InboundFrames;
+
+	bool m_hasPendingEnterAccepted = false;
+
+	LostArk::Shared::S2C_ENTER_ACCEPTED m_PendingEnterAccepted{};
+
+	LostArk::Shared::PLAYER_ID m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+
+	LostArk::Shared::NET_ENTITY_ID
+		m_iLocalNetEntityId =
+		LostArk::Shared::
+		INVALID_NET_ENTITY_ID;
+
+};

@@ -97,6 +97,7 @@ __pycache__/
 # Personal planning style override. Shared agents fall back when it is absent.
 /.md/계획서작성규칙.local.md
 /.md/local.gotchas.md
+/.md/gotchas.local.md
 
 # Shared Winters asset converter bundle. Runtime resources remain Drive-managed.
 !/Tools/

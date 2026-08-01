@@ -1,8 +1,15 @@
-# LostArk Shared 네트워크 계약 수직 절편 구현 계획서 (검토용·미반영)
+# LostArk Shared 네트워크 계약 수직 절편 계획서 (현재 N1 + 보류 대안)
 
-> 상태: 2026-08-01 사용자 요청으로 코드 반영을 전부 원복했다. 이 문서는 구현 승인이
-> 아니라 원리와 자료구조를 함께 검토하기 위한 초안이다. 각 계약을 설명하고 동의하기
-> 전에는 `Shared`, FlatBuffers 반입, 솔루션 등록을 다시 수행하지 않는다.
+> 상태: 2026-08-01 `Shared` 정적 라이브러리와 `NetworkProtocolHarness` 콘솔 프로젝트,
+> 물리 폴더, 솔루션의 Debug/Release × Win32/x64 구성은 반영됐다. 현재 사용자가
+> `PacketType.h`와 `PacketMessages.h`를 직접 작성하며 이해하는 단계이고,
+> PacketWriter/PacketReader/Harness 구현은 아직 비어 있다. FlatBuffers는 아직 반입하거나
+> 채택하지 않았다.
+>
+> 아래 1~6절의 FlatBuffers·16바이트 Envelope 코드는 이전 후보를 보존한 참고안이며 자동
+> 반영 대상이 아니다. 현재 N1은 직접 이해할 수 있는 작은 PacketWriter/PacketReader와
+> Harness round trip부터 닫는다. 그 위의 GameRoom·PlayerController·Monster/Boss·UI 계약은
+> [Framework Foundation Master Plan 5.4~5.13](C:/Users/user/Desktop/LostArk/.md/GB/08-01/2026-08-01_LOSTARK_FRAMEWORK_FOUNDATION_MASTER_PLAN.md)에 확정했다.
 
 ```text
 문서 유형: 구현 계획서
@@ -12,7 +19,44 @@ C1~C8: OFF
 자료구조·알고리즘: ON
 ```
 
-## 1. 파일별 최종 반영 코드
+## 0. 현재 확정된 N1 범위
+
+현재 실제 파일 상태:
+
+| 파일 | 상태 | 이번 단계의 책임 |
+|---|---|---|
+| `Shared/Public/Network/PacketType.h` | 사용자가 작성 중 | Character class와 packet 종류를 명시적 enum으로 정의 |
+| `Shared/Public/Network/PacketMessages.h` | 사용자가 작성 중 | 첫 `C2S_ENTER_WORLD` 값 구조체 정의 |
+| `Shared/Public/Network/PacketWriter.h/.cpp` | 빈 파일 | 정수·float·string을 정해진 byte 순서로 기록 |
+| `Shared/Public/Network/PacketReader.h/.cpp` | 빈 파일 | byte 범위 검사 후 같은 값을 복원 |
+| `Tools/NetworkProtocolHarness/Private/NetworkProtocolHarness.cpp` | 빈 파일 | socket 없이 write/read round trip과 실패 조건 검증 |
+| 두 `.vcxproj/.filters`, `Framework.sln` | 골격 반영 | x64 Debug/Release 프로젝트 로드와 빌드 구성 제공 |
+
+N1 완료선은 다음뿐이다.
+
+```text
+CHARACTER_CLASS_ID::LANCE_MASTER + nickname "Gunbo"
+-> PacketWriter
+-> vector<uint8_t>
+-> PacketReader
+-> 같은 class와 nickname 복원
+-> truncated string/과도한 length/unknown packet type은 실패
+```
+
+이 단계에서 하지 않는 것:
+
+- TCP/IOCP 연결
+- 실제 Client Level 변경
+- `CGameRoom` 구현
+- Monster/Boss/HP/Party packet
+- FlatBuffers/Protobuf 도입
+- snapshot 보간과 prediction
+
+PacketWriter의 `WriteU8/U16/U32/U64/Float/String` 분리는 “패킷 종류가 많아서”가 아니라
+wire에서 각 값이 몇 byte이고 어떤 순서인지 한 곳에서 고정하기 위한 것이다. Harness는 그
+규칙이 Writer와 Reader 사이에서 대칭이고 실패 입력을 안전하게 거절하는지 확인한다.
+
+## 1. 보류된 FlatBuffers 후보 코드 (자동 반영 금지)
 
 ### 1.1 `C:/Users/user/Desktop/LostArk/Shared/Public/Identity/NetworkIds.h`
 
@@ -728,7 +772,7 @@ int main()
 - `ThirdParty/FlatBuffers/LICENSE.txt`: 동일 태그의 Apache-2.0 라이선스 원문을 그대로 가져온다.
 - `flatc.exe`는 저장소에 넣지 않는다. 스키마 변경 담당자만 공식 배포본이나 명시 경로를 사용하고, 일반 빌드는 커밋된 생성 헤더를 소비한다.
 
-## 2. 변경 범위
+## 2. 보류안 변경 범위
 
 | 구분 | 절대 경로 | 역할 |
 |---|---|---|
@@ -759,7 +803,7 @@ int main()
 | `Session.fbs` | Shared | 서버·클라이언트 공통 payload 정본 | FlatBuffers schema | Client UI, Server room | 저장소 정본 |
 | 검증 실행기 | Tools | 렌더러 없이 계약을 반복 검증 | Shared, FlatBuffers | Engine, Client | 프로세스 수명 |
 
-## 3. 코드 설명
+## 3. 보류안 코드 설명
 
 한 문장 본질: TCP는 메시지 경계를 보존하지 않으므로, 서버와 클라이언트가 동일한 16바이트 헤더와 payload 스키마를 공유하고 임의로 분할·병합된 수신 바이트에서도 정확히 한 프레임씩 복원해야 한다.
 
@@ -780,7 +824,7 @@ Session.fbs
 
 `CPacketFrameParser`는 소켓을 모른다. IOCP 완료 통지에서 받은 바이트를 `Append`하고, `TryPop`이 `FrameReady`인 동안 반복 호출하면 된다. 따라서 향후 서버 워커 스레드 수와 클라이언트 수신 스레드 수가 달라도 프레이밍 계약은 변하지 않는다.
 
-## 4. 자료구조·알고리즘 핵심
+## 4. 보류안 자료구조·알고리즘 핵심
 
 ### 4.1 `TNetworkId<Tag>`
 
@@ -835,7 +879,7 @@ nickname "건보" UTF-8 6바이트
 -> nickname "건보", CharacterClass::Gunslinger 복원
 ```
 
-## 5. 프로젝트 등록
+## 5. 프로젝트 등록 기록
 
 - Shared 프로젝트 GUID: `{F4CCF815-6D51-412F-A76E-84D2F1D05571}`
 - NetworkProtocolHarness 프로젝트 GUID: `{3BED234B-C5CE-4DDA-B154-4E4F947E6A50}`
@@ -843,7 +887,7 @@ nickname "건보" UTF-8 6바이트
 - Framework.sln의 네 구성 `Debug/Release × x64/x86`에 두 프로젝트를 등록한다.
 - 이번 단계는 Engine public header를 변경하지 않으므로 `UpdateLib.bat`은 회귀 빌드 단계에서만 실행한다.
 
-## 6. 적용 순서와 검증
+## 6. 보류안 적용 순서와 검증 (현재 실행 금지)
 
 1. 공식 FlatBuffers `v25.12.19`의 `include/flatbuffers`와 `LICENSE.txt`를 `ThirdParty/FlatBuffers`에 가져온다.
 2. `.fbs`, 생성 스크립트, Shared 코드를 추가한다.
@@ -870,3 +914,208 @@ Tests: 6, Failures: 0
 - 이 수직 절편은 새 디렉터리와 원래 깨끗했던 `Framework.sln`만 건드린다.
 - 현재 다른 작업이 수정 중인 Engine/Object/Layer/GameInstance와 Client/Valtan 파일은 수정하지 않는다.
 - 생성 실패 시 기존 `Session_generated.h`를 지우지 않도록 스크립트 개선이 필요하면 다음 단계에서 임시 출력 후 교체 방식으로 강화한다. 최초 생성인 이번 단계에는 기존 생성물이 없다.
+
+---
+
+## 7. N1에서 authoritative gameplay framework로 올라가는 연결 계약
+
+Packet/Harness가 검증하는 것은 gameplay 규칙이 아니라 Shared message의 byte 계약이다.
+그 결과물은 이후 두 방향에서 동일하게 소비된다.
+
+| N1 결과 | Client 소비자 | Server 소비자 |
+|---|---|---|
+| `PACKET_TYPE` | inbound dispatch와 outbound command 선택 | session dispatch와 room command 변환 |
+| `C2S_ENTER_WORLD` | Lobby 선택값을 Writer에 전달 | class/nickname 검증 후 Room enter command 생성 |
+| Player spawn message | main thread replication이 Character Clone | GameRoom이 발급한 NetEntityId와 초기 상태를 기록 |
+| Move command/state | PlayerController가 command 전송, remote visual 적용 | 이동 요청 검증과 authoritative transform 갱신 |
+| Chat command/event | Chat UI가 typed command/event만 사용 | GameRoom이 작성자 ID를 붙여 broadcast |
+| Health event | GameStateStore 갱신 후 UI 출력 | CombatSystem 판정 결과를 broadcast |
+
+패킷 증가 순서는 고정한다.
+
+```text
+1. C2S_ENTER_WORLD round trip
+2. S2C_ENTER_ACCEPTED
+3. S2C_PLAYER_SPAWNED / DESPAWNED
+4. C2S_MOVE / S2C_WORLD_SNAPSHOT
+5. C2S_CHAT / S2C_CHAT
+--- 여기까지 Bern 두 Client 수직 절편 ---
+6. S2C_HEALTH_CHANGED
+7. Monster spawn/state
+8. Boss phase/pattern/raid event
+```
+
+앞 단계가 Harness 또는 두 Client 실제 화면에서 닫히기 전에 뒤 패킷을 미리 만들지 않는다.
+특히 UI 담당자는 packet bytes를 해석하지 않고 `CGameStateStore/ViewModel`만 읽고, Monster/Boss
+담당자는 socket을 호출하지 않고 Brain에서 command만 출력한다.
+
+상위 owner·수명·thread·팀 수정 경계의 정본:
+
+- [Framework Foundation Master Plan 5.4~5.13](C:/Users/user/Desktop/LostArk/.md/GB/08-01/2026-08-01_LOSTARK_FRAMEWORK_FOUNDATION_MASTER_PLAN.md)
+- [북극성](C:/Users/user/Desktop/LostArk/북극성.md)
+
+### N1 검토 요청 때 확인할 질문
+
+1. Writer가 기록한 순서와 Reader가 읽는 순서가 정확히 같은가?
+2. `uint8_t/uint16_t/uint32_t/uint64_t/float/string`의 byte 수와 string length prefix를 설명할 수 있는가?
+3. Reader가 buffer 끝을 넘기 전에 실패하는가?
+4. nickname 최대 byte 수가 UTF-8 byte 기준으로 검사되는가?
+5. unknown `PACKET_TYPE`을 gameplay code가 실행되기 전에 거절하는가?
+6. Harness가 정상 한 건과 잘린 입력·과도한 길이·잘못된 type을 각각 검증하는가?
+7. Shared가 Engine, DirectX, ImGui, WinSock, `shared_ptr<CGameObject>`를 include하지 않는가?
+
+이 일곱 질문에 코드와 실행 결과로 답할 수 있으면 N1을 닫고 Server `CGameRoom` 최소 골격으로
+이동한다.
+
+---
+
+## 8. 현재 다음 단계: S2C_ENTER_ACCEPTED 구조 우선 설계
+
+### 8.1 이번 단계의 완료 조건
+
+```text
+Client가 C2S_ENTER_WORLD 전송
+-> Server CGameRoom이 PlayerId/NetEntityId 발급
+-> Server가 같은 Session에 S2C_ENTER_ACCEPTED 전송
+-> Client network worker가 frame 수신/복원
+-> main thread가 typed accepted event 확인
+-> Lobby가 Baren 전환을 한 번만 요청
+```
+
+이번 단계에서는 Character를 생성하거나 두 Client broadcast를 하지 않는다. 입장 승인의 왕복과
+ID owner만 닫는다.
+
+### 8.2 파일별 존재 이유와 책임
+
+| 파일 | 존재 이유 | 이번 단계 책임 | 금지 |
+|---|---|---|---|
+| `Shared/Public/Network/NetworkIds.h` | wire에서 사용할 안정 ID 계약 | invalid=0인 PlayerId/NetEntityId 값 정의 | Engine pointer, vector index |
+| `Shared/Public/Network/PacketMessages.h` | Client/Server가 공유하는 typed 값 | `S2C_ENTER_ACCEPTED` 선언 | socket 호출 |
+| `Shared/Private/Network/PacketMessages.cpp` | 동일 Writer/Reader 순서의 단일 정본 | accepted Write/Read와 invalid ID 거절 | Server 상태 변경 |
+| `Tools/NetworkProtocolHarness/...cpp` | socket 없이 계약 검증 | accepted round trip, truncated U32, zero ID | GameRoom 실행 |
+| `Server/Public/ClientSession.h` | 연결 하나의 socket/parser owner | `Send_Frame` 공개 계약 | PlayerId 발급 |
+| `Server/Private/ClientSession.cpp` | 연결 경계의 실제 전송 | payload frame 구성, partial send 반복 | Room 상태 소유 |
+| `Server/Public/Gameplay/GameRoom.h` | authoritative world writer 경계 | 최초 Session 입장과 ID 발급 계약 | Client GameObject/ImGui |
+| `Server/Private/Gameplay/GameRoom.cpp` | 입장 상태의 실제 owner | 중복 Session 검사, 다음 ID 발급, 입장 결과 반환 | raw TCP byte 처리 |
+| `Client/Public/NetworkManager.h` | Client transport 수명 경계 | receive worker, typed inbound event pop 계약 | Level/GameObject 변경 |
+| `Client/Private/NetworkManager.cpp` | recv/parser/queue 구현 | socket bytes를 완전한 frame/event로 변환 | `Change_Level` 호출 |
+| `Client/Public/Level_Lobby.h` | Character 선택과 입장 화면 상태 | accepted 처리 함수와 전환 플래그 | `recv`, PacketReader 직접 호출 |
+| `Client/Private/Level_Lobby.cpp` | Lobby main-thread 흐름 | typed accepted event를 보고 Baren 전환 요청 | 버튼 클릭 즉시 전환 |
+
+새 C++ 파일인 `NetworkIds.h`, `GameRoom.h/.cpp`는 물리 폴더를 먼저 만든 뒤 Shared/Server의
+`.vcxproj`와 `.vcxproj.filters`에 등록한다.
+
+### 8.3 H 함수 계약
+
+`S2C_ENTER_ACCEPTED`가 표현하는 상태:
+
+```text
+PlayerId: 접속한 사람의 서버 ID, 0은 invalid
+NetEntityId: world 안 local Player entity의 서버 ID, 0은 invalid
+ServerTick: 승인 시점의 서버 tick, 최초 blocking 골격에서는 0 허용
+```
+
+`CClientSession::Send_Frame(type, payload)`:
+
+```text
+호출자: ServerApp 또는 추후 RoomReplicator
+입력: 검증된 packet type과 payload bytes
+성공: header+payload 전부 전송
+실패: socket error 저장 후 false
+변경하지 않는 것: GameRoom, Entity, 다른 Session
+```
+
+`CGameRoom::Enter(sessionId, enterWorld)`:
+
+```text
+호출자: Server packet dispatch
+입력: 서버 내부 SessionId와 검증된 C2S_ENTER_WORLD
+성공: PlayerId/NetEntityId를 한 번 발급하고 room state에 기록
+실패: 같은 Session 중복 입장 또는 잘못된 입력
+반환: accepted message를 만들 수 있는 순수 결과값
+```
+
+`CNetworkManager::Try_Pop_Event(event)`:
+
+```text
+호출자: Client main thread
+입력: 없음
+성공: network worker가 소유권을 넘긴 typed event 하나 반환
+빈 queue: false, 오류가 아님
+금지: worker thread가 Level 또는 GameObject를 직접 변경
+```
+
+### 8.4 CPP 내부 흐름
+
+Server:
+
+```text
+Read_Message(C2S_ENTER_WORLD)
+-> GameRoom::Enter
+-> ID 발급 결과로 S2C_ENTER_ACCEPTED 구성
+-> Write_Message
+-> ClientSession::Send_Frame
+-> partial send가 있으면 남은 byte부터 반복
+```
+
+Client:
+
+```text
+connect 성공 후 receive worker 시작
+-> blocking recv
+-> StreamParser::Append
+-> Try_Pop이 FRAME_READY인 동안 반복
+-> type별 Read_Message
+-> typed inbound queue에 move
+-> Lobby main thread가 Try_Pop_Event
+-> accepted ID 저장
+-> m_isEnterRequested=true
+-> Loading(BAREN) 요청은 한 번만 실행
+```
+
+종료는 `shutdown(socket, SD_BOTH) -> recv 깨움 -> worker join -> closesocket -> WSACleanup` 순서를
+사용한다. worker가 남은 상태로 Socket이나 NetworkManager가 먼저 파괴되면 안 된다.
+
+### 8.5 의존성과 결합 규칙
+
+```text
+Shared <- Client NetworkManager
+Shared <- Server ClientSession/GameRoom
+Client Level_Lobby -> typed network event
+Server packet dispatch -> GameRoom -> ClientSession send
+```
+
+- Client는 `ServerApp`, `ClientSession`, `GameRoom`을 include하지 않는다.
+- Server는 `Level_Lobby`, `CCharacter`, DirectX를 include하지 않는다.
+- `CClientSession`은 ID를 발급하지 않고 `CGameRoom`은 socket byte를 해석하지 않는다.
+- Lobby는 packet bytes가 아니라 accepted typed event만 소비한다.
+
+### 8.6 사용자 구현 순서와 BP 완료선
+
+1. Shared accepted 구조체와 Write/Read를 작성하고 Harness를 통과시킨다.
+2. `CClientSession::Send_Frame/Send_All`을 작성한다.
+3. 최소 `CGameRoom::Enter`로 ID를 발급한다.
+4. Server가 accepted를 같은 Session에 전송하는 것을 byte/frame BP로 확인한다.
+5. Client receive worker/parser/typed queue를 작성한다.
+6. Lobby main thread가 accepted를 꺼내 Baren 전환 플래그를 한 번만 켠다.
+
+Breakpoint 값 추적:
+
+```text
+Server GameRoom::Enter: sessionId, issued PlayerId, issued NetEntityId
+Server ClientSession::Send_All: frame size, sentByteCount
+Client recv: receivedByteCount
+Client parser: NEED_MORE_DATA -> FRAME_READY
+Client accepted decode: PlayerId, NetEntityId, remaining bytes=0
+Lobby: accepted 전에는 전환 false, accepted 후 정확히 한 번 true
+```
+
+검증 순서:
+
+```text
+Shared Debug/Release
+-> NetworkProtocolHarness Debug/Release 실행, failures=0
+-> Server Debug/Release
+-> Client Debug/Release
+-> Server 1 + Client 1 실제 accepted 왕복
+```

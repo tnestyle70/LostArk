@@ -1,7 +1,7 @@
 # 2026-08-01 LostArk Framework Foundation Master Plan
 
 문서 유형: 시스템 이해 + 상위 구현 마스터 계획서  
-출력 모드: `CODE_WITH_EXPLANATION`  
+출력 모드: `STRUCTURE_FIRST`  
 작성 목적: 팀장이 공용 기반의 순서와 owner를 확정하고 각 담당자가 기다리지 않고 작업하게 만드는 것  
 
 ```text
@@ -17,6 +17,50 @@ C1~C8: ON
 - [북극성](C:/Users/user/Desktop/LostArk/북극성.md)
 - [원문 보존본](C:/Users/user/Desktop/LostArk/.md/GB/08-01/2026-08-01_LOSTARK_REFERENCE_TEAM_PORTFOLIO_RAW_TRANSCRIPT.md)
 - [현재 프레임워크 설명](C:/Users/user/Desktop/LostArk/CLAUDE.md)
+
+---
+
+## 0. 2026-08-01 실제 구현 체크포인트
+
+현재 완료된 실제 값 흐름:
+
+```text
+Lobby ImGui에서 LanceMaster + nickname="ggg" 선택
+-> Client CNetworkManager가 C2S_ENTER_WORLD payload/frame 생성
+-> TCP 127.0.0.1:7777 전송
+-> Server CClientSession이 split/coalesced 대응 parser로 frame 복원
+-> ServerApp이 class=0, nickname="ggg" 복원 및 콘솔 출력
+-> ServerApp이 PlayerId=1, NetEntityId=100 승인 frame 전송
+-> Client receive worker가 frame을 inbound queue로 전달
+-> Client main thread Handle_Frame/Try_Consume_EnterAccepted가 승인 상태 소비
+-> LEVEL::BAREN 전환 후 CLevel_Baren::Initialize() 도달
+```
+
+현재 단계 판정:
+
+- `N1`: 직접 이해 가능한 PacketWriter/Reader, 6-byte frame, StreamParser, Harness 완료
+- `N2`: WinSock 초기화, blocking Listener, ClientSession 1개, Client connect/send와 Client receive worker/inbound queue까지 완료. IOCP는 미구현
+- `N3/V1`: `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 왕복과 Baren 진입까지 실제 socket으로 완료
+- Lobby는 빠른 네트워크 검증을 위해 Character binary model을 로드하지 않고 slot metadata + free camera만 사용
+- `GameRoom`, `EntityRegistry`, `S2C_PLAYER_SPAWNED`, `ClientReplication`, `GameStateStore`, `ObjectHandle`은 아직 미구현
+- `LEVEL::BAREN` 진입은 확인됐지만 `Ready_For_Baren()`은 골격이고 Character spawn은 미구현
+
+다음 고정 순서:
+
+```text
+10. C2S_ENTER_WORLD                         [완료]
+11. S2C_ENTER_ACCEPTED + Client 수신 경계   [완료]
+12. 최소 GameRoom/EntityRegistry + S2C_PLAYER_SPAWNED [다음]
+13. Baren loader + ClientReplication Character 생성
+14. Session 2개 + 기존/new player spawn broadcast
+15. C2S_MOVE + 30 Hz server state + S2C_WORLD_SNAPSHOT
+16. C2S_CHAT + Room broadcast + S2C_CHAT
+17. disconnect + S2C_PLAYER_DESPAWNED
+```
+
+17번까지 두 Client에서 닫히기 전에는 Monster·Valtan 전용 packet을 추가하지 않는다. Effect는
+particle 자체를 동기화하지 않고, 추후 서버가 확정한 `ActionEvent/EffectCue`를 한 번 보내 Client가
+동일 visual을 재생하는 계약으로 확장한다.
 
 ---
 
@@ -128,14 +172,357 @@ CServerApp
   owns CGameRoom (1개)
 
 CGameRoom
-  owns PlayerState
-  owns PartyService
-  owns Dungeon/Encounter state
-  owns AI state
   owns inbound command queue
+  owns CEntityRegistry
+  owns CCombatSystem
+  owns CRoomReplicator
+  owns IRoomRule (Bern / Chaos / Valtan 중 하나)
 ```
 
 다중 room 요구가 실제로 생길 때만 `CRoomRegistry`를 추가한다.
+
+### 5.4 2026-08-01 확정: 권위형 gameplay framework 최종 골격
+
+이 절은 PacketWriter/PacketReader/Harness 다음에 올라갈 상위 골격의 정본이다. 지금 N1에서
+아래 클래스를 한꺼번에 구현한다는 뜻이 아니다. 팀원에게 먼저 제공해야 할 경계와 최종
+의존 방향을 고정하는 계약이다.
+
+한 문장 본질:
+
+> Server `CGameRoom`이 gameplay 객체의 ID·수명·판정 결과를 소유하고, PlayerController와
+> Monster/Boss Brain은 명령만 만들며, Client GameObject와 UI는 서버가 보낸 상태를 표현한다.
+
+```text
+Local Input
+  -> CPlayerController
+  -> C2S Command
+  -> Server CGameRoom single writer
+       -> CEntityRegistry
+       -> Player command validation
+       -> MonsterBrain / ValtanBrain decision
+       -> CCombatSystem damage/HP/death decision
+       -> CRoomReplicator S2C Event/Snapshot
+  -> Client CClientReplication main-thread apply
+       -> CObject_Manager/CLayer visual Clone
+       -> CGameStateStore plain UI state
+  -> Character/Monster/Boss presentation + UI
+```
+
+여기서 `Manager`를 기능 수만큼 늘리지 않는다. 서버 객체를 소유하는 컨테이너는
+`CEntityRegistry` 하나이고, Client visual 객체의 owner는 기존 `CObject_Manager/CLayer`다.
+Controller, CombatSystem, Brain, UI Store는 객체를 중복 소유하지 않는다.
+
+### 5.5 서버 객체의 단일 owner와 수명
+
+목표 자료구조:
+
+```cpp
+class CServerEntity
+{
+public:
+    NetEntityId Get_Id() const;
+    ENTITY_TYPE Get_Type() const;
+
+protected:
+    NetEntityId     m_EntityId;
+    TRANSFORM_STATE m_Transform;
+    VITAL_STATE     m_Vital;
+};
+
+class CEntityRegistry
+{
+public:
+    CServerEntity* Find(NetEntityId id);
+    void Request_Destroy(NetEntityId id);
+
+private:
+    unordered_map<NetEntityId, unique_ptr<CServerEntity>> m_Entities;
+    vector<NetEntityId> m_PendingDestroy;
+};
+```
+
+```text
+표현하는 상태: 현재 Room에 실제로 존재하는 Player/Monster/Boss와 제거 예약.
+owner: CGameRoom이 CEntityRegistry를 소유하고 Registry만 ServerEntity를 unique_ptr로 소유.
+writer: Room owner thread 하나.
+reader: Room 내부 System/Brain은 현재 tick 동안 non-owning pointer 또는 read view로 조회.
+생성: Room spawn command를 처리하는 안전 지점.
+파괴: 사망/퇴장 요청을 PendingDestroy에 넣고 tick 순회 종료 뒤 flush.
+불변식: active NetEntityId 하나당 ServerEntity 하나, ID 0은 invalid, erase 중 tick 순회 금지.
+금지: PlayerManager/MonsterManager/BossManager가 같은 Entity를 shared_ptr로 다시 소유.
+```
+
+Client는 Server 객체를 복제하지 않는다. 기존 Prototype/Clone으로 visual GameObject를 만들고
+다음 매핑만 유지한다.
+
+```cpp
+unordered_map<NetEntityId, ObjectHandle> m_ReplicationMap;
+```
+
+`vector index`, 포인터, Prototype tag는 저장·wire ID가 아니다. `NetEntityId`는 서버가 발급하고
+Shared에 정의하며 Client/Server가 같은 타입을 사용한다.
+
+### 5.6 PlayerController의 정확한 역할
+
+`CPlayerController`는 Player 객체도, PlayerManager도 아니다. Local input을 gameplay command로
+번역하고 현재 조작 대상을 가리키는 non-owning coordinator다.
+
+```cpp
+class CPlayerController final
+{
+public:
+    void Possess(ObjectHandle characterHandle, NetEntityId entityId);
+    void UnPossess();
+    void Update_Input(f32_t deltaTime);
+
+private:
+    ObjectHandle       m_CharacterHandle;
+    NetEntityId        m_EntityId;
+    IGameCommandSink*  m_pCommandSink = nullptr;
+};
+```
+
+목표 Client 수명은 gameplay Level이 Controller 하나를 만들고 Level 종료 시 함께 파괴하는 것이다.
+Local Character만 Controller가 Possess하고 remote Character에는 Controller를 붙이지 않는다.
+
+```text
+마우스 클릭
+-> Client Picking으로 world destination 계산
+-> CPlayerController가 MoveCommand 생성
+-> IGameCommandSink가 CClientNetwork outbound queue로 전달
+-> Server가 이동 가능 여부와 최종 위치 판정
+```
+
+Controller가 직접 결정하지 않는 것:
+
+- HP와 사망
+- 다른 Player/Monster/Boss의 Transform
+- 스킬 적중과 피해량
+- Room 입장 성공
+- UI 게이지 값
+
+현재 `CCharacter`의 “input은 외부에서 world goal로 바꿔 `Request_Move()`를 호출한다”는 계약과
+`ICharacterLogic` 분리는 이 방향을 그대로 유지한다. 공통 입력과 command 생성은 Controller,
+직업별 animation/skill presentation은 각 `ICharacterLogic` 구현이 담당한다.
+
+### 5.7 CGameRoom은 만능 Manager가 아니라 실행 경계다
+
+목표 최소 인터페이스:
+
+```cpp
+class CGameRoom
+{
+public:
+    void Enqueue_Command(ROOM_COMMAND command);
+    void Tick(f32_t fixedDeltaTime);
+
+private:
+    CRoomCommandQueue       m_CommandQueue;
+    CEntityRegistry         m_Entities;
+    CCombatSystem           m_CombatSystem;
+    CRoomReplicator         m_Replicator;
+    unique_ptr<IRoomRule>   m_pRoomRule;
+};
+```
+
+고정 tick 순서:
+
+```text
+1. IOCP worker가 검증한 packet을 owned ROOM_COMMAND로 queue에 넣음
+2. Room owner thread가 queue를 drain
+3. Session/EntityId/현재 상태를 검증
+4. Player command와 AI command를 같은 command buffer에 모음
+5. 이동·충돌·피해·HP·사망을 System이 판정
+6. Pending spawn/destroy를 안전 지점에서 commit
+7. 변경된 상태를 Event/Snapshot으로 outbox에 기록
+8. transport가 대상 Session에 전송
+```
+
+IOCP worker는 `CServerEntity`, Client `CGameObject`, Level, DirectX 객체를 직접 변경하지 않는다.
+Room 안의 gameplay state는 한 thread만 쓰므로 최초 수직 절편에서는 Entity마다 spin lock을
+붙이지 않는다.
+
+Room별 차이는 상속으로 거대한 `CGameRoom`을 만들지 않고 `IRoomRule`로 제한한다.
+
+```text
+CBernRoomRule: 입장/퇴장/채팅/안전 지역 규칙
+CChaosRoomRule: 몬스터 wave, 진행도, clear 규칙
+CValtanRoomRule: raid phase, wipe, sidereal gauge, clear 규칙
+```
+
+### 5.8 Monster와 Boss 담당자가 구현하는 경계
+
+Monster/Boss 담당자는 socket, packet byte, Client `CValtan`, ImGui를 include하지 않는다.
+서버 판단 로직은 read-only world view를 읽고 command만 출력한다.
+
+```cpp
+class IEntityBrain
+{
+public:
+    virtual ~IEntityBrain() = default;
+    virtual void Think(
+        const WORLD_READ_VIEW& world,
+        NetEntityId self,
+        f32_t deltaTime,
+        ENTITY_COMMAND_BUFFER& outCommands) = 0;
+};
+```
+
+```text
+CGolemBrain
+  -> target 탐색
+  -> Move/Attack command 출력
+
+CValtanBrain
+  -> phase/armor/HP/쿨타임 확인
+  -> Pattern command 출력
+  -> CCombatSystem이 실제 적중·피해·무력화·사망 판정
+```
+
+발탄 튜닝 값은 `CGameRoom.cpp`나 packet handler에 하드코딩하지 않는다.
+
+```cpp
+struct VALTAN_TUNING
+{
+    f32_t maxHP;
+    f32_t armorDurability;
+    f32_t chargeCooldown;
+    f32_t staggerGauge;
+    f32_t phase2HPPercent;
+};
+```
+
+초기에는 명시적인 C++ 상수 table이어도 되지만, owner는 Valtan domain이고 추후 data file로
+옮겨도 Brain 인터페이스와 packet 계약은 바뀌지 않아야 한다.
+
+### 5.9 UI는 replicated state의 read-only 소비자다
+
+UI가 매 frame `CPlayer*`, `CMonster*`, `CValtan*`를 찾아 HP를 계산하지 않는다.
+`CClientReplication`이 plain state store를 소유하고 S2C Event/Snapshot을 main thread에서 적용한다.
+
+```cpp
+struct ENTITY_VIEW_STATE
+{
+    NetEntityId entityId;
+    ENTITY_TYPE type;
+    string nickname;
+    int32_t currentHP;
+    int32_t maxHP;
+    bool_t isDead;
+};
+
+class CGameStateStore
+{
+public:
+    const ENTITY_VIEW_STATE* Find(NetEntityId id) const;
+    void Apply(const SPAWN_ENTITY_EVENT& event);
+    void Apply(const HEALTH_CHANGED_EVENT& event);
+    void Apply(const DESPAWN_ENTITY_EVENT& event);
+};
+```
+
+```text
+금지: UI가 HP를 변경하거나 raw packet/generated schema를 직접 해석.
+허용: UI가 const ViewState/ViewModel을 읽고 command button을 typed command로 전달.
+권위: Server CCombatSystem이 HP 변경 -> S2C HealthChanged -> Store 갱신 -> UI 출력.
+```
+
+### 5.10 팀별 수정 경계
+
+| 담당 | 제공받는 계약 | 주로 수정하는 영역 | 직접 수정하지 않는 영역 |
+|---|---|---|---|
+| 건보 Framework/Server | 전체 owner 계약 | Shared ID/message, Packet/Harness, Network, GameRoom, Registry, Replication, Combat 경계 | 직업 스킬 세부, 발탄 패턴 세부, UI 배치 |
+| 주승 Player | `IGameCommandSink`, `CPlayerController`, `ICharacterLogic`, Player state/event | 직업별 입력 mapping, skill/animation/effect/camera logic | IOCP, Room entity container, Boss Brain |
+| 태준 UI/NPC | `CGameStateStore`/ViewModel, typed UI command, NPC interaction event | HP/Party/Chat/Raid UI, NPC 화면과 presentation | Server HP 판정, packet byte parser, Entity 수명 |
+| 찬영 Map/Monster/Boss | `WORLD_READ_VIEW`, `IEntityBrain`, command buffer, tuning/event 계약 | Monster Brain, Valtan Brain/pattern/tuning, placement와 encounter data | socket, Client replication, UI raw state |
+
+공용 header 변경이 필요하면 담당자가 framework 파일을 바로 넓히지 않고 “필요한 입력·출력·실패
+조건”을 먼저 제안한다. Framework owner가 최소 계약을 확정한 뒤 각 담당 파일에서 구현한다.
+
+### 5.11 Packet/Harness 위에 이 골격이 올라가는 방식
+
+현재 `NetworkProtocolHarness`의 책임은 다음까지만이다.
+
+```text
+명시적인 값
+-> PacketWriter가 bytes 생성
+-> 필요하면 TCP frame 분할/병합 상황 재현
+-> PacketReader가 같은 값 복원
+-> 잘못된 길이/type/string은 실패
+```
+
+Harness는 `CGameRoom`, `CGameObject`, UI, Boss AI를 실행하지 않는다. Packet/Harness가 통과하면
+동일 Shared message를 Client command sink와 Server room ingress가 사용한다. 이후 순수 GameRoom
+simulation 검증이 필요해질 때 별도 headless fixture를 추가하되, N1 Harness를 만능 테스트 앱으로
+키우지 않는다.
+
+Shared에는 Engine/DirectX/ImGui/WinSock 타입, `shared_ptr`, GameObject pointer를 넣지 않는다.
+넣을 수 있는 것은 고정 폭 정수, enum, string/명시적 length, 좌표 POD, 안정 ID와 message뿐이다.
+
+Command와 Event를 이름부터 구분한다.
+
+```text
+C2S MoveCommand: “이 위치로 이동하고 싶다.”
+S2C TransformState/Snapshot: “서버가 판정한 현재 위치는 이것이다.”
+
+C2S SkillCommand: “이 스킬을 사용하고 싶다.”
+S2C HealthChangedEvent: “판정 결과 이 Entity의 HP가 변경됐다.”
+```
+
+### 5.12 첫 수직 절편의 실제 값 추적
+
+```text
+Lobby에서 LanceMaster, nickname="Gunbo" 선택
+-> C2S_ENTER_WORLD를 PacketWriter로 bytes 변환
+-> Server Session이 frame/type/길이/nickname 검증
+-> ROOM_COMMAND::ENTER로 소유권을 옮겨 GameRoom queue에 publish
+-> GameRoom이 PlayerId/NetEntityId 발급 후 CServerPlayer 생성
+-> S2C_ENTER_ACCEPTED + S2C_PLAYER_SPAWNED broadcast
+-> Client network thread가 inbound queue에 owned message 적재
+-> main thread CClientReplication이 Prototype_GameObject_Character Clone
+-> ReplicationMap[NetEntityId] = ObjectHandle
+-> CGameStateStore에 nickname/HP plain state 기록
+-> CPlayerController는 local NetEntityId만 Possess
+-> 다른 Client는 같은 Spawn event로 remote visual만 생성
+```
+
+이 흐름이 두 Client에서 닫히기 전에는 Monster, Boss, Party packet을 구현하지 않는다.
+
+### 5.13 골격 완료 게이트
+
+- Server entity owner를 묻으면 `CGameRoom -> CEntityRegistry -> unique_ptr<CServerEntity>`로 답한다.
+- Client visual owner를 묻으면 기존 `CObject_Manager/CLayer`, 연결 key는 `NetEntityId`라고 답한다.
+- PlayerController가 HP와 위치 결과를 직접 결정하지 않음을 설명한다.
+- IOCP worker와 Room writer가 같은 객체를 동시에 수정하지 않는다.
+- UI가 raw packet이나 GameObject pointer 대신 ViewState/ViewModel을 읽는다.
+- Monster/Boss Brain이 socket·UI를 include하지 않고 command만 출력한다.
+- Lobby 선택부터 두 Client spawn까지 실제 `NetEntityId` 하나를 로그로 추적한다.
+- 각 담당자가 공용 framework source를 수정하지 않고 자기 fixture로 첫 화면/판단을 검증할 수 있다.
+
+### 5.14 내일 팀 설명과 즉시 병렬 작업
+
+10분 설명 순서:
+
+```text
+1분: 첫 목표는 이름 입력 -> 접속 -> 두 Player spawn -> 이동 -> 채팅
+2분: Server entity owner는 GameRoom/EntityRegistry 하나
+2분: PlayerController와 Brain은 command를 만들고 Server가 결과를 판정
+2분: Client GameObject와 UI는 Event/Snapshot을 표현
+2분: 담당별 수정 파일과 include 금지 경계 확인
+1분: 공용 계약 변경은 입력/출력/실패 조건 제안 후 건보가 확정
+```
+
+서버 연결을 기다리지 않고 시작할 작업:
+
+| 담당 | 내일 바로 할 일 | 임시 검증 입력 | 완료 증거 |
+|---|---|---|---|
+| 건보 | `C2S_ENTER_WORLD` Writer/Reader/Harness round trip을 직접 구현·설명 | class 1개, UTF-8 nickname 1개, 잘린 buffer | Harness 정상/실패 case와 각 byte 의미 설명 |
+| 주승 | Local Character에 필요한 Move/Skill command 목록과 `ICharacterLogic` 입출력 정리 | fake `IGameCommandSink`, 현재 `CCharacter` | socket include 없이 입력이 typed command 하나로 나옴 |
+| 태준 | Player/Boss HP, nickname, chat에 필요한 ViewState/ViewModel 필드와 UI mock | 고정 `ENTITY_VIEW_STATE` fixture | raw packet/GameObject 없이 mock 값 변경이 UI에 반영 |
+| 찬영 | 일반 Monster와 Valtan의 read state, 출력 command, tuning table 정리 | 고정 `WORLD_READ_VIEW` fixture | socket/UI 없이 같은 입력에서 pattern command가 나옴 |
+
+팀원 fixture는 실제 Server truth의 대체 구현이 아니다. 각자 presentation/decision을 독립 검증하기
+위한 입력일 뿐이며, Shared command/event가 연결되면 동일 인터페이스의 실제 데이터로 교체한다.
 
 ---
 
