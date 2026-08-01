@@ -367,7 +367,7 @@ HRESULT CMainApp::ReadyDebugTools()
     m_pAnimationTool = std::make_unique<CAnimation_Tool>();
 
     m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
-    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice);
+    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
 
     const wchar_t* pCommandLine = GetCommandLineW();
     const bool_t isEffectProfileRequested =

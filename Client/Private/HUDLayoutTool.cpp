@@ -109,16 +109,55 @@ namespace
 	}
 }
 
-Client::CHUDLayoutTool::CHUDLayoutTool(ComPtr<ID3D11Device> pDevice)
+Client::CHUDLayoutTool::CHUDLayoutTool(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: m_pDevice { pDevice }
+	, m_pContext { pContext }
 {
 	/* CreateWICTextureFromFile needs COM on the calling thread; the main thread never initializes it (only the level-loading worker thread does). */
 	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+	/* Glow/particle art is authored for additive blending (see TEXTURE_LAYER::bAdditive); this is the
+	   blend state Draw_Image_Quad switches to for layers that opt in. */
+	D3D11_BLEND_DESC BlendDesc{};
+	BlendDesc.RenderTarget[0].BlendEnable = TRUE;
+	BlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	BlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+	BlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	BlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	BlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	BlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	m_pDevice->CreateBlendState(&BlendDesc, &m_pAdditiveBlendState);
 
 	Load(Current_Save_Path());
 
 	if (m_Slots.empty())
 		Reset_Default();
+}
+
+void Client::CHUDLayoutTool::Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd)
+{
+	auto pTool = static_cast<CHUDLayoutTool*>(pCmd->UserCallbackData);
+	pTool->m_pContext->OMSetBlendState(pTool->m_pAdditiveBlendState.Get(), nullptr, 0xffffffff);
+}
+
+void Client::CHUDLayoutTool::Draw_Image_Quad(ImDrawList* pDrawList, ID3D11ShaderResourceView* pSRV,
+	const ImVec2 Corners[4], uint32_t iTint, bool_t bAdditive, bool_t bFlipX)
+{
+	if (bAdditive)
+		pDrawList->AddCallback(&CHUDLayoutTool::Enable_Additive_Blend, this);
+
+	/* Flipping is just swapping which U coordinate each corner samples; the on-screen quad and
+	   winding stay the same, only the texture reads mirrored. */
+	if (bFlipX)
+		pDrawList->AddImageQuad(pSRV, Corners[0], Corners[1], Corners[2], Corners[3],
+			ImVec2(1, 0), ImVec2(0, 0), ImVec2(0, 1), ImVec2(1, 1), iTint);
+	else
+		pDrawList->AddImageQuad(pSRV, Corners[0], Corners[1], Corners[2], Corners[3],
+			ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), iTint);
+
+	if (bAdditive)
+		pDrawList->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
 const char* Client::CHUDLayoutTool::Current_Save_Path() const
@@ -189,6 +228,10 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::Checkbox("Preview Hover (all)", &m_bPreviewHover);
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("Forces every slot to its hover art.\nWithout this, mousing over a slot on the canvas previews just that one.");
+	ImGui::SameLine();
+	ImGui::Checkbox("Boost Dark Art", &m_bBoostDarkArt);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Editor-only: layers under a dark background lose their edges when aligning by eye.\nThis redraws them with extra additive passes just for visibility here; it changes nothing saved to the cfg or seen in-game.");
 
 	/* One control drives every slot, so a charge state can be judged as a whole. */
 	if (ImGui::Button("Animation Stage"))
@@ -438,7 +481,24 @@ void Client::CHUDLayoutTool::Render_Canvas()
 	}
 
 	const ImVec2 vCanvasEnd(vOrigin.x + ms_fRefWidth * m_fCanvasScale, vOrigin.y + ms_fRefHeight * m_fCanvasScale);
-	pDrawList->AddRectFilled(vOrigin, vCanvasEnd, IM_COL32(110, 110, 116, 255));
+
+	/* A flat mid-gray fill let dark class art (near-black emblems, orbs) blend into the
+	   background and lose contrast. A checkerboard reads as "transparent" the same way
+	   external atlas viewers do, so dark art keeps its edges visible against it. */
+	const float fCheckerSize = 32.f * m_fCanvasScale;
+	const ImU32 iCheckerLight = IM_COL32(150, 150, 156, 255);
+	const ImU32 iCheckerDark = IM_COL32(120, 120, 126, 255);
+	int32_t iRow = 0;
+	for (float fY = vOrigin.y; fY < vCanvasEnd.y; fY += fCheckerSize, ++iRow)
+	{
+		int32_t iCol = 0;
+		for (float fX = vOrigin.x; fX < vCanvasEnd.x; fX += fCheckerSize, ++iCol)
+		{
+			const bool_t bLight = (0 == ((iRow + iCol) % 2));
+			const ImVec2 vCellMax((min)(fX + fCheckerSize, vCanvasEnd.x), (min)(fY + fCheckerSize, vCanvasEnd.y));
+			pDrawList->AddRectFilled(ImVec2(fX, fY), vCellMax, bLight ? iCheckerLight : iCheckerDark);
+		}
+	}
 	pDrawList->AddRect(vOrigin, vCanvasEnd, IM_COL32(200, 200, 205, 255));
 
 	ImGui::SetCursorScreenPos(vOrigin);
@@ -607,9 +667,17 @@ void Client::CHUDLayoutTool::Render_Canvas()
 				const ImU32 iTint = ImGui::ColorConvertFloat4ToU32(
 					ImVec4(Layer.vTint[0], Layer.vTint[1], Layer.vTint[2], Layer.vTint[3]));
 
-				pDrawList->AddImageQuad(pLayerSRV, Corners[0], Corners[1], Corners[2], Corners[3],
-					ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1), iTint);
+				Draw_Image_Quad(pDrawList, pLayerSRV, Corners, iTint, Layer.bAdditive, Layer.bFlipX);
 				bAnyLayerDrawn = true;
+
+				/* Extra additive passes of the same art lift dark pixels toward visible without
+				   touching the layer's own (correct) alpha-blended look; already-additive layers
+				   are already at full visibility and skip this. */
+				if (m_bBoostDarkArt && !Layer.bAdditive)
+				{
+					Draw_Image_Quad(pDrawList, pLayerSRV, Corners, iTint, true, Layer.bFlipX);
+					Draw_Image_Quad(pDrawList, pLayerSRV, Corners, iTint, true, Layer.bFlipX);
+				}
 			}
 		}
 
@@ -619,7 +687,7 @@ void Client::CHUDLayoutTool::Render_Canvas()
 			ID3D11ShaderResourceView* pShineSRV = Get_Or_Load_Texture(Slot.strShineTexture);
 			if (nullptr != pShineSRV)
 			{
-				pDrawList->AddImageQuad(pShineSRV, Corners[0], Corners[1], Corners[2], Corners[3]);
+				Draw_Image_Quad(pDrawList, pShineSRV, Corners, IM_COL32(255, 255, 255, 255), Slot.bShineAdditive);
 				bAnyLayerDrawn = true;
 			}
 		}
@@ -807,6 +875,13 @@ void Client::CHUDLayoutTool::Render_Inspector()
 				break;
 			}
 
+			/* Glow art (orbs, gauges, emblems) is authored for additive blending; alpha-blended it
+			   just looks dim, since most of the sprite is low-alpha halo rather than solid color. */
+			ImGui::Checkbox("Additive", &Layer.bAdditive);
+			ImGui::SameLine();
+			/* For a mirrored copy of directional art (an L-bracket, a wing) instead of a second file. */
+			ImGui::Checkbox("Flip X", &Layer.bFlipX);
+
 			/* Optional hover swap for this layer; left blank the layer stays put on hover. */
 			char szHoverBuf[260] = {};
 			strncpy_s(szHoverBuf, Layer.strHoverPath.c_str(), sizeof(szHoverBuf) - 1);
@@ -859,6 +934,7 @@ void Client::CHUDLayoutTool::Render_Inspector()
 		strncpy_s(szShineBuf, Slot.strShineTexture.c_str(), sizeof(szShineBuf) - 1);
 		if (ImGui::InputText("Shine Texture (on-state)", szShineBuf, sizeof(szShineBuf)))
 			Slot.strShineTexture = szShineBuf;
+		ImGui::Checkbox("Shine Additive", &Slot.bShineAdditive);
 
 		ImGui::DragFloat("Fire Animation Scale", &Slot.fAnimationScale, 0.01f, 0.5f, 3.f);
 		ImGui::DragFloat("Fire Offset X", &Slot.fAnimationOffsetX, 0.5f, -100.f, 100.f);
@@ -1203,10 +1279,20 @@ void Client::CHUDLayoutTool::Save(const string& strPath)
 					<< Layer.vTint[0] << " " << Layer.vTint[1] << " "
 					<< Layer.vTint[2] << " " << Layer.vTint[3] << "\n";
 			}
+
+			/* Only written when set, so non-additive layouts stay readable and older files keep loading. */
+			if (Layer.bAdditive)
+				File << "LAYERADDITIVE " << Slot.strName << " " << iLayer << "\n";
+
+			if (Layer.bFlipX)
+				File << "LAYERFLIPX " << Slot.strName << " " << iLayer << "\n";
 		}
 
 		if (!Slot.strShineTexture.empty())
 			File << "SHINETEX " << Slot.strName << " " << Slot.strShineTexture << "\n";
+
+		if (Slot.bShineAdditive)
+			File << "SHINEADDITIVE " << Slot.strName << "\n";
 
 		if (!Slot.AnimationFrames.empty())
 			File << "ANIMFPS " << Slot.strName << " " << Slot.fAnimationFPS << "\n";
@@ -1301,6 +1387,24 @@ void Client::CHUDLayoutTool::Load(const string& strPath)
 					Layer.vTint[3] = vTint[3];
 				}
 			}
+			else if ("LAYERADDITIVE" == strTag)
+			{
+				string strSlotName;
+				int32_t iLayer = -1;
+				Stream >> strSlotName >> iLayer;
+
+				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
+					Slot.TextureLayers[iLayer].bAdditive = true;
+			}
+			else if ("LAYERFLIPX" == strTag)
+			{
+				string strSlotName;
+				int32_t iLayer = -1;
+				Stream >> strSlotName >> iLayer;
+
+				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
+					Slot.TextureLayers[iLayer].bFlipX = true;
+			}
 			else if ("SHINETEX" == strTag)
 			{
 				string strSlotName, strTexturePath;
@@ -1309,6 +1413,13 @@ void Client::CHUDLayoutTool::Load(const string& strPath)
 				getline(Stream, strTexturePath);
 
 				Slot.strShineTexture = strTexturePath;
+			}
+			else if ("SHINEADDITIVE" == strTag)
+			{
+				string strSlotName;
+				Stream >> strSlotName;
+
+				Slot.bShineAdditive = true;
 			}
 			else if ("ANIMFRAME" == strTag)
 			{

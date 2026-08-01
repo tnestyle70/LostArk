@@ -3,6 +3,10 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+struct ImVec2;
+struct ImDrawCmd;
+struct ImDrawList;
+
 NS_BEGIN(Client)
 
 class CHUDLayoutTool final
@@ -28,6 +32,15 @@ public:
 		string	strPath;
 		string	strHoverPath;
 		float	vTint[4] = { 1.f, 1.f, 1.f, 1.f };
+
+		/* Glow/particle art (orbs, gauges, emblems) is authored for additive blending: alpha is low
+		   across most of the sprite, and adding it onto the background reads as a bright glow. Drawn
+		   with the tool's normal alpha blend instead, those same low-alpha pixels just look dim. */
+		bool_t	bAdditive = false;
+
+		/* Directional art (an L-shaped bracket, a wing) needs its mirror image for the opposite side;
+		   this samples the same source flipped instead of needing a second exported file. */
+		bool_t	bFlipX = false;
 	};
 
 	struct HUD_SLOT
@@ -48,6 +61,7 @@ public:
 		int32_t				iBaseFromStage = 0;
 		int32_t				iShineFromStage = 1;
 		string				strShineTexture;
+		bool_t				bShineAdditive = false;
 		vector<string>		AnimationFrames;
 		float				fAnimationFPS = 10.f;
 		float				fAnimationScale = 1.1f;
@@ -56,7 +70,7 @@ public:
 	};
 
 public:
-	CHUDLayoutTool(ComPtr<ID3D11Device> pDevice);
+	CHUDLayoutTool(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
 
 public:
 	void Render();
@@ -96,8 +110,17 @@ private:
 
 	ID3D11ShaderResourceView* Get_Or_Load_Texture(const string& strPath);
 
+	/* Wraps a single AddImageQuad in an additive blend state via ImGui draw callbacks, then resets
+	   render state back to ImGui's own default so the rest of the frame is unaffected. Flipping is
+	   just a UV swap, so it rides along on the same call instead of needing its own wrapper. */
+	void Draw_Image_Quad(struct ImDrawList* pDrawList, ID3D11ShaderResourceView* pSRV,
+		const ImVec2 Corners[4], uint32_t iTint, bool_t bAdditive, bool_t bFlipX = false);
+	static void Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd);
+
 private:
 	ComPtr<ID3D11Device>	m_pDevice;
+	ComPtr<ID3D11DeviceContext>	m_pContext;
+	ComPtr<ID3D11BlendState>	m_pAdditiveBlendState;
 	map<string, ComPtr<ID3D11ShaderResourceView>>	m_TextureCache;
 
 private:
@@ -111,6 +134,10 @@ private:
 	   mouse was over last frame (the interaction pass runs after the visual pass, hence the one-frame carry). */
 	bool				m_bPreviewHover = false;
 	int32_t				m_iHoveredSlot = -1;
+
+	/* Editor-only visibility aid: redraws base layers with extra additive passes so dark art keeps
+	   visible edges to align against. Purely a canvas preview toggle; never written to the cfg. */
+	bool				m_bBoostDarkArt = false;
 
 	/* Which charge stage the canvas is previewing; one control drives every slot at once. */
 	int32_t				m_iPreviewStage = 0;
