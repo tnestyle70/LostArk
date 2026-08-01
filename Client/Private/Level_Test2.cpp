@@ -6,6 +6,7 @@
 
 #include "Logic_LanceMaster.h"
 #include "Logic_GunSlinger.h"
+#include "Logic_Artist.h"
 
 CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -87,7 +88,7 @@ HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
 	spec and the matching Ready_*_Prototypes call in CLoader together. */
 	CCharacter::CHARACTER_DESC		CharacterDesc{};
 	CharacterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
-	CharacterDesc.pSpec = &Spec_GunSlinger;
+	CharacterDesc.pSpec = &Spec_Artist;
 	CharacterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
 
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),

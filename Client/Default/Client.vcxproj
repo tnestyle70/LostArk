@@ -31,6 +31,7 @@
     <ClInclude Include="..\Public\Level_ValtanArena.h" />
     <ClInclude Include="..\Public\Logic_LanceMaster.h" />
     <ClInclude Include="..\Public\Logic_GunSlinger.h" />
+    <ClInclude Include="..\Public\Logic_Artist.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
@@ -93,6 +94,7 @@
     <ClCompile Include="..\Private\Level_ValtanArena.cpp" />
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Logic_GunSlinger.cpp" />
+    <ClCompile Include="..\Private\Logic_Artist.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
