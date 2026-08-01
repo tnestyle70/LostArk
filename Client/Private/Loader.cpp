@@ -466,7 +466,11 @@ HRESULT CLoader::Ready_For_Test_Level2()
     //    ETOUI(LEVEL::TEST_LEVEL2))))
     //    return E_FAIL;
 
-    if (FAILED(Ready_Artist_Prototypes(
+    //if (FAILED(Ready_Artist_Prototypes(
+    //    ETOUI(LEVEL::TEST_LEVEL2))))
+    //    return E_FAIL;
+
+    if (FAILED(Ready_Slayer_Prototypes(
         ETOUI(LEVEL::TEST_LEVEL2))))
         return E_FAIL;
 
@@ -720,6 +724,81 @@ HRESULT CLoader::Ready_Artist_Prototypes(uint32_t iLevelIndex)
             m_pContext,
             MODEL::NONANIM,
             "../Bin/Resources/LostArk/Character/WP_WSDM_09/WP_WSDM_09.wmodel",
+            XMMatrixIdentity()))))
+        return E_FAIL;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_Slayer_Prototypes(uint32_t iLevelIndex)
+{
+    /* Same contract as the other classes: the cook is centimetre, the loader
+    brings it back to metres, and the model faces -Z until rotated. */
+    const matrix_t preTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+        XMMatrixRotationY(
+            XMConvertToRadians(-90.f));
+
+    auto pSlayerModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::ANIM,
+        "../Bin/Resources/LostArk/Character/Slayer/Slayer.wmodel",
+        preTransform);
+
+    if (nullptr == pSlayerModel)
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Slayer"),
+        move(pSlayerModel))))
+        return E_FAIL;
+
+    static const struct
+    {
+        const tchar_t* pTag;
+        const char_t* pPath;
+    } EquipmentModels[] =
+    {
+        { TEXT("Prototype_Component_Model_Slayer_Upper"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Upper.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Lower"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Lower.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Arm"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Arm.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Shoulder"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Shoulder.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Helmet"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Helmet.wmodel" },
+    };
+
+    for (const auto& equipmentModel : EquipmentModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            equipmentModel.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::ANIM,
+                equipmentModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
+
+    /* No scaling, same reasoning as the gun and the brush: the greatsword came
+    out of the same psk export as the body, so it is already in the body's units.
+    It is the longest weapon so far though -- 209.1 against a body 129.6 tall --
+    so this is the one to look at first if the proportions read wrong on screen. */
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Slayer_Weapon"),
+        CModel::Create(
+            m_pDevice,
+            m_pContext,
+            MODEL::NONANIM,
+            "../Bin/Resources/LostArk/Character/WP_WWBK_03/WP_WWBK_03.wmodel",
             XMMatrixIdentity()))))
         return E_FAIL;
 

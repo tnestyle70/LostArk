@@ -52,6 +52,7 @@ private:
 	HRESULT Ready_LanceMaster_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_GunSlinger_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_Artist_Prototypes(uint32_t iLevelIndex);
+	HRESULT Ready_Slayer_Prototypes(uint32_t iLevelIndex);
 
 public:
 	static unique_ptr<CLoader> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID);

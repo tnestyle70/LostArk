@@ -121,6 +121,9 @@
     <Filter Include="02.GameObjects\00. Character\02. Artist">
       <UniqueIdentifier>{a708339b-9aaf-468a-bfb9-c2d18436186e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.GameObjects\00. Character\03. Slayer">
+      <UniqueIdentifier>{15752942-3ae9-4fcd-91ce-48f56a75769b}</UniqueIdentifier>
+    </Filter>
     <Filter Include="02.GameObjects\06. Camera">
       <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
     </Filter>
@@ -333,6 +336,9 @@
     <ClCompile Include="..\Private\Logic_Artist.cpp">
       <Filter>02.GameObjects\00. Character\02. Artist</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Logic_Slayer.cpp">
+      <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -520,6 +526,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Logic_Artist.h">
       <Filter>02.GameObjects\00. Character\02. Artist</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Logic_Slayer.h">
+      <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
