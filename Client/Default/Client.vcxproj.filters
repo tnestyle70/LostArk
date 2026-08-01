@@ -142,12 +142,6 @@
     <Filter Include="01.Levels\99. Legacy\02. TestLevel2">
       <UniqueIdentifier>{990193aa-479d-457b-a42f-b4ce68ccecd8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\98. Loading">
-      <UniqueIdentifier>{de01aad6-a07c-47d8-a504-d56ab362410e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\98. Loading\Loader">
-      <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
-    </Filter>
     <Filter Include="01.Levels\02. Baren">
       <UniqueIdentifier>{812b4a10-ea33-4813-90a1-6f295ebb9ae7}</UniqueIdentifier>
     </Filter>
@@ -169,6 +163,15 @@
     <Filter Include="01.Levels\00. Logo">
       <UniqueIdentifier>{8c9bceda-8729-4fc0-9363-481cf65a577f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="04. Network">
+      <UniqueIdentifier>{82310efc-790a-485f-b427-faf8083dc8e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\05. Loading">
+      <UniqueIdentifier>{de01aad6-a07c-47d8-a504-d56ab362410e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="01.Levels\05. Loading\Loader">
+      <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
@@ -187,10 +190,10 @@
       <Filter>01.Levels\99. Legacy\GamePlay</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_Loading.cpp">
-      <Filter>01.Levels\98. Loading</Filter>
+      <Filter>01.Levels\05. Loading</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Loader.cpp">
-      <Filter>01.Levels\98. Loading\Loader</Filter>
+      <Filter>01.Levels\05. Loading\Loader</Filter>
     </ClCompile>
     <ClCompile Include="..\private\BackGround.cpp">
       <Filter>02.GameObjects\99. 수업\BackGround</Filter>
@@ -345,6 +348,9 @@
     <ClCompile Include="..\Private\Npc.cpp">
       <Filter>02.GameObjects\01. Npc</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\NetworkManager.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -375,10 +381,10 @@
       <Filter>01.Levels\99. Legacy\GamePlay</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_Loading.h">
-      <Filter>01.Levels\98. Loading</Filter>
+      <Filter>01.Levels\05. Loading</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Loader.h">
-      <Filter>01.Levels\98. Loading\Loader</Filter>
+      <Filter>01.Levels\05. Loading\Loader</Filter>
     </ClInclude>
     <ClInclude Include="..\public\BackGround.h">
       <Filter>02.GameObjects\99. 수업\BackGround</Filter>
@@ -538,6 +544,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Npc.h">
       <Filter>02.GameObjects\01. Npc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NetworkManager.h">
+      <Filter>04. Network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
