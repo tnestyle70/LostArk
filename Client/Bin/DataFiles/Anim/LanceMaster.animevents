@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 3 "LanceMaster" 3050
+LOSTARK_ANIM_EVENTS 3 "LanceMaster" 3086
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
@@ -2899,6 +2899,42 @@ LOSTARK_ANIM_EVENTS 3 "LanceMaster" 3050
 "flm_sk_talonstrike_custom_4_01" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX000_1" src=orig
 "flm_sk_talonstrike_custom_4_01" CANCEL startms=199 endms=400 payload="[선스]" src=orig
 "flm_sk_talonstrike_custom_4_01" CANCEL startms=199 endms=400 payload="[선이]" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=0 endms=506 payload="[선스]" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=0 endms=607 payload="[선이]" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=0 endms=1100 payload="연가심공" src=orig
+"flm_sk_talonstrike_custom_4_03-1" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX040_4" src=orig
+"flm_sk_talonstrike_custom_4_03-1" HIT startms=100 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_4_03-1" SHAKE startms=145 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_02" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_32" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_02" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=150 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_04" src=orig
+"flm_sk_talonstrike_custom_4_03-1" EFFECT startms=167 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=242 endms=1100 payload="회피기 및 절룡세 캔슬" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=500 endms=1100 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-1" CANCEL startms=600 endms=1100 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=0 endms=1167 payload="회피기 및 절룡세 캔슬" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=0 endms=607 payload="[선스]" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=0 endms=706 payload="[선이]" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=0 endms=1167 payload="연가심공" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_CastSphere_01" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_CastSphere_Re_02" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=0 payload="FX_PC_FLM_03.Par_N_FLM_CastSphere_Re_01" src=orig
+"flm_sk_talonstrike_custom_4_03-2" SOUND startms=0 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX040_4" src=orig
+"flm_sk_talonstrike_custom_4_03-2" SOUND startms=130 payload="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_Vox1_2" src=orig
+"flm_sk_talonstrike_custom_4_03-2" HIT startms=200 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=247 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_06" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=247 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraWind_01" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=249 payload="FX_PC_FLM_03.Par_N_FLM_SpearAura_04" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=250 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=251 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_02" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=252 payload="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_32" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=252 payload="FX_PC_FLM_03.Par_N_FLM_Dust_02" src=orig
+"flm_sk_talonstrike_custom_4_03-2" EFFECT startms=252 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"flm_sk_talonstrike_custom_4_03-2" SHAKE startms=252 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=600 endms=1167 payload="" src=orig
+"flm_sk_talonstrike_custom_4_03-2" CANCEL startms=700 endms=1167 payload="" src=orig
 "flm_sk_talonstrike_custom_6" CANCEL startms=0 endms=304 payload="[선스]" src=orig
 "flm_sk_talonstrike_custom_6" CANCEL startms=0 endms=305 payload="[선이]" src=orig
 "flm_sk_talonstrike_custom_6" CANCEL startms=0 endms=567 payload="연가심공" src=orig
