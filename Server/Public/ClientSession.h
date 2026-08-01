@@ -15,24 +15,21 @@
 #include <span>
 #include <thread>
 
-//client ¼¼¼ÇÀº server ±âÁØÀ¸·Î Å¬¶óÀÌ¾ğÆ® ¼¼¼ÇÀ» »ı¼ºÇØ¾ß ÇÑ´Ù.
-
 namespace LostArk::Server
 {
 	class CClientSession final
 	{
 	public:
-		//ÀÌ ÇÔ¼ö °´Ã¼µéÀÌ ÀÇ¹ÌÇÏ´Â ¹Ù°¡ °ú¿¬ ¹»±î?
-		//session id¿Í packet frameÀ» °¡Áö´Â ÇÔ¼ö °´Ã¼?
+		// ìˆ˜ì‹  ìŠ¤ë ˆë“œê°€ ì™„ì„±í•œ í•œ í”„ë ˆì„ì„ ServerAppì— ì „ë‹¬í•˜ëŠ” ê³„ì•½ì´ë‹¤.
 		using FRAME_HANDLER = std::function<void(
 			SESSION_ID,
 			const LostArk::Shared::PACKET_FRAME&)>;
 
+		// ì—°ê²° ì¢…ë£Œë¥¼ ServerAppì— í•œ ë²ˆë§Œ ì•Œë¦¬ëŠ” ê³„ì•½ì´ë‹¤.
 		using CLOSED_HANDLER = std::function<void(
 			SESSION_ID)>;
 
 	public:
-		//¿Ö explicitÀÌ ÀÖ´Ù°¡ ºüÁ®?
 		CClientSession(
 			SESSION_ID sessionId,
 			SOCKET clientSocket,
@@ -49,7 +46,7 @@ namespace LostArk::Server
 		void Request_Close();
 		void Stop();
 
-		//server -> client·Î payload¸¦ packettype¿¡ ¸ÂÃç¼­ º¸³½´Ù.
+		// Serverì—ì„œ Clientë¡œ í•œ ê²Œì„ íŒ¨í‚· í”„ë ˆì„ì„ ì „ì†¡í•œë‹¤.
 		bool Send_Frame(
 			LostArk::Shared::PACKET_TYPE packetType,
 			std::span<const std::uint8_t> payload);
@@ -61,15 +58,9 @@ namespace LostArk::Server
 
 		[[nodiscard]] LostArk::Shared::PLAYER_ID Get_PlayerId() const;
 
-		[[nodiscard]] bool Is_Open() const
-		{
-			return INVALID_SOCKET != m_hClientSocket;
-		}
+		[[nodiscard]] bool Is_Open() const;
 
-		[[nodiscard]] int Get_LastErrorCode() const
-		{
-			return m_iLastErrorCode;
-		}
+		[[nodiscard]] int Get_LastErrorCode() const;
 
 	private:
 		void Receive_Loop();
@@ -77,17 +68,17 @@ namespace LostArk::Server
 		bool Receive_Frame(
 			LostArk::Shared::PACKET_FRAME& frame);
 
-		//¸ğµç bytes¸¦ tcpclient·Î º¸³½´Ù? GameRoomÀ¸·Î º¸³½´Ù?
+		// TCPì˜ ë¶€ë¶„ ì „ì†¡ì„ ì²˜ë¦¬í•´ ìš”ì²­í•œ ëª¨ë“  ë°”ì´íŠ¸ë¥¼ Socketì— ê¸°ë¡í•œë‹¤.
 		bool Send_All(std::span<const std::uint8_t> bytes);
 
 		void Notify_Closed();
 
 	private:
-		const SESSION_ID m_iSessionid =
+		const SESSION_ID m_iSessionId =
 			INVALID_SESSION_ID;
 
 		SOCKET m_hClientSocket = INVALID_SOCKET;
-		
+
 		std::atomic<int> m_iLastErrorCode{ 0 };
 		std::atomic_bool m_isReceiveRunning{ false };
 		std::atomic_bool m_hasNotifiedClosed{ false };
@@ -97,7 +88,6 @@ namespace LostArk::Server
 			LostArk::Shared::INVALID_PLAYER_ID
 		};
 
-		//stream parser
 		LostArk::Shared::CPacketStreamParser m_StreamParser;
 		std::thread m_ReceiveThread;
 		std::mutex m_SendMutex;

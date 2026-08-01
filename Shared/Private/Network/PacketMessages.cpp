@@ -5,7 +5,6 @@
 
 #include <cmath>
 #include <utility>
-#include <cmath>
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
 {
@@ -288,9 +287,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_PLAYER_DESP
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_PLAYER_DESPAWNED& message)
 {
-    //검증
     NET_ENTITY_ID netEntityId = INVALID_NET_ENTITY_ID;
     std::uint8_t rawReason = {};
+
+    if (!reader.Read_U32(netEntityId))
+        return false;
+
+    if (!reader.Read_U8(rawReason))
+        return false;
 
     if (netEntityId == INVALID_NET_ENTITY_ID)
         return false;
@@ -299,17 +303,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_PLAYER_DESPAWNED& 
         PLAYER_DESPAWN_REASON::END))
         return false;
 
-    if (!reader.Read_U32(netEntityId))
-        return false;
+    S2C_PLAYER_DESPAWNED decoded{};
 
-    if (!reader.Read_U8(rawReason))
-        return false;
-
-
-    S2C_PLAYER_DESPAWNED decoded;
-
-    decoded.eReason = message.eReason;
-    decoded.iNetEntityId = message.iNetEntityId;
+    decoded.iNetEntityId = netEntityId;
+    decoded.eReason = static_cast<PLAYER_DESPAWN_REASON>(
+        rawReason);
 
     message = decoded;
 
