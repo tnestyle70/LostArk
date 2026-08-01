@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 
 LostArk::Server::CClientSession::CClientSession(
@@ -10,7 +11,7 @@ LostArk::Server::CClientSession::CClientSession(
 	SOCKET clientSocket,
 	FRAME_HANDLER onFrame,
 	CLOSED_HANDLER onClosed)
-	: m_iSessionid{ sessionId }
+	: m_iSessionId{ sessionId }
 	, m_hClientSocket{ clientSocket }
 	, m_OnFrame{ std::move(onFrame) }
 	, m_OnClosed{ std::move(onClosed) }

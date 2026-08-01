@@ -861,7 +861,7 @@ int main()
 	Test_F32RoundTrip(testRunner);
 	Test_PlayerSpawnedRoundTrip(testRunner);
 	Test_InvalidPlayerSpawnedPayloads(testRunner);
-	Test_PlayerSpawnedRoundTrip(testRunner);
+	Test_PlayerDespawnedRoundTrip(testRunner);
 
 	Test_StreamFraming(testRunner);
 

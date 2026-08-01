@@ -37,12 +37,12 @@ bool LostArk::Server::CTcpListener::Open(std::uint16_t port)
 
     //listen socket binding 실패 여부 판단
     if (SOCKET_ERROR == ::bind(
-        m_hListenSocket,
+        listenSocket,
         reinterpret_cast<const sockaddr*>(
             &address),
         sizeof(address)))
     {
-        m_iLastErrorCode = ::WSAGetLastError();
+        m_iLastErrorCode.store(::WSAGetLastError());
         ::closesocket(listenSocket);
         return false;
     }
