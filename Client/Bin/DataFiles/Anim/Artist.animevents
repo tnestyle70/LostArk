@@ -1,0 +1,1017 @@
+LOSTARK_ANIM_EVENTS 3 "Artist" 1016
+"sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
+"sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
+"sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
+"sdm_att_battle_1_01" SOUND startms=300 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_Vox1_3" src=orig
+"sdm_att_battle_1_01" EFFECT startms=446 payload="FX_PC_SDM_00.Par_O_SDM_Att_03_01" src=orig
+"sdm_att_battle_1_01" EFFECT startms=494 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_1_01" EFFECT startms=498 payload="FX_PC_SDM_00.Par_O_SDM_Att_07_01" src=orig
+"sdm_att_battle_1_01" CANCEL startms=500 endms=1333 payload="이동기캔슬" src=orig
+"sdm_att_battle_1_01" SHAKE startms=502 payload="" src=orig
+"sdm_att_battle_1_01" EFFECT startms=572 payload="" src=orig
+"sdm_att_battle_1_01" EFFECT startms=578 payload="FX_PC_SDM_00.Par_O_SDM_Att_05_01" src=orig
+"sdm_att_battle_1_01" CANCEL startms=900 endms=1333 payload="스킬캔슬" src=orig
+"sdm_att_battle_1_01" CANCEL startms=1000 endms=1333 payload="이동캔슬" src=orig
+"sdm_att_battle_1_01" CANCEL startms=1150 endms=1333 payload="" src=orig
+"sdm_att_battle_1_02" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_Vox1_2" src=orig
+"sdm_att_battle_1_02" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_2" src=orig
+"sdm_att_battle_1_02" EFFECT startms=96 payload="FX_PC_SDM_00.Par_O_SDM_Att_02_01" src=orig
+"sdm_att_battle_1_02" CANCEL startms=100 endms=620 payload="스킬선입력" src=orig
+"sdm_att_battle_1_02" CANCEL startms=100 endms=770 payload="이동선입력" src=orig
+"sdm_att_battle_1_02" CANCEL startms=200 endms=540 payload="콤보선입력" src=orig
+"sdm_att_battle_1_02" EFFECT startms=248 payload="FX_PC_SDM_00.Par_O_SDM_Att_07_01" src=orig
+"sdm_att_battle_1_02" EFFECT startms=269 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_1_02" SHAKE startms=330 payload="" src=orig
+"sdm_att_battle_1_02" EFFECT startms=348 payload="" src=orig
+"sdm_att_battle_1_02" CANCEL startms=470 endms=880 payload="" src=orig
+"sdm_att_battle_1_02" EFFECT startms=470 payload="FX_PC_SDM_00.Par_O_SDM_Att_05_01" src=orig
+"sdm_att_battle_1_02" CANCEL startms=520 endms=880 payload="콤보입력중" src=orig
+"sdm_att_battle_1_02" CANCEL startms=600 endms=1233 payload="스킬캔슬" src=orig
+"sdm_att_battle_1_02" CANCEL startms=750 endms=1233 payload="이동캔슬" src=orig
+"sdm_att_battle_1_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_Vox1_1" src=orig
+"sdm_att_battle_1_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_1" src=orig
+"sdm_att_battle_1_03" CANCEL startms=100 endms=450 payload="스킬선입력" src=orig
+"sdm_att_battle_1_03" CANCEL startms=100 endms=620 payload="이동선입력" src=orig
+"sdm_att_battle_1_03" CANCEL startms=157 endms=435 payload="콤보선입력" src=orig
+"sdm_att_battle_1_03" EFFECT startms=198 payload="FX_PC_SDM_00.Par_O_SDM_Att_05_01" src=orig
+"sdm_att_battle_1_03" SHAKE startms=198 payload="" src=orig
+"sdm_att_battle_1_03" EFFECT startms=202 payload="FX_PC_SDM_00.Par_O_SDM_Att_07_01" src=orig
+"sdm_att_battle_1_03" EFFECT startms=217 payload="FX_PC_SDM_00.Par_O_SDM_Att_01_01" src=orig
+"sdm_att_battle_1_03" EFFECT startms=250 payload="" src=orig
+"sdm_att_battle_1_03" EFFECT startms=276 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_1_03" CANCEL startms=400 endms=530 payload="" src=orig
+"sdm_att_battle_1_03" CANCEL startms=400 endms=530 payload="콤보입력중" src=orig
+"sdm_att_battle_1_03" CANCEL startms=430 endms=1233 payload="스킬캔슬" src=orig
+"sdm_att_battle_1_03" EFFECT startms=526 payload="FX_PC_SDM_00.Par_O_SDM_Att_08_01" src=orig
+"sdm_att_battle_1_03" CANCEL startms=530 endms=830 payload="" src=orig
+"sdm_att_battle_1_03" CANCEL startms=600 endms=1233 payload="이동캔슬" src=orig
+"sdm_att_battle_1_04" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_SDM_Att_09_01" src=orig
+"sdm_att_battle_1_04" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_4" src=orig
+"sdm_att_battle_1_04" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_Vox1_4" src=orig
+"sdm_att_battle_1_04" EFFECT startms=159 payload="FX_PC_SDM_00.Par_O_SDM_Att_06_01" src=orig
+"sdm_att_battle_1_04" SHAKE startms=192 payload="" src=orig
+"sdm_att_battle_1_04" EFFECT startms=193 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_1_04" EFFECT startms=198 payload="FX_PC_SDM_00.Par_O_SDM_Att_05_01" src=orig
+"sdm_att_battle_1_04" CANCEL startms=250 endms=870 payload="스킬선입력" src=orig
+"sdm_att_battle_1_04" CANCEL startms=250 endms=870 payload="이동선입력" src=orig
+"sdm_att_battle_1_04" EFFECT startms=263 payload="FX_PC_SDM_00.Par_O_SDM_Att_07_01" src=orig
+"sdm_att_battle_1_04" EFFECT startms=266 payload="" src=orig
+"sdm_att_battle_1_04" CANCEL startms=670 endms=1267 payload="이동기캔슬" src=orig
+"sdm_att_battle_1_04" CANCEL startms=850 endms=1267 payload="스킬캔슬" src=orig
+"sdm_att_battle_1_04" CANCEL startms=850 endms=1267 payload="이동캔슬" src=orig
+"sdm_att_battle_1_04" CANCEL startms=1050 endms=1267 payload="" src=orig
+"sdm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_SDM_CF_Shield_01_L" src=orig
+"sdm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_03" src=orig
+"sdm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_B" src=orig
+"sdm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_SDM_CF_02" src=orig
+"sdm_att_battle_compete_1_loop" SUPERARMOR startms=0 endms=30000 payload="" src=orig
+"sdm_att_battle_compete_1_start" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"sdm_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_1" src=orig
+"sdm_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_Specialist_F_Vox1_1" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=490 payload="FX_PC_Confront_00.Par_L_SDM_CF_01" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=669 payload="FX_PC_Confront_00.Par_L_SDM_CF_Shield_01_S" src=orig
+"sdm_att_battle_compete_1_start" SHAKE startms=669 payload="" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=674 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_compete_1_start" EFFECT startms=674 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"sdm_att_battle_compete_1_start" SOUND startms=800 payload="PC_COMMON_DUAL.PC_Common_Dual1_2" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_SDM_CF_Shield_01_L" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_B" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_02" src=orig
+"sdm_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_L_SDM_CF_03" src=orig
+"sdm_att_battle_compete_1_success" SHAKE startms=0 payload="" src=orig
+"sdm_att_battle_compete_1_success" SUPERARMOR startms=0 endms=2000 payload="" src=orig
+"sdm_att_battle_compete_1_success" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_Specialist_F_Vox1_2" src=orig
+"sdm_att_battle_compete_1_success" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_6" src=orig
+"sdm_att_battle_compete_1_success" CANCEL startms=200 endms=720 payload="[선이]" src=orig
+"sdm_att_battle_compete_1_success" CANCEL startms=200 endms=720 payload="[선스]" src=orig
+"sdm_att_battle_compete_1_success" CANCEL startms=500 endms=2000 payload="이동기캔슬" src=orig
+"sdm_att_battle_compete_1_success" CANCEL startms=700 endms=2000 payload="" src=orig
+"sdm_att_battle_guide_1_start" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Fail1_Magician1_1" src=orig
+"sdm_att_battle_guide_1_start" SOUND startms=500 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Fail1_Magician1_2" src=orig
+"sdm_att_battle_guide_1_start" CANCEL startms=750 endms=1000 payload="[선이]" src=orig
+"sdm_att_battle_guide_1_start" CANCEL startms=750 endms=1000 payload="[선스]" src=orig
+"sdm_att_battle_guide_1_success" CANCEL startms=0 endms=400 payload="[선스]" src=orig
+"sdm_att_battle_guide_1_success" CANCEL startms=0 endms=561 payload="[선이]" src=orig
+"sdm_att_battle_guide_1_success" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"sdm_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
+"sdm_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"sdm_att_battle_guide_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"sdm_att_battle_guide_1_success" SHAKE startms=0 payload="" src=orig
+"sdm_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
+"sdm_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_YinYangShi_F_PerfectGuard1_Vox1_1" src=orig
+"sdm_att_battle_guide_1_success" CANCEL startms=180 endms=2000 payload="[회피캔슬]" src=orig
+"sdm_att_battle_guide_1_success" CANCEL startms=400 endms=2000 payload="입력캔슬" src=orig
+"sdm_att_battle_guide_1_success" CANCEL startms=550 endms=2000 payload="이동캔슬" src=orig
+"sdm_idle_battle_1" EFFECT startms=0 payload="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" src=orig
+"sdm_idle_battle_1" SUPERARMOR startms=0 endms=5000 payload="" src=orig
+"sdm_idle_battle_1" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_7" src=orig
+"sdm_idle_battle_1" EFFECT startms=10 payload="" src=orig
+"sdm_sk_bullherding_01" SHAKE startms=0 payload="" src=orig
+"sdm_sk_bullherding_01" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"sdm_sk_bullherding_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_1" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=95 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=97 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=303 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=385 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_01" src=orig
+"sdm_sk_bullherding_01" SOUND startms=450 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_2" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=533 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_01_01" src=orig
+"sdm_sk_bullherding_01" EFFECT startms=538 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_bullherding_01" SOUND startms=550 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_Vox1_1" src=orig
+"sdm_sk_bullherding_02" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"sdm_sk_bullherding_02" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_P000_1" src=orig
+"sdm_sk_bullherding_03" SUPERARMOR startms=0 endms=1133 payload="" src=orig
+"sdm_sk_bullherding_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_Vox1_2" src=orig
+"sdm_sk_bullherding_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_P000_2" src=orig
+"sdm_sk_bullherding_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_P000_3" src=orig
+"sdm_sk_bullherding_03" EFFECT startms=100 payload="" src=orig
+"sdm_sk_bullherding_03" CANCEL startms=1000 endms=1133 payload="[선스]" src=orig
+"sdm_sk_bullherding_03" CANCEL startms=1000 endms=1133 payload="[선이]" src=orig
+"sdm_sk_bullherding_04" CANCEL startms=0 endms=610 payload="[선스]" src=orig
+"sdm_sk_bullherding_04" CANCEL startms=0 endms=610 payload="[선이]" src=orig
+"sdm_sk_bullherding_04" EFFECT startms=0 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_02_01" src=orig
+"sdm_sk_bullherding_04" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"sdm_sk_bullherding_04" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_3" src=orig
+"sdm_sk_bullherding_04" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_P000_4" src=orig
+"sdm_sk_bullherding_04" CANCEL startms=480 endms=867 payload="이동기캔슬" src=orig
+"sdm_sk_bullherding_04" CANCEL startms=600 endms=867 payload="[이동캔슬]" src=orig
+"sdm_sk_bullherding_04" CANCEL startms=600 endms=867 payload="[스킬캔슬]" src=orig
+"sdm_sk_bullherding_05" CANCEL startms=0 endms=1110 payload="[선스]" src=orig
+"sdm_sk_bullherding_05" CANCEL startms=0 endms=1110 payload="[선이]" src=orig
+"sdm_sk_bullherding_05" EFFECT startms=0 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_02_01" src=orig
+"sdm_sk_bullherding_05" SUPERARMOR startms=0 endms=1100 payload="" src=orig
+"sdm_sk_bullherding_05" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_4" src=orig
+"sdm_sk_bullherding_05" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_P000_4" src=orig
+"sdm_sk_bullherding_05" CANCEL startms=500 endms=1567 payload="이동기캔슬" src=orig
+"sdm_sk_bullherding_05" CANCEL startms=1100 endms=1567 payload="[이동캔슬]" src=orig
+"sdm_sk_bullherding_05" CANCEL startms=1100 endms=1567 payload="[스킬캔슬]" src=orig
+"sdm_sk_bullherding_send" SHAKE startms=0 payload="" src=orig
+"sdm_sk_bullherding_send" SUPERARMOR startms=0 endms=1900 payload="" src=orig
+"sdm_sk_bullherding_send" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_1" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=95 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=97 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"sdm_sk_bullherding_send" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_5" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=139 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=140 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_01" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=216 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_23_04" src=orig
+"sdm_sk_bullherding_send" CANCEL startms=600 endms=2567 payload="이동기캔슬" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=650 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_23_03" src=orig
+"sdm_sk_bullherding_send" CANCEL startms=1200 endms=1900 payload="[선스]" src=orig
+"sdm_sk_bullherding_send" CANCEL startms=1200 endms=1900 payload="[선이]" src=orig
+"sdm_sk_bullherding_send" SOUND startms=1200 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_Vox1_1" src=orig
+"sdm_sk_bullherding_send" SOUND startms=1300 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_BullHerding1_FX000_6" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1436 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_23_02" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1512 payload="FX_PC_SDM_10.Par_R_SDM_DriveCattle_23_01" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1530 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1533 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1542 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_bullherding_send" SHAKE startms=1556 payload="" src=orig
+"sdm_sk_bullherding_send" EFFECT startms=1600 payload="" src=orig
+"sdm_sk_bullherding_send" CANCEL startms=1900 endms=2567 payload="이동캔슬" src=orig
+"sdm_sk_bullherding_send" CANCEL startms=1900 endms=2567 payload="스킬캔슬" src=orig
+"sdm_sk_butterflydream" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_ButterFlyDream1_Vox1_1" src=orig
+"sdm_sk_butterflydream" EFFECT startms=378 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=378 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_02" src=orig
+"sdm_sk_butterflydream" SOUND startms=400 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_ButterFlyDream1_FX000_1" src=orig
+"sdm_sk_butterflydream" SHAKE startms=509 payload="" src=orig
+"sdm_sk_butterflydream" EFFECT startms=539 payload="FX_PC_SDM_00.Par_O_ButterflyDream_01_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=539 payload="FX_PC_SDM_00.Par_O_ButterflyDream_01_02" src=orig
+"sdm_sk_butterflydream" EFFECT startms=540 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_butterflydream" EFFECT startms=540 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=540 payload="" src=orig
+"sdm_sk_butterflydream" EFFECT startms=543 payload="" src=orig
+"sdm_sk_butterflydream" CANCEL startms=580 endms=2000 payload="이동기캔슬" src=orig
+"sdm_sk_butterflydream" CANCEL startms=900 endms=1820 payload="[선스]" src=orig
+"sdm_sk_butterflydream" CANCEL startms=900 endms=1820 payload="[선이]" src=orig
+"sdm_sk_butterflydream" SOUND startms=950 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_ButterFlyDream1_FX000_2" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1077 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1077 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_02" src=orig
+"sdm_sk_butterflydream" SHAKE startms=1118 payload="" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1150 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1150 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1150 payload="" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1151 payload="FX_PC_SDM_00.Par_O_ButterflyDream_02_01" src=orig
+"sdm_sk_butterflydream" EFFECT startms=1151 payload="FX_PC_SDM_00.Par_O_ButterflyDream_02_02" src=orig
+"sdm_sk_butterflydream" CANCEL startms=1800 endms=2000 payload="스킬캔슬" src=orig
+"sdm_sk_butterflydream" CANCEL startms=1800 endms=2000 payload="이동캔슬" src=orig
+"sdm_sk_butterflydream_custom_8" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_ButterFlyDream1_Vox1_1" src=orig
+"sdm_sk_butterflydream_custom_8" CANCEL startms=300 endms=1180 payload="[선스]" src=orig
+"sdm_sk_butterflydream_custom_8" CANCEL startms=300 endms=1180 payload="[선이]" src=orig
+"sdm_sk_butterflydream_custom_8" SOUND startms=300 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_ButterFlyDream1_FX008_1" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=400 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_01" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=401 payload="FX_PC_SDM_00.Par_O_ButterflyDreamTrail_01_02" src=orig
+"sdm_sk_butterflydream_custom_8" SHAKE startms=439 payload="" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=473 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=473 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=473 payload="" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=474 payload="" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=474 payload="FX_PC_SDM_00.Par_O_ButterflyDream_02_03" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=475 payload="FX_PC_SDM_00.Par_O_ButterflyDream_02_04" src=orig
+"sdm_sk_butterflydream_custom_8" EFFECT startms=476 payload="" src=orig
+"sdm_sk_butterflydream_custom_8" CANCEL startms=580 endms=1333 payload="이동기캔슬" src=orig
+"sdm_sk_butterflydream_custom_8" CANCEL startms=1160 endms=1333 payload="스킬캔슬" src=orig
+"sdm_sk_butterflydream_custom_8" CANCEL startms=1160 endms=1333 payload="이동캔슬" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=0 payload="FX_PC_SDM_08.Par_L_SDM_Sk_01_3" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=0 payload="FX_PC_SDM_08.Par_L_SDM_Sk_06_3" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=0 payload="FX_PC_SDM_08.Par_L_SDM_Sk_05_3" src=orig
+"sdm_sk_cloudtiger" SUPERARMOR startms=0 endms=1720 payload="" src=orig
+"sdm_sk_cloudtiger" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_CloudTiger1_Vox1_1" src=orig
+"sdm_sk_cloudtiger" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_CloudTiger1_FX000_1" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=130 payload="fx_cm_03.Trail.Par_D_mpTrail_03" src=orig
+"sdm_sk_cloudtiger" CANCEL startms=500 endms=1967 payload="이동기캔슬" src=orig
+"sdm_sk_cloudtiger" SOUND startms=650 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_CloudTiger1_FX000_2" src=orig
+"sdm_sk_cloudtiger" CANCEL startms=800 endms=1620 payload="[선스]" src=orig
+"sdm_sk_cloudtiger" CANCEL startms=800 endms=1620 payload="[선이]" src=orig
+"sdm_sk_cloudtiger" SOUND startms=890 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_CloudTiger1_Vox1_2" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=1000 payload="FX_PC_SDM_08.Par_L_SDM_Sk_01_2" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=1000 payload="FX_PC_SDM_08.Par_L_SDM_Sk_06_2" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=1000 payload="FX_PC_SDM_08.Par_L_SDM_Sk_05_2" src=orig
+"sdm_sk_cloudtiger" SHAKE startms=1000 payload="" src=orig
+"sdm_sk_cloudtiger" EFFECT startms=1147 payload="" src=orig
+"sdm_sk_cloudtiger" CANCEL startms=1600 endms=1967 payload="이동캔슬" src=orig
+"sdm_sk_cloudtiger" CANCEL startms=1600 endms=1967 payload="스킬캔슬" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=0 payload="FX_PC_SDM_02.Par_N_SDM_Circle_01_01" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=0 payload="FX_PC_SDM_02.Par_N_SDM_cast_01_1" src=orig
+"sdm_sk_congenitalenergy" SUPERARMOR startms=0 endms=1620 payload="" src=orig
+"sdm_sk_congenitalenergy" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_CongenitialEnergy1_Vox1_1" src=orig
+"sdm_sk_congenitalenergy" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_CongenitialEnergy1_FX000_1" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=95 payload="FX_PC_SDM_02.Par_N_YangTrail_01_01" src=orig
+"sdm_sk_congenitalenergy" CANCEL startms=500 endms=1833 payload="이동기캔슬" src=orig
+"sdm_sk_congenitalenergy" CANCEL startms=700 endms=1620 payload="[선이]" src=orig
+"sdm_sk_congenitalenergy" CANCEL startms=700 endms=1570 payload="[선스]" src=orig
+"sdm_sk_congenitalenergy" SOUND startms=900 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_CongenitialEnergy1_FX000_2" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=994 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=1000 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_congenitalenergy" EFFECT startms=1000 payload="" src=orig
+"sdm_sk_congenitalenergy" SHAKE startms=1016 payload="" src=orig
+"sdm_sk_congenitalenergy" CANCEL startms=1550 endms=1833 payload="스킬캔슬" src=orig
+"sdm_sk_congenitalenergy" CANCEL startms=1600 endms=1833 payload="이동캔슬" src=orig
+"sdm_sk_dimensionalshift" SUPERARMOR startms=0 endms=750 payload="" src=orig
+"sdm_sk_dimensionalshift" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_DimensionalShift1_Vox1_1" src=orig
+"sdm_sk_dimensionalshift" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_DimensionalShift1_FX000_1" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=140 payload="FX_PC_SDM_05.Par_Y_SDM_DimensionShift_wp_01_01" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=140 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_dimensionalshift" SOUND startms=155 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_DimensionalShift1_P050_1" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=195 payload="FX_PC_SDM_05.Par_Y_SDM_DimensionShift_01_01" src=orig
+"sdm_sk_dimensionalshift" CANCEL startms=300 endms=970 payload="[선스]" src=orig
+"sdm_sk_dimensionalshift" CANCEL startms=300 endms=970 payload="[선이]" src=orig
+"sdm_sk_dimensionalshift" CANCEL startms=500 endms=1000 payload="이동기캔슬" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=566 payload="" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=570 payload="FX_PC_SDM_05.Par_Y_SDM_DimensionShift_02_01" src=orig
+"sdm_sk_dimensionalshift" EFFECT startms=570 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_dimensionalshift" CANCEL startms=950 endms=1000 payload="스킬캔슬" src=orig
+"sdm_sk_dimensionalshift" CANCEL startms=950 endms=1000 payload="이동캔슬" src=orig
+"sdm_sk_doodle_01" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"sdm_sk_doodle_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Doodle1_Vox1_1" src=orig
+"sdm_sk_doodle_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Doodle1_FX000_1" src=orig
+"sdm_sk_doodle_02" CANCEL startms=0 endms=2000 payload="입력캔슬" src=orig
+"sdm_sk_doodle_02" CANCEL startms=0 endms=1500 payload="이동캔슬" src=orig
+"sdm_sk_doodle_02" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_01" src=orig
+"sdm_sk_doodle_02" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_05_rib" src=orig
+"sdm_sk_doodle_02" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_61" src=orig
+"sdm_sk_doodle_02" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_81" src=orig
+"sdm_sk_doodle_02" SUPERARMOR startms=0 endms=2000 payload="" src=orig
+"sdm_sk_doodle_02" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Doodle1_FX000_2" src=orig
+"sdm_sk_doodle_03" CANCEL startms=0 endms=520 payload="[선스]" src=orig
+"sdm_sk_doodle_03" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_02" src=orig
+"sdm_sk_doodle_03" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_82" src=orig
+"sdm_sk_doodle_03" SUPERARMOR startms=0 endms=1020 payload="" src=orig
+"sdm_sk_doodle_03" CANCEL startms=200 endms=1020 payload="[선이]" src=orig
+"sdm_sk_doodle_03" EFFECT startms=256 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_05_rib" src=orig
+"sdm_sk_doodle_03" EFFECT startms=256 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_85_rib" src=orig
+"sdm_sk_doodle_03" SOUND startms=300 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Doodle1_FX000_3" src=orig
+"sdm_sk_doodle_03" SOUND startms=300 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Doodle1_FX060_3" src=orig
+"sdm_sk_doodle_03" EFFECT startms=390 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_03" src=orig
+"sdm_sk_doodle_03" EFFECT startms=390 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_83" src=orig
+"sdm_sk_doodle_03" SHAKE startms=394 payload="" src=orig
+"sdm_sk_doodle_03" EFFECT startms=400 payload="" src=orig
+"sdm_sk_doodle_03" EFFECT startms=410 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_63" src=orig
+"sdm_sk_doodle_03" EFFECT startms=410 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_86" src=orig
+"sdm_sk_doodle_03" CANCEL startms=500 endms=1567 payload="이동기캔슬" src=orig
+"sdm_sk_doodle_03" CANCEL startms=500 endms=1567 payload="입력캔슬" src=orig
+"sdm_sk_doodle_03" CANCEL startms=1000 endms=1567 payload="이동캔슬" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_DragonRising_00_WpCast_01" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_DragonRising_00_Cast_02" src=orig
+"sdm_sk_dragonrising_01" SHAKE startms=0 payload="" src=orig
+"sdm_sk_dragonrising_01" SUPERARMOR startms=0 endms=1400 payload="" src=orig
+"sdm_sk_dragonrising_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MirEngrave1_Vox1_1" src=orig
+"sdm_sk_dragonrising_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MirEngrave1_FX000_1" src=orig
+"sdm_sk_dragonrising_01" CANCEL startms=600 endms=1410 payload="[선스]" src=orig
+"sdm_sk_dragonrising_01" CANCEL startms=600 endms=1410 payload="[선이]" src=orig
+"sdm_sk_dragonrising_01" EFFECT startms=600 payload="" src=orig
+"sdm_sk_dragonrising_01" CANCEL startms=1050 endms=2000 payload="이동기캔슬" src=orig
+"sdm_sk_dragonrising_01" SHAKE startms=1050 payload="" src=orig
+"sdm_sk_dragonrising_01" CANCEL startms=1400 endms=2000 payload="[이동캔슬]" src=orig
+"sdm_sk_dragonrising_01" CANCEL startms=1400 endms=2000 payload="[스킬캔슬]" src=orig
+"sdm_sk_flyinheaven" SUPERARMOR startms=0 endms=1470 payload="" src=orig
+"sdm_sk_flyinheaven" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_FlyinHeaven1_Vox1_1" src=orig
+"sdm_sk_flyinheaven" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_FlyinHeaven1_FX000_1" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=301 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_01" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_02" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_03" src=orig
+"sdm_sk_flyinheaven" CANCEL startms=500 endms=1470 payload="[선스]" src=orig
+"sdm_sk_flyinheaven" CANCEL startms=500 endms=1370 payload="[선이]" src=orig
+"sdm_sk_flyinheaven" CANCEL startms=500 endms=1767 payload="이동기캔슬" src=orig
+"sdm_sk_flyinheaven" SOUND startms=500 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_FlyinHeaven1_FX000_2" src=orig
+"sdm_sk_flyinheaven" SHAKE startms=984 payload="" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_02_01" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_02_02" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=997 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_02_03" src=orig
+"sdm_sk_flyinheaven" EFFECT startms=1000 payload="" src=orig
+"sdm_sk_flyinheaven" CANCEL startms=1350 endms=1767 payload="이동캔슬" src=orig
+"sdm_sk_flyinheaven" CANCEL startms=1450 endms=1767 payload="스킬캔슬" src=orig
+"sdm_sk_flyinheaven_custom_8" SUPERARMOR startms=0 endms=1470 payload="" src=orig
+"sdm_sk_flyinheaven_custom_8" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_FlyinHeaven1_Vox1_1" src=orig
+"sdm_sk_flyinheaven_custom_8" SOUND startms=50 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_FlyinHeaven1_FX000_1" src=orig
+"sdm_sk_flyinheaven_custom_8" EFFECT startms=301 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_flyinheaven_custom_8" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_01" src=orig
+"sdm_sk_flyinheaven_custom_8" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_02" src=orig
+"sdm_sk_flyinheaven_custom_8" EFFECT startms=301 payload="FX_PC_SDM_00.Par_O_FlyinHeaven_01_03" src=orig
+"sdm_sk_flyinheaven_custom_8" CANCEL startms=500 endms=1470 payload="[선스]" src=orig
+"sdm_sk_flyinheaven_custom_8" CANCEL startms=500 endms=1370 payload="[선이]" src=orig
+"sdm_sk_flyinheaven_custom_8" CANCEL startms=500 endms=1767 payload="이동기캔슬" src=orig
+"sdm_sk_flyinheaven_custom_8" SHAKE startms=984 payload="" src=orig
+"sdm_sk_flyinheaven_custom_8" EFFECT startms=1000 payload="" src=orig
+"sdm_sk_flyinheaven_custom_8" CANCEL startms=1350 endms=1767 payload="이동캔슬" src=orig
+"sdm_sk_flyinheaven_custom_8" CANCEL startms=1450 endms=1767 payload="스킬캔슬" src=orig
+"sdm_sk_fourgentlemen" HIT startms=0 endms=1500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_fourgentlemen" SUPERARMOR startms=0 endms=1320 payload="" src=orig
+"sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_Vox1_1" src=orig
+"sdm_sk_fourgentlemen" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_FourGentlemen1_FX000_1" src=orig
+"sdm_sk_fourgentlemen" EFFECT startms=303 payload="fx_cm_03.Trail.Par_D_mpTrail_03" src=orig
+"sdm_sk_fourgentlemen" CANCEL startms=400 endms=1220 payload="[선스]" src=orig
+"sdm_sk_fourgentlemen" CANCEL startms=400 endms=1320 payload="[선이]" src=orig
+"sdm_sk_fourgentlemen" EFFECT startms=432 payload="FX_PC_SDM_04.Par_W_SDM_Four_04" src=orig
+"sdm_sk_fourgentlemen" EFFECT startms=432 payload="FX_PC_SDM_04.Par_W_SDM_Four_04_1" src=orig
+"sdm_sk_fourgentlemen" CANCEL startms=500 endms=1500 payload="이동기캔슬" src=orig
+"sdm_sk_fourgentlemen" EFFECT startms=639 payload="FX_Post.FX_Par.Par_M_LineBlur_01" src=orig
+"sdm_sk_fourgentlemen" SHAKE startms=643 payload="" src=orig
+"sdm_sk_fourgentlemen" EFFECT startms=695 payload="" src=orig
+"sdm_sk_fourgentlemen" CANCEL startms=1200 endms=1500 payload="스킬캔슬" src=orig
+"sdm_sk_fourgentlemen" CANCEL startms=1300 endms=1500 payload="이동캔슬" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_03" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_HarmonyofYangTrail_03_01" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=0 payload="" src=orig
+"sdm_sk_harmonyofyang" SUPERARMOR startms=0 endms=1170 payload="" src=orig
+"sdm_sk_harmonyofyang" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Harmony2_Vox1_1" src=orig
+"sdm_sk_harmonyofyang" SOUND startms=20 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Harmony2_FX000_1" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=200 payload="FX_PC_SDM_00.Par_O_HarmonyofYangTrail_01_01" src=orig
+"sdm_sk_harmonyofyang" CANCEL startms=300 endms=1170 payload="[선이]" src=orig
+"sdm_sk_harmonyofyang" CANCEL startms=300 endms=1120 payload="[선스]" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=553 payload="" src=orig
+"sdm_sk_harmonyofyang" SHAKE startms=569 payload="" src=orig
+"sdm_sk_harmonyofyang" CANCEL startms=600 endms=1600 payload="이동기캔슬" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=600 payload="FX_PC_SDM_00.Par_O_HarmonyofYangTrail_02_01" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=600 payload="FX_PC_SDM_10.Par_R_SDM_HarmonyofYang_01_01" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=600 payload="FX_PC_SDM_00.Par_O_HarmonyofYangTrap_03_01" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=601 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=601 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_harmonyofyang" EFFECT startms=601 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_harmonyofyang" CANCEL startms=1100 endms=1600 payload="스킬캔슬" src=orig
+"sdm_sk_harmonyofyang" CANCEL startms=1150 endms=1600 payload="이동캔슬" src=orig
+"sdm_sk_harmonyofyin_01" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_TrailTest_01" src=orig
+"sdm_sk_harmonyofyin_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_03" src=orig
+"sdm_sk_harmonyofyin_01" EFFECT startms=0 payload="" src=orig
+"sdm_sk_harmonyofyin_01" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"sdm_sk_harmonyofyin_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Harmony1_Vox1_1" src=orig
+"sdm_sk_harmonyofyin_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Harmony1_FX000_1" src=orig
+"sdm_sk_harmonyofyin_01" CANCEL startms=398 endms=500 payload="[선이]" src=orig
+"sdm_sk_harmonyofyin_01" CANCEL startms=398 endms=500 payload="[선스]" src=orig
+"sdm_sk_harmonyofyin_02" CANCEL startms=0 endms=870 payload="[선스]" src=orig
+"sdm_sk_harmonyofyin_02" CANCEL startms=0 endms=870 payload="[선이]" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=0 payload="" src=orig
+"sdm_sk_harmonyofyin_02" SHAKE startms=0 payload="" src=orig
+"sdm_sk_harmonyofyin_02" SUPERARMOR startms=0 endms=870 payload="" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=29 payload="FX_PC_SDM_00.Par_O_HarmonyofYin_01_01" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=31 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=31 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=31 payload="" src=orig
+"sdm_sk_harmonyofyin_02" EFFECT startms=36 payload="" src=orig
+"sdm_sk_harmonyofyin_02" CANCEL startms=100 endms=1000 payload="이동기캔슬" src=orig
+"sdm_sk_harmonyofyin_02" CANCEL startms=850 endms=1000 payload="스킬캔슬" src=orig
+"sdm_sk_harmonyofyin_02" CANCEL startms=850 endms=1000 payload="이동캔슬" src=orig
+"sdm_sk_inkpaddle" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkPaddle1_Vox1_1" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=206 payload="FX_PC_SDM_04.Par_W_SDM_Inkpaddle_wp" src=orig
+"sdm_sk_inkpaddle" SOUND startms=280 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkPaddle1_FX007_1" src=orig
+"sdm_sk_inkpaddle" CANCEL startms=300 endms=870 payload="[선이]" src=orig
+"sdm_sk_inkpaddle" CANCEL startms=300 endms=870 payload="[선스]" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=328 payload="FX_PC_SDM_04.Par_W_SDM_Inkpaddle_01" src=orig
+"sdm_sk_inkpaddle" CANCEL startms=400 endms=1267 payload="이동기캔슬" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=460 payload="FX_PC_SDM_04.Par_W_SDM_Inkpaddle_dec_01" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=481 payload="FX_Post.FX_Par.Par_M_LineBlur_01" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=520 payload="" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=532 payload="FX_PC_SDM_04.Par_W_SDM_Inkpaddle_02" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=533 payload="" src=orig
+"sdm_sk_inkpaddle" SHAKE startms=536 payload="" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=625 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=625 payload="" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=625 payload="FX_PC_SDM_04.Par_W_SDM_Inkpaddle_00" src=orig
+"sdm_sk_inkpaddle" SHAKE startms=625 payload="" src=orig
+"sdm_sk_inkpaddle" EFFECT startms=669 payload="" src=orig
+"sdm_sk_inkpaddle" CANCEL startms=850 endms=1267 payload="스킬캔슬" src=orig
+"sdm_sk_inkpaddle" CANCEL startms=850 endms=1267 payload="이동캔슬" src=orig
+"sdm_sk_inkshot" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_InkShot_Weapon_01" src=orig
+"sdm_sk_inkshot" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_InkShot_Weapon_06" src=orig
+"sdm_sk_inkshot" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkShot1_Vox1_1" src=orig
+"sdm_sk_inkshot" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkShot1_FX000_1" src=orig
+"sdm_sk_inkshot" CANCEL startms=300 endms=1070 payload="[선스]" src=orig
+"sdm_sk_inkshot" CANCEL startms=300 endms=1220 payload="[선이]" src=orig
+"sdm_sk_inkshot" CANCEL startms=500 endms=1400 payload="이동기캔슬" src=orig
+"sdm_sk_inkshot" SOUND startms=550 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkShot1_FX000_2" src=orig
+"sdm_sk_inkshot" SOUND startms=550 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_InkShot1_FX008_2" src=orig
+"sdm_sk_inkshot" EFFECT startms=562 payload="" src=orig
+"sdm_sk_inkshot" EFFECT startms=562 payload="FX_PC_SDM_01.Par_T_SDM_InkShot_Skl_01" src=orig
+"sdm_sk_inkshot" EFFECT startms=562 payload="fx_cm_01.Distortion_oneLayer.Par_ConvateDisOL_FSM_PushingHit_01" src=orig
+"sdm_sk_inkshot" EFFECT startms=562 payload="FX_PC_SDM_01.Par_T_SDM_InkShot_Skl_06" src=orig
+"sdm_sk_inkshot" SHAKE startms=562 payload="" src=orig
+"sdm_sk_inkshot" CANCEL startms=1050 endms=1400 payload="스킬캔슬" src=orig
+"sdm_sk_inkshot" CANCEL startms=1200 endms=1400 payload="이동캔슬" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=0 payload="FX_PC_SDM_02.Par_N_SDM_SpacingTrail_01_01" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_landscapepainting" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"sdm_sk_landscapepainting" SUPERARMOR startms=0 endms=5180 payload="" src=orig
+"sdm_sk_landscapepainting" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_LandScapePainting1_Vox1_1" src=orig
+"sdm_sk_landscapepainting" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_LandScapePainting1_FX000_1" src=orig
+"sdm_sk_landscapepainting" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_LandScapePainting1_FX000_2" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=147 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=234 payload="FX_PC_SDM_02.FX_N_SDM_SphereWorld_02" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=234 payload="FX_PC_SDM_02.FX_N_SDM_SphereWorld_03" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=495 payload="FX_PC_SDM_02.Par_N_SDM_selfCast_02" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=923 payload="" src=orig
+"sdm_sk_landscapepainting" SHAKE startms=996 payload="" src=orig
+"sdm_sk_landscapepainting" SOUND startms=3500 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_LandScapePainting1_FX000_3" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=3692 payload="FX_CM_00.Dust.Par_MP_Dust_Ground_01" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=3696 payload="FX_PC_SDM_02.Par_N_SDM_Sk_Exp_00" src=orig
+"sdm_sk_landscapepainting" SHAKE startms=3696 payload="" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=3701 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=3765 payload="" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=3785 payload="FX_PC_SDM_02.FX_N_SDM_SphereWorld_02_End" src=orig
+"sdm_sk_landscapepainting" CANCEL startms=3950 endms=5300 payload="이동기캔슬" src=orig
+"sdm_sk_landscapepainting" CANCEL startms=4000 endms=4920 payload="[선이]" src=orig
+"sdm_sk_landscapepainting" CANCEL startms=4000 endms=4920 payload="[선스]" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=4322 payload="FX_PC_SDM_02.Par_N_SDM_Sk02" src=orig
+"sdm_sk_landscapepainting" EFFECT startms=4562 payload="FX_PC_SDM_02.Par_N_SDM_SpacingTrail_01_02" src=orig
+"sdm_sk_landscapepainting" CANCEL startms=4900 endms=5300 payload="[스킬캔슬]" src=orig
+"sdm_sk_landscapepainting" CANCEL startms=4900 endms=5300 payload="[이동캔슬]" src=orig
+"sdm_sk_moondrawing_01" SUPERARMOR startms=0 endms=870 payload="" src=orig
+"sdm_sk_moondrawing_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox1_1" src=orig
+"sdm_sk_moondrawing_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX000_1" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=200 endms=870 payload="스킬선입력" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=200 endms=870 payload="이동선입력" src=orig
+"sdm_sk_moondrawing_01" SOUND startms=285 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX000_2" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=321 endms=770 payload="콤보선입력" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=350 payload="FX_Post.FX_Par.Par_X_ZoomBlur_02" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=354 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_01_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=354 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_02_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=354 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_03_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_03" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_02" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_02" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_01" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_03" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=430 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_02" src=orig
+"sdm_sk_moondrawing_01" SHAKE startms=430 payload="" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=433 payload="" src=orig
+"sdm_sk_moondrawing_01" EFFECT startms=435 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=695 endms=1207 payload="" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=744 endms=1217 payload="콤보입력중" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=799 endms=1634 payload="이동기캔슬" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=850 endms=1633 payload="이동캔슬" src=orig
+"sdm_sk_moondrawing_01" CANCEL startms=850 endms=1633 payload="스킬캔슬" src=orig
+"sdm_sk_moondrawing_02" SUPERARMOR startms=0 endms=920 payload="" src=orig
+"sdm_sk_moondrawing_02" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox1_2" src=orig
+"sdm_sk_moondrawing_02" CANCEL startms=150 endms=920 payload="이동선입력" src=orig
+"sdm_sk_moondrawing_02" CANCEL startms=150 endms=920 payload="스킬선입력" src=orig
+"sdm_sk_moondrawing_02" SOUND startms=190 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX000_3" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=255 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_01_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=255 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_02_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=255 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_03_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=276 payload="FX_Post.FX_Par.Par_X_ZoomBlur_02" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=346 payload="" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=349 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_02" SHAKE startms=350 payload="" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=360 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_02" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=360 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_02" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=360 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_02" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=365 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=365 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_01_03" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=365 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_02_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=365 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_01" src=orig
+"sdm_sk_moondrawing_02" EFFECT startms=365 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_03_03" src=orig
+"sdm_sk_moondrawing_02" CANCEL startms=500 endms=1533 payload="이동기캔슬" src=orig
+"sdm_sk_moondrawing_02" CANCEL startms=900 endms=1533 payload="스킬캔슬" src=orig
+"sdm_sk_moondrawing_02" CANCEL startms=900 endms=1533 payload="이동캔슬" src=orig
+"sdm_sk_moondrawing_custom_7" SUPERARMOR startms=0 endms=1480 payload="" src=orig
+"sdm_sk_moondrawing_custom_7" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX000_1" src=orig
+"sdm_sk_moondrawing_custom_7" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox2_1" src=orig
+"sdm_sk_moondrawing_custom_7" CANCEL startms=198 endms=1485 payload="이동선입력" src=orig
+"sdm_sk_moondrawing_custom_7" CANCEL startms=198 endms=1485 payload="스킬선입력" src=orig
+"sdm_sk_moondrawing_custom_7" SOUND startms=285 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX007_2" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=330 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=337 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=338 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=338 payload="FX_Post.FX_Par.Par_X_ZoomBlur_02" src=orig
+"sdm_sk_moondrawing_custom_7" SHAKE startms=338 payload="" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=340 payload="" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=340 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_07_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=340 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_08_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=340 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_09_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=341 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_01_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=341 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_02_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=341 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_wp_03_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=350 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_07_03" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=350 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_09_03" src=orig
+"sdm_sk_moondrawing_custom_7" SOUND startms=690 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox2_2" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=955 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=957 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1042 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1050 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_07_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1050 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_08_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1050 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_09_02" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1056 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1057 payload="" src=orig
+"sdm_sk_moondrawing_custom_7" SHAKE startms=1057 payload="" src=orig
+"sdm_sk_moondrawing_custom_7" EFFECT startms=1058 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"sdm_sk_moondrawing_custom_7" CANCEL startms=1472 endms=1600 payload="스킬캔슬" src=orig
+"sdm_sk_moondrawing_custom_7" CANCEL startms=1472 endms=1600 payload="이동캔슬" src=orig
+"sdm_sk_moondrawing_custom_8" SUPERARMOR startms=0 endms=1570 payload="" src=orig
+"sdm_sk_moondrawing_custom_8" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX000_1" src=orig
+"sdm_sk_moondrawing_custom_8" SOUND startms=100 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox3_1" src=orig
+"sdm_sk_moondrawing_custom_8" SOUND startms=180 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX008_2" src=orig
+"sdm_sk_moondrawing_custom_8" CANCEL startms=200 endms=1420 payload="스킬선입력" src=orig
+"sdm_sk_moondrawing_custom_8" CANCEL startms=201 endms=1571 payload="이동선입력" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=301 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=305 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_04_02" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=305 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_06_02" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=310 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_04_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=310 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_05_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=310 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_06_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=320 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_04_04" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=320 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_05_04" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=320 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_06_04" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=321 payload="FX_Post.FX_Par.Par_X_ZoomBlur_02" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=327 payload="" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=337 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_custom_8" SOUND startms=700 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_Vox3_2" src=orig
+"sdm_sk_moondrawing_custom_8" SOUND startms=730 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_MoonDrawing1_FX008_3" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=925 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=930 payload="" src=orig
+"sdm_sk_moondrawing_custom_8" SHAKE startms=942 payload="" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=955 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=955 payload="FX_PC_SDM_05.Par_Y_SDM_Moondrawing_04_03" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=955 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_05_03" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=955 payload="FX_PC_SDM_05.Par_Y_SDM_MoonDrawing_06_03" src=orig
+"sdm_sk_moondrawing_custom_8" EFFECT startms=957 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_moondrawing_custom_8" CANCEL startms=1400 endms=1700 payload="스킬캔슬" src=orig
+"sdm_sk_moondrawing_custom_8" CANCEL startms=1550 endms=1700 payload="이동캔슬" src=orig
+"sdm_sk_moving_normal_1" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_Spacing_03_01" src=orig
+"sdm_sk_moving_normal_1" SUPERARMOR startms=0 endms=820 payload="" src=orig
+"sdm_sk_moving_normal_1" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Moving2_Vox1_1" src=orig
+"sdm_sk_moving_normal_1" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Moving2_1" src=orig
+"sdm_sk_moving_normal_1" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_Stop1" src=orig
+"sdm_sk_moving_normal_1" EFFECT startms=100 payload="" src=orig
+"sdm_sk_moving_normal_1" CANCEL startms=200 endms=820 payload="[선스]" src=orig
+"sdm_sk_moving_normal_1" CANCEL startms=200 endms=820 payload="[선이]" src=orig
+"sdm_sk_moving_normal_1" CANCEL startms=800 endms=1500 payload="" src=orig
+"sdm_sk_onestroke" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_SDM_Ink_spw_01" src=orig
+"sdm_sk_onestroke" SUPERARMOR startms=0 endms=2663 payload="" src=orig
+"sdm_sk_onestroke" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_Vox1_1" src=orig
+"sdm_sk_onestroke" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX000_1" src=orig
+"sdm_sk_onestroke" CANCEL startms=500 endms=2833 payload="이동기캔슬" src=orig
+"sdm_sk_onestroke" SOUND startms=1300 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX000_2" src=orig
+"sdm_sk_onestroke" SOUND startms=1300 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX040_1" src=orig
+"sdm_sk_onestroke" EFFECT startms=1338 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_01" src=orig
+"sdm_sk_onestroke" EFFECT startms=1338 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_04" src=orig
+"sdm_sk_onestroke" EFFECT startms=1338 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_07" src=orig
+"sdm_sk_onestroke" EFFECT startms=1338 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_47" src=orig
+"sdm_sk_onestroke" EFFECT startms=1380 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01" src=orig
+"sdm_sk_onestroke" EFFECT startms=1380 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_04" src=orig
+"sdm_sk_onestroke" EFFECT startms=1380 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07" src=orig
+"sdm_sk_onestroke" EFFECT startms=1380 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_47" src=orig
+"sdm_sk_onestroke" EFFECT startms=1451 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_01" src=orig
+"sdm_sk_onestroke" EFFECT startms=1451 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_04" src=orig
+"sdm_sk_onestroke" EFFECT startms=1451 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_07" src=orig
+"sdm_sk_onestroke" EFFECT startms=1451 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_47" src=orig
+"sdm_sk_onestroke" EFFECT startms=1451 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_onestroke" SHAKE startms=1451 payload="" src=orig
+"sdm_sk_onestroke" EFFECT startms=1452 payload="fx_cm_01.Distortion_oneLayer.Par_ConvateDisOL_FSM_PushingHit_01" src=orig
+"sdm_sk_onestroke" EFFECT startms=1453 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke" EFFECT startms=1460 payload="" src=orig
+"sdm_sk_onestroke" CANCEL startms=1600 endms=2270 payload="[선스]" src=orig
+"sdm_sk_onestroke" CANCEL startms=1600 endms=2270 payload="[선이]" src=orig
+"sdm_sk_onestroke" CANCEL startms=2250 endms=2833 payload="스킬캔슬" src=orig
+"sdm_sk_onestroke" CANCEL startms=2250 endms=2833 payload="이동캔슬" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_SDM_Ink_spw_01" src=orig
+"sdm_sk_onestroke_custom_5" SUPERARMOR startms=0 endms=3476 payload="" src=orig
+"sdm_sk_onestroke_custom_5" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_Vox1_1" src=orig
+"sdm_sk_onestroke_custom_5" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX000_1" src=orig
+"sdm_sk_onestroke_custom_5" CANCEL startms=500 endms=3633 payload="이동기캔슬" src=orig
+"sdm_sk_onestroke_custom_5" SOUND startms=1300 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX000_2" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1332 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_01" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1332 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_07" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1353 payload="" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1374 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1374 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1444 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_01" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1444 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_07" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1445 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_onestroke_custom_5" SHAKE startms=1445 payload="" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1446 payload="fx_cm_01.Distortion_oneLayer.Par_ConvateDisOL_FSM_PushingHit_01" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1446 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=1460 payload="" src=orig
+"sdm_sk_onestroke_custom_5" SOUND startms=2000 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX050_3" src=orig
+"sdm_sk_onestroke_custom_5" EFFECT startms=2200 payload="" src=orig
+"sdm_sk_onestroke_custom_5" CANCEL startms=2300 endms=3120 payload="[선스]" src=orig
+"sdm_sk_onestroke_custom_5" CANCEL startms=2300 endms=3120 payload="[선이]" src=orig
+"sdm_sk_onestroke_custom_5" CANCEL startms=3100 endms=3633 payload="스킬캔슬" src=orig
+"sdm_sk_onestroke_custom_5" CANCEL startms=3100 endms=3633 payload="이동캔슬" src=orig
+"sdm_sk_onestroke_custom_6_01" CANCEL startms=0 endms=450 payload="입력 끝" src=orig
+"sdm_sk_onestroke_custom_6_01" CANCEL startms=0 endms=450 payload="입력 없음" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_00" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_00" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_07" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_07" src=orig
+"sdm_sk_onestroke_custom_6_01" SHAKE startms=0 payload="" src=orig
+"sdm_sk_onestroke_custom_6_01" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_Vox1_1" src=orig
+"sdm_sk_onestroke_custom_6_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX067_1" src=orig
+"sdm_sk_onestroke_custom_6_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX060_1" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=500 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_onestroke_custom_6_01" EFFECT startms=500 payload="fx_cm_01.Distortion_oneLayer.Par_L_DisOL_MBD_NoteLump_01" src=orig
+"sdm_sk_onestroke_custom_6_01" SHAKE startms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_02" CANCEL startms=0 endms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_02" CANCEL startms=0 endms=450 payload="입력 끝" src=orig
+"sdm_sk_onestroke_custom_6_02" CANCEL startms=0 endms=450 payload="입력 없음" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_00" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_00_01" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_07" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_07_01" src=orig
+"sdm_sk_onestroke_custom_6_02" SHAKE startms=0 payload="" src=orig
+"sdm_sk_onestroke_custom_6_02" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=500 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_onestroke_custom_6_02" EFFECT startms=500 payload="fx_cm_01.Distortion_oneLayer.Par_L_DisOL_MBD_NoteLump_01" src=orig
+"sdm_sk_onestroke_custom_6_02" SHAKE startms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_03" CANCEL startms=0 endms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_03" CANCEL startms=0 endms=500 payload="입력 끝" src=orig
+"sdm_sk_onestroke_custom_6_03" CANCEL startms=0 endms=500 payload="입력 없음" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_00" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_00_02" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_dust_07" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=0 payload="FX_PC_SDM_07.Par_V_oneshot_char_07_02" src=orig
+"sdm_sk_onestroke_custom_6_03" SHAKE startms=0 payload="" src=orig
+"sdm_sk_onestroke_custom_6_03" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=500 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_onestroke_custom_6_03" EFFECT startms=500 payload="fx_cm_01.Distortion_oneLayer.Par_L_DisOL_MBD_NoteLump_01" src=orig
+"sdm_sk_onestroke_custom_6_03" SHAKE startms=500 payload="" src=orig
+"sdm_sk_onestroke_custom_6_04" SUPERARMOR startms=0 endms=1985 payload="" src=orig
+"sdm_sk_onestroke_custom_6_04" CANCEL startms=50 endms=2133 payload="이동기캔슬" src=orig
+"sdm_sk_onestroke_custom_6_04" SOUND startms=200 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX060_Stop1" src=orig
+"sdm_sk_onestroke_custom_6_04" SOUND startms=470 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX000_2" src=orig
+"sdm_sk_onestroke_custom_6_04" SOUND startms=470 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_OneStroke1_FX040_1" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=557 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_01" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=557 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Weapon_07" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=562 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_01_06" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=562 payload="FX_PC_SDM_07.Par_V_SMD_onestroke_Swing_07" src=orig
+"sdm_sk_onestroke_custom_6_04" SHAKE startms=667 payload="" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=669 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_01_02" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=669 payload="FX_PC_SDM_07.Par_V_SDM_OneStroke_hit_07_02" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=670 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_onestroke_custom_6_04" EFFECT startms=700 payload="" src=orig
+"sdm_sk_onestroke_custom_6_04" CANCEL startms=900 endms=1670 payload="[선스]" src=orig
+"sdm_sk_onestroke_custom_6_04" CANCEL startms=900 endms=1670 payload="[선이]" src=orig
+"sdm_sk_onestroke_custom_6_04" CANCEL startms=1650 endms=2133 payload="스킬캔슬" src=orig
+"sdm_sk_onestroke_custom_6_04" CANCEL startms=1650 endms=2133 payload="이동캔슬" src=orig
+"sdm_sk_pondofyin" SUPERARMOR startms=0 endms=1470 payload="" src=orig
+"sdm_sk_pondofyin" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_Vox1_1" src=orig
+"sdm_sk_pondofyin" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_FX000_1" src=orig
+"sdm_sk_pondofyin" EFFECT startms=130 payload="fx_cm_03.Trail.Par_D_mpTrail_03" src=orig
+"sdm_sk_pondofyin" SOUND startms=150 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_FX000_2" src=orig
+"sdm_sk_pondofyin" CANCEL startms=500 endms=1470 payload="[선이]" src=orig
+"sdm_sk_pondofyin" CANCEL startms=500 endms=1470 payload="[선스]" src=orig
+"sdm_sk_pondofyin" EFFECT startms=595 payload="" src=orig
+"sdm_sk_pondofyin" SHAKE startms=597 payload="" src=orig
+"sdm_sk_pondofyin" EFFECT startms=600 payload="" src=orig
+"sdm_sk_pondofyin" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_03" src=orig
+"sdm_sk_pondofyin" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_47" src=orig
+"sdm_sk_pondofyin" SOUND startms=600 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_Vox1_2" src=orig
+"sdm_sk_pondofyin" CANCEL startms=650 endms=1500 payload="이동기캔슬" src=orig
+"sdm_sk_pondofyin" CANCEL startms=1450 endms=1500 payload="스킬캔슬" src=orig
+"sdm_sk_pondofyin" CANCEL startms=1450 endms=1500 payload="이동캔슬" src=orig
+"sdm_sk_pondofyin_custom" SUPERARMOR startms=0 endms=1020 payload="" src=orig
+"sdm_sk_pondofyin_custom" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_Vox1_1" src=orig
+"sdm_sk_pondofyin_custom" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_FX000_1" src=orig
+"sdm_sk_pondofyin_custom" EFFECT startms=130 payload="fx_cm_03.Trail.Par_D_mpTrail_03" src=orig
+"sdm_sk_pondofyin_custom" SOUND startms=150 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_FX000_2" src=orig
+"sdm_sk_pondofyin_custom" CANCEL startms=200 endms=1020 payload="[선이]" src=orig
+"sdm_sk_pondofyin_custom" CANCEL startms=200 endms=1020 payload="[선스]" src=orig
+"sdm_sk_pondofyin_custom" SHAKE startms=597 payload="" src=orig
+"sdm_sk_pondofyin_custom" EFFECT startms=600 payload="" src=orig
+"sdm_sk_pondofyin_custom" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_07" src=orig
+"sdm_sk_pondofyin_custom" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_46" src=orig
+"sdm_sk_pondofyin_custom" SOUND startms=600 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_Vox1_2" src=orig
+"sdm_sk_pondofyin_custom" CANCEL startms=650 endms=1200 payload="이동기캔슬" src=orig
+"sdm_sk_pondofyin_custom" CANCEL startms=1000 endms=1200 payload="스킬캔슬" src=orig
+"sdm_sk_pondofyin_custom" CANCEL startms=1000 endms=1200 payload="이동캔슬" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_04_Rib" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_03_Rib" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_02" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_05_local" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_10" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_03" src=orig
+"sdm_sk_pungnyudo" SHAKE startms=0 payload="" src=orig
+"sdm_sk_pungnyudo" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"sdm_sk_pungnyudo" SUPERARMOR startms=0 endms=4450 payload="" src=orig
+"sdm_sk_pungnyudo" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PungNyuDo1_Vox1_1" src=orig
+"sdm_sk_pungnyudo" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PungNyuDo1_FX000_1" src=orig
+"sdm_sk_pungnyudo" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PungNyuDo1_FX000_2" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=80 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=80 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=109 payload="" src=orig
+"sdm_sk_pungnyudo" SOUND startms=900 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PungNyuDo1_FX000_3" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3000 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_06" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3200 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_03" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3400 payload="fx_cm_03.Wind.Par_MP_shockwave_01" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3400 payload="FX_PC_SDM_06.Par_D_SDM_2SuperMove_05_Exp" src=orig
+"sdm_sk_pungnyudo" SHAKE startms=3400 payload="" src=orig
+"sdm_sk_pungnyudo" EFFECT startms=3408 payload="" src=orig
+"sdm_sk_pungnyudo" CANCEL startms=3550 endms=4470 payload="[선스]" src=orig
+"sdm_sk_pungnyudo" CANCEL startms=3550 endms=4470 payload="[선이]" src=orig
+"sdm_sk_pungnyudo" CANCEL startms=4000 endms=6133 payload="이동기캔슬" src=orig
+"sdm_sk_pungnyudo" CANCEL startms=4450 endms=6133 payload="[이동캔슬]" src=orig
+"sdm_sk_pungnyudo" CANCEL startms=4450 endms=6133 payload="[스킬캔슬]" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_01" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_04" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_06" src=orig
+"sdm_sk_skykongkong_01" SUPERARMOR startms=0 endms=1100 payload="" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_Vox1_1" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX000_1" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=202 endms=672 payload="[선스]" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=309 endms=647 payload="[선콤]" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=600 payload="" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=600 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_01" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=600 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_04" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=600 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_06" src=orig
+"sdm_sk_skykongkong_01" EFFECT startms=600 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_34" src=orig
+"sdm_sk_skykongkong_01" SHAKE startms=600 payload="" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=600 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX000_2" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=600 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX040_2" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=600 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX060_2" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=615 endms=991 payload="" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=615 endms=991 payload="입력중" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=630 endms=1100 payload="[선이]" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=674 endms=1867 payload="이동기캔슬" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=674 endms=1867 payload="스킬캔슬" src=orig
+"sdm_sk_skykongkong_01" SOUND startms=1000 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_Vox1_2" src=orig
+"sdm_sk_skykongkong_01" CANCEL startms=1090 endms=1867 payload="이동캔슬" src=orig
+"sdm_sk_skykongkong_02" CANCEL startms=0 endms=533 payload="[선이]" src=orig
+"sdm_sk_skykongkong_02" CANCEL startms=0 endms=533 payload="[선스]" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_01" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_04" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_06" src=orig
+"sdm_sk_skykongkong_02" SUPERARMOR startms=0 endms=533 payload="" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=500 payload="" src=orig
+"sdm_sk_skykongkong_02" SOUND startms=500 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_Vox1_4" src=orig
+"sdm_sk_skykongkong_02" SOUND startms=500 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX000_4" src=orig
+"sdm_sk_skykongkong_02" SOUND startms=500 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX040_4" src=orig
+"sdm_sk_skykongkong_02" SOUND startms=500 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX060_4" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=533 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_01" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=533 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_04" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=533 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_06" src=orig
+"sdm_sk_skykongkong_02" EFFECT startms=533 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_34" src=orig
+"sdm_sk_skykongkong_02" SHAKE startms=533 payload="" src=orig
+"sdm_sk_skykongkong_03" CANCEL startms=0 endms=360 payload="[선이]" src=orig
+"sdm_sk_skykongkong_03" CANCEL startms=0 endms=1067 payload="스킬캔슬" src=orig
+"sdm_sk_skykongkong_03" SUPERARMOR startms=0 endms=360 payload="" src=orig
+"sdm_sk_skykongkong_03" CANCEL startms=300 endms=1067 payload="이동기캔슬" src=orig
+"sdm_sk_skykongkong_03" CANCEL startms=350 endms=1067 payload="이동캔슬" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_81" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_84" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=0 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Weapon_86" src=orig
+"sdm_sk_skykongkong_custom_8" SUPERARMOR startms=0 endms=1270 payload="" src=orig
+"sdm_sk_skykongkong_custom_8" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_Vox2_1" src=orig
+"sdm_sk_skykongkong_custom_8" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX008_1" src=orig
+"sdm_sk_skykongkong_custom_8" CANCEL startms=300 endms=1270 payload="[선이]" src=orig
+"sdm_sk_skykongkong_custom_8" CANCEL startms=300 endms=1220 payload="[선스]" src=orig
+"sdm_sk_skykongkong_custom_8" SOUND startms=700 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX008_2" src=orig
+"sdm_sk_skykongkong_custom_8" SOUND startms=700 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SkyCongCong1_FX048_2" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_81" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_84" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_86" src=orig
+"sdm_sk_skykongkong_custom_8" EFFECT startms=770 payload="FX_PC_SDM_01.Par_T_SDM_Skykongkong_Skl_834" src=orig
+"sdm_sk_skykongkong_custom_8" SHAKE startms=770 payload="" src=orig
+"sdm_sk_skykongkong_custom_8" CANCEL startms=1200 endms=1800 payload="스킬캔슬" src=orig
+"sdm_sk_skykongkong_custom_8" CANCEL startms=1250 endms=1800 payload="이동캔슬" src=orig
+"sdm_sk_skymap_01" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_Mirinae_Cast_01" src=orig
+"sdm_sk_skymap_01" SUPERARMOR startms=0 endms=367 payload="" src=orig
+"sdm_sk_skymap_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_Vox1_1" src=orig
+"sdm_sk_skymap_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_FX000_1" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Ribbon_01" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_01" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Ribbon_02" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_02" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_Start_01" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_Start_02" src=orig
+"sdm_sk_skymap_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Ribbon_02_1" src=orig
+"sdm_sk_skymap_02" SHAKE startms=0 payload="" src=orig
+"sdm_sk_skymap_02" SUPERARMOR startms=0 endms=3000 payload="" src=orig
+"sdm_sk_skymap_02" EFFECT startms=100 payload="" src=orig
+"sdm_sk_skymap_02" CANCEL startms=130 endms=3000 payload="이동기캔슬" src=orig
+"sdm_sk_skymap_02" CANCEL startms=180 endms=3000 payload="입력없음" src=orig
+"sdm_sk_skymap_02" CANCEL startms=180 endms=3000 payload="입력끝" src=orig
+"sdm_sk_skymap_03" CANCEL startms=0 endms=370 payload="[선스]" src=orig
+"sdm_sk_skymap_03" CANCEL startms=0 endms=370 payload="[선이]" src=orig
+"sdm_sk_skymap_03" CANCEL startms=0 endms=900 payload="이동기캔슬" src=orig
+"sdm_sk_skymap_03" SUPERARMOR startms=0 endms=370 payload="" src=orig
+"sdm_sk_skymap_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_FX000_2" src=orig
+"sdm_sk_skymap_03" CANCEL startms=350 endms=900 payload="스킬캔슬" src=orig
+"sdm_sk_skymap_03" CANCEL startms=350 endms=900 payload="이동캔슬" src=orig
+"sdm_sk_skymap_custom_8_01" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_Mirinae_Cast_01" src=orig
+"sdm_sk_skymap_custom_8_01" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"sdm_sk_skymap_custom_8_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_Vox2_1" src=orig
+"sdm_sk_skymap_custom_8_01" SOUND startms=65 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_FX008_1" src=orig
+"sdm_sk_skymap_custom_8_01" CANCEL startms=500 endms=600 payload="이동기캔슬" src=orig
+"sdm_sk_skymap_custom_8_02" CANCEL startms=0 endms=3000 payload="" src=orig
+"sdm_sk_skymap_custom_8_02" CANCEL startms=0 endms=3000 payload="이동기캔슬" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Ribbon_Move_01" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_Move_01" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_Start_02" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_SkyMap_Start_01" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Ribbon_02_1" src=orig
+"sdm_sk_skymap_custom_8_02" SHAKE startms=0 payload="" src=orig
+"sdm_sk_skymap_custom_8_02" SUPERARMOR startms=0 endms=3000 payload="" src=orig
+"sdm_sk_skymap_custom_8_02" EFFECT startms=100 payload="" src=orig
+"sdm_sk_skymap_custom_8_02" CANCEL startms=180 endms=3000 payload="입력없음" src=orig
+"sdm_sk_skymap_custom_8_02" CANCEL startms=180 endms=3000 payload="입력끝" src=orig
+"sdm_sk_skymap_custom_8_03" CANCEL startms=0 endms=220 payload="[선스]" src=orig
+"sdm_sk_skymap_custom_8_03" CANCEL startms=0 endms=220 payload="[선이]" src=orig
+"sdm_sk_skymap_custom_8_03" CANCEL startms=0 endms=600 payload="이동기캔슬" src=orig
+"sdm_sk_skymap_custom_8_03" SUPERARMOR startms=0 endms=220 payload="" src=orig
+"sdm_sk_skymap_custom_8_03" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_SkyMap1_FX000_2" src=orig
+"sdm_sk_skymap_custom_8_03" CANCEL startms=200 endms=600 payload="스킬캔슬" src=orig
+"sdm_sk_skymap_custom_8_03" CANCEL startms=200 endms=600 payload="이동캔슬" src=orig
+"sdm_sk_spacing" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_SpacingTrail_01_01" src=orig
+"sdm_sk_spacing" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"sdm_sk_spacing" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_spacing" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_Spacing_02_01" src=orig
+"sdm_sk_spacing" SUPERARMOR startms=0 endms=820 payload="" src=orig
+"sdm_sk_spacing" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Moving1_Vox1_1" src=orig
+"sdm_sk_spacing" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_Moving1_1" src=orig
+"sdm_sk_spacing" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_Stop1" src=orig
+"sdm_sk_spacing" EFFECT startms=100 payload="" src=orig
+"sdm_sk_spacing" CANCEL startms=200 endms=820 payload="[선스]" src=orig
+"sdm_sk_spacing" CANCEL startms=200 endms=820 payload="[선이]" src=orig
+"sdm_sk_spacing" SOUND startms=700 payload="PC_COMMON_STEPS.PC_Specialist_F_FOOTSTEP1" src=orig
+"sdm_sk_spacing" CANCEL startms=800 endms=1500 payload="" src=orig
+"sdm_sk_spacing" SHAKE startms=800 payload="" src=orig
+"sdm_sk_spacing" SOUND startms=1100 payload="PC_COMMON_STEPS.PC_Specialist_F_FOOTSTEP1" src=orig
+"sdm_sk_spiritofharmony" SUPERARMOR startms=0 endms=1620 payload="" src=orig
+"sdm_sk_spiritofharmony" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_Vox1_1" src=orig
+"sdm_sk_spiritofharmony" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_FX000_1" src=orig
+"sdm_sk_spiritofharmony" EFFECT startms=465 payload="FX_PC_SDM_03.Par_U_SDM_Harmony_Cast_01" src=orig
+"sdm_sk_spiritofharmony" CANCEL startms=500 endms=1800 payload="이동기캔슬" src=orig
+"sdm_sk_spiritofharmony" CANCEL startms=600 endms=1420 payload="[선스]" src=orig
+"sdm_sk_spiritofharmony" CANCEL startms=600 endms=1420 payload="[선이]" src=orig
+"sdm_sk_spiritofharmony" SOUND startms=1100 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_FX000_2" src=orig
+"sdm_sk_spiritofharmony" SHAKE startms=1197 payload="" src=orig
+"sdm_sk_spiritofharmony" EFFECT startms=1198 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"sdm_sk_spiritofharmony" EFFECT startms=1239 payload="FX_PC_SDM_03.Par_U_SDM_Harmony_Exp_01" src=orig
+"sdm_sk_spiritofharmony" EFFECT startms=1250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_spiritofharmony" EFFECT startms=1254 payload="" src=orig
+"sdm_sk_spiritofharmony" CANCEL startms=1400 endms=1800 payload="스킬캔슬" src=orig
+"sdm_sk_spiritofharmony" CANCEL startms=1400 endms=1800 payload="이동캔슬" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=0 payload="FX_PC_SDM_03.Par_U_SDM_Harmony_Ribbon_01" src=orig
+"sdm_sk_spiritofharmony_custom_7" SUPERARMOR startms=0 endms=1170 payload="" src=orig
+"sdm_sk_spiritofharmony_custom_7" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_Vox2_1" src=orig
+"sdm_sk_spiritofharmony_custom_7" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_FX007_1" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=207 payload="FX_PC_SDM_03.Par_U_SDM_Harmony_Cast_03" src=orig
+"sdm_sk_spiritofharmony_custom_7" SHAKE startms=215 payload="" src=orig
+"sdm_sk_spiritofharmony_custom_7" CANCEL startms=300 endms=1170 payload="[선스]" src=orig
+"sdm_sk_spiritofharmony_custom_7" CANCEL startms=300 endms=1270 payload="[선이]" src=orig
+"sdm_sk_spiritofharmony_custom_7" SOUND startms=450 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SpiritofHarmony1_FX007_2" src=orig
+"sdm_sk_spiritofharmony_custom_7" CANCEL startms=500 endms=1733 payload="이동기캔슬" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=530 payload="" src=orig
+"sdm_sk_spiritofharmony_custom_7" SHAKE startms=530 payload="" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=532 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=539 payload="FX_PC_SDM_03.Par_U_SDM_Harmony_Exp_04" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=539 payload="FX_U_W_01.notuse.Par_U_SDM_Harmony_Exp_02" src=orig
+"sdm_sk_spiritofharmony_custom_7" EFFECT startms=541 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_spiritofharmony_custom_7" CANCEL startms=1150 endms=1733 payload="스킬캔슬" src=orig
+"sdm_sk_spiritofharmony_custom_7" CANCEL startms=1250 endms=1733 payload="이동캔슬" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_ZigZagTrail_01_01" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_ZigZag_02_01" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=0 payload="FX_PC_SDM_00.Par_O_ZigZag_01_01" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_standup_normal_1" SHAKE startms=0 payload="" src=orig
+"sdm_sk_standup_normal_1" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"sdm_sk_standup_normal_1" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_StandUp1_Vox1_1" src=orig
+"sdm_sk_standup_normal_1" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_StandUp1_1" src=orig
+"sdm_sk_standup_normal_1" CANCEL startms=200 endms=1000 payload="[선이]" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=597 payload="FX_PC_SDM_00.Par_O_ZigZag_01_01" src=orig
+"sdm_sk_standup_normal_1" EFFECT startms=598 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"sdm_sk_standup_normal_1" CANCEL startms=809 endms=1300 payload="" src=orig
+"sdm_sk_standup_normal_1" CANCEL startms=993 endms=1300 payload="" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=0 payload="" src=orig
+"sdm_sk_super_landscapepainting" SUPERARMOR startms=0 endms=5250 payload="" src=orig
+"sdm_sk_super_landscapepainting" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperLandscapePainting1_FX000_1" src=orig
+"sdm_sk_super_landscapepainting" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperLandscapePainting1_Vox1_1" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Rib_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.FX_S_SDM_SphereWorld_02" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.FX_S_SDM_SphereWorld_03" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.FX_S_SDM_SphereWorld_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.FX_S_SDM_SphereWorld_04" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.FX_S_SDM_SphereWorld_05" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01_Loop" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=10 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Body_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=50 payload="FX_PC_SDM_11.Par_S_SDM_ExMove_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=50 payload="FX_PC_SDM_11.Par_S_SDM_ExMove_02" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=100 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Dust_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_super_landscapepainting" SOUND startms=1200 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperLandscapePainting1_FX000_2" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=1400 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Dark_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=1400 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Cloud_01" src=orig
+"sdm_sk_super_landscapepainting" SHAKE startms=1405 payload="" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=1600 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Wing_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=3300 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Down_01" src=orig
+"sdm_sk_super_landscapepainting" CANCEL startms=4260 endms=5260 payload="[선스]" src=orig
+"sdm_sk_super_landscapepainting" CANCEL startms=4260 endms=5260 payload="[선이]" src=orig
+"sdm_sk_super_landscapepainting" SOUND startms=4600 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperLandscapePainting1_FX000_3" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Exp_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Exp_02" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"sdm_sk_super_landscapepainting" EFFECT startms=4650 payload="FX_PC_SDM_11.Par_S_SDM_Phoenix_Exp_Local_01" src=orig
+"sdm_sk_super_landscapepainting" SHAKE startms=4650 payload="" src=orig
+"sdm_sk_super_landscapepainting" CANCEL startms=5000 endms=5333 payload="이동기캔슬" src=orig
+"sdm_sk_super_landscapepainting" CANCEL startms=5250 endms=5333 payload="[이동캔슬]" src=orig
+"sdm_sk_super_landscapepainting" CANCEL startms=5250 endms=5333 payload="[스킬캔슬]" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=0 payload="" src=orig
+"sdm_sk_super_pungnyudo_01" SUPERARMOR startms=0 endms=1733 payload="" src=orig
+"sdm_sk_super_pungnyudo_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperPungnyudo1_Vox1_1" src=orig
+"sdm_sk_super_pungnyudo_01" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperPungnyudo1_FX000_1" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=70 payload="FX_PC_SDM_11.Par_S_SDM_ExMove_01" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=70 payload="FX_PC_SDM_09.Par_M_FlowerGarden_ExMove_02" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=70 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Floor_01" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=70 payload="FX_PC_SDM_09.Par_M_FlowerGarden_SunFlare_01" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=70 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"sdm_sk_super_pungnyudo_01" EFFECT startms=300 payload="FX_PC_SDM_09.Par_M_FlowerGarden_UltOn_02" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Field_01" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Shine_03" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_03" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Field_02" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Field_Petal_01" src=orig
+"sdm_sk_super_pungnyudo_02" SUPERARMOR startms=0 endms=3650 payload="" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=200 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Light_04" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=300 payload="FX_PC_SDM_09.Par_M_FlowerGarden_FootStep_01" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=500 payload="FX_PC_SDM_09.Par_M_FlowerGarden_ButterFly_01" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=600 payload="FX_PC_SDM_09.Par_M_FlowerGarden_FootStep_01" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=1100 payload="FX_PC_SDM_09.Par_M_FlowerGarden_SunFlare_01" src=orig
+"sdm_sk_super_pungnyudo_02" SOUND startms=1650 payload="PC_YINYANGSHI_F.PC_Yinyangshi_F_SK_SuperPungnyudo1_FX000_2" src=orig
+"sdm_sk_super_pungnyudo_02" CANCEL startms=2660 endms=3660 payload="[선스]" src=orig
+"sdm_sk_super_pungnyudo_02" CANCEL startms=2660 endms=3660 payload="[선이]" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=2900 payload="FX_PC_SDM_09.Par_M_FlowerGarden_Exp_01" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=2900 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"sdm_sk_super_pungnyudo_02" SHAKE startms=2900 payload="" src=orig
+"sdm_sk_super_pungnyudo_02" EFFECT startms=2920 payload="" src=orig
+"sdm_sk_super_pungnyudo_02" CANCEL startms=3550 endms=4267 payload="이동기캔슬" src=orig
+"sdm_sk_super_pungnyudo_02" CANCEL startms=3650 endms=4267 payload="[이동캔슬]" src=orig
+"sdm_sk_super_pungnyudo_02" CANCEL startms=3650 endms=4267 payload="[스킬캔슬]" src=orig
+"sdm_sk_swampofbondage" EFFECT startms=0 payload="FX_PC_SDM_06.Par_D_SDM_Graffiti_05_rib" src=orig
+"sdm_sk_swampofbondage" SUPERARMOR startms=0 endms=1377 payload="" src=orig
+"sdm_sk_swampofbondage" SOUND startms=1 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_Vox2_1" src=orig
+"sdm_sk_swampofbondage" SOUND startms=10 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_SK_PondofYin1_FX007_1" src=orig
+"sdm_sk_swampofbondage" EFFECT startms=97 payload="fx_cm_03.Trail.Par_D_mpTrail_03" src=orig
+"sdm_sk_swampofbondage" CANCEL startms=500 endms=1370 payload="[선스]" src=orig
+"sdm_sk_swampofbondage" CANCEL startms=500 endms=1370 payload="[선이]" src=orig
+"sdm_sk_swampofbondage" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_07" src=orig
+"sdm_sk_swampofbondage" EFFECT startms=600 payload="FX_PC_SDM_06.Par_D_SDM_Pond_46" src=orig
+"sdm_sk_swampofbondage" EFFECT startms=643 payload="" src=orig
+"sdm_sk_swampofbondage" CANCEL startms=650 endms=1733 payload="이동기캔슬" src=orig
+"sdm_sk_swampofbondage" CANCEL startms=1350 endms=1733 payload="스킬캔슬" src=orig
+"sdm_sk_swampofbondage" CANCEL startms=1350 endms=1733 payload="이동캔슬" src=orig

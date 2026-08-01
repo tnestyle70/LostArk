@@ -7,6 +7,7 @@
 #include "Part_Equipment.h"
 #include "Part_Body.h"
 #include "Character.h"
+#include "Npc.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapStaticBatchObject.h"
@@ -462,7 +463,19 @@ HRESULT CLoader::Ready_For_Test_Level2()
     //    ETOUI(LEVEL::TEST_LEVEL2))))
     //    return E_FAIL;
 
-    if (FAILED(Ready_GunSlinger_Prototypes(
+    //if (FAILED(Ready_GunSlinger_Prototypes(
+    //    ETOUI(LEVEL::TEST_LEVEL2))))
+    //    return E_FAIL;
+
+    //if (FAILED(Ready_Artist_Prototypes(
+    //    ETOUI(LEVEL::TEST_LEVEL2))))
+    //    return E_FAIL;
+
+    if (FAILED(Ready_Slayer_Prototypes(
+        ETOUI(LEVEL::TEST_LEVEL2))))
+        return E_FAIL;
+
+    if (FAILED(Ready_Npc_Prototypes(
         ETOUI(LEVEL::TEST_LEVEL2))))
         return E_FAIL;
 
@@ -567,6 +580,56 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(uint32_t iLevelIndex)
     return S_OK;
 }
 
+HRESULT CLoader::Ready_Npc_Prototypes(uint32_t iLevelIndex)
+{
+    /* Same cook units as the playable classes: centimetre out of the converter,
+    metres in the world, facing -Z until rotated. */
+    const matrix_t preTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+        XMMatrixRotationY(
+            XMConvertToRadians(-90.f));
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_GameObject_Npc"),
+        CNpc::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    /* The cook merges each NPC's body and head into one model, so one tag is one
+    NPC. Heads are shared upstream in the source data, not here. */
+    static const struct
+    {
+        const tchar_t* pTag;
+        const char_t* pPath;
+    } NpcModels[] =
+    {
+        { TEXT("Prototype_Component_Model_Npc_Aylara"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Aylara/Npc_Aylara.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Forman"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Forman/Npc_Forman.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Schmidt"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Schmidt/Npc_Schmidt.wmodel" },
+        { TEXT("Prototype_Component_Model_Npc_Beda"),
+          "../Bin/Resources/LostArk/Character/NPC/Npc_Beda/Npc_Beda.wmodel" },
+    };
+
+    for (const auto& npcModel : NpcModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            npcModel.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::ANIM,
+                npcModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
+
+    return S_OK;
+}
+
 HRESULT CLoader::Ready_GunSlinger_Prototypes(uint32_t iLevelIndex)
 {
     /* Same contract as LanceMaster: the cook is centimetre, the loader brings it
@@ -640,6 +703,157 @@ HRESULT CLoader::Ready_GunSlinger_Prototypes(uint32_t iLevelIndex)
             m_pContext,
             MODEL::NONANIM,
             "../Bin/Resources/LostArk/Character/WP_WGDH_02H/WP_WGDH_02H.wmodel",
+            XMMatrixIdentity()))))
+        return E_FAIL;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_Artist_Prototypes(uint32_t iLevelIndex)
+{
+    /* Same contract as the other classes: the cook is centimetre, the loader
+    brings it back to metres, and the model faces -Z until rotated. */
+    const matrix_t preTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+        XMMatrixRotationY(
+            XMConvertToRadians(-90.f));
+
+    auto pArtistModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::ANIM,
+        "../Bin/Resources/LostArk/Character/Artist/Artist.wmodel",
+        preTransform);
+
+    if (nullptr == pArtistModel)
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Artist"),
+        move(pArtistModel))))
+        return E_FAIL;
+
+    static const struct
+    {
+        const tchar_t* pTag;
+        const char_t* pPath;
+    } EquipmentModels[] =
+    {
+        { TEXT("Prototype_Component_Model_Artist_Upper"),
+          "../Bin/Resources/LostArk/Character/Artist/Artist_Upper.wmodel" },
+        { TEXT("Prototype_Component_Model_Artist_Lower"),
+          "../Bin/Resources/LostArk/Character/Artist/Artist_Lower.wmodel" },
+        { TEXT("Prototype_Component_Model_Artist_Arm"),
+          "../Bin/Resources/LostArk/Character/Artist/Artist_Arm.wmodel" },
+        { TEXT("Prototype_Component_Model_Artist_Shoulder"),
+          "../Bin/Resources/LostArk/Character/Artist/Artist_Shoulder.wmodel" },
+        { TEXT("Prototype_Component_Model_Artist_Helmet"),
+          "../Bin/Resources/LostArk/Character/Artist/Artist_Helmet.wmodel" },
+    };
+
+    for (const auto& equipmentModel : EquipmentModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            equipmentModel.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::ANIM,
+                equipmentModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
+
+    /* No scaling, for the same reason GunSlinger's gun needs none: the brush was
+    exported from the same psk set as the body, so it is already in the body's
+    units (brush 100.4 long against a body 102.6 tall) and the socket carries the
+    body's pre-transform. LanceMaster's lance measures 2.3 because it came from a
+    different source unit, which is why that one needs the x100. */
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Artist_Weapon"),
+        CModel::Create(
+            m_pDevice,
+            m_pContext,
+            MODEL::NONANIM,
+            "../Bin/Resources/LostArk/Character/WP_WSDM_09/WP_WSDM_09.wmodel",
+            XMMatrixIdentity()))))
+        return E_FAIL;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_Slayer_Prototypes(uint32_t iLevelIndex)
+{
+    /* Same contract as the other classes: the cook is centimetre, the loader
+    brings it back to metres, and the model faces -Z until rotated. */
+    const matrix_t preTransform =
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+        XMMatrixRotationY(
+            XMConvertToRadians(-90.f));
+
+    auto pSlayerModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::ANIM,
+        "../Bin/Resources/LostArk/Character/Slayer/Slayer.wmodel",
+        preTransform);
+
+    if (nullptr == pSlayerModel)
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Slayer"),
+        move(pSlayerModel))))
+        return E_FAIL;
+
+    static const struct
+    {
+        const tchar_t* pTag;
+        const char_t* pPath;
+    } EquipmentModels[] =
+    {
+        { TEXT("Prototype_Component_Model_Slayer_Upper"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Upper.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Lower"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Lower.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Arm"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Arm.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Shoulder"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Shoulder.wmodel" },
+        { TEXT("Prototype_Component_Model_Slayer_Helmet"),
+          "../Bin/Resources/LostArk/Character/Slayer/Slayer_Helmet.wmodel" },
+    };
+
+    for (const auto& equipmentModel : EquipmentModels)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            equipmentModel.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::ANIM,
+                equipmentModel.pPath,
+                preTransform))))
+            return E_FAIL;
+    }
+
+    /* No scaling, same reasoning as the gun and the brush: the greatsword came
+    out of the same psk export as the body, so it is already in the body's units.
+    It is the longest weapon so far though -- 209.1 against a body 129.6 tall --
+    so this is the one to look at first if the proportions read wrong on screen. */
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_Component_Model_Slayer_Weapon"),
+        CModel::Create(
+            m_pDevice,
+            m_pContext,
+            MODEL::NONANIM,
+            "../Bin/Resources/LostArk/Character/WP_WWBK_03/WP_WWBK_03.wmodel",
             XMMatrixIdentity()))))
         return E_FAIL;
 

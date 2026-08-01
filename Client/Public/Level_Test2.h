@@ -22,6 +22,7 @@ private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	HRESULT Ready_Layer_Player(const wstring_t& strLayerTag);
+	HRESULT Ready_Layer_Npc(const wstring_t& strLayerTag);
 
 public:
 	static unique_ptr<CLevel_Test2> Create(ComPtr<ID3D11Device> pDevice,

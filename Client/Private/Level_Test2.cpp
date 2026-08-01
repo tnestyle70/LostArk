@@ -6,6 +6,10 @@
 
 #include "Logic_LanceMaster.h"
 #include "Logic_GunSlinger.h"
+#include "Logic_Artist.h"
+#include "Logic_Slayer.h"
+
+#include "Npc.h"
 
 CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -33,6 +37,8 @@ HRESULT CLevel_Test2::Initialize()
 	{
 		return E_FAIL;
 	}
+	if (FAILED(Ready_Layer_Npc(TEXT("Layer_Npc"))))
+		return E_FAIL;
 	return S_OK;
 }
 
@@ -87,7 +93,7 @@ HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
 	spec and the matching Ready_*_Prototypes call in CLoader together. */
 	CCharacter::CHARACTER_DESC		CharacterDesc{};
 	CharacterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
-	CharacterDesc.pSpec = &Spec_GunSlinger;
+	CharacterDesc.pSpec = &Spec_Slayer;
 	CharacterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
 
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
@@ -106,4 +112,41 @@ unique_ptr<CLevel_Test2> CLevel_Test2::Create(
 	if (FAILED(pInstance->Initialize()))
 		return nullptr;
 	return pInstance;
+}
+
+HRESULT CLevel_Test2::Ready_Layer_Npc(const wstring_t& strLayerTag)
+{
+	/* The pilot four, stood in a row so the cook can be eyeballed: a standard
+	female, a standard male, one carrying grafted bones (towel and fingers the
+	archetype rig lacks) and one self-rigged NPC that owns its own animation. */
+	static const struct
+	{
+		const tchar_t* pModelTag;
+		const char_t* pClip;
+		float3_t vPosition;
+	} Npcs[] =
+	{
+		{ TEXT("Prototype_Component_Model_Npc_Aylara"),  "npc_idle_normal_1", { -3.f, 0.f, 3.f } },
+		{ TEXT("Prototype_Component_Model_Npc_Forman"),  "npc_idle_normal_1", { -1.f, 0.f, 3.f } },
+		{ TEXT("Prototype_Component_Model_Npc_Schmidt"), "npc_idle_normal_1", {  1.f, 0.f, 3.f } },
+		{ TEXT("Prototype_Component_Model_Npc_Beda"),    "npc_idle_normal_1", {  3.f, 0.f, 3.f } },
+	};
+
+	for (const auto& npc : Npcs)
+	{
+		CNpc::NPC_DESC NpcDesc{};
+		NpcDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
+		NpcDesc.strModelTag = npc.pModelTag;
+		NpcDesc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		NpcDesc.pIdleClip = npc.pClip;
+		NpcDesc.vPosition = npc.vPosition;
+
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			ETOUI(LEVEL::TEST_LEVEL2),
+			TEXT("Prototype_GameObject_Npc"),
+			ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &NpcDesc)))
+			return E_FAIL;
+	}
+
+	return S_OK;
 }
