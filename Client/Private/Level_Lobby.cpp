@@ -2,29 +2,37 @@
 #include "imgui.h"
 #endif
 
+#include "NetworkManager.h"
 #include "Level_Lobby.h"
 
 #include "Level_Loading.h"
 #include "GameInstance.h"
 #include "Character.h"
-#include "CharacterSpec.h"
-#include "Logic_LanceMaster.h"
 #include "Camera_Free.h"
 
 namespace
 {
-    const char_t* Get_CharacterClassName(const CHARACTER_CLASS eClass)
+    const char_t* Get_CharacterClassName(
+        const LostArk::Shared::
+        CHARACTER_CLASS_ID eClass)
     {
+        using LostArk::Shared::
+            CHARACTER_CLASS_ID;
+
         switch (eClass)
         {
-        case CHARACTER_CLASS::LANCE_MASTER:
+        case CHARACTER_CLASS_ID::LANCE_MASTER:
             return "Lance Master";
-        case CHARACTER_CLASS::GUNSLINGER:
+
+        case CHARACTER_CLASS_ID::GUNSLINGER:
             return "Gunslinger";
-        case CHARACTER_CLASS::DESTROYER:
+
+        case CHARACTER_CLASS_ID::DESTROYER:
             return "Destroyer";
-        case CHARACTER_CLASS::ARTIST:
+
+        case CHARACTER_CLASS_ID::ARTIST:
             return "Artist";
+
         default:
             return "Unknown";
         }
@@ -46,7 +54,7 @@ HRESULT CLevel_Lobby::Initialize()
     if (FAILED(Ready_Lights()))
         return E_FAIL;
 
-    if (FAILED(Ready_Characters()))
+    if (FAILED(Ready_CharacterSlots()))
         return E_FAIL;
 
     if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
@@ -70,16 +78,11 @@ HRESULT CLevel_Lobby::Ready_Lights()
 
 HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
 {
-    if (m_vecCharacters.empty() || nullptr == m_vecCharacters.front().m_pCharacter)
-        return E_FAIL;
-    //Character Í∏∞Ï§ÄÏúºÎ°ú camera ÏÉùÏÑ±
-    const shared_ptr<CTransform> pCharacterTransform =
-        m_vecCharacters.front().m_pCharacter->Get_Transform();
-
-    if (nullptr == pCharacterTransform)
+    if (m_vecCharacters.empty())
         return E_FAIL;
 
-    //Í≥†Ï†ï Camera ÏÉùÏÑ±
+    // Lobby network validation does not need to decode or clone a character.
+    // Start as a free camera and attach a follow target later when a preview exists.
     CCamera_Free::CAMERA_FREE_DESC CameraDesc{};
 
     CameraDesc.vEye = { -4.f, 2.5f, -6.f };
@@ -92,11 +95,11 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
     CameraDesc.fSpeedPerSec = 10.f;
     CameraDesc.fRotationPerSec = 90.f;
     CameraDesc.fMouseSensor = 0.1f;
-    CameraDesc.pFollowTarget = pCharacterTransform;
+    CameraDesc.pFollowTarget = nullptr;
     CameraDesc.vPositionOffset = { -4.f, 2.5f, -6.f };
     CameraDesc.vLookOffset = { 0.f, 1.f, 0.f };
     CameraDesc.fFollowResponse = 18.f;
-    CameraDesc.isFollowEnabled = true;
+    CameraDesc.isFollowEnabled = false;
 
     shared_ptr<CGameObject> pGameObject;
     
@@ -116,40 +119,13 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
     return Select_Character(0) ? S_OK : E_FAIL;
 }
 
-HRESULT CLevel_Lobby::Ready_Characters()
+HRESULT CLevel_Lobby::Ready_CharacterSlots()
 {
-    //Lance_MasterÎ•º Îì±Î°ù
-    CCharacter::CHARACTER_DESC desc{};
-    desc.iPrototypeLevelIndex = ETOUI(LEVEL::LOBBY);
-    desc.pSpec = &Spec_LanceMaster;
-    desc.pNavigationPrototypeTag = nullptr;
-    desc.fSpeedPerSec = 5.f;
-    desc.fRotationPerSec = 180.f;
-    desc.vPosition = float3_t(0.f, 0.f, 0.f);
-
-    shared_ptr<CGameObject> pGameObject;
-
-    if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-        ETOUI(LEVEL::LOBBY),
-        TEXT("Prototype_GameObject_Character"),
-        ETOUI(LEVEL::LOBBY),
-        TEXT("Layer_Player"),
-        &desc,
-        &pGameObject)))
-        return E_FAIL;
-
-    //m_vecCharactersInfo.push_back(pGameObject);
-
-    const shared_ptr<CCharacter> pCharacter = dynamic_pointer_cast<CCharacter>(pGameObject);
-
-    if (nullptr == pCharacter)
-        return E_FAIL;
-
     LobbyCharacterInfo characterInfo{};
 
     characterInfo.m_iSlotIndex = 0;
-    characterInfo.m_eClass = CHARACTER_CLASS::LANCE_MASTER;
-    characterInfo.m_pCharacter = pCharacter;
+    characterInfo.m_eClass = LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
+    characterInfo.m_pCharacter = nullptr;
     characterInfo.m_strNickName.clear();
 
     m_vecCharacters.push_back(move(characterInfo));
@@ -165,30 +141,79 @@ bool_t CLevel_Lobby::Select_Character(const int32_t iCharacterIndex)
 
     const LobbyCharacterInfo& characterInfo = m_vecCharacters[iCharacterIndex];
 
-    if (nullptr == characterInfo.m_pCharacter)
-        return false;
-
-    const shared_ptr<CTransform> pCharacterTransform =
-        characterInfo.m_pCharacter->Get_Transform();
-
-    if (nullptr == pCharacterTransform)
-        return false;
-
     m_iSelectedCharacterIndex = iCharacterIndex;
     strncpy_s(m_szNickName, characterInfo.m_strNickName.c_str(), _TRUNCATE);
 
     if (nullptr != m_pCamera)
     {
+        shared_ptr<CTransform> pCharacterTransform;
+        if (nullptr != characterInfo.m_pCharacter)
+            pCharacterTransform = characterInfo.m_pCharacter->Get_Transform();
+
         m_pCamera->Set_FollowTarget(pCharacterTransform);
-        m_pCamera->Set_FollowEnabled(true);
+        m_pCamera->Set_FollowEnabled(nullptr != pCharacterTransform);
     }
 
     return true;
 }
 
+bool_t CLevel_Lobby::Request_EnterWorld()
+{
+    if (m_iSelectedCharacterIndex < 0 ||
+        static_cast<size_t>(m_iSelectedCharacterIndex) >= m_vecCharacters.size())
+    {
+        m_strNetworkStatus = "Select a character first.";
+        return false;
+    }
+
+    LobbyCharacterInfo& characterInfo =
+        m_vecCharacters[m_iSelectedCharacterIndex];
+    characterInfo.m_strNickName = m_szNickName;
+
+    CNetworkManager& networkManager = CNetworkManager::Get();
+    if (!networkManager.Is_Connected() &&
+        !networkManager.Connect_To_Server(7777))
+    {
+        m_strNetworkStatus =
+            "Connect failed. WSA error: " +
+            to_string(networkManager.Get_LastErrorCode());
+        return false;
+    }
+
+    if (!networkManager.Send_EnterWorld(
+        characterInfo.m_eClass,
+        characterInfo.m_strNickName))
+    {
+        m_strNetworkStatus =
+            "Send failed. WSA error: " +
+            to_string(networkManager.Get_LastErrorCode());
+        return false;
+    }
+
+    m_strNetworkStatus =
+        "C2S_ENTER_WORLD sent. Check the server console.";
+    return true;
+}
+
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
-    //Ï∫êÎ¶≠ÌÑ∞ ÏÑ†ÌÉùÍ≥º LobbyÏóêÏÑú Ìï¥Ïïº ÌïòÎäî ÏûëÏóÖÎì§ Ï†ÑÎ∂Ä ÏàòÌñâÌïòÍ∏∞!
+    LostArk::Shared::S2C_ENTER_ACCEPTED accepted;
+    //networkmanagerø°º≠ update∏¶ µπ∏Èº≠ enter ø©∫Œ ∆«¥‹
+    if (CNetworkManager::Get().Try_Consume_EnterAccepted(accepted))
+    {
+        m_strNetworkStatus =
+            "S2C_ENTER_ACCEPTED received. "
+            "PlayerId=" +
+            to_string(
+                accepted.iPlayerId) +
+            ", NetEntityId=" +
+            to_string(
+                accepted.iNetEntityId);
+
+        m_isEnterRequested = true;
+    }
+
+    // º≠πˆ Ω¬¿Œ ∏ﬁΩ√¡ˆ∏¶ πﬁ¿∫ µ⁄ø°∏∏ true∑Œ ∫Ø∞Ê«—¥Ÿ.
     if (m_isEnterRequested)
     {
         m_isEnterRequested = false;
@@ -274,10 +299,7 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     if (ImGui::Button("Enter Baren"))
     {
-        m_vecCharacters[m_iSelectedCharacterIndex].m_strNickName =
-            m_szNickName;
-
-        m_isEnterRequested = true;
+        Request_EnterWorld();
     }
 
     ImGui::EndDisabled();
@@ -287,6 +309,8 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
         ImGui::TextDisabled(
             "Select a character and enter a nickname.");
     }
+
+    ImGui::TextWrapped("%s", m_strNetworkStatus.c_str());
 
     ImGui::End();
 }

@@ -159,38 +159,6 @@ HRESULT CLoader::Ready_For_Lobby()
         return E_FAIL;
     }
 
-    if (FAILED(CGameInstance::Get().Add_Prototype(
-        ETOUI(LEVEL::LOBBY),
-        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
-        CShader::Create(
-            m_pDevice,
-            m_pContext,
-            TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
-            VTXANIMMESH::Elements,
-            VTXANIMMESH::iNumElements))))
-    {
-        return E_FAIL;
-    }
-
-    if (FAILED(CGameInstance::Get().Add_Prototype(
-        ETOUI(LEVEL::LOBBY),
-        TEXT("Prototype_Component_Shader_VtxMeshBinary"),
-        CShader::Create(
-            m_pDevice,
-            m_pContext,
-            TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
-            VTXMESH::Elements,
-            VTXMESH::iNumElements))))
-    {
-        return E_FAIL;
-    }
-
-    if (FAILED(Ready_LanceMaster_Prototypes(
-        ETOUI(LEVEL::LOBBY))))
-    {
-        return E_FAIL;
-    }
-
     lstrcpy(
         m_szLoadingText,
         TEXT("Lobby Loading Complete"));

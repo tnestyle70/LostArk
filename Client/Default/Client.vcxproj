@@ -30,6 +30,7 @@
     <ClInclude Include="..\Public\Level_MainMenu.h" />
     <ClInclude Include="..\Public\Level_ValtanArena.h" />
     <ClInclude Include="..\Public\Logic_LanceMaster.h" />
+    <ClInclude Include="..\Public\NetworkManager.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
@@ -91,6 +92,7 @@
     <ClCompile Include="..\Private\Level_MainMenu.cpp" />
     <ClCompile Include="..\Private\Level_ValtanArena.cpp" />
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp" />
+    <ClCompile Include="..\Private\NetworkManager.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
@@ -265,14 +267,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/;../../Shared/Public/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../EngineSDK/lib/Debug/;../../EngineSDK/lib/</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Engine.lib;DirectXTKd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Engine.lib;DirectXTKd.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderType>Effect</ShaderType>
@@ -289,7 +291,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/;../../Shared/Public/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -298,7 +300,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../EngineSDK/lib/Release/;../../EngineSDK/lib/</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Engine.lib;DirectXTK.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Engine.lib;DirectXTK.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ShaderType>Effect</ShaderType>
@@ -312,6 +314,11 @@
       <Project>{922baefb-8a3c-4f15-9f51-bf7c7ecc1cd7}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">
+      <Project>{F4CCF815-6D51-412F-A76E-84D2F1D05571}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

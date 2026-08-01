@@ -2,6 +2,7 @@
 #include "imgui.h"
 #endif
 
+#include "NetworkManager.h"
 #include "MainApp.h"
 #include "GameInstance.h"
 #include "Profiler.h"
@@ -85,6 +86,12 @@ HRESULT CMainApp::Initialize()
     if (FAILED(CGameInstance::Get().Initialize_Engine(EngineDesc, m_pDevice, m_pContext)))
         return E_FAIL;
 
+    //NetworkManager
+    if (!CNetworkManager::Get().Initialize())
+    {
+        return E_FAIL;
+    }
+
 #ifdef _DEBUG
     if (FAILED(ReadyDebugTools()))
         return E_FAIL;
@@ -146,6 +153,8 @@ void CMainApp::Update(f32_t fTimeDelta)
         DIM::LB,
         bWorldLeftMouseConsumed);
 #endif
+
+    CNetworkManager::Get().Update();
 
     CGameInstance::Get().Update_Engine(fTimeDelta);
 
@@ -650,6 +659,8 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
+    // NetworkManager Á¾·á
+    CNetworkManager::Get().Shutdown();
 #ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
 

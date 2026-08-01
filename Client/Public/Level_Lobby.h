@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Level.h"
+#include "Network/PacketType.h"
 
 NS_BEGIN(Client)
 
@@ -10,21 +11,13 @@ class CCharacter;
 //우선 존재하는 Lance Master를 사용해서, 캐릭터를 선택하고, 베른성으로 
 //입장할 수 있도록 한다. 
 
-//가능한 선택지 중 현재 무엇인지를 이름 있는 정수로 표현한다.
-enum class CHARACTER_CLASS
-{
-	LANCE_MASTER,
-	GUNSLINGER,
-	DESTROYER,
-	ARTIST,
-	END
-};
-
 struct LobbyCharacterInfo
 {
 	int32_t m_iSlotIndex = { -1 };
 	//선택 가능한 클래스
-	CHARACTER_CLASS m_eClass = {CHARACTER_CLASS::END};
+	LostArk::Shared::CHARACTER_CLASS_ID
+		m_eClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	shared_ptr<CCharacter> m_pCharacter = { nullptr };
 	string m_strNickName;
 };
@@ -47,9 +40,10 @@ private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Layer_Camera(const wstring& strLayerTag);
 	//로비에서 선택할 수 있는 캐릭터들 나열 
-	HRESULT Ready_Characters();
+	HRESULT Ready_CharacterSlots();
 
 	bool_t Select_Character(int32_t iCharacterIndex);
+	bool_t Request_EnterWorld();
 #ifdef _DEBUG
 	void Render_CharacterSelectPanel();
 #endif
@@ -96,6 +90,7 @@ private:
 	int32_t m_iSelectedCharacterIndex = { -1 };
 	char_t m_szNickName[64] = {};
 	bool_t m_isEnterRequested = { false };
+	string m_strNetworkStatus = { "Select a character and enter a nickname." };
 
 public:
 	static unique_ptr<CLevel_Lobby> Create(ComPtr<ID3D11Device> pDevice,
