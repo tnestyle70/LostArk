@@ -110,16 +110,6 @@ void CLogic_LanceMaster::Update(CCharacter& Character, f32_t fTimeDelta)
 		m_isStanceApplied = true;
 	}
 
-	/* The transition clip has finished, so the character is now holding the other
-	weapon and the other block of skills applies. */
-	if (0 != m_iSwitchingTo && !Character.Is_PlayingSkill())
-	{
-		m_eStance = SWITCH_TO_SHORT == m_iSwitchingTo ?
-			STANCE::SHORT : STANCE::LONG;
-		m_iSwitchingTo = 0;
-		Apply_Stance(Character);
-	}
-
 	/* A chain owns the character until it ends. Cancel windows are extracted but
 	not wired yet, so a cast cannot be interrupted. */
 	if (Character.Is_PlayingSkill())
@@ -142,7 +132,13 @@ void CLogic_LanceMaster::Update(CCharacter& Character, f32_t fTimeDelta)
 			const int32_t iSwitch = isLong ? SWITCH_TO_SHORT : SWITCH_TO_LONG;
 			if (Character.Play_Skill(iSwitch))
 			{
-				m_iSwitchingTo = iSwitch;
+				/* The weapon and the skill block change on the press, not when
+				the transition clip ends -- that is what the original does, and
+				the clip reads as the character already holding the other spear.
+				Waiting for it to finish left the old weapon in hand through the
+				whole swap. */
+				m_eStance = isLong ? STANCE::SHORT : STANCE::LONG;
+				Apply_Stance(Character);
 				return;
 			}
 		}

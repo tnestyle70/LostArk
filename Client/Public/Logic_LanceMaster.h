@@ -40,10 +40,6 @@ private:
 	/* The parts exist only once the character is assembled, so the opening stance
 	is pushed on the first update rather than in the constructor. */
 	bool_t m_isStanceApplied = { false };
-	/* The switch skill waiting to finish, 0 when none. The stance flips when its
-	clip has played out rather than when it is cast, because that clip is the
-	character changing weapons. */
-	int32_t m_iSwitchingTo = {};
 	/* Previous frame's state of a key, so a held key fires once. Indexed by the
 	DirectInput code rather than by bind slot: the two stances put different
 	skills on the same slot, and sharing a slot would carry one key's edge over
