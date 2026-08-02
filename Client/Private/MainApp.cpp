@@ -107,11 +107,18 @@ HRESULT CMainApp::Initialize()
         return E_FAIL;
 
     const wchar_t* pCommandLine = GetCommandLineW();
-	LEVEL eStartLevel = LEVEL::ASSET_TEST;
+
+	LEVEL eStartLevel = LEVEL::LOBBY;
+
 	if (nullptr != pCommandLine &&
 		nullptr != wcsstr(pCommandLine, L"--hdr-readback"))
 	{
 		eStartLevel = LEVEL::TEST_LEVEL2;
+	}
+	else if (nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--network-lobby"))
+	{
+		eStartLevel = LEVEL::LOBBY;
 	}
 	else if (nullptr != pCommandLine &&
 		nullptr != wcsstr(pCommandLine, L"--map-level=bern"))

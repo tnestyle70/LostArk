@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Client_Defines.h"
 #include "GameObject.h"
 #include "MapAssetCatalog.h"
 

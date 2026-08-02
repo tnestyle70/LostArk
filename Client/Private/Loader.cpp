@@ -252,20 +252,86 @@ HRESULT CLoader::Ready_For_Lobby()
 
 HRESULT CLoader::Ready_For_Baren()
 {
-	CLevelResourceRollbackScope resourceRollback(
-		ETOUI(LEVEL::BAREN));
+    CLevelResourceRollbackScope resourceRollback(
+        ETOUI(LEVEL::BAREN));
 
-	lstrcpy(m_szLoadingText, TEXT("BAREN: loading Bern Castle map"));
-	if (FAILED(Ready_MapArea(
-		ETOUI(LEVEL::BAREN), "LV_BER_BERNCASTLE")))
-	{
-		return E_FAIL;
-	}
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("BAREN: loading Bern Castle map"));
 
-	lstrcpy(m_szLoadingText, TEXT("Bern Castle map loading complete"));
-	resourceRollback.Commit();
-	m_isFinished = true;
-	return S_OK;
+    if (FAILED(Ready_MapArea(
+        ETOUI(LEVEL::BAREN),
+        "LV_BER_BERNCASTLE")))
+    {
+        return E_FAIL;
+    }
+
+    /*
+     * Ready_MapArea()가 이미 다음 항목을 등록한다.
+     *
+     * Prototype_Component_Shader_VtxMeshBinary
+     * Prototype_Component_Shader_VtxMeshMapInstance
+     * Prototype_GameObject_Camera_Free
+     * Map GameObject/Model Prototype
+     *
+     * Character 애니메이션에는 별도의 VtxAnimMeshBinary Shader가 필요하다.
+     */
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("BAREN: character animation shader"));
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::BAREN),
+        TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
+        CShader::Create(
+            m_pDevice,
+            m_pContext,
+            TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+            VTXANIMMESH::Elements,
+            VTXANIMMESH::iNumElements))))
+    {
+        return E_FAIL;
+    }
+
+    /*
+     * 직업과 무관한 공통 GameObject Prototype:
+     *
+     * Prototype_GameObject_Part_Equipment
+     * Prototype_GameObject_Part_Body
+     * Prototype_GameObject_Character
+     */
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("BAREN: shared character prototypes"));
+
+    if (FAILED(Ready_Character_Shared_Prototypes(
+        ETOUI(LEVEL::BAREN))))
+    {
+        return E_FAIL;
+    }
+
+    /*
+     * 첫 번째 수직 슬라이스에서는 LanceMaster만 로드한다.
+     * 두 Client 모두 Lobby의 LanceMaster 슬롯을 사용한다.
+     */
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("BAREN: LanceMaster prototypes"));
+
+    if (FAILED(Ready_LanceMaster_Prototypes(
+        ETOUI(LEVEL::BAREN))))
+    {
+        return E_FAIL;
+    }
+
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("Bern Castle map and player loading complete"));
+
+    resourceRollback.Commit();
+    m_isFinished = true;
+
+    return S_OK;
 }
 
 HRESULT CLoader::Ready_For_ValtanArena()
