@@ -31,7 +31,7 @@ namespace Client
 	struct OBJECT_HANDLE
 	{
 		static constexpr std::uint32_t INVALID_SLOT =
-			(std::numeric_limits<std::uint32_t>::max());
+			(std::numeric_limits<std::uint32_t>::max)();
 		//slot과 generation 두 개를 통해서, 객체의 수명을 관리
 		std::uint32_t iSlotIndex = INVALID_SLOT;
 		std::uint32_t iGeneration = 0;
