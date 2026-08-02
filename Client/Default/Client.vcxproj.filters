@@ -303,6 +303,9 @@
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SkillData.cpp">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Part_Body.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -498,6 +501,9 @@
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CharacterSpec.h">
+      <Filter>02.GameObjects\00. Character</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SkillData.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Part_Body.h">

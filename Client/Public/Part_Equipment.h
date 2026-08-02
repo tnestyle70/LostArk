@@ -44,6 +44,18 @@ public:
 	virtual ~CPart_Equipment();
 
 public:
+	/* A hidden piece stays assembled and keeps following its bone; it just does
+	not enter the render queue. LanceMaster carries both of its spears and shows
+	one, which is cheaper and far simpler than swapping the model component while
+	the character is live. */
+	void Set_Visible(bool_t isVisible) {
+		m_isVisible = isVisible;
+	}
+	bool_t Is_Visible() const {
+		return m_isVisible;
+	}
+
+public:
 	virtual HRESULT Initialize_Prototype() override;
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Priority_Update(f32_t fTimeDelta) override;
@@ -52,6 +64,7 @@ public:
 	virtual HRESULT Render() override;
 
 private:
+	bool_t m_isVisible = { true };
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };

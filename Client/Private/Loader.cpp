@@ -459,9 +459,9 @@ HRESULT CLoader::Ready_For_Test_Level2()
     Registering two full classes here decodes both bodies and every clip, which
     is what exhausted the Debug heap when LanceMaster and GunSlinger shared the
     level. */
-    //if (FAILED(Ready_LanceMaster_Prototypes(
-    //    ETOUI(LEVEL::TEST_LEVEL2))))
-    //    return E_FAIL;
+    if (FAILED(Ready_LanceMaster_Prototypes(
+        ETOUI(LEVEL::TEST_LEVEL2))))
+        return E_FAIL;
 
     //if (FAILED(Ready_GunSlinger_Prototypes(
     //    ETOUI(LEVEL::TEST_LEVEL2))))
@@ -471,9 +471,9 @@ HRESULT CLoader::Ready_For_Test_Level2()
     //    ETOUI(LEVEL::TEST_LEVEL2))))
     //    return E_FAIL;
 
-    if (FAILED(Ready_Slayer_Prototypes(
-        ETOUI(LEVEL::TEST_LEVEL2))))
-        return E_FAIL;
+    //if (FAILED(Ready_Slayer_Prototypes(
+    //    ETOUI(LEVEL::TEST_LEVEL2))))
+    //    return E_FAIL;
 
     if (FAILED(Ready_Npc_Prototypes(
         ETOUI(LEVEL::TEST_LEVEL2))))
@@ -540,16 +540,36 @@ HRESULT CLoader::Ready_LanceMaster_Prototypes(uint32_t iLevelIndex)
             return E_FAIL;
     }
 
-    if (FAILED(CGameInstance::Get().Add_Prototype(
-        iLevelIndex,
-        TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
-        CModel::Create(
-            m_pDevice,
-            m_pContext,
-            MODEL::NONANIM,
-            "../Bin/Resources/LostArk/Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
-            XMMatrixScaling(100.f, 100.f, 100.f)))))
-        return E_FAIL;
+    /* Both spears. WP_WFLM_00 ships the long and the short mesh side by side and
+    the class swaps between them on its stance, so both are prototypes and the
+    character carries both parts.
+
+    No preTransform: every weapon in the project is identity now. The long spear
+    used to need x100 because it alone had been exported by an older route that
+    landed it in a 2.3-unit space; re-exporting it the way every other weapon is
+    exported put it in body units (233 long, 171 short, against a ~124 body) and
+    removed the exception. */
+    const struct { const tchar_t* pTag; const char_t* pPath; } Spears[] =
+    {
+        { TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
+          "../Bin/Resources/LostArk/Character/WP_WFLM_00L/WP_WFLM_00L.wmodel" },
+        { TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short"),
+          "../Bin/Resources/LostArk/Character/WP_WFLM_00S/WP_WFLM_00S.wmodel" },
+    };
+
+    for (const auto& spear : Spears)
+    {
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            spear.pTag,
+            CModel::Create(
+                m_pDevice,
+                m_pContext,
+                MODEL::NONANIM,
+                spear.pPath,
+                XMMatrixIdentity()))))
+            return E_FAIL;
+    }
 
     return S_OK;
 }

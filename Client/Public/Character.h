@@ -60,6 +60,12 @@ public:
 		return m_pTransformCom;
 	}
 
+	/* Shows or hides one assembled part. A class whose identity swaps its weapon
+	ships every variant as its own part and toggles between them; the hidden one
+	keeps riding its socket, it just leaves the render queue. Returns false when
+	no part carries that tag. */
+	bool_t Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
+
 	void Set_Position(fvector_t vPosition);
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);

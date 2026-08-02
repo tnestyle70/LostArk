@@ -214,6 +214,20 @@ shared_ptr<CModel> CCharacter::Get_BodyModel() const
 	return m_pBodyModel;
 }
 
+bool_t CCharacter::Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible)
+{
+	if (nullptr == pPartTag)
+		return false;
+
+	auto pPart = dynamic_cast<CPart_Equipment*>(
+		__super::Find_PartObject(pPartTag));
+	if (nullptr == pPart)
+		return false;
+
+	pPart->Set_Visible(isVisible);
+	return true;
+}
+
 void CCharacter::Set_Position(fvector_t vPosition)
 {
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);

@@ -24,6 +24,7 @@
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
+    <ClInclude Include="..\Public\SkillData.h" />
     <ClInclude Include="..\Public\Level_Baren.h" />
     <ClInclude Include="..\Public\Level_ChaosDungeon.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
@@ -90,6 +91,7 @@
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
+    <ClCompile Include="..\Private\SkillData.cpp" />
     <ClCompile Include="..\Private\Level_Baren.cpp" />
     <ClCompile Include="..\Private\Level_ChaosDungeon.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />

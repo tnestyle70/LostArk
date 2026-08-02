@@ -93,7 +93,7 @@ HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
 	spec and the matching Ready_*_Prototypes call in CLoader together. */
 	CCharacter::CHARACTER_DESC		CharacterDesc{};
 	CharacterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
-	CharacterDesc.pSpec = &Spec_Slayer;
+	CharacterDesc.pSpec = &Spec_LanceMaster;
 	CharacterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
 
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
