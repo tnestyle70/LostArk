@@ -4,6 +4,7 @@
 #include "Character.h"
 #include "GameInstance.h"
 #include "Logic_LanceMaster.h"
+#include "MapNavigationContract.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -119,11 +120,18 @@ HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
 
 HRESULT CLevel_AssetTest::Ready_Character()
 {
+	MAP_NAVIGATION_CONTRACT navigationContract;
+	std::string navigationStatus;
+	const bool_t navigationReady =
+		CMapNavigationContract::Resolve_Active(
+			navigationContract, navigationStatus) &&
+		navigationContract.runtimeGridAvailable;
+
 	CCharacter::CHARACTER_DESC desc{};
 	desc.iPrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
 	desc.pSpec = &Spec_LanceMaster;
-	desc.pNavigationPrototypeTag =
-		TEXT("Prototype_Component_Navigation_ValtanArena");
+	desc.pNavigationPrototypeTag = navigationReady ?
+		navigationContract.prototypeTag.c_str() : nullptr;
 	desc.fSpeedPerSec = 6.f;
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = float3_t(151.25f, 22.96835f, -121.75f);
@@ -147,11 +155,18 @@ HRESULT CLevel_AssetTest::Ready_Valtan()
 	if (nullptr == m_pCharacter)
 		return E_FAIL;
 
+	MAP_NAVIGATION_CONTRACT navigationContract;
+	std::string navigationStatus;
+	const bool_t navigationReady =
+		CMapNavigationContract::Resolve_Active(
+			navigationContract, navigationStatus) &&
+		navigationContract.runtimeGridAvailable;
+
 	CValtan::VALTAN_DESC desc{};
 	desc.fSpeedPerSec = 5.f;
 	desc.fRotationPerSec = 180.f;
-	desc.pNavigationPrototypeTag =
-		TEXT("Prototype_Component_Navigation_ValtanArena");
+	desc.pNavigationPrototypeTag = navigationReady ?
+		navigationContract.prototypeTag.c_str() : nullptr;
 	desc.pTargetTransform = m_pCharacter->Get_Transform();
 	desc.vPosition = float3_t(156.25f, 22.99751f, -121.75f);
 

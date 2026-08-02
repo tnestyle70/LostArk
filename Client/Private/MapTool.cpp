@@ -6,6 +6,7 @@
 #include "Camera_Free.h"
 #include "GameInstance.h"
 #include "MapAssetObject.h"
+#include "MapNavigationContract.h"
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
 #include "DeployPropObject.h"
@@ -147,28 +148,30 @@ namespace
 		return std::string::npos != haystack.find(needle);
 	}
 
-	std::filesystem::path GetNavigationDataRoot()
+	bool_t IsSameNavigationFloat(f32_t left, f32_t right)
 	{
-		wchar_t modulePath[32768]{};
-		const DWORD length = GetModuleFileNameW(
-			nullptr,
-			modulePath,
-			static_cast<DWORD>(std::size(modulePath)));
-		if (0 == length || length >= std::size(modulePath))
-			return {};
-
-		const std::filesystem::path moduleDirectory =
-			std::filesystem::path(modulePath).parent_path();
-		const std::filesystem::path adjacent =
-			moduleDirectory / L"DataFiles" / L"Navigation";
-		if (std::filesystem::exists(adjacent))
-			return adjacent.lexically_normal();
-
-		return (
-			moduleDirectory.parent_path() /
-			L"DataFiles" /
-			L"Navigation").lexically_normal();
+		return std::fabs(left - right) <= 0.000001f;
 	}
+
+	bool_t HasSameNavigationGridIdentity(
+		const NAVGRID_AUTHORING_DESC& left,
+		const NAVGRID_AUTHORING_DESC& right)
+	{
+		return left.areaId == right.areaId &&
+			left.width == right.width &&
+			left.height == right.height &&
+			IsSameNavigationFloat(left.cellSize, right.cellSize) &&
+			IsSameNavigationFloat(left.originX, right.originX) &&
+			IsSameNavigationFloat(left.originZ, right.originZ);
+	}
+
+	bool_t HasSameNavigationPath(
+		const std::filesystem::path& left,
+		const std::filesystem::path& right)
+	{
+		return left.lexically_normal() == right.lexically_normal();
+	}
+
 }
 
 struct Client::CMapTool::NAVIGATION_RENDER_RESOURCES final
@@ -488,34 +491,106 @@ bool_t Client::CMapTool::Find_AssetTestCamera()
 
 bool_t Client::CMapTool::Load_NavigationDocument()
 {
-	const std::filesystem::path root = GetNavigationDataRoot();
-	if (root.empty())
+	MAP_NAVIGATION_CONTRACT stagedContract;
+	std::string stagedStatus;
+	if (!CMapNavigationContract::Resolve_Area(
+		m_Catalog.Get_AreaId(), stagedContract, stagedStatus))
 	{
-		m_NavigationStatus = "Navigation data is unavailable";
+		m_NavigationStatus = stagedStatus;
 		return false;
 	}
 
-	m_NavigationSourcePath = root / L"ValtanArena.navsource";
-	m_NavigationPaintPath = root / L"ValtanArena.navpaint";
-	m_NavigationRuntimePath = root / L"ValtanArena.navgrid";
-	m_RuntimeBlockerPath = root / L"ValtanArena.navblockers";
-	if (!m_NavigationDocument.Load(
-		m_NavigationSourcePath,
-		m_NavigationPaintPath,
-		m_NavigationStatus))
+	std::error_code sourceError;
+	const bool_t hasSource = std::filesystem::is_regular_file(
+		stagedContract.sourcePath, sourceError);
+	if (sourceError)
 	{
+		m_NavigationStatus =
+			"Could not inspect navigation source for " +
+			stagedContract.areaId;
 		return false;
 	}
-	m_NavigationBakeDesc =
-		m_NavigationDocument.Get_BakeDesc();
+	if (!hasSource)
+	{
+		CNavGridPaintDocument stagedNavigationDocument;
+		CNavRuntimeBlockerDocument stagedBlockerDocument;
+		NAVGRID_BAKE_DESC stagedBakeDesc;
+
+		m_NavigationSourcePath = stagedContract.sourcePath;
+		m_NavigationPaintPath = stagedContract.paintPath;
+		m_NavigationRuntimePath = stagedContract.runtimePath;
+		m_RuntimeBlockerPath = stagedContract.blockerPath;
+		m_NavigationDocument = std::move(stagedNavigationDocument);
+		m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+		m_NavigationBakeDesc = stagedBakeDesc;
+		m_iSelectedRuntimeRegion = 0;
+		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
+		m_bNavigationStrokeActive = false;
+		m_NavigationStatus =
+			"Navigation bootstrap: place Nav Bounds and Bake for " +
+			stagedContract.areaId;
+		m_NavigationBakeStatus = "Create Nav Bounds";
+		m_bNavigationBakeResetConfirmed = false;
+		m_bNavigationBakeResetPending = false;
+		return false;
+	}
+
+	CNavGridPaintDocument stagedNavigationDocument;
+	if (!stagedNavigationDocument.Load(
+		stagedContract.sourcePath,
+		stagedContract.paintPath,
+		stagedStatus))
+	{
+		m_NavigationStatus = stagedStatus;
+		return false;
+	}
+	if (stagedNavigationDocument.Get_Desc().areaId !=
+		stagedContract.areaId)
+	{
+		m_NavigationStatus =
+			"NavGrid source area does not match active map area";
+		return false;
+	}
+
+	CNavRuntimeBlockerDocument stagedBlockerDocument;
+	if (!stagedBlockerDocument.Load(
+		stagedContract.blockerPath,
+		stagedNavigationDocument.Get_Desc(),
+		stagedStatus))
+	{
+		m_NavigationStatus = stagedStatus;
+		return false;
+	}
+
+	size_t stagedSelectedRuntimeRegion = m_iSelectedRuntimeRegion;
+	if (stagedSelectedRuntimeRegion >=
+		stagedBlockerDocument.Get_RegionCount())
+	{
+		stagedSelectedRuntimeRegion = 0;
+	}
+	const NAVGRID_BAKE_DESC stagedBakeDesc =
+		stagedNavigationDocument.Get_BakeDesc();
+	stagedStatus = stagedContract.runtimeGridAvailable ?
+		"Saved" :
+		"Authoring ready; save and re-enter ASSET_TEST for runtime navigation";
+
+	m_NavigationSourcePath = stagedContract.sourcePath;
+	m_NavigationPaintPath = stagedContract.paintPath;
+	m_NavigationRuntimePath = stagedContract.runtimePath;
+	m_RuntimeBlockerPath = stagedContract.blockerPath;
+	m_NavigationDocument = std::move(stagedNavigationDocument);
+	m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+	m_NavigationBakeDesc = stagedBakeDesc;
+	m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+	m_NavigationStatus = stagedStatus;
 	m_NavigationBakeStatus = "Baked source loaded";
 	m_bNavigationBakeResetConfirmed = false;
+	m_bNavigationBakeResetPending = false;
+	m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
+	m_bNavigationStrokeActive = false;
 
-	if (!Load_RuntimeBlockers())
-		return false;
-
-	m_NavigationStatus = "Saved";
-	return true;
+	return !stagedContract.runtimeGridAvailable ||
+		Register_RuntimeBlockers();
 }
 
 bool_t Client::CMapTool::Load_RuntimeBlockers()
@@ -526,19 +601,43 @@ bool_t Client::CMapTool::Load_RuntimeBlockers()
 		return false;
 	}
 
-	if (!m_RuntimeBlockerDocument.Load(
+	CNavRuntimeBlockerDocument stagedBlockerDocument;
+	std::string stagedStatus;
+	if (!stagedBlockerDocument.Load(
 		m_RuntimeBlockerPath,
 		m_NavigationDocument.Get_Desc(),
-		m_NavigationStatus))
+		stagedStatus))
 	{
+		m_NavigationStatus = stagedStatus;
 		return false;
 	}
 
-	if (m_iSelectedRuntimeRegion >=
-		m_RuntimeBlockerDocument.Get_RegionCount())
+	std::error_code runtimeError;
+	const bool_t hasRuntime = std::filesystem::is_regular_file(
+		m_NavigationRuntimePath, runtimeError);
+	if (runtimeError)
 	{
-		m_iSelectedRuntimeRegion = 0;
+		m_NavigationStatus = "Could not inspect navigation runtime";
+		return false;
 	}
+	size_t stagedSelectedRuntimeRegion = m_iSelectedRuntimeRegion;
+	if (stagedSelectedRuntimeRegion >=
+		stagedBlockerDocument.Get_RegionCount())
+	{
+		stagedSelectedRuntimeRegion = 0;
+	}
+	if (!hasRuntime)
+	{
+		m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+		m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+		m_NavigationStatus =
+			"Authoring ready; save and re-enter ASSET_TEST for runtime navigation";
+		return true;
+	}
+
+	m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+	m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+	m_NavigationStatus = stagedStatus;
 
 	return Register_RuntimeBlockers();
 }
@@ -652,6 +751,48 @@ bool_t Client::CMapTool::Save_Navigation()
 	}
 
 	std::string status;
+	MAP_NAVIGATION_CONTRACT contract;
+	if (!CMapNavigationContract::Resolve_Area(
+		m_Catalog.Get_AreaId(), contract, status))
+	{
+		m_NavigationStatus = status;
+		return false;
+	}
+	if (!HasSameNavigationPath(
+			m_NavigationSourcePath, contract.sourcePath) ||
+		!HasSameNavigationPath(
+			m_NavigationPaintPath, contract.paintPath) ||
+		!HasSameNavigationPath(
+			m_NavigationRuntimePath, contract.runtimePath) ||
+		!HasSameNavigationPath(
+			m_RuntimeBlockerPath, contract.blockerPath))
+	{
+		m_NavigationStatus =
+			"Navigation paths do not match the active map area; reload before saving";
+		return false;
+	}
+
+	std::error_code sourceError;
+	if (!std::filesystem::is_regular_file(
+		contract.sourcePath, sourceError) || sourceError)
+	{
+		m_NavigationStatus =
+			"Navigation source is missing or unavailable; bake before saving";
+		return false;
+	}
+
+	const NAVGRID_AUTHORING_DESC& sourceDesc =
+		m_NavigationDocument.Get_Desc();
+	const NAVGRID_AUTHORING_DESC& blockerDesc =
+		m_RuntimeBlockerDocument.Get_Desc();
+	if (sourceDesc.areaId != contract.areaId ||
+		!HasSameNavigationGridIdentity(sourceDesc, blockerDesc))
+	{
+		m_NavigationStatus =
+			"Navigation documents do not match the active map grid; reload before saving";
+		return false;
+	}
+
 	if (!m_NavigationDocument.Save_Paint(
 		m_NavigationPaintPath,
 		status))
@@ -1095,6 +1236,12 @@ void Client::CMapTool::Remove_AllPlacements()
 
 bool_t Client::CMapTool::Save_Placements()
 {
+	if (m_Catalog.Is_Sharded())
+	{
+		m_Status = "Save disabled: shard-set placement documents are read-only";
+		return false;
+	}
+
 	vector<MAP_PLACEMENT_RECORD> document;
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -1135,11 +1282,71 @@ bool_t Client::CMapTool::Load_Placements()
 
 	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	if (!CMapPlacementDocument::Read(
-		m_Catalog.Get_PlacementPath(), m_Catalog, document, loadStatus))
+	if (!m_Catalog.Is_Sharded())
 	{
-		m_Status = loadStatus;
-		return false;
+		if (!CMapPlacementDocument::Read(
+			m_Catalog.Get_PlacementPath(), m_Catalog, document, loadStatus))
+		{
+			m_Status = loadStatus;
+			return false;
+		}
+	}
+	else
+	{
+		size_t declaredTotal = {};
+		for (const MAP_ASSET_SHARD& shard : m_Catalog.Get_Shards())
+		{
+			if (declaredTotal > (std::numeric_limits<size_t>::max)() -
+				shard.placementCount)
+			{
+				m_Status = "Shard placement count overflow";
+				return false;
+			}
+			declaredTotal += shard.placementCount;
+		}
+
+		document.reserve(declaredTotal);
+		std::unordered_set<uint64_t> runtimeIds;
+		std::unordered_set<std::string> sourceIds;
+		runtimeIds.reserve(declaredTotal);
+		sourceIds.reserve(declaredTotal);
+		for (const MAP_ASSET_SHARD& shard : m_Catalog.Get_Shards())
+		{
+			std::error_code placementError;
+			if (!std::filesystem::is_regular_file(
+				shard.placementPath, placementError))
+			{
+				m_Status = "Shard placement file is missing: " +
+					shard.shardId;
+				return false;
+			}
+
+			vector<MAP_PLACEMENT_RECORD> shardDocument;
+			if (!CMapPlacementDocument::Read(
+				shard.placementPath, m_Catalog, shardDocument, loadStatus))
+			{
+				m_Status = "Shard " + shard.shardId + " failed: " +
+					loadStatus;
+				return false;
+			}
+			if (shardDocument.size() != shard.placementCount)
+			{
+				m_Status = "Shard placement count mismatch: " + shard.shardId;
+				return false;
+			}
+
+			for (MAP_PLACEMENT_RECORD& record : shardDocument)
+			{
+				if (!runtimeIds.insert(record.placementId).second ||
+					!sourceIds.insert(record.sourcePlacementId).second)
+				{
+					m_Status = "Duplicate placement ID across shards: " +
+						shard.shardId;
+					return false;
+				}
+				document.push_back(std::move(record));
+			}
+		}
 	}
 
 	vector<PLACED_ENTRY> stagedPlacements;
@@ -1184,6 +1391,50 @@ bool_t Client::CMapTool::Load_Placements()
 
 bool_t Client::CMapTool::Load_DeployProps()
 {
+	const std::filesystem::path root = CMapAssetCatalog::Get_MapDataRoot();
+	if (root.empty())
+	{
+		m_Status = "DeployProp data root is unavailable";
+		return false;
+	}
+
+	const std::filesystem::path areaPath(m_Catalog.Get_AreaId());
+	const std::filesystem::path catalogPath =
+		root / (areaPath.wstring() + L".deployassets");
+	const std::filesystem::path placementPath =
+		root / (areaPath.wstring() + L".deployplacements");
+	std::error_code catalogError;
+	std::error_code placementError;
+	const bool_t catalogExists =
+		std::filesystem::exists(catalogPath, catalogError);
+	const bool_t placementExists =
+		std::filesystem::exists(placementPath, placementError);
+	if (catalogError)
+	{
+		m_Status = "DeployProp catalog inspection failed: " +
+			catalogPath.string() + " (" + catalogError.message() + ")";
+		return false;
+	}
+	if (placementError)
+	{
+		m_Status = "DeployProp placement inspection failed: " +
+			placementPath.string() + " (" + placementError.message() + ")";
+		return false;
+	}
+	if (!catalogExists && !placementExists)
+	{
+		Remove_DeployProps();
+		return true;
+	}
+	if (catalogExists != placementExists)
+	{
+		const std::filesystem::path& missingPath =
+			catalogExists ? placementPath : catalogPath;
+		m_Status = "DeployProp file pair is incomplete; missing: " +
+			missingPath.string();
+		return false;
+	}
+
 	if (!m_DeployCatalog.Load_Default(m_Catalog.Get_AreaId()))
 	{
 		m_Status = m_DeployCatalog.Get_Status();
@@ -1799,8 +2050,15 @@ void Client::CMapTool::Render_NavigationOverlay()
 
 void Client::CMapTool::Render_Toolbar()
 {
+	ImGui::BeginDisabled(m_Catalog.Is_Sharded());
 	if (ImGui::Button("Save"))
 		Save_Placements();
+	ImGui::EndDisabled();
+	if (m_Catalog.Is_Sharded())
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("Shard set is read-only");
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{

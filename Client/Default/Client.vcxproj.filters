@@ -231,6 +231,9 @@
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapNavigationContract.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DeployPropCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -414,6 +417,9 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetCatalog.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapNavigationContract.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DeployPropCatalog.h">

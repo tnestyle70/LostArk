@@ -57,6 +57,7 @@
     <ClInclude Include="..\Public\MainApp.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapNavigationContract.h" />
     <ClInclude Include="..\Public\MapAssetObject.h" />
     <ClInclude Include="..\Public\DeployPropCatalog.h" />
     <ClInclude Include="..\Public\DeployPropObject.h" />
@@ -116,6 +117,7 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapNavigationContract.cpp" />
     <ClCompile Include="..\Private\MapAssetObject.cpp" />
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
     <ClCompile Include="..\Private\DeployPropObject.cpp" />

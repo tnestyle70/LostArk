@@ -8,6 +8,7 @@
 #include "Part_Body.h"
 #include "Character.h"
 #include "MapAssetCatalog.h"
+#include "MapNavigationContract.h"
 #include "MapAssetObject.h"
 #include "MapStaticBatchObject.h"
 
@@ -29,6 +30,41 @@
 
 #include "GameInstance.h"
 #include "Navigation.h"
+
+namespace
+{
+    class CLevelResourceRollbackScope final
+    {
+    public:
+        explicit CLevelResourceRollbackScope(uint32_t levelIndex)
+            : m_iLevelIndex { levelIndex }
+        {
+        }
+
+        ~CLevelResourceRollbackScope()
+        {
+            if (m_isCommitted)
+                return;
+
+            if (FAILED(CGameInstance::Get().Clear_Resources(m_iLevelIndex)))
+            {
+                OutputDebugStringA(
+                    "[Loader] Failed to roll back partially loaded level resources.\n");
+            }
+        }
+
+        CLevelResourceRollbackScope(
+            const CLevelResourceRollbackScope&) = delete;
+        CLevelResourceRollbackScope& operator=(
+            const CLevelResourceRollbackScope&) = delete;
+
+        void Commit() { m_isCommitted = true; }
+
+    private:
+        uint32_t m_iLevelIndex = {};
+        bool_t m_isCommitted = false;
+    };
+}
 
 CLoader::CLoader(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
     : m_pDevice { pDevice } 
@@ -104,7 +140,11 @@ HRESULT CLoader::Start_Loading()
 
     if (FAILED(hr))
     {
-        MSG_BOX("Failed to Create Level!");
+        MessageBox(
+            nullptr,
+            m_szLoadingText,
+            L"Level Loading Failed",
+            MB_OK | MB_ICONERROR);
         return E_FAIL;
     }
 
@@ -213,7 +253,14 @@ HRESULT CLoader::Ready_For_Baren()
 
 HRESULT CLoader::Ready_For_Level_AssetTest()
 {
-    lstrcpy(m_szLoadingText, TEXT("Loading Binary Asset"));
+    // The current level is LOADING, and ASSET_TEST objects have not been
+    // created yet. A failed load can therefore clear the target level safely.
+    CLevelResourceRollbackScope resourceRollback(
+        ETOUI(LEVEL::ASSET_TEST));
+
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: VtxAnimMeshBinary shader"));
 
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
@@ -224,6 +271,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             VTXANIMMESH::iNumElements))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: VtxMeshBinary shader"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Shader_VtxMeshBinary"),
@@ -233,10 +283,16 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             VTXMESH::iNumElements))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: LanceMaster prototypes"));
     if (FAILED(Ready_LanceMaster_Prototypes(
         ETOUI(LEVEL::ASSET_TEST))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: map instance shader"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Shader_VtxMeshMapInstance"),
@@ -246,6 +302,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             VTXMESHINSTANCE::iNumElements))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: map preview shader"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         CMapAssetPreview::SHADER_PROTOTYPE_TAG,
@@ -264,20 +323,69 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
     //Valtan Raid 맵 기준 정적 에셋 카탈로그
     CMapAssetCatalog mapCatalog;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: map catalog"));
     if (!mapCatalog.Load_Default())
     {
         return E_FAIL;
     }
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: map model prototypes"));
     for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
     {
         const string modelPath = entry.resolvedModelPath.string();
 
-        if (FAILED(CGameInstance::Get().Add_Prototype(
-            ETOUI(LEVEL::ASSET_TEST), entry.prototypeTag,
-            CModel::Create(m_pDevice, m_pContext,
-                MODEL::NONANIM, modelPath.c_str(), mapAssetTransform))))
+        const wstring assetId(entry.id.begin(), entry.id.end());
+        const auto reportModelFailure =
+            [this, &entry, &assetId](const wchar_t* failureStage)
+            {
+                const wstring loadingDetail =
+                    L"Map model failed [" + wstring(failureStage) +
+                    L"] id=" + assetId +
+                    L" tag=" + entry.prototypeTag +
+                    L" path=" + entry.resolvedModelPath.wstring();
+                const wstring loadingSummary =
+                    L"Map model failed [" + wstring(failureStage) +
+                    L"] id=" + assetId + L" (see debugger)";
+                const wstring& loadingText =
+                    loadingDetail.size() < std::size(m_szLoadingText) ?
+                    loadingDetail : loadingSummary;
+                lstrcpynW(
+                    m_szLoadingText,
+                    loadingText.c_str(),
+                    static_cast<int>(std::size(m_szLoadingText)));
+
+                const wstring debugDetail =
+                    L"[Loader][ASSET_TEST] Map model prototype failure\n"
+                    L"stage=" + wstring(failureStage) +
+                    L"\nasset_id=" + assetId +
+                    L"\nprototype_tag=" + entry.prototypeTag +
+                    L"\nresolved_path=" +
+                    entry.resolvedModelPath.wstring() + L"\n";
+                OutputDebugStringW(debugDetail.c_str());
+            };
+
+        auto modelPrototype = CModel::Create(
+            m_pDevice,
+            m_pContext,
+            MODEL::NONANIM,
+            modelPath.c_str(),
+            mapAssetTransform);
+        if (nullptr == modelPrototype)
         {
+            reportModelFailure(L"CModel::Create");
+            return E_FAIL;
+        }
+
+        if (FAILED(CGameInstance::Get().Add_Prototype(
+            ETOUI(LEVEL::ASSET_TEST),
+            entry.prototypeTag,
+            std::move(modelPrototype))))
+        {
+            reportModelFailure(L"Add_Prototype");
             return E_FAIL;
         }
     }
@@ -285,6 +393,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
     //Valtan Raid 맵 기준 동적 에셋 카탈로그
     CDeployPropCatalog deployCatalog;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: deploy catalog"));
     if (deployCatalog.Load_Default(mapCatalog.Get_AreaId()))
     {
         for (const DEPLOY_PROP_ASSET_ENTRY& entry : deployCatalog.Get_Assets())
@@ -295,6 +406,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
             const string intactPath = entry.intactResolvedPath.string();
 
+            lstrcpy(
+                m_szLoadingText,
+                TEXT("ASSET_TEST: deploy intact prototypes"));
             if (FAILED(CGameInstance::Get().Add_Prototype(
                 ETOUI(LEVEL::ASSET_TEST), entry.intactPrototypeTag,
                 CModel::Create(m_pDevice, m_pContext,
@@ -304,6 +418,9 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
             if (entry.kind == DEPLOY_PROP_MODEL_KIND::STATIC)
             {
                 const string fracturedPath = entry.fracturedResolvedPath.string();
+                lstrcpy(
+                    m_szLoadingText,
+                    TEXT("ASSET_TEST: deploy fractured prototypes"));
                 if (FAILED(CGameInstance::Get().Add_Prototype(
                     ETOUI(LEVEL::ASSET_TEST), entry.fracturedPrototypeTag,
                     CModel::Create(m_pDevice, m_pContext,
@@ -313,63 +430,132 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
         }
     }
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: Valtan model"));
+    auto valtanModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::ANIM,
+        "../Bin/Resources/LostArk/Character/Valtan/MN_RPBF_01.wmodel",
+        lostArkAssetPreTransform);
+    if (nullptr == valtanModel)
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan model failed after map load"));
+        OutputDebugStringA(
+            "[Loader][ASSET_TEST] Valtan CModel::Create failed after map load.\n");
+        return E_FAIL;
+    }
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Model_Valtan"),
-        CModel::Create(m_pDevice, m_pContext,
-            MODEL::ANIM,
-            "../Bin/Resources/LostArk/Character/Valtan/MN_RPBF_01.wmodel",
-            lostArkAssetPreTransform))))
+        std::move(valtanModel))))
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan prototype registration failed"));
         return E_FAIL;
+    }
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: Valtan weapon model"));
+    auto valtanWeaponModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::NONANIM,
+        "../Bin/Resources/LostArk/Character/Valtan/ValtanWeapon.wmodel",
+        XMMatrixScaling(100.f, 100.f, 100.f));
+    if (nullptr == valtanWeaponModel)
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan weapon model failed after map load"));
+        OutputDebugStringA(
+            "[Loader][ASSET_TEST] Valtan weapon CModel::Create failed after map load.\n");
+        return E_FAIL;
+    }
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_Component_Model_ValtanWeapon"),
-        CModel::Create(m_pDevice, m_pContext,
-            MODEL::NONANIM,
-            "../Bin/Resources/LostArk/Character/Valtan/ValtanWeapon.wmodel",
-            XMMatrixScaling(100.f, 100.f, 100.f)))))
+        std::move(valtanWeaponModel))))
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan weapon prototype registration failed"));
+        return E_FAIL;
+    }
+
+    MAP_NAVIGATION_CONTRACT navigationContract;
+    string navigationStatus;
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: resolve navigation"));
+    if (!CMapNavigationContract::Resolve_Area(
+        mapCatalog.Get_AreaId(), navigationContract, navigationStatus))
         return E_FAIL;
 
-    if (FAILED(CGameInstance::Get().Add_Prototype(
-        ETOUI(LEVEL::ASSET_TEST),
-        TEXT("Prototype_Component_Navigation_ValtanArena"),
-        CNavigation::Create_NavGrid(
+    if (navigationContract.runtimeGridAvailable)
+    {
+        lstrcpy(
+            m_szLoadingText,
+            TEXT("ASSET_TEST: navigation prototype"));
+        auto navigationPrototype = CNavigation::Create_NavGrid(
             m_pDevice,
             m_pContext,
-            TEXT("../DataFiles/Navigation/ValtanArena.navgrid")))))
-        return E_FAIL;
+            navigationContract.runtimePath.c_str());
+        if (nullptr == navigationPrototype ||
+            FAILED(CGameInstance::Get().Add_Prototype(
+                ETOUI(LEVEL::ASSET_TEST),
+                navigationContract.prototypeTag,
+                std::move(navigationPrototype))))
+        {
+            return E_FAIL;
+        }
+    }
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: Camera prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_Camera_Free"),
         CCamera_Free::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: Body_Valtan prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_Body_Valtan"),
         CBody_Valtan::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: Valtan object prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_Valtan"),
         CValtan::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: MapAsset prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_MapAsset"),
         CMapAssetObject::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: MapStaticBatch prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_MapStaticBatch"),
         CMapStaticBatchObject::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    lstrcpy(
+        m_szLoadingText,
+        TEXT("ASSET_TEST: DeployProp prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
         TEXT("Prototype_GameObject_DeployProp"),
@@ -378,6 +564,7 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
     lstrcpy(m_szLoadingText, TEXT("Binary Asset Test Loading Complete"));
 
+    resourceRollback.Commit();
     m_isFinished = true;
 
     return S_OK;

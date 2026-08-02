@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -59,6 +60,15 @@ struct MAP_ASSET_ENTRY
 	MAP_ASSET_RENDER_PROFILE renderProfile;
 };
 
+struct MAP_ASSET_SHARD
+{
+	std::string shardId;
+	std::filesystem::path catalogPath;
+	std::filesystem::path placementPath;
+	uint32_t assetCount = {};
+	uint32_t placementCount = {};
+};
+
 class CMapAssetCatalog final
 {
 public:
@@ -68,10 +78,12 @@ public:
 
 	const MAP_ASSET_ENTRY* Find(const std::string& assetId) const;
 	const std::vector<MAP_ASSET_ENTRY>& Get_Entries() const { return m_Entries; }
+	const std::vector<MAP_ASSET_SHARD>& Get_Shards() const { return m_Shards; }
 	const std::string& Get_AreaId() const { return m_AreaId; }
 	const std::string& Get_Status() const { return m_Status; }
 	const std::filesystem::path& Get_CatalogPath() const { return m_CatalogPath; }
 	const std::filesystem::path& Get_PlacementPath() const { return m_PlacementPath; }
+	bool_t Is_Sharded() const { return m_bSharded; }
 	bool_t Is_Ready() const { return m_bReady; }
 
 	static std::filesystem::path Get_MapDataRoot();
@@ -79,10 +91,13 @@ public:
 
 private:
 	std::vector<MAP_ASSET_ENTRY> m_Entries;
+	std::unordered_map<std::string, size_t> m_EntryLookup;
+	std::vector<MAP_ASSET_SHARD> m_Shards;
 	std::string m_AreaId;
 	std::string m_Status = "Catalog not loaded";
 	std::filesystem::path m_CatalogPath;
 	std::filesystem::path m_PlacementPath;
+	bool_t m_bSharded = false;
 	bool_t m_bReady = false;
 };
 

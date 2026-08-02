@@ -104,7 +104,7 @@ HRESULT CMainApp::Initialize()
         nullptr != pCommandLine &&
         nullptr != wcsstr(pCommandLine, L"--hdr-readback")
         ? LEVEL::TEST_LEVEL2
-        : LEVEL::LOBBY;
+        : LEVEL::ASSET_TEST;
 
     if (FAILED(Start_Level(eStartLevel)))
         return E_FAIL;
