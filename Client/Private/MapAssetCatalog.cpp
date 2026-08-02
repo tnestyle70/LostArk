@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace
@@ -18,9 +19,15 @@ namespace
 	constexpr uint32_t RENDER_PROFILE_CATALOG_VERSION = 3;
 	constexpr uint32_t CATALOG_VERSION = 4;
 	constexpr uint32_t MAX_ASSET_COUNT = 512;
+	constexpr const char* SHARD_SET_MAGIC = "LOSTARK_MAP_SHARD_SET";
+	constexpr uint32_t SHARD_SET_VERSION = 1;
+	constexpr uint32_t MAX_SHARD_COUNT = 64;
+	constexpr uint32_t MAX_TOTAL_ASSET_COUNT = 4096;
+	constexpr uint32_t MAX_SHARD_PLACEMENT_COUNT = 65536;
 	constexpr size_t MAX_GROUP_ID_LENGTH = 64;
 	constexpr size_t MAX_GROUP_LABEL_LENGTH = 128;
 	constexpr size_t MAX_EVIDENCE_LENGTH = 512;
+	constexpr size_t MAX_SHARD_FILENAME_LENGTH = 260;
 
 	struct PARSED_MAP_ASSET_ROW
 	{
@@ -101,6 +108,59 @@ namespace
 			profile.colorTint.x >= 0.f && profile.colorTint.y >= 0.f &&
 			profile.colorTint.z >= 0.f && profile.colorTint.w >= 0.f;
 	}
+
+	bool_t IsSafeRelativeFilename(const std::string& value,
+		const std::filesystem::path& requiredExtension)
+	{
+		if (value.empty() || value.size() > MAX_SHARD_FILENAME_LENGTH ||
+			std::string::npos != value.find('/') ||
+			std::string::npos != value.find('\\'))
+			return false;
+
+		const std::filesystem::path path(value);
+		return !path.empty() && !path.is_absolute() && !path.has_root_path() &&
+			!path.has_parent_path() && path == path.filename() &&
+			path != std::filesystem::path(".") &&
+			path != std::filesystem::path("..") &&
+			path.extension() == requiredExtension;
+	}
+
+	bool_t EqualRenderProfile(const MAP_ASSET_RENDER_PROFILE& lhs,
+		const MAP_ASSET_RENDER_PROFILE& rhs)
+	{
+		return lhs.renderMode == rhs.renderMode &&
+			lhs.cullMode == rhs.cullMode &&
+			lhs.uvScale.x == rhs.uvScale.x &&
+			lhs.uvScale.y == rhs.uvScale.y &&
+			lhs.uvSpeed.x == rhs.uvSpeed.x &&
+			lhs.uvSpeed.y == rhs.uvSpeed.y &&
+			lhs.opacity == rhs.opacity &&
+			lhs.opacityPower == rhs.opacityPower &&
+			lhs.emissiveIntensity == rhs.emissiveIntensity &&
+			lhs.specularIntensity == rhs.specularIntensity &&
+			lhs.specularPower == rhs.specularPower &&
+			lhs.colorTint.x == rhs.colorTint.x &&
+			lhs.colorTint.y == rhs.colorTint.y &&
+			lhs.colorTint.z == rhs.colorTint.z &&
+			lhs.colorTint.w == rhs.colorTint.w;
+	}
+
+	bool_t EqualAssetEntry(const MAP_ASSET_ENTRY& lhs,
+		const MAP_ASSET_ENTRY& rhs)
+	{
+		return lhs.id == rhs.id && lhs.label == rhs.label &&
+			lhs.groupId == rhs.groupId &&
+			lhs.groupLabel == rhs.groupLabel &&
+			lhs.evidence == rhs.evidence &&
+			lhs.modelRelativePath == rhs.modelRelativePath &&
+			lhs.resolvedModelPath == rhs.resolvedModelPath &&
+			lhs.prototypeTag == rhs.prototypeTag &&
+			lhs.defaultScale.x == rhs.defaultScale.x &&
+			lhs.defaultScale.y == rhs.defaultScale.y &&
+			lhs.defaultScale.z == rhs.defaultScale.z &&
+			lhs.anchor == rhs.anchor &&
+			EqualRenderProfile(lhs.renderProfile, rhs.renderProfile);
+	}
 }
 
 bool_t CMapAssetCatalog::Load_Default()
@@ -126,7 +186,184 @@ bool_t CMapAssetCatalog::Load_Default()
 		return false;
 	}
 
+	return Load_Area(selectedAreaId);
+}
+
+bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
+{
+	if (!IsValidGroupId(areaId))
+	{
+		m_Status = "Map area ID is invalid: " + areaId;
+		return false;
+	}
+
+	const std::string selectedAreaId = areaId;
+
 	const std::filesystem::path mapRoot = Get_MapDataRoot();
+	const std::filesystem::path shardSetPath = mapRoot /
+		(std::filesystem::path(selectedAreaId).wstring() + L".mapset");
+	std::error_code shardSetError;
+	const bool_t hasShardSet =
+		std::filesystem::exists(shardSetPath, shardSetError);
+	if (shardSetError)
+	{
+		m_Status = "Could not inspect map shard set: " +
+			shardSetPath.string();
+		return false;
+	}
+
+	if (hasShardSet)
+	{
+		std::ifstream shardInput(shardSetPath, std::ios::binary);
+		std::string shardMagic;
+		std::string shardSceneId;
+		uint32_t shardVersion = {};
+		uint32_t shardCount = {};
+		if (!shardInput || !(shardInput >> shardMagic >> shardVersion >>
+			std::quoted(shardSceneId) >> shardCount) ||
+			shardMagic != SHARD_SET_MAGIC ||
+			shardVersion != SHARD_SET_VERSION ||
+			shardSceneId != selectedAreaId ||
+			0 == shardCount || shardCount > MAX_SHARD_COUNT)
+		{
+			m_Status = "Map shard set header is invalid: " +
+				shardSetPath.string();
+			return false;
+		}
+
+		std::vector<MAP_ASSET_SHARD> stagedShards;
+		stagedShards.reserve(shardCount);
+		std::unordered_set<std::string> shardIds;
+		std::unordered_set<std::string> catalogFilenames;
+		std::unordered_set<std::string> placementFilenames;
+		uint32_t declaredAssetTotal = {};
+		for (uint32_t index = 0; index < shardCount; ++index)
+		{
+			std::string shardId;
+			std::string catalogFilename;
+			std::string placementFilename;
+			MAP_ASSET_SHARD shard{};
+			if (!(shardInput >> std::quoted(shardId) >>
+				std::quoted(catalogFilename) >>
+				std::quoted(placementFilename) >> shard.assetCount >>
+				shard.placementCount))
+			{
+				m_Status = "Map shard row is truncated at index " +
+					std::to_string(index);
+				return false;
+			}
+
+			if (!IsValidGroupId(shardId) ||
+				!IsSafeRelativeFilename(
+					catalogFilename, std::filesystem::path(L".mapassets")) ||
+				!IsSafeRelativeFilename(
+					placementFilename, std::filesystem::path(L".mapplacements")) ||
+				0 == shard.assetCount || shard.assetCount > MAX_ASSET_COUNT ||
+				shard.placementCount > MAX_SHARD_PLACEMENT_COUNT ||
+				!shardIds.insert(shardId).second ||
+				!catalogFilenames.insert(catalogFilename).second ||
+				!placementFilenames.insert(placementFilename).second)
+			{
+				m_Status = "Map shard row is invalid at index " +
+					std::to_string(index);
+				return false;
+			}
+			if (declaredAssetTotal > MAX_TOTAL_ASSET_COUNT - shard.assetCount)
+			{
+				m_Status = "Map shard set exceeds the total asset limit";
+				return false;
+			}
+			declaredAssetTotal += shard.assetCount;
+
+			shard.shardId = std::move(shardId);
+			shard.catalogPath = (mapRoot / catalogFilename).lexically_normal();
+			shard.placementPath =
+				(mapRoot / placementFilename).lexically_normal();
+			if (!IsInsideRoot(mapRoot, shard.catalogPath) ||
+				!IsInsideRoot(mapRoot, shard.placementPath))
+			{
+				m_Status = "Map shard path escapes the map data root at index " +
+					std::to_string(index);
+				return false;
+			}
+
+			stagedShards.push_back(std::move(shard));
+		}
+
+		std::string shardTrailing;
+		if (shardInput >> shardTrailing)
+		{
+			m_Status = "Map shard set contains unexpected trailing data";
+			return false;
+		}
+
+		std::vector<MAP_ASSET_ENTRY> stagedEntries;
+		std::unordered_map<std::string, size_t> stagedLookup;
+		std::unordered_map<std::wstring, std::string> prototypeOwners;
+		stagedEntries.reserve(MAX_TOTAL_ASSET_COUNT);
+		stagedLookup.reserve(MAX_TOTAL_ASSET_COUNT);
+		prototypeOwners.reserve(MAX_TOTAL_ASSET_COUNT);
+		for (const MAP_ASSET_SHARD& shard : stagedShards)
+		{
+			CMapAssetCatalog child;
+			if (!child.Load(shard.catalogPath, selectedAreaId))
+			{
+				m_Status = "Map shard " + shard.shardId + " failed: " +
+					child.Get_Status();
+				return false;
+			}
+			if (child.Get_Entries().size() != shard.assetCount)
+			{
+				m_Status = "Map shard asset count mismatch: " + shard.shardId;
+				return false;
+			}
+
+			for (const MAP_ASSET_ENTRY& entry : child.Get_Entries())
+			{
+				const auto existing = stagedLookup.find(entry.id);
+				if (existing != stagedLookup.end())
+				{
+					if (!EqualAssetEntry(stagedEntries[existing->second], entry))
+					{
+						m_Status = "Conflicting duplicate asset definition: " +
+							entry.id;
+						return false;
+					}
+					continue;
+				}
+
+				const auto prototype = prototypeOwners.find(entry.prototypeTag);
+				if (prototype != prototypeOwners.end())
+				{
+					m_Status = "Prototype tag collision between " +
+						prototype->second + " and " + entry.id;
+					return false;
+				}
+				if (stagedEntries.size() >= MAX_TOTAL_ASSET_COUNT)
+				{
+					m_Status = "Map shard set exceeds the total asset limit";
+					return false;
+				}
+
+				prototypeOwners.emplace(entry.prototypeTag, entry.id);
+				stagedLookup.emplace(entry.id, stagedEntries.size());
+				stagedEntries.push_back(entry);
+			}
+		}
+
+		m_Entries = std::move(stagedEntries);
+		m_EntryLookup = std::move(stagedLookup);
+		m_Shards = std::move(stagedShards);
+		m_AreaId = std::move(selectedAreaId);
+		m_CatalogPath = shardSetPath;
+		m_PlacementPath.clear();
+		m_bSharded = true;
+		m_bReady = true;
+		m_Status = "Shard set ready: " + std::to_string(m_Shards.size()) +
+			" shards / " + std::to_string(m_Entries.size()) + " assets";
+		return true;
+	}
+
 	const std::filesystem::path catalogPath = mapRoot /
 		(std::filesystem::path(selectedAreaId).wstring() + L".mapassets");
 	if (!Load(catalogPath, selectedAreaId))
@@ -307,11 +544,19 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 		stagedEntries.push_back(std::move(entry));
 	}
 
+	std::unordered_map<std::string, size_t> stagedLookup;
+	stagedLookup.reserve(stagedEntries.size());
+	for (size_t index = 0; index < stagedEntries.size(); ++index)
+		stagedLookup.emplace(stagedEntries[index].id, index);
+
 	m_Entries = std::move(stagedEntries);
+	m_EntryLookup = std::move(stagedLookup);
+	m_Shards.clear();
 	m_AreaId = std::move(stagedAreaId);
 	m_CatalogPath = path;
 	m_PlacementPath = path.parent_path() /
 		(std::filesystem::path(m_AreaId).wstring() + L".mapplacements");
+	m_bSharded = false;
 	m_bReady = true;
 	m_Status = "Catalog ready (v" + std::to_string(version) + "): " +
 		std::to_string(m_Entries.size());
@@ -320,9 +565,9 @@ bool_t CMapAssetCatalog::Load(const std::filesystem::path& path,
 
 const MAP_ASSET_ENTRY* CMapAssetCatalog::Find(const std::string& assetId) const
 {
-	const auto iter = std::find_if(m_Entries.begin(), m_Entries.end(),
-		[&](const MAP_ASSET_ENTRY& entry) { return entry.id == assetId; });
-	return iter == m_Entries.end() ? nullptr : &*iter;
+	const auto iter = m_EntryLookup.find(assetId);
+	return iter == m_EntryLookup.end() || iter->second >= m_Entries.size() ?
+		nullptr : &m_Entries[iter->second];
 }
 
 std::filesystem::path CMapAssetCatalog::Get_MapDataRoot()

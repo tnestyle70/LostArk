@@ -16,6 +16,7 @@ class CMapAssetObject final : public CGameObject
 public:
 	struct MAP_ASSET_DESC : public CGameObject::GAMEOBJECT_DESC
 	{
+		uint32_t prototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
 		uint64_t placementId = {};
 		std::string assetId;
 		std::wstring modelPrototypeTag;
@@ -77,7 +78,8 @@ private:
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 
 private:
-	HRESULT Ready_Components(const std::wstring& modelPrototypeTag);
+	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
+		const std::wstring& modelPrototypeTag);
 	HRESULT Bind_ShaderResources();
 	//Frustum Culling
 	void Ready_CullBounds();

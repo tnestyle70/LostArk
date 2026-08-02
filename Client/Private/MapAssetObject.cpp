@@ -44,7 +44,8 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 		return E_FAIL;
 
 	if (FAILED(__super::Initialize(pArg)) ||
-		FAILED(Ready_Components(desc.modelPrototypeTag)))
+		FAILED(Ready_Components(
+			desc.prototypeLevelIndex, desc.modelPrototypeTag)))
 		return E_FAIL;
 
 	m_iPlacementId = desc.placementId;
@@ -187,14 +188,16 @@ void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
 	Update_WorldCullBounds();
 }
 
-HRESULT CMapAssetObject::Ready_Components(const std::wstring& modelPrototypeTag)
+HRESULT CMapAssetObject::Ready_Components(
+	uint32_t prototypeLevelIndex,
+	const std::wstring& modelPrototypeTag)
 {
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST),
+		prototypeLevelIndex,
 		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 		TEXT("Com_Shader"), m_pShaderCom)) ||
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::ASSET_TEST), modelPrototypeTag,
+			prototypeLevelIndex, modelPrototypeTag,
 			TEXT("Com_Model"), m_pModelCom)))
 		return E_FAIL;
 

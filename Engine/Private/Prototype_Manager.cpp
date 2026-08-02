@@ -24,6 +24,7 @@ HRESULT CPrototype_Manager::Add_Prototype(uint32_t iLevelIndex, const wstring_t&
 {
     if (nullptr == m_pPrototypes || 
         iLevelIndex >= m_iNumLevels || 
+        nullptr == pPrototype ||
         nullptr != Find_Prototype(iLevelIndex, strPrototypeTag))
         return E_FAIL;
 

@@ -246,10 +246,16 @@
     <ClCompile Include="..\Private\MapAssetCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapNavigationContract.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DeployPropCatalog.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapPlacementDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\MapPlacementRuntime.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\MapAssetObject.cpp">
@@ -455,10 +461,16 @@
     <ClInclude Include="..\Public\MapAssetCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MapNavigationContract.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\DeployPropCatalog.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapPlacementDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapPlacementRuntime.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetObject.h">

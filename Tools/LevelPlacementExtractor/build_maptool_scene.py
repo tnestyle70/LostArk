@@ -237,12 +237,38 @@ def sha256(path: Path) -> str:
 
 
 def iter_placements(paths: Iterable[Path]) -> Iterable[dict[str, Any]]:
-    for path in sorted(paths, key=lambda value: value.name):
+    for path in sorted(
+        paths,
+        key=lambda value: (value.name.casefold(), value.as_posix().casefold()),
+    ):
         document = load_json(path)
         if document.get("schemaVersion") != 1 or document.get("propertyErrors"):
             raise ValueError(f"invalid placement source: {path}")
         for placement in document.get("placements", []):
             yield placement
+
+
+def normalize_placement_directories(value: Any) -> list[Path]:
+    if isinstance(value, (str, os.PathLike)):
+        directories = [Path(value)]
+    else:
+        directories = [Path(directory) for directory in value]
+    if not directories:
+        raise ValueError("at least one placements directory is required")
+    return directories
+
+
+def collect_placement_sources(
+    directories: Sequence[Path],
+) -> list[tuple[int, Path]]:
+    return [
+        (directory_index, path)
+        for directory_index, directory in enumerate(directories)
+        for path in sorted(
+            directory.glob("*.placements.json"),
+            key=lambda value: (value.name.casefold(), value.as_posix().casefold()),
+        )
+    ]
 
 
 def render_profile_text(profile: dict[str, Any] | None) -> str:
@@ -288,6 +314,9 @@ def render_profile_text(profile: dict[str, Any] | None) -> str:
 
 def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     area_id = token(args.area_id, "areaId")
+    placement_directories = normalize_placement_directories(args.placements_dir)
+    placement_sources = collect_placement_sources(placement_directories)
+    placement_paths = [path for _, path in placement_sources]
     asset_manifest = load_json(args.asset_manifest)
     runtime_manifest = load_json(args.runtime_manifest)
     overlay_manifest = (
@@ -340,20 +369,13 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     if set(str(asset["assetId"]) for asset in assets) != set(runtime_by_id):
         raise ValueError("asset/runtime manifest set mismatch")
 
-    catalog_rows: list[str] = []
+    exact_catalog_rows: dict[str, str] = {}
     catalog_ids: set[str] = set()
     prototype_tags: set[str] = set()
     for asset in sorted(assets, key=lambda value: str(value["assetId"])):
         asset_id = token(str(asset["assetId"]), "assetId")
         runtime = runtime_by_id[asset_id]
         model_relative = Path(str(runtime["model"]))
-        model_absolute = args.runtime_root / model_relative
-        if not model_absolute.is_file():
-            raise ValueError(f"runtime model is missing: {model_absolute}")
-        with model_absolute.open("rb") as model_stream:
-            model_magic = model_stream.read(4)
-        if model_magic not in (b"WINT", b"WMOD"):
-            raise ValueError(f"invalid runtime model: {model_absolute}")
         model_path = (Path("Map") / area_id / model_relative).as_posix()
         source_group = token(str(asset["sourceCategory"]).lower(), "groupId")
         evidence = "UE3 ImportTable exact: " + str(asset["fullPath"])
@@ -362,7 +384,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(f"duplicate generated catalog key: {asset_id}")
         catalog_ids.add(asset_id)
         prototype_tags.add(prototype_tag)
-        catalog_rows.append(
+        exact_catalog_rows[asset_id] = (
             " ".join((
                 quoted(asset_id), quoted(str(asset["objectName"])), quoted(model_path),
                 quoted(prototype_tag), "1 1 1 Origin",
@@ -371,6 +393,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             ))
         )
 
+    overlay_catalog_rows: list[str] = []
     overlay_assets = [] if overlay_manifest is None else overlay_manifest.get("assets", [])
     if not isinstance(overlay_assets, list):
         raise ValueError("overlay assets must be an array")
@@ -400,7 +423,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(f"duplicate overlay catalog key: {asset_id}")
         catalog_ids.add(asset_id)
         prototype_tags.add(prototype_tag)
-        catalog_rows.append(
+        overlay_catalog_rows.append(
             " ".join((
                 quoted(asset_id), quoted(str(asset["label"])), quoted(model_path),
                 quoted(prototype_tag),
@@ -425,7 +448,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
     source_level_counts: dict[str, int] = {}
     central_result: dict[str, Any] | None = None
     applied_visibility_overrides: set[str] = set()
-    for placement in iter_placements(args.placements_dir.glob("*.placements.json")):
+    for placement in iter_placements(placement_paths):
         source_id = str(placement["placementId"])
         if not source_id or source_id in seen_source_ids:
             raise ValueError(f"duplicate/empty source placement ID: {source_id!r}")
@@ -472,6 +495,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
                 "hiddenHelper": hidden_category == "nav-helper",
                 "hiddenCategory": hidden_category,
                 "isOverlay": False,
+                "assetId": str(asset["assetId"]),
                 "text": (
                     f"{runtime_id} {quoted(source_id)} {quoted(source_level)} "
                     f"{quoted(transform_source)} {quoted(str(asset['assetId']))} "
@@ -534,6 +558,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
                 "hiddenHelper": False,
                 "hiddenCategory": None if visible else "overlay-hidden",
                 "isOverlay": True,
+                "assetId": asset_id,
                 "text": (
                     f"{runtime_id} {quoted(source_id)} {quoted(source_level)} "
                     f"{quoted(transform_source)} {quoted(asset_id)} "
@@ -543,8 +568,9 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
             }
         )
 
-    if args.expect_assets is not None and len(catalog_rows) != args.expect_assets:
-        raise ValueError(f"asset count mismatch: {len(catalog_rows)}")
+    source_catalog_count = len(exact_catalog_rows) + len(overlay_catalog_rows)
+    if args.expect_assets is not None and source_catalog_count != args.expect_assets:
+        raise ValueError(f"asset count mismatch: {source_catalog_count}")
     if args.expect_source_placements is not None and len(placement_rows) != args.expect_source_placements:
         raise ValueError(f"source placement count mismatch: {len(placement_rows)}")
     if args.expect_any_negative is not None and any_negative_scale_count != args.expect_any_negative:
@@ -628,6 +654,32 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         selected_rows = placement_rows
         output_scope = "all"
 
+    if requested_ids or requested_levels:
+        output_exact_asset_ids = {
+            str(row["assetId"])
+            for row in selected_rows
+            if not bool(row["isOverlay"])
+        }
+    else:
+        output_exact_asset_ids = set(exact_catalog_rows)
+
+    catalog_rows: list[str] = []
+    for asset_id in sorted(output_exact_asset_ids):
+        runtime = runtime_by_id[asset_id]
+        model_absolute = args.runtime_root / Path(str(runtime["model"]))
+        if not model_absolute.is_file():
+            raise ValueError(f"runtime model is missing: {model_absolute}")
+        with model_absolute.open("rb") as model_stream:
+            model_magic = model_stream.read(4)
+        if model_magic not in (b"WINT", b"WMOD"):
+            raise ValueError(f"invalid runtime model: {model_absolute}")
+        catalog_rows.append(exact_catalog_rows[asset_id])
+    catalog_rows.extend(overlay_catalog_rows)
+
+    expected_output_assets = getattr(args, "expect_output_assets", None)
+    if expected_output_assets is not None and len(catalog_rows) != expected_output_assets:
+        raise ValueError(f"output asset count mismatch: {len(catalog_rows)}")
+
     if args.expect_output_placements is not None and len(selected_rows) != args.expect_output_placements:
         raise ValueError(f"output placement count mismatch: {len(selected_rows)}")
     output_any_negative = sum(bool(row["anyNegative"]) for row in selected_rows)
@@ -666,6 +718,7 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         "outputScope": output_scope,
         "assetCount": len(catalog_rows),
         "exactAssetCount": len(assets),
+        "outputExactAssetCount": len(output_exact_asset_ids),
         "overlayAssetCount": len(overlay_assets),
         "sourcePlacementCount": len(placement_rows) - len(overlay_rows),
         "overlayPlacementCount": len(overlay_rows),
@@ -685,12 +738,16 @@ def compile_scene(args: argparse.Namespace) -> dict[str, Any]:
         "inputs": {
             "assetManifest": sha256(args.asset_manifest),
             "runtimeManifest": sha256(args.runtime_manifest),
+            "placementDirectories": [
+                directory.as_posix() for directory in placement_directories
+            ],
             "placements": {
-                path.name: sha256(path)
-                for path in sorted(
-                    args.placements_dir.glob("*.placements.json"),
-                    key=lambda value: value.name,
-                )
+                (
+                    path.name
+                    if len(placement_directories) == 1
+                    else f"{directory_index}/{path.name}"
+                ): sha256(path)
+                for directory_index, path in placement_sources
             },
             "overlayManifest": (
                 sha256(args.overlay_manifest)
@@ -721,7 +778,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runtime-asset-root", type=Path)
     parser.add_argument("--overlay-manifest", type=Path)
     parser.add_argument("--render-profile-manifest", type=Path)
-    parser.add_argument("--placements-dir", type=Path, required=True)
+    parser.add_argument("--placements-dir", type=Path, action="append", required=True)
     parser.add_argument("--catalog-output", type=Path, required=True)
     parser.add_argument("--placement-output", type=Path, required=True)
     parser.add_argument("--receipt-output", type=Path, required=True)
@@ -729,6 +786,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-source-id", action="append", default=[])
     parser.add_argument("--include-level", action="append", default=[])
     parser.add_argument("--expect-assets", type=int)
+    parser.add_argument("--expect-output-assets", type=int)
     parser.add_argument("--expect-source-placements", type=int)
     parser.add_argument("--expect-output-placements", type=int)
     parser.add_argument("--expect-output-any-negative", type=int)

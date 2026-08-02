@@ -4,6 +4,7 @@
 #include "Level_Lobby.h"
 #include "Level_Logo.h"
 #include "Level_Baren.h"
+#include "Level_ValtanArena.h"
 #include "Level_GamePlay.h"
 #include "Level_AssetTest.h"
 #include "Level_Test2.h"
@@ -42,8 +43,13 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 	const bool_t isHDRReadbackRequested =
 		nullptr != pCommandLine &&
 		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+	const bool_t isMapLevelRequested =
+		nullptr != pCommandLine &&
+		(nullptr != wcsstr(pCommandLine, L"--map-level=bern") ||
+			nullptr != wcsstr(pCommandLine, L"--map-level=valtan"));
 	const bool_t isContinueRequested =
 		isHDRReadbackRequested ||
+		isMapLevelRequested ||
 		(!CGameInstance::Get().IsKeyboardInputBlocked() &&
 			(GetKeyState(VK_RETURN) & 0x8000));
 
@@ -62,6 +68,10 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 			break;
 		case LEVEL::BAREN:
 			pNewLevel = CLevel_Baren::Create(m_pDevice, m_pContext);
+			break;
+		case LEVEL::VALTAN_ARENA:
+			pNewLevel = CLevel_ValtanArena::Create(
+				m_pDevice, m_pContext);
 			break;
 		case LEVEL::GAMEPLAY:
 			pNewLevel = CLevel_GamePlay::Create(m_pDevice, m_pContext);

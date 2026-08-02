@@ -5,6 +5,61 @@
 #include "Shader.h"
 
 #include <cmath>
+#include <string_view>
+
+namespace
+{
+	bool_t Matches_LogicalAnimationName(
+		const char_t* pStoredName,
+		std::string_view logicalName)
+	{
+		if (nullptr == pStoredName || logicalName.empty())
+			return false;
+
+		const std::string_view storedName(pStoredName);
+		if (storedName == logicalName)
+			return true;
+		if (storedName.size() <= logicalName.size())
+			return false;
+
+		const size_t suffixOffset = storedName.size() - logicalName.size();
+		if (0 != storedName.compare(suffixOffset, logicalName.size(), logicalName))
+			return false;
+
+		const char_t separator = storedName[suffixOffset - 1];
+		return '_' == separator || '.' == separator ||
+			'|' == separator || ' ' == separator;
+	}
+
+	bool_t Apply_LogicalAnimation(
+		const shared_ptr<CModel>& pModel,
+		std::string_view logicalName)
+	{
+		if (nullptr == pModel)
+			return false;
+
+		const uint32_t animationCount = pModel->Get_NumAnimations();
+		uint32_t resolvedIndex = animationCount;
+		for (uint32_t index = 0; index < animationCount; ++index)
+		{
+			if (!Matches_LogicalAnimationName(
+				pModel->Get_AnimationName(index), logicalName))
+				continue;
+
+			if (resolvedIndex != animationCount)
+				return false;
+			resolvedIndex = index;
+		}
+
+		if (resolvedIndex == animationCount)
+			return false;
+		pModel->Set_Animation(resolvedIndex, false);
+		if (!pModel->Set_AnimTrackPosition(resolvedIndex, 0.f))
+			return false;
+		pModel->Play_Animation(0.f);
+		return true;
+	}
+}
 
 CDeployPropObject::CDeployPropObject(
 	ComPtr<ID3D11Device> pDevice,
@@ -39,8 +94,9 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 	m_ModelKind = desc.modelKind;
 	Apply_Transform();
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
-		m_pIntactModelCom->Get_NumAnimations() > 0)
-		m_pIntactModelCom->Set_Animation(0u, false);
+		m_pIntactModelCom->Get_NumAnimations() > 0 &&
+		!Apply_LogicalAnimation(m_pIntactModelCom, "on"))
+		return E_FAIL;
 	return S_OK;
 }
 
@@ -76,12 +132,15 @@ HRESULT CDeployPropObject::Render()
 
 void CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 {
-	if (state == DEPLOY_PROP_STATE::FRACTURED &&
-		m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0)
 	{
-		m_pIntactModelCom->Set_Animation(0u, false);
-		m_pIntactModelCom->Set_AnimTrackPosition(0u, 0.f);
+		if (state == DEPLOY_PROP_STATE::INTACT &&
+			!Apply_LogicalAnimation(m_pIntactModelCom, "on"))
+			return;
+		if (state == DEPLOY_PROP_STATE::FRACTURED &&
+			!Apply_LogicalAnimation(m_pIntactModelCom, "off"))
+			return;
 	}
 	m_State = state;
 }

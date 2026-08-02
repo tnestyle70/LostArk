@@ -6,6 +6,7 @@
 #include "Camera_Free.h"
 #include "GameInstance.h"
 #include "MapAssetObject.h"
+#include "MapNavigationContract.h"
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
 #include "DeployPropObject.h"
@@ -27,11 +28,6 @@
 
 namespace
 {
-	constexpr const wchar_t* MAP_BATCH_PROTOTYPE =
-		TEXT("Prototype_GameObject_MapStaticBatch");
-	constexpr const wchar_t* MAP_BATCH_LAYER =
-		TEXT("Layer_MapStaticBatch");
-
 	bool_t IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
@@ -40,10 +36,7 @@ namespace
 
 	bool_t IsBatchEligible(const MAP_ASSET_ENTRY& asset)
 	{
-		/* Alpha/Additive는 인스턴스 간 정렬이 필요하고 Background는 카메라를
-		   따라가므로 첫 단계에서는 고정된 Deferred 정적 배치만 허용한다. */
-		return MAP_ASSET_RENDER_MODE::DEFERRED ==
-			asset.renderProfile.renderMode;
+		return CMapPlacementRuntime::Is_BatchEligible(asset);
 	}
 
 	HRESULT BuildStaticInstance(
@@ -52,85 +45,8 @@ namespace
 		const MAP_PLACEMENT_RECORD& record,
 		FMapStaticInstance& outInstance)
 	{
-		if (nullptr == model || !model->Has_LocalBounds())
-			return E_FAIL;
-
-		const float3_t& minimum = model->Get_LocalBoundsMin();
-		const float3_t& maximum = model->Get_LocalBoundsMax();
-		if (!IsFinite(minimum) || !IsFinite(maximum) ||
-			minimum.x > maximum.x || minimum.y > maximum.y ||
-			minimum.z > maximum.z)
-			return E_FAIL;
-
-		const float3_t localCenter(
-			(minimum.x + maximum.x) * 0.5f,
-			(minimum.y + maximum.y) * 0.5f,
-			(minimum.z + maximum.z) * 0.5f);
-		const vector_t halfExtents = XMVectorSet(
-			(maximum.x - minimum.x) * 0.5f,
-			(maximum.y - minimum.y) * 0.5f,
-			(maximum.z - minimum.z) * 0.5f, 0.f);
-		f32_t localRadius = XMVectorGetX(XMVector3Length(halfExtents));
-		localRadius = localRadius > 0.05f ? localRadius : 0.05f;
-
-		vector_t rotation = XMQuaternionNormalize(
-			XMLoadFloat4(&record.rotationQuaternion));
-		if (XMVectorGetW(rotation) < 0.f)
-			rotation = XMVectorNegate(rotation);
-
-		matrix_t world = XMMatrixScaling(
-			record.signedScale.x,
-			record.signedScale.y,
-			record.signedScale.z) * XMMatrixRotationQuaternion(rotation);
-
-		float3_t worldOrigin = record.position;
-		if (MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset.anchor)
-		{
-			const vector_t localAnchor = XMVectorSet(
-				localCenter.x, minimum.y, localCenter.z, 1.f);
-			float3_t anchorOffset{};
-			XMStoreFloat3(&anchorOffset,
-				XMVector3TransformCoord(localAnchor, world));
-			worldOrigin.x -= anchorOffset.x;
-			worldOrigin.y -= anchorOffset.y;
-			worldOrigin.z -= anchorOffset.z;
-		}
-
-		world.r[3] = XMVectorSet(
-			worldOrigin.x, worldOrigin.y, worldOrigin.z, 1.f);
-
-		matrix_t linearWorld = world;
-		linearWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-		const f32_t determinant = XMVectorGetX(
-			XMMatrixDeterminant(linearWorld));
-		if (!std::isfinite(determinant) ||
-			std::abs(determinant) < 0.000001f)
-			return E_FAIL;
-
-		const matrix_t worldInvTranspose = XMMatrixTranspose(
-			XMMatrixInverse(nullptr, linearWorld));
-		const f32_t maximumScale = (std::max)({
-			std::abs(record.signedScale.x),
-			std::abs(record.signedScale.y),
-			std::abs(record.signedScale.z) });
-		const f32_t worldRadius =
-			localRadius * maximumScale * 1.02f + 0.05f;
-		float3_t worldCenter{};
-		XMStoreFloat3(&worldCenter,
-			XMVector3TransformCoord(XMLoadFloat3(&localCenter), world));
-		if (!IsFinite(worldCenter) || !std::isfinite(worldRadius) ||
-			worldRadius <= 0.f)
-			return E_FAIL;
-
-		outInstance = {};
-		outInstance.PlacementId = record.placementId;
-		outInstance.Visible = record.visible;
-		outInstance.WorldBoundsCenter = worldCenter;
-		outInstance.WorldBoundsRadius = worldRadius;
-		XMStoreFloat4x4(&outInstance.World, world);
-		XMStoreFloat4x4(
-			&outInstance.WorldInvTranspose, worldInvTranspose);
-		return S_OK;
+		return CMapPlacementRuntime::Build_StaticInstance(
+			asset, model, record, outInstance);
 	}
 
 	bool_t MatchesFilter(const std::string& text, const char* pFilter)
@@ -147,28 +63,30 @@ namespace
 		return std::string::npos != haystack.find(needle);
 	}
 
-	std::filesystem::path GetNavigationDataRoot()
+	bool_t IsSameNavigationFloat(f32_t left, f32_t right)
 	{
-		wchar_t modulePath[32768]{};
-		const DWORD length = GetModuleFileNameW(
-			nullptr,
-			modulePath,
-			static_cast<DWORD>(std::size(modulePath)));
-		if (0 == length || length >= std::size(modulePath))
-			return {};
-
-		const std::filesystem::path moduleDirectory =
-			std::filesystem::path(modulePath).parent_path();
-		const std::filesystem::path adjacent =
-			moduleDirectory / L"DataFiles" / L"Navigation";
-		if (std::filesystem::exists(adjacent))
-			return adjacent.lexically_normal();
-
-		return (
-			moduleDirectory.parent_path() /
-			L"DataFiles" /
-			L"Navigation").lexically_normal();
+		return std::fabs(left - right) <= 0.000001f;
 	}
+
+	bool_t HasSameNavigationGridIdentity(
+		const NAVGRID_AUTHORING_DESC& left,
+		const NAVGRID_AUTHORING_DESC& right)
+	{
+		return left.areaId == right.areaId &&
+			left.width == right.width &&
+			left.height == right.height &&
+			IsSameNavigationFloat(left.cellSize, right.cellSize) &&
+			IsSameNavigationFloat(left.originX, right.originX) &&
+			IsSameNavigationFloat(left.originZ, right.originZ);
+	}
+
+	bool_t HasSameNavigationPath(
+		const std::filesystem::path& left,
+		const std::filesystem::path& right)
+	{
+		return left.lexically_normal() == right.lexically_normal();
+	}
+
 }
 
 struct Client::CMapTool::NAVIGATION_RENDER_RESOURCES final
@@ -488,34 +406,106 @@ bool_t Client::CMapTool::Find_AssetTestCamera()
 
 bool_t Client::CMapTool::Load_NavigationDocument()
 {
-	const std::filesystem::path root = GetNavigationDataRoot();
-	if (root.empty())
+	MAP_NAVIGATION_CONTRACT stagedContract;
+	std::string stagedStatus;
+	if (!CMapNavigationContract::Resolve_Area(
+		m_Catalog.Get_AreaId(), stagedContract, stagedStatus))
 	{
-		m_NavigationStatus = "Navigation data is unavailable";
+		m_NavigationStatus = stagedStatus;
 		return false;
 	}
 
-	m_NavigationSourcePath = root / L"ValtanArena.navsource";
-	m_NavigationPaintPath = root / L"ValtanArena.navpaint";
-	m_NavigationRuntimePath = root / L"ValtanArena.navgrid";
-	m_RuntimeBlockerPath = root / L"ValtanArena.navblockers";
-	if (!m_NavigationDocument.Load(
-		m_NavigationSourcePath,
-		m_NavigationPaintPath,
-		m_NavigationStatus))
+	std::error_code sourceError;
+	const bool_t hasSource = std::filesystem::is_regular_file(
+		stagedContract.sourcePath, sourceError);
+	if (sourceError)
 	{
+		m_NavigationStatus =
+			"Could not inspect navigation source for " +
+			stagedContract.areaId;
 		return false;
 	}
-	m_NavigationBakeDesc =
-		m_NavigationDocument.Get_BakeDesc();
+	if (!hasSource)
+	{
+		CNavGridPaintDocument stagedNavigationDocument;
+		CNavRuntimeBlockerDocument stagedBlockerDocument;
+		NAVGRID_BAKE_DESC stagedBakeDesc;
+
+		m_NavigationSourcePath = stagedContract.sourcePath;
+		m_NavigationPaintPath = stagedContract.paintPath;
+		m_NavigationRuntimePath = stagedContract.runtimePath;
+		m_RuntimeBlockerPath = stagedContract.blockerPath;
+		m_NavigationDocument = std::move(stagedNavigationDocument);
+		m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+		m_NavigationBakeDesc = stagedBakeDesc;
+		m_iSelectedRuntimeRegion = 0;
+		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
+		m_bNavigationStrokeActive = false;
+		m_NavigationStatus =
+			"Navigation bootstrap: place Nav Bounds and Bake for " +
+			stagedContract.areaId;
+		m_NavigationBakeStatus = "Create Nav Bounds";
+		m_bNavigationBakeResetConfirmed = false;
+		m_bNavigationBakeResetPending = false;
+		return false;
+	}
+
+	CNavGridPaintDocument stagedNavigationDocument;
+	if (!stagedNavigationDocument.Load(
+		stagedContract.sourcePath,
+		stagedContract.paintPath,
+		stagedStatus))
+	{
+		m_NavigationStatus = stagedStatus;
+		return false;
+	}
+	if (stagedNavigationDocument.Get_Desc().areaId !=
+		stagedContract.areaId)
+	{
+		m_NavigationStatus =
+			"NavGrid source area does not match active map area";
+		return false;
+	}
+
+	CNavRuntimeBlockerDocument stagedBlockerDocument;
+	if (!stagedBlockerDocument.Load(
+		stagedContract.blockerPath,
+		stagedNavigationDocument.Get_Desc(),
+		stagedStatus))
+	{
+		m_NavigationStatus = stagedStatus;
+		return false;
+	}
+
+	size_t stagedSelectedRuntimeRegion = m_iSelectedRuntimeRegion;
+	if (stagedSelectedRuntimeRegion >=
+		stagedBlockerDocument.Get_RegionCount())
+	{
+		stagedSelectedRuntimeRegion = 0;
+	}
+	const NAVGRID_BAKE_DESC stagedBakeDesc =
+		stagedNavigationDocument.Get_BakeDesc();
+	stagedStatus = stagedContract.runtimeGridAvailable ?
+		"Saved" :
+		"Authoring ready; save and re-enter ASSET_TEST for runtime navigation";
+
+	m_NavigationSourcePath = stagedContract.sourcePath;
+	m_NavigationPaintPath = stagedContract.paintPath;
+	m_NavigationRuntimePath = stagedContract.runtimePath;
+	m_RuntimeBlockerPath = stagedContract.blockerPath;
+	m_NavigationDocument = std::move(stagedNavigationDocument);
+	m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+	m_NavigationBakeDesc = stagedBakeDesc;
+	m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+	m_NavigationStatus = stagedStatus;
 	m_NavigationBakeStatus = "Baked source loaded";
 	m_bNavigationBakeResetConfirmed = false;
+	m_bNavigationBakeResetPending = false;
+	m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
+	m_bNavigationStrokeActive = false;
 
-	if (!Load_RuntimeBlockers())
-		return false;
-
-	m_NavigationStatus = "Saved";
-	return true;
+	return !stagedContract.runtimeGridAvailable ||
+		Register_RuntimeBlockers();
 }
 
 bool_t Client::CMapTool::Load_RuntimeBlockers()
@@ -526,19 +516,43 @@ bool_t Client::CMapTool::Load_RuntimeBlockers()
 		return false;
 	}
 
-	if (!m_RuntimeBlockerDocument.Load(
+	CNavRuntimeBlockerDocument stagedBlockerDocument;
+	std::string stagedStatus;
+	if (!stagedBlockerDocument.Load(
 		m_RuntimeBlockerPath,
 		m_NavigationDocument.Get_Desc(),
-		m_NavigationStatus))
+		stagedStatus))
 	{
+		m_NavigationStatus = stagedStatus;
 		return false;
 	}
 
-	if (m_iSelectedRuntimeRegion >=
-		m_RuntimeBlockerDocument.Get_RegionCount())
+	std::error_code runtimeError;
+	const bool_t hasRuntime = std::filesystem::is_regular_file(
+		m_NavigationRuntimePath, runtimeError);
+	if (runtimeError)
 	{
-		m_iSelectedRuntimeRegion = 0;
+		m_NavigationStatus = "Could not inspect navigation runtime";
+		return false;
 	}
+	size_t stagedSelectedRuntimeRegion = m_iSelectedRuntimeRegion;
+	if (stagedSelectedRuntimeRegion >=
+		stagedBlockerDocument.Get_RegionCount())
+	{
+		stagedSelectedRuntimeRegion = 0;
+	}
+	if (!hasRuntime)
+	{
+		m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+		m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+		m_NavigationStatus =
+			"Authoring ready; save and re-enter ASSET_TEST for runtime navigation";
+		return true;
+	}
+
+	m_RuntimeBlockerDocument = std::move(stagedBlockerDocument);
+	m_iSelectedRuntimeRegion = stagedSelectedRuntimeRegion;
+	m_NavigationStatus = stagedStatus;
 
 	return Register_RuntimeBlockers();
 }
@@ -652,6 +666,48 @@ bool_t Client::CMapTool::Save_Navigation()
 	}
 
 	std::string status;
+	MAP_NAVIGATION_CONTRACT contract;
+	if (!CMapNavigationContract::Resolve_Area(
+		m_Catalog.Get_AreaId(), contract, status))
+	{
+		m_NavigationStatus = status;
+		return false;
+	}
+	if (!HasSameNavigationPath(
+			m_NavigationSourcePath, contract.sourcePath) ||
+		!HasSameNavigationPath(
+			m_NavigationPaintPath, contract.paintPath) ||
+		!HasSameNavigationPath(
+			m_NavigationRuntimePath, contract.runtimePath) ||
+		!HasSameNavigationPath(
+			m_RuntimeBlockerPath, contract.blockerPath))
+	{
+		m_NavigationStatus =
+			"Navigation paths do not match the active map area; reload before saving";
+		return false;
+	}
+
+	std::error_code sourceError;
+	if (!std::filesystem::is_regular_file(
+		contract.sourcePath, sourceError) || sourceError)
+	{
+		m_NavigationStatus =
+			"Navigation source is missing or unavailable; bake before saving";
+		return false;
+	}
+
+	const NAVGRID_AUTHORING_DESC& sourceDesc =
+		m_NavigationDocument.Get_Desc();
+	const NAVGRID_AUTHORING_DESC& blockerDesc =
+		m_RuntimeBlockerDocument.Get_Desc();
+	if (sourceDesc.areaId != contract.areaId ||
+		!HasSameNavigationGridIdentity(sourceDesc, blockerDesc))
+	{
+		m_NavigationStatus =
+			"Navigation documents do not match the active map grid; reload before saving";
+		return false;
+	}
+
 	if (!m_NavigationDocument.Save_Paint(
 		m_NavigationPaintPath,
 		status))
@@ -850,50 +906,14 @@ uint64_t Client::CMapTool::Allocate_EditorPlacementId()
 std::wstring Client::CMapTool::Make_LayerTag(
 	const std::string& sourceLevel) const
 {
-	std::wstring layerTag = L"Layer_MapAsset_";
-	layerTag.append(sourceLevel.begin(), sourceLevel.end());
-	return layerTag;
+	return CMapPlacementRuntime::Make_LayerTag(sourceLevel);
 }
 
 bool_t Client::CMapTool::Create_Placement(
 	const MAP_PLACEMENT_RECORD& record, PLACED_ENTRY& outEntry)
 {
-	const MAP_ASSET_ENTRY* pAsset = m_Catalog.Find(record.assetId);
-	if (nullptr == pAsset ||
-		!CMapPlacementDocument::Is_Valid(record, m_Catalog))
-		return false;
-
-	const std::wstring layerTag = Make_LayerTag(record.sourceLevel);
-	CMapAssetObject::MAP_ASSET_DESC desc{};
-	desc.placementId = record.placementId;
-	desc.assetId = pAsset->id;
-	desc.modelPrototypeTag = pAsset->prototypeTag;
-	desc.position = record.position;
-	desc.rotationQuaternion = record.rotationQuaternion;
-	desc.signedScale = record.signedScale;
-	desc.applyBottomCenter = MAP_ASSET_ANCHOR::BOTTOM_CENTER == pAsset->anchor;
-	desc.visible = record.visible;
-	desc.renderProfile = pAsset->renderProfile;
-
-	shared_ptr<CGameObject> pGameObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		ETOUI(LEVEL::ASSET_TEST), L"Prototype_GameObject_MapAsset",
-		ETOUI(LEVEL::ASSET_TEST), layerTag, &desc, &pGameObject)))
-		return false;
-
-	shared_ptr<CMapAssetObject> pMapObject =
-		dynamic_pointer_cast<CMapAssetObject>(pGameObject);
-	if (nullptr == pMapObject)
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), layerTag, pGameObject);
-		return false;
-	}
-
-	outEntry.record = record;
-	outEntry.layerTag = layerTag;
-	outEntry.object = std::move(pMapObject);
-	return true;
+	return CMapPlacementRuntime::Create_Placement(
+		ETOUI(LEVEL::ASSET_TEST), m_Catalog, record, outEntry);
 }
 
 bool_t Client::CMapTool::Stage_PlacementRuntime(
@@ -901,156 +921,26 @@ bool_t Client::CMapTool::Stage_PlacementRuntime(
 	vector<PLACED_ENTRY>& outPlacements,
 	vector<STATIC_BATCH_ENTRY>& outBatches)
 {
-	using BATCH_KEY = std::pair<std::string, bool_t>;
-	std::map<BATCH_KEY, vector<const MAP_PLACEMENT_RECORD*>> groups;
-
-	for (const MAP_PLACEMENT_RECORD& record : records)
-	{
-		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(record.assetId);
-		if (nullptr == asset)
-			return false;
-		if (!IsBatchEligible(*asset))
-			continue;
-
-		const bool_t mirrored = record.signedScale.x *
-			record.signedScale.y * record.signedScale.z < 0.f;
-		groups[{ record.assetId, mirrored }].push_back(&record);
-	}
-
-	std::unordered_map<uint64_t, shared_ptr<CMapStaticBatchObject>>
-		batchByPlacement;
-	batchByPlacement.reserve(records.size());
-
-	for (const auto& [key, placements] : groups)
-	{
-		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(key.first);
-		if (nullptr == asset)
-			return false;
-
-		shared_ptr<CModel> model = dynamic_pointer_cast<CModel>(
-			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::ASSET_TEST), asset->prototypeTag));
-		if (nullptr == model)
-			return false;
-
-		/* Bounds가 없는 모델은 기존 MapAssetObject 경로로 fail-open한다. */
-		if (!model->Has_LocalBounds())
-			continue;
-
-		CMapStaticBatchObject::DESC desc{};
-		desc.AssetId = asset->id;
-		desc.ModelPrototypeTag = asset->prototypeTag;
-		desc.RenderProfile = asset->renderProfile;
-		desc.Mirrored = key.second;
-		desc.Instances.reserve(placements.size());
-
-		bool_t batchIsValid = true;
-		for (const MAP_PLACEMENT_RECORD* record : placements)
-		{
-			FMapStaticInstance instance{};
-			if (nullptr == record || FAILED(BuildStaticInstance(
-				*asset, model, *record, instance)))
-			{
-				batchIsValid = false;
-				break;
-			}
-			desc.Instances.push_back(instance);
-		}
-		if (!batchIsValid)
-			continue;
-
-		shared_ptr<CGameObject> gameObject;
-		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_PROTOTYPE,
-			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
-			&desc, &gameObject)))
-			return false;
-
-		shared_ptr<CMapStaticBatchObject> batch =
-			dynamic_pointer_cast<CMapStaticBatchObject>(gameObject);
-		if (nullptr == batch)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER, gameObject);
-			return false;
-		}
-
-		outBatches.push_back({ asset->id, key.second, batch });
-		for (const MAP_PLACEMENT_RECORD* record : placements)
-		{
-			const auto [iter, inserted] = batchByPlacement.emplace(
-				record->placementId, batch);
-			UNREFERENCED_PARAMETER(iter);
-			if (!inserted)
-				return false;
-		}
-	}
-
-	outPlacements.reserve(records.size());
-	for (const MAP_PLACEMENT_RECORD& record : records)
-	{
-		const auto batch = batchByPlacement.find(record.placementId);
-		if (batch != batchByPlacement.end())
-		{
-			PLACED_ENTRY entry{};
-			entry.record = record;
-			entry.layerTag = MAP_BATCH_LAYER;
-			entry.batch = batch->second;
-			outPlacements.push_back(std::move(entry));
-			continue;
-		}
-
-		PLACED_ENTRY fallback{};
-		if (!Create_Placement(record, fallback))
-			return false;
-		outPlacements.push_back(std::move(fallback));
-	}
-
-	return outPlacements.size() == records.size();
+	return CMapPlacementRuntime::Stage_PlacementRuntime(
+		ETOUI(LEVEL::ASSET_TEST),
+		m_Catalog,
+		records,
+		outPlacements,
+		outBatches);
 }
 
 void Client::CMapTool::Remove_PlacementRuntime(
 	vector<PLACED_ENTRY>& placements,
 	vector<STATIC_BATCH_ENTRY>& batches)
 {
-	for (PLACED_ENTRY& entry : placements)
-	{
-		if (nullptr != entry.object)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), entry.layerTag,
-				static_pointer_cast<CGameObject>(entry.object));
-		}
-	}
-
-	for (STATIC_BATCH_ENTRY& entry : batches)
-	{
-		if (nullptr != entry.object)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
-				static_pointer_cast<CGameObject>(entry.object));
-		}
-	}
-
-	placements.clear();
-	batches.clear();
+	CMapPlacementRuntime::Remove_PlacementRuntime(
+		ETOUI(LEVEL::ASSET_TEST), placements, batches);
 }
 
 bool_t Client::CMapTool::Set_RuntimeVisible(
 	PLACED_ENTRY& entry, bool_t visible)
 {
-	if (nullptr != entry.object)
-	{
-		entry.object->Set_Visible(visible);
-		return true;
-	}
-	if (nullptr != entry.batch)
-	{
-		return SUCCEEDED(entry.batch->Set_InstanceVisible(
-			entry.record.placementId, visible));
-	}
-	return false;
+	return CMapPlacementRuntime::Set_RuntimeVisible(entry, visible);
 }
 
 bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
@@ -1095,6 +985,12 @@ void Client::CMapTool::Remove_AllPlacements()
 
 bool_t Client::CMapTool::Save_Placements()
 {
+	if (m_Catalog.Is_Sharded())
+	{
+		m_Status = "Save disabled: shard-set placement documents are read-only";
+		return false;
+	}
+
 	vector<MAP_PLACEMENT_RECORD> document;
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -1135,8 +1031,8 @@ bool_t Client::CMapTool::Load_Placements()
 
 	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	if (!CMapPlacementDocument::Read(
-		m_Catalog.Get_PlacementPath(), m_Catalog, document, loadStatus))
+	if (!CMapPlacementRuntime::Read_Placements(
+		m_Catalog, document, loadStatus))
 	{
 		m_Status = loadStatus;
 		return false;
@@ -1184,6 +1080,50 @@ bool_t Client::CMapTool::Load_Placements()
 
 bool_t Client::CMapTool::Load_DeployProps()
 {
+	const std::filesystem::path root = CMapAssetCatalog::Get_MapDataRoot();
+	if (root.empty())
+	{
+		m_Status = "DeployProp data root is unavailable";
+		return false;
+	}
+
+	const std::filesystem::path areaPath(m_Catalog.Get_AreaId());
+	const std::filesystem::path catalogPath =
+		root / (areaPath.wstring() + L".deployassets");
+	const std::filesystem::path placementPath =
+		root / (areaPath.wstring() + L".deployplacements");
+	std::error_code catalogError;
+	std::error_code placementError;
+	const bool_t catalogExists =
+		std::filesystem::exists(catalogPath, catalogError);
+	const bool_t placementExists =
+		std::filesystem::exists(placementPath, placementError);
+	if (catalogError)
+	{
+		m_Status = "DeployProp catalog inspection failed: " +
+			catalogPath.string() + " (" + catalogError.message() + ")";
+		return false;
+	}
+	if (placementError)
+	{
+		m_Status = "DeployProp placement inspection failed: " +
+			placementPath.string() + " (" + placementError.message() + ")";
+		return false;
+	}
+	if (!catalogExists && !placementExists)
+	{
+		Remove_DeployProps();
+		return true;
+	}
+	if (catalogExists != placementExists)
+	{
+		const std::filesystem::path& missingPath =
+			catalogExists ? placementPath : catalogPath;
+		m_Status = "DeployProp file pair is incomplete; missing: " +
+			missingPath.string();
+		return false;
+	}
+
 	if (!m_DeployCatalog.Load_Default(m_Catalog.Get_AreaId()))
 	{
 		m_Status = m_DeployCatalog.Get_Status();
@@ -1799,8 +1739,15 @@ void Client::CMapTool::Render_NavigationOverlay()
 
 void Client::CMapTool::Render_Toolbar()
 {
+	ImGui::BeginDisabled(m_Catalog.Is_Sharded());
 	if (ImGui::Button("Save"))
 		Save_Placements();
+	ImGui::EndDisabled();
+	if (m_Catalog.Is_Sharded())
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("Shard set is read-only");
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
