@@ -73,6 +73,7 @@ class CMapAssetCatalog final
 {
 public:
 	bool_t Load_Default();
+	bool_t Load_Area(const std::string& areaId);
 	bool_t Load(const std::filesystem::path& path,
 		const std::string& expectedAreaId = {});
 

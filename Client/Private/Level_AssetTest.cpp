@@ -8,6 +8,12 @@
 #include "Transform.h"
 #include "Valtan.h"
 
+namespace
+{
+	// ACTIVE.maparea가 가리키는 지역 ID다. 발탄 보스는 이 지역에만 배치한다.
+	constexpr const char* VALTAN_AREA_ID = "LV_LUT_HEARTRB_ED";
+}
+
 CLevel_AssetTest::CLevel_AssetTest(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel { pDevice, pContext }
@@ -157,9 +163,18 @@ HRESULT CLevel_AssetTest::Ready_Valtan()
 
 	MAP_NAVIGATION_CONTRACT navigationContract;
 	std::string navigationStatus;
-	const bool_t navigationReady =
+	const bool_t contractResolved =
 		CMapNavigationContract::Resolve_Active(
-			navigationContract, navigationStatus) &&
+			navigationContract, navigationStatus);
+
+	// 베른성 등 다른 지역에서는 발탄 보스를 만들지 않는다. 지역을 확인하지
+	// 못했을 때는 기존 동작을 유지한다.
+	if (contractResolved &&
+		navigationContract.areaId != VALTAN_AREA_ID)
+		return S_OK;
+
+	const bool_t navigationReady =
+		contractResolved &&
 		navigationContract.runtimeGridAvailable;
 
 	CValtan::VALTAN_DESC desc{};

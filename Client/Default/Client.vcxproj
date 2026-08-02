@@ -68,6 +68,7 @@
     <ClInclude Include="..\Public\DeployPropObject.h" />
     <ClInclude Include="..\Public\MapAssetPreview.h" />
     <ClInclude Include="..\Public\MapPlacementDocument.h" />
+    <ClInclude Include="..\Public\MapPlacementRuntime.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\NavGridBaker.h" />
     <ClInclude Include="..\Public\NavGridPaintDocument.h" />
@@ -133,6 +134,7 @@
     <ClCompile Include="..\Private\DeployPropObject.cpp" />
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
+    <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />

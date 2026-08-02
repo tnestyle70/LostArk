@@ -32,6 +32,7 @@ class CMapStaticBatchObject final : public CGameObject
 public:
 	struct DESC final : public CGameObject::GAMEOBJECT_DESC
 	{
+		uint32_t PrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
 		std::string AssetId;
 		std::wstring ModelPrototypeTag;
 		MAP_ASSET_RENDER_PROFILE RenderProfile;
@@ -84,7 +85,7 @@ public:
 	}
 
 private:
-	HRESULT Ready_Components(
+	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
 		const std::wstring& modelPrototypeTag);
 
 	HRESULT Ensure_InstanceCapacity(

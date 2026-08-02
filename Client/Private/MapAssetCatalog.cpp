@@ -186,6 +186,19 @@ bool_t CMapAssetCatalog::Load_Default()
 		return false;
 	}
 
+	return Load_Area(selectedAreaId);
+}
+
+bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
+{
+	if (!IsValidGroupId(areaId))
+	{
+		m_Status = "Map area ID is invalid: " + areaId;
+		return false;
+	}
+
+	const std::string selectedAreaId = areaId;
+
 	const std::filesystem::path mapRoot = Get_MapDataRoot();
 	const std::filesystem::path shardSetPath = mapRoot /
 		(std::filesystem::path(selectedAreaId).wstring() + L".mapset");

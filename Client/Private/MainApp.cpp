@@ -107,11 +107,22 @@ HRESULT CMainApp::Initialize()
         return E_FAIL;
 
     const wchar_t* pCommandLine = GetCommandLineW();
-    const LEVEL eStartLevel =
-        nullptr != pCommandLine &&
-        nullptr != wcsstr(pCommandLine, L"--hdr-readback")
-        ? LEVEL::TEST_LEVEL2
-        : LEVEL::ASSET_TEST;
+	LEVEL eStartLevel = LEVEL::ASSET_TEST;
+	if (nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--hdr-readback"))
+	{
+		eStartLevel = LEVEL::TEST_LEVEL2;
+	}
+	else if (nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--map-level=bern"))
+	{
+		eStartLevel = LEVEL::BAREN;
+	}
+	else if (nullptr != pCommandLine &&
+		nullptr != wcsstr(pCommandLine, L"--map-level=valtan"))
+	{
+		eStartLevel = LEVEL::VALTAN_ARENA;
+	}
 
     if (FAILED(Start_Level(eStartLevel)))
         return E_FAIL;

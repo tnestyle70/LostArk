@@ -13,7 +13,7 @@ namespace Client
 	static const uint32_t g_iWinSizeY = { 720 };
 
 	enum class LEVEL { STATIC, LOADING, LOGO, LOBBY, BAREN,
-		GAMEPLAY, ASSET_TEST, TEST_LEVEL2, END };
+		GAMEPLAY, ASSET_TEST, TEST_LEVEL2, VALTAN_ARENA, END };
 }
 
 using namespace std;

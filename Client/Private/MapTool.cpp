@@ -28,11 +28,6 @@
 
 namespace
 {
-	constexpr const wchar_t* MAP_BATCH_PROTOTYPE =
-		TEXT("Prototype_GameObject_MapStaticBatch");
-	constexpr const wchar_t* MAP_BATCH_LAYER =
-		TEXT("Layer_MapStaticBatch");
-
 	bool_t IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
@@ -41,10 +36,7 @@ namespace
 
 	bool_t IsBatchEligible(const MAP_ASSET_ENTRY& asset)
 	{
-		/* Alpha/Additive는 인스턴스 간 정렬이 필요하고 Background는 카메라를
-		   따라가므로 첫 단계에서는 고정된 Deferred 정적 배치만 허용한다. */
-		return MAP_ASSET_RENDER_MODE::DEFERRED ==
-			asset.renderProfile.renderMode;
+		return CMapPlacementRuntime::Is_BatchEligible(asset);
 	}
 
 	HRESULT BuildStaticInstance(
@@ -53,85 +45,8 @@ namespace
 		const MAP_PLACEMENT_RECORD& record,
 		FMapStaticInstance& outInstance)
 	{
-		if (nullptr == model || !model->Has_LocalBounds())
-			return E_FAIL;
-
-		const float3_t& minimum = model->Get_LocalBoundsMin();
-		const float3_t& maximum = model->Get_LocalBoundsMax();
-		if (!IsFinite(minimum) || !IsFinite(maximum) ||
-			minimum.x > maximum.x || minimum.y > maximum.y ||
-			minimum.z > maximum.z)
-			return E_FAIL;
-
-		const float3_t localCenter(
-			(minimum.x + maximum.x) * 0.5f,
-			(minimum.y + maximum.y) * 0.5f,
-			(minimum.z + maximum.z) * 0.5f);
-		const vector_t halfExtents = XMVectorSet(
-			(maximum.x - minimum.x) * 0.5f,
-			(maximum.y - minimum.y) * 0.5f,
-			(maximum.z - minimum.z) * 0.5f, 0.f);
-		f32_t localRadius = XMVectorGetX(XMVector3Length(halfExtents));
-		localRadius = localRadius > 0.05f ? localRadius : 0.05f;
-
-		vector_t rotation = XMQuaternionNormalize(
-			XMLoadFloat4(&record.rotationQuaternion));
-		if (XMVectorGetW(rotation) < 0.f)
-			rotation = XMVectorNegate(rotation);
-
-		matrix_t world = XMMatrixScaling(
-			record.signedScale.x,
-			record.signedScale.y,
-			record.signedScale.z) * XMMatrixRotationQuaternion(rotation);
-
-		float3_t worldOrigin = record.position;
-		if (MAP_ASSET_ANCHOR::BOTTOM_CENTER == asset.anchor)
-		{
-			const vector_t localAnchor = XMVectorSet(
-				localCenter.x, minimum.y, localCenter.z, 1.f);
-			float3_t anchorOffset{};
-			XMStoreFloat3(&anchorOffset,
-				XMVector3TransformCoord(localAnchor, world));
-			worldOrigin.x -= anchorOffset.x;
-			worldOrigin.y -= anchorOffset.y;
-			worldOrigin.z -= anchorOffset.z;
-		}
-
-		world.r[3] = XMVectorSet(
-			worldOrigin.x, worldOrigin.y, worldOrigin.z, 1.f);
-
-		matrix_t linearWorld = world;
-		linearWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-		const f32_t determinant = XMVectorGetX(
-			XMMatrixDeterminant(linearWorld));
-		if (!std::isfinite(determinant) ||
-			std::abs(determinant) < 0.000001f)
-			return E_FAIL;
-
-		const matrix_t worldInvTranspose = XMMatrixTranspose(
-			XMMatrixInverse(nullptr, linearWorld));
-		const f32_t maximumScale = (std::max)({
-			std::abs(record.signedScale.x),
-			std::abs(record.signedScale.y),
-			std::abs(record.signedScale.z) });
-		const f32_t worldRadius =
-			localRadius * maximumScale * 1.02f + 0.05f;
-		float3_t worldCenter{};
-		XMStoreFloat3(&worldCenter,
-			XMVector3TransformCoord(XMLoadFloat3(&localCenter), world));
-		if (!IsFinite(worldCenter) || !std::isfinite(worldRadius) ||
-			worldRadius <= 0.f)
-			return E_FAIL;
-
-		outInstance = {};
-		outInstance.PlacementId = record.placementId;
-		outInstance.Visible = record.visible;
-		outInstance.WorldBoundsCenter = worldCenter;
-		outInstance.WorldBoundsRadius = worldRadius;
-		XMStoreFloat4x4(&outInstance.World, world);
-		XMStoreFloat4x4(
-			&outInstance.WorldInvTranspose, worldInvTranspose);
-		return S_OK;
+		return CMapPlacementRuntime::Build_StaticInstance(
+			asset, model, record, outInstance);
 	}
 
 	bool_t MatchesFilter(const std::string& text, const char* pFilter)
@@ -991,50 +906,14 @@ uint64_t Client::CMapTool::Allocate_EditorPlacementId()
 std::wstring Client::CMapTool::Make_LayerTag(
 	const std::string& sourceLevel) const
 {
-	std::wstring layerTag = L"Layer_MapAsset_";
-	layerTag.append(sourceLevel.begin(), sourceLevel.end());
-	return layerTag;
+	return CMapPlacementRuntime::Make_LayerTag(sourceLevel);
 }
 
 bool_t Client::CMapTool::Create_Placement(
 	const MAP_PLACEMENT_RECORD& record, PLACED_ENTRY& outEntry)
 {
-	const MAP_ASSET_ENTRY* pAsset = m_Catalog.Find(record.assetId);
-	if (nullptr == pAsset ||
-		!CMapPlacementDocument::Is_Valid(record, m_Catalog))
-		return false;
-
-	const std::wstring layerTag = Make_LayerTag(record.sourceLevel);
-	CMapAssetObject::MAP_ASSET_DESC desc{};
-	desc.placementId = record.placementId;
-	desc.assetId = pAsset->id;
-	desc.modelPrototypeTag = pAsset->prototypeTag;
-	desc.position = record.position;
-	desc.rotationQuaternion = record.rotationQuaternion;
-	desc.signedScale = record.signedScale;
-	desc.applyBottomCenter = MAP_ASSET_ANCHOR::BOTTOM_CENTER == pAsset->anchor;
-	desc.visible = record.visible;
-	desc.renderProfile = pAsset->renderProfile;
-
-	shared_ptr<CGameObject> pGameObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		ETOUI(LEVEL::ASSET_TEST), L"Prototype_GameObject_MapAsset",
-		ETOUI(LEVEL::ASSET_TEST), layerTag, &desc, &pGameObject)))
-		return false;
-
-	shared_ptr<CMapAssetObject> pMapObject =
-		dynamic_pointer_cast<CMapAssetObject>(pGameObject);
-	if (nullptr == pMapObject)
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), layerTag, pGameObject);
-		return false;
-	}
-
-	outEntry.record = record;
-	outEntry.layerTag = layerTag;
-	outEntry.object = std::move(pMapObject);
-	return true;
+	return CMapPlacementRuntime::Create_Placement(
+		ETOUI(LEVEL::ASSET_TEST), m_Catalog, record, outEntry);
 }
 
 bool_t Client::CMapTool::Stage_PlacementRuntime(
@@ -1042,156 +921,26 @@ bool_t Client::CMapTool::Stage_PlacementRuntime(
 	vector<PLACED_ENTRY>& outPlacements,
 	vector<STATIC_BATCH_ENTRY>& outBatches)
 {
-	using BATCH_KEY = std::pair<std::string, bool_t>;
-	std::map<BATCH_KEY, vector<const MAP_PLACEMENT_RECORD*>> groups;
-
-	for (const MAP_PLACEMENT_RECORD& record : records)
-	{
-		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(record.assetId);
-		if (nullptr == asset)
-			return false;
-		if (!IsBatchEligible(*asset))
-			continue;
-
-		const bool_t mirrored = record.signedScale.x *
-			record.signedScale.y * record.signedScale.z < 0.f;
-		groups[{ record.assetId, mirrored }].push_back(&record);
-	}
-
-	std::unordered_map<uint64_t, shared_ptr<CMapStaticBatchObject>>
-		batchByPlacement;
-	batchByPlacement.reserve(records.size());
-
-	for (const auto& [key, placements] : groups)
-	{
-		const MAP_ASSET_ENTRY* asset = m_Catalog.Find(key.first);
-		if (nullptr == asset)
-			return false;
-
-		shared_ptr<CModel> model = dynamic_pointer_cast<CModel>(
-			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::ASSET_TEST), asset->prototypeTag));
-		if (nullptr == model)
-			return false;
-
-		/* Bounds가 없는 모델은 기존 MapAssetObject 경로로 fail-open한다. */
-		if (!model->Has_LocalBounds())
-			continue;
-
-		CMapStaticBatchObject::DESC desc{};
-		desc.AssetId = asset->id;
-		desc.ModelPrototypeTag = asset->prototypeTag;
-		desc.RenderProfile = asset->renderProfile;
-		desc.Mirrored = key.second;
-		desc.Instances.reserve(placements.size());
-
-		bool_t batchIsValid = true;
-		for (const MAP_PLACEMENT_RECORD* record : placements)
-		{
-			FMapStaticInstance instance{};
-			if (nullptr == record || FAILED(BuildStaticInstance(
-				*asset, model, *record, instance)))
-			{
-				batchIsValid = false;
-				break;
-			}
-			desc.Instances.push_back(instance);
-		}
-		if (!batchIsValid)
-			continue;
-
-		shared_ptr<CGameObject> gameObject;
-		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_PROTOTYPE,
-			ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
-			&desc, &gameObject)))
-			return false;
-
-		shared_ptr<CMapStaticBatchObject> batch =
-			dynamic_pointer_cast<CMapStaticBatchObject>(gameObject);
-		if (nullptr == batch)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER, gameObject);
-			return false;
-		}
-
-		outBatches.push_back({ asset->id, key.second, batch });
-		for (const MAP_PLACEMENT_RECORD* record : placements)
-		{
-			const auto [iter, inserted] = batchByPlacement.emplace(
-				record->placementId, batch);
-			UNREFERENCED_PARAMETER(iter);
-			if (!inserted)
-				return false;
-		}
-	}
-
-	outPlacements.reserve(records.size());
-	for (const MAP_PLACEMENT_RECORD& record : records)
-	{
-		const auto batch = batchByPlacement.find(record.placementId);
-		if (batch != batchByPlacement.end())
-		{
-			PLACED_ENTRY entry{};
-			entry.record = record;
-			entry.layerTag = MAP_BATCH_LAYER;
-			entry.batch = batch->second;
-			outPlacements.push_back(std::move(entry));
-			continue;
-		}
-
-		PLACED_ENTRY fallback{};
-		if (!Create_Placement(record, fallback))
-			return false;
-		outPlacements.push_back(std::move(fallback));
-	}
-
-	return outPlacements.size() == records.size();
+	return CMapPlacementRuntime::Stage_PlacementRuntime(
+		ETOUI(LEVEL::ASSET_TEST),
+		m_Catalog,
+		records,
+		outPlacements,
+		outBatches);
 }
 
 void Client::CMapTool::Remove_PlacementRuntime(
 	vector<PLACED_ENTRY>& placements,
 	vector<STATIC_BATCH_ENTRY>& batches)
 {
-	for (PLACED_ENTRY& entry : placements)
-	{
-		if (nullptr != entry.object)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), entry.layerTag,
-				static_pointer_cast<CGameObject>(entry.object));
-		}
-	}
-
-	for (STATIC_BATCH_ENTRY& entry : batches)
-	{
-		if (nullptr != entry.object)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), MAP_BATCH_LAYER,
-				static_pointer_cast<CGameObject>(entry.object));
-		}
-	}
-
-	placements.clear();
-	batches.clear();
+	CMapPlacementRuntime::Remove_PlacementRuntime(
+		ETOUI(LEVEL::ASSET_TEST), placements, batches);
 }
 
 bool_t Client::CMapTool::Set_RuntimeVisible(
 	PLACED_ENTRY& entry, bool_t visible)
 {
-	if (nullptr != entry.object)
-	{
-		entry.object->Set_Visible(visible);
-		return true;
-	}
-	if (nullptr != entry.batch)
-	{
-		return SUCCEEDED(entry.batch->Set_InstanceVisible(
-			entry.record.placementId, visible));
-	}
-	return false;
+	return CMapPlacementRuntime::Set_RuntimeVisible(entry, visible);
 }
 
 bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
@@ -1282,71 +1031,11 @@ bool_t Client::CMapTool::Load_Placements()
 
 	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	if (!m_Catalog.Is_Sharded())
+	if (!CMapPlacementRuntime::Read_Placements(
+		m_Catalog, document, loadStatus))
 	{
-		if (!CMapPlacementDocument::Read(
-			m_Catalog.Get_PlacementPath(), m_Catalog, document, loadStatus))
-		{
-			m_Status = loadStatus;
-			return false;
-		}
-	}
-	else
-	{
-		size_t declaredTotal = {};
-		for (const MAP_ASSET_SHARD& shard : m_Catalog.Get_Shards())
-		{
-			if (declaredTotal > (std::numeric_limits<size_t>::max)() -
-				shard.placementCount)
-			{
-				m_Status = "Shard placement count overflow";
-				return false;
-			}
-			declaredTotal += shard.placementCount;
-		}
-
-		document.reserve(declaredTotal);
-		std::unordered_set<uint64_t> runtimeIds;
-		std::unordered_set<std::string> sourceIds;
-		runtimeIds.reserve(declaredTotal);
-		sourceIds.reserve(declaredTotal);
-		for (const MAP_ASSET_SHARD& shard : m_Catalog.Get_Shards())
-		{
-			std::error_code placementError;
-			if (!std::filesystem::is_regular_file(
-				shard.placementPath, placementError))
-			{
-				m_Status = "Shard placement file is missing: " +
-					shard.shardId;
-				return false;
-			}
-
-			vector<MAP_PLACEMENT_RECORD> shardDocument;
-			if (!CMapPlacementDocument::Read(
-				shard.placementPath, m_Catalog, shardDocument, loadStatus))
-			{
-				m_Status = "Shard " + shard.shardId + " failed: " +
-					loadStatus;
-				return false;
-			}
-			if (shardDocument.size() != shard.placementCount)
-			{
-				m_Status = "Shard placement count mismatch: " + shard.shardId;
-				return false;
-			}
-
-			for (MAP_PLACEMENT_RECORD& record : shardDocument)
-			{
-				if (!runtimeIds.insert(record.placementId).second ||
-					!sourceIds.insert(record.sourcePlacementId).second)
-				{
-					m_Status = "Duplicate placement ID across shards: " +
-						shard.shardId;
-					return false;
-				}
-				document.push_back(std::move(record));
-			}
-		}
+		m_Status = loadStatus;
+		return false;
 	}
 
 	vector<PLACED_ENTRY> stagedPlacements;

@@ -125,6 +125,9 @@ HRESULT CLoader::Start_Loading()
     case LEVEL::BAREN:
         hr = Ready_For_Baren();
         break;
+	case LEVEL::VALTAN_ARENA:
+		hr = Ready_For_ValtanArena();
+		break;
     case LEVEL::GAMEPLAY:
         hr = Ready_For_Level_GamePlay();
         break;
@@ -249,13 +252,160 @@ HRESULT CLoader::Ready_For_Lobby()
 
 HRESULT CLoader::Ready_For_Baren()
 {
-    lstrcpy(m_szLoadingText, TEXT("Loading Baren"));
+	CLevelResourceRollbackScope resourceRollback(
+		ETOUI(LEVEL::BAREN));
 
-    lstrcpy(m_szLoadingText, TEXT("Loading Baren Complete!"));
+	lstrcpy(m_szLoadingText, TEXT("BAREN: loading Bern Castle map"));
+	if (FAILED(Ready_MapArea(
+		ETOUI(LEVEL::BAREN), "LV_BER_BERNCASTLE")))
+	{
+		return E_FAIL;
+	}
 
-    m_isFinished = true;
+	lstrcpy(m_szLoadingText, TEXT("Bern Castle map loading complete"));
+	resourceRollback.Commit();
+	m_isFinished = true;
+	return S_OK;
+}
 
-    return S_OK;
+HRESULT CLoader::Ready_For_ValtanArena()
+{
+	CLevelResourceRollbackScope resourceRollback(
+		ETOUI(LEVEL::VALTAN_ARENA));
+
+	lstrcpy(m_szLoadingText, TEXT("VALTAN_ARENA: loading Valtan map"));
+	if (FAILED(Ready_MapArea(
+		ETOUI(LEVEL::VALTAN_ARENA), "LV_LUT_HEARTRB_ED")))
+	{
+		return E_FAIL;
+	}
+
+	lstrcpy(m_szLoadingText, TEXT("Valtan arena map loading complete"));
+	resourceRollback.Commit();
+	m_isFinished = true;
+	return S_OK;
+}
+
+HRESULT CLoader::Ready_MapArea(
+	uint32_t iLevelIndex,
+	const std::string& areaId)
+{
+	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
+		return E_INVALIDARG;
+
+	lstrcpy(m_szLoadingText, TEXT("Map: VtxMeshBinary shader"));
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Shader_VtxMeshBinary"),
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxMeshBinary.hlsl"),
+			VTXMESH::Elements,
+			VTXMESH::iNumElements))))
+	{
+		return E_FAIL;
+	}
+
+	lstrcpy(m_szLoadingText, TEXT("Map: instance shader"));
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Shader_VtxMeshMapInstance"),
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxMeshMapInstance.hlsl"),
+			VTXMESHINSTANCE::Elements,
+			VTXMESHINSTANCE::iNumElements))))
+	{
+		return E_FAIL;
+	}
+
+	CMapAssetCatalog mapCatalog;
+	lstrcpy(m_szLoadingText, TEXT("Map: fixed area catalog"));
+	if (!mapCatalog.Load_Area(areaId))
+	{
+		OutputDebugStringA(("[Loader][Map] " +
+			mapCatalog.Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	const matrix_t mapAssetTransform =
+		XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	lstrcpy(m_szLoadingText, TEXT("Map: model prototypes"));
+	for (const MAP_ASSET_ENTRY& entry : mapCatalog.Get_Entries())
+	{
+		const std::string modelPath = entry.resolvedModelPath.string();
+		auto modelPrototype = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::NONANIM,
+			modelPath.c_str(),
+			mapAssetTransform);
+		if (nullptr == modelPrototype ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				entry.prototypeTag,
+				std::move(modelPrototype))))
+		{
+			const std::wstring detail =
+				L"[Loader][Map] Model prototype failed: " +
+				entry.prototypeTag + L" / " +
+				entry.resolvedModelPath.wstring() + L"\n";
+			OutputDebugStringW(detail.c_str());
+			return E_FAIL;
+		}
+	}
+
+	MAP_NAVIGATION_CONTRACT navigationContract;
+	std::string navigationStatus;
+	lstrcpy(m_szLoadingText, TEXT("Map: navigation contract"));
+	if (!CMapNavigationContract::Resolve_Area(
+		areaId, navigationContract, navigationStatus))
+	{
+		OutputDebugStringA(("[Loader][Map] " +
+			navigationStatus + "\n").c_str());
+		return E_FAIL;
+	}
+	if (navigationContract.runtimeGridAvailable)
+	{
+		auto navigationPrototype = CNavigation::Create_NavGrid(
+			m_pDevice,
+			m_pContext,
+			navigationContract.runtimePath.c_str());
+		if (nullptr == navigationPrototype ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				navigationContract.prototypeTag,
+				std::move(navigationPrototype))))
+		{
+			return E_FAIL;
+		}
+	}
+	else
+	{
+		OutputDebugStringA(("[Loader][Map] " +
+			navigationStatus + "\n").c_str());
+	}
+
+	lstrcpy(m_szLoadingText, TEXT("Map: object prototypes"));
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_GameObject_Camera_Free"),
+		CCamera_Free::Create(m_pDevice, m_pContext))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+			iLevelIndex,
+		TEXT("Prototype_GameObject_MapAsset"),
+		CMapAssetObject::Create(m_pDevice, m_pContext))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+			iLevelIndex,
+		TEXT("Prototype_GameObject_MapStaticBatch"),
+		CMapStaticBatchObject::Create(m_pDevice, m_pContext))))
+	{
+		return E_FAIL;
+	}
+
+	return S_OK;
 }
 
 HRESULT CLoader::Ready_For_Level_AssetTest()

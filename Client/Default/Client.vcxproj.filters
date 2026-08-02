@@ -255,6 +255,9 @@
     <ClCompile Include="..\Private\MapPlacementDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\MapPlacementRuntime.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapAssetObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
@@ -456,6 +459,9 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapPlacementDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\MapPlacementRuntime.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetObject.h">

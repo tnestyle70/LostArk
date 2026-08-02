@@ -2,12 +2,11 @@
 
 #include "Client_Defines.h"
 #include "Level.h"
+#include "MapPlacementRuntime.h"
 
 NS_BEGIN(Client)
 
 class CCamera_Free;
-class CCharacter;
-class CValtan;
 
 class CLevel_Baren final : public CLevel
 {
@@ -24,13 +23,13 @@ public:
 	virtual HRESULT Render() override;
 
 private:
-	HRESULT Ready_Lights();
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	//HRESULT Ready_Character();
 	//HRESULT Ready_Valtan();
 
 private:
-	shared_ptr<CCamera_Free> m_pCamera = {nullptr};
+	CMapPlacementRuntime m_MapRuntime;
+	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 
 public:
 	static unique_ptr<CLevel_Baren> Create(ComPtr<ID3D11Device> pDevice,
