@@ -54,6 +54,7 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 	m_Instances = desc.Instances;
 
 	if (FAILED(Ready_Components(
+		desc.PrototypeLevelIndex,
 		desc.ModelPrototypeTag)) ||
 		FAILED(Rebuild_PlacementLookup()) ||
 		FAILED(Ensure_InstanceCapacity(
@@ -191,17 +192,18 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 }
 
 HRESULT CMapStaticBatchObject::Ready_Components(
+	uint32_t prototypeLevelIndex,
 	const std::wstring& modelPrototypeTag)
 {
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST),
+		prototypeLevelIndex,
 		TEXT(
 			"Prototype_Component_Shader_VtxMeshMapInstance"),
 		TEXT("Com_Shader"),
 		m_pShaderCom)) ||
 
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::ASSET_TEST),
+			prototypeLevelIndex,
 			modelPrototypeTag,
 			TEXT("Com_Model"),
 			m_pModelCom)))

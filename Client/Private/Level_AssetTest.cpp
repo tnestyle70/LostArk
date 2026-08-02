@@ -4,8 +4,15 @@
 #include "Character.h"
 #include "GameInstance.h"
 #include "Logic_LanceMaster.h"
+#include "MapNavigationContract.h"
 #include "Transform.h"
 #include "Valtan.h"
+
+namespace
+{
+	// ACTIVE.maparea가 가리키는 지역 ID다. 발탄 보스는 이 지역에만 배치한다.
+	constexpr const char* VALTAN_AREA_ID = "LV_LUT_HEARTRB_ED";
+}
 
 CLevel_AssetTest::CLevel_AssetTest(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -119,11 +126,18 @@ HRESULT CLevel_AssetTest::Ready_Layer_Camera(const wstring_t& strLayerTag)
 
 HRESULT CLevel_AssetTest::Ready_Character()
 {
+	MAP_NAVIGATION_CONTRACT navigationContract;
+	std::string navigationStatus;
+	const bool_t navigationReady =
+		CMapNavigationContract::Resolve_Active(
+			navigationContract, navigationStatus) &&
+		navigationContract.runtimeGridAvailable;
+
 	CCharacter::CHARACTER_DESC desc{};
 	desc.iPrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
 	desc.pSpec = &Spec_LanceMaster;
-	desc.pNavigationPrototypeTag =
-		TEXT("Prototype_Component_Navigation_ValtanArena");
+	desc.pNavigationPrototypeTag = navigationReady ?
+		navigationContract.prototypeTag.c_str() : nullptr;
 	desc.fSpeedPerSec = 6.f;
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = float3_t(151.25f, 22.96835f, -121.75f);
@@ -147,11 +161,27 @@ HRESULT CLevel_AssetTest::Ready_Valtan()
 	if (nullptr == m_pCharacter)
 		return E_FAIL;
 
+	MAP_NAVIGATION_CONTRACT navigationContract;
+	std::string navigationStatus;
+	const bool_t contractResolved =
+		CMapNavigationContract::Resolve_Active(
+			navigationContract, navigationStatus);
+
+	// 베른성 등 다른 지역에서는 발탄 보스를 만들지 않는다. 지역을 확인하지
+	// 못했을 때는 기존 동작을 유지한다.
+	if (contractResolved &&
+		navigationContract.areaId != VALTAN_AREA_ID)
+		return S_OK;
+
+	const bool_t navigationReady =
+		contractResolved &&
+		navigationContract.runtimeGridAvailable;
+
 	CValtan::VALTAN_DESC desc{};
 	desc.fSpeedPerSec = 5.f;
 	desc.fRotationPerSec = 180.f;
-	desc.pNavigationPrototypeTag =
-		TEXT("Prototype_Component_Navigation_ValtanArena");
+	desc.pNavigationPrototypeTag = navigationReady ?
+		navigationContract.prototypeTag.c_str() : nullptr;
 	desc.pTargetTransform = m_pCharacter->Get_Transform();
 	desc.vPosition = float3_t(156.25f, 22.99751f, -121.75f);
 

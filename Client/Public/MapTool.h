@@ -4,6 +4,7 @@
 #include "MapAssetCatalog.h"
 #include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
+#include "MapPlacementRuntime.h"
 #include "DeployPropCatalog.h"
 #include "NavGridBaker.h"
 #include "NavGridPaintDocument.h"
@@ -58,20 +59,8 @@ private:
 		ARMED,
 	};
 
-	struct PLACED_ENTRY
-	{
-		MAP_PLACEMENT_RECORD record;
-		std::wstring layerTag;
-		shared_ptr<CMapAssetObject> object;
-		shared_ptr<CMapStaticBatchObject> batch;
-	};
-
-	struct STATIC_BATCH_ENTRY
-	{
-		std::string assetId;
-		bool_t mirrored = false;
-		shared_ptr<CMapStaticBatchObject> object;
-	};
+	using PLACED_ENTRY = MAP_RUNTIME_PLACED_ENTRY;
+	using STATIC_BATCH_ENTRY = MAP_RUNTIME_STATIC_BATCH_ENTRY;
 
 	enum class ENVIRONMENT_PHASE
 	{

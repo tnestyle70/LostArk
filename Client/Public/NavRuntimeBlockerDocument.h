@@ -44,6 +44,7 @@ public:
 public:
 	bool_t Is_Ready() const { return m_isReady; }
 	bool_t Is_Dirty() const { return m_isDirty; }
+	const NAVGRID_AUTHORING_DESC& Get_Desc() const { return m_Desc; }
 	size_t Get_RegionCount() const { return m_Regions.size(); }
 	const NAV_RUNTIME_BLOCKER_REGION* Get_Region(size_t index) const;
 	uint32_t Get_RegionCellCount(size_t index) const;

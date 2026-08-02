@@ -62,11 +62,13 @@
     <ClInclude Include="..\Public\MainApp.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
+    <ClInclude Include="..\Public\MapNavigationContract.h" />
     <ClInclude Include="..\Public\MapAssetObject.h" />
     <ClInclude Include="..\Public\DeployPropCatalog.h" />
     <ClInclude Include="..\Public\DeployPropObject.h" />
     <ClInclude Include="..\Public\MapAssetPreview.h" />
     <ClInclude Include="..\Public\MapPlacementDocument.h" />
+    <ClInclude Include="..\Public\MapPlacementRuntime.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\NavGridBaker.h" />
     <ClInclude Include="..\Public\NavGridPaintDocument.h" />
@@ -126,11 +128,13 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
+    <ClCompile Include="..\Private\MapNavigationContract.cpp" />
     <ClCompile Include="..\Private\MapAssetObject.cpp" />
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
     <ClCompile Include="..\Private\DeployPropObject.cpp" />
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
+    <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />
