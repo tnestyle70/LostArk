@@ -353,20 +353,20 @@ HRESULT CCharacter::Ready_PartObjects()
 
 	/* The weapon is the same part class in socket mode. It gets its own class once
 	hit windows and trails need somewhere to live. */
-	if (nullptr != m_pSpec->pWeaponModelTag)
+	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
 		weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 		weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
-		weaponDesc.strModelTag = m_pSpec->pWeaponModelTag;
+		weaponDesc.strModelTag = m_pSpec->pWeapons[i].pModelTag;
 		weaponDesc.strShaderTag = m_pSpec->pWeaponShaderTag;
 		weaponDesc.pSkeletonModel = m_pBodyModel;
-		weaponDesc.pSocketBoneName = m_pSpec->pWeaponSocketBone;
+		weaponDesc.pSocketBoneName = m_pSpec->pWeapons[i].pSocketBone;
 
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,
 			TEXT("Prototype_GameObject_Part_Equipment"),
-			TEXT("Part_90_Weapon_R"),
+			m_pSpec->pWeapons[i].pPartTag,
 			&weaponDesc)))
 			return E_FAIL;
 	}

@@ -27,12 +27,30 @@
     <ClInclude Include="..\Public\Network\PacketType.h">
       <Filter>Public\Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketFrame.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\PacketStreamParser.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Network\NetworkIds.h">
+      <Filter>Public\Network</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\Network\PacketWriter.cpp">
       <Filter>Private\Network</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Network\PacketReader.cpp">
+      <Filter>Private\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketMessages.cpp">
+      <Filter>Private\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketFrame.cpp">
+      <Filter>Private\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Network\PacketStreamParser.cpp">
       <Filter>Private\Network</Filter>
     </ClCompile>
   </ItemGroup>

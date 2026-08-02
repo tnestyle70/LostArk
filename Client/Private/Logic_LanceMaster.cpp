@@ -31,6 +31,12 @@ namespace
 		{ DIK_1, 34630 },   /* awakening, plays out */
 	};
 
+	constexpr WEAPON_PART_SPEC Weapons[] =
+	{
+		{ TEXT("Part_90_Weapon_R"),
+		  TEXT("Prototype_Component_Model_LanceMaster_Weapon"), "b_weapon_rhand" },
+	};
+
 	/* Equipment part tags sort after "Part_00_Body" so the body still updates
 	first, and before "Part_90_Weapon_R". */
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
@@ -93,9 +99,9 @@ const CHARACTER_SPEC Spec_LanceMaster =
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 	COVERED_BY_ARMOUR,
 
-	TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
-	"b_weapon_rhand",
+	Weapons,
+	static_cast<uint32_t>(size(Weapons)),
 
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),

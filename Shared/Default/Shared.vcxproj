@@ -19,13 +19,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\Network\NetworkIds.h" />
+    <ClInclude Include="..\Public\Network\PacketFrame.h" />
     <ClInclude Include="..\Public\Network\PacketMessages.h" />
     <ClInclude Include="..\Public\Network\PacketReader.h" />
+    <ClInclude Include="..\Public\Network\PacketStreamParser.h" />
     <ClInclude Include="..\Public\Network\PacketType.h" />
     <ClInclude Include="..\Public\Network\PacketWriter.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Private\Network\PacketFrame.cpp" />
+    <ClCompile Include="..\Private\Network\PacketMessages.cpp" />
     <ClCompile Include="..\Private\Network\PacketReader.cpp" />
+    <ClCompile Include="..\Private\Network\PacketStreamParser.cpp" />
     <ClCompile Include="..\Private\Network\PacketWriter.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

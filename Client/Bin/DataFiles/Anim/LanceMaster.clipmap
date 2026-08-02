@@ -1,4 +1,4 @@
-LOSTARK_CLIP_MAP 1 "LanceMaster" 142
+LOSTARK_CLIP_MAP 1 "LanceMaster" 144
 "flm_att_battle_compete_1_loop" skill=34900 name="격돌(맞대결) 스킬"
 "flm_att_battle_compete_1_start" skill=34900 name="격돌(맞대결) 스킬"
 "flm_att_battle_compete_1_success" skill=34900 name="격돌(맞대결) 스킬"
@@ -133,6 +133,8 @@ LOSTARK_CLIP_MAP 1 "LanceMaster" 142
 "flm_sk_super_squalllance_04" skill=34630 name="초각성기_연가창식: 마룡합일섬"
 "flm_sk_talonstrike" skill=34550 name="짧은 창_사두룡격"
 "flm_sk_talonstrike_custom_4_01" skill=34550 name="짧은 창_사두룡격"
+"flm_sk_talonstrike_custom_4_03-1" skill=34550 name="짧은 창_사두룡격"
+"flm_sk_talonstrike_custom_4_03-2" skill=34550 name="짧은 창_사두룡격"
 "flm_sk_talonstrike_custom_6" skill=34550 name="짧은 창_사두룡격"
 "flm_sk_talonstrike_custom_7" skill=34550 name="짧은 창_사두룡격"
 "flm_sk_threetalonstrike_01" skill=34120 name="긴 창_연환섬"

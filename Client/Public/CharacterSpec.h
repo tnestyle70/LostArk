@@ -28,6 +28,18 @@ struct EQUIPMENT_PART_SPEC
 	const tchar_t* pModelTag;
 };
 
+/* A piece that rides one bone instead of the whole palette. Classes differ in how
+many they carry and what the bone is called -- LanceMaster holds one lance at
+b_weapon_rhand, GunSlinger dual-wields at b_wp_1 and b_wp_2 -- so this is a list,
+not a fixed pair of fields. A socket bone the rig does not have fails silently:
+Get_BoneMatrix returns identity and the piece renders unparented. */
+struct WEAPON_PART_SPEC
+{
+	const tchar_t* pPartTag;      /* sorts after equipment, e.g. "Part_90_Weapon_R" */
+	const tchar_t* pModelTag;
+	const char_t* pSocketBone;
+};
+
 /* Everything that makes one class different, as data. Held as a constant next to
 that class's logic; CCharacter itself stays class-agnostic. */
 struct CHARACTER_SPEC
@@ -42,9 +54,9 @@ struct CHARACTER_SPEC
 	/* Bit i hides body submesh i, for the skin the equipment already carries. */
 	uint32_t iBodyHiddenMeshMask;
 
-	const tchar_t* pWeaponModelTag;
 	const tchar_t* pWeaponShaderTag;
-	const char_t* pWeaponSocketBone;
+	const WEAPON_PART_SPEC* pWeapons;
+	uint32_t iNumWeapons;
 
 	const EQUIPMENT_PART_SPEC* pEquipment;
 	uint32_t iNumEquipment;
