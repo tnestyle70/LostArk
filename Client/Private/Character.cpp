@@ -31,14 +31,20 @@ HRESULT CCharacter::Initialize(void* pArg)
 		return E_FAIL;
 
 	const auto pDesc = static_cast<CHARACTER_DESC*>(pArg);
+
 	m_pSpec = pDesc->pSpec;
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
 	m_fMoveSpeed = pDesc->fSpeedPerSec > 0.f ?
 		pDesc->fSpeedPerSec : 5.f;
+	//nickname과 local control 여부 추가
+	m_strNickName = pDesc->strNickName;
+	m_isLocallyControlled = pDesc->isLocallyControlled;
 
 	if (nullptr != pDesc->pNavigationPrototypeTag)
+	{
 		m_strNavigationPrototypeTag =
 			pDesc->pNavigationPrototypeTag;
+	}
 
 	if (nullptr == m_pSpec)
 		return E_FAIL;
@@ -46,18 +52,28 @@ HRESULT CCharacter::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pDesc)))
 		return E_FAIL;
 
-	m_pTransformCom->Set_State(STATE::POSITION,
-		XMVectorSet(pDesc->vPosition.x, pDesc->vPosition.y, pDesc->vPosition.z, 1.f));
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(
+			pDesc->vPosition.x,
+			pDesc->vPosition.y,
+			pDesc->vPosition.z,
+			1.f));
 
 	if (FAILED(Ready_Components()) ||
 		FAILED(Ready_PartObjects()))
+	{
 		return E_FAIL;
+	}
 
-	/* Optional: without the file the character simply has no skill chains. */
 	Load_ClipChains();
 
-	if (nullptr != m_pSpec->pCreateLogic)
+	// Remote Character는 local keyboard logic를 만들지 않는다.
+	if (m_isLocallyControlled &&
+		nullptr != m_pSpec->pCreateLogic)
+	{
 		m_pLogic = m_pSpec->pCreateLogic();
+	}
 
 	return S_OK;
 }
@@ -267,6 +283,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pTransformCom,
 		m_fMoveSpeed,
 		fTimeDelta);
+
 	Set_Locomotion(m_PathFollower.Has_Path());
 
 	/* A running chain owns the clip until it ends, so it advances before the logic
@@ -275,7 +292,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 
 	/* The logic only decides what the character should be doing; the parts below
 	then move and draw themselves. */
-	if (nullptr != m_pLogic)
+	if (m_isLocallyControlled && nullptr != m_pLogic)
 		m_pLogic->Update(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);

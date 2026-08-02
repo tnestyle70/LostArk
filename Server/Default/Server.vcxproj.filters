@@ -30,6 +30,9 @@
     <ClInclude Include="..\Public\RoomCommand.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\GameRoom.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\Main.cpp">
@@ -45,6 +48,9 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ClientSession.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

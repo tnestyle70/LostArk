@@ -141,6 +141,7 @@ HRESULT CLevel_AssetTest::Ready_Character()
 	desc.fSpeedPerSec = 6.f;
 	desc.fRotationPerSec = 180.f;
 	desc.vPosition = float3_t(151.25f, 22.96835f, -121.75f);
+	desc.isLocallyControlled = true;
 
 	shared_ptr<CGameObject> pGameObject;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

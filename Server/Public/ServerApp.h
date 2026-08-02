@@ -1,31 +1,89 @@
 #pragma once
 
+//Room 객체를 값으로 소유
+#include "GameRoom.h"
+//sessionid 사용
+#include "ServerIds.h"
+//접속 수락
 #include "TcpListener.h"
+//winsock 시작과 종료
 #include "WinSockContext.h"
+//PACKET_FRAME header
+#include "Network/PacketFrame.h"
 
-//server app이 winsock context 객체를 소유해서,
-//serverapp 이 한 파일이 하는 역할이 뭘까?
-//level lobby는 캐릭터 4개 존재하고, UI 클릭을 통해서 이름을 입력 받고,
-//확인 누르면 해당 string 이름이 캐릭터 아래 UI 창에 반영되도록 character info struct를
-//vector로 들고 있잖아 그거를 바탕으로 입장 버튼을 클릭하면, 실제 client 베른성에 입장을 하면서
-//server와 연동이 되어서, nickname과 class에 대한 정보를 바탕으로 client에 띄워줘야 하는 거지. 
-//그렇다면 serverapp의 역할은 winsockcontext 객체를 통해서 client와 server 같의 
-//shared의 packet을 통한 통신이 가능하게 해야 하는 것일까?
+//서버 실행 상태와 다음 sessionid
+#include <atomic>
+//accept thread와 room thread
+#include <thread>
+//shared_ptr
+#include <memory>
+//sessionid로 session 검색
+#include <unordered_map>
+//session map과 종료 queue 보호
+#include <mutex>
+//종료된 sessionid 순서 보관
+#include <deque>
 
-//Client와 직접 게임 패킷을 주고 받는 객체라기보다 서버 전체의 시작 실행 종료를 조율하는 
-//최상위 객체이다
+// CServerApp은 서버 전체의 시작, 실행, 종료를 조율하는 최상위 객체다.
+// WinSock/Listener 수명, Accept Thread, Room Thread, ClientSession 집합을 소유한다.
+// ClientSession이 전달한 Frame을 Shared 메시지로 읽어 ROOM_COMMAND로 번역할 뿐,
+// Player 상태 변경과 Broadcast 결정은 CGameRoom에 위임한다.
 
 namespace LostArk::Server
 {
+	//clientsession 전방 선언
+	class CClientSession;
+
 	class CServerApp final
 	{
 	public:
+		//소멸자 - 중간 실패나 정상 종료 여부 상관 없이
+		//socket과 thread를 정리
+		~CServerApp();
+		//서버의 진입점
 		int Run();
 
 	private:
+		//접속을 계속 받아 새로운 session을 생성
+		void Accept_Loop();
+		//GameRoom을 일정한 간격으로 tick한다. 초기 30Hz
+		void Room_Loop();
+		//session receive thread가 완성된 frame을 전달하는 callback이다
+		void On_SessionFrame(
+			SESSION_ID sessionId,
+			const LostArk::Shared::PACKET_FRAME& frame);
+		//session receive thread가 연결 종료를 발견했을 때 호출한다.
+		void On_SessionClosed(SESSION_ID sessionId);
+		//Session map에서 대상을 찾고, request_close만 호출
+		void Request_SessionClose(SESSION_ID sessionId);
+		//종료 callback이 남긴 sessionid를 안전하게 정리
+		void Reap_ClosedSessions();
+		//서버 전체 종료 순서 한 곳으로 모아서 정리
+		void Shutdown();
+
+	private:
+		//서버 기반 객체
 		//멤버 순서 중요! 생성 : WinSockContext -> TcpListener
 		//소멸 : TcpListener -> WinSockContext 소멸은 역순
 		CWinSockContext m_WinSockContext;
 		CTcpListener m_TcpListener;
+		CGameRoom m_GameRoom;
+		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
+		std::atomic_bool m_isRunning{ false };
+		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };
+
+		//thread
+		std::thread m_AcceptThread;
+		std::thread m_RoomThread;
+
+		//session owner map - sessionid의 유일한 장기 강한 owner
+		//gameroom은 같은 session을 weak_ptr로만 참조
+		std::mutex m_SessionsMutex;
+		std::unordered_map<
+			SESSION_ID,
+			std::shared_ptr<CClientSession>> m_Sessions;
+		//종료 대기 Queue
+		std::mutex m_ClosedSessionMutex;
+		std::deque<SESSION_ID> m_ClosedSessionIds;
 	};
 }

@@ -357,6 +357,15 @@
     <ClCompile Include="..\Private\NetworkManager.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\NetObjectRegistry.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\CharacterCatalog.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ClientReplication.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -558,6 +567,18 @@
       <Filter>02.GameObjects\01. Npc</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NetworkManager.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ClientReplicationEvent.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NetObjectRegistry.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterCatalog.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
   </ItemGroup>

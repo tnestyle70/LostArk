@@ -7,10 +7,11 @@ namespace LostArk::Shared
 {
 	enum class CHARACTER_CLASS_ID : std::uint8_t
 	{
-		LANCE_MASTER, 
-		GUNSLINGER,
-		DESTROYER,
-		ARTIST,
+		LANCE_MASTER = 0,
+		GUNSLINGER = 1,
+		SLAYER = 2,
+		ARTIST = 3,
+		DESTROYER = 4,
 		END
 	};
 
@@ -30,14 +31,15 @@ namespace LostArk::Shared
 
 		S2C_PLAYER_DESPAWNED
 	};
+
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
 	//패킷별로 경계를 구분해야, packet을 하나의 의미 단위로 읽을 수 있다.
-	//6 * 8 = 48 bytes를 의미한다?
+	// Header는 uint32 전체 Frame 크기 4바이트 + uint16 PacketType 2바이트 = 6바이트다.
 	inline constexpr std::size_t PACKET_HEADER_BYTES = 6;
-	//전체 크기는 어느 정도?
+	// Header를 포함한 Frame 하나의 최대 크기는 64 KiB다.
 	inline constexpr std::uint32_t MAX_PACKET_BYTES =
 		64u * 1024u;
-	//max packet bytes 64 * 1024 * 4, 어떤 근거로 이 숫자가 나온 걸까?
+	// Parser 누적 버퍼는 최대 Frame 4개 분량만 허용해 비정상 입력의 무제한 증가를 막는다.
 	inline constexpr std::size_t MAX_BUFFERED_PACKET_BYTES =
 		static_cast<std::size_t>(MAX_PACKET_BYTES) * 4u;
 	//알려진 패킷인지를 검사하는 함수, client에서 정해진 규칙대로 보낸 packet인지를 검사 

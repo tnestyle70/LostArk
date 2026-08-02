@@ -23,7 +23,10 @@
     <ClInclude Include="..\public\BackGround.h" />
     <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Character.h" />
+    <ClInclude Include="..\Public\CharacterCatalog.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
+    <ClInclude Include="..\Public\ClientReplication.h" />
+    <ClInclude Include="..\Public\ClientReplicationEvent.h" />
     <ClInclude Include="..\Public\Level_Baren.h" />
     <ClInclude Include="..\Public\Level_ChaosDungeon.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
@@ -33,6 +36,7 @@
     <ClInclude Include="..\Public\Logic_GunSlinger.h" />
     <ClInclude Include="..\Public\Logic_Artist.h" />
     <ClInclude Include="..\Public\Logic_Slayer.h" />
+    <ClInclude Include="..\Public\NetObjectRegistry.h" />
     <ClInclude Include="..\Public\Npc.h" />
     <ClInclude Include="..\Public\NetworkManager.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
@@ -92,6 +96,8 @@
     <ClCompile Include="..\private\BackGround.cpp" />
     <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
+    <ClCompile Include="..\Private\CharacterCatalog.cpp" />
+    <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\Level_Baren.cpp" />
     <ClCompile Include="..\Private\Level_ChaosDungeon.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />
@@ -101,6 +107,7 @@
     <ClCompile Include="..\Private\Logic_GunSlinger.cpp" />
     <ClCompile Include="..\Private\Logic_Artist.cpp" />
     <ClCompile Include="..\Private\Logic_Slayer.cpp" />
+    <ClCompile Include="..\Private\NetObjectRegistry.cpp" />
     <ClCompile Include="..\Private\Npc.cpp" />
     <ClCompile Include="..\Private\NetworkManager.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
