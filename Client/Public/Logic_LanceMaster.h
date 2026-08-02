@@ -25,10 +25,7 @@ public:
 
 public:
 	virtual void Update(CCharacter& Character, f32_t fTimeDelta) override;
-
-	STANCE Get_Stance() const {
-		return m_eStance;
-	}
+	virtual const char_t* Resolve_AnimationClip(CHARACTER_ANIM eAnim) const override;
 
 private:
 	/* Shows the stance's spear and hides the other. Both parts are assembled at

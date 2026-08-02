@@ -92,11 +92,31 @@ namespace
 
 NS_BEGIN(Client)
 
+const char_t* CLogic_LanceMaster::Resolve_AnimationClip(CHARACTER_ANIM eAnim) const
+{
+	const bool_t isLong = STANCE::LONG == m_eStance;
+
+	switch (eAnim)
+	{
+	case CHARACTER_ANIM::IDLE:
+		return isLong ? "flm_idle_identity1" : "flm_idle_identity2";
+	case CHARACTER_ANIM::RUN:
+		return isLong ? "flm_run_identity1" : "flm_run_identity2";
+	default:
+		return nullptr;
+	}
+}
+
 void CLogic_LanceMaster::Apply_Stance(CCharacter& Character)
 {
 	const bool_t isLong = STANCE::LONG == m_eStance;
 	Character.Set_PartVisible(WEAPON_PART_LONG, isLong);
 	Character.Set_PartVisible(WEAPON_PART_SHORT, !isLong);
+
+	if (!Character.Is_PlayingSkill())
+		Character.Set_Animation(
+			Character.Is_Moving() ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
 }
 
 void CLogic_LanceMaster::Update(CCharacter& Character, f32_t fTimeDelta)

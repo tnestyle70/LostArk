@@ -20,6 +20,15 @@ public:
 
 public:
 	virtual void Update(CCharacter& Character, f32_t fTimeDelta) = 0;
+
+	/* Which clip one of the shared states should use right now, or nullptr to
+	take the spec's. The spec table is one row per class, so a class whose
+	identity changes its stance cannot express itself there: LanceMaster idles and
+	runs on flm_*_identity1 holding the long spear and identity2 holding the short
+	one. Classes without that answer nullptr and keep the table. */
+	virtual const char_t* Resolve_AnimationClip(CHARACTER_ANIM eAnim) const {
+		return nullptr;
+	}
 };
 
 struct EQUIPMENT_PART_SPEC

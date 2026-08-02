@@ -46,9 +46,6 @@ public:
 	virtual ~CNpc();
 
 public:
-	shared_ptr<Engine::CModel> Get_Model() const {
-		return m_pModelCom;
-	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 
 public:

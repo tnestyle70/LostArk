@@ -51,9 +51,6 @@ public:
 	void Set_Visible(bool_t isVisible) {
 		m_isVisible = isVisible;
 	}
-	bool_t Is_Visible() const {
-		return m_isVisible;
-	}
 
 public:
 	virtual HRESULT Initialize_Prototype() override;

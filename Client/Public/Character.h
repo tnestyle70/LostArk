@@ -55,7 +55,6 @@ public:
 	const CHARACTER_SPEC* Get_Spec() const {
 		return m_pSpec;
 	}
-	shared_ptr<Engine::CModel> Get_BodyModel() const;
 	shared_ptr<Engine::CTransform> Get_Transform() const {
 		return m_pTransformCom;
 	}
@@ -66,11 +65,9 @@ public:
 	no part carries that tag. */
 	bool_t Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
 
-	void Set_Position(fvector_t vPosition);
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
-	void Cancel_Move();
 	bool_t Is_Moving() const {
 		return m_PathFollower.Has_Path();
 	}
@@ -86,9 +83,6 @@ public:
 	bool_t Play_Skill(int32_t iSkillId, int32_t iSeqIndex = 0);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
-	}
-	int32_t Get_PlayingSkillId() const {
-		return nullptr != m_pChain ? m_pChain->iSkillId : 0;
 	}
 
 public:

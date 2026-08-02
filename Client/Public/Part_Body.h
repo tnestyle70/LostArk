@@ -33,12 +33,6 @@ public:
 	virtual ~CPart_Body();
 
 public:
-	shared_ptr<CModel> Get_Model() const {
-		return m_pModelCom;
-	}
-	void Set_HiddenMeshes(uint32_t iHiddenMeshMask) {
-		m_iHiddenMeshMask = iHiddenMeshMask;
-	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 
 public:

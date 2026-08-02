@@ -61,7 +61,8 @@ matrix_t CModel::Get_BoneMatrix(const char_t* pBoneName)
     return (*iter)->Get_CombinedTransformationMatrix();    
 }
 
-bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop)
+bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop,
+    f32_t fBlendSeconds)
 {
     if (nullptr == pAnimationName)
         return false;
@@ -71,11 +72,46 @@ bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop)
         if (!m_Animations[i]->Compare_Name(pAnimationName))
             continue;
 
+        if (i != m_iCurrentAnimIndex)
+            Begin_AnimBlend(fBlendSeconds);
+
         m_iCurrentAnimIndex = i;
         m_isAnimLoop = isLoop;
         return true;
     }
     return false;
+}
+
+void CModel::Begin_AnimBlend(f32_t fBlendSeconds)
+{
+    if (fBlendSeconds <= 0.f || m_Bones.empty())
+    {
+        m_fBlendDuration = 0.f;
+        m_fBlendElapsed = 0.f;
+        return;
+    }
+
+    m_BlendFromPose.resize(m_Bones.size());
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+        XMStoreFloat4x4(&m_BlendFromPose[i], m_Bones[i]->Get_TransformationMatrix());
+
+    m_fBlendDuration = fBlendSeconds;
+    m_fBlendElapsed = 0.f;
+}
+
+void CModel::Update_AnimBlend(f32_t fTimeDelta)
+{
+    if (m_fBlendElapsed >= m_fBlendDuration ||
+        m_BlendFromPose.size() != m_Bones.size())
+        return;
+
+    m_fBlendElapsed += fTimeDelta;
+
+    const f32_t fRatio = m_fBlendDuration > 0.f ?
+        (min)(m_fBlendElapsed / m_fBlendDuration, 1.f) : 1.f;
+
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+        m_Bones[i]->Blend_TransformationMatrix(XMLoadFloat4x4(&m_BlendFromPose[i]), fRatio);
 }
 
 const char_t* CModel::Get_AnimationName(uint32_t iAnimIndex) const
@@ -196,6 +232,10 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
     현재 프레임의 포즈를 유지한다. */
     isFinished = m_Animations[m_iCurrentAnimIndex]->Update_TransformationMatrix(
         m_isAnimPaused ? 0.f : fTimeDelta, m_Bones, m_isAnimLoop);
+
+    /* 클립을 바꾸면서 크로스페이드를 요청했다면, 방금 쓰인 새 포즈 위에
+    이전 포즈를 섞는다. 일시정지 중에는 블렌드도 함께 멈춘다. */
+    Update_AnimBlend(m_isAnimPaused ? 0.f : fTimeDelta);
 
     /* 뼈들 자체 행렬은 갱신이 됐지만, 최종행렬은 아직 미완성(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
     for (auto& pBone : m_Bones)

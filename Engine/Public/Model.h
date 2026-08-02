@@ -45,13 +45,25 @@ public:
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 
-	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false) {
+
+	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false,
+		f32_t fBlendSeconds = 0.f) {
 		if (iAnimIndex >= m_iNumAnimations)
 			return;
+		if (iAnimIndex != m_iCurrentAnimIndex)
+			Begin_AnimBlend(fBlendSeconds);
 		m_isAnimLoop = isLoop;
 		m_iCurrentAnimIndex = iAnimIndex;
 	}
-	bool_t Set_Animation(const char_t* pAnimationName, bool_t isLoop = false);
+	bool_t Set_Animation(const char_t* pAnimationName, bool_t isLoop = false,
+		f32_t fBlendSeconds = 0.f);
+	bool_t Is_AnimBlending() const {
+		return m_fBlendElapsed < m_fBlendDuration;
+	}
+	void Skip_Blend() {
+		m_fBlendDuration = 0.f;
+		m_fBlendElapsed = 0.f;
+	}
 
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
@@ -87,9 +99,23 @@ private:
 	vector<shared_ptr<class CAnimation>>	m_Animations;
 	bool_t									m_isAnimLoop = { false };
 	bool_t									m_isAnimPaused = { false };
+
+	/* Crossfade state. The pose being left is snapshotted per bone rather than
+	kept ticking: a blend lasts a fraction of a second, and freezing the outgoing
+	clip over that span is not visible, while running two clips at once would mean
+	sampling channels without writing them and a second key cursor per channel. */
+	vector<float4x4_t>						m_BlendFromPose;
+	f32_t									m_fBlendElapsed = {};
+	f32_t									m_fBlendDuration = {};
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
+
+private:
+	/* Captures the pose the bones are holding right now as the blend source. */
+	void Begin_AnimBlend(f32_t fBlendSeconds);
+	/* Mixes the snapshot into the freshly sampled pose and advances the timer. */
+	void Update_AnimBlend(f32_t fTimeDelta);
 
 private:
 	HRESULT Ready_Meshes();

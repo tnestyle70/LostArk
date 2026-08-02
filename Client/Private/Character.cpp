@@ -5,6 +5,11 @@
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 
+namespace
+{
+	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+}
+
 CCharacter::CCharacter(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CContainerObject { pDevice, pContext }
@@ -209,11 +214,6 @@ void CCharacter::Update_Chain()
 	Start_Clip(m_pChain->clips[m_iChainStep].c_str());
 }
 
-shared_ptr<CModel> CCharacter::Get_BodyModel() const
-{
-	return m_pBodyModel;
-}
-
 bool_t CCharacter::Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible)
 {
 	if (nullptr == pPartTag)
@@ -228,23 +228,24 @@ bool_t CCharacter::Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible)
 	return true;
 }
 
-void CCharacter::Set_Position(fvector_t vPosition)
-{
-	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
-}
-
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
 		return false;
-	return Set_Animation(m_pSpec->AnimationClips[ETOUI(eAnim)], isLoop);
+
+	const char_t* pClip = nullptr != m_pLogic ?
+		m_pLogic->Resolve_AnimationClip(eAnim) : nullptr;
+
+	return Set_Animation(
+		nullptr != pClip ? pClip : m_pSpec->AnimationClips[ETOUI(eAnim)],
+		isLoop);
 }
 
 bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == m_pBodyModel || nullptr == pClipName)
 		return false;
-	return m_pBodyModel->Set_Animation(pClipName, isLoop);
+	return m_pBodyModel->Set_Animation(pClipName, isLoop, CLIP_BLEND_SECONDS);
 }
 
 PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)
@@ -262,12 +263,6 @@ PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)
 		Set_Locomotion(m_PathFollower.Has_Path());
 
 	return eResult;
-}
-
-void CCharacter::Cancel_Move()
-{
-	m_PathFollower.Cancel();
-	Set_Locomotion(false);
 }
 
 void CCharacter::Priority_Update(f32_t fTimeDelta)
