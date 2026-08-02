@@ -198,6 +198,31 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
+    // F8: 베른성, F9: 발탄 아레나로 바로 이동한다.
+    // 서버 접속 없이 맵만 확인할 때 쓰는 디버그 단축키다.
+    if (!CGameInstance::Get().IsKeyboardInputBlocked())
+    {
+        LEVEL eShortcutLevelID = LEVEL::END;
+
+        if (GetKeyState(VK_F8) & 0x8000)
+            eShortcutLevelID = LEVEL::BAREN;
+        else if (GetKeyState(VK_F9) & 0x8000)
+            eShortcutLevelID = LEVEL::VALTAN_ARENA;
+
+        if (LEVEL::END != eShortcutLevelID)
+        {
+            if (FAILED(CGameInstance::Get().Change_Level(
+                ETOUI(LEVEL::LOADING),
+                CLevel_Loading::Create(
+                    m_pDevice, m_pContext, eShortcutLevelID))))
+            {
+                MSG_BOX("Failed to Change Level");
+            }
+
+            return;
+        }
+    }
+
     LostArk::Shared::S2C_ENTER_ACCEPTED accepted;
     //networkmanager에서 update를 돌면서 enter 여부 판단
     if (CNetworkManager::Get().Try_Consume_EnterAccepted(accepted))
