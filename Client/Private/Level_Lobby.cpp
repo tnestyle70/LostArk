@@ -197,6 +197,19 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
+    if (CGameInstance::Get().Get_DIKeyState(DIK_F3) & 0x80)
+    {
+        if (FAILED(CGameInstance::Get().Change_Level(
+            ETOUI(LEVEL::LOADING),
+            CLevel_Loading::Create(m_pDevice, m_pContext, LEVEL::TEST_LEVEL2))))
+        {
+            MSG_BOX("Failed to Change Level");
+            return;
+        }
+
+        return;
+    }
+
     LostArk::Shared::S2C_ENTER_ACCEPTED accepted;
     //networkmanager에서 update를 돌면서 enter 여부 판단
     if (CNetworkManager::Get().Try_Consume_EnterAccepted(accepted))

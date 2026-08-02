@@ -124,9 +124,6 @@
     <Filter Include="02.GameObjects\00. Character\03. Slayer">
       <UniqueIdentifier>{15752942-3ae9-4fcd-91ce-48f56a75769b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="02.GameObjects\01. Npc">
-      <UniqueIdentifier>{52dc0b5e-f812-4835-a4c9-d7896396ef00}</UniqueIdentifier>
-    </Filter>
     <Filter Include="02.GameObjects\06. Camera">
       <UniqueIdentifier>{6131ea7b-c294-4923-9bdf-06dc6c9a0bc7}</UniqueIdentifier>
     </Filter>
@@ -171,6 +168,9 @@
     </Filter>
     <Filter Include="01.Levels\05. Loading\Loader">
       <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\07. Npc">
+      <UniqueIdentifier>{52dc0b5e-f812-4835-a4c9-d7896396ef00}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -346,7 +346,7 @@
       <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Npc.cpp">
-      <Filter>02.GameObjects\01. Npc</Filter>
+      <Filter>02.GameObjects\07. Npc</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\NetworkManager.cpp">
       <Filter>04. Network</Filter>
@@ -543,7 +543,7 @@
       <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Npc.h">
-      <Filter>02.GameObjects\01. Npc</Filter>
+      <Filter>02.GameObjects\07. Npc</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NetworkManager.h">
       <Filter>04. Network</Filter>
