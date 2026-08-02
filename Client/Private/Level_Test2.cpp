@@ -95,6 +95,7 @@ HRESULT CLevel_Test2::Ready_Layer_Player(const wstring_t& strLayerTag)
 	CharacterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
 	CharacterDesc.pSpec = &Spec_Slayer;
 	CharacterDesc.vPosition = float3_t(0.f, 0.f, 0.f);
+	CharacterDesc.isLocallyControlled = true;
 
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(ETOUI(LEVEL::TEST_LEVEL2),
 		TEXT("Prototype_GameObject_Character"),

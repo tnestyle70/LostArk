@@ -168,7 +168,8 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
     LobbyCharacterInfo& characterInfo =
         m_vecCharacters[m_iSelectedCharacterIndex];
-    characterInfo.m_strNickName = m_szNickName;
+    characterInfo.m_strNickName =
+        '\0' == m_szNickName[0] ? "Player" : m_szNickName;
 
     CNetworkManager& networkManager = CNetworkManager::Get();
     if (!networkManager.Is_Connected() &&
@@ -291,11 +292,7 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::EndDisabled();
 
-    const bool_t hasNickName =
-        hasSelection &&
-        m_szNickName[0] != '\0';
-
-    ImGui::BeginDisabled(!hasNickName);
+    ImGui::BeginDisabled(!hasSelection);
 
     if (ImGui::Button("Enter Baren"))
     {
@@ -304,10 +301,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::EndDisabled();
 
-    if (!hasNickName)
+    if (!hasSelection)
     {
         ImGui::TextDisabled(
-            "Select a character and enter a nickname.");
+            "Select a character first.");
     }
 
     ImGui::TextWrapped("%s", m_strNetworkStatus.c_str());

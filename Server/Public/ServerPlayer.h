@@ -27,12 +27,10 @@ namespace LostArk::Server
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		//nick name
 		std::string strNickName;
-
 		//pos
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
-
 		//yaw
 		float fYawDegrees = 0.f;
 	};

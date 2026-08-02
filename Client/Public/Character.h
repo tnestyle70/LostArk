@@ -41,6 +41,9 @@ public:
 		const CHARACTER_SPEC* pSpec = { nullptr };
 		const tchar_t* pNavigationPrototypeTag = { nullptr };
 		float3_t vPosition = {};
+
+		std::string strNickName;
+		bool_t isLocallyControlled = { false };
 	} CHARACTER_DESC;
 
 private:
@@ -58,6 +61,16 @@ public:
 	shared_ptr<Engine::CModel> Get_BodyModel() const;
 	shared_ptr<Engine::CTransform> Get_Transform() const {
 		return m_pTransformCom;
+	}
+
+	const std::string& Get_NickName() const
+	{
+		return m_strNickName;
+	}
+
+	bool_t Is_LocallyControlled() const
+	{
+		return m_isLocallyControlled;
 	}
 
 	void Set_Position(fvector_t vPosition);
@@ -112,6 +125,9 @@ private:
 	/* The chain being played, and how far into it. Null when idle. */
 	const CLIP_CHAIN* m_pChain = { nullptr };
 	int32_t m_iChainStep = {};
+
+	std::string m_strNickName;
+	bool_t m_isLocallyControlled = { false };
 
 private:
 	HRESULT Ready_Components();

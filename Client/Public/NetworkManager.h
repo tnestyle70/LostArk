@@ -2,19 +2,22 @@
 
 #include <WinSock2.h>
 
+#include "ClientReplicationEvent.h"
+
 #include "Network/PacketFrame.h"
 #include "Network/PacketMessages.h"
 #include "Network/PacketStreamParser.h"
 
-//왜 이 헤더들이 추가된 걸까? 멀티쓰레드 때문에? 멀티 쓰레드를 지금 활용을 하고 있는 구조인가?
+//race를 방지하기 위해서 atomic header를 추가
 #include <atomic>
 #include <deque>
+//동기 접근 race를 막기 위해서 mutex 선언 후 사용
 #include <mutex>
 #include <thread>
-
 #include <cstdint>
 #include <span>
 #include <string_view>
+
 
 class CNetworkManager final
 {
@@ -31,7 +34,6 @@ public:
 
 	bool Initialize();
 	void Shutdown();
-
 	void Update();
 
 	bool Connect_To_Server(std::uint16_t port);
@@ -42,6 +44,9 @@ public:
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
+
+	bool Try_Consume_ReplicationEvent(
+		Client::CLIENT_REPLICATION_EVENT& event);
 
 	void Close_ServerConnection();
 
@@ -55,7 +60,6 @@ private:
 	bool Send_All(std::span<const std::uint8_t> bytes);
 	//수신 worker 하나가 4096-byte 지역 버퍼로 Server의 TCP byte stream을 읽는다.
 	void Receive_Loop();
-
 	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
 
 private:
@@ -71,8 +75,10 @@ private:
 	LostArk::Shared::CPacketStreamParser m_StreamParser;
 
 	std::mutex m_InboundMutex;
-
 	std::deque<LostArk::Shared::PACKET_FRAME> m_InboundFrames;
+
+	//Handle Frame과 소비자 모두 main thread이다.
+	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
 
 	bool m_hasPendingEnterAccepted = false;
 
@@ -80,9 +86,7 @@ private:
 
 	LostArk::Shared::PLAYER_ID m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 
-	LostArk::Shared::NET_ENTITY_ID
-		m_iLocalNetEntityId =
-		LostArk::Shared::
-		INVALID_NET_ENTITY_ID;
+	LostArk::Shared::NET_ENTITY_ID m_iLocalNetEntityId =
+		LostArk::Shared::INVALID_NET_ENTITY_ID;
 
 };

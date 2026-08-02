@@ -9,6 +9,10 @@
 #include <array>
 #include <utility>
 
+//Socket worker thread와 client main thread를 분리하기 위해서 존재한다.
+//workter thread -> byte 수신과 frame 조립만 수행
+//main thread -> frame 해석과 replication event 생성
+
 CNetworkManager& CNetworkManager::Get()
 {
 	static CNetworkManager instance;
@@ -54,17 +58,22 @@ void CNetworkManager::Shutdown()
 	::WSACleanup();
 	m_isWinSocketInitialized = false;
 }
-
+//매 프레임마다 main thread에서 호출
 void CNetworkManager::Update()
 {
+	//Inbound mutex 잠금 -> Worker가 넣은 raw frame queue를 지역 queue와 swap
+	//mutex 해제 -> frame을 도착 순서대로 handle_frame에 전달
+
 	std::deque<LostArk::Shared::PACKET_FRAME> receivedFrames;
-	//어떤 역할과 기능을 update tick 마다 수행하는 건지 모르겠음
-	//-> main thread가 worker의 inbound queue를 가져와 처리한다.
+	// Worker가 완성한 Frame을 Main Thread로 옮겨 Packet 메시지와
+	// Replication Event로 번역한다. Engine 객체는 여기서 직접 생성하지 않는다.
 	{
-		std::scoped_lock lock{
+		std::scoped_lock lock
+		{
 			m_InboundMutex
 		};
-
+		//swap을 통해서 frame을 해석하는 동안 network workter가 계속
+		//새 frame을 넣을 수 있다.
 		receivedFrames.swap(m_InboundFrames);
 	}
 	
@@ -84,6 +93,14 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	if (Is_Connected())
 		return true;
+
+	// 상대가 먼저 연결을 닫으면 Receive Thread는 끝났어도 joinable 상태일 수 있다.
+	// 새 Socket과 Thread를 만들기 전에 이전 연결 자원을 완전히 회수한다.
+	if (INVALID_SOCKET != m_hServerSocket ||
+		m_ReceiveThread.joinable())
+	{
+		Close_ServerConnection();
+	}
 
 	m_hServerSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (INVALID_SOCKET == m_hServerSocket)
@@ -108,6 +125,7 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 	}
 
 	m_StreamParser.Reset();
+	m_ReplicationEvents.clear();
 
 	m_hasPendingEnterAccepted = false;
 
@@ -118,7 +136,7 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	m_iLocalNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
-	//atomic이라서 store?
+	// Receive Worker와 Main Thread가 함께 접근하므로 atomic store를 사용한다.
 	m_iLastErrorCode.store(0);
 
 	m_isReceiveRunning.store(true);
@@ -161,7 +179,7 @@ bool CNetworkManager::Send_EnterWorld(
 
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
 {
-	//중복 enter를 방지하기 위함?
+	// 승인 하나를 한 번만 소비하여 Lobby가 같은 승인으로 Level을 중복 전환하지 않게 한다.
 	if (!m_hasPendingEnterAccepted)
 		return false;
 
@@ -169,6 +187,18 @@ bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEP
 
 	m_hasPendingEnterAccepted = false;
 
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EVENT& event)
+{
+	if (m_ReplicationEvents.empty())
+	{
+		return false;
+	}
+
+	event = std::move(m_ReplicationEvents.front());
+	m_ReplicationEvents.pop_front();
 	return true;
 }
 
@@ -194,6 +224,7 @@ void CNetworkManager::Close_ServerConnection()
 	}
 
 	m_StreamParser.Reset();
+	m_ReplicationEvents.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -232,7 +263,7 @@ void CNetworkManager::Receive_Loop()
 
 	std::array<std::uint8_t, 4096> receiveBuffer{};
 
-	//이 bool 상태는 누가 어떻게 체크함?
+	// Main Thread의 Connect/Close가 값을 바꾸고 Receive Worker가 반복 조건으로 읽는다.
 	while (m_isReceiveRunning.load())
 	{
 		//serversocket에 있는 data recv로 읽기
@@ -261,8 +292,8 @@ void CNetworkManager::Receive_Loop()
 			break;
 		}
 
-		//실질적인 payload? 이거는 header랑 전부 같이 있는 거 맞지? Byte를 읽어서 receiveBytes에 저장한다.
-
+		// recv 결과는 Header와 Payload 경계를 보장하지 않는 TCP 바이트 조각이다.
+		// Parser가 여러 recv 조각을 누적하여 완성된 Frame으로 복원한다.
 		const std::span<const std::uint8_t> receiveBytes
 		{
 			receiveBuffer.data(), static_cast<std::size_t>(receiveByteCount)
@@ -276,7 +307,7 @@ void CNetworkManager::Receive_Loop()
 		//이번 recv에 완성된 프레임이 여러 개 들어왔을 수 있다. ;; 무한 루프 돌면서 파악
 		for (;;)
 		{
-			//packet의 type과 payload 실질적인 내용으로 구성된 packet frame frame이 틀 맞지?
+			// PACKET_FRAME은 Header에서 복원한 PacketType과 Payload를 가진 의미 단위다.
 			PACKET_FRAME frame{};
 
 			const PACKET_PARSE_RESULT parseResult = m_StreamParser.Try_Pop(frame);
@@ -312,36 +343,75 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 {
 	using namespace LostArk::Shared;
 
-	//현재 수직 슬라이스는 승인 패킷 하나만 처리한다.
-	if (PACKET_TYPE::S2C_ENTER_ACCEPTED != frame.ePacketType)
-	{
-		return;
-	}
 	//frame의 payload 정보를 읽는다. packet - 정보를 담는 header와 payload - class,strName 이렇게 2개로 나뉜다
 	CPacketReader reader{ frame.Payload };
 
-	S2C_ENTER_ACCEPTED accepted{};
-
-	//역직렬화와 payload 완전 소비를 모두 검증한다.
-	if (!Read_Message(reader, accepted) ||
-		0 != reader.Get_RemainingSize())
+	switch (frame.ePacketType)
 	{
-		m_iLastErrorCode.store(WSAEINVAL);
-		return;
+	//Server Enter
+	case PACKET_TYPE::S2C_ENTER_ACCEPTED:
+	{
+		S2C_ENTER_ACCEPTED accepted{};
+
+		if (!Read_Message(reader, accepted) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+
+		m_iLocalPlayerId = accepted.iPlayerId;
+		m_iLocalNetEntityId = accepted.iNetEntityId;
+		m_hasPendingEnterAccepted = true;
+		m_PendingEnterAccepted = accepted;
+		break;
 	}
+	//Player Spawn
+	case PACKET_TYPE::S2C_PLAYER_SPAWNED:
+	{
+		S2C_PLAYER_SPAWNED spawned{};
 
-	//commit해서 플레이어의 상태를 변경한다.검증 성공 전에는 기존 상태를 바꾸지 않음.
-	m_iLocalPlayerId = accepted.iPlayerId;
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		//Client Replication Event 생성
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
+		event.PlayerSpawned = std::move(spawned);
+		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
+	//player despawn
+	case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
+	{
+		S2C_PLAYER_DESPAWNED despawned{};
 
-	m_iLocalNetEntityId = accepted.iNetEntityId;
-
-	m_PendingEnterAccepted = accepted;
-	m_hasPendingEnterAccepted = true;
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED;
+		event.PlayerDespawned = despawned;
+		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 bool CNetworkManager::Send_All(
 	std::span<const std::uint8_t> bytes)
 {
+	if (!Is_Connected())
+		return false;
+
 	std::size_t sentByteCount = 0;
 
 	while (sentByteCount < bytes.size())
@@ -355,7 +425,7 @@ bool CNetworkManager::Send_All(
 
 		if (SOCKET_ERROR == result)
 		{
-			m_iLastErrorCode = ::WSAGetLastError();
+			m_iLastErrorCode.store(::WSAGetLastError());
 			return false;
 		}
 
