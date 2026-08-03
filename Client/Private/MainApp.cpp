@@ -26,6 +26,7 @@
 
 #include "Level_Loading.h"
 #include "UI_Sprite.h"
+#include "HUDRuntimeView.h"
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
@@ -64,12 +65,30 @@ namespace
 		switch (characterClass)
 		{
 		case CHARACTER_CLASS_ID::LANCE_MASTER: return "Lance Master";
-		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
-		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
-		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		// TODO: display-only relabel until real character assets exist; underlying class/binding is unchanged.
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "War Lord";
+		case CHARACTER_CLASS_ID::SLAYER: return "Alchemist";
+		case CHARACTER_CLASS_ID::ARTIST: return "Dimension Master";
 		default: return "Unknown";
 		}
 	}
+
+	/* HUD_Layout.json's "ownerClass" strings (no spaces), kept separate from the display name
+	above -- the JSON schema/tool already used these exact names before the roster relabel. */
+	const string GetHUDOwnerClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "LanceMaster";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "WarLord";
+		case CHARACTER_CLASS_ID::SLAYER: return "Alchemist";
+		case CHARACTER_CLASS_ID::ARTIST: return "DimensionMaster";
+		default: return "";
+		}
+	}
+
 }
 
 Client::CMainApp::CMainApp()
@@ -112,6 +131,11 @@ Client::CMainApp::~CMainApp()
 
 HRESULT CMainApp::Initialize()
 {
+    /* CreateWICTextureFromFile (used by CTexture and the HUD runtime view for non-DDS art)
+    needs COM on the calling thread. The main thread never initializes it otherwise; only the
+    level-loading worker thread does, and only the Debug-only HUD tool did as a side effect. */
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
     ENGINE_DESC         EngineDesc{};
     EngineDesc.hInstance = g_hInst;
     EngineDesc.hWnd = g_hWnd;
@@ -155,6 +179,8 @@ HRESULT CMainApp::Initialize()
 
     if (FAILED(Ready_Prototype_For_Static()))
         return E_FAIL;
+
+    m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 
     if (FAILED(Start_Level(LEVEL::LOBBY)))
         return E_FAIL;
@@ -297,10 +323,10 @@ void CMainApp::RenderCombatHUD()
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowViewport(viewport->ID);
 	ImGui::SetNextWindowPos(
-		ImVec2(viewport->WorkPos.x + 20.f,
-			viewport->WorkPos.y + viewport->WorkSize.y - 20.f),
+		ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 20.f,
+			viewport->WorkPos.y + 20.f),
 		ImGuiCond_Always,
-		ImVec2(0.f, 1.f));
+		ImVec2(1.f, 0.f));
 	ImGui::SetNextWindowBgAlpha(0.78f);
 
 	constexpr ImGuiWindowFlags flags =
@@ -362,6 +388,13 @@ void CMainApp::RenderCombatHUD()
 		}
 	}
 	ImGui::End();
+
+	if (nullptr != m_pHUDRuntimeView)
+	{
+		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
+		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+		m_pHUDRuntimeView->Render(strOwnerClass, 0);
+	}
 }
 
 void CMainApp::RenderOfflinePreviewOverlay()

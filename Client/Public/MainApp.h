@@ -18,6 +18,7 @@ class CMapTool;
 class CEffect_Tool;
 class CAnimation_Tool;
 class CHUDLayoutTool;
+class CHUDRuntimeView;
 
 class CMainApp final
 {
@@ -53,6 +54,8 @@ private:
 	bool_t m_hasSmokeObservedPendingEnterConnection = false;
 	bool_t m_isSmokeComplete = false;
 	std::unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
+	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
+	std::unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
 
 #ifdef _DEBUG
 	std::unique_ptr<CMapTool> m_pMapTool = { nullptr };

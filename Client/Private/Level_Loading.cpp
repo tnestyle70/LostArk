@@ -31,17 +31,10 @@ HRESULT CLevel_Loading::Initialize(LEVEL eNextLevelID)
 
 	m_eNextLevelID = eNextLevelID;
 
-	switch (eNextLevelID)
-	{
-	case LEVEL::BERN:
-		m_strTitleText = L"\xBCA0\xB978 \xC131";
-		m_strTipText = L"\xBCA0\xB978 \xC131\xC740 \xC5EC\xB7EC \xC885\xC871\xC774 \xD568\xAED8 \xC11E\xC5EC \xC788\xB294, \xBCA0\xB978\xC758 \xC218\xB3C4\xC785\xB2C8\xB2E4.";
-		break;
-	default:
-		m_strTitleText.clear();
-		m_strTipText.clear();
-		break;
-	}
+	/* TODO: every destination shows the Bern title/tip for now. Once each scene can report
+	its own identity, branch on eNextLevelID (or a passed-in scene id) here instead. */
+	m_strTitleText = L"\xBCA0\xB978 \xC131";
+	m_strTipText = L"\xBCA0\xB978 \xC131\xC740 \xC5EC\xB7EC \xC885\xC871\xC774 \xD568\xAED8 \xC11E\xC5EC \xC788\xB294, \xBCA0\xB978\xC758 \xC218\xB3C4\xC785\xB2C8\xB2E4.";
 
 	if (FAILED(Ready_Layer_Chrome()))
 		return E_FAIL;

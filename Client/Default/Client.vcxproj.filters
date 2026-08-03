@@ -267,6 +267,9 @@
     <ClCompile Include="..\Private\UI_Sprite.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\HUDRuntimeView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>

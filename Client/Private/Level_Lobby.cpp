@@ -25,13 +25,16 @@ namespace
             return "Lance Master";
 
         case CHARACTER_CLASS_ID::GUNSLINGER:
-            return "Gunslinger";
+            // TODO: displays as War Lord until real WarLord character assets exist; underlying class/binding is still Gunslinger.
+            return "War Lord";
 
         case CHARACTER_CLASS_ID::SLAYER:
-            return "Slayer";
+            // TODO: displays as Alchemist until real Alchemist character assets exist; underlying class/binding is still Slayer.
+            return "Alchemist";
 
         case CHARACTER_CLASS_ID::ARTIST:
-            return "Artist";
+            // TODO: displays as Dimension Master until real DimensionMaster character assets exist; underlying class/binding is still Artist.
+            return "Dimension Master";
 
         default:
             return "Unknown";

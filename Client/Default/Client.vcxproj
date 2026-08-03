@@ -86,6 +86,7 @@
     <ClInclude Include="..\Public\DataJson.h" />
     <ClInclude Include="..\Public\Valtan.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
+    <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
@@ -153,6 +154,7 @@
     <ClCompile Include="..\Private\DataJson.cpp" />
     <ClCompile Include="..\Private\Valtan.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
+    <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="Client.cpp" />
   </ItemGroup>
   <ItemGroup>
