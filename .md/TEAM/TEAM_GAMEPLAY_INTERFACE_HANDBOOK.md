@@ -70,10 +70,17 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 | 입력 | stable ID | 결과 |
 |---|---:|---|
 | 우클릭 | move sequence | `C2S_MOVE`로 목표 X/Z 제출 |
-| Q | `34060` | 열공참 사용 의도 제출 |
-| W | `34100` | 청룡출수 사용 의도 제출 |
+| Q | `34120` | 연환섬 사용 의도 제출 |
+| W | `34080` | 일섬각 사용 의도 제출 |
+| E | `34070` | 회선창 사용 의도 제출 |
+| R | `34150` | 맹룡열파 사용 의도 제출 |
+| A | `34110` | 반월섬 사용 의도 제출 |
+| S | `34090` | 철량추 사용 의도 제출 |
+| T | `34640` | 맹룡난무 사용 의도 제출 |
+| V | `34600` | 은하유성탄 사용 의도 제출 |
+| Alt+V | `34620` | 은하비섬창 사용 의도 제출 |
 
-`CPlayerController`는 edge input, sequence, aim만 만든다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Character를 직접 이동하거나 `Play_Skill`을 호출하지 않는다.
+`CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Character를 직접 이동하거나 `Play_Skill`을 호출하지 않는다.
 
 스킬 서버 흐름은 다음과 같다.
 

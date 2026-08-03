@@ -238,7 +238,7 @@ Character binary는 Area 진입 때 네 클래스를 모두 디코드하지 않�
 
 Server는 누적 없는 `sleep_for(33ms)`를 사용하지 않는다. `1.0 / 30.0` fixed step과 누적 deadline을 사용하고 lag가 커지면 deadline을 재동기화한다.
 
-현재 닫힌 player 경계는 우클릭 move goal과 LanceMaster Q/W skill까지다.
+현재 닫힌 player 경계는 우클릭 move goal과 LanceMaster 긴 창 quick slot 9개까지다.
 
 ```text
 Raw input -> CPlayerController -> IPlayerCommandSink
@@ -246,7 +246,7 @@ Raw input -> CPlayerController -> IPlayerCommandSink
           -> authoritative snapshot -> CClientReplication -> presentation
 ```
 
-Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다. payload에는 PlayerId/NetEntityId가 없고 Server가 SessionId로 player를 결정한다. `CPlayerSkillSystem`이 sequence, class, action, resource, cooldown을 검사하고 nav projection 이동과 damage를 한 번만 적용한 뒤 action/skill/cooldown/HP/resource를 snapshot으로 복제한다.
+Q/W/E/R/A/S/T/V/Alt+V는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 해석해 `C2S_USE_SKILL`로 제출한다. payload에는 PlayerId/NetEntityId가 없고 Server가 SessionId로 player를 결정한다. `CPlayerSkillSystem`이 sequence, class, action, resource, cooldown을 검사하고 nav projection 이동과 damage를 한 번만 적용한 뒤 action/skill/cooldown/HP/resource를 snapshot으로 복제한다.
 
 Character/Animation의 `Logic_*`는 presentation-only다. DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. `CCharacter::Apply_NetworkAction`만 Server action tick 변경을 받아 승인된 skill animation을 시작한다. 아직 계약이 없는 추가 스킬은 로컬에서 우회 재생하지 않는다.
 
@@ -462,6 +462,28 @@ Character 폴더 갱신을 포함한 현재 Resources는 새 immutable pack으�
 - manifest: 9,180 files, 5,153,765,021 bytes
 - publish root: `C:\Users\user\Desktop\LostArk_Team_ResourcePacks\lostark-resources\2026.08.03.4`
 - `Manage-ResourcePack.ps1 -Mode Publish` 내부 Verify: PASS
-- ProjectAudit: 56/56 PASS
+- Deep ProjectAudit: 58/58 PASS
 
 Resources payload와 개인 IP는 Git에 포함하지 않고 `.4` manifest와 lock만 공유한다.
+
+## 23. 최종 Git 통합과 종료 시 검증
+
+최종 브랜치는 `origin/main` 위에 현재 Character Select/Level/Tool/Map 변경을 고정한 뒤 열린 담당자
+브랜치를 merge commit으로 흡수했다.
+
+- PR #39의 weapon pre-transform 수정은 PR #40에 이미 포함되어 중복 적용하지 않았다.
+- PR #40의 데이터 기반 LanceMaster 9-skill binding은 보존했다.
+- PR #41의 color texture sRGB decode와 MapTool navigation bake 수정은 보존했다.
+- PR #38은 담당자 이력과 독립적인 `CustomFont` centering 수정만 보존했다. 제품 ImGui HUD와
+  실제 class ID를 바꾸지 않는 display-only relabel은 현재 계약과 맞지 않아 제외했다. Loading JSON이
+  참조하는 `UI/Loading/*` 8개 asset도 `.4` pack에 없어서 Loading/UI_Sprite 활성화를 제외했다.
+
+최종 자동·실행 증거:
+
+- Debug Engine/Shared/Server/Client build: PASS
+- Protocol Harness / Server Gameplay Contract: `failures : 0`
+- gameplay balance: 4 players, 9 skills, 10 damage profiles, 1 boss
+- Deep ProjectAudit: 58/58 PASS
+- Server listener: `0.0.0.0:7777`, preferred private IPv4의 port `7777` LAN connect PASS
+- bounded Server 종료 후 7777 listener: 0
+- Release 전체 회귀: 사용자 요청으로 진행 중 중단, PASS로 기록하지 않음
