@@ -1,6 +1,9 @@
 #include "CharacterCatalog.h"
 
+#include "Logic_Artist.h"
+#include "Logic_GunSlinger.h"
 #include "Logic_LanceMaster.h"
+#include "Logic_Slayer.h"
 
 const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -12,6 +15,12 @@ const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 	{
 	case LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER:
 		return &Spec_LanceMaster;
+	case LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER:
+		return &Spec_GunSlinger;
+	case LostArk::Shared::CHARACTER_CLASS_ID::SLAYER:
+		return &Spec_Slayer;
+	case LostArk::Shared::CHARACTER_CLASS_ID::ARTIST:
+		return &Spec_Artist;
 	//case LostArk::Shared::CHARACTER_CLASS_ID::DESTROYER:
 	//	break;
 	case LostArk::Shared::CHARACTER_CLASS_ID::END:

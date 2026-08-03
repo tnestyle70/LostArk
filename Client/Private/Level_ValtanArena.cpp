@@ -47,6 +47,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 	}
 
 	CClientReplication::DESC replicationDesc{};
+	replicationDesc.pDevice = m_pDevice;
+	replicationDesc.pContext = m_pContext;
 	replicationDesc.iPrototypeLevelIndex =
 		ETOUI(LEVEL::VALTAN_ARENA);
 	replicationDesc.iLayerLevelIndex =
@@ -83,6 +85,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
+	m_PlayerController.Set_GameplayInputEnabled(
+		nullptr == m_pCamera || m_pCamera->Is_FollowEnabled());
 	m_PlayerController.Update();
 }
 

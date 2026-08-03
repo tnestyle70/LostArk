@@ -69,6 +69,8 @@ HRESULT CLevel_Development::Initialize()
 	if (m_isNetworkTraining)
 	{
 		CClientReplication::DESC replicationDesc{};
+		replicationDesc.pDevice = m_pDevice;
+		replicationDesc.pContext = m_pContext;
 		replicationDesc.iPrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		replicationDesc.iLayerLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		replicationDesc.strPlayerLayerTag = TEXT("Layer_Player");
@@ -97,6 +99,9 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		const shared_ptr<CCharacter> localCharacter =
 			m_Replication.Get_LocalCharacter();
 		m_PlayerController.Set_LocalCharacter(localCharacter);
+		const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
+		m_PlayerController.Set_GameplayInputEnabled(
+			nullptr == camera || camera->Is_FollowEnabled());
 		m_PlayerController.Update();
 	}
 	else
@@ -203,6 +208,12 @@ void CLevel_Development::Update_ClickMove()
 	const bool_t isRightMouseDown =
 		!CGameInstance::Get().IsMouseInputBlocked() &&
 		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
+	const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
+	if (nullptr != camera && !camera->Is_FollowEnabled())
+	{
+		m_wasRightMouseDown = isRightMouseDown;
+		return;
+	}
 	if (isRightMouseDown && !m_wasRightMouseDown)
 	{
 		float4_t pickedPosition{};

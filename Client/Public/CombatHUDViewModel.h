@@ -29,6 +29,8 @@ namespace Client
 	struct HUD_PLAYER_STATE
 	{
 		bool isValid = false;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::uint32_t iServerTick = 0;
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
@@ -60,6 +62,7 @@ namespace Client
 		bool Initialize_Definitions();
 		void Apply_LocalPlayer(
 			std::uint32_t serverTick,
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			const LostArk::Shared::PLAYER_SNAPSHOT& snapshot);
 		void Apply_Boss(
 			const std::string& archetypeId,
@@ -74,6 +77,8 @@ namespace Client
 		struct SKILL_DEFINITION
 		{
 			LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+				LostArk::Shared::CHARACTER_CLASS_ID::END;
 			std::string strInputSlot;
 			std::string strDisplayName;
 			std::string strActionId;

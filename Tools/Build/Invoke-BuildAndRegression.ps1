@@ -60,11 +60,13 @@ function Assert-ClientRuntimeLayout {
 function Invoke-ClientSmoke {
     param(
         [string]$ScenarioId,
+		[string]$CharacterClass = '',
         [switch]$RequiresServer,
         [int]$TimeoutMs = $ClientTimeoutMs
     )
 
-    $safeName = $ScenarioId.Replace('.', '-')
+	$classSuffix = if ([string]::IsNullOrEmpty($CharacterClass)) { '' } else { "-$CharacterClass" }
+    $safeName = $ScenarioId.Replace('.', '-') + $classSuffix
     $reportPath = Join-Path $reportRoot "$safeName.json"
     if (Test-Path -LiteralPath $reportPath -PathType Leaf) {
         Remove-Item -LiteralPath $reportPath -Force
@@ -116,6 +118,9 @@ function Invoke-ClientSmoke {
             "--timeout-ms=$TimeoutMs",
             "--report=$reportPath"
         )
+		if (-not [string]::IsNullOrEmpty($CharacterClass)) {
+			$arguments += "--character-class=$CharacterClass"
+		}
         $clientProcess = Start-Process `
             -FilePath $clientExe `
             -ArgumentList $arguments `
@@ -138,7 +143,8 @@ function Invoke-ClientSmoke {
         if ($report.status -ne 'passed') {
             throw "Smoke failed: $ScenarioId / $($report.reason) / $($report.loadingStage)"
         }
-        Write-Host "[PASS] $ScenarioId ($($report.elapsedMs) ms)"
+		$displayName = $ScenarioId + $classSuffix
+        Write-Host "[PASS] $displayName ($($report.elapsedMs) ms)"
     }
     finally {
 		if ($null -ne $clientProcess -and -not $clientProcess.HasExited) {
@@ -191,7 +197,12 @@ try {
     if (-not $SkipNetworkSmoke) {
         Invoke-ClientSmoke -ScenarioId 'world.bern' -RequiresServer
         Invoke-ClientSmoke -ScenarioId 'raid.valtan.arena' -RequiresServer
-        Invoke-ClientSmoke -ScenarioId 'dev.training.ground' -RequiresServer
+		foreach ($characterClass in @('lance-master', 'gunslinger', 'slayer', 'artist')) {
+			Invoke-ClientSmoke `
+				-ScenarioId 'dev.training.ground' `
+				-CharacterClass $characterClass `
+				-RequiresServer
+		}
     }
     if (-not $SkipDevelopmentSmoke -and $Configuration -eq 'Debug') {
         Invoke-ClientSmoke -ScenarioId 'dev.map.active' -TimeoutMs ([Math]::Max($ClientTimeoutMs, 120000))

@@ -70,6 +70,42 @@
     <Filter Include="96.DataFiles\Map">
       <UniqueIdentifier>{a6622e2c-78fc-4fbb-b1db-d57f8e2947aa}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Actors">
+	  <UniqueIdentifier>{089f59f9-abda-4a78-92c7-53a95517c63c}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation">
+	  <UniqueIdentifier>{8dfbc5a6-6d2a-4d81-83c6-e024eed35bad}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation\Authored">
+	  <UniqueIdentifier>{5b0cbb5f-7b8c-4d74-9e9c-9605010cb53b}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation\Reference">
+	  <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\AssetPacks">
+	  <UniqueIdentifier>{1d3cc5df-ce41-4c5b-87f8-b52a371b2e52}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Balance">
+	  <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Encounters">
+	  <UniqueIdentifier>{b09ba3ed-3f63-4c04-a1f7-05080a2f25e1}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Levels">
+	  <UniqueIdentifier>{336b076d-6971-435f-81f2-998308e2a98d}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Maps">
+	  <UniqueIdentifier>{eb2137ae-7265-469f-a381-976516cc4eb3}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Navigation">
+	  <UniqueIdentifier>{e808332f-5828-48f5-bab9-fc6884b75aa6}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\UI">
+	  <UniqueIdentifier>{d2366f07-bf45-415a-af35-4a70fdd20190}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Worlds">
+	  <UniqueIdentifier>{8de851af-10a5-49ba-bbea-b9564254c63e}</UniqueIdentifier>
+	</Filter>
     <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
       <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
     </Filter>
@@ -279,6 +315,9 @@
     <ClCompile Include="..\Private\ActorCatalog.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -482,6 +521,9 @@
     <ClInclude Include="..\Public\ActorCatalog.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\PlayableCharacterAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
@@ -520,6 +562,48 @@
     </None>
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navblockers" />
+	<None Include="..\..\Data\Actors\BossCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Actors\CharacterCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Actors\NpcCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.1.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.2.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.3.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetPacks.lock.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\Balance\BossProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\DamageProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\PlayerProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\PlayerSkills.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json"><Filter>96.DataFiles\Encounters</Filter></None>
+	<None Include="..\..\Data\Levels\LevelCatalog.json"><Filter>96.DataFiles\Levels</Filter></None>
+	<None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Maps\Editor\ACTIVE.maparea"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Maps\MapCatalog.json"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json"><Filter>96.DataFiles\Navigation</Filter></None>
+	<None Include="..\..\Data\UI\HUD\HUD_Layout.json"><Filter>96.DataFiles\UI</Filter></None>
+	<None Include="..\..\Data\UI\ScreenUI\ScreenUI.json"><Filter>96.DataFiles\UI</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl">

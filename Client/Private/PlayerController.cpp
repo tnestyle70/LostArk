@@ -38,7 +38,8 @@ void Client::CPlayerController::Update()
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
 
-	if (isRightMouseDown &&
+	if (m_isGameplayInputEnabled &&
+		isRightMouseDown &&
 		!m_wasRightMouseDown &&
 		nullptr != character &&
 		nullptr != commandSink)
@@ -72,7 +73,8 @@ void Client::CPlayerController::Update()
 		requestedSkillId = 34060;
 	else if (isWDown && !m_wasWDown)
 		requestedSkillId = 34100;
-	if (LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
+	if (m_isGameplayInputEnabled &&
+		LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
 		nullptr != character && nullptr != commandSink)
 	{
 		const shared_ptr<CTransform> transform = character->Get_Transform();

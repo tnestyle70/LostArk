@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
 #include "NetObjectRegistry.h"
 
@@ -22,6 +24,8 @@ namespace Client
 		//rpelication이 level baren을 하드코딩할 필요가 없다.
 		struct DESC
 		{
+			ComPtr<ID3D11Device> pDevice;
+			ComPtr<ID3D11DeviceContext> pContext;
 			std::uint32_t iPrototypeLevelIndex = 0;
 			std::uint32_t iLayerLevelIndex = 0;
 			std::wstring strPlayerLayerTag;

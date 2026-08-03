@@ -12,7 +12,7 @@
 
 - `Client/Bin/Resources` 평탄화와 immutable 외부 팩 lock/manifest
 - 수업용 Level/Object/Monster/astar 및 `Resources/LostArk` wrapper의 active 경로 제거
-- Lobby 시작, F1 단일 Developer Tools 허브, F2~F12 레벨 이동 제거
+- Lobby 시작, F1 Developer Tools와 F6 follow/free camera, 나머지 F키 전역 전환 제거
 - 제품 씬 Lobby/Bern/Valtan과 stable scenario catalog
 - 제품 map load scope와 Loader/Map runtime의 동일 scope 소비
 - Bern shard-set MapTool authoring publish의 원자 교체와 rollback
@@ -22,15 +22,17 @@
 - Server navgrid 기반 player path, skill 이동 projection, Valtan chase
 - Valtan Server brain의 pattern damage, phase, death
 - snapshot을 소비하는 Character action presentation과 `CCombatHUDViewModel`
+- Lobby 네 클래스 선택, 선택 클래스 우선 binary load, remote class 최초 스폰 시 on-demand admission
+- Server snapshot을 표시하는 class-aware runtime HUD overlay
 - 포트 7777의 실제 Server PID, Client exit code, 양쪽 process cleanup을 확인하는 회귀 harness
 - 매 실행 전 구성별 report 폴더를 비워 stale PASS가 남지 않는 결과 계약
 - ProjectAudit의 deep resource hash, failure injection, legacy/경계 검사
 
-다만 네 클래스 선택, nickname 완전 선택화, 실제 runtime HUD widget 연결, 파티/레이드 입장, 동적 collider·projectile·knockback은 아직 구현 완료가 아니다. 이 문서는 그 기능을 완료로 기록하지 않는다.
+다만 nickname 정책 정리, 클래스별 고유 skill/action, 최종 아트 HUD layout, 파티/레이드 입장, 동적 collider·projectile·knockback은 아직 구현 완료가 아니다. 이 문서는 그 기능을 완료로 기록하지 않는다.
 
 ## 2. 현재 Git 상태와 통합 규칙
 
-현재 브랜치는 `codex/baren-player-replication`이고 worktree에는 여러 세션과 담당자의 대규모 미커밋 변경이 함께 있다. 최종 감사 기준 `git status --short` 항목은 237개였다. 따라서 이번 작업에서는 자동 stage/commit을 하지 않았다.
+현재 브랜치는 `codex/baren-player-replication`이다. 인수인계 당시 worktree에는 여러 세션의 변경 237개가 함께 있었으므로 임의로 되돌리거나 중간 commit하지 않았다. 이후 실제 코드·데이터·문서를 대조해 이 RESULT가 설명하는 하나의 통합 변경 단위만 남겼으며, Resources payload와 build/intermediate 산출물은 Git 범위에서 제외했다.
 
 통합 규칙은 다음과 같다.
 
@@ -65,11 +67,11 @@ Client/Bin/Resources/
   UI/
 ```
 
-마지막 lock 기준 전체는 7,738 files, 3,993,941,690 bytes다.
+마지막 lock 기준 전체는 7,922 files, 4,567,118,211 bytes다.
 
 | domain | files | bytes |
 |---|---:|---:|
-| Character | 157 | 254,562,408 |
+| Character | 341 | 827,738,929 |
 | Deploy | 123 | 62,577,095 |
 | Effect | 1 | 32,896 |
 | Fonts | 4 | 23,106,912 |
@@ -78,10 +80,10 @@ Client/Bin/Resources/
 
 현재 pack 정본은 다음과 같다.
 
-- pack: `lostark-resources@2026.08.03.2`
+- pack: `lostark-resources@2026.08.03.3`
 - lock: `Data/AssetPacks.lock.json`
-- manifest: `Data/AssetManifests/lostark-resources-2026.08.03.2.manifest.json`
-- content SHA-256: `21d372e509908467567e2bb2e70538e4a66dea656f5a78074c29939b6b6227d7`
+- manifest: `Data/AssetManifests/lostark-resources-2026.08.03.3.manifest.json`
+- content SHA-256: `3a5729752af3ab549e58ccf9b1923e4b3d68cbd0c500a4defae7997c8fa70b8d`
 
 `Manage-ResourcePack.ps1`의 계약은 `Snapshot -> Verify -> Publish -> Hydrate`다. Snapshot은 manifest와 lock을 한 트랜잭션으로 취급하며 lock commit 전 강제실패 시 orphan manifest와 임시 파일을 지운다. Publish와 Hydrate는 전체 payload를 staging에서 검증한 뒤 승격한다. 상세 명령은 `Tools/AssetPipeline/README.md`가 정본이다.
 
@@ -109,6 +111,8 @@ Effect 원본 선별은 `Cook-SelectedEffectAsset.ps1`이 `Data/Effects/Cooked` 
 
 UI와 gameplay 설정은 JSON만 사용한다. 신규 `.cfg`와 runtime cfg reader는 ProjectAudit에서 거부한다. visual map placement는 수만 행을 다루므로 검증된 전용 line format을 유지하되, MapTool 작성본과 runtime 생성물을 분리한다.
 
+Git 관리 대상 `Data` 파일 42개는 Client 프로젝트의 `96.DataFiles` 아래 `None` 항목으로 연결했다. Actors, Animation, AssetPacks, Balance, Encounters, Levels, Maps, Navigation, UI, Worlds 필터에서 원본을 바로 열 수 있지만 runtime 복사나 두 번째 정본을 만들지는 않는다. ignored Effect 추출 원본은 이 프로젝트 목록에 포함하지 않는다.
+
 ## 5. Map과 MapTool
 
 현재 제품 맵은 두 개다.
@@ -118,7 +122,7 @@ UI와 gameplay 설정은 JSON만 사용한다. 신규 `.cfg`와 runtime cfg read
 | `LV_BER_BERNCASTLE` | shard-set | 50,017 | catalog rows 3,021 / unique 1,003 |
 | `LV_LUT_HEARTRB_ED` | single | 13,103 | 269 |
 
-MapTool의 visual `Save`는 `Data/Maps/Authoring`만 갱신한다. 현재 저장소에는 아직 이 authoring 디렉터리가 없으므로, 현재 runtime map은 기존 import/publish 결과다. 제품 runtime 파일은 `Publish-MapAuthoring.ps1`만 교체할 수 있다.
+MapTool의 visual `Save`는 `Data/Maps/Authoring`만 갱신한다. 현재 저장소에는 Training authoring placement가 있고 Bern/Valtan runtime map은 기존 import/publish 결과다. 제품 runtime 파일은 `Publish-MapAuthoring.ps1`만 교체할 수 있다.
 
 Bern처럼 shard-set인 경우 publish는 다음을 보장한다.
 
@@ -158,7 +162,7 @@ HUD Tool은 두 JSON 문서를 편집·저장한다.
 
 UI 담당자는 이 ViewModel을 소비하며 packet/snapshot을 직접 파싱하거나 Character를 조회하지 않는다. cooldown 남은 시간은 Server tick과 cooldown end tick으로 표시하고 실제 damage/cooldown 판정은 Server가 소유한다.
 
-실제 제품 HUD widget이 이 ViewModel을 최종 시각 배치에 연결하는 작업, party roster, 네 클래스 class owner 정규화는 아직 남아 있다.
+Bern/Valtan/Training에는 이 ViewModel을 읽는 runtime HUD overlay가 연결되어 선택 클래스, HP/resource, action, class별 skill/cooldown/damage, boss 상태를 표시한다. 최종 아트 layout과 party roster는 아직 남아 있다. 비-Lance class는 Server skill 계약이 없으므로 HUD가 스킬을 꾸며내지 않고 미지원 상태를 표시한다.
 
 ## 7. Level, Lobby, ImGui 이동 현황
 
@@ -177,25 +181,26 @@ UI 담당자는 이 ViewModel을 소비하며 packet/snapshot을 직접 파싱�
 | `front.lobby` | LOBBY | 제품 시작 |
 | `world.bern` | BERN | 제품 월드 |
 | `raid.valtan.arena` | VALTAN_ARENA | 제품 레이드 arena |
+| `dev.training.ground` | DEVELOPMENT | 서버 연결 수련장 |
 | `dev.map.active` | DEVELOPMENT | 전체 active map + MapTool |
 | `asset.character.lance-master` | DEVELOPMENT | Character/Animation tool |
 | `render.hdr-readback` | DEVELOPMENT | render/effect tool |
 | `effect.preview` | DEVELOPMENT | effect tool |
 | `ui.hud.layout` | DEVELOPMENT | HUD layout tool |
 
-F1은 유일한 전역 Developer Tools 단축키다. F2~F12 레벨·맵·카메라 전환은 금지했다. Debug에서는 F1 허브가 Development scenario를 선택하고, 자동화는 `--smoke --scenario=<stable-id>`를 사용한다. Release에는 Development ImGui tool을 ship하지 않는다.
+공식 전역 기능키는 F1과 F6 두 개다. Debug의 F1은 Developer Tools 허브를 열고 F6는 gameplay camera를 follow/free mode로 전환한다. free camera는 WASD 이동과 Tab mouse-look을 사용하며 free mode에서는 gameplay command를 보내지 않는다. F2~F5와 F7~F12 전역 전환은 금지했다. 자동화는 `--smoke --scenario=<stable-id>`를 사용하고 Release에는 Development ImGui tool을 ship하지 않는다.
 
 Lobby Loader는 camera prototype만 준비하며 Map/Deploy/Effect/Character bundle을 로드하지 않는다. Release에서도 ImGui character select panel은 동작한다.
 
 현재 Lobby UI의 실제 상태는 다음과 같다.
 
-- 선택 클래스: LanceMaster 1개
-- 목적지 버튼: Bern, Valtan 2개
+- 선택 클래스: Lance Master, Gunslinger, Slayer, Artist 4개
+- 목적지 버튼: Bern, Valtan, Training 3개
 - nickname 입력: 아직 보이며 빈 값이면 Client가 `Player`로 치환
 - Development/Test 버튼: Lobby에는 없음
 - 서버 `S2C_ENTER_ACCEPTED` 이후에만 `CSceneTransitionService`로 제품 씬 이동
 
-Artist/Slayer/Gunslinger 선택, nickname field 제거/서버 fallback, Lobby의 Test destination은 아직 다음 단계다.
+네 클래스와 Training 진입은 닫혔다. nickname field 제거/서버 fallback 정책은 아직 다음 단계다.
 
 ## 8. Loader 계약
 
@@ -209,6 +214,8 @@ parse -> validate -> stage -> commit
 ```
 
 제품 level은 `LevelCatalog.json`의 정확한 `assetDomains`, `tools`, `mapLoadBounds` parity를 코드와 ProjectAudit에서 검사한다. Bern/Valtan Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비한다. Loader가 읽고 범위 필터링한 map catalog/placement stage는 runtime으로 handoff해 같은 50,017행 문서를 다시 parse하지 않는다.
+
+Character binary는 Area 진입 때 네 클래스를 모두 디코드하지 않는다. `CPlayableCharacterAssetService`를 단일 admission 경계로 사용해 Lobby에서 선택한 클래스만 Loader가 먼저 준비하고, 다른 플레이어 클래스는 replication spawn에서 최초 한 번만 같은 서비스로 추가한다. 이 변경으로 Debug Bern smoke가 전체 class 선로드 당시 timeout에서 16.9초 PASS로 회복됐다.
 
 실패 계약은 다음과 같다.
 
@@ -240,9 +247,9 @@ Actor catalog의 현재 지원 상태는 다음과 같다.
 | class | catalog status | 제품 선택/복제 |
 |---|---|---|
 | LanceMaster | supported | 지원 |
-| Gunslinger | reserved | 미지원 |
-| Slayer | reserved | 미지원 |
-| Artist | reserved | 미지원 |
+| Gunslinger | supported | 이동/복제/HUD 지원, 고유 스킬 미정 |
+| Slayer | supported | 이동/복제/HUD 지원, 고유 스킬 미정 |
+| Artist | supported | 이동/복제/HUD 지원, 고유 스킬 미정 |
 
 Valtan actor model과 presentation clip은 `BossCatalog.json`을 Loader와 replication이 소비한다. Server는 Valtan transform/action/target/pattern phase/HP/damage/death를 소유하고 Client는 semantic clip과 HUD 상태를 표현한다. 잡몹은 현재 범위가 아니며 수업용 Monster 계약은 제거 상태를 유지한다.
 
@@ -303,17 +310,20 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 |---|---:|---:|
 | Protocol Harness | PASS | failures 0 |
 | Server Gameplay Contract | PASS | failures 0 |
-| `front.lobby` | PASS | 64 ms |
-| `world.bern` | PASS | 16,986 ms |
-| `raid.valtan.arena` | PASS | 17,036 ms |
-| `dev.training.ground` | PASS | 13,111 ms |
-| `dev.map.active` | PASS | 2,662 ms |
-| `asset.character.lance-master` | PASS | 12,984 ms |
-| `render.hdr-readback` | PASS | 953 ms |
-| `effect.preview` | PASS | 951 ms |
-| `ui.hud.layout` | PASS | 123 ms |
-| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
-| ProjectAudit + deep asset hash | PASS | 52 checks |
+| `front.lobby` | PASS | 61 ms |
+| `world.bern` | PASS | 16,944 ms |
+| `raid.valtan.arena` | PASS | 17,484 ms |
+| `dev.training.ground` Lance Master | PASS | 12,910 ms |
+| `dev.training.ground` Gunslinger | PASS | 12,996 ms |
+| `dev.training.ground` Slayer | PASS | 12,977 ms |
+| `dev.training.ground` Artist | PASS | 13,072 ms |
+| `dev.map.active` | PASS | 2,907 ms |
+| `asset.character.lance-master` | PASS | 12,724 ms |
+| `render.hdr-readback` | PASS | 1,053 ms |
+| `effect.preview` | PASS | 974 ms |
+| `ui.hud.layout` | PASS | 126 ms |
+| Gameplay/Navigation Validate | PASS | 4 players, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
+| ProjectAudit + deep asset hash | PASS | 57 checks |
 
 ### Release 최종 실행
 
@@ -322,16 +332,19 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 | Protocol Harness | PASS | failures 0 |
 | Server Gameplay Contract | PASS | failures 0 |
 | `front.lobby` | PASS | 60 ms |
-| `world.bern` | PASS | 3,487 ms |
-| `raid.valtan.arena` | PASS | 3,301 ms |
-| `dev.training.ground` | PASS | 2,602 ms |
+| `world.bern` | PASS | 3,585 ms |
+| `raid.valtan.arena` | PASS | 3,490 ms |
+| `dev.training.ground` Lance Master | PASS | 2,667 ms |
+| `dev.training.ground` Gunslinger | PASS | 2,650 ms |
+| `dev.training.ground` Slayer | PASS | 2,667 ms |
+| `dev.training.ground` Artist | PASS | 2,682 ms |
 | Development ImGui tool smoke | SKIP | Release 미배포 계약 |
-| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
-| ProjectAudit + deep asset hash | PASS | 52 checks |
+| Gameplay/Navigation Validate | PASS | 4 players, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
+| ProjectAudit + deep asset hash | PASS | 57 checks |
 
 중간 Debug 오류창은 `CWorldBootstrap::Load`가 재사용되는 line buffer를 `string_view`로 보관해 area ID가 이후 placement 행으로 변질된 것이 원인이었다. area ID를 staging 문자열로 소유하도록 수정했고 Server 기동, contract test, Debug/Release 전체 회귀에서 재발하지 않았다.
 
-ProjectAudit 52개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1-only input, transition boundary, actor catalog, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계와 수련장 map/spawn/navigation 계약이 포함된다.
+Deep ProjectAudit 57개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1/F6 input, Data project/filter parity, transition boundary, actor catalog, 선택 class 우선/on-demand Loader, 네 class runtime Training matrix, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계와 수련장 map/spawn/navigation 계약이 포함된다.
 
 기존 경고는 third-party PDB 미포함 `LNK4099`, 혼재 인코딩 `C4819`, 일부 narrowing warning이다. Visual Studio 전역 vcpkg target의 `pwsh.exe` 탐색 메시지는 Windows PowerShell fallback 뒤 exit 0인 환경 메시지다.
 
@@ -339,34 +352,32 @@ ProjectAudit 52개에는 resource deep verify, Snapshot rollback, level parity, 
 
 다음 작업은 현재 정리와 섞지 않고 별도 PLAN/harness로 진행한다.
 
-1. Lobby 선택을 정확히 LanceMaster/Artist/Slayer/Gunslinger 네 클래스로 확장
-2. Destroyer/Yinyangshi 노출 제거와 Artist canonical ID 정규화
-3. nickname 입력 제거와 Server fallback display name 확정
-4. 네 클래스 catalog -> Loader -> clone -> remote presentation 완성
-5. 실제 runtime HUD widget을 `CCombatHUDViewModel`에 연결하고 class filter 적용
-6. Server 소유 party ID/roster와 좌상단 party HUD
-7. 동일 party를 동일 raid instance로 원자 입장시키고 실패 시 전원 rollback
-8. 나머지 클래스/스킬을 현재 action command 계약으로 확장
-9. 동적 collider, projectile, knockback/피격 판정의 Server 계약
+1. nickname 입력 제거와 Server fallback display name 확정
+2. Gunslinger/Slayer/Artist 고유 skill/action/damage/animation mapping
+3. runtime HUD overlay를 최종 아트 layout widget으로 교체
+4. Server 소유 party ID/roster와 좌상단 party HUD
+5. 동일 party를 동일 raid instance로 원자 입장시키고 실패 시 전원 rollback
+6. 동적 collider, projectile, knockback/피격 판정의 Server 계약
+7. revision과 tick-boundary commit을 포함하는 Server-authoritative balance Hot Reload
 
 잡몹과 추가 보스는 실제 요구와 별도 계획·하네스가 승인될 때까지 placeholder 계약을 만들지 않는다.
 
 ## 15. 인계 판단
 
-현재 단계의 framework, asset/data publish, player Q/W combat, Server Navigation, Valtan brain, HUD ViewModel은 자동 검증 기준으로 닫혔다. 다음 담당자는 Level/Loader/resource/map/gameplay 경계를 다시 만들지 말고 `2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 역할별 public 계약 위에서 기능을 확장해야 한다.
+현재 단계의 framework, asset/data publish, player Q/W combat, Server Navigation, Valtan brain, HUD ViewModel은 자동 검증 기준으로 닫혔다. 다음 담당자는 Level/Loader/resource/map/gameplay 경계를 다시 만들지 말고 `.md/TEAM/README.md`에서 연결한 역할별 public 계약 위에서 기능을 확장해야 한다.
 
 ## 16. 팀 최초 세팅과 Resource ZIP 인계
 
-팀원은 Git pull과 Resource pack hydrate를 한 세팅 단위로 수행한다. 최초 세팅·일일 문서 갱신 규칙은 `AGENTS.md`, 실제 명령은 `CLAUDE.md`, 역할별 시작점은 `2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`가 정본이다.
+팀원은 Git pull과 Resource pack hydrate를 한 세팅 단위로 수행한다. 최초 세팅·일일 문서 갱신 규칙은 `AGENTS.md`, 실제 명령은 `CLAUDE.md`, 역할별 시작점은 `.md/TEAM/README.md`가 정본이다.
 
 현재 배포 산출물은 다음과 같다.
 
-- pack: `lostark-resources@2026.08.03.2`
-- ZIP: `lostark-resources-2026.08.03.2.zip`
-- ZIP bytes: `2,207,843,569`
-- ZIP SHA-256: `de8f8fc4703a885891c1a3f894e1dba77bf9c50776747d4a80f8dd5baec3081a`
-- 원본 manifest: 7,738 files, 3,993,941,690 bytes
-- archive 구조 검사: 11,125 file/directory entries, `.1` 항목 0, `READY`/`manifest.json` 각 1
+- pack: `lostark-resources@2026.08.03.3`
+- ZIP: `lostark-resources-2026.08.03.3.zip`
+- ZIP bytes: `2,452,286,024`
+- ZIP SHA-256: `61d40a7cb6afda50f7b0f536d247c8c777b4317ae890a2ba52cad855342b239e`
+- 원본 manifest: 7,922 files, 4,567,118,211 bytes
+- archive 구조 검사: `lostark-resources/2026.08.03.3/{manifest.json,payload,READY}` 확인
 
 ZIP은 Git에 커밋하지 않고 팀 Drive에 checksum 파일과 함께 올린다. 팀원은 외부 pack root에 압축 해제한 뒤 `Manage-ResourcePack.ps1 -Mode Hydrate`, `-Mode Verify` 순서로 검증한다. 저장소 또는 기존 `Client/Bin/Resources` 위에 ZIP을 직접 덮어쓰지 않는다.
 
@@ -381,6 +392,20 @@ ZIP은 Git에 커밋하지 않고 팀 Drive에 checksum 파일과 함께 올린�
 - Client: `CClientReplication`, `CPlayerController`, `CNetworkPlayerCommandSink`, HUD ViewModel 사용
 - Server: 독립 `CGameRoom`, navigation projection/path, 30 Hz action/snapshot 사용
 - Lobby: `Enter Training`은 `S2C_ENTER_ACCEPTED` 이후에만 DEVELOPMENT로 전환
-- 자동 증거: protocol v4 round-trip, class-neutral bootstrap, nav bounds rejection, Q skill 승인과 cooldown HUD smoke
+- 자동 증거: protocol v5 round-trip, class-neutral bootstrap, nav bounds rejection, Q skill 승인과 cooldown HUD smoke
 
-`Resources/Map/LoL/Annie` 3파일은 `C:\Users\user\Desktop\LostArk_Legacy_Quarantine_20260803\Resources\Map_LoL_Annie`로 복구 가능하게 격리했고 `.2` lock과 ZIP에는 포함되지 않는다.
+`Resources/Map/LoL/Annie` 3파일은 `C:\Users\user\Desktop\LostArk_Legacy_Quarantine_20260803\Resources\Map_LoL_Annie`로 복구 가능하게 격리했고 `.3` lock과 ZIP에는 포함되지 않는다.
+
+## 18. 팀 문서 입구와 네 클래스 Lobby roster
+
+살아 있는 팀 public 계약은 `.md/TEAM/README.md`를 단일 입구로 통합했다. 담당 인터페이스는 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`, Bern/Valtan/Training의 레이어 보유 현황과 optional/missing 경계는 `AREA_DATA_LAYER_GUIDE.md`가 소유한다. 날짜별 PLAN/RESULT는 당시 증거이므로 기존 위치에 보존한다.
+
+Lobby는 Lance Master, Gunslinger, Slayer, Artist 네 slot을 모두 표시하고 선택한다. `.3` pack에는 네 class의 body/equipment/weapon binary가 있고 Character/Server catalog도 네 class를 지원하므로 모두 Bern/Valtan/Training에 진입할 수 있다. Loader는 선택 class를 우선 로드하고 remote class는 첫 spawn에서 한 번만 admission한다. 비-Lance profile 수치는 고유 skill 계약 전의 명시적 training baseline이며 누락 class를 LanceMaster로 대체하는 silent identity fallback은 만들지 않았다.
+
+일반 Monster, wave/증분 spawn, trigger, Area별 balance override, 제품 NPC presentation은 아직 구현되지 않았다. gameplay placement에서 NPC/boss 행이 없으면 생성하지 않고, Valtan deploy pair가 둘 다 없으면 skip하는 현재 동작과 미지원 기능을 구분해 Area 가이드에 기록했다.
+
+## 19. Data 탐색과 밸런스 튜닝 경계
+
+팀원이 pull 직후 수치 정본을 찾을 수 있도록 Client 프로젝트의 `96.DataFiles` 필터에 Git 관리 대상 `Data` 파일을 `None` 항목으로 연결했다. `Data/Balance`를 수정한 뒤 `Publish-GameplayBalance.ps1 -Mode Validate`, `-Mode Publish`, Server 재기동, `dev.training.ground` 확인 순서로 튜닝한다. runtime HUD는 Server snapshot과 class별 정의를 함께 보여 주므로 HP/resource/cooldown/damage/boss 상태를 인게임에서 검증할 수 있다.
+
+실행 중 Hot Reload는 아직 켜지 않았다. Client만 JSON을 다시 읽으면 Server 판정과 표시 revision이 갈라지고 진행 중 action/cooldown/boss phase의 교체 정책도 없기 때문이다. 활성화 조건은 balance revision, 별도 Server stage, room tick 경계 commit, 진행 중 상태 pinning, snapshot revision, Client 동기 commit, rollback harness이며 정본은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`다.

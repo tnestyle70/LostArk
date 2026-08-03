@@ -2,6 +2,10 @@
 #include "imgui.h"
 #endif
 
+#ifndef _DEBUG
+#include "imgui.h"
+#endif
+
 #include "NetworkManager.h"
 #include "ClientLaunchOptions.h"
 #include "MainApp.h"
@@ -30,9 +34,9 @@
 #include <algorithm>
 #include <fstream>
 
-#ifdef _DEBUG
 namespace
 {
+#ifdef _DEBUG
     bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
     {
         if (nullptr == hWnd)
@@ -44,8 +48,22 @@ namespace
 
         return GetCurrentProcessId() == dwProcessId;
     }
-}
 #endif
+
+    const char_t* GetCharacterClassDisplayName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "Lance Master";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		default: return "Unknown";
+		}
+	}
+}
 
 Client::CMainApp::CMainApp()
 {
@@ -211,6 +229,8 @@ HRESULT CMainApp::Render()
 
     if (nullptr != m_pImGuiLayer)
     {
+		RenderCombatHUD();
+
 #ifdef _DEBUG
         if (m_bDeveloperToolsVisible)
         {
@@ -244,6 +264,96 @@ HRESULT CMainApp::Render()
         return E_FAIL;
 
     return S_OK;
+}
+
+void CMainApp::RenderCombatHUD()
+{
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+	{
+		return;
+	}
+
+	const Client::HUD_PLAYER_STATE& player =
+		Client::CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid ||
+		0u == player.iMaximumHp ||
+		0u == player.iMaximumResource)
+	{
+		return;
+	}
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::SetNextWindowPos(
+		ImVec2(viewport->WorkPos.x + 20.f,
+			viewport->WorkPos.y + viewport->WorkSize.y - 20.f),
+		ImGuiCond_Always,
+		ImVec2(0.f, 1.f));
+	ImGui::SetNextWindowBgAlpha(0.78f);
+
+	constexpr ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoInputs;
+
+	if (ImGui::Begin("##RuntimeCombatHUD", nullptr, flags))
+	{
+		ImGui::Text("%s", GetCharacterClassDisplayName(
+			player.eCharacterClass));
+		ImGui::Text("HP  %u / %u", player.iCurrentHp, player.iMaximumHp);
+		ImGui::ProgressBar(
+			static_cast<float>(player.iCurrentHp) /
+			static_cast<float>(player.iMaximumHp),
+			ImVec2(280.f, 0.f));
+		ImGui::Text(
+			"Resource  %u / %u",
+			player.iCurrentResource,
+			player.iMaximumResource);
+		ImGui::ProgressBar(
+			static_cast<float>(player.iCurrentResource) /
+			static_cast<float>(player.iMaximumResource),
+			ImVec2(280.f, 0.f));
+
+		if (player.Skills.empty())
+		{
+			ImGui::TextDisabled("No server skill bindings for this class.");
+		}
+		else
+		{
+			for (const Client::HUD_SKILL_STATE& skill : player.Skills)
+			{
+				const std::uint32_t remainingTicks =
+					skill.iCooldownEndTick > player.iServerTick ?
+					skill.iCooldownEndTick - player.iServerTick : 0u;
+				if (0u == remainingTicks)
+				{
+					ImGui::Text(
+						"[%s] %s  READY  DMG %u",
+						skill.strInputSlot.c_str(),
+						skill.strDisplayName.c_str(),
+						skill.iDamage);
+				}
+				else
+				{
+					ImGui::Text(
+						"[%s] %s  %.1fs  DMG %u",
+						skill.strInputSlot.c_str(),
+						skill.strDisplayName.c_str(),
+						static_cast<float>(remainingTicks) / 30.f,
+						skill.iDamage);
+				}
+			}
+		}
+	}
+	ImGui::End();
 }
 
 HRESULT CMainApp::Ready_Fonts()
@@ -799,7 +909,7 @@ void CMainApp::RenderDeveloperTools()
         }
     }
     ImGui::TextDisabled(
-        "F1 is the only global function-key binding.");
+        "F1: Developer Tools  |  F6: Follow/Free Camera");
 
     ImGui::End();
 }

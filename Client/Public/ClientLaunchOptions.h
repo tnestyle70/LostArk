@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketType.h"
 
 #include <filesystem>
 #include <optional>
@@ -30,6 +31,7 @@ struct CLIENT_LAUNCH_OPTIONS final
 	std::string strScenarioId = "front.lobby";
 	std::optional<std::filesystem::path> ReportPath;
 	std::optional<std::wstring> EffectAssetId;
+	std::optional<LostArk::Shared::CHARACTER_CLASS_ID> AutomatedCharacterClass;
 	uint32_t iTimeoutMs = 30000;
 	bool_t isSmokeRun = false;
 	bool_t isAutoActivate = true;

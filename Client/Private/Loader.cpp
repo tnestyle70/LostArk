@@ -14,8 +14,10 @@
 #include "MapPlacementRuntime.h"
 #include "MapStaticBatchObject.h"
 #include "Navigation.h"
+#include "NetworkManager.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
+#include "PlayableCharacterAssetService.h"
 #include "RuntimeAssetRoot.h"
 #include "Valtan.h"
 
@@ -531,6 +533,23 @@ HRESULT CLoader::Ready_StaticMeshShader(
 HRESULT CLoader::Ready_Character_Rendering(
 	const uint32_t iLevelIndex)
 {
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	const CLIENT_SCENARIO scenario = CClientLaunchOptions::Get().eScenario;
+	const bool_t isNetworkScenario =
+		CLIENT_SCENARIO::WORLD_BERN == scenario ||
+		CLIENT_SCENARIO::RAID_VALTAN_ARENA == scenario ||
+		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == scenario;
+	const CHARACTER_CLASS_ID selectedClass = isNetworkScenario ?
+		CNetworkManager::Get().Get_LocalCharacterClass() :
+		CHARACTER_CLASS_ID::LANCE_MASTER;
+	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+		selectedClass))
+	{
+		return E_INVALIDARG;
+	}
+
+	CPlayableCharacterAssetService::Begin_LevelLoad(iLevelIndex);
+
 	if (FAILED(CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
@@ -541,7 +560,12 @@ HRESULT CLoader::Ready_Character_Rendering(
 			VTXANIMMESH::Elements,
 			VTXANIMMESH::iNumElements))) ||
 		FAILED(Ready_Character_Shared_Prototypes(iLevelIndex)) ||
-		FAILED(Ready_LanceMaster_Prototypes(iLevelIndex)))
+		FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			selectedClass,
+			&m_isCancellationRequested)))
 	{
 		return E_FAIL;
 	}
@@ -564,96 +588,6 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 			iLevelIndex,
 			TEXT("Prototype_GameObject_Character"),
 			CCharacter::Create(m_pDevice, m_pContext))))
-	{
-		return E_FAIL;
-	}
-
-	return S_OK;
-}
-
-HRESULT CLoader::Ready_LanceMaster_Prototypes(
-	const uint32_t iLevelIndex)
-{
-	const CHARACTER_ACTOR_ENTRY* pActor =
-		CActorCatalog::Find_Character(
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER);
-	if (nullptr == pActor || pActor->runtimeStatus != "supported")
-		return E_FAIL;
-
-	const matrix_t characterTransform =
-		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
-		XMMatrixRotationY(XMConvertToRadians(-90.f));
-
-	const std::string bodyPath = ResolveAssetPath(
-		pActor->bodyModel);
-	if (bodyPath.empty())
-		return E_FAIL;
-
-	auto pBodyModel = CModel::Create(
-		m_pDevice,
-		m_pContext,
-		MODEL::ANIM,
-		bodyPath.c_str(),
-		characterTransform);
-	if (nullptr == pBodyModel ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-			iLevelIndex,
-			TEXT("Prototype_Component_Model_LanceMaster"),
-			std::move(pBodyModel))))
-	{
-		return E_FAIL;
-	}
-
-	static const tchar_t* EQUIPMENT_PROTOTYPE_TAGS[] =
-	{
-		TEXT("Prototype_Component_Model_LanceMaster_Upper"),
-		TEXT("Prototype_Component_Model_LanceMaster_Lower"),
-		TEXT("Prototype_Component_Model_LanceMaster_Arm"),
-		TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
-		TEXT("Prototype_Component_Model_LanceMaster_Helmet")
-	};
-
-	if (pActor->equipmentModels.size() !=
-		std::size(EQUIPMENT_PROTOTYPE_TAGS))
-	{
-		return E_FAIL;
-	}
-
-	for (size_t index = 0;
-		index < pActor->equipmentModels.size(); ++index)
-	{
-		if (m_isCancellationRequested.load(std::memory_order_acquire))
-			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-
-		const std::string modelPath =
-			ResolveAssetPath(pActor->equipmentModels[index]);
-		if (modelPath.empty() ||
-			FAILED(CGameInstance::Get().Add_Prototype(
-				iLevelIndex,
-				EQUIPMENT_PROTOTYPE_TAGS[index],
-				CModel::Create(
-					m_pDevice,
-					m_pContext,
-					MODEL::ANIM,
-					modelPath.c_str(),
-					characterTransform))))
-		{
-			return E_FAIL;
-		}
-	}
-
-	const std::string weaponPath = ResolveAssetPath(
-		pActor->weaponModel);
-	if (weaponPath.empty() ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-			iLevelIndex,
-			TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
-			CModel::Create(
-				m_pDevice,
-				m_pContext,
-				MODEL::NONANIM,
-				weaponPath.c_str(),
-				XMMatrixScaling(100.f, 100.f, 100.f)))))
 	{
 		return E_FAIL;
 	}

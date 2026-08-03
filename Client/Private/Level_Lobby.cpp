@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "NetworkManager.h"
+#include "ClientLaunchOptions.h"
 #include "Level_Lobby.h"
 
 #include "GameInstance.h"
@@ -26,8 +27,8 @@ namespace
         case CHARACTER_CLASS_ID::GUNSLINGER:
             return "Gunslinger";
 
-        case CHARACTER_CLASS_ID::DESTROYER:
-            return "Destroyer";
+        case CHARACTER_CLASS_ID::SLAYER:
+            return "Slayer";
 
         case CHARACTER_CLASS_ID::ARTIST:
             return "Artist";
@@ -115,19 +116,46 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
 
     m_pCamera = camera;
 
-    return Select_Character(0) ? S_OK : E_FAIL;
+    int32_t selectedIndex = 0;
+    if (CClientLaunchOptions::Get().AutomatedCharacterClass.has_value())
+    {
+        const auto selected = find_if(
+            m_vecCharacters.begin(),
+            m_vecCharacters.end(),
+            [](const LobbyCharacterInfo& character)
+            {
+                return character.m_eClass ==
+                    *CClientLaunchOptions::Get().AutomatedCharacterClass;
+            });
+        if (selected == m_vecCharacters.end())
+            return E_FAIL;
+        selectedIndex = static_cast<int32_t>(
+            distance(m_vecCharacters.begin(), selected));
+    }
+
+    return Select_Character(selectedIndex) ? S_OK : E_FAIL;
 }
 
 HRESULT CLevel_Lobby::Ready_CharacterSlots()
 {
-    LobbyCharacterInfo characterInfo{};
+    using LostArk::Shared::CHARACTER_CLASS_ID;
+    constexpr CHARACTER_CLASS_ID classes[] =
+    {
+        CHARACTER_CLASS_ID::LANCE_MASTER,
+        CHARACTER_CLASS_ID::GUNSLINGER,
+        CHARACTER_CLASS_ID::SLAYER,
+        CHARACTER_CLASS_ID::ARTIST,
+    };
 
-    characterInfo.m_iSlotIndex = 0;
-    characterInfo.m_eClass = LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
-    characterInfo.m_pCharacter = nullptr;
-    characterInfo.m_strNickName.clear();
-
-    m_vecCharacters.push_back(move(characterInfo));
+    m_vecCharacters.clear();
+    m_vecCharacters.reserve(4);
+    for (size_t index = 0; index < 4; ++index)
+    {
+        LobbyCharacterInfo characterInfo{};
+        characterInfo.m_iSlotIndex = static_cast<int32_t>(index);
+        characterInfo.m_eClass = classes[index];
+        m_vecCharacters.push_back(move(characterInfo));
+    }
 
     return S_OK;
 }
@@ -168,6 +196,13 @@ bool_t CLevel_Lobby::Request_EnterWorld(
 
     LobbyCharacterInfo& characterInfo =
         m_vecCharacters[m_iSelectedCharacterIndex];
+    if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+        characterInfo.m_eClass))
+    {
+        m_strNetworkStatus =
+            "Selected class is reserved; its runtime asset and server profile are not admitted.";
+        return false;
+    }
     characterInfo.m_strNickName =
         '\0' == m_szNickName[0] ? "Player" : m_szNickName;
 
@@ -301,8 +336,12 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
     {
         const LobbyCharacterInfo& characterInfo = m_vecCharacters[i];
 
+        const bool_t isRuntimeSupported =
+            LostArk::Shared::Is_Supported_Playable_Character_Class(
+                characterInfo.m_eClass);
         const string label =
             string(Get_CharacterClassName(characterInfo.m_eClass)) +
+            (isRuntimeSupported ? " [Ready]" : " [Asset Pending]") +
             "##CharacterSlot" +
             to_string(characterInfo.m_iSlotIndex);
 
@@ -320,6 +359,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
     const bool_t hasSelection =
         m_iSelectedCharacterIndex >= 0 &&
         static_cast<size_t>(m_iSelectedCharacterIndex) < m_vecCharacters.size();
+    const bool_t canEnterWorld =
+        hasSelection &&
+        LostArk::Shared::Is_Supported_Playable_Character_Class(
+            m_vecCharacters[m_iSelectedCharacterIndex].m_eClass);
 
     ImGui::BeginDisabled(!hasSelection);
 
@@ -334,7 +377,7 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::EndDisabled();
 
-    ImGui::BeginDisabled(!hasSelection);
+    ImGui::BeginDisabled(!canEnterWorld);
 
     if (ImGui::Button("Enter Bern"))
     {
@@ -373,6 +416,11 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
     {
         ImGui::TextDisabled(
             "Select a character first.");
+    }
+    else if (!canEnterWorld)
+    {
+        ImGui::TextDisabled(
+            "This class needs its resource pack, CharacterSpec, Loader prototypes, and Server player profile before entry.");
     }
 
     ImGui::TextWrapped("%s", m_strNetworkStatus.c_str());

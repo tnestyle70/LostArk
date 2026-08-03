@@ -65,6 +65,8 @@ public:
 	[[nodiscard]] int Get_LastErrorCode() const;
 	[[nodiscard]] LostArk::Shared::PLAYER_ID Get_LocalPlayerId() const;
 	[[nodiscard]] LostArk::Shared::NET_ENTITY_ID Get_LocalEntityId() const;
+	[[nodiscard]] LostArk::Shared::CHARACTER_CLASS_ID
+		Get_LocalCharacterClass() const;
 
 
 private:
@@ -101,5 +103,7 @@ private:
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	LostArk::Shared::WORLD_ID m_eWorldId =
 		LostArk::Shared::WORLD_ID::END;
+	LostArk::Shared::CHARACTER_CLASS_ID m_eLocalCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
 
 };

@@ -78,6 +78,24 @@ namespace
 		outValue = parsedValue;
 		return true;
 	}
+
+	bool_t ParseCharacterClass(
+		const std::wstring& value,
+		LostArk::Shared::CHARACTER_CLASS_ID& outClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		if (L"lance-master" == value)
+			outClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		else if (L"gunslinger" == value)
+			outClass = CHARACTER_CLASS_ID::GUNSLINGER;
+		else if (L"slayer" == value)
+			outClass = CHARACTER_CLASS_ID::SLAYER;
+		else if (L"artist" == value)
+			outClass = CHARACTER_CLASS_ID::ARTIST;
+		else
+			return false;
+		return true;
+	}
 }
 
 HRESULT CClientLaunchOptions::Initialize()
@@ -185,6 +203,7 @@ bool_t CClientLaunchOptions::Parse(
 	bool_t hasScenario = false;
 	bool_t hasTimeout = false;
 	bool_t hasReport = false;
+	bool_t hasCharacterClass = false;
 
 	for (int32_t index = 1; index < argumentCount; ++index)
 	{
@@ -211,6 +230,26 @@ bool_t CClientLaunchOptions::Parse(
 		if (L"--smoke" == argument)
 		{
 			outOptions.isSmokeRun = true;
+			continue;
+		}
+		if (StartsWith(argument, L"--character-class="))
+		{
+			if (hasCharacterClass)
+			{
+				outError = L"--character-class may be specified only once.";
+				return false;
+			}
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+				LostArk::Shared::CHARACTER_CLASS_ID::END;
+			const std::wstring value = argument.substr(
+				std::wstring(L"--character-class=").size());
+			if (!ParseCharacterClass(value, characterClass))
+			{
+				outError = L"Unknown character class: " + value;
+				return false;
+			}
+			outOptions.AutomatedCharacterClass = characterClass;
+			hasCharacterClass = true;
 			continue;
 		}
 		if (StartsWith(argument, L"--timeout-ms="))

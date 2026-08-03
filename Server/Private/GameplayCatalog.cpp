@@ -76,9 +76,17 @@ namespace
 		const std::string_view value,
 		LostArk::Shared::CHARACTER_CLASS_ID& output)
 	{
-		if ("LANCE_MASTER" != value)
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		if ("LANCE_MASTER" == value)
+			output = CHARACTER_CLASS_ID::LANCE_MASTER;
+		else if ("GUNSLINGER" == value)
+			output = CHARACTER_CLASS_ID::GUNSLINGER;
+		else if ("SLAYER" == value)
+			output = CHARACTER_CLASS_ID::SLAYER;
+		else if ("ARTIST" == value)
+			output = CHARACTER_CLASS_ID::ARTIST;
+		else
 			return false;
-		output = LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
 		return true;
 	}
 }

@@ -11,6 +11,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 | 빌드, Prototype/Clone, Level/Layer, Binary Asset, 리소스 배포 | `CLAUDE.md` |
 | 계획서, 설계서, 구현 가이드 | 아래 `계획서 규칙`에서 발견한 첫 번째 규칙 파일 |
 | 기존 작업 재개 | `.md/GB/<MM-DD>/`의 대응 `*_PLAN.md`, `*_RESULT.md` |
+| 팀 담당 인터페이스, Area 데이터 레이어, 신규 팀원 인계 | `.md/TEAM/README.md`에서 현재 정본 순서대로 읽기 |
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
 | 맵 에셋이 생성됐지만 안 보임, diffuse 누락, 스케일 오류, 레거시 런타임 혼선 | `.md/GB/07-29/gotchas.md` |
 
@@ -22,7 +23,8 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 |---|---|---|
 | `AGENTS.md` | 팀 전체의 금지 경계, 작업 절차, 완료 조건 | 팀 규칙이나 public 경계가 바뀔 때만 |
 | `CLAUDE.md` | 실제 프로젝트 구조, 최초 세팅, 빌드·런타임 사용법 | 경로, 명령, 실행 구조가 바뀔 때 |
-| `TEAM_GAMEPLAY_INTERFACE_HANDBOOK` | 담당별 입력·출력 인터페이스와 데이터 정본 | 팀원이 소비하는 public 계약이 바뀔 때 |
+| `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당별 입력·출력 인터페이스와 데이터 정본 | 팀원이 소비하는 public 계약이 바뀔 때 |
+| `.md/TEAM/AREA_DATA_LAYER_GUIDE.md` | Area별 optional layer, MapTool과 publisher 지원 범위 | Area 데이터 계약이 바뀔 때 |
 | 대응 `*_PLAN.md` | 아직 구현하지 않은 목표와 전체 코드 | 구현 전에 |
 | 대응 `*_RESULT.md` | 실제 완료 상태, 검증 증거, 남은 경계 | 검증 후 |
 
@@ -90,10 +92,11 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 레벨은 `STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 catalog, registry, loader, smoke 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `mapLoadBounds`로 선언한 진입/전투 범위와 배경만 로드한다. `dev.map.active`만 전체 맵을 열 수 있다. Loader와 runtime placement는 반드시 같은 `MAP_LOAD_SCOPE`를 소비한다.
 - 레벨 전환 요청은 `CSceneTransitionService`로 보낸다. `CMainApp`과 `CLevel_Loading` 외에는 `Change_Level`을 직접 호출하지 않는다.
-- Debug 전역 도구 단축키는 F1뿐이다. F2~F12로 레벨, 맵, 카메라, 프로파일러, 도구 상태를 바꾸지 않는다.
+- 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, UI` 정확히 여섯 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
 - UI와 gameplay 설정은 JSON만 사용한다. `.cfg` 신규 추가와 runtime cfg reader는 금지한다.
+- Git 관리 대상 `Data` 원본은 Client 프로젝트의 `96.DataFiles` 아래 `None` 항목으로만 노출한다. 프로젝트별 복사본이나 build output `Content` 항목으로 만들지 않는다.
 - MapTool은 `Data/Maps/Authoring`에 저장한다. 검증/publish 도구만 `Client/Bin/DataFiles/Map` 런타임 문서를 교체할 수 있다.
 
 ## 팀 인터페이스와 담당 영역
@@ -118,6 +121,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 저장 ID에 pointer, Prototype tag, vector index를 쓰지 않는다. switch fallback으로 모르는 enum/ID를 정상값처럼 처리하지 않는다.
 - 파일/네트워크/레벨 로드는 실패 이유를 보존한다. 무한 대기, 부분 commit, silent identity fallback을 금지한다.
 - 새 public 계약에는 정상 사례, 잘못된 version/ID/path, 중복, 중간 실패 rollback을 검증하는 harness 또는 audit check를 함께 추가한다.
+- 밸런스 파일을 매 프레임 읽거나 Client만 reload하지 않는다. runtime Hot Reload는 revision, Server stage, room tick commit, 진행 중 action 정책, snapshot revision, Client 동기화와 rollback harness가 한 수직 슬라이스로 닫힐 때만 활성화한다.
 - 완료 전 `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`을 실행한다. 리소스 변경이면 `-DeepAssetHash`를 추가한다.
 
 ## Git·문서·완료 보고 계약

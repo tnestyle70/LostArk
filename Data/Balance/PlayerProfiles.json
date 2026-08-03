@@ -7,6 +7,24 @@
       "maximumHp": 5000,
       "maximumResource": 100,
       "moveSpeed": 6.0
+    },
+    {
+      "characterClass": "GUNSLINGER",
+      "maximumHp": 5000,
+      "maximumResource": 100,
+      "moveSpeed": 6.0
+    },
+    {
+      "characterClass": "SLAYER",
+      "maximumHp": 5000,
+      "maximumResource": 100,
+      "moveSpeed": 6.0
+    },
+    {
+      "characterClass": "ARTIST",
+      "maximumHp": 5000,
+      "maximumResource": 100,
+      "moveSpeed": 6.0
     }
   ]
 }

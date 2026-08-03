@@ -224,6 +224,27 @@ namespace
 			0 == reader.Get_RemainingSize(),
 			"Consume Entire Payload");
 	}
+
+	void Test_PlayableCharacterRoster(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::LANCE_MASTER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::GUNSLINGER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::SLAYER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::ARTIST),
+			"Accept Four Playable Character Classes");
+
+		testRunner.Require(
+			!Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::DESTROYER) &&
+			!Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::END),
+			"Reject Reserved Character Classes");
+	}
 	//유효한 입력에 대한 테스트
 	void Test_EnterAcceptedRoundTrip(
 		TEST_RUNNER& testRunner)
@@ -1240,6 +1261,7 @@ int main()
 	TEST_RUNNER testRunner{};
 
 	Test_EnterWorldRoundTrip(testRunner);
+	Test_PlayableCharacterRoster(testRunner);
 	Test_InvalidPayloads(testRunner);
 
 	Test_EnterAcceptedRoundTrip(testRunner);

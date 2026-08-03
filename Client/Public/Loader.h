@@ -3,8 +3,10 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "MapLoadScope.h"
+#include "Network/PacketType.h"
 
 #include <atomic>
+#include <cstddef>
 #include <mutex>
 
 NS_BEGIN(Client)
@@ -68,7 +70,6 @@ private:
 	HRESULT Ready_StaticMeshShader(uint32_t iLevelIndex);
 	HRESULT Ready_Character_Rendering(uint32_t iLevelIndex);
 	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
-	HRESULT Ready_LanceMaster_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
 	void Set_Status(const tchar_t* pStatus);
 	void Copy_Status(tchar_t* pOutput, size_t outputCount) const;

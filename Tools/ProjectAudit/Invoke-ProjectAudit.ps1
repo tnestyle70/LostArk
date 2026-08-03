@@ -377,6 +377,23 @@ try {
     [xml]$serverFilters = Get-Content -LiteralPath 'Server\Default\Server.vcxproj.filters'
     Add-Check 'projects.filters-xml' ($null -ne $clientFilters.Project -and $null -ne $engineFilters.Project -and $null -ne $serverFilters.Project) 'XML parsed'
 
+	$expectedDataIncludes = @(& git ls-files --cached --others --exclude-standard -- Data |
+		ForEach-Object { '..\..\' + $_.Replace('/', '\') } | Sort-Object)
+	$clientDataItems = @($clientItems | Where-Object Include -Like '..\..\Data\*')
+	$actualDataIncludes = @($clientDataItems | ForEach-Object Include | Sort-Object)
+	$filterManager = [Xml.XmlNamespaceManager]::new($clientFilters.NameTable)
+	$filterManager.AddNamespace('m', 'http://schemas.microsoft.com/developer/msbuild/2003')
+	$clientDataFilterItems = @($clientFilters.SelectNodes('//m:None', $filterManager) |
+		Where-Object Include -Like '..\..\Data\*')
+	$invalidDataFilters = @($clientDataFilterItems | Where-Object {
+		$null -eq $_.Filter -or -not $_.Filter.StartsWith('96.DataFiles') })
+	Add-Check 'projects.data-source-visibility' (
+		$clientDataItems.Count -eq $expectedDataIncludes.Count -and
+		($actualDataIncludes -join "`n") -eq ($expectedDataIncludes -join "`n") -and
+		@($clientDataItems | Where-Object LocalName -ne 'None').Count -eq 0 -and
+		$clientDataFilterItems.Count -eq $expectedDataIncludes.Count -and
+		$invalidDataFilters.Count -eq 0) "expected=$($expectedDataIncludes.Count) project=$($clientDataItems.Count) filters=$($clientDataFilterItems.Count)"
+
     $activeSourceRoots = @('Client\Private', 'Client\Public', 'Engine\Private', 'Engine\Public')
     $activeFiles = @(Get-ChildItem -Path $activeSourceRoots -Recurse -File |
         Where-Object Extension -in @('.cpp', '.h'))
@@ -414,9 +431,13 @@ try {
     $animationLegacyHits = @($activeFiles | Select-String -Pattern 'DataFiles[\\/]Anim')
     Add-Check 'animation.data-boundary' ($animationFiles.Count -gt 0 -and $animationLegacyFiles.Count -eq 0 -and $animationLegacyHits.Count -eq 0) "data=$($animationFiles.Count) legacyFiles=$($animationLegacyFiles.Count) legacyRefs=$($animationLegacyHits.Count)"
 
-    $functionKeyHits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F([2-9]|1[0-2])\b')
+    $functionKeyHits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F([2-5]|[7-9]|1[0-2])\b')
     $f1Hits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F1\b')
-    Add-Check 'input.f1-tool-hub-only' ($functionKeyHits.Count -eq 0 -and $f1Hits.Count -eq 1) "forbidden=$($functionKeyHits.Count) f1=$($f1Hits.Count)"
+    $f6Hits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F6\b')
+    Add-Check 'input.official-function-keys' (
+		$functionKeyHits.Count -eq 0 -and
+		$f1Hits.Count -eq 1 -and
+		$f6Hits.Count -eq 1) "forbidden=$($functionKeyHits.Count) f1=$($f1Hits.Count) f6=$($f6Hits.Count)"
 
     $changeLevelHits = @($clientSourceFiles | Select-String -Pattern 'Change_Level\(')
     $unexpectedChangeLevelHits = @($changeLevelHits | Where-Object {
@@ -484,6 +505,9 @@ try {
 	Add-Check 'harness.server-gameplay-contract' (
 		$regressionHarnessSource -match '--contract-test' -and
 		(Test-Path -LiteralPath 'Server\Private\ServerGameplayContractTests.cpp')) 'regression runs server skill, damage, boss, and navigation contracts'
+	Add-Check 'harness.playable-class-runtime-matrix' (
+		$regressionHarnessSource -match "'lance-master', 'gunslinger', 'slayer', 'artist'" -and
+		$regressionHarnessSource -match '--character-class=\$CharacterClass') 'training smoke decodes and enters with each supported playable class'
 
     $missingHarnessScenarios = @($requiredScenarios | Where-Object {
         $regressionHarnessSource -notmatch ([regex]::Escape("'$_'")) })
@@ -507,17 +531,43 @@ try {
         }
     }
     Add-Check 'actors.catalog-assets' ($missingActorAssets.Count -eq 0) "missing=$($missingActorAssets -join ',')"
+	$lobbySource = Get-Content -LiteralPath 'Client\Private\Level_Lobby.cpp' -Raw
+	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
+	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
+	Add-Check 'actors.playable-roster' (
+		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST' -and
+		$rosterStatus -eq 'supported,supported,supported,supported' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
+		$lobbySource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
+	$hudViewModelHeader = Get-Content -LiteralPath 'Client\Public\CombatHUDViewModel.h' -Raw
+	$hudViewModelSource = Get-Content -LiteralPath 'Client\Private\CombatHUDViewModel.cpp' -Raw
+	Add-Check 'hud.selected-class-boundary' (
+		$hudViewModelHeader -match 'HUD_PLAYER_STATE[\s\S]{0,300}eCharacterClass' -and
+		$hudViewModelSource -match 'definition\.eCharacterClass != characterClass' -and
+		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD carries local class and filters skill definitions by class'
 	$actorCatalogSource = Get-Content -LiteralPath 'Client\Private\ActorCatalog.cpp' -Raw
 	$actorLoaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
+	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
 	$replicationSource = Get-Content -LiteralPath 'Client\Private\ClientReplication.cpp' -Raw
-	$hardcodedActorModelHits = @($actorLoaderSource | Select-String -AllMatches -Pattern 'Character/[A-Za-z0-9_./-]+\.wmodel')
+	$hardcodedActorModelHits = @(($actorLoaderSource + $playableAssetServiceSource) |
+		Select-String -AllMatches -Pattern 'Character/[A-Za-z0-9_./-]+\.wmodel')
 	Add-Check 'actors.runtime-catalog-boundary' (
 		$actorCatalogSource -match 'Actors/CharacterCatalog\.json' -and
 		$actorCatalogSource -match 'Actors/BossCatalog\.json' -and
-		$actorLoaderSource -match 'CActorCatalog::Find_Character' -and
+		$playableAssetServiceSource -match 'CActorCatalog::Find_Character' -and
 		$actorLoaderSource -match 'CActorCatalog::Find_Boss' -and
 		$replicationSource -match 'CActorCatalog::Find_Boss\(spawned\.strArchetypeId\)' -and
 		$hardcodedActorModelHits.Count -eq 0) "hardcodedModelPaths=$($hardcodedActorModelHits.Count)"
+	Add-Check 'actors.selected-first-on-demand-load' (
+		$actorLoaderSource -match 'Get_LocalCharacterClass\(\)' -and
+		$actorLoaderSource -match 'CPlayableCharacterAssetService::Begin_LevelLoad' -and
+		$actorLoaderSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
+		$replicationSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
+		$playableAssetServiceSource -match 'g_ReadyClassesByLevel') 'loader admits selected class; replication admits a remote class once'
 
     $worldValidationPassed = $true
     $worldValidationDetail = ''

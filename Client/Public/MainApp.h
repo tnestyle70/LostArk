@@ -74,6 +74,7 @@ private:
 	void UpdateSmokeHarness();
 	void CompleteSmokeHarness(bool_t succeeded, const char_t* pReason);
 	HRESULT ReadyImGuiRuntime();
+	void RenderCombatHUD();
 
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();

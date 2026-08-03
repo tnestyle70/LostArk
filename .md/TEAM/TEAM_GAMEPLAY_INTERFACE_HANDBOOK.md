@@ -120,6 +120,8 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
+Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 수치 튜닝 절차와 무중단 reload를 아직 활성화하지 않은 이유는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
+
 ## 7. Valtan Boss
 
 제품 발탄의 transform, target, action, phase, HP, damage는 Server authority다.
@@ -151,12 +153,14 @@ gameplay kind는 `playerSpawn`, `npc`, `boss`만 지원한다. placement에는 s
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
+Area별 optional layer, 현재 Bern/Valtan/Training 데이터 보유 현황, Monster/wave/trigger와 NPC presentation의 미지원 경계는 `AREA_DATA_LAYER_GUIDE.md`를 정본으로 사용한다.
+
 ## 9. 데이터 변경 절차
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -ValidateOnly
-powershell -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -ValidateOnly
-powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -ValidateOnly
+powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
+powershell -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Validate
+powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -Mode Validate
 ```
 
 세 publisher는 parse → validate → stage → commit을 따른다. unknown field, schema/version 오류, 중복 stable ID, 잘못된 참조, non-finite 위치, navigation 밖 spawn을 정상값으로 보정해 숨기지 않고 실패시킨다.
@@ -229,12 +233,13 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist 네 선택 slot, 네 class Loader/Server profile, class별 runtime HUD
 
 별도 수직 슬라이스:
 
-- 정식 캐릭터 선택 UI와 LanceMaster 외 클래스 slot/preview
-- 실제 runtime HUD widget의 최종 레이아웃 연결
-- 나머지 세 클래스와 추가 스킬
+- Gunslinger/Slayer/Artist 고유 skill/action/damage balance와 animation mapping
+- runtime HUD widget의 최종 아트 레이아웃 연결
+- 추가 스킬
 - party/raid admission과 roster
 - 동적 collider, projectile, knockback/피격 판정
 - 잡몹 및 추가 boss pattern

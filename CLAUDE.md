@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
   -Configuration Debug -DeepAssetHash
 ```
 
-팀 역할별 시작 파일과 금지 경계는 `.md/GB/08-03/2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`를 따른다.
+팀 문서의 단일 입구는 `.md/TEAM/README.md`다. 역할별 시작 파일과 금지 경계는 그 폴더의 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`, Area별 optional layer와 MapTool 지원 범위는 `AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
 ## 빌드
 
@@ -209,7 +209,7 @@ enum class LEVEL { STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT, END 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v4 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v5 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
@@ -223,6 +223,10 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 - smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
+
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist 네 slot이 보이며 네 class 모두 immutable resource pack, Client Loader/Spec, Server player profile까지 연결되어 Bern/Valtan/Training에 진입할 수 있다. class별 스킬은 `PlayerSkills.json`에 실제 Server 계약이 있는 항목만 HUD와 입력에 노출하며, 누락 class를 Lance Master로 대체하지 않는다.
+
+Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
 ### 바이너리 에셋 파이프라인
 
@@ -246,7 +250,9 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 **F1 하나로만** 토글한다. Lobby/Bern/Valtan/Development 전환과 Map/Animation/Effect/UI 도구 선택은 이 허브에서 수행한다. F2~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. 자동 검증은 `--smoke --scenario=<stable-id> --timeout-ms=<ms> --report=<path>`만 사용한다. 구형 별칭이나 F키 이동을 다시 만들지 않는다.
+`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. 자동 검증은 `--smoke --scenario=<stable-id> --timeout-ms=<ms> --report=<path>`만 사용한다. 구형 별칭이나 추가 F키 이동을 다시 만들지 않는다.
+
+네 class binary 진입 검증은 smoke 전용 `--character-class=lance-master|gunslinger|slayer|artist`를 사용한다. 정식 사용자는 Lobby UI에서 선택하며 이 옵션을 gameplay shortcut으로 사용하지 않는다.
 
 ### 새 GameObject 추가
 
@@ -295,6 +301,8 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
 - 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`만 runtime bootstrap을 생성한다.
+- Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
+- 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 - 서버 길찾기: 신규 Area는 `Data/Navigation/<AreaId>.navgrid.json` authoring이 정본이며 `Publish-ServerNavigation.ps1`이 runtime navgrid를 결정적으로 생성한다. 기존 Valtan binary source도 같은 publisher가 검증하며 gameplay spawn/boss의 walkable cell·높이 정합성까지 확인한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
@@ -317,6 +325,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 - Q/W의 skill ID `34060`/`34100`은 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`으로 연결됐다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
 - 현재 World Gameplay kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
+- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. 현재 일반 Monster, wave/증분 spawn, trigger, Area별 balance override, 제품 NPC presentation은 구현되지 않았다.
 
 ## 작업 방식 지침
 

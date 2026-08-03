@@ -47,6 +47,8 @@ HRESULT CLevel_Bern::Initialize()
 	}
 
 	CClientReplication::DESC replicationDesc{};
+	replicationDesc.pDevice = m_pDevice;
+	replicationDesc.pContext = m_pContext;
 
 	replicationDesc.iPrototypeLevelIndex =
 		ETOUI(LEVEL::BERN);
@@ -95,6 +97,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	m_PlayerController.Set_LocalCharacter(
 		localCharacter);
 
+	m_PlayerController.Set_GameplayInputEnabled(
+		nullptr == m_pCamera || m_pCamera->Is_FollowEnabled());
 	m_PlayerController.Update();
 
 }

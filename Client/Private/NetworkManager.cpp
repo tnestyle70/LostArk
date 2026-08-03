@@ -137,6 +137,8 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 	m_iLocalNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
+	m_eLocalCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	// Receive Worker와 Main Thread가 함께 접근하므로 atomic store를 사용한다.
 	m_iLastErrorCode.store(0);
 
@@ -178,7 +180,11 @@ bool CNetworkManager::Send_EnterWorld(
 		return false;
 	}
 
-	return Send_All(frameBytes);
+	if (!Send_All(frameBytes))
+		return false;
+
+	m_eLocalCharacterClass = characterClass;
+	return true;
 }
 
 bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)
@@ -290,6 +296,8 @@ void CNetworkManager::Close_ServerConnection()
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
+	m_eLocalCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
 }
 
 bool CNetworkManager::Is_Connected() const
@@ -312,6 +320,12 @@ LostArk::Shared::PLAYER_ID CNetworkManager::Get_LocalPlayerId() const
 LostArk::Shared::NET_ENTITY_ID CNetworkManager::Get_LocalEntityId() const
 {
 	return m_iLocalNetEntityId;
+}
+
+LostArk::Shared::CHARACTER_CLASS_ID
+CNetworkManager::Get_LocalCharacterClass() const
+{
+	return m_eLocalCharacterClass;
 }
 
 void CNetworkManager::Receive_Loop()

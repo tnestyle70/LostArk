@@ -107,6 +107,12 @@ void CCamera_Free::Update_Shortcuts()
 	if (GetForegroundWindow() != g_hWnd)
 		return;
 
+	if (CGameInstance::Get().Get_DIKeyPressed(DIK_F6) &&
+		!m_pFollowTarget.expired())
+	{
+		Set_FollowEnabled(!m_bFollowEnabled);
+	}
+
 	if (!m_bFollowEnabled &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_TAB))
 	{

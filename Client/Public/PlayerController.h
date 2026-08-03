@@ -21,6 +21,10 @@ namespace Client
 			const shared_ptr<CCharacter>& character);
 		void Set_CommandSink(
 			const shared_ptr<IPlayerCommandSink>& commandSink);
+		void Set_GameplayInputEnabled(bool_t isEnabled)
+		{
+			m_isGameplayInputEnabled = isEnabled;
+		}
 
 		void Update();
 
@@ -39,5 +43,6 @@ namespace Client
 		bool_t m_wasRightMouseDown = false;
 		bool_t m_wasQDown = false;
 		bool_t m_wasWDown = false;
+		bool_t m_isGameplayInputEnabled = true;
 	};
 }

@@ -63,10 +63,12 @@ if ($playerDocument.schema -ne 'lostark.player-profiles' -or $playerDocument.for
 }
 $playerClasses = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $playerRows = [Collections.Generic.List[string]]::new()
+$supportedPlayerClasses = @('LANCE_MASTER','GUNSLINGER','SLAYER','ARTIST')
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @('characterClass','maximumHp','maximumResource','moveSpeed') 'player profile'
 	Assert-StableId $player.characterClass 'player characterClass'
-	if ($player.characterClass -ne 'LANCE_MASTER' -or -not $playerClasses.Add([string]$player.characterClass) -or
+	if ($player.characterClass -notin $supportedPlayerClasses -or
+		-not $playerClasses.Add([string]$player.characterClass) -or
 		[uint32]$player.maximumHp -eq 0 -or [uint32]$player.maximumResource -eq 0) {
 		throw "Player profile is invalid: $($player.characterClass)"
 	}
@@ -74,6 +76,10 @@ foreach ($player in @($playerDocument.players)) {
 		'PLAYER', $player.characterClass, [uint32]$player.maximumHp,
 		[uint32]$player.maximumResource,
 		(Format-InvariantFloat $player.moveSpeed 'player moveSpeed')) -join "`t"))
+}
+if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
+	$missingClasses = @($supportedPlayerClasses | Where-Object { -not $playerClasses.Contains($_) })
+	throw "Player profiles are incomplete. missing=[$($missingClasses -join ',')]"
 }
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
 $inputSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)

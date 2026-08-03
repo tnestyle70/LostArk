@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 4;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 5;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -39,7 +39,10 @@ namespace LostArk::Shared
 	constexpr bool Is_Supported_Playable_Character_Class(
 		const CHARACTER_CLASS_ID characterClass)
 	{
-		return CHARACTER_CLASS_ID::LANCE_MASTER == characterClass;
+		return CHARACTER_CLASS_ID::LANCE_MASTER == characterClass ||
+			CHARACTER_CLASS_ID::GUNSLINGER == characterClass ||
+			CHARACTER_CLASS_ID::SLAYER == characterClass ||
+			CHARACTER_CLASS_ID::ARTIST == characterClass;
 	}
 
 	enum class PACKET_TYPE : std::uint16_t

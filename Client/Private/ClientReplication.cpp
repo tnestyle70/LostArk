@@ -6,6 +6,7 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "NetworkManager.h"
+#include "PlayableCharacterAssetService.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -54,7 +55,9 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 {
 	//Layer 정보가 유한한지 검사하고, 설정을 저장한다.
 	//현재 network 연결 상태도 기억해 두어, 이후 연결이 끊겼는지 감지할 수 있게 한다.
-	if (desc.strPlayerLayerTag.empty() ||
+	if (nullptr == desc.pDevice ||
+		nullptr == desc.pContext ||
+		desc.strPlayerLayerTag.empty() ||
 		desc.strWorldEntityLayerTag.empty() ||
 		!CCombatHUDViewModel::Get().Initialize_Definitions())
 		return false;
@@ -155,6 +158,15 @@ bool Client::CClientReplication::Apply_Spawn(
 	{
 		//같은 event 재전송은 no-op, 다른 내용의 같은 id는  protocol conflict이다.
 		return Is_Same_Record(*existing, stagedRecord);
+	}
+
+	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		m_Desc.pDevice,
+		m_Desc.pContext,
+		m_Desc.iPrototypeLevelIndex,
+		spawned.eCharacterClass)))
+	{
+		return false;
 	}
 
 	const CHARACTER_SPEC* spec =
@@ -406,9 +418,19 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		if (player.iNetEntityId ==
 			CNetworkManager::Get().Get_LocalEntityId())
 		{
-			CCombatHUDViewModel::Get().Apply_LocalPlayer(
-				snapshot.iServerTick,
-				player);
+			const NET_PLAYER_RECORD* localRecord =
+				m_Registry.Find_Record(player.iNetEntityId);
+			if (nullptr == localRecord)
+			{
+				allSucceeded = false;
+			}
+			else
+			{
+				CCombatHUDViewModel::Get().Apply_LocalPlayer(
+					snapshot.iServerTick,
+					localRecord->eCharacterClass,
+					player);
+			}
 		}
 	}
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)

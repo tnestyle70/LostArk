@@ -35,6 +35,17 @@ namespace
 		const DATA_JSON_VALUE* value = object.Find(name);
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
+
+	LostArk::Shared::CHARACTER_CLASS_ID ParseCharacterClass(
+		const std::string& value)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		if (value == "LANCE_MASTER") return CHARACTER_CLASS_ID::LANCE_MASTER;
+		if (value == "GUNSLINGER") return CHARACTER_CLASS_ID::GUNSLINGER;
+		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
+		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
+		return CHARACTER_CLASS_ID::END;
+	}
 }
 
 Client::CCombatHUDViewModel& Client::CCombatHUDViewModel::Get()
@@ -83,13 +94,16 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 	for (const DATA_JSON_VALUE& value : skillValues->Get_Array())
 	{
 		const DATA_JSON_VALUE* id = Required(value, "skillId", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* characterClass = Required(
+			value, "characterClass", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* slot = Required(value, "inputSlot", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* name = Required(value, "displayName", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* action = Required(value, "actionId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* damageId = Required(
 			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
-		if (nullptr == id || nullptr == slot || nullptr == name || nullptr == action ||
+		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
+			nullptr == name || nullptr == action ||
 			nullptr == cooldown || nullptr == damageId)
 		{
 			return false;
@@ -97,12 +111,15 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 		const auto damage = damages.find(damageId->Get_String());
 		SKILL_DEFINITION definition{};
 		definition.iSkillId = static_cast<LostArk::Shared::SKILL_ID>(id->Get_Number());
+		definition.eCharacterClass = ParseCharacterClass(
+			characterClass->Get_String());
 		definition.strInputSlot = slot->Get_String();
 		definition.strDisplayName = name->Get_String();
 		definition.strActionId = action->Get_String();
 		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
 		definition.iDamage = damages.end() == damage ? 0u : damage->second;
 		if (LostArk::Shared::INVALID_SKILL_ID == definition.iSkillId ||
+			LostArk::Shared::CHARACTER_CLASS_ID::END == definition.eCharacterClass ||
 			0u == definition.iCooldownMs || 0u == definition.iDamage ||
 			!skills.emplace(definition.iSkillId, std::move(definition)).second)
 		{
@@ -134,9 +151,11 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 
 void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	const std::uint32_t serverTick,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
 {
 	m_Player.isValid = true;
+	m_Player.eCharacterClass = characterClass;
 	m_Player.iServerTick = serverTick;
 	m_Player.iCurrentHp = snapshot.iCurrentHp;
 	m_Player.iMaximumHp = snapshot.iMaximumHp;
@@ -146,6 +165,9 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.Skills.clear();
 	for (const auto& [skillId, definition] : m_SkillDefinitions)
 	{
+		if (definition.eCharacterClass != characterClass)
+			continue;
+
 		HUD_SKILL_STATE state{};
 		state.iSkillId = skillId;
 		state.strInputSlot = definition.strInputSlot;
