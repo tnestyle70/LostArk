@@ -55,6 +55,7 @@ private:
 	HRESULT Ready_Artist_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_Slayer_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_Npc_Prototypes(uint32_t iLevelIndex);
+	HRESULT Ready_Valtan_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_MapArea(uint32_t iLevelIndex,
 		const std::string& areaId);
 

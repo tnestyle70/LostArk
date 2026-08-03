@@ -10,6 +10,7 @@
 #include "Logic_Slayer.h"
 
 #include "Npc.h"
+#include "Valtan.h"
 
 CLevel_Test2::CLevel_Test2(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -39,6 +40,11 @@ HRESULT CLevel_Test2::Initialize()
 	}
 	if (FAILED(Ready_Layer_Npc(TEXT("Layer_Npc"))))
 		return E_FAIL;
+	if (!isHDRReadbackRequested &&
+		FAILED(Ready_Layer_Boss(TEXT("Layer_Boss"))))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 
@@ -148,6 +154,27 @@ HRESULT CLevel_Test2::Ready_Layer_Npc(const wstring_t& strLayerTag)
 			ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &NpcDesc)))
 			return E_FAIL;
 	}
+
+	return S_OK;
+}
+
+HRESULT CLevel_Test2::Ready_Layer_Boss(const wstring_t& strLayerTag)
+{
+	/* Valtan stands here purely so its clips can be inspected: no navigation
+	prototype and no chase target, which CValtan::Initialize both treat as
+	optional, so the boss idles instead of hunting the character. Placed clear
+	of the player at the origin and the NPC row at z=3. */
+	CValtan::VALTAN_DESC desc{};
+	desc.iPrototypeLevelIndex = ETOUI(LEVEL::TEST_LEVEL2);
+	desc.fSpeedPerSec = 5.f;
+	desc.fRotationPerSec = 180.f;
+	desc.vPosition = float3_t(6.f, 0.f, 0.f);
+
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		ETOUI(LEVEL::TEST_LEVEL2),
+		TEXT("Prototype_GameObject_Valtan"),
+		ETOUI(LEVEL::TEST_LEVEL2), strLayerTag, &desc)))
+		return E_FAIL;
 
 	return S_OK;
 }

@@ -746,6 +746,21 @@ HRESULT CLoader::Ready_For_Level_AssetTest()
 
     lstrcpy(
         m_szLoadingText,
+        TEXT("ASSET_TEST: collider prototypes"));
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Collider_Sphere"),
+        CCollider::Create(m_pDevice, m_pContext, COLLIDER::SPHERE))))
+        return E_FAIL;
+
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        ETOUI(LEVEL::ASSET_TEST),
+        TEXT("Prototype_Component_Collider_OBB"),
+        CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))))
+        return E_FAIL;
+
+    lstrcpy(
+        m_szLoadingText,
         TEXT("ASSET_TEST: Body_Valtan prototype"));
     if (FAILED(CGameInstance::Get().Add_Prototype(
         ETOUI(LEVEL::ASSET_TEST),
@@ -882,8 +897,68 @@ HRESULT CLoader::Ready_For_Test_Level2()
         ETOUI(LEVEL::TEST_LEVEL2))))
         return E_FAIL;
 
+    if (FAILED(Ready_Valtan_Prototypes(
+        ETOUI(LEVEL::TEST_LEVEL2))))
+        return E_FAIL;
+
     lstrcpy(m_szLoadingText, TEXT("Test Level 2 loading complete."));
     m_isFinished = true;
+
+    return S_OK;
+}
+
+HRESULT CLoader::Ready_Valtan_Prototypes(uint32_t iLevelIndex)
+{
+    /* The same four prototypes ASSET_TEST registers, minus the navigation grid:
+    a level that only inspects the boss has no navgrid and CValtan treats the
+    navigation tag as optional. */
+    lstrcpy(m_szLoadingText, TEXT("Valtan model"));
+    auto valtanModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::ANIM,
+        "../Bin/Resources/LostArk/Character/Valtan/MN_RPBF_01.wmodel",
+        XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
+    if (nullptr == valtanModel ||
+        FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            TEXT("Prototype_Component_Model_Valtan"),
+            std::move(valtanModel))))
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan model failed"));
+        return E_FAIL;
+    }
+
+    lstrcpy(m_szLoadingText, TEXT("Valtan weapon model"));
+    auto valtanWeaponModel = CModel::Create(
+        m_pDevice,
+        m_pContext,
+        MODEL::NONANIM,
+        "../Bin/Resources/LostArk/Character/Valtan/ValtanWeapon.wmodel",
+        XMMatrixScaling(100.f, 100.f, 100.f));
+    if (nullptr == valtanWeaponModel ||
+        FAILED(CGameInstance::Get().Add_Prototype(
+            iLevelIndex,
+            TEXT("Prototype_Component_Model_ValtanWeapon"),
+            std::move(valtanWeaponModel))))
+    {
+        lstrcpy(m_szLoadingText, TEXT("Valtan weapon model failed"));
+        return E_FAIL;
+    }
+
+    lstrcpy(m_szLoadingText, TEXT("Body_Valtan prototype"));
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_GameObject_Body_Valtan"),
+        CBody_Valtan::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
+
+    lstrcpy(m_szLoadingText, TEXT("Valtan object prototype"));
+    if (FAILED(CGameInstance::Get().Add_Prototype(
+        iLevelIndex,
+        TEXT("Prototype_GameObject_Valtan"),
+        CValtan::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
 
     return S_OK;
 }
