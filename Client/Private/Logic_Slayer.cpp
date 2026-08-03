@@ -57,6 +57,7 @@ void CLogic_Slayer::Update_Presentation(
 const CHARACTER_SPEC Spec_Slayer =
 {
 	"Slayer",
+	LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
 
 	TEXT("Prototype_Component_Model_Slayer"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),

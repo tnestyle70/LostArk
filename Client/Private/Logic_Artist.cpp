@@ -59,6 +59,7 @@ void CLogic_Artist::Update_Presentation(
 const CHARACTER_SPEC Spec_Artist =
 {
 	"Artist",
+	LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
 
 	TEXT("Prototype_Component_Model_Artist"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),

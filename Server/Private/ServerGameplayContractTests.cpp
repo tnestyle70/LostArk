@@ -30,7 +30,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
-	tests.Require(nullptr != catalog.Find_Skill(34060), "Resolve LanceMaster Q skill");
+	tests.Require(nullptr != catalog.Find_Skill(34120), "Resolve LanceMaster Q skill");
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER),
 		"Resolve LanceMaster player profile");
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::GUNSLINGER),
@@ -41,7 +41,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Resolve Artist player profile");
 	tests.Require(nullptr == catalog.Find_Player(CHARACTER_CLASS_ID::DESTROYER),
 		"Reject unsupported Destroyer player profile");
-	tests.Require(650u == catalog.Find_Damage("damage.player.34060"),
+	tests.Require(650u == catalog.Find_Damage("damage.player.34120"),
 		"Resolve player damage profile");
 
 	CServerNavigation navigation;
@@ -97,7 +97,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	std::vector<SERVER_WORLD_ENTITY> entities{ boss };
 	C2S_USE_SKILL useSkill{};
 	useSkill.iClientSequence = 1;
-	useSkill.iSkillId = 34060;
+	useSkill.iSkillId = 34120;
 	useSkill.fAimX = boss.fPositionX;
 	useSkill.fAimZ = boss.fPositionZ;
 	CPlayerSkillSystem skills;

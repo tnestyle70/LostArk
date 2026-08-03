@@ -749,9 +749,15 @@ try {
 		$serverRoomSource -match 'Handle_UseSkill' -and
 		$playerControllerSource -match 'Request_UseSkill' -and
 		$playerControllerSource -notmatch 'Play_Skill') 'input emits intent and presentation consumes approved snapshot action'
+	$skillCatalogSource = Get-Content -LiteralPath 'Client\Private\PlayerSkillCatalog.cpp' -Raw
+	Add-Check 'gameplay.skill-binding-is-data' (
+		$playerControllerSource -match 'CPlayerSkillCatalog::Find_BySlot' -and
+		$playerControllerSource -notmatch '\b3\d{4}\b' -and
+		$skillCatalogSource -match 'Balance/PlayerSkills\.json') 'quick slots resolve through balance data instead of skill IDs hardcoded per class'
 	Add-Check 'ui.combat-viewmodel-boundary' (
-		$hudViewModelSource -match 'Balance/PlayerSkills\.json' -and
-		$hudViewModelSource -match 'Balance/DamageProfiles\.json' -and
+		$skillCatalogSource -match 'Balance/PlayerSkills\.json' -and
+		$skillCatalogSource -match 'Balance/DamageProfiles\.json' -and
+		$hudViewModelSource -match 'CPlayerSkillCatalog::Get_Skills' -and
 		$clientReplicationSource -match 'Apply_LocalPlayer' -and
 		$clientReplicationSource -match 'Apply_Boss') 'HUD consumes server snapshot plus validated balance definitions without packets'
 

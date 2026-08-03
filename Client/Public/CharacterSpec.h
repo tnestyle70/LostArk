@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
 NS_BEGIN(Client)
 
@@ -50,6 +51,11 @@ struct CHARACTER_SPEC
 	/* Stable data ID. For example LanceMaster resolves under
 	Data/Animation/{Authored,Reference}/LanceMaster. */
 	const char_t* pAssetName;
+
+	/* Which class this spec is. Carried here rather than plumbed at spawn so a
+	character knows its own class in local preview too, where no snapshot ever
+	arrives to tell it. Input binding resolves quick slots through this. */
+	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass;
 
 	const tchar_t* pBodyModelTag;
 	const tchar_t* pShaderTag;

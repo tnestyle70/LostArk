@@ -333,6 +333,9 @@
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\PlayerSkillCatalog.cpp">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -541,6 +544,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Level_CharacterSelect.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayerSkillCatalog.h">
+      <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
