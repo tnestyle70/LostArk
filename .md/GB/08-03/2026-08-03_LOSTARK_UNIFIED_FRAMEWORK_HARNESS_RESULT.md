@@ -323,7 +323,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 | `effect.preview` | PASS | 974 ms |
 | `ui.hud.layout` | PASS | 126 ms |
 | Gameplay/Navigation Validate | PASS | 4 players, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
-| ProjectAudit + deep asset hash | PASS | 57 checks |
+| ProjectAudit + deep asset hash | PASS | 58 checks |
 
 ### Release 최종 실행
 
@@ -340,11 +340,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 | `dev.training.ground` Artist | PASS | 2,682 ms |
 | Development ImGui tool smoke | SKIP | Release 미배포 계약 |
 | Gameplay/Navigation Validate | PASS | 4 players, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
-| ProjectAudit + deep asset hash | PASS | 57 checks |
+| ProjectAudit + deep asset hash | PASS | 58 checks |
 
 중간 Debug 오류창은 `CWorldBootstrap::Load`가 재사용되는 line buffer를 `string_view`로 보관해 area ID가 이후 placement 행으로 변질된 것이 원인이었다. area ID를 staging 문자열로 소유하도록 수정했고 Server 기동, contract test, Debug/Release 전체 회귀에서 재발하지 않았다.
 
-Deep ProjectAudit 57개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1/F6 input, Data project/filter parity, transition boundary, actor catalog, 선택 class 우선/on-demand Loader, 네 class runtime Training matrix, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계와 수련장 map/spawn/navigation 계약이 포함된다.
+Deep ProjectAudit 58개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1/F6 input, Data project/filter parity, transition boundary, actor catalog, 선택 class 우선/on-demand Loader, 네 class runtime Training matrix, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계, 수련장 map/spawn/navigation 계약과 PR #34/#35 정본화 검사가 포함된다.
 
 기존 경고는 third-party PDB 미포함 `LNK4099`, 혼재 인코딩 `C4819`, 일부 narrowing warning이다. Visual Studio 전역 vcpkg target의 `pwsh.exe` 탐색 메시지는 Windows PowerShell fallback 뒤 exit 0인 환경 메시지다.
 
@@ -409,3 +409,16 @@ Lobby는 Lance Master, Gunslinger, Slayer, Artist 네 slot을 모두 표시하�
 팀원이 pull 직후 수치 정본을 찾을 수 있도록 Client 프로젝트의 `96.DataFiles` 필터에 Git 관리 대상 `Data` 파일을 `None` 항목으로 연결했다. `Data/Balance`를 수정한 뒤 `Publish-GameplayBalance.ps1 -Mode Validate`, `-Mode Publish`, Server 재기동, `dev.training.ground` 확인 순서로 튜닝한다. runtime HUD는 Server snapshot과 class별 정의를 함께 보여 주므로 HP/resource/cooldown/damage/boss 상태를 인게임에서 검증할 수 있다.
 
 실행 중 Hot Reload는 아직 켜지 않았다. Client만 JSON을 다시 읽으면 Server 판정과 표시 revision이 갈라지고 진행 중 action/cooldown/boss phase의 교체 정책도 없기 때문이다. 활성화 조건은 balance revision, 별도 Server stage, room tick 경계 commit, 진행 중 상태 pinning, snapshot revision, Client 동기 commit, rollback harness이며 정본은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`다.
+
+## 20. PR #34/#35 최종 통합
+
+최종 통합 브랜치는 `2fff20e`를 계약 기준점으로 삼아 최신 `main`, PR #34의 `origin/CY`, PR #35의 `origin/feature/character-classes`를 모두 merge commit으로 흡수했다. 따라서 두 담당 브랜치의 원본 커밋과 저자 이력은 최종 Git graph에 남는다.
+
+파일 내용은 다음 기준으로 reconciliation했다.
+
+- PR #34의 F8/F9 직접 `Change_Level`은 제거하고 F1/F6, Lobby command, `CSceneTransitionService` 계약을 유지했다.
+- PR #35의 `animnotify win=` 분류, NPC package-group/root-motion 조사 문서, Engine/Bone animation crossfade는 보존했다.
+- F3, 삭제된 TEST_LEVEL2, 구형 Loader, DirectInput 로컬 skill/stance 재생, 소비자가 없는 `SkillData` runtime은 복원하지 않았다.
+- Lance Master stance는 Shared command → Server approval → snapshot 계약을 별도 수직 슬라이스로 추가하기 전까지 활성화하지 않는다.
+
+통합 HEAD에서 Debug/Release 전체 자동화를 다시 실행했다. 두 구성 모두 Engine/UpdateLib/Shared/Server/Client 빌드, Protocol Harness와 Server Gameplay Contract failures 0, Bern/Valtan, 네 클래스 Training smoke를 통과했다. Debug는 Development tool smoke까지 통과했고 Release는 도구 미배포 계약에 따라 skip했다. 최종 Deep ProjectAudit는 58/58이다.

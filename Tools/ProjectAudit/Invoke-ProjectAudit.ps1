@@ -439,6 +439,23 @@ try {
 		$f1Hits.Count -eq 1 -and
 		$f6Hits.Count -eq 1) "forbidden=$($functionKeyHits.Count) f1=$($f1Hits.Count) f6=$($f6Hits.Count)"
 
+	$lanceLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_LanceMaster.cpp' -Raw
+	$characterSource = Get-Content -LiteralPath 'Client\Private\Character.cpp' -Raw
+	$modelSource = Get-Content -LiteralPath 'Engine\Private\Model.cpp' -Raw
+	$boneSource = Get-Content -LiteralPath 'Engine\Private\Bone.cpp' -Raw
+	$obsoletePrRuntimeFiles = @(
+		'Client\Private\Level_Test2.cpp',
+		'Client\Private\SkillData.cpp',
+		'Client\Public\SkillData.h')
+	$presentObsoletePrRuntimeFiles = @($obsoletePrRuntimeFiles |
+		Where-Object { Test-Path -LiteralPath $_ })
+	Add-Check 'integration.pr34-pr35-reconciliation' (
+		$presentObsoletePrRuntimeFiles.Count -eq 0 -and
+		$lanceLogicSource -notmatch 'Get_DIKeyState|DIK_|Play_Skill' -and
+		$characterSource -match 'CLIP_BLEND_SECONDS' -and
+		$modelSource -match 'Begin_AnimBlend' -and
+		$boneSource -match 'Blend_TransformationMatrix') "obsolete=$($presentObsoletePrRuntimeFiles -join ',') localInput=$($lanceLogicSource -match 'Get_DIKeyState|DIK_|Play_Skill') crossfade=$($characterSource -match 'CLIP_BLEND_SECONDS')"
+
     $changeLevelHits = @($clientSourceFiles | Select-String -Pattern 'Change_Level\(')
     $unexpectedChangeLevelHits = @($changeLevelHits | Where-Object {
         $_.Path -notlike '*Client\Private\MainApp.cpp' -and
