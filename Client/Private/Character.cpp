@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+}
+
 CCharacter::CCharacter(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CContainerObject { pDevice, pContext }
@@ -362,7 +367,10 @@ bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == m_pBodyModel || nullptr == pClipName)
 		return false;
-	return m_pBodyModel->Set_Animation(pClipName, isLoop);
+	return m_pBodyModel->Set_Animation(
+		pClipName,
+		isLoop,
+		CLIP_BLEND_SECONDS);
 }
 
 PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)

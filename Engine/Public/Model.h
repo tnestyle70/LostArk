@@ -53,13 +53,24 @@ public:
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
 
-	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false) {
+	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false,
+		f32_t fBlendSeconds = 0.f) {
 		if (iAnimIndex >= m_iNumAnimations)
 			return;
+		if (iAnimIndex != m_iCurrentAnimIndex)
+			Begin_AnimBlend(fBlendSeconds);
 		m_isAnimLoop = isLoop;
 		m_iCurrentAnimIndex = iAnimIndex;
 	}
-	bool_t Set_Animation(const char_t* pAnimationName, bool_t isLoop = false);
+	bool_t Set_Animation(const char_t* pAnimationName,
+		bool_t isLoop = false, f32_t fBlendSeconds = 0.f);
+	bool_t Is_AnimBlending() const {
+		return m_fBlendElapsed < m_fBlendDuration;
+	}
+	void Skip_Blend() {
+		m_fBlendDuration = 0.f;
+		m_fBlendElapsed = 0.f;
+	}
 	bool_t Start_Animation(uint32_t iAnimIndex, bool_t isLoop = true);
 	bool_t Start_Animation(const char_t* pAnimationName,
 		bool_t isLoop = true);
@@ -105,11 +116,16 @@ private:
 	bool_t									m_isAnimLoop = { false };
 	bool_t									m_isAnimPaused = { false };
 	f32_t									m_fAnimationSpeed = { 1.f };
+	vector<float4x4_t>						m_BlendFromPose;
+	f32_t									m_fBlendElapsed = {};
+	f32_t									m_fBlendDuration = {};
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
 
 private:
+	void Begin_AnimBlend(f32_t fBlendSeconds);
+	void Update_AnimBlend(f32_t fTimeDelta);
 	HRESULT Ready_Meshes();
 	HRESULT Ready_Materials(const char_t* pModelFilePath);
 	HRESULT Ready_Bones(const aiNode* pAINode, int32_t iParentBoneIndex = -1);
