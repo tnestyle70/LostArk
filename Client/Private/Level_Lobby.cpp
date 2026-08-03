@@ -37,6 +37,39 @@ namespace
             return "Unknown";
         }
     }
+
+    bool_t Try_ResolveWorldScene(
+        const LostArk::Shared::WORLD_ID eWorldId,
+        LEVEL& eTargetLevel,
+        Client::CLIENT_SCENARIO& eTargetScenario)
+    {
+        using LostArk::Shared::WORLD_ID;
+
+        eTargetLevel = LEVEL::END;
+        eTargetScenario = Client::CLIENT_SCENARIO::END;
+
+        switch (eWorldId)
+        {
+        case WORLD_ID::BERN:
+            eTargetLevel = LEVEL::BERN;
+            eTargetScenario = Client::CLIENT_SCENARIO::WORLD_BERN;
+            return true;
+
+        case WORLD_ID::VALTAN_ARENA:
+            eTargetLevel = LEVEL::VALTAN_ARENA;
+            eTargetScenario = Client::CLIENT_SCENARIO::RAID_VALTAN_ARENA;
+            return true;
+
+        case WORLD_ID::TRAINING_GROUND:
+            eTargetLevel = LEVEL::DEVELOPMENT;
+            eTargetScenario =
+                Client::CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND;
+            return true;
+
+        default:
+            return false;
+        }
+    }
 }
 
 CLevel_Lobby::CLevel_Lobby(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -117,7 +150,7 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
     m_pCamera = camera;
 
     int32_t selectedIndex = 0;
-    if (CClientLaunchOptions::Get().AutomatedCharacterClass.has_value())
+    if (CClientLaunchOptions::Get().SelectedCharacterClass.has_value())
     {
         const auto selected = find_if(
             m_vecCharacters.begin(),
@@ -125,7 +158,7 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
             [](const LobbyCharacterInfo& character)
             {
                 return character.m_eClass ==
-                    *CClientLaunchOptions::Get().AutomatedCharacterClass;
+                    *CClientLaunchOptions::Get().SelectedCharacterClass;
             });
         if (selected == m_vecCharacters.end())
             return E_FAIL;
@@ -168,6 +201,12 @@ bool_t CLevel_Lobby::Select_Character(const int32_t iCharacterIndex)
 
     const LobbyCharacterInfo& characterInfo = m_vecCharacters[iCharacterIndex];
 
+    if (!CClientLaunchOptions::Select_RuntimeCharacterClass(
+        characterInfo.m_eClass))
+    {
+        return false;
+    }
+
     m_iSelectedCharacterIndex = iCharacterIndex;
     strncpy_s(m_szNickName, characterInfo.m_strNickName.c_str(), _TRUNCATE);
 
@@ -206,33 +245,84 @@ bool_t CLevel_Lobby::Request_EnterWorld(
     characterInfo.m_strNickName =
         '\0' == m_szNickName[0] ? "Player" : m_szNickName;
 
+    LEVEL targetLevel = LEVEL::END;
+    CLIENT_SCENARIO targetScenario = CLIENT_SCENARIO::END;
+    if (!Try_ResolveWorldScene(eWorldId, targetLevel, targetScenario))
+    {
+        m_strNetworkStatus = "Unsupported world selection.";
+        return false;
+    }
+    if (!CClientLaunchOptions::Select_RuntimeEntryMode(m_eEntryMode))
+    {
+        m_strNetworkStatus = "Invalid entry mode.";
+        return false;
+    }
+
     CNetworkManager& networkManager = CNetworkManager::Get();
-    if (!networkManager.Is_Connected() &&
-        !networkManager.Connect_To_Server(7777))
+    m_isEnterRequested = false;
+    m_isAwaitingEnterAcceptance = false;
+    m_EnterAcceptanceDeadline = {};
+    if (CLIENT_ENTRY_MODE::LOCAL_PREVIEW == m_eEntryMode)
+    {
+        networkManager.Close_ServerConnection();
+        if (!CSceneTransitionService::Request(
+            targetLevel, targetScenario, "lobby.local-preview"))
+        {
+            m_strNetworkStatus = CSceneTransitionService::Get_Status();
+            return false;
+        }
+
+        m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+        m_isEnterRequested = false;
+        m_strNetworkStatus =
+            "Entering Local Preview. Network gameplay, skills, damage, and boss authority are disabled.";
+        return true;
+    }
+
+    if (!CClientLaunchOptions::Set_RuntimeServerEndpoint(
+        m_szServerHost,
+        static_cast<uint16_t>(m_iServerPort)))
+    {
+        m_strNetworkStatus = "Invalid Multiplayer server IP or port.";
+        return false;
+    }
+
+    networkManager.Close_ServerConnection();
+    if (!networkManager.Connect_To_Server(
+        m_szServerHost,
+        static_cast<uint16_t>(m_iServerPort)))
     {
         m_strNetworkStatus =
-            "Connect failed. WSA error: " +
-            to_string(networkManager.Get_LastErrorCode());
+            "Multiplayer connection failed for " +
+            string(m_szServerHost) + ":" +
+            to_string(m_iServerPort) + " (WSA " +
+            to_string(networkManager.Get_LastErrorCode()) +
+            "). Local Preview was not selected automatically.";
         return false;
     }
 
     if (!networkManager.Send_EnterWorld(
-		eWorldId,
+        eWorldId,
         characterInfo.m_eClass,
         characterInfo.m_strNickName))
     {
         m_strNetworkStatus =
             "Send failed. WSA error: " +
             to_string(networkManager.Get_LastErrorCode());
+        networkManager.Close_ServerConnection();
         return false;
     }
 
     m_strNetworkStatus =
-        "C2S_ENTER_WORLD sent. Check the server console.";
+        "C2S_ENTER_WORLD sent to " +
+        string(m_szServerHost) + ":" +
+        to_string(m_iServerPort) + ". Waiting for server approval.";
     m_ePendingWorldId = eWorldId;
+    m_isAwaitingEnterAcceptance = true;
+    m_EnterAcceptanceDeadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(5);
     return true;
 }
-
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
     LOBBY_ENTER_COMMAND enterCommand;
@@ -248,28 +338,70 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
                 m_szNickName,
                 enterCommand.strNickName.c_str(),
                 _TRUNCATE);
+            m_eEntryMode = enterCommand.eEntryMode;
+            if (CLIENT_ENTRY_MODE::MULTIPLAYER == m_eEntryMode)
+            {
+                strncpy_s(
+                    m_szServerHost,
+                    enterCommand.strServerHost.c_str(),
+                    _TRUNCATE);
+                m_iServerPort = enterCommand.iServerPort;
+            }
             Request_EnterWorld(enterCommand.eWorldId);
         }
     }
 
+    CNetworkManager& networkManager = CNetworkManager::Get();
     LostArk::Shared::S2C_ENTER_ACCEPTED accepted;
-    //networkmanager에서 update를 돌면서 enter 여부 판단
-    if (CNetworkManager::Get().Try_Consume_EnterAccepted(accepted))
+    if (networkManager.Try_Consume_EnterAccepted(accepted))
     {
-        m_strNetworkStatus =
-            "S2C_ENTER_ACCEPTED received. "
-            "PlayerId=" +
-            to_string(
-                accepted.iPlayerId) +
-            ", NetEntityId=" +
-            to_string(
-                accepted.iNetEntityId);
-
-        m_isEnterRequested =
-            accepted.eWorldId == m_ePendingWorldId;
-
-        if (!m_isEnterRequested)
+        if (!m_isAwaitingEnterAcceptance)
+        {
+            m_strNetworkStatus = "Unexpected server acceptance was rejected.";
+            networkManager.Close_ServerConnection();
+            m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+        }
+        else if (accepted.eWorldId != m_ePendingWorldId)
+        {
             m_strNetworkStatus = "Rejected mismatched world acceptance.";
+            m_isAwaitingEnterAcceptance = false;
+            networkManager.Close_ServerConnection();
+            m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+        }
+        else
+        {
+            m_strNetworkStatus =
+                "S2C_ENTER_ACCEPTED received. PlayerId=" +
+                to_string(accepted.iPlayerId) +
+                ", NetEntityId=" +
+                to_string(accepted.iNetEntityId);
+            m_isAwaitingEnterAcceptance = false;
+            m_isEnterRequested = true;
+        }
+    }
+
+    if (m_isAwaitingEnterAcceptance)
+    {
+        if (!networkManager.Is_Connected())
+        {
+            m_isAwaitingEnterAcceptance = false;
+            m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+            networkManager.Close_ServerConnection();
+            m_strNetworkStatus =
+                "Server disconnected before approving entry. Lobby remains active.";
+        }
+        else
+        {
+            if (std::chrono::steady_clock::now() >=
+                m_EnterAcceptanceDeadline)
+            {
+                m_isAwaitingEnterAcceptance = false;
+                m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+                networkManager.Close_ServerConnection();
+                m_strNetworkStatus =
+                    "Server entry approval timed out after 5 seconds. Lobby remains active.";
+            }
+        }
     }
 
     // 서버 승인 메시지를 받은 뒤에만 true로 변경한다.
@@ -279,21 +411,11 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
 
         LEVEL targetLevel = LEVEL::END;
         CLIENT_SCENARIO targetScenario = CLIENT_SCENARIO::END;
-        switch (m_ePendingWorldId)
+        if (!Try_ResolveWorldScene(
+            m_ePendingWorldId,
+            targetLevel,
+            targetScenario))
         {
-        case LostArk::Shared::WORLD_ID::BERN:
-            targetLevel = LEVEL::BERN;
-            targetScenario = CLIENT_SCENARIO::WORLD_BERN;
-            break;
-        case LostArk::Shared::WORLD_ID::VALTAN_ARENA:
-            targetLevel = LEVEL::VALTAN_ARENA;
-            targetScenario = CLIENT_SCENARIO::RAID_VALTAN_ARENA;
-            break;
-        case LostArk::Shared::WORLD_ID::TRAINING_GROUND:
-            targetLevel = LEVEL::DEVELOPMENT;
-            targetScenario = CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND;
-            break;
-        default:
             m_strNetworkStatus = "Accepted unknown world.";
             return;
         }
@@ -304,9 +426,12 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
         {
             m_strNetworkStatus =
                 CSceneTransitionService::Get_Status();
+            networkManager.Close_ServerConnection();
+            m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
             return;
         }
 
+        m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
         return;
     }
 
@@ -321,10 +446,22 @@ HRESULT CLevel_Lobby::Render()
 }
 void CLevel_Lobby::Render_CharacterSelectPanel()
 {
+    const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+    if (nullptr != mainViewport)
+    {
+        ImGui::SetNextWindowViewport(mainViewport->ID);
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                mainViewport->WorkPos.x + 24.f,
+                mainViewport->WorkPos.y + 24.f),
+            ImGuiCond_Always);
+    }
+
     if (!ImGui::Begin(
         "Character Select",
         nullptr,
-        ImGuiWindowFlags_AlwaysAutoResize))
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::End();
         return;
@@ -377,7 +514,26 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::EndDisabled();
 
-    ImGui::BeginDisabled(!canEnterWorld);
+    ImGui::Separator();
+    ImGui::Text("Entry Mode");
+    if (ImGui::RadioButton("Local Preview", CLIENT_ENTRY_MODE::LOCAL_PREVIEW == m_eEntryMode))
+        m_eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Multiplayer", CLIENT_ENTRY_MODE::MULTIPLAYER == m_eEntryMode))
+        m_eEntryMode = CLIENT_ENTRY_MODE::MULTIPLAYER;
+
+    const bool_t isMultiplayer = CLIENT_ENTRY_MODE::MULTIPLAYER == m_eEntryMode;
+    ImGui::BeginDisabled(!isMultiplayer);
+    ImGui::InputText("Server IP", m_szServerHost, sizeof(m_szServerHost));
+    ImGui::InputInt("Server Port", &m_iServerPort);
+    ImGui::EndDisabled();
+    ImGui::TextDisabled(isMultiplayer ?
+        "Connects only after this IP:port accepts the session." :
+        "No socket. Spawns one presentation-only local character.");
+
+    const bool_t hasValidEndpoint = !isMultiplayer ||
+        ('\0' != m_szServerHost[0] && m_iServerPort > 0 && m_iServerPort <= UINT16_MAX);
+    ImGui::BeginDisabled(!canEnterWorld || !hasValidEndpoint);
 
     if (ImGui::Button("Enter Bern"))
     {
@@ -386,7 +542,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
         CLobbyCommandService::Request_EnterWorld(
             m_iSelectedCharacterIndex,
             LostArk::Shared::WORLD_ID::BERN,
-            nickName);
+            nickName,
+            m_eEntryMode,
+            m_szServerHost,
+            static_cast<uint16_t>(m_iServerPort));
     }
 
     ImGui::SameLine();
@@ -397,7 +556,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
         CLobbyCommandService::Request_EnterWorld(
             m_iSelectedCharacterIndex,
             LostArk::Shared::WORLD_ID::VALTAN_ARENA,
-            nickName);
+            nickName,
+            m_eEntryMode,
+            m_szServerHost,
+            static_cast<uint16_t>(m_iServerPort));
     }
 
     ImGui::SameLine();
@@ -408,7 +570,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
         CLobbyCommandService::Request_EnterWorld(
             m_iSelectedCharacterIndex,
             LostArk::Shared::WORLD_ID::TRAINING_GROUND,
-            nickName);
+            nickName,
+            m_eEntryMode,
+            m_szServerHost,
+            static_cast<uint16_t>(m_iServerPort));
     }
     ImGui::EndDisabled();
 

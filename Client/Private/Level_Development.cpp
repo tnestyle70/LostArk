@@ -8,6 +8,8 @@
 #include "LevelCatalog.h"
 #include "Logic_LanceMaster.h"
 #include "NetworkPlayerCommandSink.h"
+#include "OfflinePlayerPreview.h"
+#include "SceneTransitionService.h"
 #include "Transform.h"
 
 CLevel_Development::CLevel_Development(
@@ -80,8 +82,25 @@ HRESULT CLevel_Development::Initialize()
 			m_MapRuntime.Clear();
 			return E_FAIL;
 		}
-		m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
-		m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+		if (CClientLaunchOptions::Get().isOfflinePreview)
+		{
+			std::string previewStatus;
+			if (!COfflinePlayerPreview::Spawn(
+				m_Replication,
+				pEntry->strMapAreaId,
+				previewStatus))
+			{
+				OutputDebugStringA((
+					"[Level_Development] " + previewStatus + "\n").c_str());
+				m_MapRuntime.Clear();
+				return E_FAIL;
+			}
+		}
+		else
+		{
+			m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
+			m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+		}
 	}
 
 	return S_OK;
@@ -95,13 +114,27 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		if (!m_Replication.Update())
 			OutputDebugStringA(
 				"[Level_Development] Failed to apply training replication.\n");
+		if (m_Replication.Has_PendingConnectionLoss())
+		{
+			if (CSceneTransitionService::Request(
+				LEVEL::LOBBY,
+				CLIENT_SCENARIO::FRONT_LOBBY,
+				"network.connection-lost"))
+			{
+				m_Replication.Acknowledge_ConnectionLoss();
+				return;
+			}
+			OutputDebugStringA(
+				"[Level_Development] Lobby recovery request was rejected; retrying.\n");
+		}
 		Bind_CameraToLocalCharacter();
 		const shared_ptr<CCharacter> localCharacter =
 			m_Replication.Get_LocalCharacter();
 		m_PlayerController.Set_LocalCharacter(localCharacter);
 		const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
 		m_PlayerController.Set_GameplayInputEnabled(
-			nullptr == camera || camera->Is_FollowEnabled());
+			!CClientLaunchOptions::Get().isOfflinePreview &&
+			(nullptr == camera || camera->Is_FollowEnabled()));
 		m_PlayerController.Update();
 	}
 	else

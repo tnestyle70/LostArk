@@ -88,6 +88,8 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 ## 고정 런타임 계약
 
 - Client 시작 씬은 항상 `LOBBY`다. 실제 실행 시나리오는 `Data/Levels/LevelCatalog.json`의 stable ID로 선택한다.
+- Lobby의 Bern/Valtan/Training 진입은 ImGui에서 `Local Preview` 또는 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 socket을 열지 않고 `Gameplay.world.json`의 첫 enabled `playerSpawn`에 선택 class의 presentation-only `CCharacter` 하나를 만들지만 player/net entity ID, registry, command sink, skill/damage/boss authority는 만들지 않는다. Multiplayer는 입력한 IPv4/localhost와 port에 연결해 기존 `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 승인 전환만 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 스테이지 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀하며 어느 경우에도 Local로 자동 우회하지 않는다.
+- Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용하며, 개인 IP·방화벽 설정·탐색 결과를 Git 데이터에 저장하지 않는다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 catalog, registry, loader, smoke 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `mapLoadBounds`로 선언한 진입/전투 범위와 배경만 로드한다. `dev.map.active`만 전체 맵을 열 수 있다. Loader와 runtime placement는 반드시 같은 `MAP_LOAD_SCOPE`를 소비한다.

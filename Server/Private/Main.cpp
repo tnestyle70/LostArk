@@ -4,6 +4,7 @@
 #include <charconv>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 #ifdef _DEBUG
@@ -22,27 +23,54 @@ int main(const int argumentCount, char** arguments)
 		return LostArk::Server::Run_ServerGameplayContractTests();
 	}
 	std::uint32_t automaticShutdownMilliseconds = 0;
-	if (argumentCount != 1)
+	std::string bindAddress = "127.0.0.1";
+	bool hasSmokeTimeout = false;
+	bool hasBindAddress = false;
+	for (int index = 1; index < argumentCount; ++index)
 	{
-		if (argumentCount != 3 ||
-			std::string_view(arguments[1]) != "--smoke-timeout-ms")
+		const std::string_view argument(arguments[index]);
+		if ("--smoke-timeout-ms" == argument)
 		{
-			std::cerr << "Usage: Server [--smoke-timeout-ms 100..60000]\n";
-			return 2;
+			if (hasSmokeTimeout || index + 1 >= argumentCount)
+			{
+				std::cerr << "--smoke-timeout-ms requires one value.\n";
+				return 2;
+			}
+			const std::string_view value(arguments[++index]);
+			const auto result = std::from_chars(
+				value.data(), value.data() + value.size(),
+				automaticShutdownMilliseconds);
+			if (result.ec != std::errc{} ||
+				result.ptr != value.data() + value.size() ||
+				automaticShutdownMilliseconds < 100u ||
+				automaticShutdownMilliseconds > 60000u)
+			{
+				std::cerr << "Smoke timeout must be an integer from 100 to 60000.\n";
+				return 2;
+			}
+			hasSmokeTimeout = true;
+			continue;
 		}
-		const std::string_view value(arguments[2]);
-		const auto result = std::from_chars(
-			value.data(), value.data() + value.size(),
-			automaticShutdownMilliseconds);
-		if (result.ec != std::errc{} ||
-			result.ptr != value.data() + value.size() ||
-			automaticShutdownMilliseconds < 100u ||
-			automaticShutdownMilliseconds > 60000u)
+		if ("--bind-address" == argument)
 		{
-			std::cerr << "Smoke timeout must be an integer from 100 to 60000.\n";
-			return 2;
+			if (hasBindAddress || index + 1 >= argumentCount)
+			{
+				std::cerr << "--bind-address requires one IPv4 value.\n";
+				return 2;
+			}
+			bindAddress = arguments[++index];
+			if (bindAddress.empty() || bindAddress.size() > 63u)
+			{
+				std::cerr << "Bind address is invalid.\n";
+				return 2;
+			}
+			hasBindAddress = true;
+			continue;
 		}
+
+		std::cerr << "Usage: Server [--bind-address IPv4] [--smoke-timeout-ms 100..60000]\n";
+		return 2;
 	}
 	LostArk::Server::CServerApp serverApp;
-	return serverApp.Run(automaticShutdownMilliseconds);
+	return serverApp.Run(automaticShutdownMilliseconds, bindAddress);
 }

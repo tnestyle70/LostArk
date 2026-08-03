@@ -1,8 +1,11 @@
 #pragma once
 
+#include "ClientLaunchOptions.h"
 #include "Client_Defines.h"
 #include "Level.h"
 #include "Network/PacketType.h"
+
+#include <chrono>
 
 NS_BEGIN(Client)
 
@@ -50,7 +53,12 @@ private:
 
 	int32_t m_iSelectedCharacterIndex = { -1 };
 	char_t m_szNickName[64] = {};
+	CLIENT_ENTRY_MODE m_eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW;
+	char_t m_szServerHost[64] = "127.0.0.1";
+	int32_t m_iServerPort = 7777;
 	bool_t m_isEnterRequested = { false };
+	bool_t m_isAwaitingEnterAcceptance = { false };
+	std::chrono::steady_clock::time_point m_EnterAcceptanceDeadline;
 	LostArk::Shared::WORLD_ID m_ePendingWorldId =
 		LostArk::Shared::WORLD_ID::END;
 	string m_strNetworkStatus = {

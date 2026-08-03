@@ -19,6 +19,10 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
+Lobby의 Bern/Valtan/Training은 `Local Preview`와 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 canonical `Gameplay.world.json`의 player spawn에 선택 class의 presentation-only Character 하나만 만들고 socket, server ID, registry, command sink, skill/damage/boss authority를 만들지 않는다. Multiplayer는 입력한 서버 IPv4 또는 `localhost`와 port가 연결되고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 Local로 자동 전환하지 않는다.
+
+같은 PC 테스트는 Server 기본 bind `127.0.0.1`을 사용한다. LAN 공동 플레이는 Server를 `--bind-address 0.0.0.0` 또는 특정 사설 IPv4로 실행하고 Client Lobby에 Server PC의 사설 IPv4를 입력한다. 자동 서버 탐색은 현재 범위가 아니다.
+
 ## 2. 팀원이 먼저 읽을 파일
 
 | 담당 | 시작 파일 | 데이터 정본 |
@@ -207,6 +211,10 @@ Git commit과 Resource ZIP은 한 쌍의 인계 단위다. commit은 `Data/Asset
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -DeepAssetHash
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release -DeepAssetHash
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Release
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Release
 ```
 
 자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → 제품/개발 smoke → balance/world/navigation validate → ProjectAudit이다.
@@ -217,6 +225,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Server gameplay contract `failures : 0`
 - Debug/Release lobby, Bern, Valtan 제품 smoke 성공
 - Debug/Release `dev.training.ground` 서버 연결 smoke 성공
+- Server 미기동 상태의 Bern, Valtan, Training local preview smoke 성공
 - Debug Development scenario smoke 성공
 - ProjectAudit와 필요한 deep asset hash 성공
 - `git diff --check` 성공

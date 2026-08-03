@@ -539,9 +539,18 @@ HRESULT CLoader::Ready_Character_Rendering(
 		CLIENT_SCENARIO::WORLD_BERN == scenario ||
 		CLIENT_SCENARIO::RAID_VALTAN_ARENA == scenario ||
 		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == scenario;
-	const CHARACTER_CLASS_ID selectedClass = isNetworkScenario ?
+	CHARACTER_CLASS_ID selectedClass = isNetworkScenario ?
 		CNetworkManager::Get().Get_LocalCharacterClass() :
 		CHARACTER_CLASS_ID::LANCE_MASTER;
+	if (isNetworkScenario &&
+		!LostArk::Shared::Is_Supported_Playable_Character_Class(
+			selectedClass) &&
+		CClientLaunchOptions::Get().isOfflinePreview &&
+		CClientLaunchOptions::Get().SelectedCharacterClass.has_value())
+	{
+		selectedClass =
+			*CClientLaunchOptions::Get().SelectedCharacterClass;
+	}
 	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
 		selectedClass))
 	{

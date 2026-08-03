@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 //Network Event를 실제 Engine GameObject 생성 제거로 번역되는 단 하나의 main-thread 경계
@@ -16,6 +17,16 @@ namespace Client
 {
 	class CCharacter;
 	class CValtan;
+
+	struct LOCAL_PREVIEW_PLAYER_DESC final
+	{
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		std::string strNickName;
+		std::string strPlacementId;
+		float3_t vPosition = {};
+		f32_t fYawDegrees = 0.f;
+	};
 
 	class CClientReplication final
 	{
@@ -35,10 +46,23 @@ namespace Client
 	public:
 		bool Initialize(const DESC& desc);
 		bool Update();
+		bool Spawn_LocalPreview(const LOCAL_PREVIEW_PLAYER_DESC& desc);
+		bool Has_PendingConnectionLoss() const;
+		void Acknowledge_ConnectionLoss();
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
+		bool Is_LocalPreviewCharacter(
+			const std::shared_ptr<CCharacter>& character) const;
+		const std::string& Get_LocalPreviewPlacementId() const;
 
 	private:
+		bool Create_Character(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+			std::string_view nickName,
+			const float3_t& position,
+			f32_t yawDegrees,
+			bool_t isLocallyControlled,
+			std::shared_ptr<CCharacter>& outCharacter);
 		bool Apply_Spawn(
 			const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned);
 
@@ -59,8 +83,11 @@ namespace Client
 		CNetObjectRegistry m_Registry;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
+		std::weak_ptr<CCharacter> m_LocalPreviewCharacter;
+		std::string m_strLocalPreviewPlacementId;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
+		bool m_hasPendingConnectionLoss = false;
 		//마지막으로 적용한 snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
 

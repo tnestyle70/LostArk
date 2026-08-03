@@ -118,6 +118,9 @@ function Invoke-ClientSmoke {
             "--timeout-ms=$TimeoutMs",
             "--report=$reportPath"
         )
+		if ($RequiresServer) {
+			$arguments += '--entry-mode=multiplayer'
+		}
 		if (-not [string]::IsNullOrEmpty($CharacterClass)) {
 			$arguments += "--character-class=$CharacterClass"
 		}

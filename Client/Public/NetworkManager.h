@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WinSock2.h>
+#include <WS2tcpip.h>
 
 #include "ClientReplicationEvent.h"
 
@@ -36,7 +37,13 @@ public:
 	void Shutdown();
 	void Update();
 
-	bool Connect_To_Server(std::uint16_t port);
+	bool Connect_To_Server(
+		std::string_view host,
+		std::uint16_t port);
+	bool Connect_To_Server(std::uint16_t port)
+	{
+		return Connect_To_Server("127.0.0.1", port);
+	}
 
 	bool Send_EnterWorld(
 		LostArk::Shared::WORLD_ID worldId,
@@ -72,7 +79,7 @@ public:
 private:
 	bool Send_All(std::span<const std::uint8_t> bytes);
 	//수신 worker 하나가 4096-byte 지역 버퍼로 Server의 TCP byte stream을 읽는다.
-	void Receive_Loop();
+	void Receive_Loop(SOCKET serverSocket);
 	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
 
 private:

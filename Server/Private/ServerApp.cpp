@@ -19,7 +19,8 @@ LostArk::Server::CServerApp::~CServerApp()
 }
 
 int LostArk::Server::CServerApp::Run(
-	const std::uint32_t automaticShutdownMilliseconds)
+	const std::uint32_t automaticShutdownMilliseconds,
+	const std::string_view bindAddress)
 {
 	using LostArk::Shared::WORLD_ID;
 
@@ -49,7 +50,7 @@ int LostArk::Server::CServerApp::Run(
 		return 1;
 	}
 	constexpr std::uint16_t SERVER_PORT = 7777;
-	if (!m_TcpListener.Open(SERVER_PORT))
+	if (!m_TcpListener.Open(bindAddress, SERVER_PORT))
 	{
 		std::cerr << "Failed to open TCP listener. Error="
 			<< m_TcpListener.Get_LastErrorCode() << '\n';
@@ -59,7 +60,7 @@ int LostArk::Server::CServerApp::Run(
 	m_isRunning.store(true);
 	m_RoomThread = std::thread(&CServerApp::Room_Loop, this);
 	m_AcceptThread = std::thread(&CServerApp::Accept_Loop, this);
-	std::cout << "Listening on 127.0.0.1:" << SERVER_PORT
+	std::cout << "Listening on " << bindAddress << ':' << SERVER_PORT
 		<< " with BERN, VALTAN_ARENA, and TRAINING_GROUND.";
 	if (0u == automaticShutdownMilliseconds)
 	{

@@ -1,12 +1,16 @@
 #include "TcpListener.h"
 
+#include <string>
+
 LostArk::Server::CTcpListener::~CTcpListener()
 {
     //Resource Acquition is initialization 
     Close();
 }
 
-bool LostArk::Server::CTcpListener::Open(std::uint16_t port)
+bool LostArk::Server::CTcpListener::Open(
+	const std::string_view bindAddress,
+	const std::uint16_t port)
 {
     if (Is_Open())
         return true;
@@ -29,8 +33,24 @@ bool LostArk::Server::CTcpListener::Open(std::uint16_t port)
 
     address.sin_family = AF_INET;
 
-    //host to 누구?
-    address.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+    const std::string bindAddressText{ bindAddress };
+    if ("0.0.0.0" == bindAddressText)
+    {
+        address.sin_addr.s_addr = ::htonl(INADDR_ANY);
+    }
+    else if ("localhost" == bindAddressText)
+    {
+        address.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+    }
+    else if (1 != ::InetPtonA(
+        AF_INET,
+        bindAddressText.c_str(),
+        &address.sin_addr))
+    {
+        m_iLastErrorCode.store(WSAEINVAL);
+        ::closesocket(listenSocket);
+        return false;
+    }
 
     //host to 누구?
     address.sin_port = ::htons(port);

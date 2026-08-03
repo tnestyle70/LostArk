@@ -306,6 +306,9 @@
     <ClCompile Include="..\Private\NetworkManager.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\OfflinePlayerPreview.cpp">
+	  <Filter>01. Levels</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\NetObjectRegistry.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -509,6 +512,9 @@
     <ClInclude Include="..\Public\NetworkManager.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\OfflinePlayerPreview.h">
+	  <Filter>01. Levels</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ClientReplicationEvent.h">
       <Filter>04. Network</Filter>
     </ClInclude>
