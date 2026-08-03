@@ -1,0 +1,44 @@
+{
+  "schema": "lostark.world-gameplay",
+  "formatVersion": 1,
+  "areaId": "LV_DEV_TRAINING_GROUND",
+  "revision": 1,
+  "placements": [
+    {
+      "placementId": "player.spawn.training.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [0.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.training.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [2.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.training.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [-2.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.training.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [0.0, 0.0, -2.0],
+      "yawDegrees": 0.0,
+      "enabled": true
+    }
+  ]
+}

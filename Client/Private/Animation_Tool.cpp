@@ -2,9 +2,10 @@
 
 #include "Animation_Tool.h"
 
+#include "AnimationTargetService.h"
 #include "Character.h"
-#include "GameInstance.h"
 #include "Model.h"
+#include "ProjectDataRoot.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -12,15 +13,6 @@
 
 namespace
 {
-	/* The character the tool drives lives on TEST_LEVEL2 as a container/part pair.
-	This resolution is the only place that knows the target; once the shared asset
-	catalog lands it replaces the body of Resolve_Model and nothing else. */
-	constexpr const tchar_t* LAYER_TAG = TEXT("Layer_Player");
-	/* CCharacter numbers its part tags so std::map updates them in the right
-	order (see the 07-30 RESULT doc), hence the "00" rather than plain "Part_Body". */
-	constexpr const tchar_t* PART_TAG = TEXT("Part_00_Body");
-	constexpr const tchar_t* COMPONENT_TAG = TEXT("Com_Model");
-
 	constexpr const char_t* EVENT_FILE_MAGIC = "LOSTARK_ANIM_EVENTS";
 	/* v1 wrote positional columns ("clip" HIT 14 22). v2 writes key=value pairs so
 	rows of different kinds can carry different fields. v3 keeps the pairs but moves
@@ -116,22 +108,12 @@ namespace
 
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 {
-	if (ETOUI(LEVEL::TEST_LEVEL2) != CGameInstance::Get().Get_CurrentLevelID())
-		return nullptr;
-
-	shared_ptr<CComponent> pComponent = CGameInstance::Get().Get_Component(
-		ETOUI(LEVEL::TEST_LEVEL2), LAYER_TAG, PART_TAG, COMPONENT_TAG, 0);
-
-	return dynamic_pointer_cast<Engine::CModel>(pComponent);
+	return CAnimationTargetService::Resolve_Model();
 }
 
 shared_ptr<Client::CCharacter> Client::CAnimation_Tool::Resolve_Character() const
 {
-	if (ETOUI(LEVEL::TEST_LEVEL2) != CGameInstance::Get().Get_CurrentLevelID())
-		return nullptr;
-
-	return dynamic_pointer_cast<CCharacter>(CGameInstance::Get().Get_GameObject(
-		ETOUI(LEVEL::TEST_LEVEL2), LAYER_TAG, 0));
+	return CAnimationTargetService::Resolve_Character();
 }
 
 void Client::CAnimation_Tool::Sync_AssetName()
@@ -258,27 +240,42 @@ int32_t Client::CAnimation_Tool::Get_ActiveTick(const ANIM_EVENT& evt, int32_t i
 
 std::string Client::CAnimation_Tool::Get_EventFilePath() const
 {
-	return "../Bin/DataFiles/Anim/" + m_AssetName + ".animevents";
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Authored") /
+		filesystem::path(m_AssetName) /
+		filesystem::path(m_AssetName + ".animevents")).string();
 }
 
 std::string Client::CAnimation_Tool::Get_SkillReferencePath() const
 {
-	return "../Bin/DataFiles/Anim/" + m_AssetName + ".skilltiming";
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Reference") /
+		filesystem::path(m_AssetName) /
+		filesystem::path(m_AssetName + ".skilltiming")).string();
 }
 
 std::string Client::CAnimation_Tool::Get_ClipMapPath() const
 {
-	return "../Bin/DataFiles/Anim/" + m_AssetName + ".clipmap";
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Reference") /
+		filesystem::path(m_AssetName) /
+		filesystem::path(m_AssetName + ".clipmap")).string();
 }
 
 std::string Client::CAnimation_Tool::Get_ClipNotifyPath() const
 {
-	return "../Bin/DataFiles/Anim/" + m_AssetName + ".animnotify";
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Reference") /
+		filesystem::path(m_AssetName) /
+		filesystem::path(m_AssetName + ".animnotify")).string();
 }
 
 std::string Client::CAnimation_Tool::Get_ClipSeqPath() const
 {
-	return "../Bin/DataFiles/Anim/" + m_AssetName + ".clipseq";
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Reference") /
+		filesystem::path(m_AssetName) /
+		filesystem::path(m_AssetName + ".clipseq")).string();
 }
 
 int32_t Client::CAnimation_Tool::Get_ChainOffsetMs(const CLIP_SEQ& seq, int32_t iIndex) const
@@ -989,8 +986,15 @@ bool_t Client::CAnimation_Tool::Save_Events()
 {
 	const std::string path = Get_EventFilePath();
 
-	/* DataFiles/Anim is not created by a clean clone, so make it on demand. */
-	CreateDirectoryA("../Bin/DataFiles/Anim", nullptr);
+	error_code directoryError;
+	filesystem::create_directories(
+		filesystem::path(path).parent_path(), directoryError);
+	if (directoryError)
+	{
+		m_Status = "Save failed to create authoring directory: " +
+			directoryError.message();
+		return false;
+	}
 
 	FILE* pFile = nullptr;
 	if (0 != fopen_s(&pFile, path.c_str(), "w") || nullptr == pFile)

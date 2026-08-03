@@ -1,14 +1,14 @@
-#ifdef _DEBUG
 #include "imgui.h"
-#endif
 
 #include "NetworkManager.h"
+#include "ClientLaunchOptions.h"
 #include "Level_Lobby.h"
 
-#include "Level_Loading.h"
 #include "GameInstance.h"
 #include "Character.h"
 #include "Camera_Free.h"
+#include "LobbyCommandService.h"
+#include "SceneTransitionService.h"
 
 namespace
 {
@@ -27,8 +27,8 @@ namespace
         case CHARACTER_CLASS_ID::GUNSLINGER:
             return "Gunslinger";
 
-        case CHARACTER_CLASS_ID::DESTROYER:
-            return "Destroyer";
+        case CHARACTER_CLASS_ID::SLAYER:
+            return "Slayer";
 
         case CHARACTER_CLASS_ID::ARTIST:
             return "Artist";
@@ -116,19 +116,46 @@ HRESULT CLevel_Lobby::Ready_Layer_Camera(const wstring& strLayerTag)
 
     m_pCamera = camera;
 
-    return Select_Character(0) ? S_OK : E_FAIL;
+    int32_t selectedIndex = 0;
+    if (CClientLaunchOptions::Get().AutomatedCharacterClass.has_value())
+    {
+        const auto selected = find_if(
+            m_vecCharacters.begin(),
+            m_vecCharacters.end(),
+            [](const LobbyCharacterInfo& character)
+            {
+                return character.m_eClass ==
+                    *CClientLaunchOptions::Get().AutomatedCharacterClass;
+            });
+        if (selected == m_vecCharacters.end())
+            return E_FAIL;
+        selectedIndex = static_cast<int32_t>(
+            distance(m_vecCharacters.begin(), selected));
+    }
+
+    return Select_Character(selectedIndex) ? S_OK : E_FAIL;
 }
 
 HRESULT CLevel_Lobby::Ready_CharacterSlots()
 {
-    LobbyCharacterInfo characterInfo{};
+    using LostArk::Shared::CHARACTER_CLASS_ID;
+    constexpr CHARACTER_CLASS_ID classes[] =
+    {
+        CHARACTER_CLASS_ID::LANCE_MASTER,
+        CHARACTER_CLASS_ID::GUNSLINGER,
+        CHARACTER_CLASS_ID::SLAYER,
+        CHARACTER_CLASS_ID::ARTIST,
+    };
 
-    characterInfo.m_iSlotIndex = 0;
-    characterInfo.m_eClass = LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
-    characterInfo.m_pCharacter = nullptr;
-    characterInfo.m_strNickName.clear();
-
-    m_vecCharacters.push_back(move(characterInfo));
+    m_vecCharacters.clear();
+    m_vecCharacters.reserve(4);
+    for (size_t index = 0; index < 4; ++index)
+    {
+        LobbyCharacterInfo characterInfo{};
+        characterInfo.m_iSlotIndex = static_cast<int32_t>(index);
+        characterInfo.m_eClass = classes[index];
+        m_vecCharacters.push_back(move(characterInfo));
+    }
 
     return S_OK;
 }
@@ -157,7 +184,8 @@ bool_t CLevel_Lobby::Select_Character(const int32_t iCharacterIndex)
     return true;
 }
 
-bool_t CLevel_Lobby::Request_EnterWorld()
+bool_t CLevel_Lobby::Request_EnterWorld(
+    const LostArk::Shared::WORLD_ID eWorldId)
 {
     if (m_iSelectedCharacterIndex < 0 ||
         static_cast<size_t>(m_iSelectedCharacterIndex) >= m_vecCharacters.size())
@@ -168,6 +196,13 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
     LobbyCharacterInfo& characterInfo =
         m_vecCharacters[m_iSelectedCharacterIndex];
+    if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+        characterInfo.m_eClass))
+    {
+        m_strNetworkStatus =
+            "Selected class is reserved; its runtime asset and server profile are not admitted.";
+        return false;
+    }
     characterInfo.m_strNickName =
         '\0' == m_szNickName[0] ? "Player" : m_szNickName;
 
@@ -182,6 +217,7 @@ bool_t CLevel_Lobby::Request_EnterWorld()
     }
 
     if (!networkManager.Send_EnterWorld(
+		eWorldId,
         characterInfo.m_eClass,
         characterInfo.m_strNickName))
     {
@@ -193,33 +229,26 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
     m_strNetworkStatus =
         "C2S_ENTER_WORLD sent. Check the server console.";
+    m_ePendingWorldId = eWorldId;
     return true;
 }
 
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
-    // F8: 베른성, F9: 발탄 아레나로 바로 이동한다.
-    // 서버 접속 없이 맵만 확인할 때 쓰는 디버그 단축키다.
-    if (!CGameInstance::Get().IsKeyboardInputBlocked())
+    LOBBY_ENTER_COMMAND enterCommand;
+    if (CLobbyCommandService::Try_Consume(enterCommand))
     {
-        LEVEL eShortcutLevelID = LEVEL::END;
-
-        if (GetKeyState(VK_F8) & 0x8000)
-            eShortcutLevelID = LEVEL::BAREN;
-        else if (GetKeyState(VK_F9) & 0x8000)
-            eShortcutLevelID = LEVEL::VALTAN_ARENA;
-
-        if (LEVEL::END != eShortcutLevelID)
+        if (!Select_Character(enterCommand.iCharacterSlot))
         {
-            if (FAILED(CGameInstance::Get().Change_Level(
-                ETOUI(LEVEL::LOADING),
-                CLevel_Loading::Create(
-                    m_pDevice, m_pContext, eShortcutLevelID))))
-            {
-                MSG_BOX("Failed to Change Level");
-            }
-
-            return;
+            m_strNetworkStatus = "Invalid character slot.";
+        }
+        else
+        {
+            strncpy_s(
+                m_szNickName,
+                enterCommand.strNickName.c_str(),
+                _TRUNCATE);
+            Request_EnterWorld(enterCommand.eWorldId);
         }
     }
 
@@ -236,7 +265,11 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
             to_string(
                 accepted.iNetEntityId);
 
-        m_isEnterRequested = true;
+        m_isEnterRequested =
+            accepted.eWorldId == m_ePendingWorldId;
+
+        if (!m_isEnterRequested)
+            m_strNetworkStatus = "Rejected mismatched world acceptance.";
     }
 
     // 서버 승인 메시지를 받은 뒤에만 true로 변경한다.
@@ -244,11 +277,33 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
     {
         m_isEnterRequested = false;
 
-        if (FAILED(CGameInstance::Get().Change_Level(
-            ETOUI(LEVEL::LOADING),
-            CLevel_Loading::Create(m_pDevice, m_pContext, LEVEL::BAREN))))
+        LEVEL targetLevel = LEVEL::END;
+        CLIENT_SCENARIO targetScenario = CLIENT_SCENARIO::END;
+        switch (m_ePendingWorldId)
         {
-            MSG_BOX("Failed to Change Level");
+        case LostArk::Shared::WORLD_ID::BERN:
+            targetLevel = LEVEL::BERN;
+            targetScenario = CLIENT_SCENARIO::WORLD_BERN;
+            break;
+        case LostArk::Shared::WORLD_ID::VALTAN_ARENA:
+            targetLevel = LEVEL::VALTAN_ARENA;
+            targetScenario = CLIENT_SCENARIO::RAID_VALTAN_ARENA;
+            break;
+        case LostArk::Shared::WORLD_ID::TRAINING_GROUND:
+            targetLevel = LEVEL::DEVELOPMENT;
+            targetScenario = CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND;
+            break;
+        default:
+            m_strNetworkStatus = "Accepted unknown world.";
+            return;
+        }
+        if (!CSceneTransitionService::Request(
+            targetLevel,
+            targetScenario,
+            "lobby.enter-accepted"))
+        {
+            m_strNetworkStatus =
+                CSceneTransitionService::Get_Status();
             return;
         }
 
@@ -260,13 +315,10 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
 
 HRESULT CLevel_Lobby::Render()
 {
-#ifdef _DEBUG
     Render_CharacterSelectPanel();
-#endif
 
     return S_OK;
 }
-#ifdef _DEBUG
 void CLevel_Lobby::Render_CharacterSelectPanel()
 {
     if (!ImGui::Begin(
@@ -284,8 +336,12 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
     {
         const LobbyCharacterInfo& characterInfo = m_vecCharacters[i];
 
+        const bool_t isRuntimeSupported =
+            LostArk::Shared::Is_Supported_Playable_Character_Class(
+                characterInfo.m_eClass);
         const string label =
             string(Get_CharacterClassName(characterInfo.m_eClass)) +
+            (isRuntimeSupported ? " [Ready]" : " [Asset Pending]") +
             "##CharacterSlot" +
             to_string(characterInfo.m_iSlotIndex);
 
@@ -303,6 +359,10 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
     const bool_t hasSelection =
         m_iSelectedCharacterIndex >= 0 &&
         static_cast<size_t>(m_iSelectedCharacterIndex) < m_vecCharacters.size();
+    const bool_t canEnterWorld =
+        hasSelection &&
+        LostArk::Shared::Is_Supported_Playable_Character_Class(
+            m_vecCharacters[m_iSelectedCharacterIndex].m_eClass);
 
     ImGui::BeginDisabled(!hasSelection);
 
@@ -317,13 +377,39 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::EndDisabled();
 
-    ImGui::BeginDisabled(!hasSelection);
+    ImGui::BeginDisabled(!canEnterWorld);
 
-    if (ImGui::Button("Enter Baren"))
+    if (ImGui::Button("Enter Bern"))
     {
-        Request_EnterWorld();
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::BERN,
+            nickName);
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Enter Valtan"))
+    {
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::VALTAN_ARENA,
+            nickName);
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Enter Training"))
+    {
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::TRAINING_GROUND,
+            nickName);
+    }
     ImGui::EndDisabled();
 
     if (!hasSelection)
@@ -331,12 +417,16 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
         ImGui::TextDisabled(
             "Select a character first.");
     }
+    else if (!canEnterWorld)
+    {
+        ImGui::TextDisabled(
+            "This class needs its resource pack, CharacterSpec, Loader prototypes, and Server player profile before entry.");
+    }
 
     ImGui::TextWrapped("%s", m_strNetworkStatus.c_str());
 
     ImGui::End();
 }
-#endif
 
 unique_ptr<CLevel_Lobby> CLevel_Lobby::Create(ComPtr<ID3D11Device> pDevice, 
     ComPtr<ID3D11DeviceContext> pContext)

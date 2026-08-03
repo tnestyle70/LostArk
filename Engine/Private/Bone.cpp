@@ -4,7 +4,6 @@
 
 CBone::CBone()
 {
-	
 }
 
 CBone::~CBone()
@@ -40,6 +39,24 @@ HRESULT CBone::Initialize(const MODEL_BONE_DATA& bone)
 void CBone::Update_TransformationMatrix(fmatrix_t TransformationMatrix)
 {
 	XMStoreFloat4x4(&m_TransformationMatrix, TransformationMatrix);
+}
+
+void CBone::Blend_TransformationMatrix(fmatrix_t FromMatrix, f32_t fWeight)
+{
+	vector_t vFromScale{}, vFromRotation{}, vFromTranslation{};
+	vector_t vToScale{}, vToRotation{}, vToTranslation{};
+
+	if (!XMMatrixDecompose(&vFromScale, &vFromRotation, &vFromTranslation, FromMatrix) ||
+		!XMMatrixDecompose(&vToScale, &vToRotation, &vToTranslation,
+			XMLoadFloat4x4(&m_TransformationMatrix)))
+		return;
+
+	XMStoreFloat4x4(&m_TransformationMatrix,
+		XMMatrixAffineTransformation(
+			XMVectorLerp(vFromScale, vToScale, fWeight),
+			XMVectorZero(),
+			XMQuaternionSlerp(vFromRotation, vToRotation, fWeight),
+			XMVectorLerp(vFromTranslation, vToTranslation, fWeight)));
 }
 
 void CBone::Update_CombinedTransformationMatrix(const vector<shared_ptr<CBone>>& Bones, fmatrix_t PreTransformMatrix)

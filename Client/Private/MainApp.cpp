@@ -1,16 +1,29 @@
-#ifdef _DEBUG
+ï»¿#ifdef _DEBUG
+#include "imgui.h"
+#endif
+
+#ifndef _DEBUG
 #include "imgui.h"
 #endif
 
 #include "NetworkManager.h"
+#include "ClientLaunchOptions.h"
 #include "MainApp.h"
 #include "GameInstance.h"
 #include "Profiler.h"
+#include "LobbyCommandService.h"
+#include "RuntimeAssetRoot.h"
+#include "SceneTransitionService.h"
+#include "Loader.h"
+#include "LevelCatalog.h"
+#include "Character.h"
+#include "CombatHUDViewModel.h"
+#include "Valtan.h"
 
 #include "Level_Loading.h"
 
-#ifdef _DEBUG
 #include "ImGuiLayer.h"
+#ifdef _DEBUG
 #include "ProfilerCaptureIO.h"
 #include "MapTool.h"
 #include "Animation_Tool.h"
@@ -18,9 +31,12 @@
 #include "HUDLayoutTool.h"
 #endif
 
-#ifdef _DEBUG
+#include <algorithm>
+#include <fstream>
+
 namespace
 {
+#ifdef _DEBUG
     bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
     {
         if (nullptr == hWnd)
@@ -32,8 +48,22 @@ namespace
 
         return GetCurrentProcessId() == dwProcessId;
     }
-}
 #endif
+
+    const char_t* GetCharacterClassDisplayName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "Lance Master";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
+		default: return "Unknown";
+		}
+	}
+}
 
 Client::CMainApp::CMainApp()
 {
@@ -47,11 +77,11 @@ Client::CMainApp::CMainApp()
     
    // m_pContext->RSSetState(pRSState.Get());
 
-   // /* ±íÀÌ ºñ±³ x or o, ±íÀÌ ±â·Ï x or o */
+   // /* ê¹Šì´ ë¹„êµ x or o, ê¹Šì´ ê¸°ë¡ x or o */
    // D3D11_DEPTH_STENCIL_DESC
    // m_pContext->OMSetDepthStencilState();
 
-   // /* ºí·»µù¿¡ ´ëÇÑ ¼³Á¤. */
+   // /* ë¸”ë Œë”©ì— ëŒ€í•œ ì„¤ì •. */
    // D3D11_BLEND_DESC
    // m_pContext->OMSetBlendState();
    // 
@@ -92,13 +122,26 @@ HRESULT CMainApp::Initialize()
         return E_FAIL;
     }
 
+    if (FAILED(CClientLaunchOptions::Initialize()))
+    {
+        MessageBoxW(
+            g_hWnd,
+            CClientLaunchOptions::Get_Error().c_str(),
+            L"Invalid client launch options",
+            MB_OK | MB_ICONERROR);
+        return E_INVALIDARG;
+    }
+
+    m_eSmokeScenario = CClientLaunchOptions::Get().eScenario;
+    m_SmokeStartTime = std::chrono::steady_clock::now();
+
+    if (FAILED(ReadyImGuiRuntime()))
+        return E_FAIL;
+
 #ifdef _DEBUG
     if (FAILED(ReadyDebugTools()))
         return E_FAIL;
 #endif
-
-    if (FAILED(Ready_Gara()))
-        return E_FAIL;
 
     if (FAILED(Ready_Fonts()))
         return E_FAIL;
@@ -106,32 +149,7 @@ HRESULT CMainApp::Initialize()
     if (FAILED(Ready_Prototype_For_Static()))
         return E_FAIL;
 
-    const wchar_t* pCommandLine = GetCommandLineW();
-
-	LEVEL eStartLevel = LEVEL::LOBBY;
-
-	if (nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--hdr-readback"))
-	{
-		eStartLevel = LEVEL::TEST_LEVEL2;
-	}
-	else if (nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--network-lobby"))
-	{
-		eStartLevel = LEVEL::LOBBY;
-	}
-	else if (nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--map-level=bern"))
-	{
-		eStartLevel = LEVEL::BAREN;
-	}
-	else if (nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--map-level=valtan"))
-	{
-		eStartLevel = LEVEL::VALTAN_ARENA;
-	}
-
-    if (FAILED(Start_Level(eStartLevel)))
+    if (FAILED(Start_Level(LEVEL::LOBBY)))
         return E_FAIL;
 
     return S_OK;
@@ -141,28 +159,34 @@ void CMainApp::Update(f32_t fTimeDelta)
 {
 #ifdef _DEBUG
     UpdateDebugToolShortcut();
+#endif
 
     if (nullptr != m_pImGuiLayer)
         m_pImGuiLayer->BeginFrame();
 
-    const bool_t bMapToolOpen = nullptr != m_pMapTool && m_pMapTool->IsOpen();
+#ifdef _DEBUG
+    const bool_t bMapToolOpen = m_bDeveloperToolsVisible &&
+        nullptr != m_pMapTool && m_pMapTool->IsOpen();
     const HWND hForegroundWindow = GetForegroundWindow();
     const bool_t bExternalToolFocused = bMapToolOpen &&
         nullptr != hForegroundWindow &&
         hForegroundWindow != g_hWnd &&
         IsWindowOwnedByCurrentProcess(hForegroundWindow);
 
-    const bool_t bImGuiPanelOpen = bMapToolOpen || m_bProfilerVisible;
-    const bool_t bKeyboardCaptured = bImGuiPanelOpen &&
-        nullptr != m_pImGuiLayer &&
-        (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
-    const bool_t bMouseCapturedByUi = bImGuiPanelOpen &&
-        nullptr != m_pImGuiLayer &&
-        (m_pImGuiLayer->WantsCaptureMouse() ||
-            bExternalToolFocused);
     const bool_t bWorldLeftMouseConsumed =
         nullptr != m_pMapTool &&
         m_pMapTool->ConsumesWorldLeftMouse();
+#else
+    constexpr bool_t bExternalToolFocused = false;
+    constexpr bool_t bWorldLeftMouseConsumed = false;
+#endif
+
+    const bool_t bKeyboardCaptured =
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureKeyboard() || bExternalToolFocused);
+    const bool_t bMouseCapturedByUi =
+        nullptr != m_pImGuiLayer &&
+        (m_pImGuiLayer->WantsCaptureMouse() || bExternalToolFocused);
 
     CGameInstance::Get().SetInputBlocked(
         bKeyboardCaptured,
@@ -170,11 +194,14 @@ void CMainApp::Update(f32_t fTimeDelta)
     CGameInstance::Get().SetMouseButtonBlocked(
         DIM::LB,
         bWorldLeftMouseConsumed);
-#endif
 
     CNetworkManager::Get().Update();
 
+    Apply_PendingSceneTransition();
+
     CGameInstance::Get().Update_Engine(fTimeDelta);
+
+    UpdateSmokeHarness();
 
 #ifdef _DEBUG
     if (nullptr != m_pMapTool)
@@ -188,62 +215,50 @@ HRESULT CMainApp::Render()
 
     if (FAILED(CGameInstance::Get().Render_Begin(&vClearColor)))
     {
-#ifdef _DEBUG
         if (nullptr != m_pImGuiLayer)
             m_pImGuiLayer->CancelFrame();
-#endif
         return E_FAIL;
     }
 
     if (FAILED(CGameInstance::Get().Render()))
     {
-#ifdef _DEBUG
         if (nullptr != m_pImGuiLayer)
             m_pImGuiLayer->CancelFrame();
-#endif
         return E_FAIL;
     }
 
-#ifndef _DEBUG
-    CGameInstance::Get().Draw_Text(TEXT("Font_Default"), TEXT("ÇÑ±Û ÀÌ´Ù12abd"), float2_t(0.f, 0.f));
-#endif
-
-#ifdef _DEBUG
     if (nullptr != m_pImGuiLayer)
     {
-        if (nullptr != m_pMapTool)
-            m_pMapTool->Render();
+		RenderCombatHUD();
 
-        if (nullptr != m_pMapTool &&
-            m_pMapTool->IsOpen() &&
-            nullptr != m_pEffectTool)
+#ifdef _DEBUG
+        if (m_bDeveloperToolsVisible)
         {
-            m_pEffectTool->Render();
-        }
+            RenderDeveloperTools();
 
-        if (nullptr != m_pMapTool &&
-            m_pMapTool->IsOpen() &&
-            nullptr != m_pAnimationTool)
-        {
-            m_pAnimationTool->Render();
-        }
+            if (DEBUG_TOOL::MAP == m_eActiveDebugTool &&
+                nullptr != m_pMapTool)
+                m_pMapTool->Render();
+            else if (DEBUG_TOOL::EFFECT == m_eActiveDebugTool &&
+                nullptr != m_pEffectTool)
+                m_pEffectTool->Render();
+            else if (DEBUG_TOOL::ANIMATION == m_eActiveDebugTool &&
+                nullptr != m_pAnimationTool)
+                m_pAnimationTool->Render();
+            else if (DEBUG_TOOL::UI == m_eActiveDebugTool &&
+                nullptr != m_pHUDLayoutTool)
+                m_pHUDLayoutTool->Render();
 
-        if (nullptr != m_pMapTool &&
-            m_pMapTool->IsOpen() &&
-            nullptr != m_pHUDLayoutTool)
-        {
-            m_pHUDLayoutTool->Render();
+            if (m_bProfilerVisible)
+            {
+                RenderProfilerOverlay();
+                RenderProfilerSettings();
+            }
         }
-
-        if (m_bProfilerVisible)
-        {
-            RenderProfilerOverlay();
-            RenderProfilerSettings();
-        }
+#endif
 
         m_pImGuiLayer->EndFrame();
     }
-#endif
 
     if (FAILED(CGameInstance::Get().Render_End()))
         return E_FAIL;
@@ -251,98 +266,109 @@ HRESULT CMainApp::Render()
     return S_OK;
 }
 
-HRESULT CMainApp::Ready_Gara()
-{   
-    uint32_t        iByte = {};
-    HANDLE          hFile = CreateFile(TEXT("../Bin/DataFiles/Navigation.dat"), GENERIC_WRITE, 0 ,nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    if (0 == hFile)
-        return E_FAIL;
+void CMainApp::RenderCombatHUD()
+{
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+	{
+		return;
+	}
 
-    float3_t          vPoints[3] = {};
+	const Client::HUD_PLAYER_STATE& player =
+		Client::CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid ||
+		0u == player.iMaximumHp ||
+		0u == player.iMaximumResource)
+	{
+		return;
+	}
 
-    vPoints[0] = float3_t(0.f, 0.f, 10.f);
-    vPoints[1] = float3_t(10.f, 0.f, 0.f);
-    vPoints[2] = float3_t(0.f, 0.f, 0.f);
-    WriteFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::SetNextWindowPos(
+		ImVec2(viewport->WorkPos.x + 20.f,
+			viewport->WorkPos.y + viewport->WorkSize.y - 20.f),
+		ImGuiCond_Always,
+		ImVec2(0.f, 1.f));
+	ImGui::SetNextWindowBgAlpha(0.78f);
 
-    vPoints[0] = float3_t(0.f, 0.f, 10.f);
-    vPoints[1] = float3_t(10.f, 0.f, 10.f);
-    vPoints[2] = float3_t(10.f, 0.f, 0.f);
-    WriteFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
+	constexpr ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoInputs;
 
-    vPoints[0] = float3_t(0.f, 0.f, 20.f);
-    vPoints[1] = float3_t(10.f, 0.f, 10.f);
-    vPoints[2] = float3_t(0.f, 0.f, 10.f);
-    WriteFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
+	if (ImGui::Begin("##RuntimeCombatHUD", nullptr, flags))
+	{
+		ImGui::Text("%s", GetCharacterClassDisplayName(
+			player.eCharacterClass));
+		ImGui::Text("HP  %u / %u", player.iCurrentHp, player.iMaximumHp);
+		ImGui::ProgressBar(
+			static_cast<float>(player.iCurrentHp) /
+			static_cast<float>(player.iMaximumHp),
+			ImVec2(280.f, 0.f));
+		ImGui::Text(
+			"Resource  %u / %u",
+			player.iCurrentResource,
+			player.iMaximumResource);
+		ImGui::ProgressBar(
+			static_cast<float>(player.iCurrentResource) /
+			static_cast<float>(player.iMaximumResource),
+			ImVec2(280.f, 0.f));
 
-    vPoints[0] = float3_t(10.f, 0.f, 10.f);
-    vPoints[1] = float3_t(20.f, 0.f, 0.f);
-    vPoints[2] = float3_t(10.f, 0.f, 0.f);
-    WriteFile(hFile, vPoints, sizeof(float3_t) * 3, reinterpret_cast<DWORD*>(&iByte), nullptr);
-
-    CloseHandle(hFile);
-
-    ComPtr<ID3D11Texture2D>         pTexture2D = { nullptr };
-
-    D3D11_TEXTURE2D_DESC            TextureDesc{};
-
-    TextureDesc.Width = 256;
-    TextureDesc.Height = 256;
-    TextureDesc.MipLevels = 1;
-    TextureDesc.ArraySize = 1;
-    TextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    TextureDesc.SampleDesc.Quality = 0;
-    TextureDesc.SampleDesc.Count = 1;  
-    TextureDesc.Usage = D3D11_USAGE_STAGING;
-    TextureDesc.BindFlags = 0;
-    TextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
-    TextureDesc.MiscFlags = 0;
-
-    shared_ptr<uint32_t[]>      pPixels = make_shared<uint32_t[]>(TextureDesc.Width * TextureDesc.Height);
-
-    pPixels[0] = 0xffffffff;
-
-    D3D11_SUBRESOURCE_DATA      InitialDesc{};
-    InitialDesc.pSysMem = pPixels.get();
-    InitialDesc.SysMemPitch = TextureDesc.Width * sizeof(uint32_t);
-
-    if (FAILED(m_pDevice->CreateTexture2D(&TextureDesc, &InitialDesc, &pTexture2D)))
-        return E_FAIL;
-
-    D3D11_MAPPED_SUBRESOURCE            SubResource{};
-
-    m_pContext->Map(pTexture2D.Get(), 0, D3D11_MAP_READ_WRITE, 0, &SubResource);
-
-    auto        pLockPixels = static_cast<uint32_t*>(SubResource.pData);
-
-    for (uint32_t i = 0; i < 256; i++)
-    {
-        for (uint32_t j = 0; j < 256; j++)
-        {
-            uint32_t        iIndex = i * 256 + j;
-
-            /* a b g r */
-            if(j < 128)
-                pLockPixels[iIndex] = 0xffffffff;
-            else
-                pLockPixels[iIndex] = 0xff000000;
-        }
-    }
-
-    if (FAILED(DirectX::SaveDDSTextureToFile(m_pContext.Get(), pTexture2D.Get(), TEXT("../Bin/Resources/Textures/Terrain/MyMask.dds"))))
-        return E_FAIL;
-
-    return S_OK;
+		if (player.Skills.empty())
+		{
+			ImGui::TextDisabled("No server skill bindings for this class.");
+		}
+		else
+		{
+			for (const Client::HUD_SKILL_STATE& skill : player.Skills)
+			{
+				const std::uint32_t remainingTicks =
+					skill.iCooldownEndTick > player.iServerTick ?
+					skill.iCooldownEndTick - player.iServerTick : 0u;
+				if (0u == remainingTicks)
+				{
+					ImGui::Text(
+						"[%s] %s  READY  DMG %u",
+						skill.strInputSlot.c_str(),
+						skill.strDisplayName.c_str(),
+						skill.iDamage);
+				}
+				else
+				{
+					ImGui::Text(
+						"[%s] %s  %.1fs  DMG %u",
+						skill.strInputSlot.c_str(),
+						skill.strDisplayName.c_str(),
+						static_cast<float>(remainingTicks) / 30.f,
+						skill.iDamage);
+				}
+			}
+		}
+	}
+	ImGui::End();
 }
 
 HRESULT CMainApp::Ready_Fonts()
 {
     /*
-MakeSpriteFont "³Ø½¼lv1°íµñ Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
+MakeSpriteFont "ë„¥ìŠ¨lv1ê³ ë”• Bold" /FontSize:20 /FastPack /CharacterRegion:0x0020-0x00FF /CharacterRegion:0x3131-0x3163 /CharacterRegion:0xAC00-0xD800 /DefaultCharacter:0xAC00 161ex.spritefont
 */
 
 
-    if (FAILED(CGameInstance::Get().Add_Font(TEXT("Font_Default"), TEXT("../Bin/Resources/Fonts/161ex.spritefont"))))
+    const filesystem::path fontPath =
+        CRuntimeAssetRoot::Resolve_Font(L"161ex.spritefont");
+    if (fontPath.empty() ||
+        FAILED(CGameInstance::Get().Add_Font(
+            TEXT("Font_Default"),
+            fontPath.c_str())))
         return E_FAIL;
        
 
@@ -376,8 +402,322 @@ HRESULT CMainApp::Start_Level(LEVEL eStartLevelID)
     return S_OK;
 }
 
+void CMainApp::Apply_PendingSceneTransition()
+{
+    SCENE_TRANSITION_REQUEST request;
+    if (!CSceneTransitionService::Try_Consume(request))
+        return;
+
+    if (ETOUI(LEVEL::LOADING) ==
+        CGameInstance::Get().Get_CurrentLevelID())
+    {
+        OutputDebugStringA(
+            "[SceneTransition] Rejected while loading is active.\n");
 #ifdef _DEBUG
-HRESULT CMainApp::ReadyDebugTools()
+        m_strSceneTransitionStatus =
+            "Transition rejected while Loading is active.";
+#endif
+        return;
+    }
+
+    if (!CClientLaunchOptions::Select_RuntimeScenario(
+        request.eScenario) ||
+        FAILED(Start_Level(request.eTargetLevel)))
+    {
+        OutputDebugStringA(
+            "[SceneTransition] Failed to enter Loading.\n");
+#ifdef _DEBUG
+        m_strSceneTransitionStatus =
+            "Transition failed before Loading could start.";
+#endif
+        return;
+    }
+
+#ifdef _DEBUG
+    m_strSceneTransitionStatus =
+        "Loading request accepted from " + request.strSource + ".";
+#endif
+}
+
+void CMainApp::UpdateSmokeHarness()
+{
+    const CLIENT_LAUNCH_OPTIONS& options =
+        CClientLaunchOptions::Get();
+    if (!options.isSmokeRun || m_isSmokeComplete)
+        return;
+
+    HRESULT loadFailure = S_OK;
+    if (CSceneTransitionService::Try_ConsumeLoadFailure(loadFailure))
+    {
+        CompleteSmokeHarness(false, "level-load-failed");
+        return;
+    }
+
+    const auto elapsed = std::chrono::duration_cast<
+        std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_SmokeStartTime);
+    if (elapsed.count() > options.iTimeoutMs)
+    {
+        CompleteSmokeHarness(false, "timeout");
+        return;
+    }
+
+    const uint32_t currentLevel =
+        CGameInstance::Get().Get_CurrentLevelID();
+
+    LEVEL targetLevel = LEVEL::LOBBY;
+    switch (m_eSmokeScenario)
+    {
+    case CLIENT_SCENARIO::WORLD_BERN:
+        targetLevel = LEVEL::BERN;
+        break;
+    case CLIENT_SCENARIO::RAID_VALTAN_ARENA:
+        targetLevel = LEVEL::VALTAN_ARENA;
+        break;
+    case CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND:
+    case CLIENT_SCENARIO::DEVELOPMENT_MAP:
+    case CLIENT_SCENARIO::DEVELOPMENT_CHARACTER:
+    case CLIENT_SCENARIO::DEVELOPMENT_HDR:
+    case CLIENT_SCENARIO::DEVELOPMENT_EFFECT:
+    case CLIENT_SCENARIO::DEVELOPMENT_UI:
+        targetLevel = LEVEL::DEVELOPMENT;
+        break;
+    default:
+        break;
+    }
+
+    if (m_isSmokeDispatched)
+    {
+		if (ETOUI(targetLevel) != currentLevel)
+			return;
+
+		if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
+			CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
+			CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+		{
+			const shared_ptr<CCharacter> localCharacter =
+				dynamic_pointer_cast<CCharacter>(
+					CGameInstance::Get().Get_GameObject(
+						currentLevel,
+						TEXT("Layer_Player"),
+						0));
+			if (nullptr == localCharacter)
+				return;
+
+			if (CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+			{
+				static bool_t isTrainingActionDispatched = false;
+				if (!isTrainingActionDispatched)
+				{
+					if (!CNetworkManager::Get().Send_UseSkill(
+						1u, 34060u, 0.f, 0.f))
+					{
+						CompleteSmokeHarness(false, "training-action-send-failed");
+						return;
+					}
+					isTrainingActionDispatched = true;
+					return;
+				}
+
+				const Client::HUD_PLAYER_STATE& playerState =
+					Client::CCombatHUDViewModel::Get().Get_Player();
+				const auto skill = std::find_if(
+					playerState.Skills.begin(),
+					playerState.Skills.end(),
+					[](const Client::HUD_SKILL_STATE& state)
+					{
+						return 34060u == state.iSkillId;
+					});
+				if (!playerState.isValid ||
+					playerState.Skills.end() == skill ||
+					skill->iCooldownEndTick <= playerState.iServerTick)
+				{
+					return;
+				}
+				CompleteSmokeHarness(
+					true,
+					"map-player-action-cooldown-and-hud-ready");
+				return;
+			}
+
+			if (CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
+			{
+				const shared_ptr<CValtan> valtan =
+					dynamic_pointer_cast<CValtan>(
+						CGameInstance::Get().Get_GameObject(
+							currentLevel,
+							TEXT("Layer_WorldEntity"),
+							0));
+				if (nullptr == valtan ||
+					valtan->Get_ServerActionId() !=
+						"valtan.attack.basic-swing" ||
+					(CValtan::VALTAN_STATE::PATTERN_WINDUP != valtan->Get_State() &&
+					 CValtan::VALTAN_STATE::PATTERN_ACTIVE != valtan->Get_State() &&
+					 CValtan::VALTAN_STATE::PATTERN_RECOVERY != valtan->Get_State()))
+				{
+					return;
+				}
+			}
+
+			CompleteSmokeHarness(
+				true,
+				CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ?
+				"map-and-player-replication-ready" :
+				"map-player-and-valtan-action-ready");
+			return;
+		}
+
+#ifdef _DEBUG
+		bool_t isToolReady = false;
+		switch (m_eSmokeScenario)
+		{
+		case CLIENT_SCENARIO::DEVELOPMENT_MAP:
+			isToolReady = nullptr != m_pMapTool;
+			break;
+		case CLIENT_SCENARIO::DEVELOPMENT_CHARACTER:
+			isToolReady = nullptr != m_pAnimationTool;
+			break;
+		case CLIENT_SCENARIO::DEVELOPMENT_HDR:
+		case CLIENT_SCENARIO::DEVELOPMENT_EFFECT:
+			isToolReady = nullptr != m_pEffectTool;
+			break;
+		case CLIENT_SCENARIO::DEVELOPMENT_UI:
+			isToolReady = nullptr != m_pHUDLayoutTool;
+			break;
+		default:
+			break;
+		}
+		if (isToolReady)
+			CompleteSmokeHarness(true, "development-level-and-tool-ready");
+#else
+		CompleteSmokeHarness(false, "developer-tools-not-shipped-in-release");
+#endif
+        return;
+    }
+
+    if (ETOUI(LEVEL::LOBBY) != currentLevel)
+        return;
+
+    if (CLIENT_SCENARIO::FRONT_LOBBY == m_eSmokeScenario)
+    {
+        CompleteSmokeHarness(true, "lobby-active");
+        return;
+    }
+
+    if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
+        CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
+        CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+    {
+        LostArk::Shared::WORLD_ID worldId =
+            LostArk::Shared::WORLD_ID::END;
+        if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario)
+            worldId = LostArk::Shared::WORLD_ID::BERN;
+        else if (CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
+            worldId = LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+        else
+            worldId = LostArk::Shared::WORLD_ID::TRAINING_GROUND;
+        m_isSmokeDispatched =
+            CLobbyCommandService::Request_EnterWorld(
+                0,
+                worldId,
+                "SmokeClient");
+    }
+    else
+    {
+        if (!CClientLaunchOptions::Select_RuntimeScenario(
+            m_eSmokeScenario))
+        {
+            CompleteSmokeHarness(false, "invalid-smoke-scenario");
+            return;
+        }
+#ifdef _DEBUG
+        if (FAILED(EnsureDebugTool(m_eSmokeScenario)))
+        {
+            CompleteSmokeHarness(false, "debug-tool-init-failed");
+            return;
+        }
+#endif
+        m_isSmokeDispatched = CSceneTransitionService::Request(
+            LEVEL::DEVELOPMENT,
+            m_eSmokeScenario,
+            "smoke-harness");
+    }
+
+    if (!m_isSmokeDispatched)
+        CompleteSmokeHarness(false, "dispatch-failed");
+}
+
+void CMainApp::CompleteSmokeHarness(
+    const bool_t succeeded,
+    const char_t* pReason)
+{
+    if (m_isSmokeComplete)
+        return;
+    m_isSmokeComplete = true;
+
+    const CLIENT_LAUNCH_OPTIONS& options =
+        CClientLaunchOptions::Get();
+    const auto elapsed = std::chrono::duration_cast<
+        std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_SmokeStartTime);
+
+    if (options.ReportPath.has_value())
+    {
+        const std::filesystem::path reportPath =
+            options.ReportPath->lexically_normal();
+        std::error_code error;
+        if (!reportPath.parent_path().empty())
+        {
+            std::filesystem::create_directories(
+                reportPath.parent_path(),
+                error);
+        }
+
+        if (!error)
+        {
+            std::filesystem::path temporaryPath = reportPath;
+            temporaryPath += L".tmp";
+            std::ofstream output(
+                temporaryPath,
+                std::ios::binary | std::ios::trunc);
+            if (output.is_open())
+            {
+                output
+                    << "{\n"
+                    << "  \"schema\": \"lostark.client-smoke\",\n"
+                    << "  \"version\": 1,\n"
+                    << "  \"scenarioId\": \""
+                    << options.strScenarioId << "\",\n"
+                    << "  \"status\": \""
+                    << (succeeded ? "passed" : "failed") << "\",\n"
+                    << "  \"reason\": \""
+                    << (nullptr == pReason ? "unknown" : pReason)
+                    << "\",\n"
+                    << "  \"elapsedMs\": " << elapsed.count() << ",\n"
+                    << "  \"currentLevelId\": "
+                    << CGameInstance::Get().Get_CurrentLevelID() << ",\n"
+                    << "  \"loadingStage\": \""
+                    << CLoader::Get_ActiveStatus() << "\"\n"
+                    << "}\n";
+                output.close();
+
+                MoveFileExW(
+                    temporaryPath.c_str(),
+                    reportPath.c_str(),
+                    MOVEFILE_REPLACE_EXISTING |
+                    MOVEFILE_WRITE_THROUGH);
+            }
+        }
+    }
+
+    OutputDebugStringA(
+        succeeded ?
+        "[Smoke] PASS\n" :
+        "[Smoke] FAIL\n");
+    PostMessageW(g_hWnd, WM_CLOSE, 0, 0);
+}
+
+HRESULT CMainApp::ReadyImGuiRuntime()
 {
     m_pImGuiLayer = std::make_unique<Engine::CImGuiLayer>();
     if (!m_pImGuiLayer->Initialize(g_hWnd, m_pDevice.Get(), m_pContext.Get()))
@@ -386,27 +726,17 @@ HRESULT CMainApp::ReadyDebugTools()
         return E_FAIL;
     }
 
-    auto mapTool = std::make_unique<CMapTool>();
-    if (FAILED(mapTool->Initialize(m_pDevice, m_pContext)))
-        return E_FAIL;
-    m_pMapTool = std::move(mapTool);
+    return S_OK;
+}
 
-    m_pAnimationTool = std::make_unique<CAnimation_Tool>();
+#ifdef _DEBUG
+HRESULT CMainApp::ReadyDebugTools()
+{
+    const CLIENT_LAUNCH_OPTIONS& launchOptions =
+        CClientLaunchOptions::Get();
 
-    m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
-    m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
-
-    const wchar_t* pCommandLine = GetCommandLineW();
     const bool_t isEffectProfileRequested =
-        nullptr != pCommandLine &&
-        nullptr != wcsstr(pCommandLine, L"--effect-profile");
-    if (nullptr != pCommandLine &&
-        nullptr != wcsstr(pCommandLine, L"--effect-open") &&
-        nullptr != m_pMapTool &&
-        !m_pMapTool->IsOpen())
-    {
-        m_pMapTool->Toggle();
-    }
+        launchOptions.isEffectProfile;
 
     if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
     {
@@ -416,6 +746,172 @@ HRESULT CMainApp::ReadyDebugTools()
     m_bProfilerVisible = isEffectProfileRequested;
 
     return S_OK;
+}
+
+HRESULT CMainApp::EnsureDebugTool(
+    const CLIENT_SCENARIO eScenario)
+{
+	const LEVEL_CATALOG_ENTRY* pEntry = CLevelCatalog::Find(eScenario);
+	if (nullptr == pEntry || pEntry->Tools.size() != 1u)
+		return E_INVALIDARG;
+	const std::string& tool = pEntry->Tools.front();
+
+	if (tool == "MapTool")
+    {
+        if (nullptr == m_pMapTool)
+        {
+            auto mapTool = std::make_unique<CMapTool>();
+            if (FAILED(mapTool->Initialize(m_pDevice, m_pContext)))
+                return E_FAIL;
+            m_pMapTool = std::move(mapTool);
+        }
+        m_pMapTool->SetOpen(true);
+        m_eActiveDebugTool = DEBUG_TOOL::MAP;
+        return S_OK;
+    }
+	if (tool == "AnimationTool")
+	{
+        if (nullptr == m_pAnimationTool)
+            m_pAnimationTool = std::make_unique<CAnimation_Tool>();
+        m_eActiveDebugTool = DEBUG_TOOL::ANIMATION;
+        return S_OK;
+    }
+	if (tool == "EffectTool")
+	{
+        if (nullptr == m_pEffectTool)
+            m_pEffectTool = std::make_unique<CEffect_Tool>(m_pDevice);
+        m_eActiveDebugTool = DEBUG_TOOL::EFFECT;
+        return S_OK;
+    }
+	if (tool == "HUDLayoutTool")
+	{
+        if (nullptr == m_pHUDLayoutTool)
+        {
+            m_pHUDLayoutTool = std::make_unique<CHUDLayoutTool>(
+                m_pDevice,
+                m_pContext);
+        }
+        m_eActiveDebugTool = DEBUG_TOOL::UI;
+        return S_OK;
+    }
+
+	m_eActiveDebugTool = DEBUG_TOOL::NONE;
+	return E_INVALIDARG;
+}
+
+void CMainApp::RenderDeveloperTools()
+{
+    if (!ImGui::Begin(
+        "LostArk Developer Tools",
+        &m_bDeveloperToolsVisible,
+        ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::End();
+        return;
+    }
+
+    const uint32_t currentLevelId =
+        CGameInstance::Get().Get_CurrentLevelID();
+    const bool_t transitionBlocked =
+        ETOUI(LEVEL::LOADING) == currentLevelId ||
+        CSceneTransitionService::Is_Pending();
+
+    ImGui::Text("Current level id: %u", currentLevelId);
+    ImGui::TextWrapped("%s", m_strSceneTransitionStatus.c_str());
+    ImGui::SeparatorText("Local scene previews (server authority bypassed)");
+
+    const auto RequestScene = [this, transitionBlocked](
+        const char_t* pLabel,
+        const LEVEL eLevel,
+        const CLIENT_SCENARIO eScenario)
+    {
+        ImGui::BeginDisabled(transitionBlocked);
+        if (ImGui::Button(pLabel))
+        {
+            if (!CClientLaunchOptions::Select_RuntimeScenario(eScenario))
+            {
+                m_strSceneTransitionStatus =
+                    "Scenario selection was rejected.";
+            }
+            else if (FAILED(EnsureDebugTool(eScenario)))
+            {
+                m_strSceneTransitionStatus =
+                    "The selected tool could not be initialized.";
+            }
+            else if (!CSceneTransitionService::Request(
+                eLevel,
+                eScenario,
+                "imgui.scene-navigator"))
+            {
+                m_strSceneTransitionStatus =
+                    CSceneTransitionService::Get_Status();
+            }
+            else
+            {
+                m_strSceneTransitionStatus =
+                    "Scene transition staged. It will enter Loading next frame.";
+            }
+        }
+        ImGui::EndDisabled();
+    };
+
+    RequestScene(
+        "Lobby##SceneLobby",
+        LEVEL::LOBBY,
+        CLIENT_SCENARIO::FRONT_LOBBY);
+    ImGui::SameLine();
+    RequestScene(
+        "Bern##SceneBern",
+        LEVEL::BERN,
+        CLIENT_SCENARIO::WORLD_BERN);
+    ImGui::SameLine();
+    RequestScene(
+        "Valtan Arena##SceneValtan",
+        LEVEL::VALTAN_ARENA,
+        CLIENT_SCENARIO::RAID_VALTAN_ARENA);
+
+    ImGui::SeparatorText("Development scenes");
+    RequestScene(
+        "Map Tool##SceneMapTool",
+        LEVEL::DEVELOPMENT,
+        CLIENT_SCENARIO::DEVELOPMENT_MAP);
+    ImGui::SameLine();
+    RequestScene(
+        "Character Animation##SceneAnimation",
+        LEVEL::DEVELOPMENT,
+        CLIENT_SCENARIO::DEVELOPMENT_CHARACTER);
+    RequestScene(
+        "Effect Preview##SceneEffect",
+        LEVEL::DEVELOPMENT,
+        CLIENT_SCENARIO::DEVELOPMENT_EFFECT);
+    ImGui::SameLine();
+    RequestScene(
+        "HUD Layout##SceneHud",
+        LEVEL::DEVELOPMENT,
+        CLIENT_SCENARIO::DEVELOPMENT_UI);
+    ImGui::SameLine();
+    RequestScene(
+        "HDR Readback##SceneHdr",
+        LEVEL::DEVELOPMENT,
+        CLIENT_SCENARIO::DEVELOPMENT_HDR);
+
+    ImGui::SeparatorText("Diagnostics");
+    bool profilerVisible = m_bProfilerVisible;
+    if (ImGui::Checkbox("Profiler", &profilerVisible))
+    {
+        m_bProfilerVisible = profilerVisible;
+        if (Engine::CProfiler* pProfiler =
+            CGameInstance::Get().Get_Profiler())
+        {
+            if (m_bProfilerVisible)
+                pProfiler->Reset_History();
+            pProfiler->Set_Enabled(m_bProfilerVisible);
+        }
+    }
+    ImGui::TextDisabled(
+        "F1: Developer Tools  |  F6: Follow/Free Camera");
+
+    ImGui::End();
 }
 
 void CMainApp::RenderProfilerOverlay()
@@ -523,7 +1019,8 @@ void CMainApp::RenderProfilerSettings()
     const bool_t bHasStats =
         nullptr != pProfiler && pProfiler->Get_LiveStats(stats);
 
-    ImGui::TextUnformatted("F4: profiler on / off");
+    ImGui::TextUnformatted(
+        "Profiler is controlled from the F1 Developer Tools window.");
     ImGui::Separator();
 
     if (!bHasStats)
@@ -638,27 +1135,10 @@ void CMainApp::UpdateDebugToolShortcut()
     const bool_t bF1Down = bWindowFocused &&
         0 != (GetAsyncKeyState(VK_F1) & 0x8000);
 
-    const bool_t bF4Down = bWindowFocused &&
-        0 != (GetAsyncKeyState(VK_F4) & 0x8000);
-
-    if (bF1Down && !m_bF1Down && nullptr != m_pMapTool)
-        m_pMapTool->Toggle();
-
-    if (bF4Down && !m_bF4Down)
-    {
-        m_bProfilerVisible = !m_bProfilerVisible;
-
-        if (Engine::CProfiler* pProfiler =
-            CGameInstance::Get().Get_Profiler())
-        {
-            if (m_bProfilerVisible)
-                pProfiler->Reset_History();
-            pProfiler->Set_Enabled(m_bProfilerVisible);
-        }
-    }
+    if (bF1Down && !m_bF1Down)
+        m_bDeveloperToolsVisible = !m_bDeveloperToolsVisible;
 
     m_bF1Down = bF1Down;
-    m_bF4Down = bF4Down;
 }
 #endif
 
@@ -677,11 +1157,11 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
-    // NetworkManager Á¾·á
+    // NetworkManager ì¢…ë£Œ
     CNetworkManager::Get().Shutdown();
-#ifdef _DEBUG
     CGameInstance::Get().SetInputBlocked(false, false);
 
+#ifdef _DEBUG
     if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
         pProfiler->Set_Enabled(false);
 
@@ -689,11 +1169,11 @@ void CMainApp::Free()
     m_pEffectTool.reset();
     m_pHUDLayoutTool.reset();
     m_pMapTool.reset();
+#endif
 
     if (nullptr != m_pImGuiLayer)
         m_pImGuiLayer->Shutdown();
     m_pImGuiLayer.reset();
-#endif
 
     CGameInstance::Get().Release_Engine();
 }

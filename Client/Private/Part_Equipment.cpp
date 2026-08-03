@@ -31,6 +31,11 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	a skinned piece borrows its whole palette. */
 	if (nullptr == m_pSkeletonModelCom)
 		return E_FAIL;
+	if (nullptr != m_pSocketBoneName &&
+		!m_pSkeletonModelCom->Has_Bone(m_pSocketBoneName))
+	{
+		return E_INVALIDARG;
+	}
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
@@ -134,7 +139,7 @@ unique_ptr<CPart_Equipment> CPart_Equipment::Create(ComPtr<ID3D11Device> pDevice
 	auto pInstance = unique_ptr<CPart_Equipment>(new CPart_Equipment(pDevice, pContext));
 	if (FAILED(pInstance->Initialize_Prototype()))
 	{
-		MSG_BOX("Failed to Created : CPart_Equipment");
+		OutputDebugStringA("[Client][PartEquipment] Create failed.\n");
 		return nullptr;
 	}
 	return pInstance;
@@ -145,7 +150,7 @@ shared_ptr<CPrototype> CPart_Equipment::Clone(void* pArg)
 	auto pInstance = shared_ptr<CPart_Equipment>(new CPart_Equipment(*this));
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned : CPart_Equipment");
+		OutputDebugStringA("[Client][PartEquipment] Clone failed.\n");
 		return nullptr;
 	}
 	return pInstance;

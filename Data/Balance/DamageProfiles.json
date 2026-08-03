@@ -1,0 +1,9 @@
+{
+  "schema": "lostark.damage-profiles",
+  "formatVersion": 1,
+  "profiles": [
+    { "damageProfileId": "damage.player.34060", "amount": 650 },
+    { "damageProfileId": "damage.player.34100", "amount": 900 },
+    { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 }
+  ]
+}

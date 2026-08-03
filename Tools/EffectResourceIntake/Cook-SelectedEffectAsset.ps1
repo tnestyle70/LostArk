@@ -10,13 +10,10 @@ param(
     [string]$MeshPath = '',
 
     [Parameter()]
-    [string]$OutputRoot = 'Client/Bin/Resources/LostArk/Effect/Effect_Tool',
+    [string]$OutputRoot = 'Data/Effects/Cooked',
 
     [Parameter()]
     [string]$Category = '',
-
-    [Parameter()]
-    [string]$ConverterPath = 'Tools/WintersAssetConverter/Bin/WintersAssetConverter.exe',
 
     [Parameter()]
     [switch]$Force
@@ -70,32 +67,6 @@ function Get-Sha256 {
     return (Get-FileHash -LiteralPath $FilePath -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-function Get-ConverterPathArgument {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$AbsolutePath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$RepositoryRoot
-    )
-
-    $normalizedRoot = [System.IO.Path]::GetFullPath(
-        $RepositoryRoot).TrimEnd('\', '/')
-    $normalizedPath = [System.IO.Path]::GetFullPath($AbsolutePath)
-    $rootPrefix = $normalizedRoot + [System.IO.Path]::DirectorySeparatorChar
-    if ($normalizedPath.StartsWith(
-        $rootPrefix,
-        [System.StringComparison]::OrdinalIgnoreCase)) {
-        # The converter/Assimp narrow-string path currently corrupts the
-        # Korean repository directory when an absolute path is supplied.
-        # An ASCII repository-relative argument preserves the process Unicode
-        # current directory and keeps the actual asset path addressable.
-        return $normalizedPath.Substring($rootPrefix.Length)
-    }
-
-    return $normalizedPath
-}
-
 if ($AssetId -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$') {
     throw ('AssetId must start with an ASCII letter or digit and contain only ' +
         'ASCII letters, digits, dot, underscore, or hyphen (maximum 128 characters).')
@@ -108,11 +79,17 @@ if ($AssetId -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)') {
 $repositoryRoot = (Resolve-Path -LiteralPath (
     Join-Path -Path $PSScriptRoot -ChildPath '..\..')).ProviderPath
 
+if (-not [string]::IsNullOrWhiteSpace($MeshPath)) {
+    throw ('MeshPath is not supported by the effect texture intake. ' +
+        'Convert mesh sources with Tools/ModelAssetConverter to .wmodel, ' +
+        'then admit the complete asset through the runtime resource pack.')
+}
+
 $resolvedOutputRoot = Resolve-RepositoryPath `
     -PathValue $OutputRoot `
     -RepositoryRoot $repositoryRoot
 
-# Category groups cooked assets by class folder, e.g. Effect_Tool/Glaivier.
+# Category groups staged assets by class folder, e.g. Glaivier.
 # ASCII names only: the converter breaks on non-ASCII path segments.
 if (-not [string]::IsNullOrWhiteSpace($Category)) {
     if ($Category -notmatch '^[A-Za-z0-9_-]+$') {
@@ -123,25 +100,6 @@ if (-not [string]::IsNullOrWhiteSpace($Category)) {
 
 if (Test-Path -LiteralPath $resolvedOutputRoot -PathType Leaf) {
     throw "OutputRoot points to a file: $resolvedOutputRoot"
-}
-
-$resolvedMeshPath = $null
-$resolvedConverterPath = $null
-if (-not [string]::IsNullOrWhiteSpace($MeshPath)) {
-    $resolvedMeshPath = Resolve-RepositoryPath `
-        -PathValue $MeshPath `
-        -RepositoryRoot $repositoryRoot `
-        -RequireFile
-
-    $meshExtension = [System.IO.Path]::GetExtension($resolvedMeshPath).ToLowerInvariant()
-    if ($meshExtension -ne '.gltf' -and $meshExtension -ne '.fbx') {
-        throw "MeshPath must be a .gltf or .fbx file: $resolvedMeshPath"
-    }
-
-    $resolvedConverterPath = Resolve-RepositoryPath `
-        -PathValue $ConverterPath `
-        -RepositoryRoot $repositoryRoot `
-        -RequireFile
 }
 
 $resolvedTexturePaths = @()
@@ -164,8 +122,8 @@ if ($null -ne $TexturePath) {
     }
 }
 
-if ($null -eq $resolvedMeshPath -and $resolvedTexturePaths.Count -eq 0) {
-    throw 'Select at least one MeshPath or TexturePath to cook.'
+if ($resolvedTexturePaths.Count -eq 0) {
+    throw 'Select at least one TexturePath to cook.'
 }
 
 $targetAssetDirectory = Join-Path -Path $resolvedOutputRoot -ChildPath $AssetId
@@ -194,72 +152,6 @@ try {
 
     $sourceRecords = @()
     $outputRecords = @()
-    $converterProvenance = $null
-
-    if ($null -ne $resolvedMeshPath) {
-        $meshOutputName = "$AssetId.wmesh"
-        $meshOutputPath = Join-Path -Path $stagingDirectory -ChildPath $meshOutputName
-
-        $converterMeshArgument = Get-ConverterPathArgument `
-            -AbsolutePath $resolvedMeshPath `
-            -RepositoryRoot $repositoryRoot
-        $converterOutputArgument = Get-ConverterPathArgument `
-            -AbsolutePath $meshOutputPath `
-            -RepositoryRoot $repositoryRoot
-
-        Push-Location -LiteralPath $repositoryRoot
-        try {
-            & $resolvedConverterPath 'mesh' $converterMeshArgument `
-                '-o' $converterOutputArgument
-        }
-        finally {
-            Pop-Location
-        }
-        if ($LASTEXITCODE -ne 0) {
-            throw "Mesh converter failed with exit code $LASTEXITCODE."
-        }
-
-        if (-not (Test-Path -LiteralPath $meshOutputPath -PathType Leaf)) {
-            throw "Mesh converter reported success but did not create: $meshOutputPath"
-        }
-
-        $meshSourceHash = Get-Sha256 -FilePath $resolvedMeshPath
-        $sourceRecords += [ordered]@{
-            kind      = 'mesh'
-            path      = $resolvedMeshPath
-            sha256    = $meshSourceHash
-            extension = [System.IO.Path]::GetExtension($resolvedMeshPath).ToLowerInvariant()
-        }
-        $outputRecords += [ordered]@{
-            kind         = 'mesh'
-            relativePath = $meshOutputName
-            sha256       = Get-Sha256 -FilePath $meshOutputPath
-            source       = $resolvedMeshPath
-        }
-
-        $materialOutputPath = [System.IO.Path]::ChangeExtension(
-            $meshOutputPath, '.wmat')
-        if (Test-Path -LiteralPath $materialOutputPath -PathType Leaf) {
-            $outputRecords += [ordered]@{
-                kind         = 'material'
-                relativePath = [System.IO.Path]::GetFileName(
-                    $materialOutputPath)
-                sha256       = Get-Sha256 -FilePath $materialOutputPath
-                source       = $resolvedMeshPath
-            }
-        }
-
-        $converterProvenance = [ordered]@{
-            path    = $resolvedConverterPath
-            sha256  = Get-Sha256 -FilePath $resolvedConverterPath
-            command = @(
-                'mesh',
-                $converterMeshArgument,
-                '-o',
-                $converterOutputArgument)
-        }
-    }
-
     if ($resolvedTexturePaths.Count -gt 0) {
         $textureOutputDirectory = Join-Path -Path $stagingDirectory -ChildPath 'Textures'
         [System.IO.Directory]::CreateDirectory($textureOutputDirectory) | Out-Null
@@ -294,7 +186,6 @@ try {
         provenance    = [ordered]@{
             tool       = 'Tools/EffectResourceIntake/Cook-SelectedEffectAsset.ps1'
             repository = $repositoryRoot
-            converter  = $converterProvenance
         }
         source        = @($sourceRecords)
         outputs       = @($outputRecords)

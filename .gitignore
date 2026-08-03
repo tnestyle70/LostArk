@@ -56,6 +56,12 @@
 *.wanim
 *.wmodel
 
+# Effect source search/export and curated cook output stay local or in the shared Drive.
+/Data/Effects/Cooked/
+/Data/Effects/SourceRaw/
+/Data/Effects/SourceCatalog/
+/Data/Effects/SourceExtracted/
+
 # Engine output directory: preserve shader source, ignore built binaries.
 /Engine/Bin/*
 !/Engine/Bin/ShaderFiles/
@@ -63,6 +69,7 @@
 
 # Client runtime directory: Resources are shared through Drive, not Git or Git LFS.
 /Client/Bin/*
+/Server/Bin/
 /Client/Bin/Resources/
 !/Client/Bin/DataFiles/
 !/Client/Bin/DataFiles/**

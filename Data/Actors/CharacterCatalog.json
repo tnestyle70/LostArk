@@ -1,0 +1,70 @@
+{
+  "schema": "lostark.character-catalog",
+  "formatVersion": 1,
+  "characters": [
+    {
+      "archetypeId": "PLAYER_LANCE_MASTER",
+      "networkClassId": "LANCE_MASTER",
+      "assetId": "LanceMaster",
+      "bodyModel": "Character/LanceMaster/LanceMaster.wmodel",
+      "equipmentModels": [
+        "Character/LanceMaster/LanceMaster_Upper.wmodel",
+        "Character/LanceMaster/LanceMaster_Lower.wmodel",
+        "Character/LanceMaster/LanceMaster_Arm.wmodel",
+        "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
+        "Character/LanceMaster/LanceMaster_Helmet.wmodel"
+      ],
+      "weaponModel": "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+      "animationSetId": "ANIM_LANCE_MASTER",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_GUNSLINGER",
+      "networkClassId": "GUNSLINGER",
+      "assetId": "GunSlinger",
+      "bodyModel": "Character/GunSlinger/GunSlinger.wmodel",
+      "equipmentModels": [
+        "Character/GunSlinger/GunSlinger_Upper.wmodel",
+        "Character/GunSlinger/GunSlinger_Lower.wmodel",
+        "Character/GunSlinger/GunSlinger_Arm.wmodel",
+        "Character/GunSlinger/GunSlinger_Shoulder.wmodel",
+        "Character/GunSlinger/GunSlinger_Helmet.wmodel"
+      ],
+      "weaponModel": "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel",
+      "animationSetId": "ANIM_GUNSLINGER",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_SLAYER",
+      "networkClassId": "SLAYER",
+      "assetId": "Slayer",
+      "bodyModel": "Character/Slayer/Slayer.wmodel",
+      "equipmentModels": [
+        "Character/Slayer/Slayer_Upper.wmodel",
+        "Character/Slayer/Slayer_Lower.wmodel",
+        "Character/Slayer/Slayer_Arm.wmodel",
+        "Character/Slayer/Slayer_Shoulder.wmodel",
+        "Character/Slayer/Slayer_Helmet.wmodel"
+      ],
+      "weaponModel": "Character/WP_WWBK_03/WP_WWBK_03.wmodel",
+      "animationSetId": "ANIM_SLAYER",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_ARTIST",
+      "networkClassId": "ARTIST",
+      "assetId": "Artist",
+      "bodyModel": "Character/Artist/Artist.wmodel",
+      "equipmentModels": [
+        "Character/Artist/Artist_Upper.wmodel",
+        "Character/Artist/Artist_Lower.wmodel",
+        "Character/Artist/Artist_Arm.wmodel",
+        "Character/Artist/Artist_Shoulder.wmodel",
+        "Character/Artist/Artist_Helmet.wmodel"
+      ],
+      "weaponModel": "Character/WP_WSDM_09/WP_WSDM_09.wmodel",
+      "animationSetId": "ANIM_ARTIST",
+      "runtimeStatus": "supported"
+    }
+  ]
+}

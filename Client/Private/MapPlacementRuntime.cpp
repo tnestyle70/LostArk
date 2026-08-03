@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -20,6 +21,27 @@ namespace
 		TEXT("Prototype_GameObject_MapStaticBatch");
 	constexpr const wchar_t* MAP_BATCH_LAYER =
 		TEXT("Layer_MapStaticBatch");
+
+	struct MAP_LOAD_STAGE final
+	{
+		MAP_LOAD_SCOPE loadScope;
+		CMapAssetCatalog catalog;
+		std::vector<MAP_PLACEMENT_RECORD> records;
+	};
+	std::mutex g_MapLoadStageMutex;
+	std::unordered_map<std::string, MAP_LOAD_STAGE> g_MapLoadStages;
+
+	bool_t EqualScope(
+		const MAP_LOAD_SCOPE& left,
+		const MAP_LOAD_SCOPE& right)
+	{
+		return left.isEnabled == right.isEnabled &&
+			left.includeBackground == right.includeBackground &&
+			left.minimumX == right.minimumX &&
+			left.minimumZ == right.minimumZ &&
+			left.maximumX == right.maximumX &&
+			left.maximumZ == right.maximumZ;
+	}
 
 	bool_t IsFinite(const float3_t& value)
 	{
@@ -35,7 +57,8 @@ CMapPlacementRuntime::~CMapPlacementRuntime()
 
 bool_t CMapPlacementRuntime::Load_Area(
 	uint32_t levelIndex,
-	const std::string& areaId)
+	const std::string& areaId,
+	const MAP_LOAD_SCOPE& loadScope)
 {
 	if (levelIndex >= ETOUI(LEVEL::END))
 	{
@@ -44,15 +67,21 @@ bool_t CMapPlacementRuntime::Load_Area(
 	}
 
 	CMapAssetCatalog stagedCatalog;
-	if (!stagedCatalog.Load_Area(areaId))
-	{
-		m_Status = stagedCatalog.Get_Status();
-		return false;
-	}
-
 	std::vector<MAP_PLACEMENT_RECORD> document;
-	if (!Read_Placements(stagedCatalog, document, m_Status))
-		return false;
+	const bool_t usedLoaderStage = Try_GetCachedLoadStage(
+		areaId, loadScope, stagedCatalog, document);
+	if (!usedLoaderStage)
+	{
+		if (!stagedCatalog.Load_Area(areaId))
+		{
+			m_Status = stagedCatalog.Get_Status();
+			return false;
+		}
+
+		if (!Read_Placements(stagedCatalog, document, m_Status))
+			return false;
+		Apply_LoadScope(stagedCatalog, loadScope, document);
+	}
 	if (document.empty())
 	{
 		m_Status = "Fixed map area has no placement records: " + areaId;
@@ -86,9 +115,73 @@ bool_t CMapPlacementRuntime::Load_Area(
 		{
 			return nullptr != entry.object;
 		}));
-	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
+	m_Status = std::string(usedLoaderStage ? "Committed staged " : "Loaded ") +
+		std::to_string(m_Placements.size()) +
 		" placements / " + std::to_string(m_StaticBatches.size()) +
 		" batches / " + std::to_string(fallbackCount) + " fallbacks";
+	return true;
+}
+
+void CMapPlacementRuntime::Apply_LoadScope(
+	const CMapAssetCatalog& catalog,
+	const MAP_LOAD_SCOPE& loadScope,
+	std::vector<MAP_PLACEMENT_RECORD>& records)
+{
+	if (!loadScope.isEnabled)
+		return;
+
+	records.erase(
+		std::remove_if(
+			records.begin(),
+			records.end(),
+			[&catalog, &loadScope](const MAP_PLACEMENT_RECORD& record)
+			{
+				if (loadScope.Contains(record.position))
+					return false;
+
+				const MAP_ASSET_ENTRY* pAsset =
+					catalog.Find(record.assetId);
+				return nullptr == pAsset || !loadScope.includeBackground ||
+					MAP_ASSET_RENDER_MODE::BACKGROUND !=
+						pAsset->renderProfile.renderMode;
+			}),
+			records.end());
+}
+
+void CMapPlacementRuntime::Cache_LoadStage(
+	const std::string& areaId,
+	const MAP_LOAD_SCOPE& loadScope,
+	const CMapAssetCatalog& catalog,
+	const std::vector<MAP_PLACEMENT_RECORD>& records)
+{
+	if (areaId.empty() || !loadScope.isEnabled || records.empty())
+		return;
+
+	std::scoped_lock lock{ g_MapLoadStageMutex };
+	g_MapLoadStages.insert_or_assign(
+		areaId,
+		MAP_LOAD_STAGE{ loadScope, catalog, records });
+}
+
+bool_t CMapPlacementRuntime::Try_GetCachedLoadStage(
+	const std::string& areaId,
+	const MAP_LOAD_SCOPE& loadScope,
+	CMapAssetCatalog& outCatalog,
+	std::vector<MAP_PLACEMENT_RECORD>& outRecords)
+{
+	if (!loadScope.isEnabled)
+		return false;
+
+	std::scoped_lock lock{ g_MapLoadStageMutex };
+	const auto iter = g_MapLoadStages.find(areaId);
+	if (iter == g_MapLoadStages.end() ||
+		!EqualScope(iter->second.loadScope, loadScope))
+	{
+		return false;
+	}
+
+	outCatalog = iter->second.catalog;
+	outRecords = iter->second.records;
 	return true;
 }
 
@@ -153,14 +246,6 @@ bool_t CMapPlacementRuntime::Try_Get_PlacementBounds(
 
 HRESULT CMapPlacementRuntime::Ensure_DefaultLight()
 {
-	const wchar_t* commandLine = GetCommandLineW();
-	const bool_t isStandaloneMapStart =
-		nullptr != commandLine &&
-		(nullptr != wcsstr(commandLine, L"--map-level=bern") ||
-			nullptr != wcsstr(commandLine, L"--map-level=valtan"));
-	if (!isStandaloneMapStart)
-		return S_OK;
-
 	static bool_t isStandaloneLightRegistered = false;
 	if (isStandaloneLightRegistered)
 		return S_OK;

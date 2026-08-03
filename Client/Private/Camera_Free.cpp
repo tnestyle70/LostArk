@@ -107,8 +107,11 @@ void CCamera_Free::Update_Shortcuts()
 	if (GetForegroundWindow() != g_hWnd)
 		return;
 
-	if (CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
+	if (CGameInstance::Get().Get_DIKeyPressed(DIK_F6) &&
+		!m_pFollowTarget.expired())
+	{
 		Set_FollowEnabled(!m_bFollowEnabled);
+	}
 
 	if (!m_bFollowEnabled &&
 		CGameInstance::Get().Get_DIKeyPressed(DIK_TAB))
@@ -213,7 +216,7 @@ unique_ptr<CCamera_Free> CCamera_Free::Create(ComPtr<ID3D11Device> pDevice, ComP
 	auto	pInstance = unique_ptr<CCamera_Free>(new CCamera_Free(pDevice, pContext));
 
 	if (FAILED(pInstance->Initialize_Prototype()))
-		MSG_BOX("Failed to Created : CCamera_Free");
+		OutputDebugStringA("[Client][Camera] Create failed.\n");
 
 	return move(pInstance);
 }
@@ -223,7 +226,7 @@ shared_ptr<CPrototype> CCamera_Free::Clone(void* pArg)
 	auto	pInstance = shared_ptr<CCamera_Free>(new CCamera_Free(*this));
 
 	if (FAILED(pInstance->Initialize(pArg)))
-		MSG_BOX("Failed to Cloned : CCamera_Free");
+		OutputDebugStringA("[Client][Camera] Clone failed.\n");
 
 	return pInstance;
 }

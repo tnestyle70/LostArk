@@ -4,34 +4,57 @@
 
 #include "Network/NetworkIds.h"
 #include "Network/PacketType.h"
+#include "Network/PacketMessages.h"
+#include "ServerNavigation.h"
 
+#include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace LostArk::Server
 {
-	//server 단에서 가지고 있는 플레이어의 정보들을 구조체로 저장하고, 
-	//그 정보를 client의 입력을 통해서 서버 내부에 tick으로 돌려서, transform을 계산하고,
-	//다시 client 쪽으로 broadcast를 한다.
 	struct SERVER_PLAYER
 	{
-		//session id
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
-		//player id
 		LostArk::Shared::PLAYER_ID iPlayerId =
 			LostArk::Shared::INVALID_PLAYER_ID;
-		//net entity id
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		//character class
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
-		//nick name
+
 		std::string strNickName;
-		//pos
+		std::string strSpawnPlacementId;
+
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
-		//yaw
 		float fYawDegrees = 0.f;
+
+		std::uint32_t iLastMoveSequence = 0;
+		float fMoveGoalX = 0.f;
+		float fMoveGoalZ = 0.f;
+		float fMoveSpeed = 6.f;
+		bool hasMoveGoal = false;
+		std::vector<SERVER_NAV_POINT> MovePath;
+		std::size_t iMovePathIndex = 0;
+
+		std::uint32_t iCurrentHp = 1000;
+		std::uint32_t iMaximumHp = 1000;
+		std::uint32_t iCurrentResource = 100;
+		std::uint32_t iMaximumResource = 100;
+		LostArk::Shared::PLAYER_ACTION_STATE eAction =
+			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		LostArk::Shared::SKILL_ID iCurrentSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+		std::uint32_t iActionStartTick = 0;
+		std::uint32_t iLastSkillSequence = 0;
+		float fActionElapsedSeconds = 0.f;
+		float fSkillAimDirectionX = 0.f;
+		float fSkillAimDirectionZ = 1.f;
+		bool hasAppliedSkillDamage = false;
+		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
+			CooldownEndTickBySkillId;
 	};
 }

@@ -1,7 +1,6 @@
 #include "Logic_Artist.h"
 
 #include "Character.h"
-#include "GameInstance.h"
 
 namespace
 {
@@ -48,11 +47,12 @@ namespace
 
 NS_BEGIN(Client)
 
-void CLogic_Artist::Update(CCharacter& Character, f32_t fTimeDelta)
+void CLogic_Artist::Update_Presentation(
+	CCharacter& Character,
+	f32_t fTimeDelta)
 {
-	/* Skill binds go here. Artist.clipseq carries 69 chains over 42 skills, so
-	Play_Skill accepts ids; which key gets which skill is still a design call and
-	is left to whoever owns the input map. */
+	(void)Character;
+	(void)fTimeDelta;
 }
 
 /* External linkage comes from the extern declaration in the header. */

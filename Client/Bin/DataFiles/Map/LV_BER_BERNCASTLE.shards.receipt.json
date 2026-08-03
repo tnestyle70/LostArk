@@ -296,7 +296,7 @@
       "path": "C:/LostArkExtract/bern_full/manifests/bern_castle_foliage_overlay.json",
       "sha256": "E1057074069B972446B3E486C65BC67896CB426D0A6D704649CB5F52C55B9BDD"
     },
-    "runtimeAssetRoot": "C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/Resources/LostArk"
+    "runtimeAssetRoot": "Client/Bin/Resources"
   },
   "outputs": {
     "LV_BER_BERNCASTLE_BASE.mapassets": "87BA08D713631AB48FAF36C96B139CF055F11E70624F72F7C287EE0CA4F47C01",

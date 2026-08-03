@@ -16,7 +16,7 @@ class CMapAssetObject final : public CGameObject
 public:
 	struct MAP_ASSET_DESC : public CGameObject::GAMEOBJECT_DESC
 	{
-		uint32_t prototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
+		uint32_t prototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		uint64_t placementId = {};
 		std::string assetId;
 		std::wstring modelPrototypeTag;

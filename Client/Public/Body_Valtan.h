@@ -15,9 +15,8 @@ class CBody_Valtan final : public CPartObject
 public:
 	typedef struct tagBodyValtanDesc : public CPartObject::PARTOBJECT_DESC
 	{
-		/* Which level registered the shader and model prototypes. Defaults to
-		the level that has always owned them so existing callers keep working. */
-		uint32_t iPrototypeLevelIndex = { ETOUI(LEVEL::ASSET_TEST) };
+		const uint32_t* pParentState = { nullptr };
+		uint32_t iPrototypeLevelIndex = {};
 	} BODY_VALTAN_DESC;
 
 private:
@@ -25,16 +24,6 @@ private:
 		ComPtr<ID3D11DeviceContext> pContext);
 public:
 	virtual ~CBody_Valtan();
-
-public:
-	/* The body owns clip playback: it rewinds the track and reports when a
-	non-looping clip has run out. CValtan only names the clip it wants. */
-	bool_t Set_Animation(
-		const char_t* pAnimationName,
-		bool_t isLoop);
-	bool_t Is_AnimationFinished() const {
-		return m_isAnimationFinished;
-	}
 
 public:
 	virtual HRESULT Initialize_Prototype() override;
@@ -47,15 +36,15 @@ public:
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
-	bool_t m_isAnimationFinished = { false };
+	const uint32_t* m_pParentState = { nullptr };
+	uint32_t m_iPrototypeLevelIndex = {};
 
 private:
-	HRESULT Ready_Components(uint32_t iPrototypeLevelIndex);
+	HRESULT Ready_Components();
 	HRESULT Bind_ShaderResources();
 
 public:
-	static unique_ptr<CBody_Valtan> Create(
-		ComPtr<ID3D11Device> pDevice,
+	static unique_ptr<CBody_Valtan> Create(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 };

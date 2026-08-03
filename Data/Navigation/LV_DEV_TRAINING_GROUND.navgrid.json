@@ -1,0 +1,11 @@
+{
+  "schema": "lostark.navigation-grid-authoring",
+  "formatVersion": 1,
+  "areaId": "LV_DEV_TRAINING_GROUND",
+  "width": 32,
+  "height": 32,
+  "cellSize": 1.0,
+  "originX": -16.0,
+  "originZ": -16.0,
+  "defaultHeight": 0.0
+}

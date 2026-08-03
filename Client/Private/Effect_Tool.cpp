@@ -1,8 +1,10 @@
 #include "imgui.h"
 
 #include "Effect_Tool.h"
+#include "ClientLaunchOptions.h"
 #include "Effect_AssetIO.h"
 #include "Effect_Runtime.h"
+#include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 
 #include <DirectXPackedVector.h>
@@ -131,27 +133,34 @@ namespace
 		string strNormalized = strAssetId;
 		replace(strNormalized.begin(), strNormalized.end(), '\\', '/');
 
-		constexpr string_view LEGACY_ROOT =
-			"../Bin/Resources/LostArk/";
 		string strRuntimeRelative = strNormalized;
-		if (strRuntimeRelative.starts_with(LEGACY_ROOT))
-			strRuntimeRelative.erase(0, LEGACY_ROOT.size());
+		constexpr string_view RESOURCE_PREFIXES[] = {
+			"../Bin/Resources/"
+		};
+		for (const string_view prefix : RESOURCE_PREFIXES)
+		{
+			if (strRuntimeRelative.starts_with(prefix))
+			{
+				strRuntimeRelative.erase(0, prefix.size());
+				break;
+			}
+		}
 
-		const u8string Utf8Requested(
-			strNormalized.begin(), strNormalized.end());
 		const u8string Utf8Relative(
 			strRuntimeRelative.begin(), strRuntimeRelative.end());
-		const filesystem::path RequestedPath =
-			filesystem::path(Utf8Requested).lexically_normal();
 		const filesystem::path RuntimeRelativePath =
 			filesystem::path(Utf8Relative).lexically_normal();
+		if (RuntimeRelativePath.is_absolute() ||
+			RuntimeRelativePath.has_root_path())
+		{
+			return {};
+		}
 
 		const filesystem::path Candidates[] = {
-			RequestedPath,
 			CRuntimeAssetRoot::Resolve(RuntimeRelativePath),
 			CRuntimeAssetRoot::Resolve(
-				filesystem::path(L"Effect/Effect_Tool") /
-				RuntimeRelativePath)
+				filesystem::path(L"Effect") /
+					RuntimeRelativePath)
 		};
 
 		error_code Error;
@@ -213,7 +222,7 @@ namespace
 		error_code Error;
 		const filesystem::path ResourceRoot =
 			filesystem::weakly_canonical(
-				"../Bin/Resources/LostArk/Effect/Effect_Tool", Error);
+				CRuntimeAssetRoot::Get(), Error);
 		if (!Error)
 		{
 			Error.clear();
@@ -226,8 +235,7 @@ namespace
 					RelativePath.generic_wstring();
 				if (!strRelative.starts_with(L".."))
 				{
-					return "../Bin/Resources/LostArk/Effect/Effect_Tool/" +
-						ConvertToUtf8(strRelative);
+					return ConvertToUtf8(strRelative);
 				}
 			}
 		}
@@ -243,7 +251,7 @@ namespace
 		error_code Error;
 		const filesystem::path InitialDirectory =
 			filesystem::weakly_canonical(
-				"../Bin/Resources/LostArk/Effect/Effect_Tool", Error);
+				CRuntimeAssetRoot::Get() / L"Effect", Error);
 		const wstring strInitialDirectory =
 			Error ? wstring{} : InitialDirectory.wstring();
 
@@ -346,19 +354,24 @@ Client::CEffect_Tool::CEffect_Tool(ComPtr<ID3D11Device> pDevice)
 	: m_pDevice{ move(pDevice) },
 	m_Phase2Validation{ Run_Phase2ParticleCountValidation() }
 {
+	m_strAuthoringPath = CProjectDataRoot::Resolve(
+		L"Effects/Editor/working.effect").string();
+	m_strBinaryPath = CProjectDataRoot::Resolve(
+		L"Effects/Editor/working.weffect").string();
 	Create_DefaultAsset();
 	Rebuild_Simulators();
 	Reload_SourceCatalog();
 	Refresh_AuthoredList();
 	Open_AssetFromCommandLine();
 
-	const wchar_t* pCommandLine = GetCommandLineW();
+	const CLIENT_LAUNCH_OPTIONS& launchOptions =
+		CClientLaunchOptions::Get();
 	m_isHDRReadbackRequested =
-		nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
+		CLIENT_SCENARIO::DEVELOPMENT_HDR ==
+		launchOptions.eScenario;
 	m_isHDRAutoExitRequested =
 		m_isHDRReadbackRequested &&
-		nullptr != wcsstr(pCommandLine, L"--effect-auto-exit");
+		launchOptions.isEffectAutoExit;
 
 	if (nullptr != m_pDevice)
 	{
@@ -492,19 +505,7 @@ void Client::CEffect_Tool::Create_DefaultAsset()
 		{
 		case EFFECT_MODULE_TYPE::REQUIRED:
 			Module.Required.strTextureAssetId =
-				filesystem::is_regular_file(
-					"../Bin/Resources/LostArk/Effect/Effect_Tool/"
-					"LOSTARK_EFFECT_EXPORT_2026-07-29/"
-					"09_EffectAssets_SHARED_GLTF_DDS_PNG/"
-					"EFUI_CURSOREFFECT/Texture2D/cursoreffect_i5.dds")
-				? "../Bin/Resources/LostArk/Effect/Effect_Tool/"
-					"LOSTARK_EFFECT_EXPORT_2026-07-29/"
-					"09_EffectAssets_SHARED_GLTF_DDS_PNG/"
-					"EFUI_CURSOREFFECT/Texture2D/cursoreffect_i5.dds"
-				: "../Bin/Resources/LostArk/Effect/"
-				"LOSTARK_EFFECT_EXPORT_2026-07-29/"
-				"09_EffectAssets_SHARED_GLTF_DDS_PNG/"
-				"EFUI_CURSOREFFECT/Texture2D/cursoreffect_i5.dds";
+				"Effect/Shared/Cursor/cursoreffect_i5.dds";
 			break;
 		case EFFECT_MODULE_TYPE::SPAWN:
 			Module.Spawn.fRatePerSecond = 28.f;
@@ -605,46 +606,20 @@ filesystem::path Client::CEffect_Tool::Resolve_AuthoredPath(
 	const u8string Utf8Id(strAssetId.begin(), strAssetId.end());
 	filesystem::path RelativePath(Utf8Id);
 	RelativePath += L".effect";
-	return CRuntimeAssetRoot::Resolve(
-		filesystem::path(L"Effect/Effect_Tool/Authored") /
+	return CProjectDataRoot::Resolve(
+		filesystem::path(L"Effects/Authored") /
 		RelativePath);
 }
 
 void Client::CEffect_Tool::Open_AssetFromCommandLine()
 {
-	const wchar_t* pCommandLine = GetCommandLineW();
-	if (nullptr == pCommandLine)
+	const std::optional<std::wstring>& effectAssetId =
+		CClientLaunchOptions::Get().EffectAssetId;
+	if (!effectAssetId.has_value() ||
+		effectAssetId->empty())
 		return;
 
-	const wchar_t* pFound = wcsstr(pCommandLine, L"--effect-open");
-	if (nullptr == pFound)
-		return;
-
-	const wchar_t* pCursor = pFound + wcslen(L"--effect-open");
-	while (L' ' == *pCursor || L'\t' == *pCursor)
-		++pCursor;
-
-	wstring_t strWideId;
-	if (L'"' == *pCursor)
-	{
-		++pCursor;
-		const wchar_t* pEnd = wcschr(pCursor, L'"');
-		if (nullptr == pEnd)
-			return;
-		strWideId.assign(pCursor, pEnd);
-	}
-	else
-	{
-		const wchar_t* pEnd = pCursor;
-		while (L'\0' != *pEnd && L' ' != *pEnd && L'\t' != *pEnd)
-			++pEnd;
-		strWideId.assign(pCursor, pEnd);
-	}
-
-	if (strWideId.empty())
-		return;
-
-	const string strAssetId = ConvertToUtf8(strWideId);
+	const string strAssetId = ConvertToUtf8(*effectAssetId);
 	if (strAssetId.empty())
 		return;
 
@@ -681,7 +656,7 @@ void Client::CEffect_Tool::Capture_SceneHDR_Readback()
 	 */
 	// Loading and Logo do not provide the camera used by the world preview.
 	// Start the bounded wait only after the automated run reaches TEST_LEVEL2.
-	if (ETOUI(LEVEL::TEST_LEVEL2) !=
+	if (ETOUI(LEVEL::DEVELOPMENT) !=
 		CGameInstance::Get().Get_CurrentLevelID())
 		return;
 
@@ -1093,8 +1068,8 @@ void Client::CEffect_Tool::Refresh_AuthoredList()
 	m_iSelectedAuthoredAsset = -1;
 
 	error_code Error;
-	const filesystem::path Root = CRuntimeAssetRoot::Resolve(
-		L"Effect/Effect_Tool/Authored");
+	const filesystem::path Root = CProjectDataRoot::Resolve(
+		L"Effects/Authored");
 	if (!filesystem::exists(Root, Error))
 		return;
 
@@ -1346,12 +1321,8 @@ void Client::CEffect_Tool::Render_Toolbar()
 void Client::CEffect_Tool::Reload_SourceCatalog()
 {
 	const filesystem::path Candidates[] = {
-		"../Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/"
-			"particle_systems.csv",
-		"Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/"
-			"particle_systems.csv",
-		"Client/Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/"
-			"particle_systems.csv"
+		CProjectDataRoot::Resolve(
+			L"Effects/SourceCatalog/particle_systems.csv")
 	};
 
 	string strError;

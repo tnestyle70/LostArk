@@ -1,27 +1,32 @@
 #include "imgui.h"
 
 #include "HUDLayoutTool.h"
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 
 #include <fstream>
-#include <sstream>
 #include <filesystem>
 #include <cstring>
 #include <cmath>
+#include <iomanip>
+#include <iterator>
+#include <unordered_set>
 
 namespace
 {
 	struct DOCUMENT_DEF
 	{
 		const char*	szLabel;
-		const char*	szPath;
+		const char*	szDataPath;
 		const char*	szTextureRoot;
 		bool		bPerClass;
 	};
 
 	constexpr DOCUMENT_DEF g_Documents[] =
 	{
-		{ "Combat HUD", "../Bin/Resources/LostArk/UI/HUD/HUD_Layout.cfg",      "../Bin/Resources/LostArk/UI/HUD/",      true  },
-		{ "Screen UI",  "../Bin/Resources/LostArk/UI/ScreenUI/ScreenUI.cfg",   "../Bin/Resources/LostArk/UI/ScreenUI/", false },
+		{ "Combat HUD", "UI/HUD/HUD_Layout.json",      "UI/HUD/",      true  },
+		{ "Screen UI",  "UI/ScreenUI/ScreenUI.json",   "UI/ScreenUI/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -82,6 +87,107 @@ namespace
 	{
 		const u8string strU8 = Path.u8string();
 		return string(strU8.begin(), strU8.end());
+	}
+
+	bool_t Is_ValidIdentifier(const string& value)
+	{
+		if (value.empty() || value.size() > 128u)
+			return false;
+		return none_of(value.begin(), value.end(), [](const char character)
+		{
+			return 0 != iscntrl(static_cast<unsigned char>(character));
+		});
+	}
+
+	bool_t Is_SafeUIResourceId(const string& value)
+	{
+		if (value.empty() || value.size() > 512u ||
+			!value.starts_with("UI/") ||
+			string::npos != value.find('\\') ||
+			string::npos != value.find(':'))
+		{
+			return false;
+		}
+
+		size_t segmentStart = {};
+		while (segmentStart < value.size())
+		{
+			const size_t separator = value.find('/', segmentStart);
+			const size_t segmentEnd = string::npos == separator
+				? value.size() : separator;
+			const string_view segment(
+				value.data() + segmentStart,
+				segmentEnd - segmentStart);
+			if (segment.empty() || "." == segment || ".." == segment)
+				return false;
+			segmentStart = segmentEnd + 1u;
+		}
+		return true;
+	}
+
+	const DATA_JSON_VALUE* Find_Member(
+		const DATA_JSON_VALUE& object,
+		const string_view key,
+		const DATA_JSON_TYPE type)
+	{
+		const DATA_JSON_VALUE* pValue = object.Find(key);
+		return nullptr != pValue && pValue->Get_Type() == type
+			? pValue : nullptr;
+	}
+
+	bool_t Read_Number(
+		const DATA_JSON_VALUE& object,
+		const string_view key,
+		f32_t& outValue,
+		const f32_t minimum,
+		const f32_t maximum)
+	{
+		const DATA_JSON_VALUE* pValue = Find_Member(
+			object, key, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || !isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() < minimum ||
+			pValue->Get_Number() > maximum)
+		{
+			return false;
+		}
+		outValue = static_cast<f32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_Integer(
+		const DATA_JSON_VALUE& object,
+		const string_view key,
+		int32_t& outValue,
+		const int32_t minimum,
+		const int32_t maximum)
+	{
+		const DATA_JSON_VALUE* pValue = Find_Member(
+			object, key, DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || !isfinite(pValue->Get_Number()))
+			return false;
+		const double number = pValue->Get_Number();
+		if (number != floor(number) || number < minimum || number > maximum)
+			return false;
+		outValue = static_cast<int32_t>(number);
+		return true;
+	}
+
+	bool_t Read_Boolean(
+		const DATA_JSON_VALUE& object,
+		const string_view key,
+		bool_t& outValue)
+	{
+		const DATA_JSON_VALUE* pValue = Find_Member(
+			object, key, DATA_JSON_TYPE::BOOLEAN);
+		if (nullptr == pValue)
+			return false;
+		outValue = pValue->Get_Boolean();
+		return true;
+	}
+
+	void Write_String(ostream& output, const string_view value)
+	{
+		output << '"' << CDataJson::Escape(value) << '"';
 	}
 
 	void Get_Rotated_Rect_Corners(const ImVec2& vTopLeft, const ImVec2& vBotRight, float fDegrees, ImVec2 outCorners[4])
@@ -160,9 +266,10 @@ void Client::CHUDLayoutTool::Draw_Image_Quad(ImDrawList* pDrawList, ID3D11Shader
 		pDrawList->AddCallback(ImDrawCallback_ResetRenderState, nullptr);
 }
 
-const char* Client::CHUDLayoutTool::Current_Save_Path() const
+filesystem::path Client::CHUDLayoutTool::Current_Save_Path() const
 {
-	return g_Documents[m_iActiveDocument].szPath;
+	return CProjectDataRoot::Resolve(
+		g_Documents[m_iActiveDocument].szDataPath);
 }
 
 void Client::CHUDLayoutTool::Switch_Document(int32_t iDocument)
@@ -221,6 +328,8 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::SameLine();
 	if (ImGui::Button("Load"))
 		Load(Current_Save_Path());
+	ImGui::SameLine();
+	ImGui::TextDisabled("%s", m_strDataStatus.c_str());
 	ImGui::SameLine();
 	if (g_Documents[m_iActiveDocument].bPerClass && ImGui::Button("Reset to Default Layout"))
 		Reset_Default();
@@ -410,9 +519,15 @@ void Client::CHUDLayoutTool::Refresh_ClassTexturePalette()
 	}
 
 	error_code ec;
-	const filesystem::path Folder = Utf8_To_Wide(strFolder);
+	const u8string folderUtf8(strFolder.begin(), strFolder.end());
+	const filesystem::path Folder = CRuntimeAssetRoot::Resolve(
+		filesystem::path(folderUtf8));
+	if (Folder.empty())
+		return;
+	const filesystem::path ResourceRoot = CRuntimeAssetRoot::Get();
 
-	auto Fn_Collect = [this](const filesystem::directory_entry& Entry)
+	auto Fn_Collect = [this, &ResourceRoot](
+		const filesystem::directory_entry& Entry)
 	{
 		if (!Entry.is_regular_file())
 			return;
@@ -424,7 +539,15 @@ void Client::CHUDLayoutTool::Refresh_ClassTexturePalette()
 		if (L".png" != strExt && L".dds" != strExt && L".jpg" != strExt)
 			return;
 
-		m_TextureAssetPaths.push_back(Path_To_Utf8(Entry.path()));
+		error_code relativeError;
+		const filesystem::path relativePath = filesystem::relative(
+			Entry.path(), ResourceRoot, relativeError);
+		if (!relativeError && !relativePath.empty() &&
+			relativePath.native().find(L"..") != 0)
+		{
+			m_TextureAssetPaths.push_back(
+				Path_To_Utf8(relativePath.generic_wstring()));
+		}
 	};
 
 	if (Document.bPerClass)
@@ -1213,241 +1336,444 @@ ID3D11ShaderResourceView* Client::CHUDLayoutTool::Get_Or_Load_Texture(const stri
 	if (m_TextureCache.end() != Iter)
 		return Iter->second.Get();
 
-	const wstring strWidePath = Utf8_To_Wide(strPath);
-	const filesystem::path Ext = filesystem::path(strWidePath).extension();
+	const u8string utf8Path(strPath.begin(), strPath.end());
+	const filesystem::path resolvedPath =
+		CRuntimeAssetRoot::Resolve(filesystem::path(utf8Path));
+	if (resolvedPath.empty())
+		return nullptr;
+	const filesystem::path Ext = resolvedPath.extension();
 
 	ComPtr<ID3D11ShaderResourceView> pSRV = { nullptr };
 
 	HRESULT hr = {};
 	if (0 == _wcsicmp(Ext.c_str(), L".dds"))
-		hr = CreateDDSTextureFromFile(m_pDevice.Get(), strWidePath.c_str(), nullptr, &pSRV);
+		hr = CreateDDSTextureFromFile(
+			m_pDevice.Get(), resolvedPath.c_str(), nullptr, &pSRV);
 	else
-		hr = CreateWICTextureFromFile(m_pDevice.Get(), strWidePath.c_str(), nullptr, &pSRV);
+		hr = CreateWICTextureFromFile(
+			m_pDevice.Get(), resolvedPath.c_str(), nullptr, &pSRV);
 
 	m_TextureCache[strPath] = pSRV;
 
 	return FAILED(hr) ? nullptr : pSRV.Get();
 }
 
-void Client::CHUDLayoutTool::Save(const string& strPath)
+bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 {
-	const filesystem::path Path = strPath;
-
-	error_code ec;
-	filesystem::create_directories(Path.parent_path(), ec);
-
-	ofstream File(Path);
-	if (!File.is_open())
-		return;
-
-	File << "RESOLUTION " << ms_fRefWidth << " " << ms_fRefHeight << "\n";
-
-	for (const string& strClass : m_ClassNames)
-		File << "CLASS " << strClass << "\n";
-
-	for (const HUD_SLOT& Slot : m_Slots)
+	if (path.empty() || L".json" != path.extension())
 	{
-		/* "-" stands for a shared slot: an empty token can't survive whitespace-delimited parsing. */
-		File << "SLOT " << Slot.strName << " "
-			<< Slot.fX << " " << Slot.fY << " "
-			<< Slot.fSizeX << " " << Slot.fSizeY << " "
-			<< (Slot.strOwnerClass.empty() ? "-" : Slot.strOwnerClass) << " "
-			<< static_cast<int32_t>(Slot.eType) << " "
-			<< Slot.fRotation << " "
-			<< Slot.iBaseFromStage << " "
-			<< Slot.fAnimationScale << " "
-			<< Slot.fAnimationOffsetX << " "
-			<< Slot.fAnimationOffsetY << " "
-			<< Slot.iShineFromStage << "\n";
+		m_strDataStatus = "Save rejected: JSON path required";
+		return false;
+	}
 
-		for (int32_t iLayer = 0; iLayer < static_cast<int32_t>(Slot.TextureLayers.size()); ++iLayer)
+	unordered_set<string> classSet;
+	for (const string& className : m_ClassNames)
+	{
+		if (!Is_ValidIdentifier(className) ||
+			!classSet.insert(className).second)
 		{
-			const TEXTURE_LAYER& Layer = Slot.TextureLayers[iLayer];
-			if (Layer.strPath.empty())
-				continue;
-
-			File << "TEXTURE " << Slot.strName << " " << Layer.strPath << "\n";
-
-			if (!Layer.strHoverPath.empty())
-				File << "LAYERHOVER " << Slot.strName << " " << iLayer << " " << Layer.strHoverPath << "\n";
-
-			/* Only written when tinted, so untinted layouts stay readable and older files keep loading. */
-			if (1.f != Layer.vTint[0] || 1.f != Layer.vTint[1] ||
-				1.f != Layer.vTint[2] || 1.f != Layer.vTint[3])
-			{
-				File << "LAYERTINT " << Slot.strName << " " << iLayer << " "
-					<< Layer.vTint[0] << " " << Layer.vTint[1] << " "
-					<< Layer.vTint[2] << " " << Layer.vTint[3] << "\n";
-			}
-
-			/* Only written when set, so non-additive layouts stay readable and older files keep loading. */
-			if (Layer.bAdditive)
-				File << "LAYERADDITIVE " << Slot.strName << " " << iLayer << "\n";
-
-			if (Layer.bFlipX)
-				File << "LAYERFLIPX " << Slot.strName << " " << iLayer << "\n";
-		}
-
-		if (!Slot.strShineTexture.empty())
-			File << "SHINETEX " << Slot.strName << " " << Slot.strShineTexture << "\n";
-
-		if (Slot.bShineAdditive)
-			File << "SHINEADDITIVE " << Slot.strName << "\n";
-
-		if (!Slot.AnimationFrames.empty())
-			File << "ANIMFPS " << Slot.strName << " " << Slot.fAnimationFPS << "\n";
-
-		for (const string& strFramePath : Slot.AnimationFrames)
-		{
-			if (strFramePath.empty())
-				continue;
-
-			File << "ANIMFRAME " << Slot.strName << " " << strFramePath << "\n";
+			m_strDataStatus = "Save rejected: invalid class ID";
+			return false;
 		}
 	}
+
+	unordered_set<string> slotSet;
+	for (const HUD_SLOT& slot : m_Slots)
+	{
+		if (!Is_ValidIdentifier(slot.strName) ||
+			!slotSet.insert(slot.strName).second ||
+			(!slot.strOwnerClass.empty() &&
+				!classSet.contains(slot.strOwnerClass)) ||
+			!isfinite(slot.fX) || !isfinite(slot.fY) ||
+			!isfinite(slot.fSizeX) || !isfinite(slot.fSizeY) ||
+			slot.fSizeX <= 0.f || slot.fSizeY <= 0.f)
+		{
+			m_strDataStatus = "Save rejected: invalid slot contract";
+			return false;
+		}
+		for (const TEXTURE_LAYER& layer : slot.TextureLayers)
+		{
+			if (!Is_SafeUIResourceId(layer.strPath) ||
+				(!layer.strHoverPath.empty() &&
+					!Is_SafeUIResourceId(layer.strHoverPath)))
+			{
+				m_strDataStatus = "Save rejected: invalid UI resource ID";
+				return false;
+			}
+		}
+		if ((!slot.strShineTexture.empty() &&
+				!Is_SafeUIResourceId(slot.strShineTexture)) ||
+			any_of(slot.AnimationFrames.begin(),
+				slot.AnimationFrames.end(), [](const string& frame)
+				{
+					return !Is_SafeUIResourceId(frame);
+				}))
+		{
+			m_strDataStatus = "Save rejected: invalid animation resource ID";
+			return false;
+		}
+	}
+
+	error_code directoryError;
+	filesystem::create_directories(path.parent_path(), directoryError);
+	if (directoryError)
+	{
+		m_strDataStatus = "Save failed: could not create data directory";
+		return false;
+	}
+
+	filesystem::path temporaryPath = path;
+	temporaryPath += L".tmp";
+	ofstream file(temporaryPath, ios::binary | ios::trunc);
+	if (!file)
+	{
+		m_strDataStatus = "Save failed: could not open temporary file";
+		return false;
+	}
+	file.imbue(locale::classic());
+	file << setprecision(9);
+	file << "{\n  \"schema\": \"lostark.ui-layout\",\n"
+		<< "  \"formatVersion\": 1,\n"
+		<< "  \"resolution\": { \"width\": " << ms_fRefWidth
+		<< ", \"height\": " << ms_fRefHeight << " },\n"
+		<< "  \"classes\": [";
+	for (size_t index = 0; index < m_ClassNames.size(); ++index)
+	{
+		if (0u != index)
+			file << ", ";
+		Write_String(file, m_ClassNames[index]);
+	}
+	file << "],\n  \"slots\": [\n";
+
+	for (size_t slotIndex = 0; slotIndex < m_Slots.size(); ++slotIndex)
+	{
+		const HUD_SLOT& slot = m_Slots[slotIndex];
+		file << "    {\n      \"id\": ";
+		Write_String(file, slot.strName);
+		file << ",\n      \"ownerClass\": ";
+		if (slot.strOwnerClass.empty())
+			file << "null";
+		else
+			Write_String(file, slot.strOwnerClass);
+		file << ",\n      \"type\": "
+			<< static_cast<int32_t>(slot.eType)
+			<< ",\n      \"rect\": { \"x\": " << slot.fX
+			<< ", \"y\": " << slot.fY
+			<< ", \"width\": " << slot.fSizeX
+			<< ", \"height\": " << slot.fSizeY
+			<< " },\n      \"rotation\": " << slot.fRotation
+			<< ",\n      \"stages\": { \"baseFrom\": "
+			<< slot.iBaseFromStage << ", \"shineFrom\": "
+			<< slot.iShineFromStage << " },\n"
+			<< "      \"layers\": [";
+
+		for (size_t layerIndex = 0;
+			layerIndex < slot.TextureLayers.size(); ++layerIndex)
+		{
+			const TEXTURE_LAYER& layer = slot.TextureLayers[layerIndex];
+			if (0u != layerIndex)
+				file << ',';
+			file << "\n        { \"path\": ";
+			Write_String(file, layer.strPath);
+			file << ", \"hoverPath\": ";
+			if (layer.strHoverPath.empty())
+				file << "null";
+			else
+				Write_String(file, layer.strHoverPath);
+			file << ", \"tint\": [" << layer.vTint[0] << ", "
+				<< layer.vTint[1] << ", " << layer.vTint[2] << ", "
+				<< layer.vTint[3] << "], \"additive\": "
+				<< (layer.bAdditive ? "true" : "false")
+				<< ", \"flipX\": "
+				<< (layer.bFlipX ? "true" : "false") << " }";
+		}
+		if (!slot.TextureLayers.empty())
+			file << '\n' << "      ";
+		file << "],\n      \"shine\": { \"texture\": ";
+		if (slot.strShineTexture.empty())
+			file << "null";
+		else
+			Write_String(file, slot.strShineTexture);
+		file << ", \"additive\": "
+			<< (slot.bShineAdditive ? "true" : "false")
+			<< " },\n      \"animation\": { \"fps\": "
+			<< slot.fAnimationFPS << ", \"scale\": "
+			<< slot.fAnimationScale << ", \"offset\": { \"x\": "
+			<< slot.fAnimationOffsetX << ", \"y\": "
+			<< slot.fAnimationOffsetY << " }, \"frames\": [";
+		for (size_t frameIndex = 0;
+			frameIndex < slot.AnimationFrames.size(); ++frameIndex)
+		{
+			if (0u != frameIndex)
+				file << ", ";
+			Write_String(file, slot.AnimationFrames[frameIndex]);
+		}
+		file << "] }\n    }";
+		if (slotIndex + 1u != m_Slots.size())
+			file << ',';
+		file << '\n';
+	}
+	file << "  ]\n}\n";
+	file.flush();
+	const bool_t writeSucceeded = file.good();
+	file.close();
+	if (!writeSucceeded ||
+		!MoveFileExW(temporaryPath.c_str(), path.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		m_strDataStatus = "Save failed: atomic promote failed";
+		return false;
+	}
+
+	m_strDataStatus = "JSON saved";
+	return true;
 }
 
-void Client::CHUDLayoutTool::Load(const string& strPath)
+bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 {
-	ifstream File(strPath);
-	if (!File.is_open())
-		return;
-
-	vector<HUD_SLOT> Slots;
-	vector<string> ClassNames;
-
-	string strLine;
-	while (getline(File, strLine))
+	ifstream file(path, ios::binary);
+	if (!file)
 	{
-		istringstream Stream(strLine);
-		string strTag;
-		Stream >> strTag;
-
-		if ("CLASS" == strTag)
-		{
-			string strClass;
-			Stream >> strClass;
-			if (!strClass.empty())
-				ClassNames.push_back(strClass);
-		}
-		else if ("SLOT" == strTag)
-		{
-			HUD_SLOT Slot{};
-			string strOwner;
-			int32_t iType = 0;
-			Stream >> Slot.strName >> Slot.fX >> Slot.fY >> Slot.fSizeX >> Slot.fSizeY >> strOwner >> iType >> Slot.fRotation
-				>> Slot.iBaseFromStage >> Slot.fAnimationScale >> Slot.fAnimationOffsetX >> Slot.fAnimationOffsetY
-				>> Slot.iShineFromStage;
-			if ("-" != strOwner)
-				Slot.strOwnerClass = strOwner;
-			Slot.eType = static_cast<SLOT_TYPE>(iType);
-			Slots.push_back(move(Slot));
-		}
-		/* Everything below decorates the slot most recently declared, so different classes may reuse
-		   the same slot name without their attributes bleeding into each other. */
-		else if (!Slots.empty())
-		{
-			HUD_SLOT& Slot = Slots.back();
-
-			if ("TEXTURE" == strTag)
-			{
-				string strSlotName, strTexturePath;
-				Stream >> strSlotName;
-				Stream >> ws;
-				getline(Stream, strTexturePath);
-
-				TEXTURE_LAYER Layer{};
-				Layer.strPath = strTexturePath;
-				Slot.TextureLayers.push_back(move(Layer));
-			}
-			else if ("LAYERHOVER" == strTag)
-			{
-				string strSlotName, strHoverPath;
-				int32_t iLayer = -1;
-				Stream >> strSlotName >> iLayer;
-				Stream >> ws;
-				getline(Stream, strHoverPath);
-
-				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
-					Slot.TextureLayers[iLayer].strHoverPath = strHoverPath;
-			}
-			else if ("LAYERTINT" == strTag)
-			{
-				string strSlotName;
-				int32_t iLayer = -1;
-				float vTint[4] = { 1.f, 1.f, 1.f, 1.f };
-				Stream >> strSlotName >> iLayer >> vTint[0] >> vTint[1] >> vTint[2] >> vTint[3];
-
-				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
-				{
-					TEXTURE_LAYER& Layer = Slot.TextureLayers[iLayer];
-					Layer.vTint[0] = vTint[0];
-					Layer.vTint[1] = vTint[1];
-					Layer.vTint[2] = vTint[2];
-					Layer.vTint[3] = vTint[3];
-				}
-			}
-			else if ("LAYERADDITIVE" == strTag)
-			{
-				string strSlotName;
-				int32_t iLayer = -1;
-				Stream >> strSlotName >> iLayer;
-
-				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
-					Slot.TextureLayers[iLayer].bAdditive = true;
-			}
-			else if ("LAYERFLIPX" == strTag)
-			{
-				string strSlotName;
-				int32_t iLayer = -1;
-				Stream >> strSlotName >> iLayer;
-
-				if (iLayer >= 0 && iLayer < static_cast<int32_t>(Slot.TextureLayers.size()))
-					Slot.TextureLayers[iLayer].bFlipX = true;
-			}
-			else if ("SHINETEX" == strTag)
-			{
-				string strSlotName, strTexturePath;
-				Stream >> strSlotName;
-				Stream >> ws;
-				getline(Stream, strTexturePath);
-
-				Slot.strShineTexture = strTexturePath;
-			}
-			else if ("SHINEADDITIVE" == strTag)
-			{
-				string strSlotName;
-				Stream >> strSlotName;
-
-				Slot.bShineAdditive = true;
-			}
-			else if ("ANIMFRAME" == strTag)
-			{
-				string strSlotName, strFramePath;
-				Stream >> strSlotName;
-				Stream >> ws;
-				getline(Stream, strFramePath);
-
-				Slot.AnimationFrames.push_back(strFramePath);
-			}
-			else if ("ANIMFPS" == strTag)
-			{
-				string strSlotName;
-				float fFPS = 10.f;
-				Stream >> strSlotName >> fFPS;
-
-				Slot.fAnimationFPS = fFPS;
-			}
-		}
+		m_strDataStatus = "JSON not found";
+		return false;
+	}
+	const string text{
+		istreambuf_iterator<char>(file),
+		istreambuf_iterator<char>()};
+	DATA_JSON_VALUE root;
+	string parseError;
+	if (!CDataJson::Parse(text, root, parseError) || !root.Is_Object())
+	{
+		m_strDataStatus = "JSON parse failed: " + parseError;
+		return false;
 	}
 
-	if (Slots.empty())
-		return;
+	const DATA_JSON_VALUE* pSchema = Find_Member(
+		root, "schema", DATA_JSON_TYPE::STRING);
+	int32_t formatVersion = {};
+	const DATA_JSON_VALUE* pResolution = Find_Member(
+		root, "resolution", DATA_JSON_TYPE::OBJECT);
+	f32_t width = {};
+	f32_t height = {};
+	if (nullptr == pSchema || "lostark.ui-layout" != pSchema->Get_String() ||
+		!Read_Integer(root, "formatVersion", formatVersion, 1, 1) ||
+		nullptr == pResolution ||
+		!Read_Number(*pResolution, "width", width, 1.f, 16384.f) ||
+		!Read_Number(*pResolution, "height", height, 1.f, 16384.f) ||
+		fabsf(width - ms_fRefWidth) > 0.01f ||
+		fabsf(height - ms_fRefHeight) > 0.01f)
+	{
+		m_strDataStatus = "JSON contract or resolution mismatch";
+		return false;
+	}
 
-	m_Slots = move(Slots);
-	m_ClassNames = ClassNames.empty() ? vector<string>{ "Default" } : move(ClassNames);
+	const DATA_JSON_VALUE* pClasses = Find_Member(
+		root, "classes", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* pSlots = Find_Member(
+		root, "slots", DATA_JSON_TYPE::ARRAY);
+	if (nullptr == pClasses || pClasses->Get_Array().empty() ||
+		pClasses->Get_Array().size() > 64u || nullptr == pSlots ||
+		pSlots->Get_Array().empty() || pSlots->Get_Array().size() > 4096u)
+	{
+		m_strDataStatus = "JSON collection limits rejected";
+		return false;
+	}
+
+	vector<string> stagedClasses;
+	unordered_set<string> classSet;
+	for (const DATA_JSON_VALUE& classValue : pClasses->Get_Array())
+	{
+		if (!classValue.Is_String() ||
+			!Is_ValidIdentifier(classValue.Get_String()) ||
+			!classSet.insert(classValue.Get_String()).second)
+		{
+			m_strDataStatus = "JSON contains invalid class IDs";
+			return false;
+		}
+		stagedClasses.push_back(classValue.Get_String());
+	}
+
+	vector<HUD_SLOT> stagedSlots;
+	unordered_set<string> slotSet;
+	for (const DATA_JSON_VALUE& slotValue : pSlots->Get_Array())
+	{
+		if (!slotValue.Is_Object())
+		{
+			m_strDataStatus = "JSON slot is not an object";
+			return false;
+		}
+
+		HUD_SLOT slot;
+		const DATA_JSON_VALUE* pId = Find_Member(
+			slotValue, "id", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pOwner = slotValue.Find("ownerClass");
+		int32_t type = {};
+		const DATA_JSON_VALUE* pRect = Find_Member(
+			slotValue, "rect", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pStages = Find_Member(
+			slotValue, "stages", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pLayers = Find_Member(
+			slotValue, "layers", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* pShine = Find_Member(
+			slotValue, "shine", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pAnimation = Find_Member(
+			slotValue, "animation", DATA_JSON_TYPE::OBJECT);
+
+		if (nullptr == pId || !Is_ValidIdentifier(pId->Get_String()) ||
+			!slotSet.insert(pId->Get_String()).second || nullptr == pOwner ||
+			!Read_Integer(slotValue, "type", type, 0,
+				static_cast<int32_t>(SLOT_TYPE::ITEM)) ||
+			nullptr == pRect || nullptr == pStages || nullptr == pLayers ||
+			pLayers->Get_Array().size() > 32u || nullptr == pShine ||
+			nullptr == pAnimation)
+		{
+			m_strDataStatus = "JSON slot contract rejected";
+			return false;
+		}
+
+		slot.strName = pId->Get_String();
+		if (pOwner->Is_String())
+		{
+			if (!classSet.contains(pOwner->Get_String()))
+			{
+				m_strDataStatus = "JSON slot owner is unknown";
+				return false;
+			}
+			slot.strOwnerClass = pOwner->Get_String();
+		}
+		else if (!pOwner->Is_Null())
+		{
+			m_strDataStatus = "JSON ownerClass must be string or null";
+			return false;
+		}
+		slot.eType = static_cast<SLOT_TYPE>(type);
+		if (!Read_Number(*pRect, "x", slot.fX, -10000.f, 10000.f) ||
+			!Read_Number(*pRect, "y", slot.fY, -10000.f, 10000.f) ||
+			!Read_Number(*pRect, "width", slot.fSizeX, 0.01f, 10000.f) ||
+			!Read_Number(*pRect, "height", slot.fSizeY, 0.01f, 10000.f) ||
+			!Read_Number(slotValue, "rotation", slot.fRotation,
+				-36000.f, 36000.f) ||
+			!Read_Integer(*pStages, "baseFrom", slot.iBaseFromStage,
+				0, ms_iMaxStage) ||
+			!Read_Integer(*pStages, "shineFrom", slot.iShineFromStage,
+				0, ms_iMaxStage))
+		{
+			m_strDataStatus = "JSON slot numeric bounds rejected";
+			return false;
+		}
+
+		for (const DATA_JSON_VALUE& layerValue : pLayers->Get_Array())
+		{
+			if (!layerValue.Is_Object())
+			{
+				m_strDataStatus = "JSON layer is not an object";
+				return false;
+			}
+			const DATA_JSON_VALUE* pPath = Find_Member(
+				layerValue, "path", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pHover = layerValue.Find("hoverPath");
+			const DATA_JSON_VALUE* pTint = Find_Member(
+				layerValue, "tint", DATA_JSON_TYPE::ARRAY);
+			TEXTURE_LAYER layer;
+			if (nullptr == pPath || !Is_SafeUIResourceId(pPath->Get_String()) ||
+				nullptr == pHover || nullptr == pTint ||
+				4u != pTint->Get_Array().size() ||
+				!Read_Boolean(layerValue, "additive", layer.bAdditive) ||
+				!Read_Boolean(layerValue, "flipX", layer.bFlipX))
+			{
+				m_strDataStatus = "JSON layer contract rejected";
+				return false;
+			}
+			layer.strPath = pPath->Get_String();
+			if (pHover->Is_String())
+			{
+				if (!Is_SafeUIResourceId(pHover->Get_String()))
+				{
+					m_strDataStatus = "JSON hover resource ID rejected";
+					return false;
+				}
+				layer.strHoverPath = pHover->Get_String();
+			}
+			else if (!pHover->Is_Null())
+			{
+				m_strDataStatus = "JSON hoverPath must be string or null";
+				return false;
+			}
+			for (size_t tintIndex = 0; tintIndex < 4u; ++tintIndex)
+			{
+				const DATA_JSON_VALUE& tint = pTint->Get_Array()[tintIndex];
+				if (!tint.Is_Number() || !isfinite(tint.Get_Number()) ||
+					tint.Get_Number() < 0.0 || tint.Get_Number() > 64.0)
+				{
+					m_strDataStatus = "JSON tint rejected";
+					return false;
+				}
+				layer.vTint[tintIndex] = static_cast<f32_t>(tint.Get_Number());
+			}
+			slot.TextureLayers.push_back(move(layer));
+		}
+
+		const DATA_JSON_VALUE* pShineTexture = pShine->Find("texture");
+		if (nullptr == pShineTexture ||
+			!Read_Boolean(*pShine, "additive", slot.bShineAdditive))
+		{
+			m_strDataStatus = "JSON shine contract rejected";
+			return false;
+		}
+		if (pShineTexture->Is_String())
+		{
+			if (!Is_SafeUIResourceId(pShineTexture->Get_String()))
+			{
+				m_strDataStatus = "JSON shine resource ID rejected";
+				return false;
+			}
+			slot.strShineTexture = pShineTexture->Get_String();
+		}
+		else if (!pShineTexture->Is_Null())
+		{
+			m_strDataStatus = "JSON shine texture must be string or null";
+			return false;
+		}
+
+		const DATA_JSON_VALUE* pOffset = Find_Member(
+			*pAnimation, "offset", DATA_JSON_TYPE::OBJECT);
+		const DATA_JSON_VALUE* pFrames = Find_Member(
+			*pAnimation, "frames", DATA_JSON_TYPE::ARRAY);
+		if (nullptr == pOffset || nullptr == pFrames ||
+			pFrames->Get_Array().size() > 128u ||
+			!Read_Number(*pAnimation, "fps", slot.fAnimationFPS,
+				0.1f, 240.f) ||
+			!Read_Number(*pAnimation, "scale", slot.fAnimationScale,
+				0.01f, 100.f) ||
+			!Read_Number(*pOffset, "x", slot.fAnimationOffsetX,
+				-10000.f, 10000.f) ||
+			!Read_Number(*pOffset, "y", slot.fAnimationOffsetY,
+				-10000.f, 10000.f))
+		{
+			m_strDataStatus = "JSON animation contract rejected";
+			return false;
+		}
+		for (const DATA_JSON_VALUE& frame : pFrames->Get_Array())
+		{
+			if (!frame.Is_String() ||
+				!Is_SafeUIResourceId(frame.Get_String()))
+			{
+				m_strDataStatus = "JSON animation frame rejected";
+				return false;
+			}
+			slot.AnimationFrames.push_back(frame.Get_String());
+		}
+		stagedSlots.push_back(move(slot));
+	}
+
+	m_Slots = move(stagedSlots);
+	m_ClassNames = move(stagedClasses);
 	m_iSelectedClass = 0;
 	m_iSelectedSlot = -1;
+	m_SelectedSlots.clear();
+	m_iLastScannedClass = -1;
+	m_strDataStatus = "JSON loaded";
+	return true;
 }
 
 void Client::CHUDLayoutTool::Reset_Default()

@@ -41,7 +41,7 @@ private:
 	// --effect-open <assetId> lets a capture or regression run reach a specific
 	// authored asset without driving the ImGui list by hand.
 	void Open_AssetFromCommandLine();
-	// --hdr-readback samples SceneHDR and Bloom after TEST_LEVEL2 is ready. It
+	// The render.hdr-readback scenario samples SceneHDR and Bloom after the Development level is ready. It
 	// proves the 1/5/25 reference levels numerically and stops after a bounded
 	// number of frames; --effect-auto-exit closes only that automated run.
 	void Capture_SceneHDR_Readback();
@@ -85,12 +85,8 @@ private:
 	// needs to zoom instead of the asset being scaled up.
 	f32_t m_fPreviewZoom = { 18.f };
 	float3_t m_vWorldPreviewPosition = { 0.f, 2.f, 0.f };
-	string m_strAuthoringPath = {
-		"../Bin/Resources/LostArk/Effect/Effect_Tool/Editor/working.effect"
-	};
-	string m_strBinaryPath = {
-		"../Bin/Resources/LostArk/Effect/Effect_Tool/Editor/working.weffect"
-	};
+	string m_strAuthoringPath;
+	string m_strBinaryPath;
 	string m_strSaveAsId;
 	vector<string> m_AuthoredAssets;
 	int32_t m_iSelectedAuthoredAsset = { -1 };

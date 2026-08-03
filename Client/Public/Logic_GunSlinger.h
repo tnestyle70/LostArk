@@ -16,7 +16,9 @@ CCharacter assembles from. */
 class CLogic_GunSlinger final : public ICharacterLogic
 {
 public:
-	virtual void Update(CCharacter& Character, f32_t fTimeDelta) override;
+	virtual void Update_Presentation(
+		CCharacter& Character,
+		f32_t fTimeDelta) override;
 };
 
 /* Defined in the .cpp so the tags and clip names stay out of the header. */

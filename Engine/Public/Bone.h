@@ -22,10 +22,14 @@ public:
 	matrix_t Get_CombinedTransformationMatrix() const {
 		return XMLoadFloat4x4(&m_CombinedTransformationMatrix);
 	}
+	matrix_t Get_TransformationMatrix() const {
+		return XMLoadFloat4x4(&m_TransformationMatrix);
+	}
 public:
 	HRESULT Initialize(const aiNode* pAINode, int32_t iParentBoneIndex);
 	HRESULT Initialize(const MODEL_BONE_DATA& bone);
 	void Update_TransformationMatrix(fmatrix_t TransformationMatrix);
+	void Blend_TransformationMatrix(fmatrix_t FromMatrix, f32_t fWeight);
 	void Update_CombinedTransformationMatrix(const vector<shared_ptr<CBone>>& Bones, fmatrix_t PreTransformMatrix);
 
 public:

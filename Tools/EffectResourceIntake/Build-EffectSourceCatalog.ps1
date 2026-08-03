@@ -188,7 +188,7 @@ if ([string]::IsNullOrWhiteSpace($DestinationRoot)) {
     # The Effect Tool reads SourceCatalog from the curated Effect_Tool folder,
     # not from the Effect root that also holds the 80GB archive export.
     # Keep this in sync with the catalog paths in Client/Private/Effect_Tool.cpp.
-    $DestinationRoot = Join-Path $PSScriptRoot '..\..\Client\Bin\Resources\LostArk\Effect\Effect_Tool'
+    $DestinationRoot = Join-Path $PSScriptRoot '..\..\Data\Effects'
 }
 
 $PackageRoot = [System.IO.Path]::GetFullPath($PackageRoot)

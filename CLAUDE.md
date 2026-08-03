@@ -2,7 +2,7 @@
 
 이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 LostArk 코드베이스 설명이다.
 공통 에이전트 행동 규칙의 정본은 `AGENTS.md`이며, 작업 시작 시 먼저 읽는다.
-계획서·설계서 요청은 `.md/계획서작성규칙.md`를 추가로 읽고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다. 계획서는 C1~C8, 문제 해결 ①~⑤, 자료구조·알고리즘, 파일 목록, 전체 구현 코드 순서로 작성한다.
+계획서·설계서 요청은 `AGENTS.md`의 규칙 파일 탐색 순서를 따르고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다.
 LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md`를 먼저 읽는다.
 
 @AGENTS.md
@@ -13,12 +13,45 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 
 혼자 쓰는 저장소가 아니다. 아래 "팀 협업 규칙"을 빌드/아키텍처만큼 중요하게 다룰 것.
 
+## 팀원 최초 세팅
+
+새 팀원이나 새 PC는 다음 순서로 시작한다.
+
+```powershell
+git lfs install
+git clone <repository-url>
+Set-Location LostArk
+git lfs pull
+
+# 팀 Drive에서 lock과 같은 버전의 ZIP을 받은 뒤 외부 pack root에 압축 해제
+tar.exe -xf <lostark-resources-version.zip> -C <external-pack-root>
+
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Hydrate -PackRoot <external-pack-root>
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Verify
+```
+
+ZIP은 `<external-pack-root>/lostark-resources/<version>/{READY,manifest.json,payload}` 구조로 풀려야 한다. `Data/AssetPacks.lock.json`의 version, manifest hash, content hash와 다르면 사용하지 않는다. ZIP을 저장소 안에 풀거나 `Client/Bin/Resources`에 직접 덮어쓰지 않는다.
+
+세팅 후 Debug 정본 회귀를 한 번 실행한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
+  -Configuration Debug -DeepAssetHash
+```
+
+팀 문서의 단일 입구는 `.md/TEAM/README.md`다. 역할별 시작 파일과 금지 경계는 그 폴더의 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`, Area별 optional layer와 MapTool 지원 범위는 `AREA_DATA_LAYER_GUIDE.md`를 따른다.
+
 ## 빌드
 
-**Visual Studio 2022**에서 `Framework.sln`을 연다. 실제로 빌드하는 프로젝트는 두 개다.
+**Visual Studio 2022**에서 `Framework.sln`을 연다. 제품과 계약 검증에 사용하는 프로젝트는 다음과 같다.
 
+- `Shared\Default\Shared.vcxproj` — Client/Server 공용 protocol 계약
 - `Engine\Default\Engine.vcxproj` — `Engine.dll` + `Engine.lib` 생성
 - `Client\Default\Client.vcxproj` — 게임 EXE 생성, `Engine.lib`에 링크
+- `Server\Default\Server.vcxproj` — 서버 권위 world/room 실행 파일
+- `Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj` — protocol 회귀 하네스
 
 (`Engine\External\imgui\examples\*`의 vcxproj들은 ImGui 원본에 딸려온 샘플이며 솔루션에 포함되지 않는다. 건드리지 않는다.)
 
@@ -27,7 +60,10 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 ```
 1) Engine 빌드
 2) UpdateLib.bat [Debug|Release]   ← 인자 생략 시 Debug
-3) Client 빌드
+3) Shared + NetworkProtocolHarness 빌드/실행
+4) Server 빌드
+5) Client 빌드
+6) Lobby/Bern/Valtan smoke + ProjectAudit
 ```
 
 Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더에 생성한다.
@@ -51,7 +87,9 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 - `CleanBuild.bat` — `.vs`, `EngineSDK`, Engine/Client의 Debug·Release 산출물과 각 프로젝트의 `x64` 중간 산출물 삭제
 - `CleanBuildV2.bat` — 위와 동일하며 이전 공용 출력 구조가 남긴 root exe/dll/pdb도 정리한다. `Resources`, `DataFiles`, `ShaderFiles`는 보존한다.
 
-커맨드라인 빌드 스크립트(`BuildDebug.bat` 등)는 아직 없다. MSBuild로 직접 돌릴 경우에도 위 3단계를 그대로 따른다.
+정본 자동화는 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. Client 작업 디렉터리를 반드시 `Client/Default`로 고정하고 셰이더·리소스 전제조건을 먼저 검사한다. 개별 MSBuild를 직접 실행할 때도 위 순서를 그대로 따른다.
+
+Loader worker에서 호출되는 shader/model/navigation/camera/character/part/Valtan factory는 modal dialog를 띄우지 않고 실패를 반환한다. 종료 시 cooperative cancellation과 `CancelSynchronousIo`를 순서대로 시도한다. 그래도 10초를 넘기면 `TerminateThread`로 손상된 process를 계속 실행하지 않고 `ERROR_TIMEOUT`으로 process fail-fast한다. smoke harness는 조기 종료나 report 누락을 실패로 판정한다.
 
 ## 팀 협업 규칙
 
@@ -62,27 +100,31 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 | 종류 | 위치 | 배포 경로 |
 |---|---|---|
 | 소스 · 프로젝트 파일 | `Engine/`, `Client/`, `*.sln/.vcxproj/.filters` | Git 일반 추적 |
-| 필수 바이너리 입력 | `Engine/ThirdPartyLib/`, `Client/Bin/DataFiles/`, `Client/Bin/*.dds` | **Git LFS** (`.gitattributes` 패턴) |
-| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/`, `*.wmesh/.wmat/.wskel/.wanim` | **공유 Drive 팩** (Git 미추적, `.gitignore`) |
+| 프로젝트 데이터 정본 | `Data/`의 catalog, authoring, reference JSON/문서 | Git 일반 추적 |
+| 필수 바이너리 입력 | `Engine/ThirdPartyLib/`, 승인된 `Client/Bin/DataFiles/` | **Git LFS** (`.gitattributes` 패턴) |
+| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 버전 고정 외부 팩 (`Data/AssetPacks.lock.json`) |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
-- `Client/Bin/Resources/`는 clone만으로 채워지지 않는다. Drive 팩을 별도로 받아 배치해야 실행된다.
+- `Client/Bin/Resources/` 최상위에는 위 여섯 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData`, `Sound` 래퍼를 다시 만들지 않는다.
+- raw 추출물과 SourceData는 런타임 팩에 넣지 않는다. `Tools/AssetPipeline/Manage-ResourcePack.ps1`로 publish/hydrate/verify한다.
+- 리소스 팩의 Snapshot은 manifest와 lock을 한 트랜잭션으로 취급하며 lock commit 전 실패한 orphan manifest를 제거한다. 상세 운영 순서는 `Tools/AssetPipeline/README.md`를 따른다.
+- UI와 gameplay 설정 정본은 JSON이다. `.cfg`를 새로 만들거나 Resources에서 직접 읽지 않는다.
 - 빌드 산출물(`exe/dll/lib/pdb/cso`), `.vs`, `EngineSDK`, `_work`, `out`, `imgui.ini`는 전부 ignore 대상이다. **커밋에 섞여 들어가지 않게 할 것.**
 - 새 바이너리 자산을 추가할 때는 LFS 대상인지 Drive 팩 대상인지 먼저 판단하고, 애매하면 커밋하지 말고 물어본다.
 
 ### 브랜치 · PR
 
-`main`이 정본이고, 작업은 `feature/<주제>` 브랜치에서 한 뒤 PR로 합친다. `main`에 직접 커밋하지 않는다.
+`main`이 정본이고, 작업은 별도 브랜치와 PR로 합친다. 사람 작업은 팀의 `feature/<주제>` 관례를 따르고 Codex 작업은 `codex/<주제>`를 사용한다. `main`에 직접 커밋하지 않는다.
 
 ### 프로젝트 파일(.vcxproj / .filters) 취급
 
 - `.vcxproj`의 **설정(PropertyGroup, ItemDefinitionGroup, Import)과 고정 item은 사람이 관리하는 정본**이다.
-- 소스 목록(`ClCompile`/`ClInclude`)과 `.filters`는 **물리 폴더 구조가 정본**이다. `.filters`는 Git으로 추적하되 사람이 손으로 편집하지 않는다.
+- 소스 목록(`ClCompile`/`ClInclude`)과 `.filters`는 **물리 폴더 구조가 정본**이다. 새 파일에 필요한 항목만 등록하고 기존 필터를 재배치하지 않는다.
 - 파일 추가/이동은 물리 경로를 먼저 정하고, 그에 맞춰 프로젝트에 등록한다. 남의 필터 구조를 임의로 재배치하지 않는다.
 
 ### 소스 파일 인코딩 — 중요
 
-`Engine/`, `Client/`의 **C++ 소스는 CP949(ANSI)로 저장되어 있고, 주석이 한국어다.** 편집할 때 기존 인코딩을 유지할 것. 파일 전체를 UTF-8로 다시 저장하면 한 줄만 고쳐도 전체가 변경된 것으로 보여 팀원의 diff/merge를 망가뜨린다.
+`Engine/`, `Client/` C++ 소스는 CP949, UTF-8(BOM 포함/미포함), ASCII가 혼재한다. 편집 전에 파일별 기존 인코딩을 감지하고 그대로 보존한다. 인코딩을 확신할 수 없는 기존 파일은 ASCII 구간만 최소 수정하며 파일 전체를 임의 변환하지 않는다. 새 C++ 파일은 UTF-8(BOM 없음)과 영문 주석을 기본으로 한다. 인코딩 일괄 변환은 별도 합의 작업으로만 수행한다.
 
 반대로 `.md/GB/**/*.md` 문서와 이 파일은 UTF-8이다.
 
@@ -123,8 +165,8 @@ CPrototype (추상, enable_shared_from_this)
 ├── CComponent (추상)
 │   ├── CTransform            — 월드 행렬, 이동/회전 헬퍼
 │   ├── CVIBuffer (추상)      — 정점/인덱스 버퍼 기반 클래스
-│   │   ├── CVIBuffer_Rect / _Cube / _Terrain / _Cell
-│   │   └── CVIBuffer_Instance ├─ _Rect / _Point (파티클 인스턴싱)
+│   │   ├── CVIBuffer_Rect / CVIBuffer_Cell
+│   │   └── CVIBuffer_Instance (공통 인스턴싱 기반)
 │   ├── CTexture              — SRV 배열, DDS/WIC 로딩
 │   ├── CShader               — FX11 이펙트 래퍼
 │   ├── CModel / CMesh / CMaterial / CBone / CAnimation / CChannel
@@ -133,9 +175,9 @@ CPrototype (추상, enable_shared_from_this)
 └── CGameObject (추상)
     ├── CContainerObject / CPartObject   — 파츠 조립형 오브젝트
     ├── CUIObject, CCamera
-    └── [Client] CPlayer, CBody_Player, CWeapon, CMonster, CTerrain,
-                 CSky, CSnow, CEffect, CExplosion, CForkLift,
-                 CBackGround, CCamera_Free, CBinaryAssetObject
+    └── [Client] CCharacter, CPart_Body, CPart_Equipment, CNpc,
+                 CValtan, CDeployPropObject, CMapAssetObject,
+                 CMapStaticBatchObject, CEffect_Runtime, CCamera_Free
 ```
 
 ### 프로토타입 패턴
@@ -150,22 +192,47 @@ CPrototype (추상, enable_shared_from_this)
 레벨은 `Client_Defines.h`의 enum이다.
 
 ```cpp
-enum class LEVEL { STATIC, LOADING, LOGO, GAMEPLAY, ASSET_TEST, END };
+enum class LEVEL { STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT, END };
 ```
 
-> **레벨 구성은 앞으로 계속 바뀐다.** 이 목록을 기억해서 쓰지 말고, 작업 시점에 `Client_Defines.h`를 직접 확인할 것. 레벨을 추가/제거할 때는 `CLoader::Ready_For_Level_*`, `CLevel_Loading`, `CMainApp::Start_Level`의 분기까지 함께 손봐야 하고, 다른 팀원의 레벨 작업과 충돌하기 쉬우므로 변경 사실을 공유한다.
+시작 레벨은 항상 `LOBBY`다. 제품/개발 시나리오 정본은 `Data/Levels/LevelCatalog.json`이며 `CLevelCatalog`와 `CLevelRegistry`를 통해 해석한다. 임의의 Level enum, 문자열 분기, direct `Change_Level` 호출을 추가하지 않는다.
 
 `LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
-모든 전환은 `CLevel_Loading`을 거친다. `_beginthreadex`로 워커 스레드를 띄우고, `CLoader`가 그 안에서 프로토타입을 등록한다. 공유 상태는 `CRITICAL_SECTION`으로 보호한다. `m_isFinished == true`가 되면 목표 레벨로 전환한다.
+제품/개발 전환 요청은 `CSceneTransitionService`에 제출하고 `CMainApp`만 `LOADING` 진입을 수행한다. `CLevel_Loading`만 로드 완료 후 목표 레벨로 commit한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
+
+`Data/Levels/LevelCatalog.json`의 `mapLoadBounds`가 제품 맵 로딩 범위의 정본이다. Bern과 Valtan 제품 레벨은 자신의 진입/전투 범위와 배경만 로드하고, `dev.map.active`만 전체 맵을 연다. Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비해야 하며 한쪽만 필터링하면 안 된다. 로더 작업 스레드의 실패는 상태와 HRESULT로 반환하고 `MessageBox`로 대기시키지 않는다.
+
+### 서버 권위 월드 파이프라인
+
+MapTool의 현재 지원 범위인 player spawn/NPC/boss 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
+
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v5 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+
+### 최소 수련장 Area
+
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 서버 연결 시나리오다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. Lobby의 `Enter Training`도 Bern/Valtan과 동일하게 서버 승인을 받은 뒤에만 전환한다.
+
+- visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
+- visual placement: authoring 18개를 publisher가 runtime placement로 승격
+- gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
+- navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
+- runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
+- smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
+
+`playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
+
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist 네 slot이 보이며 네 class 모두 immutable resource pack, Client Loader/Spec, Server player profile까지 연결되어 Bern/Valtan/Training에 진입할 수 있다. class별 스킬은 `PlayerSkills.json`에 실제 Server 계약이 있는 항목만 HUD와 입력에 노출하며, 누락 class를 Lance Master로 대체하지 않는다.
+
+Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
 ### 바이너리 에셋 파이프라인
 
 런타임 모델 입구는 `CModel` 하나로 통합한다. `CModel::Create()`는 FBX를 Assimp로 읽고, `.wmodel`은 `CWModelDecoder`로 읽은 뒤 모두 기존 `CMesh / CMaterial / CBone / CAnimation`으로 변환한다.
 
-- **`CCookedModel`과 `CBinaryAssetObject`는 레거시 검증 경로다. 신규 기능을 추가하거나 MapTool·GameObject가 이 경로를 사용하게 하지 않는다.**
+- `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 동등한 두 번째 런타임 모델 경로를 다시 만들지 않는다.
 - `Engine/Public/BinaryAsset/`의 `CBinaryReader`, `IModelDecoder`, `CWModelDecoder` 등 decode 기반 코드는 `CModel` 내부의 `.wmodel` 입력을 지원한다.
 - 신규 맵·캐릭터·보스 모델은 `CLoader -> CModel Prototype -> GameObject의 CModel Component` 계약을 사용한다.
 - `.wmodel` 머티리얼에 diffuse와 emissive가 모두 없으면 `CMaterial`이 1×1 회색 diffuse를 만들어 형상 확인을 보장한다. 이는 안전망일 뿐이며 최종 에셋은 실제 텍스처 경로를 가져야 한다.
@@ -173,16 +240,19 @@ enum class LEVEL { STATIC, LOADING, LOGO, GAMEPLAY, ASSET_TEST, END };
 
 ### 런타임 에셋 루트
 
-`CRuntimeAssetRoot::Get()`이 Drive 공유 팩의 루트를 해석한다.
+`CRuntimeAssetRoot::Get()`이 평탄화된 런타임 Resources 루트를 해석한다.
 
-1. 환경 변수 `LOSTARK_SHARED_ASSET_ROOT`가 있으면 그 경로
-2. 없으면 `<exe 폴더>/Resources/LostArk`
+1. 환경 변수 `LOSTARK_RESOURCE_ROOT`가 있으면 그 경로
+2. `LOSTARK_SHARED_ASSET_ROOT`가 있으면 그 경로 자체. 구형 `.../LostArk` 래퍼를 자동 보정하지 않는다.
+3. 없으면 `<exe 폴더>/Resources` 또는 그 부모의 `Resources`
 
-팀원마다 팩 위치가 다를 수 있으므로 **공유 에셋 경로를 코드에 하드코딩하지 말고 `CRuntimeAssetRoot::Resolve()`를 쓴다.**
+팀원마다 팩 위치가 다를 수 있으므로 **경로를 코드에 하드코딩하지 말고 `CRuntimeAssetRoot::Resolve()`를 쓴다.** asset ID는 Resources 상대 경로이며 절대 경로와 `..` 탈출은 거부한다.
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG` 빌드에서만 존재한다. `CMainApp`이 `Engine::CImGuiLayer`와 `Client::CMapTool`을 소유하고, **F1**으로 토글한다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다(엔진은 WndProc이 아니라 폴링 기반이므로 이 게이트가 필요하다). Release 빌드 경로에 디버그 툴 의존성을 넣지 말 것.
+`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. 자동 검증은 `--smoke --scenario=<stable-id> --timeout-ms=<ms> --report=<path>`만 사용한다. 구형 별칭이나 추가 F키 이동을 다시 만들지 않는다.
+
+네 class binary 진입 검증은 smoke 전용 `--character-class=lance-master|gunslinger|slayer|artist`를 사용한다. 정식 사용자는 Lobby UI에서 선택하며 이 옵션을 gameplay shortcut으로 사용하지 않는다.
 
 ### 새 GameObject 추가
 
@@ -229,9 +299,33 @@ enum class LEVEL { STATIC, LOADING, LOGO, GAMEPLAY, ASSET_TEST, END };
 클라이언트 실행 파일 기준 상대 경로를 사용한다.
 
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
-- 데이터: `../Bin/DataFiles/*.dat` (내비게이션 등, LFS 추적)
-- 로컬 리소스: `../Bin/Resources/...` — 텍스처 경로는 배열용 printf 번호 표기를 지원한다. 예: `TEXT("../Bin/Resources/Textures/Default%d.jpg")` + 개수 인자
-- 공유 Drive 팩 에셋: `CRuntimeAssetRoot::Resolve()` 사용
+- 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
+- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`만 runtime bootstrap을 생성한다.
+- Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
+- 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
+- 서버 길찾기: 신규 Area는 `Data/Navigation/<AreaId>.navgrid.json` authoring이 정본이며 `Publish-ServerNavigation.ps1`이 runtime navgrid를 결정적으로 생성한다. 기존 Valtan binary source도 같은 publisher가 검증하며 gameplay spawn/boss의 walkable cell·높이 정합성까지 확인한다.
+- 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
+- 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
+- 애니메이션 추출 참조: `Data/Animation/Reference/<AssetId>/`
+- MapTool 작성본: `Data/Maps/Authoring/<AreaId>/`; publish 후에만 `Client/Bin/DataFiles/Map/` 런타임 입력이 된다.
+- shard-set을 포함한 visual placement publish는 `Tools/MapPipeline/Publish-MapAuthoring.ps1`만 수행한다. 여러 shard placement와 mapset은 한 트랜잭션으로 교체되고 중간 실패 시 전부 rollback한다.
+
+## 팀 작업 인터페이스
+
+| 담당 | 읽는 계약 | 쓰는 계약 | 금지 경계 |
+|---|---|---|---|
+| UI | layout JSON, `CCombatHUDViewModel` | lobby/scene/gameplay command service | packet/snapshot 파싱, Character 직접 변경 |
+| Character/Animation | transform·locomotion·action 의미, `CHARACTER_SPEC` | visual/presentation 결과 | DirectInput, socket, damage·cooldown 결정 |
+| Map/Encounter | asset·actor catalog, navigation 계약 | visual placement, player spawn/NPC/boss placement | runtime NetEntityId, HP, phase, prototype tag 저장 |
+| Server/Boss | world bootstrap, player truth, encounter profile, fixed tick | server state, snapshot, semantic action | model·clip·texture·camera·ImGui 참조 |
+| Transport | byte/frame | `RoomCommand` enqueue, frame send | `GameRoom` 상태 직접 변경 |
+
+- 로컬 입력의 현재 제품 경계는 `CPlayerController -> IPlayerCommandSink`다. Controller는 transport를 모르고 Character는 입력을 읽지 않는다.
+- `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
+- Q/W의 skill ID `34060`/`34100`은 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`으로 연결됐다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
+- UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
+- 현재 World Gameplay kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
+- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. 현재 일반 Monster, wave/증분 spawn, trigger, Area별 balance override, 제품 NPC presentation은 구현되지 않았다.
 
 ## 작업 방식 지침
 
@@ -289,5 +383,5 @@ enum class LEVEL { STATIC, LOADING, LOGO, GAMEPLAY, ASSET_TEST, END };
 - 실시간 게임 엔진이다. 성능이 중요하다 — 갱신/렌더 루프에서 힙 할당을 피한다.
 - `new`/`delete` 직접 사용 금지. 스마트 포인터, `ComPtr`, `Safe_Delete`/`Safe_Release`를 쓴다.
 - 서브시스템 소유권이 헷갈리면 위 "서브시스템 소유권" 표를 본다.
-- 소스 주석은 한국어이고 파일은 CP949다. 주변 주석의 언어와 파일 인코딩을 그대로 맞춘다.
+- 기존 소스는 주변 주석의 언어와 파일별 인코딩을 그대로 맞춘다. 저장소 전체가 하나의 인코딩이라는 가정을 금지한다.
 - 빌드가 깨진 채로 커밋하지 않는다. `Engine/Public/` 변경 후에는 `UpdateLib.bat` → Client 빌드까지 확인한다.
