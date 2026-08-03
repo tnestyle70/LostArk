@@ -7,7 +7,7 @@
     {
       "placementId": "player.spawn.valtan.entry",
       "kind": "playerSpawn",
-      "archetypeId": "PLAYER_LANCE_MASTER",
+      "archetypeId": null,
       "encounterId": null,
 	  "position": [144.75, 23.06843, -131.75],
       "yawDegrees": 45.0,
@@ -16,7 +16,7 @@
     {
       "placementId": "player.spawn.valtan.party02",
       "kind": "playerSpawn",
-      "archetypeId": "PLAYER_LANCE_MASTER",
+      "archetypeId": null,
       "encounterId": null,
 	  "position": [145.75, 23.06843, -132.75],
       "yawDegrees": 45.0,
@@ -25,7 +25,7 @@
     {
       "placementId": "player.spawn.valtan.party03",
       "kind": "playerSpawn",
-      "archetypeId": "PLAYER_LANCE_MASTER",
+      "archetypeId": null,
       "encounterId": null,
 	  "position": [146.75, 23.06843, -133.75],
       "yawDegrees": 45.0,
@@ -34,7 +34,7 @@
     {
       "placementId": "player.spawn.valtan.party04",
       "kind": "playerSpawn",
-      "archetypeId": "PLAYER_LANCE_MASTER",
+      "archetypeId": null,
       "encounterId": null,
 	  "position": [144.25, 23.06202, -131.25],
       "yawDegrees": 45.0,

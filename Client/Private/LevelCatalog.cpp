@@ -110,6 +110,8 @@ namespace
 		if ("front.lobby" == id) return CLIENT_SCENARIO::FRONT_LOBBY;
 		if ("world.bern" == id) return CLIENT_SCENARIO::WORLD_BERN;
 		if ("raid.valtan.arena" == id) return CLIENT_SCENARIO::RAID_VALTAN_ARENA;
+		if ("dev.training.ground" == id)
+			return CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND;
 		if ("dev.map.active" == id) return CLIENT_SCENARIO::DEVELOPMENT_MAP;
 		if ("asset.character.lance-master" == id)
 			return CLIENT_SCENARIO::DEVELOPMENT_CHARACTER;
@@ -156,6 +158,9 @@ namespace
 				entry,
 				{ "Map", "Character", "Deploy", "Effect", "UI" },
 				{});
+		case CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND:
+			return HasExecutionMetadata(
+				entry, { "Map", "Character", "UI" }, {});
 		case CLIENT_SCENARIO::DEVELOPMENT_MAP:
 			return HasExecutionMetadata(entry, { "Map" }, { "MapTool" });
 		case CLIENT_SCENARIO::DEVELOPMENT_CHARACTER:

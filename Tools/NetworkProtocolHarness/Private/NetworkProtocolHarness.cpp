@@ -178,6 +178,7 @@ namespace
 		TEST_RUNNER& testRunner)
 	{
 		C2S_ENTER_WORLD source{};
+		source.eWorldId = WORLD_ID::TRAINING_GROUND;
 
 		source.eCharacterClass =
 			CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -206,7 +207,7 @@ namespace
 
 		testRunner.Require(
 			decoded.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
-			decoded.eWorldId == WORLD_ID::BERN,
+			decoded.eWorldId == WORLD_ID::TRAINING_GROUND,
 			"Enter World Contract Round Trip");
 
 		testRunner.Require(

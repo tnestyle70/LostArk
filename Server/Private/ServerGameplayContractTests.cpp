@@ -6,6 +6,7 @@
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 
@@ -48,6 +49,27 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
 		"Reject navigation point outside projection radius");
+
+	CWorldBootstrap trainingWorld;
+	CServerNavigation trainingNavigation;
+	tests.Require(trainingWorld.Load(WORLD_ID::TRAINING_GROUND) &&
+		trainingWorld.Get_AreaId() == "LV_DEV_TRAINING_GROUND" &&
+		std::all_of(
+			trainingWorld.Get_Placements().begin(),
+			trainingWorld.Get_Placements().end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.strArchetypeId.empty();
+			}),
+		"Load class-neutral training player spawns");
+	tests.Require(trainingNavigation.Load("LV_DEV_TRAINING_GROUND"),
+		"Load training server navigation");
+	SERVER_NAV_POINT trainingPoint{};
+	tests.Require(trainingNavigation.Project_Point(0.f, -4.f, trainingPoint),
+		"Project training spawn to walkable cell");
+	tests.Require(!trainingNavigation.Project_Point(16.01f, 0.f, trainingPoint),
+		"Reject training point beyond arena navigation bounds");
 
 	SERVER_PLAYER player{};
 	player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;

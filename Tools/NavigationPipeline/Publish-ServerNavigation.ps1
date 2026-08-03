@@ -7,61 +7,163 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$source = [IO.Path]::GetFullPath((Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation/ValtanArena.navgrid'))
-if (-not [IO.File]::Exists($source)) { throw "Server navigation source is missing: $source" }
 
-$bytes = [IO.File]::ReadAllBytes($source)
-if ($bytes.Length -lt 20) { throw 'Navigation grid header is truncated.' }
-$width = [BitConverter]::ToUInt32($bytes, 0)
-$height = [BitConverter]::ToUInt32($bytes, 4)
-$cellSize = [BitConverter]::ToSingle($bytes, 8)
-$cellCount = [uint64]$width * [uint64]$height
-$expectedSize = 20L + [int64]$cellCount + 4L * [int64]$cellCount
-if ($width -eq 0 -or $height -eq 0 -or $cellCount -gt 1000000 -or
-    [single]::IsNaN($cellSize) -or [single]::IsInfinity($cellSize) -or $cellSize -le 0 -or
-    $bytes.LongLength -ne $expectedSize) {
-    throw "Navigation grid contract is invalid. width=$width height=$height cellSize=$cellSize bytes=$($bytes.LongLength) expected=$expectedSize"
+function New-UniformNavigationGrid {
+    param([string]$RelativeAuthoringPath)
+
+    $path = Join-Path $repoRoot $RelativeAuthoringPath
+    $source = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    $properties = @($source.PSObject.Properties.Name | Sort-Object)
+    $expected = @(
+        'areaId','cellSize','defaultHeight','formatVersion','height',
+        'originX','originZ','schema','width') | Sort-Object
+    if (($properties -join "`n") -ne ($expected -join "`n") -or
+        $source.schema -ne 'lostark.navigation-grid-authoring' -or
+        $source.formatVersion -ne 1 -or
+        $source.areaId -notmatch '^[A-Za-z0-9_.-]{1,128}$' -or
+        [uint32]$source.width -eq 0 -or [uint32]$source.height -eq 0 -or
+        ([uint64]$source.width * [uint64]$source.height) -gt 1000000 -or
+        [double]$source.cellSize -le 0.0 -or
+        [double]::IsNaN([double]$source.cellSize) -or
+        [double]::IsInfinity([double]$source.cellSize) -or
+        [double]::IsNaN([double]$source.originX) -or
+        [double]::IsNaN([double]$source.originZ) -or
+        [double]::IsNaN([double]$source.defaultHeight)) {
+        throw "Training navigation authoring contract is invalid: $RelativeAuthoringPath"
+    }
+
+    $stream = [IO.MemoryStream]::new()
+    $writer = [IO.BinaryWriter]::new($stream)
+    try {
+        $writer.Write([uint32]$source.width)
+        $writer.Write([uint32]$source.height)
+        $writer.Write([single]$source.cellSize)
+        $writer.Write([single]$source.originX)
+        $writer.Write([single]$source.originZ)
+        $cellCount = [uint32]$source.width * [uint32]$source.height
+        for ($index = 0; $index -lt $cellCount; ++$index) {
+            $writer.Write([byte]1)
+        }
+        for ($index = 0; $index -lt $cellCount; ++$index) {
+            $writer.Write([single]$source.defaultHeight)
+        }
+        $writer.Flush()
+        return [pscustomobject]@{
+            AreaId = [string]$source.areaId
+            Bytes = $stream.ToArray()
+            WorldPath = "Data/Worlds/$($source.areaId)/Gameplay.world.json"
+        }
+    }
+    finally {
+        $writer.Dispose()
+        $stream.Dispose()
+    }
 }
 
-$originX = [BitConverter]::ToSingle($bytes, 12)
-$originZ = [BitConverter]::ToSingle($bytes, 16)
-$worldPath = Join-Path $repoRoot 'Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json'
-$world = Get-Content -LiteralPath $worldPath -Raw -Encoding UTF8 | ConvertFrom-Json
-foreach ($placement in @($world.placements | Where-Object { $_.enabled -and $_.kind -in @('playerSpawn','boss') })) {
-	$cellX = [int][Math]::Floor(([double]$placement.position[0] - $originX) / $cellSize)
-	$cellZ = [int][Math]::Floor(([double]$placement.position[2] - $originZ) / $cellSize)
-	if ($cellX -lt 0 -or $cellZ -lt 0 -or $cellX -ge $width -or $cellZ -ge $height) {
-		throw "Gameplay placement is outside server navigation: $($placement.placementId)"
-	}
-	$index = $cellZ * $width + $cellX
-	if ($bytes[20 + $index] -ne 1) {
-		throw "Gameplay placement is not on a walkable server cell: $($placement.placementId)"
-	}
-	$heightOffset = 20 + [int]$cellCount + 4 * $index
-	$cellHeight = [BitConverter]::ToSingle($bytes, $heightOffset)
-	if ([Math]::Abs([double]$placement.position[1] - $cellHeight) -gt 0.25) {
-		throw "Gameplay placement height differs from server navigation: $($placement.placementId)"
-	}
+function Read-BinaryNavigationGrid {
+    param(
+        [string]$AreaId,
+        [string]$RelativePath,
+        [string]$WorldPath
+    )
+    $source = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
+    if (-not [IO.File]::Exists($source)) {
+        throw "Server navigation source is missing: $source"
+    }
+    return [pscustomobject]@{
+        AreaId = $AreaId
+        Bytes = [IO.File]::ReadAllBytes($source)
+        WorldPath = $WorldPath
+    }
+}
+
+function Assert-NavigationGrid {
+    param([object]$Grid)
+
+    $bytes = [byte[]]$Grid.Bytes
+    if ($bytes.Length -lt 20) { throw "Navigation grid header is truncated: $($Grid.AreaId)" }
+    $width = [BitConverter]::ToUInt32($bytes, 0)
+    $height = [BitConverter]::ToUInt32($bytes, 4)
+    $cellSize = [BitConverter]::ToSingle($bytes, 8)
+    $originX = [BitConverter]::ToSingle($bytes, 12)
+    $originZ = [BitConverter]::ToSingle($bytes, 16)
+    $cellCount = [uint64]$width * [uint64]$height
+    $expectedSize = 20L + [int64]$cellCount + 4L * [int64]$cellCount
+    if ($width -eq 0 -or $height -eq 0 -or $cellCount -gt 1000000 -or
+        [single]::IsNaN($cellSize) -or [single]::IsInfinity($cellSize) -or
+        $cellSize -le 0 -or $bytes.LongLength -ne $expectedSize) {
+        throw "Navigation grid contract is invalid: $($Grid.AreaId)"
+    }
+
+    $world = Get-Content -LiteralPath (Join-Path $repoRoot $Grid.WorldPath) -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($placement in @($world.placements | Where-Object {
+        $_.enabled -and $_.kind -in @('playerSpawn','boss') })) {
+        $cellX = [int][Math]::Floor(([double]$placement.position[0] - $originX) / $cellSize)
+        $cellZ = [int][Math]::Floor(([double]$placement.position[2] - $originZ) / $cellSize)
+        if ($cellX -lt 0 -or $cellZ -lt 0 -or $cellX -ge $width -or $cellZ -ge $height) {
+            throw "Gameplay placement is outside server navigation: $($placement.placementId)"
+        }
+        $index = $cellZ * $width + $cellX
+        if ($bytes[20 + $index] -ne 1) {
+            throw "Gameplay placement is not on a walkable server cell: $($placement.placementId)"
+        }
+        $heightOffset = 20 + [int]$cellCount + 4 * $index
+        $cellHeight = [BitConverter]::ToSingle($bytes, $heightOffset)
+        if ([Math]::Abs([double]$placement.position[1] - $cellHeight) -gt 0.25) {
+            throw "Gameplay placement height differs from server navigation: $($placement.placementId)"
+        }
+    }
+    return "${width}x${height}, cellSize=$cellSize"
+}
+
+$grids = @(
+    (Read-BinaryNavigationGrid -AreaId 'LV_LUT_HEARTRB_ED' `
+        -RelativePath 'Client/Bin/DataFiles/Navigation/ValtanArena.navgrid' `
+        -WorldPath 'Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json'),
+    (New-UniformNavigationGrid `
+        -RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json')
+)
+
+$validated = foreach ($grid in $grids) {
+    [pscustomobject]@{
+        Grid = $grid
+        Detail = Assert-NavigationGrid $grid
+    }
 }
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
     [IO.Directory]::CreateDirectory($root) | Out-Null
-    $destination = Join-Path $root 'LV_LUT_HEARTRB_ED.navgrid'
-    $staged = Join-Path $root ('.ValtanArena.staging.' + [Guid]::NewGuid().ToString('N'))
-    $rollback = Join-Path $root ('.ValtanArena.rollback.' + [Guid]::NewGuid().ToString('N'))
-    try {
-        [IO.File]::WriteAllBytes($staged, $bytes)
-        if ([IO.File]::Exists($destination)) { [IO.File]::Move($destination, $rollback) }
-        [IO.File]::Move($staged, $destination)
-        if ([IO.File]::Exists($rollback)) { [IO.File]::Delete($rollback) }
-    }
-    catch {
-        if ([IO.File]::Exists($destination)) { [IO.File]::Delete($destination) }
-        if ([IO.File]::Exists($rollback)) { [IO.File]::Move($rollback, $destination) }
-        if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
-        throw
+    foreach ($entry in $validated) {
+        $destinations = @(
+            (Join-Path $root "$($entry.Grid.AreaId).navgrid")
+        )
+        if ($entry.Grid.AreaId -eq 'LV_DEV_TRAINING_GROUND') {
+            $clientRoot = Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation'
+            [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
+            $destinations += Join-Path $clientRoot 'LV_DEV_TRAINING_GROUND.navgrid'
+        }
+        foreach ($destination in $destinations) {
+            $destinationRoot = [IO.Path]::GetDirectoryName($destination)
+            $token = [Guid]::NewGuid().ToString('N')
+            $staged = Join-Path $destinationRoot ".$($entry.Grid.AreaId).staging.$token"
+            $rollback = Join-Path $destinationRoot ".$($entry.Grid.AreaId).rollback.$token"
+            try {
+                [IO.File]::WriteAllBytes($staged, [byte[]]$entry.Grid.Bytes)
+                if ([IO.File]::Exists($destination)) { [IO.File]::Move($destination, $rollback) }
+                [IO.File]::Move($staged, $destination)
+                if ([IO.File]::Exists($rollback)) { [IO.File]::Delete($rollback) }
+            }
+            catch {
+                if ([IO.File]::Exists($destination)) { [IO.File]::Delete($destination) }
+                if ([IO.File]::Exists($rollback)) { [IO.File]::Move($rollback, $destination) }
+                if ([IO.File]::Exists($staged)) { [IO.File]::Delete($staged) }
+                throw
+            }
+        }
     }
 }
 
-Write-Host "Server navigation $Mode succeeded: ${width}x${height}, cellSize=$cellSize."
+foreach ($entry in $validated) {
+    Write-Host "Server navigation $Mode succeeded: $($entry.Grid.AreaId) $($entry.Detail)."
+}

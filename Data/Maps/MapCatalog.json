@@ -25,6 +25,17 @@
       "placementCount": 13103,
       "assetCount": 269,
       "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED"
+    },
+    {
+      "id": "LV_DEV_TRAINING_GROUND",
+      "kind": "development",
+      "catalogType": "single",
+      "catalog": "Client/Bin/DataFiles/Map/LV_DEV_TRAINING_GROUND.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_DEV_TRAINING_GROUND.mapplacements",
+      "gameplayDocument": "Data/Worlds/LV_DEV_TRAINING_GROUND/Gameplay.world.json",
+      "placementCount": 18,
+      "assetCount": 10,
+      "runtimeAssetRoot": "Map/ENVIRONMENT_CURATED"
     }
   ],
   "editorSelection": {

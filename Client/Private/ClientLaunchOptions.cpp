@@ -146,6 +146,9 @@ bool_t CClientLaunchOptions::Select_RuntimeScenario(
 	case CLIENT_SCENARIO::RAID_VALTAN_ARENA:
 		scenarioId = L"raid.valtan.arena";
 		break;
+	case CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND:
+		scenarioId = L"dev.training.ground";
+		break;
 	case CLIENT_SCENARIO::DEVELOPMENT_MAP:
 		scenarioId = L"dev.map.active";
 		break;

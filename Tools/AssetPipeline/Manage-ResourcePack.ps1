@@ -7,7 +7,7 @@ param(
     [string]$LockFile = 'Data/AssetPacks.lock.json',
     [string]$ManifestDirectory = 'Data/AssetManifests',
     [string]$PackId = 'lostark-resources',
-    [string]$Version = '2026.08.03.1',
+    [string]$Version = '2026.08.03.2',
     [string]$PackRoot = $env:LOSTARK_PACK_ROOT,
 
     [switch]$FailureAfterManifest
@@ -349,7 +349,11 @@ switch ($Mode) {
             if (Test-Path -LiteralPath $finalPath) {
                 throw "Pack version already exists and cannot be overwritten: $finalPath"
             }
-            $stagingPath = Join-Path $resolvedPackRoot ".staging\$PackId-$($lockedPack.version)-$([Guid]::NewGuid().ToString('N'))"
+            # Keep the staging prefix short. Curated map asset IDs can already be
+            # close to MAX_PATH and the published destination is much shorter
+            # than a packId-version-GUID staging name.
+            $stagingId = [Guid]::NewGuid().ToString('N').Substring(0, 8)
+            $stagingPath = Join-Path $resolvedPackRoot ".staging\$stagingId"
             $payloadPath = Join-Path $stagingPath 'payload'
             [IO.Directory]::CreateDirectory($payloadPath) | Out-Null
             foreach ($domain in $AllowedTopLevel) {

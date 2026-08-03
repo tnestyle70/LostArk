@@ -36,6 +36,47 @@ powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack
 
 Hydrate는 새 payload를 별도 staging에 복사해 전체 검증한 뒤 `Resources`를 교체한다. 기존 폴더는 `Resources.previous.<UTC timestamp>`로 남겨 rollback 근거를 보존한다. 새 팩 검증이 끝나기 전에 이 backup을 지우지 않는다.
 
+## 팀 ZIP 배포
+
+Git에는 source/data/manifest/lock만 push하고 runtime Resources는 ZIP 하나로 Drive에 배포한다. ZIP 내부 구조는 반드시 다음과 같다.
+
+```text
+lostark-resources/
+  <version>/
+    READY
+    manifest.json
+    payload/
+      Character/
+      Deploy/
+      Effect/
+      Fonts/
+      Map/
+      UI/
+```
+
+팩 관리자는 먼저 외부 pack root에 immutable version을 publish한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Publish -PackRoot <external-pack-root>
+
+tar.exe -a -cf <lostark-resources-version.zip> `
+  -C <external-pack-root> lostark-resources/<version>
+Get-FileHash -Algorithm SHA256 <lostark-resources-version.zip>
+```
+
+팀원은 ZIP의 SHA-256을 전달받아 확인한 뒤 외부 pack root에 압축 해제하고 Hydrate한다.
+
+```powershell
+tar.exe -xf <lostark-resources-version.zip> -C <external-pack-root>
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Hydrate -PackRoot <external-pack-root>
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Verify
+```
+
+같은 version ZIP은 immutable이다. 외부 pack root에 이전 version이 남아 있어도 ZIP에는 현재 `lostark-resources/<version>` 디렉터리만 넣는다. payload가 하나라도 바뀌면 Snapshot에서 새 version을 발급하고 새 ZIP과 SHA-256을 공유한다.
+
 ## 금지 사항
 
 - `Client/Bin/Resources` payload를 Git/LFS에 stage하지 않는다.
@@ -43,3 +84,4 @@ Hydrate는 새 payload를 별도 staging에 복사해 전체 검증한 뒤 `Reso
 - raw UModel/SourceData를 runtime pack에 넣지 않는다.
 - lock만 수정하거나 manifest만 복사하지 않는다.
 - 이미 publish된 version 폴더를 덮어쓰지 않는다.
+- ZIP을 저장소나 `Client/Bin/Resources` 위에 직접 압축 해제하지 않는다.

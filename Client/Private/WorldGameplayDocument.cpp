@@ -155,7 +155,8 @@ bool_t Client::CWorldGameplayDocument::Load(
 		WORLD_GAMEPLAY_PLACEMENT record;
 		if (nullptr == placementId || !placementId->Is_String() ||
 			nullptr == kind || !kind->Is_String() ||
-			nullptr == archetypeId || !archetypeId->Is_String() ||
+			nullptr == archetypeId ||
+			(!archetypeId->Is_Null() && !archetypeId->Is_String()) ||
 			nullptr == encounterId ||
 			(!encounterId->Is_Null() && !encounterId->Is_String()) ||
 			nullptr == yaw || !yaw->Is_Number() ||
@@ -168,7 +169,8 @@ bool_t Client::CWorldGameplayDocument::Load(
 		}
 
 		record.placementId = placementId->Get_String();
-		record.archetypeId = archetypeId->Get_String();
+		record.archetypeId = archetypeId->Is_String() ?
+			archetypeId->Get_String() : std::string{};
 		record.encounterId = encounterId->Is_String() ?
 			encounterId->Get_String() : std::string{};
 		record.yawDegrees = static_cast<f32_t>(yaw->Get_Number());
@@ -248,8 +250,12 @@ bool_t Client::CWorldGameplayDocument::Save(
 			<< "      \"placementId\": \"" <<
 				CDataJson::Escape(record.placementId) << "\",\n"
 			<< "      \"kind\": \"" << Kind_ToString(record.eKind) << "\",\n"
-			<< "      \"archetypeId\": \"" <<
-				CDataJson::Escape(record.archetypeId) << "\",\n"
+			<< "      \"archetypeId\": ";
+		if (record.archetypeId.empty())
+			output << "null";
+		else
+			output << '"' << CDataJson::Escape(record.archetypeId) << '"';
+		output << ",\n"
 			<< "      \"encounterId\": ";
 		if (record.encounterId.empty())
 			output << "null";
@@ -283,13 +289,16 @@ bool_t Client::CWorldGameplayDocument::Add(
 	const WORLD_GAMEPLAY_PLACEMENT& placement,
 	std::string& outStatus)
 {
+	WORLD_GAMEPLAY_PLACEMENT normalized = placement;
+	if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == normalized.eKind)
+		normalized.archetypeId.clear();
 	if (m_Placements.size() >= MAX_PLACEMENT_COUNT ||
-		!Is_Valid(placement) || nullptr != Find(placement.placementId))
+		!Is_Valid(normalized) || nullptr != Find(normalized.placementId))
 	{
 		outStatus = "Gameplay placement is invalid, duplicate, or over limit";
 		return false;
 	}
-	m_Placements.push_back(placement);
+	m_Placements.push_back(std::move(normalized));
 	Mark_Edited();
 	outStatus = "Added gameplay placement: " + placement.placementId;
 	return true;
@@ -347,9 +356,13 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 					character == '-' || character == '.';
 			});
 	};
+	const bool_t hasValidArchetype =
+		WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ?
+			placement.archetypeId.empty() :
+			validStableId(placement.archetypeId, 128u);
 	return WORLD_PLACEMENT_KIND::END != placement.eKind &&
 		validStableId(placement.placementId, 128u) &&
-		validStableId(placement.archetypeId, 128u) &&
+		hasValidArchetype &&
 		(placement.encounterId.empty() ||
 			validStableId(placement.encounterId, 128u)) &&
 		std::isfinite(placement.position.x) &&

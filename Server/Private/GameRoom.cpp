@@ -82,7 +82,8 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_GameplayCatalog.Get_Status();
 		return;
 	}
-	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId &&
+	if ((LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
+		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
 		m_strStatus = m_ServerNavigation.Get_Status();

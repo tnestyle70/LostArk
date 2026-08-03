@@ -1,13 +1,16 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "ClientReplication.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
+#include "PlayerController.h"
 
 NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class IPlayerCommandSink;
 
 class CLevel_Development final : public CLevel
 {
@@ -29,11 +32,17 @@ private:
 	HRESULT Ready_Camera(const wstring_t& strLayerTag);
 	HRESULT Ready_Character();
 	void Update_ClickMove();
+	bool_t Bind_CameraToLocalCharacter();
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
 	shared_ptr<CCharacter> m_pCharacter = { nullptr };
 	weak_ptr<CCamera_Free> m_pCamera;
+	weak_ptr<CCharacter> m_pCameraTarget;
+	CClientReplication m_Replication;
+	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
+	CPlayerController m_PlayerController;
+	bool_t m_isNetworkTraining = false;
 	bool_t m_wasRightMouseDown = false;
 
 public:

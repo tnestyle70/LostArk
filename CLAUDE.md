@@ -13,6 +13,36 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 
 혼자 쓰는 저장소가 아니다. 아래 "팀 협업 규칙"을 빌드/아키텍처만큼 중요하게 다룰 것.
 
+## 팀원 최초 세팅
+
+새 팀원이나 새 PC는 다음 순서로 시작한다.
+
+```powershell
+git lfs install
+git clone <repository-url>
+Set-Location LostArk
+git lfs pull
+
+# 팀 Drive에서 lock과 같은 버전의 ZIP을 받은 뒤 외부 pack root에 압축 해제
+tar.exe -xf <lostark-resources-version.zip> -C <external-pack-root>
+
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Hydrate -PackRoot <external-pack-root>
+powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
+  -Mode Verify
+```
+
+ZIP은 `<external-pack-root>/lostark-resources/<version>/{READY,manifest.json,payload}` 구조로 풀려야 한다. `Data/AssetPacks.lock.json`의 version, manifest hash, content hash와 다르면 사용하지 않는다. ZIP을 저장소 안에 풀거나 `Client/Bin/Resources`에 직접 덮어쓰지 않는다.
+
+세팅 후 Debug 정본 회귀를 한 번 실행한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
+  -Configuration Debug -DeepAssetHash
+```
+
+팀 역할별 시작 파일과 금지 경계는 `.md/GB/08-03/2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`를 따른다.
+
 ## 빌드
 
 **Visual Studio 2022**에서 `Framework.sln`을 연다. 제품과 계약 검증에 사용하는 프로젝트는 다음과 같다.
@@ -179,7 +209,20 @@ enum class LEVEL { STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT, END 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v2 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v4 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+
+### 최소 수련장 Area
+
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 서버 연결 시나리오다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. Lobby의 `Enter Training`도 Bern/Valtan과 동일하게 서버 승인을 받은 뒤에만 전환한다.
+
+- visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
+- visual placement: authoring 18개를 publisher가 runtime placement로 승격
+- gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
+- navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
+- runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
+- smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
+
+`playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
 ### 바이너리 에셋 파이프라인
 
@@ -252,7 +295,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
 - 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`만 runtime bootstrap을 생성한다.
-- 서버 길찾기: `Data/Navigation/<AreaId>.navgrid`가 정본이며 `Publish-ServerNavigation.ps1`이 gameplay spawn/boss의 walkable cell 정합성까지 검사해 Server 입력을 생성한다.
+- 서버 길찾기: 신규 Area는 `Data/Navigation/<AreaId>.navgrid.json` authoring이 정본이며 `Publish-ServerNavigation.ps1`이 runtime navgrid를 결정적으로 생성한다. 기존 Valtan binary source도 같은 publisher가 검증하며 gameplay spawn/boss의 walkable cell·높이 정합성까지 확인한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
 - 애니메이션 추출 참조: `Data/Animation/Reference/<AssetId>/`

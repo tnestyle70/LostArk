@@ -5,12 +5,13 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 3;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 4;
 
 	enum class WORLD_ID : std::uint16_t
 	{
 		BERN = 1,
 		VALTAN_ARENA = 2,
+		TRAINING_GROUND = 3,
 		END
 	};
 
@@ -18,7 +19,8 @@ namespace LostArk::Shared
 	constexpr bool Is_Known_World_Id(const WORLD_ID worldId)
 	{
 		return WORLD_ID::BERN == worldId ||
-			WORLD_ID::VALTAN_ARENA == worldId;
+			WORLD_ID::VALTAN_ARENA == worldId ||
+			WORLD_ID::TRAINING_GROUND == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t

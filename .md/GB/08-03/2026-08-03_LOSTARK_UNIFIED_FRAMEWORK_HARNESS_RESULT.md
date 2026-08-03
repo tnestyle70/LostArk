@@ -65,7 +65,7 @@ Client/Bin/Resources/
   UI/
 ```
 
-마지막 lock 기준 전체는 7,741 files, 3,994,538,522 bytes다.
+마지막 lock 기준 전체는 7,738 files, 3,993,941,690 bytes다.
 
 | domain | files | bytes |
 |---|---:|---:|
@@ -73,15 +73,15 @@ Client/Bin/Resources/
 | Deploy | 123 | 62,577,095 |
 | Effect | 1 | 32,896 |
 | Fonts | 4 | 23,106,912 |
-| Map | 7,367 | 3,652,848,358 |
+| Map | 7,364 | 3,652,251,526 |
 | UI | 89 | 1,410,853 |
 
 현재 pack 정본은 다음과 같다.
 
-- pack: `lostark-resources@2026.08.03.1`
+- pack: `lostark-resources@2026.08.03.2`
 - lock: `Data/AssetPacks.lock.json`
-- manifest: `Data/AssetManifests/lostark-resources-2026.08.03.1.manifest.json`
-- content SHA-256: `0a8b647da3bb78586a121031e58993199fbd8cf63778a256175a29dccd3edad2`
+- manifest: `Data/AssetManifests/lostark-resources-2026.08.03.2.manifest.json`
+- content SHA-256: `21d372e509908467567e2bb2e70538e4a66dea656f5a78074c29939b6b6227d7`
 
 `Manage-ResourcePack.ps1`의 계약은 `Snapshot -> Verify -> Publish -> Hydrate`다. Snapshot은 manifest와 lock을 한 트랜잭션으로 취급하며 lock commit 전 강제실패 시 orphan manifest와 임시 파일을 지운다. Publish와 Hydrate는 전체 payload를 staging에서 검증한 뒤 승격한다. 상세 명령은 `Tools/AssetPipeline/README.md`가 정본이다.
 
@@ -104,7 +104,7 @@ Effect 원본 선별은 `Cook-SelectedEffectAsset.ps1`이 `Data/Effects/Cooked` 
 | gameplay placement | `Data/Worlds/<AreaId>/Gameplay.world.json` | `lostark.world-gameplay` v1 |
 | encounter | `Data/Encounters/Valtan/ValtanEncounter.json` | server gameplay profile |
 | player/boss balance | `Data/Balance/*.json` | player, skill, damage, boss 수치와 stable 참조 |
-| server navigation | `Data/Navigation/<AreaId>.navgrid` | walkable cell, height, neighbor 입력 |
+| server navigation authoring | `Data/Navigation/<AreaId>.navgrid.json` | walkable cell, height, neighbor 입력의 생성 정본 |
 | animation authored/reference | `Data/Animation/Authored`, `Data/Animation/Reference` | 작성 데이터와 추출 참조 분리 |
 
 UI와 gameplay 설정은 JSON만 사용한다. 신규 `.cfg`와 runtime cfg reader는 ProjectAudit에서 거부한다. visual map placement는 수만 행을 다루므로 검증된 전용 line format을 유지하되, MapTool 작성본과 runtime 생성물을 분리한다.
@@ -303,16 +303,17 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 |---|---:|---:|
 | Protocol Harness | PASS | failures 0 |
 | Server Gameplay Contract | PASS | failures 0 |
-| `front.lobby` | PASS | 62 ms |
-| `world.bern` | PASS | 18,897 ms |
-| `raid.valtan.arena` | PASS | 17,835 ms |
-| `dev.map.active` | PASS | 3,111 ms |
-| `asset.character.lance-master` | PASS | 14,812 ms |
-| `render.hdr-readback` | PASS | 968 ms |
-| `effect.preview` | PASS | 982 ms |
-| `ui.hud.layout` | PASS | 128 ms |
-| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / 62x63 |
-| ProjectAudit + deep asset hash | PASS | 49 checks |
+| `front.lobby` | PASS | 64 ms |
+| `world.bern` | PASS | 16,986 ms |
+| `raid.valtan.arena` | PASS | 17,036 ms |
+| `dev.training.ground` | PASS | 13,111 ms |
+| `dev.map.active` | PASS | 2,662 ms |
+| `asset.character.lance-master` | PASS | 12,984 ms |
+| `render.hdr-readback` | PASS | 953 ms |
+| `effect.preview` | PASS | 951 ms |
+| `ui.hud.layout` | PASS | 123 ms |
+| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
+| ProjectAudit + deep asset hash | PASS | 52 checks |
 
 ### Release 최종 실행
 
@@ -320,16 +321,17 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 |---|---:|---:|
 | Protocol Harness | PASS | failures 0 |
 | Server Gameplay Contract | PASS | failures 0 |
-| `front.lobby` | PASS | 61 ms |
-| `world.bern` | PASS | 3,704 ms |
-| `raid.valtan.arena` | PASS | 3,924 ms |
+| `front.lobby` | PASS | 60 ms |
+| `world.bern` | PASS | 3,487 ms |
+| `raid.valtan.arena` | PASS | 3,301 ms |
+| `dev.training.ground` | PASS | 2,602 ms |
 | Development ImGui tool smoke | SKIP | Release 미배포 계약 |
-| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / 62x63 |
-| ProjectAudit + deep asset hash | PASS | 49 checks |
+| Gameplay/Navigation Validate | PASS | 1 player, 2 skills, 3 damage, 1 boss / Valtan 62x63, Training 32x32 |
+| ProjectAudit + deep asset hash | PASS | 52 checks |
 
 중간 Debug 오류창은 `CWorldBootstrap::Load`가 재사용되는 line buffer를 `string_view`로 보관해 area ID가 이후 placement 행으로 변질된 것이 원인이었다. area ID를 staging 문자열로 소유하도록 수정했고 Server 기동, contract test, Debug/Release 전체 회귀에서 재발하지 않았다.
 
-ProjectAudit 49개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1-only input, transition boundary, actor catalog, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계가 포함된다.
+ProjectAudit 52개에는 resource deep verify, Snapshot rollback, level parity, product scope, shard/world publish rollback, JSON-only data, F1-only input, transition boundary, actor catalog, Loader termination, Monster 제외, gameplay balance/navigation publish, command→Server truth, HUD ViewModel 경계와 수련장 map/spawn/navigation 계약이 포함된다.
 
 기존 경고는 third-party PDB 미포함 `LNK4099`, 혼재 인코딩 `C4819`, 일부 narrowing warning이다. Visual Studio 전역 vcpkg target의 `pwsh.exe` 탐색 메시지는 Windows PowerShell fallback 뒤 exit 0인 환경 메시지다.
 
@@ -352,3 +354,33 @@ ProjectAudit 49개에는 resource deep verify, Snapshot rollback, level parity, 
 ## 15. 인계 판단
 
 현재 단계의 framework, asset/data publish, player Q/W combat, Server Navigation, Valtan brain, HUD ViewModel은 자동 검증 기준으로 닫혔다. 다음 담당자는 Level/Loader/resource/map/gameplay 경계를 다시 만들지 말고 `2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 역할별 public 계약 위에서 기능을 확장해야 한다.
+
+## 16. 팀 최초 세팅과 Resource ZIP 인계
+
+팀원은 Git pull과 Resource pack hydrate를 한 세팅 단위로 수행한다. 최초 세팅·일일 문서 갱신 규칙은 `AGENTS.md`, 실제 명령은 `CLAUDE.md`, 역할별 시작점은 `2026-08-03_TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`가 정본이다.
+
+현재 배포 산출물은 다음과 같다.
+
+- pack: `lostark-resources@2026.08.03.2`
+- ZIP: `lostark-resources-2026.08.03.2.zip`
+- ZIP bytes: `2,207,843,569`
+- ZIP SHA-256: `de8f8fc4703a885891c1a3f894e1dba77bf9c50776747d4a80f8dd5baec3081a`
+- 원본 manifest: 7,738 files, 3,993,941,690 bytes
+- archive 구조 검사: 11,125 file/directory entries, `.1` 항목 0, `READY`/`manifest.json` 각 1
+
+ZIP은 Git에 커밋하지 않고 팀 Drive에 checksum 파일과 함께 올린다. 팀원은 외부 pack root에 압축 해제한 뒤 `Manage-ResourcePack.ps1 -Mode Hydrate`, `-Mode Verify` 순서로 검증한다. 저장소 또는 기존 `Client/Bin/Resources` 위에 ZIP을 직접 덮어쓰지 않는다.
+
+## 17. 최소 수련장 Area 계약
+
+`dev.training.ground`는 새 Level enum 없이 `LEVEL::DEVELOPMENT`를 사용하는 서버 연결 수련장으로 추가했다.
+
+- Area/World: `LV_DEV_TRAINING_GROUND` / `WORLD_ID::TRAINING_GROUND`
+- visual: RCArena 10종 admission, stable numeric ID를 가진 placement 18개
+- gameplay: 특정 클래스에 결합되지 않은 `playerSpawn` 4개, `archetypeId: null`
+- navigation: 32×32, cell size 1.0, origin (-16, -16), 높이 0의 결정적 grid
+- Client: `CClientReplication`, `CPlayerController`, `CNetworkPlayerCommandSink`, HUD ViewModel 사용
+- Server: 독립 `CGameRoom`, navigation projection/path, 30 Hz action/snapshot 사용
+- Lobby: `Enter Training`은 `S2C_ENTER_ACCEPTED` 이후에만 DEVELOPMENT로 전환
+- 자동 증거: protocol v4 round-trip, class-neutral bootstrap, nav bounds rejection, Q skill 승인과 cooldown HUD smoke
+
+`Resources/Map/LoL/Annie` 3파일은 `C:\Users\user\Desktop\LostArk_Legacy_Quarantine_20260803\Resources\Map_LoL_Annie`로 복구 가능하게 격리했고 `.2` lock과 ZIP에는 포함되지 않는다.

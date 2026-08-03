@@ -13,12 +13,12 @@
     "packs":  [
                   {
                       "packId":  "lostark-resources",
-                      "version":  "2026.08.03.1",
-                      "manifest":  "Data/AssetManifests/lostark-resources-2026.08.03.1.manifest.json",
-                      "manifestSha256":  "a0e11cd0b73ccb86b4ecd7ebe9d539f836059c529b26468ca62611e8ca0b654e",
-                      "contentSha256":  "0a8b647da3bb78586a121031e58993199fbd8cf63778a256175a29dccd3edad2",
-                      "fileCount":  7741,
-                      "totalBytes":  3994538522,
+                      "version":  "2026.08.03.2",
+                      "manifest":  "Data/AssetManifests/lostark-resources-2026.08.03.2.manifest.json",
+                      "manifestSha256":  "9091b31fdf8d34b2a1be9ca8fab1f8ac91decda4bfa5ddd4c5aa69a1499dab13",
+                      "contentSha256":  "21d372e509908467567e2bb2e70538e4a66dea656f5a78074c29939b6b6227d7",
+                      "fileCount":  7738,
+                      "totalBytes":  3993941690,
                       "dependencies":  [
 
                                        ],

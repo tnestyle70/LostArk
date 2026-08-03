@@ -242,14 +242,29 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
     {
         m_isEnterRequested = false;
 
-        const bool_t isValtan =
-            LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
-            m_ePendingWorldId;
+        LEVEL targetLevel = LEVEL::END;
+        CLIENT_SCENARIO targetScenario = CLIENT_SCENARIO::END;
+        switch (m_ePendingWorldId)
+        {
+        case LostArk::Shared::WORLD_ID::BERN:
+            targetLevel = LEVEL::BERN;
+            targetScenario = CLIENT_SCENARIO::WORLD_BERN;
+            break;
+        case LostArk::Shared::WORLD_ID::VALTAN_ARENA:
+            targetLevel = LEVEL::VALTAN_ARENA;
+            targetScenario = CLIENT_SCENARIO::RAID_VALTAN_ARENA;
+            break;
+        case LostArk::Shared::WORLD_ID::TRAINING_GROUND:
+            targetLevel = LEVEL::DEVELOPMENT;
+            targetScenario = CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND;
+            break;
+        default:
+            m_strNetworkStatus = "Accepted unknown world.";
+            return;
+        }
         if (!CSceneTransitionService::Request(
-            isValtan ? LEVEL::VALTAN_ARENA : LEVEL::BERN,
-            isValtan ?
-                CLIENT_SCENARIO::RAID_VALTAN_ARENA :
-                CLIENT_SCENARIO::WORLD_BERN,
+            targetLevel,
+            targetScenario,
             "lobby.enter-accepted"))
         {
             m_strNetworkStatus =
@@ -342,6 +357,16 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
             nickName);
     }
 
+    ImGui::SameLine();
+    if (ImGui::Button("Enter Training"))
+    {
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::TRAINING_GROUND,
+            nickName);
+    }
     ImGui::EndDisabled();
 
     if (!hasSelection)

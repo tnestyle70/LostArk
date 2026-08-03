@@ -291,7 +291,7 @@ HRESULT CLoader::Ready_For_Development()
 
 	if (!pEntry->strMapAreaId.empty())
 	{
-		Set_Status(TEXT("DEV: explicit Valtan map scenario"));
+		Set_Status(TEXT("DEV: explicit map scenario"));
 		if (!HasDomain("Map") ||
 			FAILED(Ready_MapArea(
 				ETOUI(LEVEL::DEVELOPMENT),
@@ -299,6 +299,15 @@ HRESULT CLoader::Ready_For_Development()
 				pEntry->MapLoadScope)))
 		{
 			return E_FAIL;
+		}
+		if (HasDomain("Character"))
+		{
+			Set_Status(TEXT("DEV: network character rendering"));
+			if (FAILED(Ready_Character_Rendering(
+				ETOUI(LEVEL::DEVELOPMENT))))
+			{
+				return E_FAIL;
+			}
 		}
 	}
 	else if (HasDomain("Character"))

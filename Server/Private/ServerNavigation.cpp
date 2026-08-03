@@ -167,6 +167,12 @@ bool LostArk::Server::CServerNavigation::Project_Point(
 	const float z,
 	SERVER_NAV_POINT& outPoint) const
 {
+	if (!Is_Loaded() || x < m_fOriginX || z < m_fOriginZ ||
+		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
+		z >= m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize)
+	{
+		return false;
+	}
 	std::uint32_t index = 0;
 	if (!Resolve_Cell(x, z, index))
 		return false;

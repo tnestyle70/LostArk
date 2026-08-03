@@ -47,6 +47,19 @@
       "tools": ["MapTool"]
     },
     {
+      "id": "dev.training.ground",
+      "kind": "development",
+      "level": "DEVELOPMENT",
+      "mapAreaId": "LV_DEV_TRAINING_GROUND",
+      "mapLoadBounds": {
+        "minimumXZ": [-20.0, -20.0],
+        "maximumXZ": [20.0, 20.0],
+        "includeBackground": false
+      },
+      "assetDomains": ["Map", "Character", "UI"],
+      "tools": []
+    },
+    {
       "id": "asset.character.lance-master",
       "kind": "development",
       "level": "DEVELOPMENT",

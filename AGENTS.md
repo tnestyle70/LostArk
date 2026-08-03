@@ -14,6 +14,28 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
 | 맵 에셋이 생성됐지만 안 보임, diffuse 누락, 스케일 오류, 레거시 런타임 혼선 | `.md/GB/07-29/gotchas.md` |
 
+## 정본 문서 역할과 일일 유지 관리
+
+문서는 같은 내용을 복제하지 않고 다음 역할로 나눈다.
+
+| 문서 | 정본 역할 | 갱신 시점 |
+|---|---|---|
+| `AGENTS.md` | 팀 전체의 금지 경계, 작업 절차, 완료 조건 | 팀 규칙이나 public 경계가 바뀔 때만 |
+| `CLAUDE.md` | 실제 프로젝트 구조, 최초 세팅, 빌드·런타임 사용법 | 경로, 명령, 실행 구조가 바뀔 때 |
+| `TEAM_GAMEPLAY_INTERFACE_HANDBOOK` | 담당별 입력·출력 인터페이스와 데이터 정본 | 팀원이 소비하는 public 계약이 바뀔 때 |
+| 대응 `*_PLAN.md` | 아직 구현하지 않은 목표와 전체 코드 | 구현 전에 |
+| 대응 `*_RESULT.md` | 실제 완료 상태, 검증 증거, 남은 경계 | 검증 후 |
+
+매 작업일 시작에는 `git status --short`, `git fetch`, 현재 브랜치와 대응 PLAN/RESULT를 확인한다. 종료에는 다음 순서를 지킨다.
+
+1. 실제 코드와 데이터의 현재 상태를 다시 확인한다.
+2. 바뀐 public 계약만 `AGENTS.md`, `CLAUDE.md`, 팀 사용서에 반영한다.
+3. 구현 완료와 미완료를 RESULT에서 분리하고 실행한 검증만 기록한다.
+4. 관련 harness와 `ProjectAudit`을 실행하고 `git diff --check`를 확인한다.
+5. Resources payload와 빌드·중간 산출물을 제외한 하나의 검증 단위만 commit/push한다.
+
+날짜별 진행 로그나 일시적인 오류를 `AGENTS.md`와 `CLAUDE.md`에 누적하지 않는다. 그런 정보는 해당 RESULT에 기록한다. 문서와 코드가 다르면 코드·데이터·실행 결과를 먼저 조사하고 같은 변경에서 문서를 교정한다.
+
 ## 계획서 규칙
 
 ### 규칙 파일 탐색 순서
@@ -64,6 +86,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 ## 고정 런타임 계약
 
 - Client 시작 씬은 항상 `LOBBY`다. 실제 실행 시나리오는 `Data/Levels/LevelCatalog.json`의 stable ID로 선택한다.
+- 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 catalog, registry, loader, smoke 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `mapLoadBounds`로 선언한 진입/전투 범위와 배경만 로드한다. `dev.map.active`만 전체 맵을 열 수 있다. Loader와 runtime placement는 반드시 같은 `MAP_LOAD_SCOPE`를 소비한다.
 - 레벨 전환 요청은 `CSceneTransitionService`로 보낸다. `CMainApp`과 `CLevel_Loading` 외에는 `Change_Level`을 직접 호출하지 않는다.
@@ -81,11 +104,12 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 스킬 `34060`/`34100`은 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
-- 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation/<AreaId>.navgrid`를 Server가 직접 소비한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
+- 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation/<AreaId>.navgrid.json` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
 - Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. 현재 지원하는 player spawn/NPC/boss placement는 map static placement와 별도 gameplay 문서로 저장한다.
 - 수업용 `CMonster`와 그 전제를 새 월드 계약으로 승격하지 않는다. Monster runtime/catalog/schema는 현재 통합 범위 밖이며, 실제 요구와 별도 계획·하네스가 승인되기 전에는 placeholder enum이나 빈 catalog도 추가하지 않는다.
 - Valtan 제품 경로의 transform, action, phase, damage 판정은 Server authority다. Client `CValtan`의 로컬 AI는 Development preview 외에 사용하지 않는다.
 - MapTool gameplay 저장은 `Data/Worlds/<AreaId>/Gameplay.world.json`이 정본이다. `Publish-WorldGameplay.ps1`이 Server bootstrap을 생성하며 생성물을 직접 편집하지 않는다.
+- `playerSpawn`은 spawn slot과 transform만 소유하고 `archetypeId`는 `null`이다. 실제 character class는 인증된 session/player selection이 소유한다.
 
 ## AI 코드 하네스
 
@@ -106,6 +130,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 완료 보고 전에 `git diff --check`, JSON/XML parse, 관련 harness, 정본 build/regression을 실행한다. Release에서 의도적으로 제외된 Development tool smoke를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.
 - 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 ProjectAudit, protocol harness, smoke의 실행 계약으로 바꾼다.
+- 팀원 인계는 Git commit만으로 끝나지 않는다. `Data/AssetPacks.lock.json`이 가리키는 immutable resource ZIP의 위치·SHA-256과 `Hydrate -> Verify` 결과를 함께 공유한다.
 
 ## 빌드·검증
 

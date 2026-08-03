@@ -191,6 +191,7 @@ try {
     if (-not $SkipNetworkSmoke) {
         Invoke-ClientSmoke -ScenarioId 'world.bern' -RequiresServer
         Invoke-ClientSmoke -ScenarioId 'raid.valtan.arena' -RequiresServer
+        Invoke-ClientSmoke -ScenarioId 'dev.training.ground' -RequiresServer
     }
     if (-not $SkipDevelopmentSmoke -and $Configuration -eq 'Debug') {
         Invoke-ClientSmoke -ScenarioId 'dev.map.active' -TimeoutMs ([Math]::Max($ClientTimeoutMs, 120000))

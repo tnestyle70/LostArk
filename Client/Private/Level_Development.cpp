@@ -7,6 +7,7 @@
 #include "GameInstance.h"
 #include "LevelCatalog.h"
 #include "Logic_LanceMaster.h"
+#include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
 
 CLevel_Development::CLevel_Development(
@@ -35,7 +36,9 @@ HRESULT CLevel_Development::Initialize()
 	{
 		return E_INVALIDARG;
 	}
-	if (CLIENT_SCENARIO::DEVELOPMENT_MAP == scenario)
+	m_isNetworkTraining =
+		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == scenario;
+	if (CLIENT_SCENARIO::DEVELOPMENT_MAP == scenario || m_isNetworkTraining)
 	{
 		if (pEntry->strMapAreaId.empty() ||
 			!m_MapRuntime.Load_Area(
@@ -63,13 +66,43 @@ HRESULT CLevel_Development::Initialize()
 		return E_FAIL;
 	}
 
+	if (m_isNetworkTraining)
+	{
+		CClientReplication::DESC replicationDesc{};
+		replicationDesc.iPrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
+		replicationDesc.iLayerLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
+		replicationDesc.strPlayerLayerTag = TEXT("Layer_Player");
+		replicationDesc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
+		if (!m_Replication.Initialize(replicationDesc))
+		{
+			m_MapRuntime.Clear();
+			return E_FAIL;
+		}
+		m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
+		m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	}
+
 	return S_OK;
 }
 
 void CLevel_Development::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
-	Update_ClickMove();
+	if (m_isNetworkTraining)
+	{
+		if (!m_Replication.Update())
+			OutputDebugStringA(
+				"[Level_Development] Failed to apply training replication.\n");
+		Bind_CameraToLocalCharacter();
+		const shared_ptr<CCharacter> localCharacter =
+			m_Replication.Get_LocalCharacter();
+		m_PlayerController.Set_LocalCharacter(localCharacter);
+		m_PlayerController.Update();
+	}
+	else
+	{
+		Update_ClickMove();
+	}
 }
 
 HRESULT CLevel_Development::Render()
@@ -177,6 +210,32 @@ void CLevel_Development::Update_ClickMove()
 			m_pCharacter->Request_Move(XMLoadFloat4(&pickedPosition));
 	}
 	m_wasRightMouseDown = isRightMouseDown;
+}
+
+bool_t CLevel_Development::Bind_CameraToLocalCharacter()
+{
+	const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
+	if (nullptr == camera)
+		return false;
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		m_pCameraTarget.reset();
+		camera->Set_FollowTarget(nullptr);
+		camera->Set_FollowEnabled(false);
+		return true;
+	}
+	if (m_pCameraTarget.lock() == localCharacter)
+		return true;
+	const shared_ptr<CTransform> transform = localCharacter->Get_Transform();
+	if (nullptr == transform)
+		return false;
+	m_pCameraTarget = localCharacter;
+	camera->Set_PositionOffset(float3_t(0.4f, 7.5f, 4.5f));
+	camera->Set_FollowTarget(transform);
+	camera->Set_FollowEnabled(true);
+	return true;
 }
 
 unique_ptr<CLevel_Development> CLevel_Development::Create(

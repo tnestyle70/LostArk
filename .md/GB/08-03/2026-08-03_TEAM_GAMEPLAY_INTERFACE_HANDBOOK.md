@@ -144,10 +144,10 @@ CGameRoom::Tick
 
 - visual authoring: `Data/Maps/Authoring/<AreaId>/`
 - gameplay authoring: `Data/Worlds/<AreaId>/Gameplay.world.json`
-- navigation: `Data/Navigation/<AreaId>.navgrid`
+- navigation authoring: `Data/Navigation/<AreaId>.navgrid.json`
 - Server world 생성물: `Server/Bin/DataFiles/World/*.worldbootstrap`
 
-gameplay kind는 `playerSpawn`, `npc`, `boss`만 지원한다. placement에는 stable placement ID, kind, archetype ID, encounter ID, position, yaw, enabled를 저장한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를 저장하지 않는다.
+gameplay kind는 `playerSpawn`, `npc`, `boss`만 지원한다. placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다. NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를 저장하지 않는다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
@@ -182,6 +182,20 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 팩을 바꿀 때는 `Tools/AssetPipeline/README.md`의 Snapshot → Verify → Publish → Hydrate 순서를 사용한다. 개별 파일 덮어쓰기나 팀원별 절대 경로 하드코딩을 금지한다.
 
+팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
+
+```text
+git lfs pull
+→ lock과 같은 version의 Resource ZIP SHA-256 확인
+→ 외부 pack root에 압축 해제
+→ Manage-ResourcePack Hydrate
+→ Manage-ResourcePack Verify
+→ Debug 전체 회귀
+→ 담당 public interface에서 작업 시작
+```
+
+Git commit과 Resource ZIP은 한 쌍의 인계 단위다. commit은 `Data/AssetPacks.lock.json`으로 필요한 pack version을 선언하고, Drive에는 정확히 그 immutable version ZIP만 둔다.
+
 기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, Resources payload를 stage하지 않는다.
 
 ## 11. 완료 검증
@@ -198,6 +212,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Protocol Harness `failures : 0`
 - Server gameplay contract `failures : 0`
 - Debug/Release lobby, Bern, Valtan 제품 smoke 성공
+- Debug/Release `dev.training.ground` 서버 연결 smoke 성공
 - Debug Development scenario smoke 성공
 - ProjectAudit와 필요한 deep asset hash 성공
 - `git diff --check` 성공
@@ -213,9 +228,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - HUD용 player/boss runtime ViewModel
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
+- `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
 
 별도 수직 슬라이스:
 
+- 정식 캐릭터 선택 UI와 LanceMaster 외 클래스 slot/preview
 - 실제 runtime HUD widget의 최종 레이아웃 연결
 - 나머지 세 클래스와 추가 스킬
 - party/raid admission과 roster

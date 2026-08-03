@@ -13,6 +13,7 @@
 #include "Loader.h"
 #include "LevelCatalog.h"
 #include "Character.h"
+#include "CombatHUDViewModel.h"
 #include "Valtan.h"
 
 #include "Level_Loading.h"
@@ -26,6 +27,7 @@
 #include "HUDLayoutTool.h"
 #endif
 
+#include <algorithm>
 #include <fstream>
 
 #ifdef _DEBUG
@@ -362,6 +364,7 @@ void CMainApp::UpdateSmokeHarness()
     case CLIENT_SCENARIO::RAID_VALTAN_ARENA:
         targetLevel = LEVEL::VALTAN_ARENA;
         break;
+    case CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND:
     case CLIENT_SCENARIO::DEVELOPMENT_MAP:
     case CLIENT_SCENARIO::DEVELOPMENT_CHARACTER:
     case CLIENT_SCENARIO::DEVELOPMENT_HDR:
@@ -379,7 +382,8 @@ void CMainApp::UpdateSmokeHarness()
 			return;
 
 		if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
-			CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
+			CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
+			CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
 		{
 			const shared_ptr<CCharacter> localCharacter =
 				dynamic_pointer_cast<CCharacter>(
@@ -389,6 +393,42 @@ void CMainApp::UpdateSmokeHarness()
 						0));
 			if (nullptr == localCharacter)
 				return;
+
+			if (CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+			{
+				static bool_t isTrainingActionDispatched = false;
+				if (!isTrainingActionDispatched)
+				{
+					if (!CNetworkManager::Get().Send_UseSkill(
+						1u, 34060u, 0.f, 0.f))
+					{
+						CompleteSmokeHarness(false, "training-action-send-failed");
+						return;
+					}
+					isTrainingActionDispatched = true;
+					return;
+				}
+
+				const Client::HUD_PLAYER_STATE& playerState =
+					Client::CCombatHUDViewModel::Get().Get_Player();
+				const auto skill = std::find_if(
+					playerState.Skills.begin(),
+					playerState.Skills.end(),
+					[](const Client::HUD_SKILL_STATE& state)
+					{
+						return 34060u == state.iSkillId;
+					});
+				if (!playerState.isValid ||
+					playerState.Skills.end() == skill ||
+					skill->iCooldownEndTick <= playerState.iServerTick)
+				{
+					return;
+				}
+				CompleteSmokeHarness(
+					true,
+					"map-player-action-cooldown-and-hud-ready");
+				return;
+			}
 
 			if (CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
 			{
@@ -455,12 +495,17 @@ void CMainApp::UpdateSmokeHarness()
     }
 
     if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
-        CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
+        CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
+        CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
     {
-        const LostArk::Shared::WORLD_ID worldId =
-            CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ?
-            LostArk::Shared::WORLD_ID::BERN :
-            LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+        LostArk::Shared::WORLD_ID worldId =
+            LostArk::Shared::WORLD_ID::END;
+        if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario)
+            worldId = LostArk::Shared::WORLD_ID::BERN;
+        else if (CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario)
+            worldId = LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+        else
+            worldId = LostArk::Shared::WORLD_ID::TRAINING_GROUND;
         m_isSmokeDispatched =
             CLobbyCommandService::Request_EnterWorld(
                 0,

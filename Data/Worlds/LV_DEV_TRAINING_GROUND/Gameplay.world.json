@@ -1,43 +1,43 @@
 {
   "schema": "lostark.world-gameplay",
   "formatVersion": 1,
-  "areaId": "LV_BER_BERNCASTLE",
-  "revision": 2,
+  "areaId": "LV_DEV_TRAINING_GROUND",
+  "revision": 1,
   "placements": [
     {
-      "placementId": "player.spawn.bern.entry",
+      "placementId": "player.spawn.training.party01",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [0.0, 0.0, 0.0],
-      "yawDegrees": 180.0,
+      "position": [0.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
       "enabled": true
     },
     {
-      "placementId": "player.spawn.bern.party02",
+      "placementId": "player.spawn.training.party02",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [2.0, 0.0, 0.0],
-      "yawDegrees": 180.0,
+      "position": [2.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
       "enabled": true
     },
     {
-      "placementId": "player.spawn.bern.party03",
+      "placementId": "player.spawn.training.party03",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [-2.0, 0.0, 0.0],
-      "yawDegrees": 180.0,
+      "position": [-2.0, 0.0, -4.0],
+      "yawDegrees": 0.0,
       "enabled": true
     },
     {
-      "placementId": "player.spawn.bern.party04",
+      "placementId": "player.spawn.training.party04",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [0.0, 0.0, 2.0],
-      "yawDegrees": 180.0,
+      "position": [0.0, 0.0, -2.0],
+      "yawDegrees": 0.0,
       "enabled": true
     }
   ]

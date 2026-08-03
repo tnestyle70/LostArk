@@ -28,6 +28,9 @@ int LostArk::Server::CServerApp::Run(
 	m_GameRooms.emplace(
 		WORLD_ID::VALTAN_ARENA,
 		std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA));
+	m_GameRooms.emplace(
+		WORLD_ID::TRAINING_GROUND,
+		std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND));
 	for (const auto& [worldId, room] : m_GameRooms)
 	{
 		if (nullptr == room || !room->Is_Ready())
@@ -57,7 +60,7 @@ int LostArk::Server::CServerApp::Run(
 	m_RoomThread = std::thread(&CServerApp::Room_Loop, this);
 	m_AcceptThread = std::thread(&CServerApp::Accept_Loop, this);
 	std::cout << "Listening on 127.0.0.1:" << SERVER_PORT
-		<< " with BERN and VALTAN_ARENA.";
+		<< " with BERN, VALTAN_ARENA, and TRAINING_GROUND.";
 	if (0u == automaticShutdownMilliseconds)
 	{
 		std::cout << " Press Enter to stop.\n";

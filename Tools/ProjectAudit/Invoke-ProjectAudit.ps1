@@ -170,7 +170,7 @@ try {
     $levelCatalog = Read-Json 'Data\Levels\LevelCatalog.json'
     $requiredScenarios = @(
         'front.lobby', 'world.bern', 'raid.valtan.arena',
-        'dev.map.active', 'asset.character.lance-master',
+        'dev.training.ground', 'dev.map.active', 'asset.character.lance-master',
         'render.hdr-readback', 'effect.preview', 'ui.hud.layout')
     $scenarioIds = @($levelCatalog.levels | ForEach-Object id)
     $missingScenarios = @($requiredScenarios | Where-Object { $_ -notin $scenarioIds })
@@ -181,6 +181,7 @@ try {
 		'front.lobby' = @{ domains = ''; tools = '' }
 		'world.bern' = @{ domains = 'Map,Character'; tools = '' }
 		'raid.valtan.arena' = @{ domains = 'Map,Character,Deploy,Effect,UI'; tools = '' }
+		'dev.training.ground' = @{ domains = 'Map,Character,UI'; tools = '' }
 		'dev.map.active' = @{ domains = 'Map'; tools = 'MapTool' }
 		'asset.character.lance-master' = @{ domains = 'Character'; tools = 'AnimationTool' }
 		'render.hdr-readback' = @{ domains = 'Effect'; tools = 'EffectTool' }
@@ -206,6 +207,12 @@ try {
         $scopedProductIds -eq 'raid.valtan.arena,world.bern' -and
         $fullDevelopmentMaps.Count -eq 1 -and
         $fullDevelopmentMaps[0].id -eq 'dev.map.active') "product=$($scopedProductLevels.id -join ',') fullDev=$($fullDevelopmentMaps.id -join ',')"
+	$trainingScenario = @($levelCatalog.levels | Where-Object id -eq 'dev.training.ground')
+	Add-Check 'levels.training-scope' (
+		$trainingScenario.Count -eq 1 -and
+		$trainingScenario[0].level -eq 'DEVELOPMENT' -and
+		$trainingScenario[0].mapAreaId -eq 'LV_DEV_TRAINING_GROUND' -and
+		$null -ne $trainingScenario[0].mapLoadBounds) "count=$($trainingScenario.Count)"
 
     $mapCatalog = Read-Json 'Data\Maps\MapCatalog.json'
     $mapRoot = 'Client\Bin\DataFiles\Map'
@@ -221,6 +228,27 @@ try {
     $mapDataNames = @(Get-ChildItem -LiteralPath $mapRoot -File | ForEach-Object Name)
     $legacyMapFiles = @($mapDataNames | Where-Object { $_ -like 'BG_RAD_VALTAN_A*' })
     Add-Check 'maps.catalog' ($mapCatalog.schema -eq 'lostark.map-catalog' -and $missingMapFiles.Count -eq 0 -and $legacyMapFiles.Count -eq 0) "missing=$($missingMapFiles.Count) legacy=$($legacyMapFiles.Count)"
+	$trainingArea = @($mapCatalog.areas | Where-Object id -eq 'LV_DEV_TRAINING_GROUND')
+	$trainingAssetRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapassets') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapassets' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$trainingPlacementRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapplacements') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapplacements' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$trainingWorld = Read-Json 'Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json'
+	$invalidTrainingSpawns = @($trainingWorld.placements | Where-Object {
+		$_.kind -ne 'playerSpawn' -or $null -ne $_.archetypeId })
+	Add-Check 'maps.training-area-contract' (
+		$trainingArea.Count -eq 1 -and
+		$trainingArea[0].assetCount -eq 10 -and
+		$trainingArea[0].placementCount -eq 18 -and
+		$trainingAssetRows -eq 10 -and
+		$trainingPlacementRows -eq 18 -and
+		@($trainingWorld.placements).Count -eq 4 -and
+		$invalidTrainingSpawns.Count -eq 0 -and
+		(Test-Path -LiteralPath 'Client\Bin\DataFiles\Navigation\LV_DEV_TRAINING_GROUND.navgrid')) "assets=$trainingAssetRows placements=$trainingPlacementRows spawns=$(@($trainingWorld.placements).Count)"
+	Add-Check 'resource.no-lol-annie' (
+		-not (Test-Path -LiteralPath 'Client\Bin\Resources\Map\LoL\Annie')) 'legacy Annie resources are quarantined outside the repository'
 
 	$mapPublishPassed = $false
 	$mapPublishDetail = ''
@@ -532,8 +560,10 @@ try {
 		[IO.Directory]::CreateDirectory($worldFixturePath) | Out-Null
 		$bernFixture = Join-Path $worldFixturePath 'BERN.worldbootstrap'
 		$valtanFixture = Join-Path $worldFixturePath 'VALTAN_ARENA.worldbootstrap'
+		$trainingFixture = Join-Path $worldFixturePath 'TRAINING_GROUND.worldbootstrap'
 		[IO.File]::WriteAllText($bernFixture, 'original-bern')
 		[IO.File]::WriteAllText($valtanFixture, 'original-valtan')
+		[IO.File]::WriteAllText($trainingFixture, 'original-training')
 		try {
 			& .\Tools\WorldPipeline\Publish-WorldGameplay.ps1 `
 				-Mode Publish `
@@ -551,6 +581,7 @@ try {
 		$worldRollbackPassed =
 			[IO.File]::ReadAllText($bernFixture) -eq 'original-bern' -and
 			[IO.File]::ReadAllText($valtanFixture) -eq 'original-valtan' -and
+			[IO.File]::ReadAllText($trainingFixture) -eq 'original-training' -and
 			$staleTransactionFiles.Count -eq 0
 		$worldRollbackDetail = "stale=$($staleTransactionFiles.Count)"
 	}

@@ -22,6 +22,7 @@ namespace
 		{
 		case WORLD_ID::BERN: return "BERN";
 		case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
+		case WORLD_ID::TRAINING_GROUND: return "TRAINING_GROUND";
 		default: return {};
 		}
 	}
@@ -171,7 +172,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		int enabled = 0;
 		if (17u != fields.size() ||
 			!IsStableId(fields[0]) || !ParseKind(fields[1], placement.eKind) ||
-			!IsStableId(fields[2]) ||
+			("-" != fields[2] && !IsStableId(fields[2])) ||
 			("-" != fields[3] && !IsStableId(fields[3])) ||
 			!ParseNumber(fields[4], placement.fPositionX) ||
 			!ParseNumber(fields[5], placement.fPositionY) ||
@@ -198,13 +199,23 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			return false;
 		}
 		placement.strPlacementId = fields[0];
-		placement.strArchetypeId = fields[2];
+		placement.strArchetypeId =
+			"-" == fields[2] ? "" : std::string(fields[2]);
 		placement.strEncounterId = "-" == fields[3] ? "" : std::string(fields[3]);
 		placement.strPatternId = "-" == fields[9] ? "" : std::string(fields[9]);
 		placement.strActionId = "-" == fields[10] ? "" : std::string(fields[10]);
 		placement.strDamageProfileId = "-" == fields[16] ? "" : std::string(fields[16]);
 		placement.isEnabled = 1 == enabled;
 		const bool isBoss = WORLD_BOOTSTRAP_KIND::BOSS == placement.eKind;
+		const bool isPlayerSpawn =
+			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind;
+		if ((isPlayerSpawn && !placement.strArchetypeId.empty()) ||
+			(!isPlayerSpawn && placement.strArchetypeId.empty()))
+		{
+			m_strStatus = "World bootstrap archetype contract is invalid at row " +
+				std::to_string(index);
+			return false;
+		}
 		const bool hasValidBossPattern =
 			!placement.strEncounterId.empty() &&
 			!placement.strPatternId.empty() &&

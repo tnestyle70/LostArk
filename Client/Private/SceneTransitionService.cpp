@@ -97,7 +97,8 @@ bool_t Client::CSceneTransitionService::Is_Compatible(
 		return CLIENT_SCENARIO::RAID_VALTAN_ARENA == eScenario;
 
 	case LEVEL::DEVELOPMENT:
-		return CLIENT_SCENARIO::DEVELOPMENT_MAP == eScenario ||
+		return CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == eScenario ||
+			CLIENT_SCENARIO::DEVELOPMENT_MAP == eScenario ||
 			CLIENT_SCENARIO::DEVELOPMENT_CHARACTER == eScenario ||
 			CLIENT_SCENARIO::DEVELOPMENT_HDR == eScenario ||
 			CLIENT_SCENARIO::DEVELOPMENT_EFFECT == eScenario ||

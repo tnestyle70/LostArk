@@ -3,7 +3,7 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/World',
-	[ValidateRange(0, 2)]
+	[ValidateRange(0, 3)]
 	[int]$FailureAfterPromote = 0
 )
 
@@ -150,7 +150,15 @@ function Convert-WorldDocument {
             'placementId','kind','archetypeId','encounterId',
             'position','yawDegrees','enabled') "$relativePath placement"
         Assert-StableId $placement.placementId "$relativePath placementId"
-        Assert-StableId $placement.archetypeId "$relativePath archetypeId"
+        if ($placement.kind -eq 'playerSpawn') {
+            if ($null -ne $placement.archetypeId -and
+                -not [string]::IsNullOrEmpty([string]$placement.archetypeId)) {
+                throw "Player spawn must not own a character archetype: $($placement.placementId)"
+            }
+        }
+        else {
+            Assert-StableId $placement.archetypeId "$relativePath archetypeId"
+        }
         Assert-StableId $placement.encounterId "$relativePath encounterId" -AllowEmpty
         if (-not $ids.Add([string]$placement.placementId)) {
             throw "Duplicate world placement ID: $($placement.placementId)"
@@ -158,7 +166,8 @@ function Convert-WorldDocument {
         if ($placement.kind -notin @('playerSpawn','npc','boss')) {
             throw "Unknown world placement kind: $($placement.kind)"
         }
-        if ($placement.archetypeId -notin @($ActorIds[$placement.kind])) {
+        if ($placement.kind -ne 'playerSpawn' -and
+            $placement.archetypeId -notin @($ActorIds[$placement.kind])) {
             throw "Archetype '$($placement.archetypeId)' is not available for kind '$($placement.kind)'."
         }
         $encounterId = if ($null -eq $placement.encounterId) { '' } else { [string]$placement.encounterId }
@@ -191,10 +200,11 @@ function Convert-WorldDocument {
                 [string][uint32]$pattern.recoveryMs,
                 [string]$pattern.serverDamageProfileId)
         }
+        $serializedArchetypeId = if ($placement.kind -eq 'playerSpawn') { '-' } else { [string]$placement.archetypeId }
         $rowFields = @(
             $placement.placementId,
             $placement.kind,
-            $placement.archetypeId,
+            $serializedArchetypeId,
             $serializedEncounterId,
             (Format-InvariantFloat $placement.position[0]),
             (Format-InvariantFloat $placement.position[1]),
@@ -222,7 +232,8 @@ $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
 $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles),
-    (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles)
+    (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles),
+    (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles)
 )
 
 if ($Mode -eq 'Publish') {
