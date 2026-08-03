@@ -1,7 +1,7 @@
 #include "Model.h"
 
 #include "BinaryAsset/ModelAssetData.h"
-#include "BinaryAsset/WModelDecoder.h"
+#include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Mesh.h"
 #include "Bone.h"
 #include "Shader.h"
@@ -32,6 +32,8 @@ CModel::CModel(const CModel& Prototype)
     , m_iNumAnimations { Prototype.m_iNumAnimations}
     // , m_Animations { Prototype.m_Animations }
     , m_isAnimLoop { Prototype.m_isAnimLoop }
+	, m_isAnimPaused { Prototype.m_isAnimPaused }
+	, m_fAnimationSpeed { Prototype.m_fAnimationSpeed }
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
@@ -76,6 +78,61 @@ bool_t CModel::Set_Animation(const char_t* pAnimationName, bool_t isLoop)
         return true;
     }
     return false;
+}
+
+bool_t CModel::Has_Bone(const char_t* pBoneName)
+{
+    if (nullptr == pBoneName || '\0' == pBoneName[0])
+        return false;
+
+    return m_Bones.end() != find_if(
+        m_Bones.begin(),
+        m_Bones.end(),
+        [&](const shared_ptr<CBone>& pBone)
+        {
+            return nullptr != pBone && pBone->Compare_Name(pBoneName);
+        });
+}
+
+bool_t CModel::Start_Animation(
+	const uint32_t iAnimIndex,
+	const bool_t isLoop)
+{
+	if (iAnimIndex >= m_Animations.size())
+		return false;
+	m_iCurrentAnimIndex = iAnimIndex;
+	m_isAnimLoop = isLoop;
+	m_isAnimPaused = false;
+	m_Animations[iAnimIndex]->Set_TrackPosition(0.f);
+	Play_Animation(0.f);
+	return true;
+}
+
+bool_t CModel::Start_Animation(
+	const char_t* pAnimationName,
+	const bool_t isLoop)
+{
+	if (!Set_Animation(pAnimationName, isLoop))
+		return false;
+	return Start_Animation(m_iCurrentAnimIndex, isLoop);
+}
+
+void CModel::Stop_Animation()
+{
+	m_isAnimPaused = true;
+}
+
+void CModel::Set_AnimationSpeed(const f32_t speed)
+{
+	m_fAnimationSpeed = isfinite(speed)
+		? clamp(speed, -16.f, 16.f) : 1.f;
+}
+
+bool_t CModel::Update_Animation(const f32_t fTimeDelta)
+{
+	if (!isfinite(fTimeDelta))
+		return false;
+	return Play_Animation(fTimeDelta * m_fAnimationSpeed);
 }
 
 const char_t* CModel::Get_AnimationName(uint32_t iAnimIndex) const
@@ -152,6 +209,20 @@ HRESULT CModel::Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, 
         return E_FAIL;
 
     return S_OK;
+}
+
+HRESULT CModel::Initialize_Prototype(
+	const MODEL eType,
+	const MODEL_ASSET_LOAD_DESC& loadDesc,
+	fmatrix_t PreTransformMatrix)
+{
+	if (loadDesc.meshPath.empty())
+		return E_INVALIDARG;
+
+	XMStoreFloat4x4(&m_PreTransformMatrix, PreTransformMatrix);
+	m_eType = eType;
+	Reset_LocalBounds();
+	return Ready_BinaryModel(loadDesc);
 }
 
 HRESULT CModel::Initialize(void* pArg)
@@ -320,7 +391,7 @@ HRESULT CModel::Ready_BinaryModel(const char_t* pModelFilePath)
     for (filesystem::path current = absolutePath.parent_path();
         !current.empty(); current = current.parent_path())
     {
-        if (L"LostArk" == current.filename())
+        if (L"Resources" == current.filename())
         {
             desc.assetRoot = current;
             break;
@@ -329,25 +400,57 @@ HRESULT CModel::Ready_BinaryModel(const char_t* pModelFilePath)
             break;
     }
 
-    MODEL_ASSET_DATA asset{};
-    MODEL_DECODE_REPORT report{};
-    if (!CWModelDecoder{}.Decode(desc, asset, report))
-        return E_FAIL;
+    return Ready_BinaryModel(desc);
+}
 
-    if ((MODEL::ANIM == m_eType) != asset.hasSkeleton)
-        return E_FAIL;
+HRESULT CModel::Ready_BinaryModel(
+	const MODEL_ASSET_LOAD_DESC& loadDesc)
+{
+	MODEL_ASSET_DATA asset{};
+	if (!CModelDecoderRegistry::Get().Decode(loadDesc, asset) ||
+		asset.meshes.empty() ||
+		((MODEL::ANIM == m_eType) != asset.hasSkeleton))
+	{
+		return E_FAIL;
+	}
 
-    if (FAILED(Ready_Bones(asset)) ||
-        FAILED(Ready_Meshes(asset)) ||
-        FAILED(Ready_Materials(asset)) ||
-        FAILED(Ready_Animations(asset)))
-        return E_FAIL;
+	if (FAILED(Ready_Bones(asset)) ||
+		FAILED(Ready_Meshes(asset)) ||
+		FAILED(Ready_Materials(asset)) ||
+		FAILED(Ready_Animations(asset)))
+	{
+		return E_FAIL;
+	}
 
-    for (auto& pBone : m_Bones)
-        pBone->Update_CombinedTransformationMatrix(
-            m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
+	for (auto& pBone : m_Bones)
+		pBone->Update_CombinedTransformationMatrix(
+			m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
 
-    return S_OK;
+	if (!asset.animations.empty())
+	{
+		uint32_t animationIndex = {};
+		if (!loadDesc.defaultAnimationName.empty())
+		{
+			const auto iterator = find_if(
+				asset.animations.begin(), asset.animations.end(),
+				[&loadDesc](const MODEL_ANIMATION_DATA& animation)
+				{
+					return animation.name ==
+						loadDesc.defaultAnimationName;
+				});
+			if (iterator == asset.animations.end())
+				return E_FAIL;
+			animationIndex = static_cast<uint32_t>(distance(
+				asset.animations.begin(), iterator));
+		}
+		if (!Start_Animation(
+			animationIndex,
+			asset.animations[animationIndex].defaultLoop))
+		{
+			return E_FAIL;
+		}
+	}
+	return S_OK;
 }
 
 HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
@@ -445,11 +548,29 @@ unique_ptr<CModel> CModel::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11Dev
 
     if (FAILED(pInstance->Initialize_Prototype(eType, pModelFilePath, PreTransformMatrix)))
     {
-        MSG_BOX("Failed to Created : CModel");
+        OutputDebugStringA("[CModel] Prototype creation failed.\n");
         return nullptr;
     }
 
     return pInstance;
+}
+
+unique_ptr<CModel> CModel::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const MODEL eType,
+	const MODEL_ASSET_LOAD_DESC& loadDesc,
+	fmatrix_t PreTransformMatrix)
+{
+	auto pInstance = unique_ptr<CModel>(
+		new CModel(pDevice, pContext));
+	if (FAILED(pInstance->Initialize_Prototype(
+		eType, loadDesc, PreTransformMatrix)))
+	{
+		OutputDebugStringA("[CModel] Binary prototype creation failed.\n");
+		return nullptr;
+	}
+	return pInstance;
 }
 
 
@@ -459,7 +580,7 @@ shared_ptr<CPrototype> CModel::Clone(void* pArg)
 
     if (FAILED(pInstance->Initialize(pArg)))
     {
-        MSG_BOX("Failed to Cloned : CModel");
+        OutputDebugStringA("[CModel] Clone failed.\n");
         return nullptr;
     }
 

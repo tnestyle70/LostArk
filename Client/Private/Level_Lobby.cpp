@@ -1,14 +1,13 @@
-#ifdef _DEBUG
 #include "imgui.h"
-#endif
 
 #include "NetworkManager.h"
 #include "Level_Lobby.h"
 
-#include "Level_Loading.h"
 #include "GameInstance.h"
 #include "Character.h"
 #include "Camera_Free.h"
+#include "LobbyCommandService.h"
+#include "SceneTransitionService.h"
 
 namespace
 {
@@ -157,7 +156,8 @@ bool_t CLevel_Lobby::Select_Character(const int32_t iCharacterIndex)
     return true;
 }
 
-bool_t CLevel_Lobby::Request_EnterWorld()
+bool_t CLevel_Lobby::Request_EnterWorld(
+    const LostArk::Shared::WORLD_ID eWorldId)
 {
     if (m_iSelectedCharacterIndex < 0 ||
         static_cast<size_t>(m_iSelectedCharacterIndex) >= m_vecCharacters.size())
@@ -182,6 +182,7 @@ bool_t CLevel_Lobby::Request_EnterWorld()
     }
 
     if (!networkManager.Send_EnterWorld(
+		eWorldId,
         characterInfo.m_eClass,
         characterInfo.m_strNickName))
     {
@@ -193,11 +194,29 @@ bool_t CLevel_Lobby::Request_EnterWorld()
 
     m_strNetworkStatus =
         "C2S_ENTER_WORLD sent. Check the server console.";
+    m_ePendingWorldId = eWorldId;
     return true;
 }
 
 void CLevel_Lobby::Update(f32_t fTimeDelta)
 {
+    LOBBY_ENTER_COMMAND enterCommand;
+    if (CLobbyCommandService::Try_Consume(enterCommand))
+    {
+        if (!Select_Character(enterCommand.iCharacterSlot))
+        {
+            m_strNetworkStatus = "Invalid character slot.";
+        }
+        else
+        {
+            strncpy_s(
+                m_szNickName,
+                enterCommand.strNickName.c_str(),
+                _TRUNCATE);
+            Request_EnterWorld(enterCommand.eWorldId);
+        }
+    }
+
     LostArk::Shared::S2C_ENTER_ACCEPTED accepted;
     //networkmanager에서 update를 돌면서 enter 여부 판단
     if (CNetworkManager::Get().Try_Consume_EnterAccepted(accepted))
@@ -211,7 +230,11 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
             to_string(
                 accepted.iNetEntityId);
 
-        m_isEnterRequested = true;
+        m_isEnterRequested =
+            accepted.eWorldId == m_ePendingWorldId;
+
+        if (!m_isEnterRequested)
+            m_strNetworkStatus = "Rejected mismatched world acceptance.";
     }
 
     // 서버 승인 메시지를 받은 뒤에만 true로 변경한다.
@@ -219,11 +242,18 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
     {
         m_isEnterRequested = false;
 
-        if (FAILED(CGameInstance::Get().Change_Level(
-            ETOUI(LEVEL::LOADING),
-            CLevel_Loading::Create(m_pDevice, m_pContext, LEVEL::BAREN))))
+        const bool_t isValtan =
+            LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
+            m_ePendingWorldId;
+        if (!CSceneTransitionService::Request(
+            isValtan ? LEVEL::VALTAN_ARENA : LEVEL::BERN,
+            isValtan ?
+                CLIENT_SCENARIO::RAID_VALTAN_ARENA :
+                CLIENT_SCENARIO::WORLD_BERN,
+            "lobby.enter-accepted"))
         {
-            MSG_BOX("Failed to Change Level");
+            m_strNetworkStatus =
+                CSceneTransitionService::Get_Status();
             return;
         }
 
@@ -235,13 +265,10 @@ void CLevel_Lobby::Update(f32_t fTimeDelta)
 
 HRESULT CLevel_Lobby::Render()
 {
-#ifdef _DEBUG
     Render_CharacterSelectPanel();
-#endif
 
     return S_OK;
 }
-#ifdef _DEBUG
 void CLevel_Lobby::Render_CharacterSelectPanel()
 {
     if (!ImGui::Begin(
@@ -294,9 +321,25 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::BeginDisabled(!hasSelection);
 
-    if (ImGui::Button("Enter Baren"))
+    if (ImGui::Button("Enter Bern"))
     {
-        Request_EnterWorld();
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::BERN,
+            nickName);
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Enter Valtan"))
+    {
+        const string nickName =
+            '\0' == m_szNickName[0] ? "Player" : m_szNickName;
+        CLobbyCommandService::Request_EnterWorld(
+            m_iSelectedCharacterIndex,
+            LostArk::Shared::WORLD_ID::VALTAN_ARENA,
+            nickName);
     }
 
     ImGui::EndDisabled();
@@ -311,7 +354,6 @@ void CLevel_Lobby::Render_CharacterSelectPanel()
 
     ImGui::End();
 }
-#endif
 
 unique_ptr<CLevel_Lobby> CLevel_Lobby::Create(ComPtr<ID3D11Device> pDevice, 
     ComPtr<ID3D11DeviceContext> pContext)

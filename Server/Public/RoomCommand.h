@@ -15,6 +15,8 @@ namespace LostArk::Server
 	{
 		REGISTER_SESSION,
 		ENTER_WORLD,
+		MOVE,
+		USE_SKILL,
 		LEAVE
 	};
 
@@ -28,6 +30,10 @@ namespace LostArk::Server
 		std::shared_ptr<CClientSession> pSession;
 
 		LostArk::Shared::C2S_ENTER_WORLD EnterWorld;
+
+		LostArk::Shared::C2S_MOVE Move;
+
+		LostArk::Shared::C2S_USE_SKILL UseSkill;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;

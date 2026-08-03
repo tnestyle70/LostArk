@@ -165,7 +165,6 @@
     <ClInclude Include="..\Public\PathFinder.h" />
     <ClInclude Include="..\public\Animation.h" />
     <ClInclude Include="..\Public\BinaryAsset\BinaryReader.h" />
-    <ClInclude Include="..\Public\BinaryAsset\CookedModel.h" />
     <ClInclude Include="..\Public\BinaryAsset\ModelAssetData.h" />
     <ClInclude Include="..\Public\BinaryAsset\ModelDecoder.h" />
     <ClInclude Include="..\Public\BinaryAsset\ModelDecoderRegistry.h" />
@@ -223,19 +222,14 @@
     <ClInclude Include="..\public\Shadow.h" />
     <ClInclude Include="..\public\Target_Manager.h" />
     <ClInclude Include="..\public\Texture.h" />
-    <ClInclude Include="..\Public\TextureResourceCache.h" />
     <ClInclude Include="..\Public\Timer.h" />
     <ClInclude Include="..\Public\Timer_Manager.h" />
     <ClInclude Include="..\public\Transform.h" />
     <ClInclude Include="..\public\UIObject.h" />
     <ClInclude Include="..\public\VIBuffer.h" />
     <ClInclude Include="..\Public\VIBuffer_Cell.h" />
-    <ClInclude Include="..\Public\VIBuffer_Cube.h" />
     <ClInclude Include="..\public\VIBuffer_Instance.h" />
-    <ClInclude Include="..\Public\VIBuffer_Instance_Point.h" />
-    <ClInclude Include="..\Public\VIBuffer_Instance_Rect.h" />
     <ClInclude Include="..\Public\VIBuffer_Rect.h" />
-    <ClInclude Include="..\Public\VIBuffer_Terrain.h" />
     <ClInclude Include="..\Public\Sound\Sound_Manager.h" />
   </ItemGroup>
   <ItemGroup>
@@ -246,7 +240,6 @@
     <ClCompile Include="..\External\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\External\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\Private\BinaryAsset\BinaryReader.cpp" />
-    <ClCompile Include="..\Private\BinaryAsset\CookedModel.cpp" />
     <ClCompile Include="..\Private\BinaryAsset\ModelDecoderRegistry.cpp" />
     <ClCompile Include="..\Private\BinaryAsset\WModelDecoder.cpp" />
     <ClCompile Include="..\Private\BinaryAsset\Winters\WAnimationReader.cpp" />
@@ -299,19 +292,14 @@
     </ClCompile>
     <ClCompile Include="..\private\Target_Manager.cpp" />
     <ClCompile Include="..\private\Texture.cpp" />
-    <ClCompile Include="..\Private\TextureResourceCache.cpp" />
     <ClCompile Include="..\Private\Timer.cpp" />
     <ClCompile Include="..\Private\Timer_Manager.cpp" />
     <ClCompile Include="..\private\Transform.cpp" />
     <ClCompile Include="..\private\UIObject.cpp" />
     <ClCompile Include="..\private\VIBuffer.cpp" />
     <ClCompile Include="..\Private\VIBuffer_Cell.cpp" />
-    <ClCompile Include="..\Private\VIBuffer_Cube.cpp" />
     <ClCompile Include="..\private\VIBuffer_Instance.cpp" />
-    <ClCompile Include="..\Private\VIBuffer_Instance_Point.cpp" />
-    <ClCompile Include="..\Private\VIBuffer_Instance_Rect.cpp" />
     <ClCompile Include="..\Private\VIBuffer_Rect.cpp" />
-    <ClCompile Include="..\Private\VIBuffer_Terrain.cpp" />
     <ClCompile Include="..\Private\NavGrid.cpp" />
     <ClCompile Include="..\Private\NavPathFollower.cpp" />
     <ClCompile Include="..\Private\PathFinder.cpp" />

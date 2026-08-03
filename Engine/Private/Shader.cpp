@@ -139,7 +139,7 @@ unique_ptr<CShader> CShader::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11D
 
 	if (FAILED(pInstance->Initialize_Prototype(pShaderFilePath, pElements, iNumElements)))
 	{
-		MSG_BOX("Failed to Created : CShader");
+		OutputDebugStringA("[Engine][Shader] Create failed.\n");
 		return nullptr;
 	}
 
@@ -153,7 +153,7 @@ shared_ptr<CPrototype> CShader::Clone(void* pArg)
 
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned: CShader");
+		OutputDebugStringA("[Engine][Shader] Clone failed.\n");
 		return nullptr;
 	}
 

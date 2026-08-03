@@ -1,0 +1,115 @@
+#include "LevelRegistry.h"
+
+#include "Level_Bern.h"
+#include "Level_Development.h"
+#include "Level_Lobby.h"
+#include "Level_ValtanArena.h"
+#include "Loader.h"
+
+#include <algorithm>
+#include <array>
+
+namespace
+{
+	using namespace Client;
+	using namespace Engine;
+
+	unique_ptr<CLevel> CreateLobby(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_Lobby::Create(pDevice, pContext);
+	}
+
+	unique_ptr<CLevel> CreateBern(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_Bern::Create(pDevice, pContext);
+	}
+
+	unique_ptr<CLevel> CreateValtanArena(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_ValtanArena::Create(pDevice, pContext);
+	}
+
+	unique_ptr<CLevel> CreateDevelopment(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_Development::Create(pDevice, pContext);
+	}
+
+}
+
+const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
+	const LEVEL eLevel)
+{
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 4> levels =
+	{{
+		{
+			LEVEL::LOBBY,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"front.lobby",
+			CreateLobby,
+			&CLoader::Ready_For_Lobby
+		},
+		{
+			LEVEL::BERN,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"world.bern",
+			CreateBern,
+			&CLoader::Ready_For_Bern
+		},
+		{
+			LEVEL::VALTAN_ARENA,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"raid.valtan.arena",
+			CreateValtanArena,
+			&CLoader::Ready_For_ValtanArena
+		},
+		{
+			LEVEL::DEVELOPMENT,
+			CLIENT_LEVEL_KIND::DEVELOPMENT,
+			"dev.lab",
+			CreateDevelopment,
+			&CLoader::Ready_For_Development
+		}
+	}};
+
+	const auto iter = std::find_if(
+		levels.begin(),
+		levels.end(),
+		[eLevel](const CLIENT_LEVEL_DESCRIPTOR& descriptor)
+		{
+			return descriptor.eLevel == eLevel;
+		});
+	return levels.end() == iter ? nullptr : &(*iter);
+}
+
+unique_ptr<CLevel> CLevelRegistry::Create_Level(
+	const LEVEL eLevel,
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	const CLIENT_LEVEL_DESCRIPTOR* pDescriptor = Find(eLevel);
+	if (nullptr == pDescriptor || nullptr == pDescriptor->pCreate)
+		return nullptr;
+
+	return pDescriptor->pCreate(
+		std::move(pDevice),
+		std::move(pContext));
+}
+
+HRESULT CLevelRegistry::Execute_Load(
+	const LEVEL eLevel,
+	CLoader& loader)
+{
+	const CLIENT_LEVEL_DESCRIPTOR* pDescriptor = Find(eLevel);
+	if (nullptr == pDescriptor || nullptr == pDescriptor->pLoad)
+		return E_INVALIDARG;
+
+	return (loader.*pDescriptor->pLoad)();
+}

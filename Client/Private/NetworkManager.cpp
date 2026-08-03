@@ -136,6 +136,7 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	m_iLocalNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eWorldId = LostArk::Shared::WORLD_ID::END;
 	// Receive Worker와 Main Thread가 함께 접근하므로 atomic store를 사용한다.
 	m_iLastErrorCode.store(0);
 
@@ -149,6 +150,7 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 }
 
 bool CNetworkManager::Send_EnterWorld(
+	LostArk::Shared::WORLD_ID worldId,
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	std::string_view nickName)
 {
@@ -158,6 +160,8 @@ bool CNetworkManager::Send_EnterWorld(
 		return false;
 
 	C2S_ENTER_WORLD message{};
+	message.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	message.eWorldId = worldId;
 	message.eCharacterClass = characterClass;
 	message.strNickName = std::string{ nickName };
 
@@ -175,6 +179,62 @@ bool CNetworkManager::Send_EnterWorld(
 	}
 
 	return Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)
+{
+	//연결 상태 검사 -> C2S_MOVE 값 구조체 생성 -> sequence와 goal XZ 저장
+	//packetwriter로 payload 직렬화 -> C2S_MOVE frame 생성 -> send_all
+	//client sequence가 animation의 정보를 담고 있는 건가? 애니메이션 1 2 3 4 형태의 정수를 담고 있다?
+	//이 애니메이션에 대한 부분은 어떻게 처리해야 할까?
+	using namespace LostArk::Shared;
+
+	if (!Is_Connected())
+		return false;
+
+	C2S_MOVE message{};
+	message.iClientSequence = clientSequence;
+	message.fGoalX = goalX;
+	message.fGoalZ = goalZ;
+
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	if (!Build_Packet_Frame(
+		PACKET_TYPE::C2S_MOVE,
+		payloadWriter.Get_Buffer(),
+		frameBytes))
+	{
+		return false;
+	}
+
+	return Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UseSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float aimX,
+	const float aimZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.fAimX = aimX;
+	message.fAimZ = aimZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SKILL,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
 }
 
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
@@ -229,6 +289,7 @@ void CNetworkManager::Close_ServerConnection()
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_eWorldId = LostArk::Shared::WORLD_ID::END;
 }
 
 bool CNetworkManager::Is_Connected() const
@@ -362,6 +423,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 
 		m_iLocalPlayerId = accepted.iPlayerId;
 		m_iLocalNetEntityId = accepted.iNetEntityId;
+		m_eWorldId = accepted.eWorldId;
 		m_hasPendingEnterAccepted = true;
 		m_PendingEnterAccepted = accepted;
 		break;
@@ -381,6 +443,43 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
 		event.PlayerSpawned = std::move(spawned);
+		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+	{
+		S2C_WORLD_ENTITY_SPAWNED spawned{};
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED;
+		event.WorldEntitySpawned = std::move(spawned);
+		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
+	//snapshot
+	case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
+	{
+		//world의 snapshot에 대한 구조체 생성
+		S2C_WORLD_SNAPSHOT snapshot{};
+
+		if (!Read_Message(reader, snapshot) ||
+			0 != reader.Get_RemainingSize() ||
+			snapshot.eWorldId != m_eWorldId)
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT;
+		event.WorldSnapshot = std::move(snapshot);
 		m_ReplicationEvents.push_back(std::move(event));
 		break;
 	}

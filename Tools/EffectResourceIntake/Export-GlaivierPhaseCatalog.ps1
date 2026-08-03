@@ -1,13 +1,13 @@
 ﻿[CmdletBinding()]
 param(
     [string]$SourceCatalogCsv =
-        "Client/Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/particle_systems.csv",
+        "Data/Effects/SourceCatalog/particle_systems.csv",
 
     [string]$OutputJson =
-        "Client/Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/glaivier_skill_phase_1_3.json",
+        "Data/Effects/SourceCatalog/glaivier_skill_phase_1_3.json",
 
     [string]$OutputCsv =
-        "Client/Bin/Resources/LostArk/Effect/Effect_Tool/SourceCatalog/glaivier_skill_phase_1_3.csv"
+        "Data/Effects/SourceCatalog/glaivier_skill_phase_1_3.csv"
 )
 
 Set-StrictMode -Version 2.0

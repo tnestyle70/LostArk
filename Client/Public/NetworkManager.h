@@ -39,8 +39,19 @@ public:
 	bool Connect_To_Server(std::uint16_t port);
 
 	bool Send_EnterWorld(
+		LostArk::Shared::WORLD_ID worldId,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		std::string_view nickName);
+	//playercontroller가 목표 XZ를 전송하는 public 경계
+	bool Send_MoveGoal(
+		std::uint32_t clientSequence,
+		float goalX,
+		float goalZ);
+	bool Send_UseSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float aimX,
+		float aimZ);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
@@ -88,5 +99,7 @@ private:
 
 	LostArk::Shared::NET_ENTITY_ID m_iLocalNetEntityId =
 		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	LostArk::Shared::WORLD_ID m_eWorldId =
+		LostArk::Shared::WORLD_ID::END;
 
 };

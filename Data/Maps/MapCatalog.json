@@ -1,0 +1,35 @@
+{
+  "schema": "lostark.map-catalog",
+  "formatVersion": 1,
+  "areas": [
+    {
+      "id": "LV_BER_BERNCASTLE",
+      "kind": "product",
+      "catalogType": "shard-set",
+      "catalog": "Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE.mapset",
+      "gameplayDocument": "Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json",
+      "placementCount": 50017,
+      "catalogAssetRows": 3021,
+      "uniqueAssetCount": 1003,
+      "runtimeAssetRoot": "Map/LV_BER_BERNCASTLE"
+    },
+    {
+      "id": "LV_LUT_HEARTRB_ED",
+      "kind": "product",
+      "catalogType": "single",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapplacements",
+      "deployCatalog": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.deployassets",
+      "deployPlacements": "Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.deployplacements",
+      "gameplayDocument": "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
+      "placementCount": 13103,
+      "assetCount": 269,
+      "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED"
+    }
+  ],
+  "editorSelection": {
+    "id": "@ACTIVE",
+    "path": "Data/Maps/Editor/ACTIVE.maparea",
+    "allowedForProductLevels": false
+  }
+}

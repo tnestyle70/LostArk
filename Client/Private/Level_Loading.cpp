@@ -1,13 +1,12 @@
-#include "Level_Loading.h"
-#include "Loader.h"
+#include "imgui.h"
 
-#include "Level_Lobby.h"
-#include "Level_Logo.h"
-#include "Level_Baren.h"
-#include "Level_ValtanArena.h"
-#include "Level_GamePlay.h"
-#include "Level_AssetTest.h"
-#include "Level_Test2.h"
+#include "Level_Loading.h"
+#include "ClientLaunchOptions.h"
+#include "LevelRegistry.h"
+#include "Loader.h"
+#include "NetworkManager.h"
+#include "SceneTransitionService.h"
+
 #include "GameInstance.h"
 
 CLevel_Loading::CLevel_Loading(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -36,63 +35,46 @@ HRESULT CLevel_Loading::Initialize(LEVEL eNextLevelID)
 
 void CLevel_Loading::Update(f32_t fTimeDelta)
 {
+	if (m_isRetryRequested)
+	{
+		m_isRetryRequested = false;
+		Retry_LobbyLoad();
+		return;
+	}
+
 	if (nullptr == m_pLoader)
 		return;
 
-	const wchar_t* pCommandLine = GetCommandLineW();
-	const bool_t isHDRReadbackRequested =
-		nullptr != pCommandLine &&
-		nullptr != wcsstr(pCommandLine, L"--hdr-readback");
-	const bool_t isMapLevelRequested =
-		nullptr != pCommandLine &&
-		(nullptr != wcsstr(pCommandLine, L"--map-level=bern") ||
-			nullptr != wcsstr(pCommandLine, L"--map-level=valtan"));
+	if (m_pLoader->Failed())
+	{
+		Recover_FromFailure(m_pLoader->Get_Result());
+		return;
+	}
+
 	const bool_t isContinueRequested =
-		isHDRReadbackRequested ||
-		isMapLevelRequested ||
+		LEVEL::LOBBY == m_eNextLevelID ||
+		CClientLaunchOptions::Get().isAutoActivate ||
 		(!CGameInstance::Get().IsKeyboardInputBlocked() &&
 			(GetKeyState(VK_RETURN) & 0x8000));
 
 	if (isContinueRequested &&
 		true == m_pLoader->Finished())
 	{
-		unique_ptr<CLevel>		pNewLevel = { nullptr };
-
-		switch (m_eNextLevelID)
-		{
-		case LEVEL::LOGO:
-			pNewLevel = CLevel_Logo::Create(m_pDevice, m_pContext);
-			break;
-		case LEVEL::LOBBY:
-			pNewLevel = CLevel_Lobby::Create(m_pDevice, m_pContext);
-			break;
-		case LEVEL::BAREN:
-			pNewLevel = CLevel_Baren::Create(m_pDevice, m_pContext);
-			break;
-		case LEVEL::VALTAN_ARENA:
-			pNewLevel = CLevel_ValtanArena::Create(
-				m_pDevice, m_pContext);
-			break;
-		case LEVEL::GAMEPLAY:
-			pNewLevel = CLevel_GamePlay::Create(m_pDevice, m_pContext);
-			break;
-		case LEVEL::ASSET_TEST:
-			pNewLevel = CLevel_AssetTest::Create(m_pDevice, m_pContext);
-			break;
-		case LEVEL::TEST_LEVEL2:
-			pNewLevel = CLevel_Test2::Create(m_pDevice, m_pContext);
-			break;
-		}	
+		unique_ptr<CLevel> pNewLevel =
+			CLevelRegistry::Create_Level(
+				m_eNextLevelID,
+				m_pDevice,
+				m_pContext);
 
 		if (nullptr == pNewLevel)
 		{
-			MSG_BOX("Failed to Create Level");
+			Recover_FromFailure(E_FAIL);
 			return;
 		}
 
 		if (FAILED(CGameInstance::Get().Change_Level(ETOUI(m_eNextLevelID), move(pNewLevel))))
 		{
-			MSG_BOX("Failed to Change Level");
+			Recover_FromFailure(E_FAIL);
 			return;
 		}
 
@@ -107,6 +89,24 @@ HRESULT CLevel_Loading::Render()
 	if (FAILED(__super::Render()))
 		return E_FAIL;
 
+	if (m_isFailureReported && LEVEL::LOBBY == m_eNextLevelID)
+	{
+		ImGui::SetNextWindowPos(
+			ImVec2(24.f, 24.f), ImGuiCond_Always);
+		if (ImGui::Begin(
+			"Loading recovery",
+			nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoCollapse))
+		{
+			ImGui::TextWrapped(
+				"Lobby resources could not be loaded. The active world session was closed and partial resources were rolled back.");
+			if (ImGui::Button("Retry Lobby"))
+				m_isRetryRequested = true;
+		}
+		ImGui::End();
+	}
+
 #ifdef _DEBUG
 	if(nullptr != m_pLoader)
 		m_pLoader->Print_Text();
@@ -115,13 +115,54 @@ HRESULT CLevel_Loading::Render()
 	return S_OK;
 }
 
+void CLevel_Loading::Recover_FromFailure(const HRESULT result)
+{
+	if (m_isFailureReported)
+		return;
+
+	m_isFailureReported = true;
+	CSceneTransitionService::Report_LoadFailure(result);
+	CNetworkManager::Get().Close_ServerConnection();
+
+	if (FAILED(CGameInstance::Get().Clear_Resources(
+		ETOUI(m_eNextLevelID))))
+	{
+		OutputDebugStringA(
+			"[Level_Loading] Failed to clear partial target resources.\n");
+	}
+
+	OutputDebugStringA(
+		"[Level_Loading] Load failed; session closed and partial resources rolled back.\n");
+
+	if (LEVEL::LOBBY != m_eNextLevelID)
+		Retry_LobbyLoad();
+}
+
+void CLevel_Loading::Retry_LobbyLoad()
+{
+	unique_ptr<CLevel_Loading> pRecoveryLevel =
+		CLevel_Loading::Create(
+			m_pDevice,
+			m_pContext,
+			LEVEL::LOBBY);
+	if (nullptr == pRecoveryLevel ||
+		FAILED(CGameInstance::Get().Change_Level(
+			ETOUI(LEVEL::LOADING),
+			move(pRecoveryLevel))))
+	{
+		CSceneTransitionService::Report_LoadFailure(E_FAIL);
+		OutputDebugStringA(
+			"[Level_Loading] Failed to start Lobby recovery.\n");
+	}
+}
+
 unique_ptr<CLevel_Loading> CLevel_Loading::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID)
 {
 	auto pInstance = unique_ptr<CLevel_Loading>(new CLevel_Loading(pDevice, pContext));
 
 	if (FAILED(pInstance->Initialize(eNextLevelID)))
 	{
-		MSG_BOX("Failed to Created : CLevel_Loading");
+		OutputDebugStringA("[Level_Loading] Create failed.\n");
 		return nullptr;
 	}
 

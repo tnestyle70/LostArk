@@ -9,6 +9,20 @@ using namespace Engine::WintersFormat;
 
 namespace
 {
+	bool_t IsBelowRoot(
+		const filesystem::path& root,
+		const filesystem::path& candidate)
+	{
+		if (root.empty() || candidate.empty())
+			return false;
+		const filesystem::path relative = candidate.lexically_normal().lexically_relative(
+			root.lexically_normal());
+		if (relative.empty() || relative.is_absolute())
+			return false;
+		const auto first = relative.begin();
+		return first != relative.end() && *first != L"..";
+	}
+
 	bool_t HasMagic(const void* pValue, const char* pMagic)
 	{
 		return 0 == memcmp(pValue, pMagic, 4);
@@ -21,24 +35,26 @@ namespace
 			return {};
 
 		const wstring genericPath = storedPath.generic_wstring();
-		constexpr const wchar_t* lostArkPrefixes[] =
+		constexpr const wchar_t* resourcePrefixes[] =
 		{
 			L"Resource/LostArk/",
-			L"Resources/LostArk/"
+			L"Resource/",
+			L"Resources/"
 		};
 
-		for (const wchar_t* pPrefix : lostArkPrefixes)
+		for (const wchar_t* pPrefix : resourcePrefixes)
 		{
 			const wstring prefix = pPrefix;
 			const size_t prefixPosition = genericPath.find(prefix);
 			if (wstring::npos == prefixPosition)
 				continue;
 
-			const filesystem::path relativeToLostArk =
+			const filesystem::path relativeToAssetRoot =
 				genericPath.substr(prefixPosition + prefix.size());
 			const filesystem::path candidate =
-				(desc.assetRoot / relativeToLostArk).lexically_normal();
-			if (filesystem::exists(candidate))
+				(desc.assetRoot / relativeToAssetRoot).lexically_normal();
+			if (IsBelowRoot(desc.assetRoot, candidate) &&
+				filesystem::exists(candidate))
 				return candidate;
 		}
 
@@ -58,24 +74,21 @@ namespace
 		const filesystem::path storedPath(wstring(pValue, length));
 		if (storedPath.is_absolute())
 		{
-			const filesystem::path normalizedPath = storedPath.lexically_normal();
-			if (filesystem::exists(normalizedPath))
-				return normalizedPath;
-
-			const filesystem::path relocatedPath = ResolveBelowAssetRoot(desc, storedPath);
-			return relocatedPath.empty() ? normalizedPath : relocatedPath;
+			return ResolveBelowAssetRoot(desc, storedPath);
 		}
 
 		const filesystem::path besideMaterial =
 			(materialPath.parent_path() / storedPath).lexically_normal();
-		if (filesystem::exists(besideMaterial))
+		if ((desc.assetRoot.empty() || IsBelowRoot(desc.assetRoot, besideMaterial)) &&
+			filesystem::exists(besideMaterial))
 			return besideMaterial;
 
 		if (!desc.assetRoot.empty())
 		{
 			const filesystem::path belowAssetRoot =
 				(desc.assetRoot / storedPath).lexically_normal();
-			if (filesystem::exists(belowAssetRoot))
+			if (IsBelowRoot(desc.assetRoot, belowAssetRoot) &&
+				filesystem::exists(belowAssetRoot))
 				return belowAssetRoot;
 
 
@@ -84,7 +97,8 @@ namespace
 				return relocatedPath;
 		}
 
-		return besideMaterial;
+		return desc.assetRoot.empty() || IsBelowRoot(desc.assetRoot, besideMaterial) ?
+			besideMaterial : filesystem::path{};
 	}
 }
 

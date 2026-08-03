@@ -9,7 +9,6 @@
 #include "GameObject.h"
 
 NS_BEGIN(Engine)
-class CCookedModel;
 class CModel;
 class CShader;
 class CVIBuffer_Rect;
@@ -47,7 +46,6 @@ private:
 		ComPtr<ID3D11ShaderResourceView> pDissolveTextureSRV;
 		ComPtr<ID3D11ShaderResourceView> pDistortionTextureSRV;
 		shared_ptr<CModel> pModel;
-		shared_ptr<CCookedModel> pCookedModel;
 		bool_t isSimulationReady = { false };
 	};
 
@@ -91,13 +89,11 @@ private:
 	ComPtr<ID3D11ShaderResourceView> Load_Texture(
 		const string& strTextureAssetId);
 	shared_ptr<CModel> Load_StaticModel(const string& strMeshAssetId);
-	shared_ptr<CCookedModel> Load_CookedModel(
+	shared_ptr<CModel> Load_BinaryModel(
 		const EFFECT_REQUIRED_MODULE_DESC& RequiredDesc);
 
 	HRESULT Render_SpriteEmitter(const EFFECT_EMITTER_RUNTIME& Runtime);
 	HRESULT Render_MeshEmitter(const EFFECT_EMITTER_RUNTIME& Runtime);
-	HRESULT Render_CookedMeshEmitter(
-		const EFFECT_EMITTER_RUNTIME& Runtime);
 	HRESULT Render_PrimitiveEmitter(const EFFECT_EMITTER_RUNTIME& Runtime);
 
 	HRESULT Bind_CommonSpriteResources(

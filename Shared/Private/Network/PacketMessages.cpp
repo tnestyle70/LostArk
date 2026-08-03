@@ -3,11 +3,125 @@
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <utility>
 
+//writer가 일부만 기록한 뒤 실패하지 않도록 snapshot의 모든 state를 먼저 검증한다.
+namespace
+{
+    //유효한 애니메이션인지 검증
+    bool Is_Valid_Locomotion(
+        LostArk::Shared::PLAYER_LOCOMOTION_STATE state)
+    {
+        return static_cast<std::uint8_t>(state) <
+            static_cast<std::uint8_t>(
+                LostArk::Shared::PLAYER_LOCOMOTION_STATE::END);
+    }
+
+	bool Is_Valid_PlayerAction(
+		const LostArk::Shared::PLAYER_ACTION_STATE state)
+	{
+		return static_cast<std::uint8_t>(state) <
+			static_cast<std::uint8_t>(
+				LostArk::Shared::PLAYER_ACTION_STATE::END);
+	}
+
+	bool Is_Valid_Cooldowns(
+		const std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT>& cooldowns)
+	{
+		if (cooldowns.size() > LostArk::Shared::MAX_PLAYER_COOLDOWNS)
+			return false;
+		for (std::size_t i = 0; i < cooldowns.size(); ++i)
+		{
+			if (cooldowns[i].iSkillId == LostArk::Shared::INVALID_SKILL_ID ||
+				0 == cooldowns[i].iCooldownEndTick)
+			{
+				return false;
+			}
+			for (std::size_t j = i + 1; j < cooldowns.size(); ++j)
+			{
+				if (cooldowns[i].iSkillId == cooldowns[j].iSkillId)
+					return false;
+			}
+		}
+		return true;
+	}
+    //유효한 플레이어 스냅샷인지 검증 - netentityid, position x y z, locomotion state
+    bool Is_Valid_PlayerSnapshot(
+        const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+    {
+        return
+            snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
+            std::isfinite(snapshot.fPositionX) &&
+            std::isfinite(snapshot.fPositionY) &&
+            std::isfinite(snapshot.fPositionZ) &&
+            std::isfinite(snapshot.fYawDegrees) &&
+            Is_Valid_Locomotion(snapshot.eLocomotionState) &&
+			Is_Valid_PlayerAction(snapshot.eAction) &&
+			0 != snapshot.iMaximumHp &&
+			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
+			0 != snapshot.iMaximumResource &&
+			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
+			Is_Valid_Cooldowns(snapshot.Cooldowns) &&
+			((LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction &&
+				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
+				0 != snapshot.iActionStartTick) ||
+			 (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
+				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
+    }
+
+	bool Is_Valid_StableId(const std::string& value, const bool allowEmpty)
+	{
+		return (allowEmpty && value.empty()) ||
+			(!value.empty() && value.size() <=
+				LostArk::Shared::MAX_STABLE_NETWORK_ID_BYTES &&
+				std::all_of(value.begin(), value.end(), [](const unsigned char character)
+				{
+					return 0 != std::isalnum(character) || character == '_' ||
+						character == '-' || character == '.';
+				}));
+	}
+
+	bool Is_Valid_WorldEntityKind(
+		const LostArk::Shared::WORLD_ENTITY_KIND kind)
+	{
+		return static_cast<std::uint8_t>(kind) <
+			static_cast<std::uint8_t>(LostArk::Shared::WORLD_ENTITY_KIND::END);
+	}
+
+	bool Is_Valid_WorldEntityAction(
+		const LostArk::Shared::WORLD_ENTITY_ACTION action)
+	{
+		return static_cast<std::uint8_t>(action) <
+			static_cast<std::uint8_t>(LostArk::Shared::WORLD_ENTITY_ACTION::END);
+	}
+
+	bool Is_Valid_WorldEntitySnapshot(
+		const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
+	{
+		return snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			Is_Valid_WorldEntityAction(snapshot.eAction) &&
+			Is_Valid_StableId(snapshot.strActionId, true) &&
+			std::isfinite(snapshot.fPositionX) &&
+			std::isfinite(snapshot.fPositionY) &&
+			std::isfinite(snapshot.fPositionZ) &&
+			std::isfinite(snapshot.fYawDegrees) &&
+			0 != snapshot.iMaximumHp &&
+			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
+			0 != snapshot.iPhase;
+	}
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
 {
+	if (NETWORK_PROTOCOL_VERSION != message.iProtocolVersion ||
+		!Is_Known_World_Id(message.eWorldId))
+	{
+		return false;
+	}
+
     //character class write
     const std::uint8_t rawCharacterClass =
         static_cast<std::uint8_t>(
@@ -25,8 +139,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
         MAX_NICKNAME_BYTES)
         return false;
 
-    //character class write
-    writer.Write_U8(rawCharacterClass);
+	writer.Write_U16(message.iProtocolVersion);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+
+	//character class write
+	writer.Write_U8(rawCharacterClass);
 
     //nickname write
     return writer.Write_String(
@@ -36,8 +153,18 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
 
 bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& message)
 {
-    std::uint8_t rawCharacterClass = {};
-    std::string nickName;
+	std::uint16_t protocolVersion = {};
+	std::uint16_t rawWorldId = {};
+	std::uint8_t rawCharacterClass = {};
+	std::string nickName;
+
+	if (!reader.Read_U16(protocolVersion) ||
+		!reader.Read_U16(rawWorldId) ||
+		NETWORK_PROTOCOL_VERSION != protocolVersion ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)))
+	{
+		return false;
+	}
 
     //character class 예외처리
     if (!reader.Read_U8(rawCharacterClass))
@@ -56,7 +183,9 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
     if (nickName.empty())
         return false;
 
-    C2S_ENTER_WORLD decoded{};
+	C2S_ENTER_WORLD decoded{};
+	decoded.iProtocolVersion = protocolVersion;
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
 
     decoded.eCharacterClass =
         static_cast<CHARACTER_CLASS_ID>(
@@ -73,6 +202,12 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, 
     const S2C_ENTER_ACCEPTED& message)
 {
+	if (NETWORK_PROTOCOL_VERSION != message.iProtocolVersion ||
+		!Is_Known_World_Id(message.eWorldId))
+	{
+		return false;
+	}
+
     //playerid가 유효한지 검사
     if (message.iPlayerId == INVALID_PLAYER_ID)
         return false;
@@ -81,7 +216,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
     if (message.iNetEntityId == INVALID_NET_ENTITY_ID)
         return false;
 
-    //playerid, netentityid를 u32로 기록
+	writer.Write_U16(message.iProtocolVersion);
+	writer.Write_U16(static_cast<std::uint16_t>(message.eWorldId));
+
+	//playerid, netentityid를 u32로 기록
     writer.Write_U32(message.iPlayerId);
     writer.Write_U32(message.iNetEntityId);
 
@@ -91,13 +229,23 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
 bool LostArk::Shared::Read_Message(CPacketReader& reader,
    S2C_ENTER_ACCEPTED& message)
 {
-    PLAYER_ID playerId =
+	std::uint16_t protocolVersion = {};
+	std::uint16_t rawWorldId = {};
+	PLAYER_ID playerId =
         INVALID_PLAYER_ID;
 
     NET_ENTITY_ID netEntityId =
         INVALID_NET_ENTITY_ID;
 
-    if (!reader.Read_U32(playerId))
+	if (!reader.Read_U16(protocolVersion) ||
+		!reader.Read_U16(rawWorldId) ||
+		NETWORK_PROTOCOL_VERSION != protocolVersion ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)))
+	{
+		return false;
+	}
+
+	if (!reader.Read_U32(playerId))
         return false;
     if (!reader.Read_U32(netEntityId))
         return false;
@@ -105,9 +253,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     if (playerId == 0 || netEntityId == 0)
         return false;
 
-    S2C_ENTER_ACCEPTED decoded {};
+	S2C_ENTER_ACCEPTED decoded {};
 
-    decoded.iPlayerId = playerId;
+	decoded.iProtocolVersion = protocolVersion;
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+	decoded.iPlayerId = playerId;
     decoded.iNetEntityId = netEntityId;
    
     message = decoded;
@@ -263,6 +413,72 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
     return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_WORLD_ENTITY_SPAWNED& spawned)
+{
+	if (spawned.iNetEntityId == INVALID_NET_ENTITY_ID ||
+		!Is_Valid_WorldEntityKind(spawned.eKind) ||
+		!Is_Valid_StableId(spawned.strArchetypeId, false) ||
+		!Is_Valid_StableId(spawned.strEncounterId, true) ||
+		!std::isfinite(spawned.fPositionX) ||
+		!std::isfinite(spawned.fPositionY) ||
+		!std::isfinite(spawned.fPositionZ) ||
+		!std::isfinite(spawned.fYawDegrees))
+	{
+		return false;
+	}
+	writer.Write_U32(spawned.iNetEntityId);
+	writer.Write_U8(static_cast<std::uint8_t>(spawned.eKind));
+	if (!writer.Write_String(
+		spawned.strArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+		spawned.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_F32(spawned.fPositionX);
+	writer.Write_F32(spawned.fPositionY);
+	writer.Write_F32(spawned.fPositionZ);
+	writer.Write_F32(spawned.fYawDegrees);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_WORLD_ENTITY_SPAWNED& spawned)
+{
+	S2C_WORLD_ENTITY_SPAWNED decoded{};
+	std::uint8_t rawKind = 0;
+	if (!reader.Read_U32(decoded.iNetEntityId) ||
+		!reader.Read_U8(rawKind) ||
+		!reader.Read_String(
+			decoded.strArchetypeId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_F32(decoded.fPositionX) ||
+		!reader.Read_F32(decoded.fPositionY) ||
+		!reader.Read_F32(decoded.fPositionZ) ||
+		!reader.Read_F32(decoded.fYawDegrees))
+	{
+		return false;
+	}
+	decoded.eKind = static_cast<WORLD_ENTITY_KIND>(rawKind);
+	if (decoded.iNetEntityId == INVALID_NET_ENTITY_ID ||
+		!Is_Valid_WorldEntityKind(decoded.eKind) ||
+		!Is_Valid_StableId(decoded.strArchetypeId, false) ||
+		!Is_Valid_StableId(decoded.strEncounterId, true) ||
+		!std::isfinite(decoded.fPositionX) ||
+		!std::isfinite(decoded.fPositionY) ||
+		!std::isfinite(decoded.fPositionZ) ||
+		!std::isfinite(decoded.fYawDegrees))
+	{
+		return false;
+	}
+	spawned = std::move(decoded);
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_PLAYER_DESPAWNED& message)
 {
     //검증
@@ -311,5 +527,277 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_PLAYER_DESPAWNED& 
 
     message = decoded;
 
+    return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_MOVE& message)
+{
+    if (0 == message.iClientSequence ||
+        !std::isfinite(message.fGoalX) ||
+        !std::isfinite(message.fGoalZ))
+    {
+        return false;
+    }
+
+    writer.Write_U32(message.iClientSequence);
+    writer.Write_F32(message.fGoalX);
+    writer.Write_F32(message.fGoalZ);
+
+    return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_MOVE& message)
+{
+    std::uint32_t clientSequence = 0;
+    float fGoalX = 0.f;
+    float fGoalZ = 0.f;
+
+    if (!reader.Read_U32(clientSequence) ||
+        !reader.Read_F32(fGoalX) ||
+        !reader.Read_F32(fGoalZ))
+    {
+        return false;
+    }
+
+    if (0 == clientSequence ||
+        !std::isfinite(fGoalX) ||
+        !std::isfinite(fGoalZ))
+    {
+        return false;
+    }
+
+    C2S_MOVE decoded{};
+    decoded.iClientSequence = clientSequence;
+    decoded.fGoalX = fGoalX;
+    decoded.fGoalZ = fGoalZ;
+
+    message = decoded;
+    return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_USE_SKILL& message)
+{
+	if (0 == message.iClientSequence ||
+		INVALID_SKILL_ID == message.iSkillId ||
+		!std::isfinite(message.fAimX) ||
+		!std::isfinite(message.fAimZ))
+	{
+		return false;
+	}
+
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U32(message.iSkillId);
+	writer.Write_F32(message.fAimX);
+	writer.Write_F32(message.fAimZ);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_USE_SKILL& message)
+{
+	C2S_USE_SKILL decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U32(decoded.iSkillId) ||
+		!reader.Read_F32(decoded.fAimX) ||
+		!reader.Read_F32(decoded.fAimZ) ||
+		0 == decoded.iClientSequence ||
+		INVALID_SKILL_ID == decoded.iSkillId ||
+		!std::isfinite(decoded.fAimX) ||
+		!std::isfinite(decoded.fAimZ))
+	{
+		return false;
+	}
+
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPSHOT& message)
+{
+    //world의 snapshot write, servertick과 player 정보
+	if (0 == message.iServerTick ||
+		!Is_Known_World_Id(message.eWorldId) ||
+        message.Players.empty() ||
+        message.Players.size() >
+        MAX_WORLD_SNAPSHOT_PLAYERS ||
+		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES)
+    {
+        return false;
+    }
+    //유효하지 않은 플레이어 스냅샷 검사
+    for (const PLAYER_SNAPSHOT& player : message.Players)
+    {
+        if (!Is_Valid_PlayerSnapshot(player))
+            return false;
+    }
+	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
+	{
+		if (!Is_Valid_WorldEntitySnapshot(entity))
+			return false;
+	}
+    //server tick과 player size 넣기
+	writer.Write_U32(message.iServerTick);
+	writer.Write_U16(
+		static_cast<std::uint16_t>(message.eWorldId));
+	writer.Write_U16(
+        static_cast<std::uint16_t>(
+            message.Players.size()));
+	writer.Write_U16(
+		static_cast<std::uint16_t>(message.Entities.size()));
+
+    for (const PLAYER_SNAPSHOT& player : message.Players)
+    {
+        writer.Write_U32(player.iNetEntityId);
+        writer.Write_F32(player.fPositionX);
+        writer.Write_F32(player.fPositionY);
+        writer.Write_F32(player.fPositionZ);
+        writer.Write_F32(player.fYawDegrees);
+        writer.Write_U8(
+            static_cast<std::uint8_t>(
+                player.eLocomotionState));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eAction));
+		writer.Write_U32(player.iSkillId);
+		writer.Write_U32(player.iActionStartTick);
+		writer.Write_U32(player.iCurrentHp);
+		writer.Write_U32(player.iMaximumHp);
+		writer.Write_U32(player.iCurrentResource);
+		writer.Write_U32(player.iMaximumResource);
+		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
+		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
+		{
+			writer.Write_U32(cooldown.iSkillId);
+			writer.Write_U32(cooldown.iCooldownEndTick);
+		}
+    }
+	for (const WORLD_ENTITY_SNAPSHOT& entity : message.Entities)
+	{
+		writer.Write_U32(entity.iNetEntityId);
+		writer.Write_U8(static_cast<std::uint8_t>(entity.eAction));
+		if (!writer.Write_String(
+			entity.strActionId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		writer.Write_F32(entity.fPositionX);
+		writer.Write_F32(entity.fPositionY);
+		writer.Write_F32(entity.fPositionZ);
+		writer.Write_F32(entity.fYawDegrees);
+		writer.Write_U32(entity.iActionStartTick);
+		writer.Write_U32(entity.iCurrentHp);
+		writer.Write_U32(entity.iMaximumHp);
+		writer.Write_U8(entity.iPhase);
+	}
+
+    return true;
+}
+
+bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& message)
+{
+	std::uint32_t serverTick = 0;
+	std::uint16_t rawWorldId = 0;
+	std::uint16_t playerCount = 0;
+	std::uint16_t entityCount = 0;
+
+	if (!reader.Read_U32(serverTick) ||
+		!reader.Read_U16(rawWorldId) ||
+		!reader.Read_U16(playerCount) ||
+		!reader.Read_U16(entityCount))
+    {
+        return false;
+    }
+
+	if (0 == serverTick ||
+		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
+        0 == playerCount ||
+        playerCount > MAX_WORLD_SNAPSHOT_PLAYERS ||
+		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES)
+    {
+        return false;
+    }
+
+	S2C_WORLD_SNAPSHOT decoded{};
+	decoded.iServerTick = serverTick;
+	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
+    decoded.Players.reserve(playerCount);
+	decoded.Entities.reserve(entityCount);
+
+    for (std::uint16_t i = 0; i < playerCount; ++i)
+    {
+        PLAYER_SNAPSHOT player{};
+        std::uint8_t rawLocomotion = 0;
+		std::uint8_t rawAction = 0;
+		std::uint8_t cooldownCount = 0;
+
+        if (!reader.Read_U32(player.iNetEntityId) ||
+            !reader.Read_F32(player.fPositionX) ||
+            !reader.Read_F32(player.fPositionY) ||
+            !reader.Read_F32(player.fPositionZ) ||
+            !reader.Read_F32(player.fYawDegrees) ||
+            !reader.Read_U8(rawLocomotion) ||
+			!reader.Read_U8(rawAction) ||
+			!reader.Read_U32(player.iSkillId) ||
+			!reader.Read_U32(player.iActionStartTick) ||
+			!reader.Read_U32(player.iCurrentHp) ||
+			!reader.Read_U32(player.iMaximumHp) ||
+			!reader.Read_U32(player.iCurrentResource) ||
+			!reader.Read_U32(player.iMaximumResource) ||
+			!reader.Read_U8(cooldownCount) ||
+			cooldownCount > MAX_PLAYER_COOLDOWNS)
+        {
+            return false;
+        }
+
+        player.eLocomotionState =
+            static_cast<PLAYER_LOCOMOTION_STATE>(
+                rawLocomotion);
+		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
+		player.Cooldowns.reserve(cooldownCount);
+		for (std::uint8_t cooldownIndex = 0;
+			cooldownIndex < cooldownCount;
+			++cooldownIndex)
+		{
+			SKILL_COOLDOWN_SNAPSHOT cooldown{};
+			if (!reader.Read_U32(cooldown.iSkillId) ||
+				!reader.Read_U32(cooldown.iCooldownEndTick))
+			{
+				return false;
+			}
+			player.Cooldowns.push_back(cooldown);
+		}
+
+        if (!Is_Valid_PlayerSnapshot(player))
+            return false;
+
+        decoded.Players.push_back(player);
+    }
+	for (std::uint16_t i = 0; i < entityCount; ++i)
+	{
+		WORLD_ENTITY_SNAPSHOT entity{};
+		std::uint8_t rawAction = 0;
+		if (!reader.Read_U32(entity.iNetEntityId) ||
+			!reader.Read_U8(rawAction) ||
+			!reader.Read_String(
+				entity.strActionId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_F32(entity.fPositionX) ||
+			!reader.Read_F32(entity.fPositionY) ||
+			!reader.Read_F32(entity.fPositionZ) ||
+			!reader.Read_F32(entity.fYawDegrees) ||
+			!reader.Read_U32(entity.iActionStartTick) ||
+			!reader.Read_U32(entity.iCurrentHp) ||
+			!reader.Read_U32(entity.iMaximumHp) ||
+			!reader.Read_U8(entity.iPhase))
+		{
+			return false;
+		}
+		entity.eAction = static_cast<WORLD_ENTITY_ACTION>(rawAction);
+		if (!Is_Valid_WorldEntitySnapshot(entity))
+			return false;
+		decoded.Entities.push_back(std::move(entity));
+	}
+
+    message = std::move(decoded);
     return true;
 }

@@ -1,0 +1,12 @@
+{
+  "schema": "lostark.player-profiles",
+  "formatVersion": 1,
+  "players": [
+    {
+      "characterClass": "LANCE_MASTER",
+      "maximumHp": 5000,
+      "maximumResource": 100,
+      "moveSpeed": 6.0
+    }
+  ]
+}

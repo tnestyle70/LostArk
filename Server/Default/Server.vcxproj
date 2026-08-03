@@ -27,6 +27,13 @@
     <ClInclude Include="..\Public\ServerPlayer.h" />
     <ClInclude Include="..\Public\TcpListener.h" />
     <ClInclude Include="..\Public\WinSockContext.h" />
+    <ClInclude Include="..\Public\ServerWorldEntity.h" />
+    <ClInclude Include="..\Public\WorldBootstrap.h" />
+	<ClInclude Include="..\Public\GameplayCatalog.h" />
+	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
+	<ClInclude Include="..\Public\ServerNavigation.h" />
+	<ClInclude Include="..\Public\ValtanBrain.h" />
+	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
@@ -35,6 +42,12 @@
     <ClCompile Include="..\Private\ServerApp.cpp" />
     <ClCompile Include="..\Private\WinSockContext.cpp" />
     <ClCompile Include="..\Private\TcpListener.cpp" />
+    <ClCompile Include="..\Private\WorldBootstrap.cpp" />
+	<ClCompile Include="..\Private\GameplayCatalog.cpp" />
+	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
+	<ClCompile Include="..\Private\ServerNavigation.cpp" />
+	<ClCompile Include="..\Private\ValtanBrain.cpp" />
+	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">
@@ -173,6 +186,13 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <Target Name="PublishWorldGameplay" BeforeTargets="ClCompile">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\WorldPipeline\Publish-WorldGameplay.ps1&quot; -Mode Publish" />
+  </Target>
+	<Target Name="PublishGameplayRuntime" BeforeTargets="ClCompile">
+		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-GameplayBalance.ps1&quot; -Mode Publish" />
+		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\NavigationPipeline\Publish-ServerNavigation.ps1&quot; -Mode Publish" />
+	</Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

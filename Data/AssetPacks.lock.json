@@ -1,0 +1,28 @@
+{
+    "schema":  "lostark.asset-pack-lock",
+    "formatVersion":  1,
+    "resourceRoot":  "Client/Bin/Resources",
+    "allowedTopLevel":  [
+                            "Character",
+                            "Deploy",
+                            "Effect",
+                            "Fonts",
+                            "Map",
+                            "UI"
+                        ],
+    "packs":  [
+                  {
+                      "packId":  "lostark-resources",
+                      "version":  "2026.08.03.1",
+                      "manifest":  "Data/AssetManifests/lostark-resources-2026.08.03.1.manifest.json",
+                      "manifestSha256":  "a0e11cd0b73ccb86b4ecd7ebe9d539f836059c529b26468ca62611e8ca0b654e",
+                      "contentSha256":  "0a8b647da3bb78586a121031e58993199fbd8cf63778a256175a29dccd3edad2",
+                      "fileCount":  7741,
+                      "totalBytes":  3994538522,
+                      "dependencies":  [
+
+                                       ],
+                      "target":  "Client/Bin/Resources"
+                  }
+              ]
+}

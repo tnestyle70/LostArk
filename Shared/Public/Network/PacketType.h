@@ -5,6 +5,22 @@
 
 namespace LostArk::Shared
 {
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 3;
+
+	enum class WORLD_ID : std::uint16_t
+	{
+		BERN = 1,
+		VALTAN_ARENA = 2,
+		END
+	};
+
+	[[nodiscard]]
+	constexpr bool Is_Known_World_Id(const WORLD_ID worldId)
+	{
+		return WORLD_ID::BERN == worldId ||
+			WORLD_ID::VALTAN_ARENA == worldId;
+	}
+
 	enum class CHARACTER_CLASS_ID : std::uint8_t
 	{
 		LANCE_MASTER = 0,
@@ -15,6 +31,15 @@ namespace LostArk::Shared
 		END
 	};
 
+	// A protocol value may be reserved before its runtime bundle exists. Only
+	// classes accepted here may enter a world on the current build.
+	[[nodiscard]]
+	constexpr bool Is_Supported_Playable_Character_Class(
+		const CHARACTER_CLASS_ID characterClass)
+	{
+		return CHARACTER_CLASS_ID::LANCE_MASTER == characterClass;
+	}
+
 	enum class PACKET_TYPE : std::uint16_t
 	{
 		INVALID,
@@ -22,8 +47,10 @@ namespace LostArk::Shared
 		C2S_ENTER_WORLD,
 		S2C_ENTER_ACCEPTED,
 		S2C_PLAYER_SPAWNED,
+		S2C_WORLD_ENTITY_SPAWNED,
 
 		C2S_MOVE,
+		C2S_USE_SKILL,
 		S2C_WORLD_SNAPSHOT,
 
 		C2S_CHAT,
@@ -52,7 +79,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_ENTER_WORLD:
 		case PACKET_TYPE::S2C_ENTER_ACCEPTED:
 		case PACKET_TYPE::S2C_PLAYER_SPAWNED:
+		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
 		case PACKET_TYPE::C2S_MOVE:
+		case PACKET_TYPE::C2S_USE_SKILL:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
 		case PACKET_TYPE::C2S_CHAT:
 		case PACKET_TYPE::S2C_CHAT:

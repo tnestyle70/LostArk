@@ -1,0 +1,52 @@
+{
+  "schema": "lostark.character-catalog",
+  "formatVersion": 1,
+  "characters": [
+    {
+      "archetypeId": "PLAYER_LANCE_MASTER",
+      "networkClassId": "LANCE_MASTER",
+      "assetId": "LanceMaster",
+      "bodyModel": "Character/LanceMaster/LanceMaster.wmodel",
+      "equipmentModels": [
+        "Character/LanceMaster/LanceMaster_Upper.wmodel",
+        "Character/LanceMaster/LanceMaster_Lower.wmodel",
+        "Character/LanceMaster/LanceMaster_Arm.wmodel",
+        "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
+        "Character/LanceMaster/LanceMaster_Helmet.wmodel"
+      ],
+      "weaponModel": "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+      "animationSetId": "ANIM_LANCE_MASTER",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_GUNSLINGER",
+      "networkClassId": "GUNSLINGER",
+      "assetId": "GunSlinger",
+      "bodyModel": "Character/GunSlinger/GunSlinger.wmodel",
+      "equipmentModels": [],
+      "weaponModel": null,
+      "animationSetId": "ANIM_GUNSLINGER",
+      "runtimeStatus": "reserved"
+    },
+    {
+      "archetypeId": "PLAYER_SLAYER",
+      "networkClassId": "SLAYER",
+      "assetId": "Slayer",
+      "bodyModel": "Character/Slayer/Slayer.wmodel",
+      "equipmentModels": [],
+      "weaponModel": null,
+      "animationSetId": "ANIM_SLAYER",
+      "runtimeStatus": "reserved"
+    },
+    {
+      "archetypeId": "PLAYER_ARTIST",
+      "networkClassId": "ARTIST",
+      "assetId": "Artist",
+      "bodyModel": "Character/Artist/Artist.wmodel",
+      "equipmentModels": [],
+      "weaponModel": null,
+      "animationSetId": "ANIM_ARTIST",
+      "runtimeStatus": "reserved"
+    }
+  ]
+}

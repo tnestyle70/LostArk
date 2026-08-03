@@ -813,7 +813,7 @@ unique_ptr<CNavigation> CNavigation::Create(ComPtr<ID3D11Device> pDevice, ComPtr
 
 	if (FAILED(pInstance->Initialize_Prototype(pNavigationDataFiles, pNeighborDataFile)))
 	{
-		MSG_BOX("Failed to Created : CNavigation");
+		OutputDebugStringA("[Engine][Navigation] Create failed.\n");
 		return nullptr;
 	}
 
@@ -831,7 +831,7 @@ unique_ptr<CNavigation> CNavigation::Create_NavGrid(
 	if (FAILED(pInstance->Initialize_NavGrid_Prototype(
 		pNavGridFilePath)))
 	{
-		MSG_BOX("Failed to Created : CNavigation NavGrid");
+		OutputDebugStringA("[Engine][Navigation] NavGrid create failed.\n");
 		return nullptr;
 	}
 
@@ -845,7 +845,7 @@ shared_ptr<CPrototype> CNavigation::Clone(void* pArg)
 
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned: CNavigation");
+		OutputDebugStringA("[Engine][Navigation] Clone failed.\n");
 		return nullptr;
 	}
 

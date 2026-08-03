@@ -20,17 +20,22 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Animation_Tool.h" />
-    <ClInclude Include="..\public\BackGround.h" />
-    <ClInclude Include="..\Public\BinaryAssetObject.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\CharacterCatalog.h" />
+    <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
     <ClInclude Include="..\Public\ClientReplication.h" />
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
-    <ClInclude Include="..\Public\Level_Baren.h" />
-    <ClInclude Include="..\Public\Level_ChaosDungeon.h" />
+	<ClInclude Include="..\Public\CombatHUDViewModel.h" />
+    <ClInclude Include="..\Public\ClientLaunchOptions.h" />
+    <ClInclude Include="..\Public\Level_Bern.h" />
+    <ClInclude Include="..\Public\Level_Development.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
-    <ClInclude Include="..\Public\Level_MainMenu.h" />
+    <ClInclude Include="..\Public\LevelRegistry.h" />
+    <ClInclude Include="..\Public\AnimationTargetService.h" />
+    <ClInclude Include="..\Public\LevelCatalog.h" />
+    <ClInclude Include="..\Public\LobbyCommandService.h" />
+    <ClInclude Include="..\Public\SceneTransitionService.h" />
     <ClInclude Include="..\Public\Level_ValtanArena.h" />
     <ClInclude Include="..\Public\Logic_LanceMaster.h" />
     <ClInclude Include="..\Public\Logic_GunSlinger.h" />
@@ -43,27 +48,22 @@
     <ClInclude Include="..\Public\Part_Equipment.h" />
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
-    <ClInclude Include="..\Public\Body_Player.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
-    <ClInclude Include="..\Public\Effect.h" />
     <ClInclude Include="..\Public\Effect_AssetIO.h" />
     <ClInclude Include="..\Public\Effect_ParticleSimulator.h" />
     <ClInclude Include="..\Public\Effect_ResourceCatalog.h" />
     <ClInclude Include="..\Public\Effect_Runtime.h" />
     <ClInclude Include="..\Public\Effect_Types.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
-    <ClInclude Include="..\public\Explosion.h" />
-    <ClInclude Include="..\Public\ForkLift.h" />
     <ClInclude Include="..\Public\HUDLayoutTool.h" />
-    <ClInclude Include="..\Public\Level_GamePlay.h" />
-    <ClInclude Include="..\Public\Level_AssetTest.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
-    <ClInclude Include="..\public\Level_Logo.h" />
-    <ClInclude Include="..\Public\Level_Test2.h" />
     <ClInclude Include="..\public\Loader.h" />
     <ClInclude Include="..\Public\MainApp.h" />
+    <ClInclude Include="..\Public\PlayerController.h" />
+    <ClInclude Include="..\Public\PlayerCommandSink.h" />
+    <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
     <ClInclude Include="..\Public\MapNavigationContract.h" />
@@ -73,19 +73,16 @@
     <ClInclude Include="..\Public\MapAssetPreview.h" />
     <ClInclude Include="..\Public\MapPlacementDocument.h" />
     <ClInclude Include="..\Public\MapPlacementRuntime.h" />
+    <ClInclude Include="..\Public\MapLoadScope.h" />
     <ClInclude Include="..\Public\MapTool.h" />
+    <ClInclude Include="..\Public\WorldGameplayDocument.h" />
     <ClInclude Include="..\Public\NavGridBaker.h" />
     <ClInclude Include="..\Public\NavGridPaintDocument.h" />
     <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h" />
-    <ClInclude Include="..\Public\Monster.h" />
     <ClInclude Include="..\Public\RuntimeAssetRoot.h" />
-    <ClInclude Include="..\public\Player.h" />
-    <ClInclude Include="..\Public\Sky.h" />
-    <ClInclude Include="..\Public\Snow.h" />
-    <ClInclude Include="..\Public\Terrain.h" />
+    <ClInclude Include="..\Public\ProjectDataRoot.h" />
+    <ClInclude Include="..\Public\DataJson.h" />
     <ClInclude Include="..\Public\Valtan.h" />
-    <ClInclude Include="..\Public\Valtan_Weapon.h" />
-    <ClInclude Include="..\Public\Weapon.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
@@ -93,15 +90,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
-    <ClCompile Include="..\private\BackGround.cpp" />
-    <ClCompile Include="..\Private\BinaryAssetObject.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
+    <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
-    <ClCompile Include="..\Private\Level_Baren.cpp" />
-    <ClCompile Include="..\Private\Level_ChaosDungeon.cpp" />
+	<ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
+    <ClCompile Include="..\Private\ClientLaunchOptions.cpp" />
+    <ClCompile Include="..\Private\Level_Bern.cpp" />
+    <ClCompile Include="..\Private\Level_Development.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />
-    <ClCompile Include="..\Private\Level_MainMenu.cpp" />
+    <ClCompile Include="..\Private\LevelRegistry.cpp" />
+    <ClCompile Include="..\Private\AnimationTargetService.cpp" />
+    <ClCompile Include="..\Private\LevelCatalog.cpp" />
+    <ClCompile Include="..\Private\LobbyCommandService.cpp" />
+    <ClCompile Include="..\Private\SceneTransitionService.cpp" />
     <ClCompile Include="..\Private\Level_ValtanArena.cpp" />
     <ClCompile Include="..\Private\Logic_LanceMaster.cpp" />
     <ClCompile Include="..\Private\Logic_GunSlinger.cpp" />
@@ -114,25 +116,19 @@
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
-    <ClCompile Include="..\Private\Body_Player.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
-    <ClCompile Include="..\Private\Effect.cpp" />
     <ClCompile Include="..\Private\Effect_AssetIO.cpp" />
     <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp" />
     <ClCompile Include="..\Private\Effect_ResourceCatalog.cpp" />
     <ClCompile Include="..\Private\Effect_Runtime.cpp" />
     <ClCompile Include="..\private\Effect_Tool.cpp" />
-    <ClCompile Include="..\private\Explosion.cpp" />
-    <ClCompile Include="..\Private\ForkLift.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
-    <ClCompile Include="..\Private\Level_GamePlay.cpp" />
-    <ClCompile Include="..\Private\Level_AssetTest.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
-    <ClCompile Include="..\private\Level_Logo.cpp" />
-    <ClCompile Include="..\Private\Level_Test2.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
+    <ClCompile Include="..\Private\PlayerController.cpp" />
+    <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
     <ClCompile Include="..\Private\MapNavigationContract.cpp" />
@@ -143,18 +139,14 @@
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
+    <ClCompile Include="..\Private\WorldGameplayDocument.cpp" />
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />
     <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp" />
-    <ClCompile Include="..\Private\Monster.cpp" />
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp" />
+    <ClCompile Include="..\Private\ProjectDataRoot.cpp" />
+    <ClCompile Include="..\Private\DataJson.cpp" />
     <ClCompile Include="..\Private\Valtan.cpp" />
-    <ClCompile Include="..\private\Player.cpp" />
-    <ClCompile Include="..\Private\Sky.cpp" />
-    <ClCompile Include="..\Private\Snow.cpp" />
-    <ClCompile Include="..\Private\Terrain.cpp" />
-    <ClCompile Include="..\Private\Valtan_Weapon.cpp" />
-    <ClCompile Include="..\Private\Weapon.cpp" />
     <ClCompile Include="Client.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -167,8 +159,6 @@
   <ItemGroup>
     <None Include="Client.vcxproj" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectMaterial.hlsli" />
-    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets" />
-    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements" />
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navblockers" />
   </ItemGroup>
@@ -178,18 +168,10 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectSprite.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshPreview.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxNorTex.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="다음에 할꺼.txt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -258,6 +240,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -272,6 +255,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -288,6 +272,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/;../../Shared/Public/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -312,6 +297,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../Public/;../../EngineSDK/Inc/;../../Shared/Public/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+#include <filesystem>
+
 struct ImVec2;
 struct ImDrawCmd;
 struct ImDrawList;
@@ -99,11 +101,11 @@ private:
 	void Add_Class(const string& strName);
 	void Delete_Class(int32_t iIndex);
 
-	void Save(const string& strPath);
-	void Load(const string& strPath);
+	bool_t Save(const filesystem::path& path);
+	bool_t Load(const filesystem::path& path);
 	void Reset_Default();
 
-	const char* Current_Save_Path() const;
+	filesystem::path Current_Save_Path() const;
 	void Switch_Document(int32_t iDocument);
 
 	const string& Current_Class() const;
@@ -158,6 +160,7 @@ private:
 
 	vector<string>		m_TextureAssetPaths;
 	int32_t				m_iLastScannedClass = -1;
+	string				m_strDataStatus;
 
 private:
 	static constexpr float ms_fRefWidth = 1280.f;

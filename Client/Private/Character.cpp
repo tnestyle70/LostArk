@@ -4,6 +4,10 @@
 #include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
+#include "ProjectDataRoot.h"
+
+#include <algorithm>
+#include <cmath>
 
 CCharacter::CCharacter(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -87,8 +91,11 @@ bool_t CCharacter::Load_ClipChains()
 	if (nullptr == m_pSpec->pAssetName)
 		return false;
 
-	const std::string path =
-		std::string("../Bin/DataFiles/Anim/") + m_pSpec->pAssetName + ".clipseq";
+	const std::string assetName = m_pSpec->pAssetName;
+	const std::string path = CProjectDataRoot::Resolve(
+		filesystem::path(L"Animation/Reference") /
+		filesystem::path(assetName) /
+		filesystem::path(assetName + ".clipseq")).string();
 
 	FILE* pFile = nullptr;
 	if (0 != fopen_s(&pFile, path.c_str(), "r") || nullptr == pFile)
@@ -215,14 +222,57 @@ void CCharacter::Update_Chain()
 	{
 		m_pChain = nullptr;
 		m_iChainStep = 0;
+		//judge animation, whether character is moving
 		Set_Animation(
-			m_PathFollower.Has_Path() ?
+			m_isMoving ?
 			CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 			true);
 		return;
 	}
 
 	Start_Clip(m_pChain->clips[m_iChainStep].c_str());
+}
+
+void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
+{
+	if (!m_hasNetworkState ||
+		nullptr == m_pTransformCom)
+	{
+		return;
+	}
+	//current pos
+	const vector_t current =
+		m_pTransformCom->Get_State(STATE::POSITION);
+	//network에서 받은 target pos와의 거리
+	const vector_t target = XMVectorSet(
+		m_vNetworkTargetPosition.x,
+		m_vNetworkTargetPosition.y,
+		m_vNetworkTargetPosition.z,
+		1.f);
+	//current와 target blending
+	const f32_t blend = (std::min)(1.f, 12.f * fTimeDelta);
+
+	vector_t next = XMVectorLerp(
+		current,
+		target,
+		blend);
+
+	const vector_t remaining = target - next;
+
+	if (XMVectorGetX(XMVector3LengthSq(remaining)) < 0.0001f)
+	{
+		next = target;
+	}
+
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSetW(next, 1.f));
+
+	//G3에서는 위치만 보간하고, Yaw는 서버 최신값을 즉시 반영
+	m_pTransformCom->Rotation(
+		0.f,
+		m_fNetworkTargetYawDegrees,
+		0.f);
 }
 
 shared_ptr<CModel> CCharacter::Get_BodyModel() const
@@ -233,6 +283,72 @@ shared_ptr<CModel> CCharacter::Get_BodyModel() const
 void CCharacter::Set_Position(fvector_t vPosition)
 {
 	m_pTransformCom->Set_State(STATE::POSITION, vPosition);
+}
+
+bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees, bool_t isMoving)
+{
+	//client replication이 서버 상태를 character 표현 상태로 전달하는 public 함수이다.
+	//character는 S2C_WORLD_SNAPSHOT을 직접 받지 않는다.
+	//transform 존재 검사 -> position / yaw 유한성 검사 -> network target position 저장
+	//network target yaw 저장 -> m_hasNetworkstate = true -> set locomotion(ismoving)
+	if (nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) ||
+		!std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+	//network state apply!
+	m_hasNetworkState = true;
+	m_vNetworkTargetPosition = position;
+	m_fNetworkTargetYawDegrees = yawDegrees;
+
+	Set_Locomotion(isMoving);
+	return true;
+}
+
+bool_t CCharacter::Apply_NetworkAction(
+	const LostArk::Shared::PLAYER_ACTION_STATE action,
+	const LostArk::Shared::SKILL_ID skillId,
+	const std::uint32_t actionStartTick)
+{
+	using namespace LostArk::Shared;
+	if (static_cast<std::uint8_t>(action) >=
+		static_cast<std::uint8_t>(PLAYER_ACTION_STATE::END))
+	{
+		return false;
+	}
+	if (PLAYER_ACTION_STATE::SKILL == action)
+	{
+		if (INVALID_SKILL_ID == skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		if (!Play_Skill(static_cast<int32_t>(skillId)))
+			return false;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
+	else if (PLAYER_ACTION_STATE::DEAD == action)
+	{
+		m_pChain = nullptr;
+		m_iChainStep = 0;
+		Set_Animation(CHARACTER_ANIM::DEAD, false);
+	}
+	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
+		nullptr != m_pChain)
+	{
+		m_pChain = nullptr;
+		m_iChainStep = 0;
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+	}
+	m_eNetworkAction = action;
+	return true;
 }
 
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
@@ -279,21 +395,31 @@ void CCharacter::Priority_Update(f32_t fTimeDelta)
 
 void CCharacter::Update(f32_t fTimeDelta)
 {
-	m_PathFollower.Update(
-		m_pTransformCom,
-		m_fMoveSpeed,
-		fTimeDelta);
+	//network state -> apply snapshot, !networkstate -> pathfinding
+	if (m_hasNetworkState)
+	{
+		Update_NetworkTransform(fTimeDelta);
+	}
+	else
+	{
+		m_PathFollower.Update(
+			m_pTransformCom,
+			m_fMoveSpeed,
+			fTimeDelta);
 
-	Set_Locomotion(m_PathFollower.Has_Path());
+		Set_Locomotion(m_PathFollower.Has_Path());
+	}
+
+	//Set_Locomotion(m_PathFollower.Has_Path());
 
 	/* A running chain owns the clip until it ends, so it advances before the logic
 	gets a say and Is_PlayingSkill() is already correct when the logic reads it. */
 	Update_Chain();
 
-	/* The logic only decides what the character should be doing; the parts below
-	then move and draw themselves. */
+	/* Class code may only update presentation. Input and gameplay commands are
+	owned by PlayerController and its command sink. */
 	if (m_isLocallyControlled && nullptr != m_pLogic)
-		m_pLogic->Update(*this, fTimeDelta);
+		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
 }
@@ -411,7 +537,7 @@ unique_ptr<CCharacter> CCharacter::Create(ComPtr<ID3D11Device> pDevice,
 	auto pInstance = unique_ptr<CCharacter>(new CCharacter(pDevice, pContext));
 	if (FAILED(pInstance->Initialize_Prototype()))
 	{
-		MSG_BOX("Failed to Created : CCharacter");
+		OutputDebugStringA("[Client][Character] Create failed.\n");
 		return nullptr;
 	}
 	return pInstance;
@@ -422,7 +548,7 @@ shared_ptr<CPrototype> CCharacter::Clone(void* pArg)
 	auto pInstance = shared_ptr<CCharacter>(new CCharacter(*this));
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned : CCharacter");
+		OutputDebugStringA("[Client][Character] Clone failed.\n");
 		return nullptr;
 	}
 	return pInstance;

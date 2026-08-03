@@ -1,0 +1,34 @@
+{
+  "schema": "lostark.player-skills",
+  "formatVersion": 1,
+  "skills": [
+    {
+      "skillId": 34060,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "Q",
+	  "displayName": "열공참",
+      "actionId": "lancemaster.skill.34060",
+      "cooldownMs": 10000,
+      "actionDurationMs": 1800,
+      "hitTimeMs": 1300,
+      "resourceCost": 15,
+      "movementDistance": 0.0,
+      "maximumRange": 8.0,
+      "serverDamageProfileId": "damage.player.34060"
+    },
+    {
+      "skillId": 34100,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "W",
+	  "displayName": "청룡출수",
+      "actionId": "lancemaster.skill.34100",
+      "cooldownMs": 20000,
+      "actionDurationMs": 2400,
+      "hitTimeMs": 1450,
+      "resourceCost": 25,
+      "movementDistance": 2.0,
+      "maximumRange": 6.0,
+      "serverDamageProfileId": "damage.player.34100"
+    }
+  ]
+}

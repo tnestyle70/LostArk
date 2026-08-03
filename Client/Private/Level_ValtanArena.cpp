@@ -1,7 +1,11 @@
 #include "Level_ValtanArena.h"
 
 #include "Camera_Free.h"
+#include "Character.h"
 #include "GameInstance.h"
+#include "LevelCatalog.h"
+#include "NetworkPlayerCommandSink.h"
+#include "Transform.h"
 
 #include <algorithm>
 
@@ -21,8 +25,14 @@ HRESULT CLevel_ValtanArena::Initialize()
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
-	if (!m_MapRuntime.Load_Area(
-		ETOUI(LEVEL::VALTAN_ARENA), "LV_LUT_HEARTRB_ED"))
+	const LEVEL_CATALOG_ENTRY* pEntry =
+		CLevelCatalog::Find(
+			CLIENT_SCENARIO::RAID_VALTAN_ARENA);
+	if (nullptr == pEntry || pEntry->strMapAreaId.empty() ||
+		!m_MapRuntime.Load_Area(
+			ETOUI(LEVEL::VALTAN_ARENA),
+			pEntry->strMapAreaId,
+			pEntry->MapLoadScope))
 	{
 		OutputDebugStringA(("[Level_ValtanArena] " +
 			m_MapRuntime.Get_Status() + "\n").c_str());
@@ -36,12 +46,44 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return E_FAIL;
 	}
 
+	CClientReplication::DESC replicationDesc{};
+	replicationDesc.iPrototypeLevelIndex =
+		ETOUI(LEVEL::VALTAN_ARENA);
+	replicationDesc.iLayerLevelIndex =
+		ETOUI(LEVEL::VALTAN_ARENA);
+	replicationDesc.strPlayerLayerTag =
+		TEXT("Layer_Player");
+	replicationDesc.strWorldEntityLayerTag =
+		TEXT("Layer_WorldEntity");
+	if (!m_Replication.Initialize(replicationDesc))
+	{
+		m_MapRuntime.Clear();
+		return E_FAIL;
+	}
+
+	m_pPlayerCommandSink =
+		make_shared<CNetworkPlayerCommandSink>();
+	m_PlayerController.Set_CommandSink(
+		m_pPlayerCommandSink);
+
 	return S_OK;
 }
 
 void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+
+	if (!m_Replication.Update())
+	{
+		OutputDebugStringA(
+			"[Level_ValtanArena] Failed to apply replication event.\n");
+	}
+
+	Bind_CameraToLocalCharacter();
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	m_PlayerController.Set_LocalCharacter(localCharacter);
+	m_PlayerController.Update();
 }
 
 HRESULT CLevel_ValtanArena::Render()
@@ -97,6 +139,36 @@ HRESULT CLevel_ValtanArena::Ready_Layer_Camera(
 	}
 
 	return S_OK;
+}
+
+bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
+{
+	if (nullptr == m_pCamera)
+		return false;
+
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter)
+	{
+		m_pCameraTarget.reset();
+		m_pCamera->Set_FollowTarget(nullptr);
+		m_pCamera->Set_FollowEnabled(false);
+		return true;
+	}
+	if (m_pCameraTarget.lock() == localCharacter)
+		return true;
+
+	const shared_ptr<CTransform> transform =
+		localCharacter->Get_Transform();
+	if (nullptr == transform)
+		return false;
+
+	m_pCameraTarget = localCharacter;
+	m_pCamera->Set_PositionOffset(
+		float3_t(0.4f, 7.5f, 4.5f));
+	m_pCamera->Set_FollowTarget(transform);
+	m_pCamera->Set_FollowEnabled(true);
+	return true;
 }
 
 unique_ptr<CLevel_ValtanArena> CLevel_ValtanArena::Create(
