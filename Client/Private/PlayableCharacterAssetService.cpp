@@ -19,7 +19,6 @@ namespace
 		const tchar_t* pBody = nullptr;
 		std::array<const tchar_t*, 5> Equipment{};
 		const tchar_t* pWeapon = nullptr;
-		bool_t isLanceMasterWeaponScale = false;
 	};
 
 	std::mutex g_CharacterAssetMutex;
@@ -39,8 +38,7 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet")
 			},
-			TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
-			true
+			TEXT("Prototype_Component_Model_LanceMaster_Weapon")
 		};
 		static const CHARACTER_PROTOTYPE_TAGS GUNSLINGER
 		{
@@ -52,8 +50,7 @@ namespace
 				TEXT("Prototype_Component_Model_GunSlinger_Shoulder"),
 				TEXT("Prototype_Component_Model_GunSlinger_Helmet")
 			},
-			TEXT("Prototype_Component_Model_GunSlinger_Weapon"),
-			false
+			TEXT("Prototype_Component_Model_GunSlinger_Weapon")
 		};
 		static const CHARACTER_PROTOTYPE_TAGS SLAYER
 		{
@@ -65,8 +62,7 @@ namespace
 				TEXT("Prototype_Component_Model_Slayer_Shoulder"),
 				TEXT("Prototype_Component_Model_Slayer_Helmet")
 			},
-			TEXT("Prototype_Component_Model_Slayer_Weapon"),
-			false
+			TEXT("Prototype_Component_Model_Slayer_Weapon")
 		};
 		static const CHARACTER_PROTOTYPE_TAGS ARTIST
 		{
@@ -78,8 +74,7 @@ namespace
 				TEXT("Prototype_Component_Model_Artist_Shoulder"),
 				TEXT("Prototype_Component_Model_Artist_Helmet")
 			},
-			TEXT("Prototype_Component_Model_Artist_Weapon"),
-			false
+			TEXT("Prototype_Component_Model_Artist_Weapon")
 		};
 
 		switch (characterClass)
@@ -147,8 +142,6 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 	const matrix_t characterTransform =
 		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
-	const matrix_t weaponTransform = pTags->isLanceMasterWeaponScale ?
-		XMMatrixScaling(100.f, 100.f, 100.f) : XMMatrixIdentity();
 
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	staged.reserve(2u + pTags->Equipment.size());
@@ -203,7 +196,7 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		pTags->pWeapon,
 		pActor->weaponModel,
 		MODEL::NONANIM,
-		weaponTransform))
+		XMMatrixIdentity()))
 	{
 		return E_FAIL;
 	}
