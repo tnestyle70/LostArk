@@ -165,11 +165,15 @@ python Tools\LevelPlacementExtractor\build_deployprop_runtime.py
 python Tools\LevelPlacementExtractor\build_maptool_scene.py
 ```
 
-현재 생성 결과는 다음과 같다.
+현재 최종 생성 결과는 다음과 같다.
 
 ```text
-Map Catalog v3                  269 = exact 260 + overlay 9
-Map placement                13,103 = exact 13,091 + overlay 12
+Map Catalog v4 base             269 = exact 260 + overlay 9
+Landscape exact                   6
+Final Map Catalog                275
+Map placement base            13,103 = exact 13,091 + overlay 12
+Landscape placement                6
+Final Map placement           13,109
 render profile                  12
 Deploy catalog                   9
 Deploy visual placement         85 = static 77 + skeletal 8
@@ -186,7 +190,7 @@ Deploy visual placement         85 = static 77 + skeletal 8
 - MapTool은 환경 phase(Baseline/SpaceHole/ChaosGate)와 Deploy state
   (Intact/Fractured/Despawned)를 수동 검증할 수 있다. 이 radio는 원작 Trigger timing이 아니다.
 
-Catalog v3의 emissive intensity는 asset별 render profile이 소유한다. crack profile의
+Catalog v4의 emissive intensity는 asset별 render profile이 소유한다. crack profile의
 `0.35`를 모든 맵 자산에 전역 적용하지 않는다. 같은 G-buffer MRT를 쓰는 모든 일반
 writer는 emissive target에 0을 기록해 뒤쪽 발광이 전경을 뚫는 현상을 막는다.
 
@@ -207,4 +211,35 @@ writer는 emissive target에 0을 기록해 뒤쪽 발광이 전경을 뚫는 �
 ```text
 C:/Users/user/Desktop/LostArk/.md/GB/07-30/맵추출파이프라인.md
 C:/Users/user/Desktop/LostArk/Tools/LevelPlacementExtractor/gotchas.md
+```
+
+## 발탄 Landscape 정본 병합
+
+발탄 base 생성 결과는 269 assets / 13,103 placements이고 원본 Landscape는 별도
+6 assets / 6 placements다. base 문서를 다시 생성한 직후 아래 병합을 반드시 실행해
+최종 `LV_LUT_HEARTRB_ED` 단일 문서를 275 / 13,109로 만든다.
+
+Landscape를 reconstruction overlay로 바꾸거나 LFS 문서에 6줄을 손으로 붙이지 않는다.
+병합기는 원본 `transformSource=component`, imported ID, Prototype tag, WModel을 검증하며
+아래 같은 명령을 두 번 실행해도 중복을 만들지 않으며 두 번째 실행 결과도
+275 / 13,109로 유지된다. 최초 통합 receipt는 같은 출력 해시인 동안 덮어쓰지 않아
+269 / 13,103에서 6개를 추가한 provenance도 보존한다. 기존 receipt가 다른 출력 문서를
+가리키면 정본을 쓰기 전에 실패한다. 통합 전 개수는 receipt에 기록하고 최종 개수만
+gate로 둔다.
+
+```powershell
+python Tools\LevelPlacementExtractor\merge_maptool_landscape.py `
+  --area-id LV_LUT_HEARTRB_ED `
+  --base-catalog Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapassets `
+  --base-placements Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapplacements `
+  --landscape-catalog Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED_LANDSCAPE.mapassets `
+  --landscape-placements Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED_LANDSCAPE.mapplacements `
+  --runtime-root Client\Bin\Resources\LostArk `
+  --catalog-output Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapassets `
+  --placement-output Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapplacements `
+  --receipt-output .md\GB\08-02\2026-08-02_VALTAN_LANDSCAPE_CANONICAL_INTEGRATION_RECEIPT.json `
+  --expect-landscape-assets 6 `
+  --expect-landscape-placements 6 `
+  --expect-output-assets 275 `
+  --expect-output-placements 13109
 ```
