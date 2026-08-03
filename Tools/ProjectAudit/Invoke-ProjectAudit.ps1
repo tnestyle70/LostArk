@@ -354,6 +354,18 @@ try {
 	}
 	Add-Check 'maps.sharded-authoring-publish' $mapPublishPassed $mapPublishDetail
 
+	$agentsGuide = Get-Content -LiteralPath 'AGENTS.md' -Raw -Encoding utf8
+	$claudeGuide = Get-Content -LiteralPath 'CLAUDE.md' -Raw -Encoding utf8
+	$teamReadme = Get-Content -LiteralPath '.md\TEAM\README.md' -Raw -Encoding utf8
+	$teamGameplayHandbook = Get-Content -LiteralPath '.md\TEAM\TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md' -Raw -Encoding utf8
+	$verticalSliceContractMarker =
+		'team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions'
+	Add-Check 'team.vertical-slice-ownership' (
+		$agentsGuide.Contains($verticalSliceContractMarker) -and
+		$claudeGuide.Contains($verticalSliceContractMarker) -and
+		$teamReadme.Contains($verticalSliceContractMarker) -and
+		$teamGameplayHandbook.Contains($verticalSliceContractMarker)) 'team roles define authority interfaces while feature owners may implement required Data/Shared/Server/Client/harness slices'
+
     $clientItems = Get-ProjectItems 'Client\Default\Client.vcxproj'
     $engineItems = Get-ProjectItems 'Engine\Default\Engine.vcxproj'
     $serverItems = Get-ProjectItems 'Server\Default\Server.vcxproj'
@@ -473,6 +485,85 @@ try {
 		$lobbySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*void CLevel_Lobby::Render_CharacterSelectPanel' -and
 		$clientEntrySource -match 'CImGuiLayer::HandleWindowMessage' -and
 		$clientEntrySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*if \(CImGuiLayer::HandleWindowMessage') 'Lobby entry UI and ImGui input runtime are compiled in Release'
+	$launchOptionsHeader = Get-Content -LiteralPath 'Client\Public\ClientLaunchOptions.h' -Raw
+	$loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
+	$replicationHeader = Get-Content -LiteralPath 'Client\Public\ClientReplication.h' -Raw
+	$replicationSource = Get-Content -LiteralPath 'Client\Private\ClientReplication.cpp' -Raw
+	$offlinePreviewHeader = Get-Content -LiteralPath 'Client\Public\OfflinePlayerPreview.h' -Raw
+	$offlinePreviewSource = Get-Content -LiteralPath 'Client\Private\OfflinePlayerPreview.cpp' -Raw
+	$bernLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Bern.cpp' -Raw
+	$valtanLevelSource = Get-Content -LiteralPath 'Client\Private\Level_ValtanArena.cpp' -Raw
+	$developmentLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Development.cpp' -Raw
+	$clientProjectText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$clientFilterText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj.filters' -Raw
+	$networkSinkHeader = Get-Content -LiteralPath 'Client\Public\NetworkPlayerCommandSink.h' -Raw
+	$offlineSmokeSource = Get-Content -LiteralPath 'Tools\Build\Invoke-OfflineClientSmoke.ps1' -Raw
+	Add-Check 'levels.offline-stage-entry' (
+		$lobbySource -match 'lobby\.local-preview' -and
+		$lobbySource -match 'Local Preview' -and
+		$lobbySource -match 'Multiplayer' -and
+		$lobbySource -match 'Connect_To_Server\(' -and
+		$lobbySource -notmatch 'Set_OfflinePreview' -and
+		$lobbySource -match 'SetNextWindowViewport\(mainViewport->ID\)' -and
+		$lobbySource -match 'ImGuiWindowFlags_NoSavedSettings' -and
+		$launchOptionsHeader -match 'SelectedCharacterClass' -and
+		$launchOptionsHeader -match 'CLIENT_ENTRY_MODE' -and
+		$launchOptionsHeader -match 'eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW' -and
+		$launchOptionsHeader -match 'strServerHost' -and
+		$launchOptionsHeader -match 'isOfflinePreview' -and
+		$loaderSource -match 'isOfflinePreview' -and
+		$loaderSource -match 'SelectedCharacterClass' -and
+		$replicationHeader -match 'LOCAL_PREVIEW_PLAYER_DESC' -and
+		$replicationHeader -match 'm_LocalPreviewCharacter' -and
+		$replicationSource -match 'Create_Character' -and
+		$replicationSource -match 'Spawn_LocalPreview' -and
+		$offlinePreviewSource -match 'CProjectDataRoot::Resolve' -and
+		$offlinePreviewSource -match 'CWorldGameplayDocument' -and
+		$offlinePreviewSource -match 'WORLD_PLACEMENT_KIND::PLAYER_SPAWN' -and
+		$offlinePreviewSource -match 'placementId <' -and
+		$offlinePreviewSource -notmatch 'S2C_PLAYER_SPAWNED|PLAYER_ID|NET_ENTITY_ID|CNetObjectRegistry' -and
+		$bernLevelSource -match 'COfflinePlayerPreview::Spawn' -and
+		$valtanLevelSource -match 'COfflinePlayerPreview::Spawn' -and
+		$developmentLevelSource -match 'COfflinePlayerPreview::Spawn' -and
+		$clientProjectText -match 'OfflinePlayerPreview\.cpp' -and
+		$clientProjectText -match 'OfflinePlayerPreview\.h' -and
+		$clientFilterText -match 'OfflinePlayerPreview\.cpp[\s\S]{0,80}<Filter>01\. Levels</Filter>' -and
+		$networkSinkHeader -match 'Get_LiveInstanceCount' -and
+		$mainAppSource -match 'Get_LiveInstanceCount\(\)' -and
+		$mainAppSource -match 'networkCommandSinkLiveCount' -and
+		$offlineSmokeSource -match 'networkCommandSinkLiveCount -ne 0' -and
+		$mainAppSource -match 'offline-stage-local-player-and-camera-ready') 'explicit local preview creates a non-network Character from canonical world playerSpawn and validates camera binding and command-sink absence'
+	$networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
+	$serverMainSource = Get-Content -LiteralPath 'Server\Private\Main.cpp' -Raw
+	$tcpListenerSource = Get-Content -LiteralPath 'Server\Private\TcpListener.cpp' -Raw
+	$networkEndpointSmokeSource = Get-Content -LiteralPath 'Tools\Build\Invoke-NetworkEndpointSmoke.ps1' -Raw
+	Add-Check 'network.explicit-mode-and-bind' (
+		$networkManagerSource -match 'Connect_To_Server\(' -and
+		$networkManagerSource -match 'InetPtonA' -and
+		$networkManagerSource -match 'WSAETIMEDOUT' -and
+		$networkManagerSource -match 'Receive_Loop\(const SOCKET serverSocket\)' -and
+		$networkManagerSource -match '::recv\([\s\S]{0,80}serverSocket' -and
+		$networkManagerSource -notmatch '::recv\([\s\S]{0,80}m_hServerSocket' -and
+		$networkManagerSource -match '::closesocket\(socketToClose\)[\s\S]*m_ReceiveThread\.join\(\)' -and
+		$serverMainSource -match '--bind-address' -and
+		$tcpListenerSource -match 'INADDR_ANY' -and
+		$tcpListenerSource -match 'INADDR_LOOPBACK' -and
+		$replicationHeader -match 'Has_PendingConnectionLoss' -and
+		$replicationHeader -match 'Acknowledge_ConnectionLoss' -and
+		$bernLevelSource -match 'network\.connection-lost' -and
+		$valtanLevelSource -match 'network\.connection-lost' -and
+		$developmentLevelSource -match 'network\.connection-lost' -and
+		$mainAppSource -match 'network-disconnect-returned-to-lobby' -and
+		$lobbySource -match 'm_isAwaitingEnterAcceptance' -and
+		$lobbySource -match 'steady_clock::now' -and
+		$lobbySource -match 'seconds\(5\)' -and
+		$mainAppSource -match 'network-enter-approval-timeout-returned-to-lobby' -and
+		$mainAppSource -match 'requestedScenarioId' -and
+		$networkEndpointSmokeSource -match "LocalAddress -eq '0\.0\.0\.0'" -and
+		$networkEndpointSmokeSource -match 'OwningProcess -eq \$Process\.Id' -and
+		$networkEndpointSmokeSource -match 'expect-disconnect-recovery' -and
+		$networkEndpointSmokeSource -match 'expect-enter-approval-timeout' -and
+		$networkEndpointSmokeSource -match 'TcpListener') 'Client selects an IPv4 endpoint explicitly; Server opt-in LAN binding, approval timeout, and disconnect-to-Lobby recovery have executable smoke contracts'
 
     $playerControllerSource = Get-Content -LiteralPath 'Client\Private\PlayerController.cpp' -Raw
     Add-Check 'player.command-sink-boundary' ($playerControllerSource -notmatch 'NetworkManager' -and $playerControllerSource -match 'IPlayerCommandSink') 'PlayerController depends on command sink'

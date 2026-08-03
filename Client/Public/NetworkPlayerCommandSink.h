@@ -2,12 +2,23 @@
 
 #include "PlayerCommandSink.h"
 
+#include <atomic>
+
 namespace Client
 {
 
 class CNetworkPlayerCommandSink final : public IPlayerCommandSink
 {
 public:
+	CNetworkPlayerCommandSink();
+	~CNetworkPlayerCommandSink() override;
+
+	CNetworkPlayerCommandSink(const CNetworkPlayerCommandSink&) = delete;
+	CNetworkPlayerCommandSink& operator=(
+		const CNetworkPlayerCommandSink&) = delete;
+
+	static std::uint32_t Get_LiveInstanceCount();
+
 	bool Request_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
@@ -17,6 +28,9 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ) override;
+
+private:
+	static std::atomic_uint32_t s_iLiveInstanceCount;
 };
 
 }

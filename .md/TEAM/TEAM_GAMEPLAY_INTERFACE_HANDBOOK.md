@@ -19,6 +19,10 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
+Lobby의 Bern/Valtan/Training은 `Local Preview`와 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 canonical `Gameplay.world.json`의 player spawn에 선택 class의 presentation-only Character 하나만 만들고 socket, server ID, registry, command sink, skill/damage/boss authority를 만들지 않는다. Multiplayer는 입력한 서버 IPv4 또는 `localhost`와 port가 연결되고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 Local로 자동 전환하지 않는다.
+
+같은 PC 테스트는 Server 기본 bind `127.0.0.1`을 사용한다. LAN 공동 플레이는 Server를 `--bind-address 0.0.0.0` 또는 특정 사설 IPv4로 실행하고 Client Lobby에 Server PC의 사설 IPv4를 입력한다. 자동 서버 탐색은 현재 범위가 아니다.
+
 ## 2. 팀원이 먼저 읽을 파일
 
 | 담당 | 시작 파일 | 데이터 정본 |
@@ -30,6 +34,34 @@ Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss
 | Boss | `Server/Public/ValtanBrain.h`, `ServerWorldEntity.h` | `Data/Balance/BossProfiles.json`, `Data/Encounters` |
 | Map/Encounter | `Client/Public/MapTool.h`, `WorldGameplayDocument.h` | `Data/Maps/Authoring`, `Data/Worlds`, `Data/Navigation` |
 | 통합/검증 | `AGENTS.md`, `CLAUDE.md` | `Tools/Build`, `Tools/ProjectAudit` |
+
+### 2.1 기능 담당자의 수직 슬라이스 책임
+
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+기능 담당자는 수직 슬라이스의 구현 책임자다. 위 표는 어디서 시작하고 어떤 정본을 읽는지
+알려주는 표이지, 해당 행 밖의 파일을 수정하지 못하게 하는 권한표가 아니다.
+
+```text
+요청 기능
+-> authoring/balance JSON과 stable ID
+-> 필요한 Shared command/snapshot
+-> Server validation·authority·room state
+-> Client replication·presentation·ViewModel
+-> 실제 UI/Character/Map 소비자
+-> protocol/server/client harness와 실패 경로
+```
+
+- Player/Input 기능이 Server 판정을 요구하면 그 작업자가 Shared message와 `GameRoom`/skill
+  system까지 함께 구현한다.
+- Character/Animation 기능이 새 action을 요구하면 balance/action ID, Server 승인 상태,
+  snapshot과 presentation mapping을 함께 닫는다.
+- UI 기능에 새 runtime 값이 필요하면 UI에서 socket을 읽지 않고 Server snapshot과
+  `CCombatHUDViewModel`까지 확장한다.
+- Map/Encounter 기능이 spawn이나 encounter truth를 바꾸면 world authoring, publisher,
+  Server bootstrap/runtime과 Client presentation을 함께 검증한다.
+- 다른 담당자의 미커밋 줄을 덮어쓰거나 public interface를 우회하는 것은 계속 금지한다.
+  필요한 교차 영역 수정 자체는 금지하지 않는다.
 
 ## 3. 플레이어 입력과 스킬
 
@@ -207,6 +239,10 @@ Git commit과 Resource ZIP은 한 쌍의 인계 단위다. commit은 `Data/Asset
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -DeepAssetHash
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release -DeepAssetHash
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Release
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Release
 ```
 
 자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → 제품/개발 smoke → balance/world/navigation validate → ProjectAudit이다.
@@ -217,6 +253,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Server gameplay contract `failures : 0`
 - Debug/Release lobby, Bern, Valtan 제품 smoke 성공
 - Debug/Release `dev.training.ground` 서버 연결 smoke 성공
+- Server 미기동 상태의 Bern, Valtan, Training local preview smoke 성공
 - Debug Development scenario smoke 성공
 - ProjectAudit와 필요한 deep asset hash 성공
 - `git diff --check` 성공

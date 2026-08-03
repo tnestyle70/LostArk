@@ -49,6 +49,8 @@ private:
 	std::chrono::steady_clock::time_point m_SmokeStartTime;
 	CLIENT_SCENARIO m_eSmokeScenario = CLIENT_SCENARIO::FRONT_LOBBY;
 	bool_t m_isSmokeDispatched = false;
+	bool_t m_hasSmokeObservedNetworkStage = false;
+	bool_t m_hasSmokeObservedPendingEnterConnection = false;
 	bool_t m_isSmokeComplete = false;
 	std::unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 
@@ -75,6 +77,7 @@ private:
 	void CompleteSmokeHarness(bool_t succeeded, const char_t* pReason);
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	void RenderOfflinePreviewOverlay();
 
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();

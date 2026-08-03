@@ -213,14 +213,18 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 서버 연결 시나리오다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. Lobby의 `Enter Training`도 Bern/Valtan과 동일하게 서버 승인을 받은 뒤에만 전환한다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 시나리오다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. Lobby의 Bern/Valtan/Training은 ImGui에서 `Local Preview`와 `Multiplayer`를 명시적으로 고르며 기본 선택은 Local이다. Local은 socket을 열지 않고 `Data/Worlds/<AreaId>/Gameplay.world.json`의 placement ID 정렬상 첫 enabled `playerSpawn`에 선택 class의 presentation-only `CCharacter` 하나를 만든다. 이 Character는 `CNetObjectRegistry`와 server ID를 사용하지 않으며 command sink, 이동·스킬·damage·boss authority도 없다. Multiplayer는 입력한 IPv4 또는 `localhost`와 port에 연결하고 서버 승인을 받은 뒤에만 전환한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀하며 Local로 자동 전환하지 않는다.
+
+같은 PC의 Server는 기본 실행 후 Client에 `127.0.0.1:7777`을 입력한다. 같은 LAN의 다른 PC를 받으려면 Server PC에서 `Server.exe --bind-address 0.0.0.0`으로 실행하고, 다른 Client는 그 PC의 사설 IPv4와 `7777`을 입력한다. 특정 interface만 열려면 `0.0.0.0` 대신 해당 사설 IPv4를 사용한다. Windows Firewall inbound 허용은 별도로 필요하다. 자동 LAN 서버 탐색은 현재 계약이 아니며, 필요하면 UDP advertisement/discovery를 별도 protocol과 harness로 추가한다.
 
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
-- smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
+- online smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
+- offline smoke: `Tools/Build/Invoke-OfflineClientSmoke.ps1`이 7777 listener 부재, local Character/class/placement, camera follow, network command sink 0개, Valtan network entity 부재를 확인
+- LAN/disconnect smoke: `Tools/Build/Invoke-NetworkEndpointSmoke.ps1`이 Server PID의 정확한 `0.0.0.0:7777` 소유, 현재 LAN IPv4 실접속, Server 종료 후 Lobby 복귀와 online sink 정리를 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
@@ -312,6 +316,14 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 
 ## 팀 작업 인터페이스
 
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+역할 이름은 시작점과 권위 경계를 나타내며 파일 수정 권한을 제한하지 않는다. 기능 담당자는
+요청된 동작이 실제로 실행되도록 필요한 Data, Shared, Server, Client, UI와 harness를 한 수직
+슬라이스로 연결한다. 예를 들어 Player/Input 담당자가 서버 권위 스킬을 추가한다면 Server 판정과
+snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유로 Client command만 남기지 않는다.
+표의 금지 경계는 다른 폴더를 수정하지 말라는 뜻이 아니라 계층을 우회하지 말라는 뜻이다.
+
 | 담당 | 읽는 계약 | 쓰는 계약 | 금지 경계 |
 |---|---|---|---|
 | UI | layout JSON, `CCombatHUDViewModel` | lobby/scene/gameplay command service | packet/snapshot 파싱, Character 직접 변경 |
@@ -356,7 +368,8 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 - 고장나지 않은 것을 리팩터링하지 않는다.
 - 내 취향과 달라도 주변 스타일에 맞춘다.
 - 관련 없는 죽은 코드를 발견하면 알리기만 하고 지우지 않는다.
-- **다른 팀원이 담당하는 영역(다른 레벨, 다른 오브젝트, 공용 헤더)을 필요 없이 손대지 않는다.** 불가피하면 왜 손댔는지 명시한다.
+- **기능과 무관한 다른 레벨, 오브젝트, 공용 헤더는 손대지 않는다.** 반대로 기능 완성에 필요한
+  Shared/Server/Client/Data 교차 수정은 생략하지 않으며, 변경 이유와 실행 검증을 같은 RESULT에 남긴다.
 - 대량 변경(전체 서식 정리, 인코딩 변환, 파일 이동)은 merge 충돌을 만든다. 요청받은 경우에만 한다.
 
 변경으로 고아가 생겼을 때:

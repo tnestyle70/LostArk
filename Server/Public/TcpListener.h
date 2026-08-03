@@ -1,7 +1,9 @@
 #pragma once
 
 #include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <cstdint>
+#include <string_view>
 //server 플레이어 동기화 
 #include <atomic>
 
@@ -53,7 +55,13 @@ namespace LostArk::Server
 
 	public:
 		//listen socket open
-		bool Open(std::uint16_t port);
+		bool Open(
+			std::string_view bindAddress,
+			std::uint16_t port);
+		bool Open(std::uint16_t port)
+		{
+			return Open("127.0.0.1", port);
+		}
 		
 		//실제 client 받아오기
 		[[nodiscard]]
