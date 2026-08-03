@@ -7,6 +7,7 @@
 #endif
 
 #include "NetworkManager.h"
+#include "NetworkPlayerCommandSink.h"
 #include "ClientLaunchOptions.h"
 #include "MainApp.h"
 #include "GameInstance.h"
@@ -16,8 +17,11 @@
 #include "SceneTransitionService.h"
 #include "Loader.h"
 #include "LevelCatalog.h"
+#include "Camera_Free.h"
 #include "Character.h"
+#include "CharacterCatalog.h"
 #include "CombatHUDViewModel.h"
+#include "OfflinePlayerPreview.h"
 #include "Valtan.h"
 
 #include "Level_Loading.h"
@@ -230,6 +234,7 @@ HRESULT CMainApp::Render()
     if (nullptr != m_pImGuiLayer)
     {
 		RenderCombatHUD();
+		RenderOfflinePreviewOverlay();
 
 #ifdef _DEBUG
         if (m_bDeveloperToolsVisible)
@@ -352,6 +357,51 @@ void CMainApp::RenderCombatHUD()
 				}
 			}
 		}
+	}
+	ImGui::End();
+}
+
+void CMainApp::RenderOfflinePreviewOverlay()
+{
+	const CLIENT_LAUNCH_OPTIONS& options = CClientLaunchOptions::Get();
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isPlayerStageScenario =
+		CLIENT_SCENARIO::WORLD_BERN == options.eScenario ||
+		CLIENT_SCENARIO::RAID_VALTAN_ARENA == options.eScenario ||
+		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == options.eScenario;
+	if (!options.isOfflinePreview ||
+		!isPlayerStageScenario ||
+		ETOUI(LEVEL::LOBBY) == currentLevel ||
+		ETOUI(LEVEL::LOADING) == currentLevel ||
+		COfflinePlayerPreview::Get_ActivePlacementId().empty())
+	{
+		return;
+	}
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::SetNextWindowPos(
+		ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - 20.f,
+			viewport->WorkPos.y + 20.f),
+		ImGuiCond_Always,
+		ImVec2(1.f, 0.f));
+	ImGui::SetNextWindowBgAlpha(0.82f);
+	constexpr ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoFocusOnAppearing |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoInputs;
+	if (ImGui::Begin("##OfflinePreviewStatus", nullptr, flags))
+	{
+		ImGui::TextColored(
+			ImVec4(1.f, 0.72f, 0.18f, 1.f),
+			"LOCAL PREVIEW");
+		ImGui::TextDisabled("Server gameplay is disabled");
+		ImGui::TextDisabled("Spawn: %s",
+			COfflinePlayerPreview::Get_ActivePlacementId().c_str());
 	}
 	ImGui::End();
 }
@@ -485,15 +535,92 @@ void CMainApp::UpdateSmokeHarness()
     default:
         break;
     }
+	const bool_t isPlayerStageScenario =
+		CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
+		CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
+		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario;
 
     if (m_isSmokeDispatched)
     {
+		if (options.isEnterApprovalTimeoutSmoke)
+		{
+			if (ETOUI(LEVEL::LOBBY) != currentLevel)
+				return;
+			if (CNetworkManager::Get().Is_Connected())
+			{
+				m_hasSmokeObservedPendingEnterConnection = true;
+				return;
+			}
+			if (m_hasSmokeObservedPendingEnterConnection)
+			{
+				CompleteSmokeHarness(
+					true,
+					"network-enter-approval-timeout-returned-to-lobby");
+			}
+			return;
+		}
+
+		if (options.isDisconnectRecoverySmoke &&
+			m_hasSmokeObservedNetworkStage &&
+			ETOUI(LEVEL::LOBBY) == currentLevel &&
+			!CNetworkManager::Get().Is_Connected())
+		{
+			CompleteSmokeHarness(
+				true,
+				"network-disconnect-returned-to-lobby");
+			return;
+		}
+
 		if (ETOUI(targetLevel) != currentLevel)
 			return;
 
-		if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
-			CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
-			CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+		if (options.isOfflinePreview && isPlayerStageScenario)
+		{
+			const shared_ptr<CCharacter> localCharacter =
+				dynamic_pointer_cast<CCharacter>(
+					CGameInstance::Get().Get_GameObject(
+						currentLevel,
+						TEXT("Layer_Player"),
+						0));
+			const shared_ptr<CCamera_Free> camera =
+				dynamic_pointer_cast<CCamera_Free>(
+					CGameInstance::Get().Get_GameObject(
+						currentLevel,
+						TEXT("Layer_Camera"),
+						0));
+			if (CNetworkManager::Get().Is_Connected() ||
+				0u != CNetworkPlayerCommandSink::Get_LiveInstanceCount() ||
+				nullptr == localCharacter ||
+				!localCharacter->Is_LocallyControlled() ||
+				!options.SelectedCharacterClass.has_value() ||
+				localCharacter->Get_Spec() !=
+					CCharacterCatalog::Find_Spec(
+						*options.SelectedCharacterClass) ||
+				!COfflinePlayerPreview::Matches_ActiveCharacter(
+					localCharacter) ||
+				COfflinePlayerPreview::Get_ActivePlacementId().empty() ||
+				nullptr == camera ||
+				!camera->Is_FollowEnabled() ||
+				camera->Get_FollowTarget() != localCharacter->Get_Transform())
+			{
+				return;
+			}
+			if (CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario &&
+				nullptr != CGameInstance::Get().Get_GameObject(
+					currentLevel,
+					TEXT("Layer_WorldEntity"),
+					0))
+			{
+				CompleteSmokeHarness(false, "offline-created-network-world-entity");
+				return;
+			}
+			CompleteSmokeHarness(
+				true,
+				"offline-stage-local-player-and-camera-ready");
+			return;
+		}
+
+		if (isPlayerStageScenario)
 		{
 			const shared_ptr<CCharacter> localCharacter =
 				dynamic_pointer_cast<CCharacter>(
@@ -503,6 +630,11 @@ void CMainApp::UpdateSmokeHarness()
 						0));
 			if (nullptr == localCharacter)
 				return;
+			if (options.isDisconnectRecoverySmoke)
+			{
+				m_hasSmokeObservedNetworkStage = true;
+				return;
+			}
 
 			if (CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
 			{
@@ -604,9 +736,7 @@ void CMainApp::UpdateSmokeHarness()
         return;
     }
 
-    if (CLIENT_SCENARIO::WORLD_BERN == m_eSmokeScenario ||
-        CLIENT_SCENARIO::RAID_VALTAN_ARENA == m_eSmokeScenario ||
-        CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == m_eSmokeScenario)
+    if (isPlayerStageScenario)
     {
         LostArk::Shared::WORLD_ID worldId =
             LostArk::Shared::WORLD_ID::END;
@@ -620,7 +750,10 @@ void CMainApp::UpdateSmokeHarness()
             CLobbyCommandService::Request_EnterWorld(
                 0,
                 worldId,
-                "SmokeClient");
+				"SmokeClient",
+				options.eEntryMode,
+				options.strServerHost,
+				options.iServerPort);
     }
     else
     {
@@ -660,6 +793,30 @@ void CMainApp::CompleteSmokeHarness(
     const auto elapsed = std::chrono::duration_cast<
         std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - m_SmokeStartTime);
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	const shared_ptr<CCharacter> localCharacter =
+		dynamic_pointer_cast<CCharacter>(
+			CGameInstance::Get().Get_GameObject(
+				currentLevel,
+				TEXT("Layer_Player"),
+				0));
+	const shared_ptr<CCamera_Free> camera =
+		dynamic_pointer_cast<CCamera_Free>(
+			CGameInstance::Get().Get_GameObject(
+				currentLevel,
+				TEXT("Layer_Camera"),
+				0));
+	const bool_t isCameraFollowReady =
+		nullptr != localCharacter &&
+		nullptr != camera &&
+		camera->Is_FollowEnabled() &&
+		camera->Get_FollowTarget() == localCharacter->Get_Transform();
+	const LEVEL_CATALOG_ENTRY* pRequestedSmokeEntry =
+		CLevelCatalog::Find(m_eSmokeScenario);
+	const std::string requestedSmokeScenarioId =
+		nullptr == pRequestedSmokeEntry ?
+		"unknown" : pRequestedSmokeEntry->strStableId;
 
     if (options.ReportPath.has_value())
     {
@@ -685,15 +842,41 @@ void CMainApp::CompleteSmokeHarness(
                 output
                     << "{\n"
                     << "  \"schema\": \"lostark.client-smoke\",\n"
-                    << "  \"version\": 1,\n"
+                    << "  \"version\": 2,\n"
                     << "  \"scenarioId\": \""
                     << options.strScenarioId << "\",\n"
+					<< "  \"requestedScenarioId\": \""
+					<< requestedSmokeScenarioId << "\",\n"
                     << "  \"status\": \""
                     << (succeeded ? "passed" : "failed") << "\",\n"
                     << "  \"reason\": \""
                     << (nullptr == pReason ? "unknown" : pReason)
                     << "\",\n"
                     << "  \"elapsedMs\": " << elapsed.count() << ",\n"
+					<< "  \"networkConnected\": "
+					<< (CNetworkManager::Get().Is_Connected() ? "true" : "false")
+					<< ",\n"
+					<< "  \"networkCommandSinkLiveCount\": "
+					<< CNetworkPlayerCommandSink::Get_LiveInstanceCount()
+					<< ",\n"
+					<< "  \"selectedCharacterClassId\": ";
+				if (options.SelectedCharacterClass.has_value())
+				{
+					output << static_cast<uint32_t>(
+						*options.SelectedCharacterClass);
+				}
+				else
+				{
+					output << "null";
+				}
+				output
+					<< ",\n"
+					<< "  \"localPreviewPlacementId\": \""
+					<< COfflinePlayerPreview::Get_ActivePlacementId()
+					<< "\",\n"
+					<< "  \"cameraFollowReady\": "
+					<< (isCameraFollowReady ? "true" : "false")
+					<< ",\n"
                     << "  \"currentLevelId\": "
                     << CGameInstance::Get().Get_CurrentLevelID() << ",\n"
                     << "  \"loadingStage\": \""

@@ -44,6 +44,10 @@ public:
 	{
 		return m_bFollowEnabled;
 	}
+	shared_ptr<CTransform> Get_FollowTarget() const
+	{
+		return m_pFollowTarget.lock();
+	}
 	bool_t Is_MouseLookEnabled() const
 	{
 		return m_bMouseLookEnabled;

@@ -2,6 +2,25 @@
 
 #include "NetworkManager.h"
 
+std::atomic_uint32_t
+	Client::CNetworkPlayerCommandSink::s_iLiveInstanceCount = 0u;
+
+Client::CNetworkPlayerCommandSink::CNetworkPlayerCommandSink()
+{
+	++s_iLiveInstanceCount;
+}
+
+Client::CNetworkPlayerCommandSink::~CNetworkPlayerCommandSink()
+{
+	--s_iLiveInstanceCount;
+}
+
+std::uint32_t
+Client::CNetworkPlayerCommandSink::Get_LiveInstanceCount()
+{
+	return s_iLiveInstanceCount.load();
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_MoveGoal(
 	std::uint32_t clientSequence,
 	float goalX,

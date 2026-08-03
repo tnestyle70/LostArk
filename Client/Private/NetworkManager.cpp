@@ -83,7 +83,9 @@ void CNetworkManager::Update()
 	}
 }
 
-bool CNetworkManager::Connect_To_Server(std::uint16_t port)
+bool CNetworkManager::Connect_To_Server(
+	const std::string_view host,
+	const std::uint16_t port)
 {
 	if (!m_isWinSocketInitialized)
 	{
@@ -93,6 +95,11 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	if (Is_Connected())
 		return true;
+	if (host.empty() || host.size() > 63u || 0u == port)
+	{
+		m_iLastErrorCode = WSAEINVAL;
+		return false;
+	}
 
 	// 상대가 먼저 연결을 닫으면 Receive Thread는 끝났어도 joinable 상태일 수 있다.
 	// 새 Socket과 Thread를 만들기 전에 이전 연결 자원을 완전히 회수한다.
@@ -111,13 +118,92 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	sockaddr_in serverAddress{};
 	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+	const std::string hostText{ host };
+	if ("localhost" == hostText)
+	{
+		serverAddress.sin_addr.s_addr = ::htonl(INADDR_LOOPBACK);
+	}
+	else if (1 != ::InetPtonA(
+		AF_INET,
+		hostText.c_str(),
+		&serverAddress.sin_addr))
+	{
+		m_iLastErrorCode = WSAEINVAL;
+		Close_ServerConnection();
+		return false;
+	}
 	serverAddress.sin_port = ::htons(port);
 
-	if (SOCKET_ERROR == ::connect(
+	u_long nonBlocking = 1;
+	if (SOCKET_ERROR == ::ioctlsocket(
+		m_hServerSocket,
+		FIONBIO,
+		&nonBlocking))
+	{
+		m_iLastErrorCode = ::WSAGetLastError();
+		Close_ServerConnection();
+		return false;
+	}
+
+	const int connectResult = ::connect(
 		m_hServerSocket,
 		reinterpret_cast<const sockaddr*>(&serverAddress),
-		sizeof(serverAddress)))
+		sizeof(serverAddress));
+	if (SOCKET_ERROR == connectResult)
+	{
+		const int connectError = ::WSAGetLastError();
+		if (WSAEWOULDBLOCK != connectError)
+		{
+			m_iLastErrorCode = connectError;
+			Close_ServerConnection();
+			return false;
+		}
+
+		fd_set writableSockets;
+		FD_ZERO(&writableSockets);
+		FD_SET(m_hServerSocket, &writableSockets);
+		fd_set errorSockets;
+		FD_ZERO(&errorSockets);
+		FD_SET(m_hServerSocket, &errorSockets);
+		timeval timeout{};
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 500000;
+		const int selectResult = ::select(
+			0,
+			nullptr,
+			&writableSockets,
+			&errorSockets,
+			&timeout);
+		if (selectResult <= 0)
+		{
+			m_iLastErrorCode = 0 == selectResult ?
+				WSAETIMEDOUT : ::WSAGetLastError();
+			Close_ServerConnection();
+			return false;
+		}
+
+		int socketError = 0;
+		int socketErrorSize = sizeof(socketError);
+		if (SOCKET_ERROR == ::getsockopt(
+			m_hServerSocket,
+			SOL_SOCKET,
+			SO_ERROR,
+			reinterpret_cast<char*>(&socketError),
+			&socketErrorSize) ||
+			0 != socketError)
+		{
+			m_iLastErrorCode = 0 != socketError ?
+				socketError : ::WSAGetLastError();
+			Close_ServerConnection();
+			return false;
+		}
+	}
+
+	nonBlocking = 0;
+	if (SOCKET_ERROR == ::ioctlsocket(
+		m_hServerSocket,
+		FIONBIO,
+		&nonBlocking))
 	{
 		m_iLastErrorCode = ::WSAGetLastError();
 		Close_ServerConnection();
@@ -126,31 +212,20 @@ bool CNetworkManager::Connect_To_Server(std::uint16_t port)
 
 	m_StreamParser.Reset();
 	m_ReplicationEvents.clear();
-
 	m_hasPendingEnterAccepted = false;
-
 	m_PendingEnterAccepted = {};
-
-	m_iLocalPlayerId =
-		LostArk::Shared::INVALID_PLAYER_ID;
-
-	m_iLocalNetEntityId =
-		LostArk::Shared::INVALID_NET_ENTITY_ID;
+	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
+	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
-	m_eLocalCharacterClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	// Receive Worker와 Main Thread가 함께 접근하므로 atomic store를 사용한다.
+	m_eLocalCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 	m_iLastErrorCode.store(0);
-
 	m_isReceiveRunning.store(true);
-
 	m_ReceiveThread = std::thread(
 		&CNetworkManager::Receive_Loop,
-		this);
-
+		this,
+		m_hServerSocket);
 	return true;
 }
-
 bool CNetworkManager::Send_EnterWorld(
 	LostArk::Shared::WORLD_ID worldId,
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass,
@@ -271,18 +346,17 @@ bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EV
 void CNetworkManager::Close_ServerConnection()
 {
 	m_isReceiveRunning.store(false);
+	const SOCKET socketToClose = m_hServerSocket;
+	m_hServerSocket = INVALID_SOCKET;
 
-	if (INVALID_SOCKET != m_hServerSocket)
-		::shutdown(m_hServerSocket, SD_BOTH);
+	if (INVALID_SOCKET != socketToClose)
+	{
+		::shutdown(socketToClose, SD_BOTH);
+		::closesocket(socketToClose);
+	}
 
 	if (m_ReceiveThread.joinable())
 		m_ReceiveThread.join();
-
-	if (INVALID_SOCKET != m_hServerSocket)
-	{
-		::closesocket(m_hServerSocket);
-		m_hServerSocket = INVALID_SOCKET;
-	}
 
 	{
 		std::scoped_lock lock{ m_InboundMutex };
@@ -328,7 +402,7 @@ CNetworkManager::Get_LocalCharacterClass() const
 	return m_eLocalCharacterClass;
 }
 
-void CNetworkManager::Receive_Loop()
+void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 {
 	//recv()로 server가 보낸 바이트를 받는다
 	//받은 바이트를 PacketStreamParser에 추가한다.
@@ -343,7 +417,7 @@ void CNetworkManager::Receive_Loop()
 	{
 		//serversocket에 있는 data recv로 읽기
 		const int receiveByteCount = ::recv(
-			m_hServerSocket,
+			serverSocket,
 			reinterpret_cast<char*>(
 				receiveBuffer.data()),
 			static_cast<int>(

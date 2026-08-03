@@ -88,6 +88,8 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 ## 고정 런타임 계약
 
 - Client 시작 씬은 항상 `LOBBY`다. 실제 실행 시나리오는 `Data/Levels/LevelCatalog.json`의 stable ID로 선택한다.
+- Lobby의 Bern/Valtan/Training 진입은 ImGui에서 `Local Preview` 또는 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 socket을 열지 않고 `Gameplay.world.json`의 첫 enabled `playerSpawn`에 선택 class의 presentation-only `CCharacter` 하나를 만들지만 player/net entity ID, registry, command sink, skill/damage/boss authority는 만들지 않는다. Multiplayer는 입력한 IPv4/localhost와 port에 연결해 기존 `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 승인 전환만 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 스테이지 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀하며 어느 경우에도 Local로 자동 우회하지 않는다.
+- Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용하며, 개인 IP·방화벽 설정·탐색 결과를 Git 데이터에 저장하지 않는다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 catalog, registry, loader, smoke 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `mapLoadBounds`로 선언한 진입/전투 범위와 배경만 로드한다. `dev.map.active`만 전체 맵을 열 수 있다. Loader와 runtime placement는 반드시 같은 `MAP_LOAD_SCOPE`를 소비한다.
@@ -100,6 +102,23 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - MapTool은 `Data/Maps/Authoring`에 저장한다. 검증/publish 도구만 `Client/Bin/DataFiles/Map` 런타임 문서를 교체할 수 있다.
 
 ## 팀 인터페이스와 담당 영역
+
+### 기능 단위 작업 모델
+
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+- 아래 담당 표는 파일 수정 권한표가 아니다. 담당 이름은 작업 시작점, 데이터 정본, 런타임
+  권위와 우회하면 안 되는 public interface를 설명한다.
+- 기능 담당자는 요청받은 기능의 수직 슬라이스를 끝까지 구현한다. 기능에 Server authority가
+  필요하면 `Data -> Shared -> Server -> Client presentation/UI -> harness`의 필요한 파일을
+  같은 변경 단위에서 직접 수정한다. Server 폴더가 다른 담당으로 표시됐다는 이유로 Client
+  mock, 로컬 우회, 문서만 남기고 중단하지 않는다.
+- 교차 영역 수정은 범위 확장이 아니라 기능 완성에 필요한 계약 연결이다. 다만 UI가 socket을
+  직접 호출하거나 Character가 damage를 판정하는 등 아래 금지 경계를 우회해서는 안 된다.
+- 같은 파일에 다른 팀원의 미커밋 변경이 있으면 덮어쓰지 않고 먼저 현재 diff를 보존·조정한다.
+  역할 분리는 merge 충돌을 줄이는 기준이지, 필요한 서버·클라이언트 구현을 금지하는 장벽이 아니다.
+- 완료 기준은 한쪽 구현이 아니라 실제 소비자가 연결된 실행 계약이다. 새 command/state/data를
+  추가했다면 관련 publisher, protocol/server contract, Client smoke와 실패 경로까지 함께 검증한다.
 
 - UI 담당자는 `CLobbyCommandService`와 `CSceneTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
 - 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. 현재 Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다.

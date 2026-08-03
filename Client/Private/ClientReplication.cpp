@@ -64,6 +64,7 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 
 	m_Desc = desc;
 	m_isInitialized = true;
+	m_hasPendingConnectionLoss = false;
 	m_wasConnected =
 		CNetworkManager::Get().Is_Connected();
 
@@ -86,8 +87,11 @@ bool Client::CClientReplication::Update()
 	//남아 있는 event queue 비우기 -> 이전 서버의 spawn이 재접속 후 적용되지 않게 함
 	if (!isConnected)
 	{
-		if(m_wasConnected)
+		if (m_wasConnected)
+		{
 			Reset_World();
+			m_hasPendingConnectionLoss = true;
+		}
 
 		CLIENT_REPLICATION_EVENT ignored{};
 		while (networkManager.Try_Consume_ReplicationEvent(ignored))
@@ -134,9 +138,126 @@ bool Client::CClientReplication::Update()
 	return allSucceeded;
 }
 
+bool Client::CClientReplication::Has_PendingConnectionLoss() const
+{
+	return m_hasPendingConnectionLoss;
+}
+
+void Client::CClientReplication::Acknowledge_ConnectionLoss()
+{
+	m_hasPendingConnectionLoss = false;
+}
+
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
-	return m_Registry.Resolve(m_LocalCharacterHandle);
+	const std::shared_ptr<CCharacter> networkCharacter =
+		m_Registry.Resolve(m_LocalCharacterHandle);
+	return nullptr != networkCharacter ?
+		networkCharacter : m_LocalPreviewCharacter.lock();
+}
+
+bool Client::CClientReplication::Spawn_LocalPreview(
+	const LOCAL_PREVIEW_PLAYER_DESC& desc)
+{
+	if (!m_isInitialized ||
+		CNetworkManager::Get().Is_Connected() ||
+		!m_LocalPreviewCharacter.expired() ||
+		desc.strPlacementId.empty() ||
+		!LostArk::Shared::Is_Supported_Playable_Character_Class(
+			desc.eCharacterClass))
+	{
+		return false;
+	}
+
+	std::shared_ptr<CCharacter> character;
+	if (!Create_Character(
+		desc.eCharacterClass,
+		desc.strNickName,
+		desc.vPosition,
+		desc.fYawDegrees,
+		true,
+		character))
+	{
+		return false;
+	}
+
+	m_LocalPreviewCharacter = character;
+	m_strLocalPreviewPlacementId = desc.strPlacementId;
+	return true;
+}
+
+bool Client::CClientReplication::Is_LocalPreviewCharacter(
+	const std::shared_ptr<CCharacter>& character) const
+{
+	return nullptr != character &&
+		m_LocalPreviewCharacter.lock() == character;
+}
+
+const std::string&
+Client::CClientReplication::Get_LocalPreviewPlacementId() const
+{
+	return m_strLocalPreviewPlacementId;
+}
+
+bool Client::CClientReplication::Create_Character(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+	const std::string_view nickName,
+	const float3_t& position,
+	const f32_t yawDegrees,
+	const bool_t isLocallyControlled,
+	std::shared_ptr<CCharacter>& outCharacter)
+{
+	outCharacter.reset();
+	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		m_Desc.pDevice,
+		m_Desc.pContext,
+		m_Desc.iPrototypeLevelIndex,
+		characterClass)))
+	{
+		return false;
+	}
+
+	const CHARACTER_SPEC* spec =
+		CCharacterCatalog::Find_Spec(characterClass);
+	if (nullptr == spec)
+		return false;
+
+	CCharacter::CHARACTER_DESC desc{};
+	desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+	desc.pSpec = spec;
+	desc.pNavigationPrototypeTag = nullptr;
+	desc.fSpeedPerSec = 6.f;
+	desc.fRotationPerSec = 180.f;
+	desc.vPosition = position;
+	desc.strNickName = nickName;
+	desc.isLocallyControlled = isLocallyControlled;
+
+	std::shared_ptr<CGameObject> gameObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		m_Desc.iPrototypeLevelIndex,
+		TEXT("Prototype_GameObject_Character"),
+		m_Desc.iLayerLevelIndex,
+		m_Desc.strPlayerLayerTag,
+		&desc,
+		&gameObject)))
+	{
+		return false;
+	}
+
+	const std::shared_ptr<CCharacter> character =
+		std::dynamic_pointer_cast<CCharacter>(gameObject);
+	if (nullptr == character || nullptr == character->Get_Transform())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strPlayerLayerTag,
+			gameObject);
+		return false;
+	}
+
+	character->Get_Transform()->Rotation(0.f, yawDegrees, 0.f);
+	outCharacter = character;
+	return true;
 }
 
 bool Client::CClientReplication::Apply_Spawn(
@@ -160,67 +281,23 @@ bool Client::CClientReplication::Apply_Spawn(
 		return Is_Same_Record(*existing, stagedRecord);
 	}
 
-	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-		m_Desc.pDevice,
-		m_Desc.pContext,
-		m_Desc.iPrototypeLevelIndex,
-		spawned.eCharacterClass)))
-	{
-		return false;
-	}
-
-	const CHARACTER_SPEC* spec =
-		CCharacterCatalog::Find_Spec(spawned.eCharacterClass);
-
-	if (nullptr == spec)
-		return false;
-
-	CCharacter::CHARACTER_DESC desc{};
-	desc.iPrototypeLevelIndex =
-		m_Desc.iPrototypeLevelIndex;
-	desc.pSpec = spec;
-	desc.pNavigationPrototypeTag = nullptr;
-	desc.fSpeedPerSec = 6.f;
-	desc.fRotationPerSec = 180.f;
-	desc.vPosition = float3_t(
-		spawned.fPositionX,
-		spawned.fPositionY,
-		spawned.fPositionZ);
-	desc.strNickName = spawned.strNickName;
-	desc.isLocallyControlled =
+	const bool_t isLocallyControlled =
 		spawned.iPlayerId ==
 		CNetworkManager::Get().Get_LocalPlayerId();
-
-	std::shared_ptr<CGameObject> gameObject;
-
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		m_Desc.iPrototypeLevelIndex,
-		TEXT("Prototype_GameObject_Character"),
-		m_Desc.iLayerLevelIndex,
-		m_Desc.strPlayerLayerTag,
-		&desc,
-		&gameObject)))
-	{
-		return false;
-	}
-
-	const std::shared_ptr<CCharacter> character =
-		std::dynamic_pointer_cast<CCharacter>(gameObject);
-
-	if (nullptr == character ||
-		nullptr == character->Get_Transform())
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strPlayerLayerTag,
-			gameObject);
-		return false;
-	}
-
-	character->Get_Transform()->Rotation(
-		0.f,
+	std::shared_ptr<CCharacter> character;
+	if (!Create_Character(
+		spawned.eCharacterClass,
+		spawned.strNickName,
+		float3_t(
+			spawned.fPositionX,
+			spawned.fPositionY,
+			spawned.fPositionZ),
 		spawned.fYawDegrees,
-		0.f);
+		isLocallyControlled,
+		character))
+	{
+		return false;
+	}
 
 	OBJECT_HANDLE handle{};
 
@@ -232,11 +309,11 @@ bool Client::CClientReplication::Apply_Spawn(
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strPlayerLayerTag,
-			gameObject);
+			character);
 		return false;
 	}
 
-	if (desc.isLocallyControlled)
+	if (isLocallyControlled)
 		m_LocalCharacterHandle = handle;
 
 	return true;
@@ -497,6 +574,16 @@ void Client::CClientReplication::Reset_World()
 	m_WorldEntities.clear();
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
+	if (const std::shared_ptr<CCharacter> preview =
+		m_LocalPreviewCharacter.lock())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strPlayerLayerTag,
+			preview);
+	}
+	m_LocalPreviewCharacter.reset();
+	m_strLocalPreviewPlacementId.clear();
 	m_iLastServerTick = 0;
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 }

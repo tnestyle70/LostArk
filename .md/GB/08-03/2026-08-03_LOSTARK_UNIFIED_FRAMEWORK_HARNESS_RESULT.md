@@ -422,3 +422,21 @@ Lobby는 Lance Master, Gunslinger, Slayer, Artist 네 slot을 모두 표시하�
 - Lance Master stance는 Shared command → Server approval → snapshot 계약을 별도 수직 슬라이스로 추가하기 전까지 활성화하지 않는다.
 
 통합 HEAD에서 Debug/Release 전체 자동화를 다시 실행했다. 두 구성 모두 Engine/UpdateLib/Shared/Server/Client 빌드, Protocol Harness와 Server Gameplay Contract failures 0, Bern/Valtan, 네 클래스 Training smoke를 통과했다. Debug는 Development tool smoke까지 통과했고 Release는 도구 미배포 계약에 따라 skip했다. 최종 Deep ProjectAudit는 58/58이다.
+
+## 21. 담당 영역 하네스의 수직 기능 책임 교정
+
+기존 담당 표와 “다른 담당 영역을 필요 없이 수정하지 않는다”는 규칙은 merge 충돌과 계층 우회를
+막기 위한 것이었지만, AI agent가 이를 배타적 파일 권한으로 해석하면 Client command만 만들고
+Server authority 구현을 남기는 반쪽 기능이 생길 수 있었다.
+
+현재 규칙은 다음과 같이 교정했다.
+
+- 역할은 작업 시작점, 데이터 정본, authority와 public interface를 나타낸다.
+- 기능 담당자는 필요한 Data, Shared, Server, Client, UI와 harness를 한 수직 슬라이스로 구현한다.
+- 서버 판정이 필요한 기능에서 Server 파일 수정은 범위 위반이 아니라 완료 조건이다.
+- UI의 socket 직접 호출, Character의 damage 자체 판정처럼 계층을 우회하는 구현은 계속 금지한다.
+- 다른 팀원의 미커밋 변경을 덮어쓰지 않는 Git 안전 경계도 그대로 유지한다.
+
+`ProjectAudit`의 `team.vertical-slice-ownership` 검사가 `AGENTS.md`, `CLAUDE.md`, 팀 README와
+인터페이스 핸드북에 이 의미가 함께 박제되어 있는지 확인한다. 교정 후 ProjectAudit는 60/60으로
+통과했다.

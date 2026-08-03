@@ -11,6 +11,13 @@
 5. 밸런스 튜닝과 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
 6. 최근 통합 검증 증거: `../GB/08-03/2026-08-03_LOSTARK_UNIFIED_FRAMEWORK_HARNESS_RESULT.md`
 
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+담당 표는 배타적 파일 소유권 목록이 아니다. 팀원이나 AI agent는 자기 기능의 시작 인터페이스를
+찾은 뒤, 그 기능에 필요한 Data/Shared/Server/Client/UI/harness를 수직으로 연결해 완료한다.
+세부 금지 경계는 계층 우회를 막기 위한 것이며, Server 반영이 필요한 기능에서 Server 파일 수정을
+막기 위한 규칙이 아니다.
+
 ## 문서 소유권
 
 | 문서 | 바꿀 때 |

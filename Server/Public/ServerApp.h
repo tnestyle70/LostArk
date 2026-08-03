@@ -25,6 +25,7 @@
 #include <deque>
 #include <map>
 #include <cstdint>
+#include <string_view>
 
 // CServerApp은 서버 전체의 시작, 실행, 종료를 조율하는 최상위 객체다.
 // WinSock/Listener 수명, Accept Thread, Room Thread, ClientSession 집합을 소유한다.
@@ -43,7 +44,9 @@ namespace LostArk::Server
 		//socket과 thread를 정리
 		~CServerApp();
 		//서버의 진입점
-		int Run(std::uint32_t automaticShutdownMilliseconds = 0);
+		int Run(
+			std::uint32_t automaticShutdownMilliseconds = 0,
+			std::string_view bindAddress = "127.0.0.1");
 
 	private:
 		//접속을 계속 받아 새로운 session을 생성

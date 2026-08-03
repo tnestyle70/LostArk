@@ -1,7 +1,9 @@
 #include "ClientLaunchOptions.h"
 #include "LevelCatalog.h"
 
+#include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <shellapi.h>
 
 #pragma comment(lib, "Shell32.lib")
@@ -95,6 +97,21 @@ namespace
 		else
 			return false;
 		return true;
+	}
+
+	bool_t IsValidServerHost(const std::string_view host)
+	{
+		if (host.empty() || host.size() > 63u)
+			return false;
+
+		return std::all_of(
+			host.begin(),
+			host.end(),
+			[](const char_t value)
+			{
+				return std::isalnum(static_cast<unsigned char>(value)) ||
+					'.' == value || '-' == value;
+			});
 	}
 }
 
@@ -194,6 +211,46 @@ bool_t CClientLaunchOptions::Select_RuntimeScenario(
 	return true;
 }
 
+bool_t CClientLaunchOptions::Select_RuntimeCharacterClass(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+		characterClass))
+	{
+		return false;
+	}
+
+	g_Options.SelectedCharacterClass = characterClass;
+	return true;
+}
+
+bool_t CClientLaunchOptions::Select_RuntimeEntryMode(
+	const CLIENT_ENTRY_MODE eEntryMode)
+{
+	if (CLIENT_ENTRY_MODE::LOCAL_PREVIEW != eEntryMode &&
+		CLIENT_ENTRY_MODE::MULTIPLAYER != eEntryMode)
+	{
+		return false;
+	}
+
+	g_Options.eEntryMode = eEntryMode;
+	g_Options.isOfflinePreview =
+		CLIENT_ENTRY_MODE::LOCAL_PREVIEW == eEntryMode;
+	return true;
+}
+
+bool_t CClientLaunchOptions::Set_RuntimeServerEndpoint(
+	const std::string_view host,
+	const uint16_t port)
+{
+	if (!IsValidServerHost(host) || 0u == port)
+		return false;
+
+	g_Options.strServerHost = host;
+	g_Options.iServerPort = port;
+	return true;
+}
+
 bool_t CClientLaunchOptions::Parse(
 	const int32_t argumentCount,
 	wchar_t** ppArguments,
@@ -204,6 +261,9 @@ bool_t CClientLaunchOptions::Parse(
 	bool_t hasTimeout = false;
 	bool_t hasReport = false;
 	bool_t hasCharacterClass = false;
+	bool_t hasEntryMode = false;
+	bool_t hasServerHost = false;
+	bool_t hasServerPort = false;
 
 	for (int32_t index = 1; index < argumentCount; ++index)
 	{
@@ -232,6 +292,81 @@ bool_t CClientLaunchOptions::Parse(
 			outOptions.isSmokeRun = true;
 			continue;
 		}
+		if (L"--expect-disconnect-recovery" == argument)
+		{
+			outOptions.isDisconnectRecoverySmoke = true;
+			continue;
+		}
+		if (L"--expect-enter-approval-timeout" == argument)
+		{
+			outOptions.isEnterApprovalTimeoutSmoke = true;
+			continue;
+		}
+		if (StartsWith(argument, L"--entry-mode="))
+		{
+			if (hasEntryMode)
+			{
+				outError = L"--entry-mode may be specified only once.";
+				return false;
+			}
+			const std::wstring value = argument.substr(
+				std::wstring(L"--entry-mode=").size());
+			if (L"local" == value)
+			{
+				outOptions.eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW;
+				outOptions.isOfflinePreview = true;
+			}
+			else if (L"multiplayer" == value)
+			{
+				outOptions.eEntryMode = CLIENT_ENTRY_MODE::MULTIPLAYER;
+				outOptions.isOfflinePreview = false;
+			}
+			else
+			{
+				outError = L"--entry-mode must be local or multiplayer.";
+				return false;
+			}
+			hasEntryMode = true;
+			continue;
+		}
+		if (StartsWith(argument, L"--server-host="))
+		{
+			if (hasServerHost)
+			{
+				outError = L"--server-host may be specified only once.";
+				return false;
+			}
+			std::string host;
+			const std::wstring value = argument.substr(
+				std::wstring(L"--server-host=").size());
+			if (!TryNarrowStableId(value, host) || !IsValidServerHost(host))
+			{
+				outError = L"--server-host is invalid.";
+				return false;
+			}
+			outOptions.strServerHost = std::move(host);
+			hasServerHost = true;
+			continue;
+		}
+		if (StartsWith(argument, L"--server-port="))
+		{
+			if (hasServerPort)
+			{
+				outError = L"--server-port may be specified only once.";
+				return false;
+			}
+			uint32_t port = {};
+			const std::wstring value = argument.substr(
+				std::wstring(L"--server-port=").size());
+			if (!ParseUnsigned(value, port) || 0u == port || port > UINT16_MAX)
+			{
+				outError = L"--server-port must be between 1 and 65535.";
+				return false;
+			}
+			outOptions.iServerPort = static_cast<uint16_t>(port);
+			hasServerPort = true;
+			continue;
+		}
 		if (StartsWith(argument, L"--character-class="))
 		{
 			if (hasCharacterClass)
@@ -248,7 +383,7 @@ bool_t CClientLaunchOptions::Parse(
 				outError = L"Unknown character class: " + value;
 				return false;
 			}
-			outOptions.AutomatedCharacterClass = characterClass;
+			outOptions.SelectedCharacterClass = characterClass;
 			hasCharacterClass = true;
 			continue;
 		}

@@ -13,12 +13,19 @@ namespace
 bool_t Client::CLobbyCommandService::Request_EnterWorld(
 	const int32_t iCharacterSlot,
 	const LostArk::Shared::WORLD_ID eWorldId,
-	const std::string_view nickName)
+	const std::string_view nickName,
+	const CLIENT_ENTRY_MODE eEntryMode,
+	const std::string_view serverHost,
+	const std::uint16_t serverPort)
 {
 	if (iCharacterSlot < 0 ||
 		!LostArk::Shared::Is_Known_World_Id(eWorldId) ||
+		(CLIENT_ENTRY_MODE::LOCAL_PREVIEW != eEntryMode &&
+		 CLIENT_ENTRY_MODE::MULTIPLAYER != eEntryMode) ||
 		nickName.empty() ||
-		nickName.size() > LostArk::Shared::MAX_NICKNAME_BYTES)
+		nickName.size() > LostArk::Shared::MAX_NICKNAME_BYTES ||
+		(CLIENT_ENTRY_MODE::MULTIPLAYER == eEntryMode &&
+		 (serverHost.empty() || serverHost.size() > 63u || 0u == serverPort)))
 	{
 		g_Status = "Rejected invalid lobby enter command.";
 		return false;
@@ -34,7 +41,10 @@ bool_t Client::CLobbyCommandService::Request_EnterWorld(
 	g_PendingCommand = LOBBY_ENTER_COMMAND{
 		iCharacterSlot,
 		eWorldId,
-		std::string{ nickName }
+		eEntryMode,
+		std::string{ nickName },
+		std::string{ serverHost },
+		serverPort
 	};
 	g_Status = "Lobby enter command staged.";
 	return true;

@@ -2,9 +2,12 @@
 
 #include "Camera_Free.h"
 #include "Character.h"
+#include "ClientLaunchOptions.h"
 #include "GameInstance.h"
 #include "LevelCatalog.h"
 #include "NetworkPlayerCommandSink.h"
+#include "OfflinePlayerPreview.h"
+#include "SceneTransitionService.h"
 #include "Transform.h"
 
 #include <algorithm>
@@ -63,10 +66,27 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return E_FAIL;
 	}
 
-	m_pPlayerCommandSink =
-		make_shared<CNetworkPlayerCommandSink>();
-	m_PlayerController.Set_CommandSink(
-		m_pPlayerCommandSink);
+	if (CClientLaunchOptions::Get().isOfflinePreview)
+	{
+		std::string previewStatus;
+		if (!COfflinePlayerPreview::Spawn(
+			m_Replication,
+			pEntry->strMapAreaId,
+			previewStatus))
+		{
+			OutputDebugStringA((
+				"[Level_ValtanArena] " + previewStatus + "\n").c_str());
+			m_MapRuntime.Clear();
+			return E_FAIL;
+		}
+	}
+	else
+	{
+		m_pPlayerCommandSink =
+			make_shared<CNetworkPlayerCommandSink>();
+		m_PlayerController.Set_CommandSink(
+			m_pPlayerCommandSink);
+	}
 
 	return S_OK;
 }
@@ -80,13 +100,27 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		OutputDebugStringA(
 			"[Level_ValtanArena] Failed to apply replication event.\n");
 	}
+	if (m_Replication.Has_PendingConnectionLoss())
+	{
+		if (CSceneTransitionService::Request(
+			LEVEL::LOBBY,
+			CLIENT_SCENARIO::FRONT_LOBBY,
+			"network.connection-lost"))
+		{
+			m_Replication.Acknowledge_ConnectionLoss();
+			return;
+		}
+		OutputDebugStringA(
+			"[Level_ValtanArena] Lobby recovery request was rejected; retrying.\n");
+	}
 
 	Bind_CameraToLocalCharacter();
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	m_PlayerController.Set_GameplayInputEnabled(
-		nullptr == m_pCamera || m_pCamera->Is_FollowEnabled());
+		!CClientLaunchOptions::Get().isOfflinePreview &&
+		(nullptr == m_pCamera || m_pCamera->Is_FollowEnabled()));
 	m_PlayerController.Update();
 }
 
