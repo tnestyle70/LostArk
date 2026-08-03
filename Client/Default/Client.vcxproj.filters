@@ -264,6 +264,9 @@
     <ClCompile Include="..\Private\Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\UI_Sprite.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Character.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
@@ -464,6 +467,9 @@
     <ClInclude Include="..\Public\Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\UI_Sprite.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Character.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
@@ -601,6 +607,7 @@
 	<None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json"><Filter>96.DataFiles\Navigation</Filter></None>
 	<None Include="..\..\Data\UI\HUD\HUD_Layout.json"><Filter>96.DataFiles\UI</Filter></None>
 	<None Include="..\..\Data\UI\ScreenUI\ScreenUI.json"><Filter>96.DataFiles\UI</Filter></None>
+	<None Include="..\..\Data\UI\Loading\LoadingLayout.json"><Filter>96.DataFiles\UI</Filter></None>
 	<None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
 	<None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
 	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>

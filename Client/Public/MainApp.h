@@ -69,6 +69,7 @@ private:
 private:
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();
+	HRESULT Ready_Prototype_For_LoadingChrome();
 	HRESULT Start_Level(LEVEL eStartLevelID);
 	void Apply_PendingSceneTransition();
 	void UpdateSmokeHarness();

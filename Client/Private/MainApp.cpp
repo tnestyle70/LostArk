@@ -21,6 +21,9 @@
 #include "Valtan.h"
 
 #include "Level_Loading.h"
+#include "UI_Sprite.h"
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
 
 #include "ImGuiLayer.h"
 #ifdef _DEBUG
@@ -388,7 +391,73 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
         CVIBuffer_Rect::Create(m_pDevice, m_pContext))))
         return E_FAIL;
 
+    /* For.Prototype_GameObject_UI_Sprite */
+    if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_GameObject_UI_Sprite"),
+        CUI_Sprite::Create(m_pDevice, m_pContext))))
+        return E_FAIL;
 
+    /* Every texture the loading-screen JSON references gets its own Texture prototype up
+    front, keyed by its Resources-relative path -- CLevel_Loading::Ready_Layer_Chrome() Clones
+    Prototype_GameObject_UI_Sprite once per slot and looks the texture prototype up by that
+    same path string. */
+    if (FAILED(Ready_Prototype_For_LoadingChrome()))
+        return E_FAIL;
+
+    return S_OK;
+}
+
+HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
+{
+    const filesystem::path layoutPath =
+        CProjectDataRoot::Resolve(L"UI/Loading/LoadingLayout.json");
+
+    ifstream stream(layoutPath);
+    if (!stream.is_open())
+        return S_OK;
+
+    const string text(
+        (istreambuf_iterator<char>(stream)),
+        istreambuf_iterator<char>());
+
+    DATA_JSON_VALUE root;
+    string error;
+    if (!CDataJson::Parse(text, root, error))
+        return S_OK;
+
+    const DATA_JSON_VALUE* pSlots = root.Find("slots");
+    if (nullptr == pSlots || !pSlots->Is_Array())
+        return S_OK;
+
+    vector<wstring_t> registeredPaths;
+    for (const DATA_JSON_VALUE& slot : pSlots->Get_Array())
+    {
+        const DATA_JSON_VALUE* pLayers = slot.Find("layers");
+        if (nullptr == pLayers || !pLayers->Is_Array())
+            continue;
+
+        for (const DATA_JSON_VALUE& layer : pLayers->Get_Array())
+        {
+            const DATA_JSON_VALUE* pPath = layer.Find("path");
+            if (nullptr == pPath || !pPath->Is_String() || pPath->Get_String().empty())
+                continue;
+
+            /* Loading chrome paths are plain ASCII filenames, so a naive widen is safe here. */
+            const string& narrowPath = pPath->Get_String();
+            const wstring_t widePath(narrowPath.begin(), narrowPath.end());
+
+            if (registeredPaths.end() != find(registeredPaths.begin(), registeredPaths.end(), widePath))
+                continue;
+            registeredPaths.push_back(widePath);
+
+            const filesystem::path resolvedPath = CRuntimeAssetRoot::Resolve(widePath);
+            if (resolvedPath.empty())
+                continue;
+
+            if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), widePath,
+                CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
+                return E_FAIL;
+        }
+    }
 
     return S_OK;
 }

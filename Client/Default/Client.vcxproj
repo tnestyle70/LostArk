@@ -84,6 +84,7 @@
     <ClInclude Include="..\Public\ProjectDataRoot.h" />
     <ClInclude Include="..\Public\DataJson.h" />
     <ClInclude Include="..\Public\Valtan.h" />
+    <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Resource.h" />
@@ -149,6 +150,7 @@
     <ClCompile Include="..\Private\ProjectDataRoot.cpp" />
     <ClCompile Include="..\Private\DataJson.cpp" />
     <ClCompile Include="..\Private\Valtan.cpp" />
+    <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="Client.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -202,6 +204,7 @@
 	<None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json" />
 	<None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
 	<None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
+	<None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
 	<None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />
 	<None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json" />
 	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json" />
