@@ -47,6 +47,7 @@ void CLogic_LanceMaster::Update_Presentation(
 const CHARACTER_SPEC Spec_LanceMaster =
 {
 	"LanceMaster",
+	LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
 
 	TEXT("Prototype_Component_Model_LanceMaster"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),

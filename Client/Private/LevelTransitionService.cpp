@@ -1,0 +1,113 @@
+#include "LevelTransitionService.h"
+
+#include "LevelRegistry.h"
+
+#include <mutex>
+#include <optional>
+
+namespace
+{
+	std::mutex g_TransitionMutex;
+	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
+	std::optional<HRESULT> g_LoadFailure;
+	std::string g_Status = "No level transition is pending.";
+}
+
+bool_t Client::CLevelTransitionService::Request_Load(
+	const LEVEL eTargetLevel,
+	const char_t* pSource)
+{
+	return Request(
+		LEVEL_TRANSITION_PHASE::LOAD,
+		eTargetLevel,
+		pSource);
+}
+
+bool_t Client::CLevelTransitionService::Request_Activation(
+	const LEVEL eTargetLevel,
+	const char_t* pSource)
+{
+	return Request(
+		LEVEL_TRANSITION_PHASE::ACTIVATE,
+		eTargetLevel,
+		pSource);
+}
+
+bool_t Client::CLevelTransitionService::Try_Consume(
+	LEVEL_TRANSITION_REQUEST& outRequest)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_PendingRequest.has_value())
+		return false;
+
+	outRequest = std::move(*g_PendingRequest);
+	g_PendingRequest.reset();
+	g_Status = "Level transition request consumed.";
+	return true;
+}
+
+bool_t Client::CLevelTransitionService::Is_Pending()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_PendingRequest.has_value();
+}
+
+std::string Client::CLevelTransitionService::Get_Status()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_Status;
+}
+
+void Client::CLevelTransitionService::Report_LoadFailure(
+	const HRESULT result)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	g_LoadFailure = result;
+	g_Status = "Level loading failed with HRESULT " +
+		std::to_string(static_cast<long>(result)) + ".";
+}
+
+bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
+	HRESULT& outResult)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_LoadFailure.has_value())
+		return false;
+
+	outResult = *g_LoadFailure;
+	g_LoadFailure.reset();
+	return true;
+}
+
+bool_t Client::CLevelTransitionService::Request(
+	const LEVEL_TRANSITION_PHASE ePhase,
+	const LEVEL eTargetLevel,
+	const char_t* pSource)
+{
+	if (nullptr == CLevelRegistry::Find(eTargetLevel) ||
+		nullptr == pSource || '\0' == *pSource)
+	{
+		std::scoped_lock lock{ g_TransitionMutex };
+		g_Status = "Rejected invalid level transition request.";
+		return false;
+	}
+
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (g_PendingRequest.has_value())
+	{
+		g_Status =
+			"Rejected level transition while another request is pending.";
+		return false;
+	}
+
+	g_PendingRequest = LEVEL_TRANSITION_REQUEST{
+		ePhase,
+		eTargetLevel,
+		pSource
+	};
+	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase)
+		g_LoadFailure.reset();
+	g_Status = "Level transition request staged by " +
+		g_PendingRequest->strSource + ".";
+	return true;
+}

@@ -18,16 +18,6 @@ namespace Client
 	class CCharacter;
 	class CValtan;
 
-	struct LOCAL_PREVIEW_PLAYER_DESC final
-	{
-		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
-			LostArk::Shared::CHARACTER_CLASS_ID::END;
-		std::string strNickName;
-		std::string strPlacementId;
-		float3_t vPosition = {};
-		f32_t fYawDegrees = 0.f;
-	};
-
 	class CClientReplication final
 	{
 	public:
@@ -46,14 +36,10 @@ namespace Client
 	public:
 		bool Initialize(const DESC& desc);
 		bool Update();
-		bool Spawn_LocalPreview(const LOCAL_PREVIEW_PLAYER_DESC& desc);
 		bool Has_PendingConnectionLoss() const;
 		void Acknowledge_ConnectionLoss();
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
-		bool Is_LocalPreviewCharacter(
-			const std::shared_ptr<CCharacter>& character) const;
-		const std::string& Get_LocalPreviewPlacementId() const;
 
 	private:
 		bool Create_Character(
@@ -83,8 +69,6 @@ namespace Client
 		CNetObjectRegistry m_Registry;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
-		std::weak_ptr<CCharacter> m_LocalPreviewCharacter;
-		std::string m_strLocalPreviewPlacementId;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;

@@ -77,7 +77,9 @@ class Reader:
             raw = self.read(length)
             return raw.rstrip(b"\0").decode("latin-1")
         raw = self.read((-length) * 2)
-        return raw.rstrip(b"\0").decode("utf-16-le")
+        if raw.endswith(b"\0\0"):
+            raw = raw[:-2]
+        return raw.decode("utf-16-le")
 
 
 class WindowsAesEcbDecryptor(AbstractContextManager["WindowsAesEcbDecryptor"]):
@@ -601,6 +603,11 @@ def decode_property_value(
         return parse_fname(reader, names)[0]
     if kind == "strproperty" and len(payload) >= 4:
         return reader.fstring()
+    if kind == "byteproperty":
+        if len(payload) == 1:
+            return payload[0]
+        if len(payload) >= 8:
+            return parse_fname(reader, names)[0]
     if kind == "structproperty":
         if structure in ("vector", "vector3d") and len(payload) >= 12:
             x, y, z = reader.unpack("<3f")

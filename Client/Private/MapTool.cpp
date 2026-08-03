@@ -1242,8 +1242,7 @@ bool_t Client::CMapTool::Load_Placements()
 		!authoringPath.empty() &&
 		std::filesystem::is_regular_file(
 			authoringPath, authoringError);
-	if (authoringError ||
-		(hasAuthoring ?
+	if ((hasAuthoring ?
 			!CMapPlacementDocument::Read(
 				authoringPath, m_Catalog, document, loadStatus) :
 			!CMapPlacementRuntime::Read_Placements(
@@ -2407,6 +2406,7 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 	std::string& outStatus) const
 {
 	outPlacements.clear();
+	size_t skippedInstances = 0;
 	if (!m_Catalog.Is_Ready())
 	{
 		outStatus = "Map asset catalog is unavailable";
@@ -2487,10 +2487,8 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 			entry.record,
 			instance)))
 		{
-			outStatus =
-				"Could not build bake transform for " +
-				asset->id;
-			return false;
+			++skippedInstances;
+			continue;
 		}
 
 		const f32_t closestX = (std::clamp)(
@@ -2532,9 +2530,13 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 	if (outPlacements.empty())
 	{
 		outStatus =
-			"No visible deferred map meshes overlap Nav Bounds";
+			"No visible deferred map meshes overlap Nav Bounds; skipped " +
+			std::to_string(skippedInstances) + " unbuildable instances";
 		return false;
 	}
+	outStatus = std::to_string(outPlacements.size()) +
+		" bake meshes; skipped " + std::to_string(skippedInstances) +
+		" unbuildable instances";
 	return true;
 }
 
@@ -2817,7 +2819,7 @@ void Client::CMapTool::Render_NavigationBakeControls()
 	ImGui::BeginDisabled(
 		!Is_ValidNavigationBakeDesc(m_NavigationBakeDesc) ||
 		NAV_BOUNDS_STATE::PLACING == m_eNavigationBoundsState);
-	if (ImGui::Button("Bake"))
+	if (ImGui::Button("Bake##NavigationBakeCommand"))
 		Bake_Navigation();
 	ImGui::EndDisabled();
 

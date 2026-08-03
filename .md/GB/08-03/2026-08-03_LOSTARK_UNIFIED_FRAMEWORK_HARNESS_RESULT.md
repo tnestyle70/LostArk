@@ -164,6 +164,14 @@ UI 담당자는 이 ViewModel을 소비하며 packet/snapshot을 직접 파싱�
 
 Bern/Valtan/Training에는 이 ViewModel을 읽는 runtime HUD overlay가 연결되어 선택 클래스, HP/resource, action, class별 skill/cooldown/damage, boss 상태를 표시한다. 최종 아트 layout과 party roster는 아직 남아 있다. 비-Lance class는 Server skill 계약이 없으므로 HUD가 스킬을 꾸며내지 않고 미지원 상태를 표시한다.
 
+2026-08-03 UI authoring/runtime 경계를 재검토했다. `CHUDLayoutTool`은 `Resources/UI` 이미지
+palette와 thumbnail, drag/drop, rect/rotation, layer order, hover preview, 두 `Data/UI` JSON의
+save/load까지 구현되어 있다. 반면 이 JSON을 제품 `CUIObject` image widget으로 stage/commit하는
+runtime factory, reference resolution 기반 2D hit-test router, stable command binding schema는
+아직 없다. 따라서 현재 상태를 “ImGui UI가 제품 이미지 UI와 picking으로 자동 전환된다”고
+표현하지 않는다. 목표 규칙과 완료 검증은 `AGENTS.md`, `CLAUDE.md`,
+`.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`에 정본별 역할로 반영했다.
+
 ## 7. Level, Lobby, ImGui 이동 현황
 
 엔진 enum은 `STATIC`, `LOADING`, `LOBBY`, `BERN`, `VALTAN_ARENA`, `DEVELOPMENT` 여섯 값이다. 사용자가 체감하는 제품 씬은 다음 세 개다.
@@ -230,7 +238,7 @@ Character binary는 Area 진입 때 네 클래스를 모두 디코드하지 않�
 
 Server는 누적 없는 `sleep_for(33ms)`를 사용하지 않는다. `1.0 / 30.0` fixed step과 누적 deadline을 사용하고 lag가 커지면 deadline을 재동기화한다.
 
-현재 닫힌 player 경계는 우클릭 move goal과 LanceMaster Q/W skill까지다.
+현재 닫힌 player 경계는 우클릭 move goal과 LanceMaster 긴 창 quick slot 9개까지다.
 
 ```text
 Raw input -> CPlayerController -> IPlayerCommandSink
@@ -238,7 +246,7 @@ Raw input -> CPlayerController -> IPlayerCommandSink
           -> authoritative snapshot -> CClientReplication -> presentation
 ```
 
-Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다. payload에는 PlayerId/NetEntityId가 없고 Server가 SessionId로 player를 결정한다. `CPlayerSkillSystem`이 sequence, class, action, resource, cooldown을 검사하고 nav projection 이동과 damage를 한 번만 적용한 뒤 action/skill/cooldown/HP/resource를 snapshot으로 복제한다.
+Q/W/E/R/A/S/T/V/Alt+V는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 해석해 `C2S_USE_SKILL`로 제출한다. payload에는 PlayerId/NetEntityId가 없고 Server가 SessionId로 player를 결정한다. `CPlayerSkillSystem`이 sequence, class, action, resource, cooldown을 검사하고 nav projection 이동과 damage를 한 번만 적용한 뒤 action/skill/cooldown/HP/resource를 snapshot으로 복제한다.
 
 Character/Animation의 `Logic_*`는 presentation-only다. DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. `CCharacter::Apply_NetworkAction`만 Server action tick 변경을 받아 승인된 skill animation을 시작한다. 아직 계약이 없는 추가 스킬은 로컬에서 우회 재생하지 않는다.
 
@@ -440,3 +448,42 @@ Server authority 구현을 남기는 반쪽 기능이 생길 수 있었다.
 `ProjectAudit`의 `team.vertical-slice-ownership` 검사가 `AGENTS.md`, `CLAUDE.md`, 팀 README와
 인터페이스 핸드북에 이 의미가 함께 박제되어 있는지 확인한다. 교정 후 ProjectAudit는 60/60으로
 통과했다.
+
+## 22. LAN endpoint와 Character resource pack 갱신
+
+Server의 안전한 기본 bind `127.0.0.1`은 유지하고 LAN 실행에서만
+`Server.exe --bind-address 0.0.0.0`을 사용한다. Client는 `LOSTARK_SERVER_HOST` process
+환경값을 읽고 값이 없거나 `0.0.0.0`이면 `127.0.0.1`로 돌아간다. 개인 사설 IPv4는
+`.vcxproj.user` 같은 Git 제외 로컬 설정에만 저장한다.
+
+Character 폴더 갱신을 포함한 현재 Resources는 새 immutable pack으로 잠갔다.
+
+- pack: `lostark-resources@2026.08.03.4`
+- manifest: 9,180 files, 5,153,765,021 bytes
+- publish root: `C:\Users\user\Desktop\LostArk_Team_ResourcePacks\lostark-resources\2026.08.03.4`
+- `Manage-ResourcePack.ps1 -Mode Publish` 내부 Verify: PASS
+- Deep ProjectAudit: 58/58 PASS
+
+Resources payload와 개인 IP는 Git에 포함하지 않고 `.4` manifest와 lock만 공유한다.
+
+## 23. 최종 Git 통합과 종료 시 검증
+
+최종 브랜치는 `origin/main` 위에 현재 Character Select/Level/Tool/Map 변경을 고정한 뒤 열린 담당자
+브랜치를 merge commit으로 흡수했다.
+
+- PR #39의 weapon pre-transform 수정은 PR #40에 이미 포함되어 중복 적용하지 않았다.
+- PR #40의 데이터 기반 LanceMaster 9-skill binding은 보존했다.
+- PR #41의 color texture sRGB decode와 MapTool navigation bake 수정은 보존했다.
+- PR #38은 담당자 이력과 독립적인 `CustomFont` centering 수정만 보존했다. 제품 ImGui HUD와
+  실제 class ID를 바꾸지 않는 display-only relabel은 현재 계약과 맞지 않아 제외했다. Loading JSON이
+  참조하는 `UI/Loading/*` 8개 asset도 `.4` pack에 없어서 Loading/UI_Sprite 활성화를 제외했다.
+
+최종 자동·실행 증거:
+
+- Debug Engine/Shared/Server/Client build: PASS
+- Protocol Harness / Server Gameplay Contract: `failures : 0`
+- gameplay balance: 4 players, 9 skills, 10 damage profiles, 1 boss
+- Deep ProjectAudit: 58/58 PASS
+- Server listener: `0.0.0.0:7777`, preferred private IPv4의 port `7777` LAN connect PASS
+- bounded Server 종료 후 7777 listener: 0
+- Release 전체 회귀: 사용자 요청으로 진행 중 중단, PASS로 기록하지 않음

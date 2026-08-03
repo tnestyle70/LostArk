@@ -33,6 +33,7 @@ namespace
 {
 	HRESULT LoadTgaTexture(ComPtr<ID3D11Device> pDevice,
 		const filesystem::path& path,
+		bool_t isColorSlot,
 		ComPtr<ID3D11ShaderResourceView>& pSRV)
 	{
 		ifstream input(path, ios::binary);
@@ -125,7 +126,8 @@ namespace
 		textureDesc.Height = header.height;
 		textureDesc.MipLevels = 1;
 		textureDesc.ArraySize = 1;
-		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.Format = isColorSlot ?
+			DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
 		textureDesc.SampleDesc.Count = 1;
 		textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
 		textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -140,8 +142,19 @@ namespace
 		return pDevice->CreateShaderResourceView(texture.Get(), nullptr, &pSRV);
 	}
 
+	/* Base colour and emissive textures are authored in sRGB, while lighting runs
+	   in linear space and the post pass owns the only gamma encode. Decoding them
+	   on load keeps that contract. Normal, specular, ORM and mask textures carry
+	   data instead of colour, so they stay linear. */
+	bool_t IsColorTextureSlot(aiTextureType type)
+	{
+		return aiTextureType_DIFFUSE == type ||
+			aiTextureType_EMISSIVE == type;
+	}
+
 	HRESULT LoadTexture(ComPtr<ID3D11Device> pDevice,
 		const filesystem::path& path,
+		bool_t isColorSlot,
 		ComPtr<ID3D11ShaderResourceView>& pSRV)
 	{
 		if (path.empty())
@@ -150,10 +163,16 @@ namespace
 		wstring extension = path.extension().wstring();
 		transform(extension.begin(), extension.end(), extension.begin(), towlower);
 		if (L".dds" == extension)
-			return CreateDDSTextureFromFile(pDevice.Get(), path.c_str(), nullptr, &pSRV);
+			return CreateDDSTextureFromFileEx(pDevice.Get(), path.c_str(), 0,
+				D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+				isColorSlot ? DDS_LOADER_FORCE_SRGB : DDS_LOADER_DEFAULT,
+				nullptr, &pSRV);
 		if (L".tga" == extension)
-			return LoadTgaTexture(pDevice, path, pSRV);
-		return CreateWICTextureFromFile(pDevice.Get(), path.c_str(), nullptr, &pSRV);
+			return LoadTgaTexture(pDevice, path, isColorSlot, pSRV);
+		return CreateWICTextureFromFileEx(pDevice.Get(), path.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
+			isColorSlot ? WIC_LOADER_FORCE_SRGB : WIC_LOADER_DEFAULT,
+			nullptr, &pSRV);
 	}
 
 	HRESULT AddTexture(ComPtr<ID3D11Device> pDevice,
@@ -164,7 +183,7 @@ namespace
 		if (path.empty())
 			return S_OK;
 		ComPtr<ID3D11ShaderResourceView> resource;
-		if (FAILED(LoadTexture(pDevice, path, resource)))
+		if (FAILED(LoadTexture(pDevice, path, IsColorTextureSlot(type), resource)))
 			return E_FAIL;
 		textures[type].push_back(resource);
 		return S_OK;

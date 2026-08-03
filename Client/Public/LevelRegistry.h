@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "MapLoadScope.h"
 
 #include <memory>
 
@@ -29,6 +30,8 @@ struct CLIENT_LEVEL_DESCRIPTOR final
 	LEVEL eLevel = LEVEL::END;
 	CLIENT_LEVEL_KIND eKind = CLIENT_LEVEL_KIND::PRODUCT;
 	const char_t* pStableId = nullptr;
+	const char_t* pMapAreaId = nullptr;
+	MAP_LOAD_SCOPE MapLoadScope{};
 	CREATE_FUNCTION pCreate = nullptr;
 	LOAD_FUNCTION pLoad = nullptr;
 };

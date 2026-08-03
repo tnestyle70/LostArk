@@ -192,18 +192,18 @@ CPrototype (추상, enable_shared_from_this)
 레벨은 `Client_Defines.h`의 enum이다.
 
 ```cpp
-enum class LEVEL { STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT, END };
+enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT, END };
 ```
 
-시작 레벨은 항상 `LOBBY`다. 제품/개발 시나리오 정본은 `Data/Levels/LevelCatalog.json`이며 `CLevelCatalog`와 `CLevelRegistry`를 통해 해석한다. 임의의 Level enum, 문자열 분기, direct `Change_Level` 호출을 추가하지 않는다.
+시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다.
 
 `LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
-제품/개발 전환 요청은 `CSceneTransitionService`에 제출하고 `CMainApp`만 `LOADING` 진입을 수행한다. `CLevel_Loading`만 로드 완료 후 목표 레벨로 commit한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
+Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 현재 Level update가 끝난 뒤 `LOADING` 진입과 목표 Level activation을 수행하는 유일한 `Change_Level` 호출자다. `CLevel_Loading`은 Loader 성공 후 activation 요청만 제출한다. 로드는 `parse -> validate -> stage -> commit`이며 실패/취소 시 staging을 rollback한다.
 
-`Data/Levels/LevelCatalog.json`의 `mapLoadBounds`가 제품 맵 로딩 범위의 정본이다. Bern과 Valtan 제품 레벨은 자신의 진입/전투 범위와 배경만 로드하고, `dev.map.active`만 전체 맵을 연다. Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비해야 하며 한쪽만 필터링하면 안 된다. 로더 작업 스레드의 실패는 상태와 HRESULT로 반환하고 `MessageBox`로 대기시키지 않는다.
+`CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`가 제품 맵 로딩 범위의 런타임 정본이다. Bern과 Valtan 제품 Level은 자신의 진입/전투 범위와 배경만 로드한다. Loader와 `CMapPlacementRuntime`은 같은 `MAP_LOAD_SCOPE`를 소비해야 하며 한쪽만 필터링하면 안 된다. 로더 작업 스레드의 실패는 상태와 HRESULT로 반환하고 `MessageBox`로 대기시키지 않는다.
 
 ### 서버 권위 월드 파이프라인
 
@@ -213,18 +213,17 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 시나리오다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. Lobby의 Bern/Valtan/Training은 ImGui에서 `Local Preview`와 `Multiplayer`를 명시적으로 고르며 기본 선택은 Local이다. Local은 socket을 열지 않고 `Data/Worlds/<AreaId>/Gameplay.world.json`의 placement ID 정렬상 첫 enabled `playerSpawn`에 선택 class의 presentation-only `CCharacter` 하나를 만든다. 이 Character는 `CNetObjectRegistry`와 server ID를 사용하지 않으며 command sink, 이동·스킬·damage·boss authority도 없다. Multiplayer는 입력한 IPv4 또는 `localhost`와 port에 연결하고 서버 승인을 받은 뒤에만 전환한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀하며 Local로 자동 전환하지 않는다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Test 진입이다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. `LEVEL::CHARACTER_SELECT`만 socket 없이 네 class의 3D preview를 제공한다. Test/Bern/Valtan은 확정한 class와 함께 실제 Server의 port `7777`에 접속하고 승인을 받은 뒤에만 전환한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀한다. Local Preview나 자동 우회 경로는 없다.
 
-같은 PC의 Server는 기본 실행 후 Client에 `127.0.0.1:7777`을 입력한다. 같은 LAN의 다른 PC를 받으려면 Server PC에서 `Server.exe --bind-address 0.0.0.0`으로 실행하고, 다른 Client는 그 PC의 사설 IPv4와 `7777`을 입력한다. 특정 interface만 열려면 `0.0.0.0` 대신 해당 사설 IPv4를 사용한다. Windows Firewall inbound 허용은 별도로 필요하다. 자동 LAN 서버 탐색은 현재 계약이 아니며, 필요하면 UDP advertisement/discovery를 별도 protocol과 harness로 추가한다.
+같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다.
 
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
-- online smoke: player spawn, Q command, Server action 승인, cooldown snapshot과 HUD 반영까지 확인
-- offline smoke: `Tools/Build/Invoke-OfflineClientSmoke.ps1`이 7777 listener 부재, local Character/class/placement, camera follow, network command sink 0개, Valtan network entity 부재를 확인
-- LAN/disconnect smoke: `Tools/Build/Invoke-NetworkEndpointSmoke.ps1`이 Server PID의 정확한 `0.0.0.0:7777` 소유, 현재 LAN IPv4 실접속, Server 종료 후 Lobby 복귀와 online sink 정리를 확인
+- automated contracts: `NetworkProtocolHarness`, `Server.exe --contract-test`, `ProjectAudit`을 실행
+- runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행하고 Lobby → Character Select → Lobby → Test/Bern/Valtan 진입과 disconnect 복귀를 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
@@ -254,9 +253,47 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. 자동 검증은 `--smoke --scenario=<stable-id> --timeout-ms=<ms> --report=<path>`만 사용한다. 구형 별칭이나 추가 F키 이동을 다시 만들지 않는다.
+`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
 
-네 class binary 진입 검증은 smoke 전용 `--character-class=lance-master|gunslinger|slayer|artist`를 사용한다. 정식 사용자는 Lobby UI에서 선택하며 이 옵션을 gameplay shortcut으로 사용하지 않는다.
+### UI 레이아웃 authoring과 제품 런타임 전환
+
+`CHUDLayoutTool`은 F1 Developer Tools에서 사용하는 ImGui authoring 도구다. ImGui 화면을
+제품 UI 이미지로 캡처하는 도구가 아니라, 실제 UI 이미지의 배치 계약을 작성하는 도구다.
+
+| 문서 | asset domain | 용도 |
+|---|---|---|
+| `Data/UI/HUD/HUD_Layout.json` | `UI/HUD/` | class별 전투 HUD |
+| `Data/UI/ScreenUI/ScreenUI.json` | `UI/ScreenUI/` | 공용 화면 UI |
+
+현재 JSON은 `lostark.ui-layout` format version 1이며 reference resolution은 1280×720이다.
+`slot.id`, owner class, type, rect, rotation, layer 순서, normal/hover image, tint, additive,
+flip, shine, frame animation을 저장한다. `CHUDLayoutTool`은 `Resources/UI`를 palette로 읽어
+drag/drop, 이동, 크기, 회전, layer/z-order, hover preview와 JSON save/load를 제공한다.
+asset path는 반드시 `UI/...` Resources-relative ID이며 `CRuntimeAssetRoot::Resolve()`로
+해석한다.
+
+제품 전환 규칙은 다음과 같다.
+
+1. UI 담당자는 이미지를 `Resources/UI/<Domain>/...`에 준비하고 ImGui tool에서 slot/layer에
+   연결한다. Git에는 이미지 payload가 아니라 `Data/UI` JSON과 resource pack lock/manifest만
+   둔다.
+2. `slot.id`가 저장·runtime widget identity다. pointer, vector index, ImGui label은 ID가 아니다.
+3. 제품 runtime loader는 JSON을 한 번 `parse -> validate -> stage -> commit`하고 `CUIObject`
+   계열 image widget을 만든다. 매 프레임 JSON이나 이미지를 다시 읽지 않는다.
+4. 제품 UI click은 world `CPicking`이 아니라 reference resolution으로 보정한 mouse 좌표와
+   transformed slot rect의 screen-space hit test다. 앞쪽 draw order의 visible/enabled widget
+   하나만 소비하고 그 프레임의 gameplay mouse command를 차단한다.
+5. display-only HUD의 기본 hit test는 `none`이다. 버튼이 필요하면 layout schema version과
+   함께 explicit interaction/command binding을 추가하고 stable command ID를 기존 typed
+   command service에 매핑한다. JSON 문자열로 함수 이름을 실행하거나 UI에서 socket을 직접
+   호출하지 않는다.
+6. HP/resource/cooldown/boss 상태는 `CCombatHUDViewModel`에서 읽는다. UI가 Server 수치나
+   판정을 자체 생성하지 않는다.
+
+현재 완료된 범위는 ImGui authoring, asset preview, layout JSON save/load와 runtime HUD
+ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하는 runtime factory,
+2D UI input router, interaction schema/command binding은 아직 별도 수직 슬라이스이며,
+이 세 항목을 구현하기 전에는 “ImGui UI가 제품 이미지 UI로 자동 교체됐다”고 판단하지 않는다.
 
 ### 새 GameObject 추가
 
@@ -334,7 +371,7 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 
 - 로컬 입력의 현재 제품 경계는 `CPlayerController -> IPlayerCommandSink`다. Controller는 transport를 모르고 Character는 입력을 읽지 않는다.
 - `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
-- Q/W의 skill ID `34060`/`34100`은 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`으로 연결됐다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
+- quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
 - 현재 World Gameplay kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
 - Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. 현재 일반 Monster, wave/증분 spawn, trigger, Area별 balance override, 제품 NPC presentation은 구현되지 않았다.

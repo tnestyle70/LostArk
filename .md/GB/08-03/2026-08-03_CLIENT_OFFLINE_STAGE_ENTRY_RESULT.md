@@ -1,5 +1,10 @@
 # Client Local / Multiplayer Stage Entry Result
 
+> **SUPERSEDED — 2026-08-03**
+> 이 문서는 당시 완료 상태의 기록이다. Local Preview, ClientLaunchOptions, LevelCatalog,
+> Client smoke는 다음 변경에서 삭제할 대상이며 현재 목표 계약이 아니다. 새 정본은
+> `2026-08-03_CHARACTER_SELECT_LEVEL_VERTICAL_SLICE_PLAN.md`다.
+
 ## 1. 완료 상태
 
 Lobby에서 Bern, Valtan, Training 진입 모드를 `Local Preview`와 `Multiplayer`로 명시적으로

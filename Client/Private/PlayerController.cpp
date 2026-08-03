@@ -3,9 +3,46 @@
 #include "Character.h"
 #include "GameInstance.h"
 #include "PlayerCommandSink.h"
+#include "PlayerSkillCatalog.h"
 #include "Transform.h"
 
 #include <cmath>
+
+namespace
+{
+	/* Which physical key each quick slot sits on. This table is class-agnostic on
+	purpose: the slot name to skill pairing lives in Data/Balance/PlayerSkills.json
+	per class, so adding another class's skills there binds them with no code
+	change here. Slot names match the document's inputSlot strings.
+
+	ALT_V shares DIK_V with V, so the modifier decides which of the two is
+	eligible and holding Alt never also fires the unmodified slot. */
+	struct SLOT_KEY
+	{
+		const char* pInputSlot;
+		uint8_t byKeyCode;
+		bool_t requiresAlt;
+	};
+
+	constexpr SLOT_KEY SlotKeys[] =
+	{
+		{ "Q",     DIK_Q,     false },
+		{ "W",     DIK_W,     false },
+		{ "E",     DIK_E,     false },
+		{ "R",     DIK_R,     false },
+		{ "A",     DIK_A,     false },
+		{ "S",     DIK_S,     false },
+		{ "D",     DIK_D,     false },
+		{ "F",     DIK_F,     false },
+		{ "T",     DIK_T,     false },
+		{ "Z",     DIK_Z,     false },
+		{ "V",     DIK_V,     false },
+		{ "ALT_V", DIK_V,     true  },
+		{ "SPACE", DIK_SPACE, false },
+	};
+
+	constexpr size_t SlotKeyCount = sizeof(SlotKeys) / sizeof(SlotKeys[0]);
+}
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
 {
@@ -16,8 +53,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextMoveSequence = 1;
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
-	m_wasQDown = false;
-	m_wasWDown = false;
+	m_wasKeyDown.fill(false);
 }
 
 void Client::CPlayerController::Update()
@@ -28,10 +64,6 @@ void Client::CPlayerController::Update()
 		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
 	const bool_t isKeyboardBlocked =
 		CGameInstance::Get().IsKeyboardInputBlocked();
-	const bool_t isQDown = !isKeyboardBlocked &&
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_Q) & 0x80);
-	const bool_t isWDown = !isKeyboardBlocked &&
-		0 != (CGameInstance::Get().Get_DIKeyState(DIK_W) & 0x80);
 	//weak_ptr로 가지고 있는 character lock
 	const shared_ptr<CCharacter> character =
 		m_pLocalCharacter.lock();
@@ -69,10 +101,8 @@ void Client::CPlayerController::Update()
 
 	LostArk::Shared::SKILL_ID requestedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
-	if (isQDown && !m_wasQDown)
-		requestedSkillId = 34060;
-	else if (isWDown && !m_wasWDown)
-		requestedSkillId = 34100;
+	Poll_SkillSlots(isKeyboardBlocked, character, requestedSkillId);
+
 	if (m_isGameplayInputEnabled &&
 		LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
 		nullptr != character && nullptr != commandSink)
@@ -105,8 +135,54 @@ void Client::CPlayerController::Update()
 	}
 
 	m_wasRightMouseDown = isRightMouseDown;
-	m_wasQDown = isQDown;
-	m_wasWDown = isWDown;
+}
+
+void Client::CPlayerController::Poll_SkillSlots(
+	const bool_t isKeyboardBlocked,
+	const shared_ptr<CCharacter>& character,
+	LostArk::Shared::SKILL_ID& outSkillId)
+{
+	const bool_t isAltDown = !isKeyboardBlocked &&
+		(0 != (CGameInstance::Get().Get_DIKeyState(DIK_LMENU) & 0x80) ||
+			0 != (CGameInstance::Get().Get_DIKeyState(DIK_RMENU) & 0x80));
+
+	const CHARACTER_SPEC* pSpec =
+		nullptr != character ? character->Get_Spec() : nullptr;
+
+	/* Two slots share one key (V and ALT_V), so every slot compares against the
+	state this frame started with and the new state is committed afterwards.
+	Writing inside the decision loop let the plain V entry consume the press
+	before the ALT_V entry could see it, which made Alt+V do nothing at all. */
+	bool_t isDown[SlotKeyCount]{};
+	for (size_t index = 0; index < SlotKeyCount; ++index)
+	{
+		isDown[index] = !isKeyboardBlocked &&
+			0 != (CGameInstance::Get().Get_DIKeyState(
+				SlotKeys[index].byKeyCode) & 0x80);
+	}
+
+	for (size_t index = 0; index < SlotKeyCount; ++index)
+	{
+		const SLOT_KEY& slot = SlotKeys[index];
+		if (slot.requiresAlt != isAltDown ||
+			!isDown[index] || m_wasKeyDown[slot.byKeyCode] ||
+			nullptr == pSpec ||
+			LostArk::Shared::INVALID_SKILL_ID != outSkillId)
+		{
+			continue;
+		}
+
+		/* An unbound slot is normal: a class simply has no skill there. */
+		const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
+			pSpec->eCharacterClass, slot.pInputSlot);
+		if (nullptr != pSkill)
+			outSkillId = pSkill->iSkillId;
+	}
+
+	/* Committed for every slot, including ones the modifier ruled out, so
+	releasing Alt while V is still held does not read as a fresh press. */
+	for (size_t index = 0; index < SlotKeyCount; ++index)
+		m_wasKeyDown[SlotKeys[index].byKeyCode] = isDown[index];
 }
 
 void Client::CPlayerController::Set_CommandSink(

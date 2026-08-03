@@ -161,7 +161,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[10], skill.fMaximumRange) ||
 				!IsStableId(fields[11]) ||
 				0u == skill.iCooldownMs || 0u == skill.iActionDurationMs ||
-				0u == skill.iHitTimeMs ||
+				/* iHitTimeMs may be 0: a skill can land as the cast starts, so only
+					the upper bound below is a real constraint. */
 				skill.iHitTimeMs > skill.iActionDurationMs ||
 				skill.iResourceCost > 100u ||
 				!std::isfinite(skill.fMovementDistance) ||

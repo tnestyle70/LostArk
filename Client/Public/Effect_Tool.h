@@ -38,12 +38,7 @@ private:
 	void Adopt_LoadedAsset(EFFECT_ASSET_DESC&& Loaded);
 	filesystem::path Resolve_AuthoredPath(const string& strAssetId) const;
 	void Refresh_AuthoredList();
-	// --effect-open <assetId> lets a capture or regression run reach a specific
-	// authored asset without driving the ImGui list by hand.
-	void Open_AssetFromCommandLine();
-	// The render.hdr-readback scenario samples SceneHDR and Bloom after the Development level is ready. It
-	// proves the 1/5/25 reference levels numerically and stops after a bounded
-	// number of frames; --effect-auto-exit closes only that automated run.
+	// 사용자가 명시적으로 요청했을 때 SceneHDR과 Bloom을 제한된 프레임 동안 검사한다.
 	void Capture_SceneHDR_Readback();
 	// Zoom that makes the current asset fill the preview canvas.
 	f32_t Estimate_PreviewZoom() const;
@@ -106,7 +101,6 @@ private:
 	uint32_t m_iHDRReadbackFrame = {};
 	bool_t m_isHDRReadbackRequested = { false };
 	bool_t m_isHDRReadbackDone = { false };
-	bool_t m_isHDRAutoExitRequested = { false };
 	ComPtr<ID3D11Texture2D> m_pBloomResultStaging = { nullptr };
 };
 

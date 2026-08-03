@@ -1,29 +1,23 @@
 #pragma once
 
-#include "ClientLaunchOptions.h"
 #include "Client_Defines.h"
 #include "Level.h"
+#include "LobbyCommandService.h"
 #include "Network/PacketType.h"
 
 #include <chrono>
 
 NS_BEGIN(Client)
 
-class CCamera_Free;
-class CCharacter;
-
-struct LobbyCharacterInfo
-{
-	int32_t m_iSlotIndex = { -1 };
-	LostArk::Shared::CHARACTER_CLASS_ID m_eClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	shared_ptr<CCharacter> m_pCharacter = { nullptr };
-	string m_strNickName;
-};
-
-// 정식 실행의 시작 레벨. 캐릭터 선택과 서버 월드 입장 요청만 소유한다.
 class CLevel_Lobby final : public CLevel
 {
+private:
+	enum class ENTRY_STATE
+	{
+		IDLE,
+		WAITING_FOR_APPROVAL
+	};
+
 private:
 	CLevel_Lobby(
 		ComPtr<ID3D11Device> pDevice,
@@ -38,32 +32,26 @@ public:
 	virtual HRESULT Render() override;
 
 private:
-	HRESULT Ready_Lights();
-	HRESULT Ready_Layer_Camera(const wstring& strLayerTag);
-	HRESULT Ready_CharacterSlots();
-
-	bool_t Select_Character(int32_t iCharacterIndex);
-	bool_t Request_EnterWorld(LostArk::Shared::WORLD_ID eWorldId);
-
-	void Render_CharacterSelectPanel();
+	bool_t Begin_StageRequest(LOBBY_STAGE eStage);
+	bool_t Begin_NetworkEntry(
+		LostArk::Shared::WORLD_ID eWorldId,
+		LEVEL eTargetLevel);
+	bool_t Resolve_Stage(
+		LOBBY_STAGE eStage,
+		LostArk::Shared::WORLD_ID& outWorldId,
+		LEVEL& outTargetLevel) const;
+	void Consume_EnterAccepted();
+	void Cancel_PendingEntry(const string& reason);
+	void Render_StagePanel();
 
 private:
-	vector<LobbyCharacterInfo> m_vecCharacters = {};
-	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
-
-	int32_t m_iSelectedCharacterIndex = { -1 };
-	char_t m_szNickName[64] = {};
-	CLIENT_ENTRY_MODE m_eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW;
-	char_t m_szServerHost[64] = "127.0.0.1";
-	int32_t m_iServerPort = 7777;
-	bool_t m_isEnterRequested = { false };
-	bool_t m_isAwaitingEnterAcceptance = { false };
-	std::chrono::steady_clock::time_point m_EnterAcceptanceDeadline;
+	ENTRY_STATE m_eEntryState = ENTRY_STATE::IDLE;
 	LostArk::Shared::WORLD_ID m_ePendingWorldId =
 		LostArk::Shared::WORLD_ID::END;
-	string m_strNetworkStatus = {
-		"Select a character and enter a nickname."
-	};
+	LEVEL m_ePendingLevel = LEVEL::END;
+	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
+	string m_strStatus =
+		"Open Character Select first, then enter a server-authorized stage.";
 
 public:
 	static unique_ptr<CLevel_Lobby> Create(

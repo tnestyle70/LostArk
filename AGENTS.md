@@ -79,7 +79,18 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 기존 Prototype/Clone/Layer/CModel 경로를 확장하고 같은 역할의 두 번째 런타임 경로를 만들지 않는다.
 - `CCookedModel`과 `CBinaryAssetObject` 경로는 제거됐다. 신규 기능과 MapTool 에셋은 반드시 `CModel -> CMaterial` 통합 경로를 사용하며 동등한 두 번째 모델 런타임을 만들지 않는다.
 - Engine은 범용 기능, Client는 LostArk의 Level, GameObject, 에디터 흐름과 Scene 데이터를 소유한다.
-- ImGui는 선택과 명령을 전달하는 UI다. 매 프레임 파일을 읽거나 모델을 다시 디코드하지 않는다.
+- ImGui는 authoring/debug 선택과 명령을 전달하는 UI다. 제품 UI 이미지를 ImGui 화면에서
+  캡처하거나 ImGui widget 자체를 제품 런타임으로 승격하지 않는다. UI 담당자는 ImGui로
+  배치한 결과를 `Data/UI` JSON의 stable slot ID, rect, draw order, Resources-relative image
+  asset ID로 저장하고 제품 런타임은 그 계약으로 `CUIObject` 계열 image widget을 만든다.
+- UI image asset은 `Client/Bin/Resources/UI/<Domain>/...`에 두고 JSON에는 `UI/...` 상대
+  asset ID만 저장한다. UI layout 로드도 `parse -> validate -> stage -> commit`을 따르며
+  실패하면 기존 화면을 유지한다.
+- 제품 UI picking은 world ray `CPicking`을 재사용하지 않는다. viewport 좌표를 layout의
+  reference resolution으로 변환한 뒤 visible/enabled widget을 앞쪽 draw order부터 screen-space
+  hit test한다. 최상위 widget 하나만 pointer를 소비하고, 소비한 프레임에는 gameplay mouse
+  command를 막는다. 결과는 stable widget/command ID를 통해 `CLobbyCommandService`,
+  `CLevelTransitionService`, `IPlayerCommandSink` 중 해당 typed 경계로만 제출한다.
 - Catalog는 생성 가능한 정의, placement 문서는 배치 인스턴스의 ID와 Transform을 소유한다.
 - 안정적인 asset ID와 placement ID를 저장 계약으로 사용한다. Prototype tag, 포인터, vector index는 저장 ID가 아니다.
 - 로드는 `parse -> validate -> stage -> commit` 순서로 처리하고 실패하면 생성 중인 객체를 전부 rollback한다.
@@ -87,13 +98,13 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 
 ## 고정 런타임 계약
 
-- Client 시작 씬은 항상 `LOBBY`다. 실제 실행 시나리오는 `Data/Levels/LevelCatalog.json`의 stable ID로 선택한다.
-- Lobby의 Bern/Valtan/Training 진입은 ImGui에서 `Local Preview` 또는 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 socket을 열지 않고 `Gameplay.world.json`의 첫 enabled `playerSpawn`에 선택 class의 presentation-only `CCharacter` 하나를 만들지만 player/net entity ID, registry, command sink, skill/damage/boss authority는 만들지 않는다. Multiplayer는 입력한 IPv4/localhost와 port에 연결해 기존 `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 승인 전환만 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 스테이지 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀하며 어느 경우에도 Local로 자동 우회하지 않는다.
-- Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용하며, 개인 IP·방화벽 설정·탐색 결과를 Git 데이터에 저장하지 않는다.
+- Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
+- `CHARACTER_SELECT`는 socket을 열지 않는 3D 선택 전용 Level이다. 선택 확정 전에는 기존 선택을 바꾸지 않으며, Test/Bern/Valtan은 확정된 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Local Preview와 자동 우회 경로는 존재하지 않는다.
+- Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용한다. Client는 process-local `LOSTARK_SERVER_HOST` 값을 읽고, 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 개인 IP·방화벽 설정·탐색 결과는 `.vcxproj.user` 같은 Git 제외 로컬 설정에만 두고 Git 데이터에 저장하지 않는다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
-- 레벨은 `STATIC, LOADING, LOBBY, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 catalog, registry, loader, smoke 검증을 한 변경 단위로 추가한다.
-- 제품 맵은 `mapLoadBounds`로 선언한 진입/전투 범위와 배경만 로드한다. `dev.map.active`만 전체 맵을 열 수 있다. Loader와 runtime placement는 반드시 같은 `MAP_LOAD_SCOPE`를 소비한다.
-- 레벨 전환 요청은 `CSceneTransitionService`로 보낸다. `CMainApp`과 `CLevel_Loading` 외에는 `Change_Level`을 직접 호출하지 않는다.
+- 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
+- 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.
+- 레벨 전환 요청은 `CLevelTransitionService`로 보낸다. `Change_Level`은 현재 Level update가 끝난 뒤 `CMainApp`만 호출한다. `CLevel_Loading`은 로드 성공 시 activation 요청만 제출한다.
 - 공식 전역 기능키는 Debug Developer Tools의 F1과 follow/free camera 전환의 F6뿐이다. F2~F5, F7~F12로 레벨, 맵, 프로파일러, 도구 상태를 바꾸지 않는다. free camera에서는 gameplay command 입력을 보내지 않는다.
 - `Client/Bin/Resources`의 최상위 폴더는 `Fonts, Character, Deploy, Effect, Map, UI` 정확히 여섯 개다. `Resources/LostArk` 래퍼와 `SourceData`를 만들지 않는다.
 - 런타임 asset ID는 Resources 상대 경로다. 절대 경로, drive-qualified 경로, `..`로 루트를 벗어나는 경로를 거부한다.
@@ -120,10 +131,10 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 완료 기준은 한쪽 구현이 아니라 실제 소비자가 연결된 실행 계약이다. 새 command/state/data를
   추가했다면 관련 publisher, protocol/server contract, Client smoke와 실패 경로까지 함께 검증한다.
 
-- UI 담당자는 `CLobbyCommandService`와 `CSceneTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
-- 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. 현재 Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다.
+- UI 담당자는 `CLobbyCommandService`와 `CLevelTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
+- 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. Controller는 quick slot 이름과 물리 키만 알고, (class, slot) → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 조회한다. Controller에 skill ID를 하드코딩하지 않는다.
 - Character/Animation 담당자는 `CHARACTER_SPEC`, presentation callback, `CAnimationTargetService`를 사용한다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. 툴에서 level/layer/part tag/vector index를 추측하지 않는다.
-- 스킬 `34060`/`34100`은 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다.
+- 창술사 긴 창 quick slot 9개(`Q W E R A S T V ALT_V`)는 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다. 평타·이동기·스탠스 전환은 쿨다운/히트/데미지가 없어 현재 스키마에 들어가지 않으며 `skillKind` 도입 후에 추가한다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
 - 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation/<AreaId>.navgrid.json` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.

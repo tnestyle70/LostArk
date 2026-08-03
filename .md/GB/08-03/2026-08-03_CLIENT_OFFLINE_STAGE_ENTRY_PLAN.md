@@ -1,5 +1,10 @@
 # Client Local / Multiplayer Stage Entry Plan
 
+> **SUPERSEDED — 2026-08-03**
+> 이 계획의 Local Preview, ClientLaunchOptions, LevelCatalog, Client smoke 경로는 폐기한다.
+> 현재 구현 정본은 `2026-08-03_CHARACTER_SELECT_LEVEL_VERTICAL_SLICE_PLAN.md`의
+> server-only 네 버튼 + LEVEL 단일 전환 구조다. 아래 내용은 과거 설계 기록으로만 보존한다.
+
 ## 1. 현재 체크포인트와 이번 단계의 완료 조건
 
 현재 Client는 Lobby까지 단독 실행할 수 있다. 그러나 Bern, Valtan, Training의 실제

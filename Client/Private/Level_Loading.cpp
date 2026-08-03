@@ -1,16 +1,16 @@
 #include "imgui.h"
 
 #include "Level_Loading.h"
-#include "ClientLaunchOptions.h"
-#include "LevelRegistry.h"
-#include "Loader.h"
-#include "NetworkManager.h"
-#include "SceneTransitionService.h"
 
 #include "GameInstance.h"
+#include "LevelTransitionService.h"
+#include "Loader.h"
+#include "NetworkManager.h"
 
-CLevel_Loading::CLevel_Loading(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
-	: CLevel { pDevice, pContext }
+CLevel_Loading::CLevel_Loading(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CLevel{ pDevice, pContext }
 {
 }
 
@@ -18,22 +18,17 @@ CLevel_Loading::~CLevel_Loading()
 {
 }
 
-HRESULT CLevel_Loading::Initialize(LEVEL eNextLevelID)
+HRESULT CLevel_Loading::Initialize(const LEVEL eNextLevelID)
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
 	m_eNextLevelID = eNextLevelID;
-
 	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
-
-	if (nullptr == m_pLoader)
-		return E_FAIL;
-
-	return S_OK;
+	return nullptr == m_pLoader ? E_FAIL : S_OK;
 }
 
-void CLevel_Loading::Update(f32_t fTimeDelta)
+void CLevel_Loading::Update(const f32_t fTimeDelta)
 {
 	if (m_isRetryRequested)
 	{
@@ -51,34 +46,19 @@ void CLevel_Loading::Update(f32_t fTimeDelta)
 		return;
 	}
 
-	const bool_t isContinueRequested =
-		LEVEL::LOBBY == m_eNextLevelID ||
-		CClientLaunchOptions::Get().isAutoActivate ||
-		(!CGameInstance::Get().IsKeyboardInputBlocked() &&
-			(GetKeyState(VK_RETURN) & 0x8000));
-
-	if (isContinueRequested &&
-		true == m_pLoader->Finished())
+	if (m_pLoader->Finished() && !m_isActivationRequested)
 	{
-		unique_ptr<CLevel> pNewLevel =
-			CLevelRegistry::Create_Level(
-				m_eNextLevelID,
-				m_pDevice,
-				m_pContext);
-
-		if (nullptr == pNewLevel)
+		if (CLevelTransitionService::Request_Activation(
+			m_eNextLevelID,
+			"loading.complete"))
 		{
-			Recover_FromFailure(E_FAIL);
-			return;
+			m_isActivationRequested = true;
 		}
-
-		if (FAILED(CGameInstance::Get().Change_Level(ETOUI(m_eNextLevelID), move(pNewLevel))))
+		else
 		{
-			Recover_FromFailure(E_FAIL);
-			return;
+			OutputDebugStringA(
+				"[Level_Loading] Activation request was rejected; retrying.\n");
 		}
-
-		return;
 	}
 
 	__super::Update(fTimeDelta);
@@ -91,8 +71,7 @@ HRESULT CLevel_Loading::Render()
 
 	if (m_isFailureReported && LEVEL::LOBBY == m_eNextLevelID)
 	{
-		ImGui::SetNextWindowPos(
-			ImVec2(24.f, 24.f), ImGuiCond_Always);
+		ImGui::SetNextWindowPos(ImVec2(24.f, 24.f), ImGuiCond_Always);
 		if (ImGui::Begin(
 			"Loading recovery",
 			nullptr,
@@ -100,7 +79,7 @@ HRESULT CLevel_Loading::Render()
 			ImGuiWindowFlags_NoCollapse))
 		{
 			ImGui::TextWrapped(
-				"Lobby resources could not be loaded. The active world session was closed and partial resources were rolled back.");
+				"Lobby resources could not be loaded. Partial resources were rolled back.");
 			if (ImGui::Button("Retry Lobby"))
 				m_isRetryRequested = true;
 		}
@@ -108,10 +87,9 @@ HRESULT CLevel_Loading::Render()
 	}
 
 #ifdef _DEBUG
-	if(nullptr != m_pLoader)
+	if (nullptr != m_pLoader)
 		m_pLoader->Print_Text();
 #endif
-
 	return S_OK;
 }
 
@@ -121,7 +99,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
-	CSceneTransitionService::Report_LoadFailure(result);
+	CLevelTransitionService::Report_LoadFailure(result);
 	CNetworkManager::Get().Close_ServerConnection();
 
 	if (FAILED(CGameInstance::Get().Clear_Resources(
@@ -140,31 +118,23 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 
 void CLevel_Loading::Retry_LobbyLoad()
 {
-	unique_ptr<CLevel_Loading> pRecoveryLevel =
-		CLevel_Loading::Create(
-			m_pDevice,
-			m_pContext,
-			LEVEL::LOBBY);
-	if (nullptr == pRecoveryLevel ||
-		FAILED(CGameInstance::Get().Change_Level(
-			ETOUI(LEVEL::LOADING),
-			move(pRecoveryLevel))))
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		"loading.recovery"))
 	{
-		CSceneTransitionService::Report_LoadFailure(E_FAIL);
 		OutputDebugStringA(
-			"[Level_Loading] Failed to start Lobby recovery.\n");
+			"[Level_Loading] Failed to stage Lobby recovery.\n");
 	}
 }
 
-unique_ptr<CLevel_Loading> CLevel_Loading::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, LEVEL eNextLevelID)
+unique_ptr<CLevel_Loading> CLevel_Loading::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const LEVEL eNextLevelID)
 {
-	auto pInstance = unique_ptr<CLevel_Loading>(new CLevel_Loading(pDevice, pContext));
-
-	if (FAILED(pInstance->Initialize(eNextLevelID)))
-	{
-		OutputDebugStringA("[Level_Loading] Create failed.\n");
+	auto instance = unique_ptr<CLevel_Loading>(
+		new CLevel_Loading(pDevice, pContext));
+	if (FAILED(instance->Initialize(eNextLevelID)))
 		return nullptr;
-	}
-
-	return pInstance;
+	return instance;
 }

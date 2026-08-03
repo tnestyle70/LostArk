@@ -36,6 +36,26 @@
       "placementCount": 18,
       "assetCount": 10,
       "runtimeAssetRoot": "Map/ENVIRONMENT_CURATED"
+    },
+    {
+      "id": "LV_SHS_RCARENA_D",
+      "kind": "development",
+      "catalogType": "single",
+      "catalog": "Client/Bin/DataFiles/Map/LV_SHS_RCARENA_D.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_SHS_RCARENA_D.mapplacements",
+      "placementCount": 7856,
+      "assetCount": 302,
+      "runtimeAssetRoot": "Map/LV_SHS_RCARENA_D"
+    },
+    {
+      "id": "LV_LOBBY_CLASSSELECT_SL00",
+      "kind": "development",
+      "catalogType": "single",
+      "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapassets",
+      "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements",
+      "placementCount": 803,
+      "assetCount": 55,
+      "runtimeAssetRoot": "Map/LV_LOBBY_CLASSSELECT_SL00"
     }
   ],
   "editorSelection": {

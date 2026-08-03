@@ -74,20 +74,8 @@ namespace Client
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
-		struct SKILL_DEFINITION
-		{
-			LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
-			LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
-				LostArk::Shared::CHARACTER_CLASS_ID::END;
-			std::string strInputSlot;
-			std::string strDisplayName;
-			std::string strActionId;
-			std::uint32_t iCooldownMs = 0;
-			std::uint32_t iDamage = 0;
-		};
-
-		std::unordered_map<LostArk::Shared::SKILL_ID, SKILL_DEFINITION>
-			m_SkillDefinitions;
+		/* Skill definitions live in CPlayerSkillCatalog because the input
+		controller reads the same rows; only the boss names are HUD-only. */
 		std::unordered_map<std::string, std::string> m_BossDisplayNames;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
