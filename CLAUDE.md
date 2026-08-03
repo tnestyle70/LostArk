@@ -316,6 +316,14 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 
 ## 팀 작업 인터페이스
 
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+역할 이름은 시작점과 권위 경계를 나타내며 파일 수정 권한을 제한하지 않는다. 기능 담당자는
+요청된 동작이 실제로 실행되도록 필요한 Data, Shared, Server, Client, UI와 harness를 한 수직
+슬라이스로 연결한다. 예를 들어 Player/Input 담당자가 서버 권위 스킬을 추가한다면 Server 판정과
+snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유로 Client command만 남기지 않는다.
+표의 금지 경계는 다른 폴더를 수정하지 말라는 뜻이 아니라 계층을 우회하지 말라는 뜻이다.
+
 | 담당 | 읽는 계약 | 쓰는 계약 | 금지 경계 |
 |---|---|---|---|
 | UI | layout JSON, `CCombatHUDViewModel` | lobby/scene/gameplay command service | packet/snapshot 파싱, Character 직접 변경 |
@@ -360,7 +368,8 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 - 고장나지 않은 것을 리팩터링하지 않는다.
 - 내 취향과 달라도 주변 스타일에 맞춘다.
 - 관련 없는 죽은 코드를 발견하면 알리기만 하고 지우지 않는다.
-- **다른 팀원이 담당하는 영역(다른 레벨, 다른 오브젝트, 공용 헤더)을 필요 없이 손대지 않는다.** 불가피하면 왜 손댔는지 명시한다.
+- **기능과 무관한 다른 레벨, 오브젝트, 공용 헤더는 손대지 않는다.** 반대로 기능 완성에 필요한
+  Shared/Server/Client/Data 교차 수정은 생략하지 않으며, 변경 이유와 실행 검증을 같은 RESULT에 남긴다.
 - 대량 변경(전체 서식 정리, 인코딩 변환, 파일 이동)은 merge 충돌을 만든다. 요청받은 경우에만 한다.
 
 변경으로 고아가 생겼을 때:

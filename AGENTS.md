@@ -103,6 +103,23 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 
 ## 팀 인터페이스와 담당 영역
 
+### 기능 단위 작업 모델
+
+<!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
+
+- 아래 담당 표는 파일 수정 권한표가 아니다. 담당 이름은 작업 시작점, 데이터 정본, 런타임
+  권위와 우회하면 안 되는 public interface를 설명한다.
+- 기능 담당자는 요청받은 기능의 수직 슬라이스를 끝까지 구현한다. 기능에 Server authority가
+  필요하면 `Data -> Shared -> Server -> Client presentation/UI -> harness`의 필요한 파일을
+  같은 변경 단위에서 직접 수정한다. Server 폴더가 다른 담당으로 표시됐다는 이유로 Client
+  mock, 로컬 우회, 문서만 남기고 중단하지 않는다.
+- 교차 영역 수정은 범위 확장이 아니라 기능 완성에 필요한 계약 연결이다. 다만 UI가 socket을
+  직접 호출하거나 Character가 damage를 판정하는 등 아래 금지 경계를 우회해서는 안 된다.
+- 같은 파일에 다른 팀원의 미커밋 변경이 있으면 덮어쓰지 않고 먼저 현재 diff를 보존·조정한다.
+  역할 분리는 merge 충돌을 줄이는 기준이지, 필요한 서버·클라이언트 구현을 금지하는 장벽이 아니다.
+- 완료 기준은 한쪽 구현이 아니라 실제 소비자가 연결된 실행 계약이다. 새 command/state/data를
+  추가했다면 관련 publisher, protocol/server contract, Client smoke와 실패 경로까지 함께 검증한다.
+
 - UI 담당자는 `CLobbyCommandService`와 `CSceneTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
 - 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. 현재 Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다.
 - Character/Animation 담당자는 `CHARACTER_SPEC`, presentation callback, `CAnimationTargetService`를 사용한다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. 툴에서 level/layer/part tag/vector index를 추측하지 않는다.

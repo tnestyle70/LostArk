@@ -354,6 +354,18 @@ try {
 	}
 	Add-Check 'maps.sharded-authoring-publish' $mapPublishPassed $mapPublishDetail
 
+	$agentsGuide = Get-Content -LiteralPath 'AGENTS.md' -Raw -Encoding utf8
+	$claudeGuide = Get-Content -LiteralPath 'CLAUDE.md' -Raw -Encoding utf8
+	$teamReadme = Get-Content -LiteralPath '.md\TEAM\README.md' -Raw -Encoding utf8
+	$teamGameplayHandbook = Get-Content -LiteralPath '.md\TEAM\TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md' -Raw -Encoding utf8
+	$verticalSliceContractMarker =
+		'team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions'
+	Add-Check 'team.vertical-slice-ownership' (
+		$agentsGuide.Contains($verticalSliceContractMarker) -and
+		$claudeGuide.Contains($verticalSliceContractMarker) -and
+		$teamReadme.Contains($verticalSliceContractMarker) -and
+		$teamGameplayHandbook.Contains($verticalSliceContractMarker)) 'team roles define authority interfaces while feature owners may implement required Data/Shared/Server/Client/harness slices'
+
     $clientItems = Get-ProjectItems 'Client\Default\Client.vcxproj'
     $engineItems = Get-ProjectItems 'Engine\Default\Engine.vcxproj'
     $serverItems = Get-ProjectItems 'Server\Default\Server.vcxproj'
