@@ -81,6 +81,10 @@ if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
 	$missingClasses = @($supportedPlayerClasses | Where-Object { -not $playerClasses.Contains($_) })
 	throw "Player profiles are incomplete. missing=[$($missingClasses -join ',')]"
 }
+# Quick-slot names a loadout may bind. Modifier combinations use an underscore
+# (ALT_V), and the two mouse buttons are spelled out so the set stays a stable ID.
+$playerSkillSlots = @(
+	'Q','W','E','R','A','S','D','F','T','Z','V','ALT_V','SPACE','LMB','RMB')
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
 $inputSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skillRows = [Collections.Generic.List[string]]::new()
@@ -100,9 +104,9 @@ foreach ($skill in @($skillDocument.skills)) {
         -not $inputSlots.Add("$($skill.characterClass):$($skill.inputSlot)")) {
         throw "Duplicate skill ID or input slot: $id"
     }
-    if ($skill.characterClass -ne 'LANCE_MASTER' -or $skill.inputSlot -notin @('Q','W') -or
+    if ($skill.characterClass -notin $supportedPlayerClasses -or $skill.inputSlot -notin $playerSkillSlots -or
         [uint32]$skill.cooldownMs -eq 0 -or [uint32]$skill.actionDurationMs -eq 0 -or
-        [uint32]$skill.hitTimeMs -eq 0 -or [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
+        [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
         [uint32]$skill.resourceCost -gt 100 -or -not $damageIds.Contains([string]$skill.serverDamageProfileId)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }

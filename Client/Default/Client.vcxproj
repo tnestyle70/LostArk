@@ -65,6 +65,7 @@
     <ClInclude Include="..\Public\MainApp.h" />
     <ClInclude Include="..\Public\PlayerController.h" />
     <ClInclude Include="..\Public\PlayerCommandSink.h" />
+    <ClInclude Include="..\Public\PlayerSkillCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
@@ -132,6 +133,7 @@
     <ClCompile Include="..\private\Loader.cpp" />
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\PlayerController.cpp" />
+    <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />

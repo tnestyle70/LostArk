@@ -2,8 +2,15 @@
   "schema": "lostark.damage-profiles",
   "formatVersion": 1,
   "profiles": [
-    { "damageProfileId": "damage.player.34060", "amount": 650 },
-    { "damageProfileId": "damage.player.34100", "amount": 900 },
+    { "damageProfileId": "damage.player.34120", "amount": 650 },
+    { "damageProfileId": "damage.player.34080", "amount": 700 },
+    { "damageProfileId": "damage.player.34070", "amount": 750 },
+    { "damageProfileId": "damage.player.34150", "amount": 1000 },
+    { "damageProfileId": "damage.player.34110", "amount": 850 },
+    { "damageProfileId": "damage.player.34090", "amount": 650 },
+    { "damageProfileId": "damage.player.34640", "amount": 1650 },
+    { "damageProfileId": "damage.player.34600", "amount": 2500 },
+    { "damageProfileId": "damage.player.34620", "amount": 2500 },
     { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 }
   ]
 }

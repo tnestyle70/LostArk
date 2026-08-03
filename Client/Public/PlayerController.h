@@ -2,7 +2,9 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketMessages.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -34,6 +36,14 @@ namespace Client
 			f32_t groundY,
 			float3_t& outPosition) const;
 
+		/* Walks the quick slots once and reports the first newly pressed one that
+		the character's class has a skill bound to. Only writes outSkillId when it
+		is still INVALID_SKILL_ID, so one frame submits at most one skill. */
+		void Poll_SkillSlots(
+			bool_t isKeyboardBlocked,
+			const shared_ptr<CCharacter>& character,
+			LostArk::Shared::SKILL_ID& outSkillId);
+
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
@@ -41,8 +51,10 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
-		bool_t m_wasQDown = false;
-		bool_t m_wasWDown = false;
+		/* Edge state indexed by DirectInput key code, not by binding position: a
+		slot that is later re-pointed at another skill must not make a key that is
+		already held read as a fresh press. */
+		std::array<bool_t, 256> m_wasKeyDown{};
 		bool_t m_isGameplayInputEnabled = true;
 	};
 }

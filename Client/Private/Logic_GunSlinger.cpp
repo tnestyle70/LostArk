@@ -55,6 +55,7 @@ void CLogic_GunSlinger::Update_Presentation(
 const CHARACTER_SPEC Spec_GunSlinger =
 {
 	"GunSlinger",
+	LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 
 	TEXT("Prototype_Component_Model_GunSlinger"),
 	TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),

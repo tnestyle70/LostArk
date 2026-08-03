@@ -121,9 +121,9 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
   추가했다면 관련 publisher, protocol/server contract, Client smoke와 실패 경로까지 함께 검증한다.
 
 - UI 담당자는 `CLobbyCommandService`와 `CSceneTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
-- 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. 현재 Q/W는 stable skill ID `34060`/`34100`을 `C2S_USE_SKILL`로 제출한다.
+- 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. Controller는 quick slot 이름과 물리 키만 알고, (class, slot) → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 조회한다. Controller에 skill ID를 하드코딩하지 않는다.
 - Character/Animation 담당자는 `CHARACTER_SPEC`, presentation callback, `CAnimationTargetService`를 사용한다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. 툴에서 level/layer/part tag/vector index를 추측하지 않는다.
-- 스킬 `34060`/`34100`은 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다.
+- 창술사 긴 창 quick slot 9개(`Q W E R A S T V ALT_V`)는 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다. 평타·이동기·스탠스 전환은 쿨다운/히트/데미지가 없어 현재 스키마에 들어가지 않으며 `skillKind` 도입 후에 추가한다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
 - 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation/<AreaId>.navgrid.json` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.

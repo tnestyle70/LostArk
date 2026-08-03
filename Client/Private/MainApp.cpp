@@ -642,7 +642,7 @@ void CMainApp::UpdateSmokeHarness()
 				if (!isTrainingActionDispatched)
 				{
 					if (!CNetworkManager::Get().Send_UseSkill(
-						1u, 34060u, 0.f, 0.f))
+						1u, 34120u, 0.f, 0.f))
 					{
 						CompleteSmokeHarness(false, "training-action-send-failed");
 						return;
@@ -658,7 +658,7 @@ void CMainApp::UpdateSmokeHarness()
 					playerState.Skills.end(),
 					[](const Client::HUD_SKILL_STATE& state)
 					{
-						return 34060u == state.iSkillId;
+						return 34120u == state.iSkillId;
 					});
 				if (!playerState.isValid ||
 					playerState.Skills.end() == skill ||

@@ -1,6 +1,7 @@
 #include "CombatHUDViewModel.h"
 
 #include "DataJson.h"
+#include "PlayerSkillCatalog.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
@@ -35,17 +36,6 @@ namespace
 		const DATA_JSON_VALUE* value = object.Find(name);
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
-
-	LostArk::Shared::CHARACTER_CLASS_ID ParseCharacterClass(
-		const std::string& value)
-	{
-		using LostArk::Shared::CHARACTER_CLASS_ID;
-		if (value == "LANCE_MASTER") return CHARACTER_CLASS_ID::LANCE_MASTER;
-		if (value == "GUNSLINGER") return CHARACTER_CLASS_ID::GUNSLINGER;
-		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
-		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
-		return CHARACTER_CLASS_ID::END;
-	}
 }
 
 Client::CCombatHUDViewModel& Client::CCombatHUDViewModel::Get()
@@ -56,75 +46,18 @@ Client::CCombatHUDViewModel& Client::CCombatHUDViewModel::Get()
 
 bool Client::CCombatHUDViewModel::Initialize_Definitions()
 {
-	DATA_JSON_VALUE damageRoot;
-	DATA_JSON_VALUE skillRoot;
+	std::string skillStatus;
+	if (!CPlayerSkillCatalog::Load(skillStatus))
+	{
+		m_strStatus = skillStatus;
+		return false;
+	}
+
 	DATA_JSON_VALUE bossRoot;
-	if (!ReadDocument(L"Balance/DamageProfiles.json", damageRoot) ||
-		!ReadDocument(L"Balance/PlayerSkills.json", skillRoot) ||
-		!ReadDocument(L"Balance/BossProfiles.json", bossRoot))
+	if (!ReadDocument(L"Balance/BossProfiles.json", bossRoot))
 	{
 		m_strStatus = "Missing combat HUD balance document";
 		return false;
-	}
-
-	std::unordered_map<std::string, std::uint32_t> damages;
-	const DATA_JSON_VALUE* profiles =
-		Required(damageRoot, "profiles", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == profiles)
-		return false;
-	for (const DATA_JSON_VALUE& value : profiles->Get_Array())
-	{
-		const DATA_JSON_VALUE* id = Required(
-			value, "damageProfileId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* amount = Required(
-			value, "amount", DATA_JSON_TYPE::NUMBER);
-		if (nullptr == id || nullptr == amount || amount->Get_Number() <= 0.0 ||
-			!damages.emplace(id->Get_String(),
-				static_cast<std::uint32_t>(amount->Get_Number())).second)
-		{
-			return false;
-		}
-	}
-
-	std::unordered_map<LostArk::Shared::SKILL_ID, SKILL_DEFINITION> skills;
-	const DATA_JSON_VALUE* skillValues =
-		Required(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == skillValues)
-		return false;
-	for (const DATA_JSON_VALUE& value : skillValues->Get_Array())
-	{
-		const DATA_JSON_VALUE* id = Required(value, "skillId", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* characterClass = Required(
-			value, "characterClass", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* slot = Required(value, "inputSlot", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* name = Required(value, "displayName", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* action = Required(value, "actionId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* damageId = Required(
-			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
-		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
-			nullptr == name || nullptr == action ||
-			nullptr == cooldown || nullptr == damageId)
-		{
-			return false;
-		}
-		const auto damage = damages.find(damageId->Get_String());
-		SKILL_DEFINITION definition{};
-		definition.iSkillId = static_cast<LostArk::Shared::SKILL_ID>(id->Get_Number());
-		definition.eCharacterClass = ParseCharacterClass(
-			characterClass->Get_String());
-		definition.strInputSlot = slot->Get_String();
-		definition.strDisplayName = name->Get_String();
-		definition.strActionId = action->Get_String();
-		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
-		definition.iDamage = damages.end() == damage ? 0u : damage->second;
-		if (LostArk::Shared::INVALID_SKILL_ID == definition.iSkillId ||
-			LostArk::Shared::CHARACTER_CLASS_ID::END == definition.eCharacterClass ||
-			0u == definition.iCooldownMs || 0u == definition.iDamage ||
-			!skills.emplace(definition.iSkillId, std::move(definition)).second)
-		{
-			return false;
-		}
 	}
 
 	std::unordered_map<std::string, std::string> bossNames;
@@ -143,9 +76,8 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 		}
 	}
 
-	m_SkillDefinitions = std::move(skills);
 	m_BossDisplayNames = std::move(bossNames);
-	m_strStatus = "Loaded combat HUD definitions";
+	m_strStatus = "Loaded combat HUD definitions. " + skillStatus;
 	return true;
 }
 
@@ -163,11 +95,13 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.eAction = snapshot.eAction;
 	m_Player.Skills.clear();
-	for (const auto& [skillId, definition] : m_SkillDefinitions)
+	for (const PLAYER_SKILL_DEFINITION& definition :
+		CPlayerSkillCatalog::Get_Skills())
 	{
 		if (definition.eCharacterClass != characterClass)
 			continue;
 
+		const LostArk::Shared::SKILL_ID skillId = definition.iSkillId;
 		HUD_SKILL_STATE state{};
 		state.iSkillId = skillId;
 		state.strInputSlot = definition.strInputSlot;

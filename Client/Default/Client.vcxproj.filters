@@ -333,6 +333,9 @@
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\PlayerSkillCatalog.cpp">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MainApp.h">
@@ -543,6 +546,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayerSkillCatalog.h">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
   </ItemGroup>
