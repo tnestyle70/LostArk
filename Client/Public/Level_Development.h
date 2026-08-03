@@ -30,20 +30,15 @@ public:
 private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera(const wstring_t& strLayerTag);
-	HRESULT Ready_Character();
-	void Update_ClickMove();
 	bool_t Bind_CameraToLocalCharacter();
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
-	shared_ptr<CCharacter> m_pCharacter = { nullptr };
 	weak_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
-	bool_t m_isNetworkTraining = false;
-	bool_t m_wasRightMouseDown = false;
 
 public:
 	static unique_ptr<CLevel_Development> Create(

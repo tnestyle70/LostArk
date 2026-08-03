@@ -4,10 +4,8 @@
 #include "Camera_Free.h"
 #include "Body_Valtan.h"
 #include "Character.h"
-#include "ClientLaunchOptions.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
-#include "LevelCatalog.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
 #include "MapNavigationContract.h"
@@ -22,6 +20,7 @@
 #include "Valtan.h"
 
 #include <algorithm>
+#include <array>
 #include <exception>
 #include <unordered_set>
 
@@ -195,12 +194,35 @@ void CLoader::Print_Text()
 HRESULT CLoader::Ready_For_Lobby()
 {
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::LOBBY));
-	Set_Status(TEXT("LOBBY: core UI and camera"));
-
-	if (FAILED(Ready_Camera_Prototype(ETOUI(LEVEL::LOBBY))))
-		return E_FAIL;
-
+	Set_Status(TEXT("LOBBY: stage selection UI"));
 	Set_Status(TEXT("Lobby loading complete"));
+	rollback.Commit();
+	return S_OK;
+}
+
+HRESULT CLoader::Ready_For_CharacterSelect()
+{
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	constexpr std::array CHARACTER_CLASSES =
+	{
+		CHARACTER_CLASS_ID::LANCE_MASTER,
+		CHARACTER_CLASS_ID::GUNSLINGER,
+		CHARACTER_CLASS_ID::SLAYER,
+		CHARACTER_CLASS_ID::ARTIST
+	};
+
+	CLevelResourceRollbackScope rollback(
+		ETOUI(LEVEL::CHARACTER_SELECT));
+	Set_Status(TEXT("CHARACTER SELECT: camera and playable classes"));
+	if (FAILED(Ready_Camera_Prototype(ETOUI(LEVEL::CHARACTER_SELECT))) ||
+		FAILED(Ready_Character_Rendering(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			CHARACTER_CLASSES)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("Character Select loading complete"));
 	rollback.Commit();
 	return S_OK;
 }
@@ -210,20 +232,25 @@ HRESULT CLoader::Ready_For_Bern()
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::BERN));
 	Set_Status(TEXT("BERN: world catalog and placements"));
 
-	const LEVEL_CATALOG_ENTRY* pEntry =
-		CLevelCatalog::Find(CLIENT_SCENARIO::WORLD_BERN);
-	if (nullptr == pEntry || pEntry->eLevel != LEVEL::BERN ||
-		pEntry->strMapAreaId.empty() ||
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::BERN);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
 		FAILED(Ready_MapArea(
 			ETOUI(LEVEL::BERN),
-			pEntry->strMapAreaId,
+			pEntry->pMapAreaId,
 			pEntry->MapLoadScope)))
 	{
 		return E_FAIL;
 	}
 
 	Set_Status(TEXT("BERN: session character bundle"));
-	if (FAILED(Ready_Character_Rendering(ETOUI(LEVEL::BERN))))
+	const std::array selectedClass =
+	{
+		CNetworkManager::Get().Get_LocalCharacterClass()
+	};
+	if (FAILED(Ready_Character_Rendering(
+		ETOUI(LEVEL::BERN),
+		selectedClass)))
 		return E_FAIL;
 
 	Set_Status(TEXT("Bern loading complete"));
@@ -237,22 +264,24 @@ HRESULT CLoader::Ready_For_ValtanArena()
 		ETOUI(LEVEL::VALTAN_ARENA));
 	Set_Status(TEXT("VALTAN: arena map"));
 
-	const LEVEL_CATALOG_ENTRY* pEntry =
-		CLevelCatalog::Find(
-			CLIENT_SCENARIO::RAID_VALTAN_ARENA);
-	if (nullptr == pEntry ||
-		pEntry->eLevel != LEVEL::VALTAN_ARENA ||
-		pEntry->strMapAreaId.empty() ||
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
 		FAILED(Ready_MapArea(
 			ETOUI(LEVEL::VALTAN_ARENA),
-			pEntry->strMapAreaId,
+			pEntry->pMapAreaId,
 			pEntry->MapLoadScope)))
 	{
 		return E_FAIL;
 	}
 	Set_Status(TEXT("VALTAN: network player rendering"));
+	const std::array selectedClass =
+	{
+		CNetworkManager::Get().Get_LocalCharacterClass()
+	};
 	if (FAILED(Ready_Character_Rendering(
-		ETOUI(LEVEL::VALTAN_ARENA))))
+		ETOUI(LEVEL::VALTAN_ARENA),
+		selectedClass)))
 	{
 		return E_FAIL;
 	}
@@ -272,72 +301,30 @@ HRESULT CLoader::Ready_For_Development()
 {
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::DEVELOPMENT));
-	const CLIENT_SCENARIO scenario =
-		CClientLaunchOptions::Get().eScenario;
-	const LEVEL_CATALOG_ENTRY* pEntry =
-		CLevelCatalog::Find(scenario);
-	if (nullptr == pEntry ||
-		pEntry->eLevel != LEVEL::DEVELOPMENT)
-	{
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::DEVELOPMENT);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
 		return E_INVALIDARG;
+
+	Set_Status(TEXT("TEST: training map"));
+	if (FAILED(Ready_MapArea(
+		ETOUI(LEVEL::DEVELOPMENT),
+		pEntry->pMapAreaId,
+		pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
 	}
 
-	const auto HasDomain = [pEntry](const std::string_view domain)
+	const std::array selectedClass =
 	{
-		return pEntry->AssetDomains.end() !=
-			std::find(
-				pEntry->AssetDomains.begin(),
-				pEntry->AssetDomains.end(),
-				domain);
+		CNetworkManager::Get().Get_LocalCharacterClass()
 	};
-
-	if (!pEntry->strMapAreaId.empty())
+	Set_Status(TEXT("TEST: server-approved character rendering"));
+	if (FAILED(Ready_Character_Rendering(
+		ETOUI(LEVEL::DEVELOPMENT),
+		selectedClass)))
 	{
-		Set_Status(TEXT("DEV: explicit map scenario"));
-		if (!HasDomain("Map") ||
-			FAILED(Ready_MapArea(
-				ETOUI(LEVEL::DEVELOPMENT),
-				pEntry->strMapAreaId,
-				pEntry->MapLoadScope)))
-		{
-			return E_FAIL;
-		}
-		if (HasDomain("Character"))
-		{
-			Set_Status(TEXT("DEV: network character rendering"));
-			if (FAILED(Ready_Character_Rendering(
-				ETOUI(LEVEL::DEVELOPMENT))))
-			{
-				return E_FAIL;
-			}
-		}
-	}
-	else if (HasDomain("Character"))
-	{
-		Set_Status(TEXT("DEV: LanceMaster scenario"));
-		if (FAILED(Ready_Camera_Prototype(
-			ETOUI(LEVEL::DEVELOPMENT))) ||
-			FAILED(Ready_StaticMeshShader(
-				ETOUI(LEVEL::DEVELOPMENT))) ||
-			FAILED(Ready_Character_Rendering(
-				ETOUI(LEVEL::DEVELOPMENT))))
-		{
-			return E_FAIL;
-		}
-	}
-	else if (HasDomain("Effect") || HasDomain("UI"))
-	{
-		Set_Status(TEXT("DEV: minimal render scenario"));
-		if (FAILED(Ready_Camera_Prototype(
-			ETOUI(LEVEL::DEVELOPMENT))))
-		{
-			return E_FAIL;
-		}
-	}
-	else
-	{
-		Set_Status(TEXT("DEV: unsupported scenario"));
-		return E_INVALIDARG;
+		return E_FAIL;
 	}
 
 	Set_Status(TEXT("Development scenario loading complete"));
@@ -531,30 +518,21 @@ HRESULT CLoader::Ready_StaticMeshShader(
 }
 
 HRESULT CLoader::Ready_Character_Rendering(
-	const uint32_t iLevelIndex)
+	const uint32_t iLevelIndex,
+	const std::span<const LostArk::Shared::CHARACTER_CLASS_ID>
+		characterClasses)
 {
-	using LostArk::Shared::CHARACTER_CLASS_ID;
-	const CLIENT_SCENARIO scenario = CClientLaunchOptions::Get().eScenario;
-	const bool_t isNetworkScenario =
-		CLIENT_SCENARIO::WORLD_BERN == scenario ||
-		CLIENT_SCENARIO::RAID_VALTAN_ARENA == scenario ||
-		CLIENT_SCENARIO::DEVELOPMENT_TRAINING_GROUND == scenario;
-	CHARACTER_CLASS_ID selectedClass = isNetworkScenario ?
-		CNetworkManager::Get().Get_LocalCharacterClass() :
-		CHARACTER_CLASS_ID::LANCE_MASTER;
-	if (isNetworkScenario &&
-		!LostArk::Shared::Is_Supported_Playable_Character_Class(
-			selectedClass) &&
-		CClientLaunchOptions::Get().isOfflinePreview &&
-		CClientLaunchOptions::Get().SelectedCharacterClass.has_value())
-	{
-		selectedClass =
-			*CClientLaunchOptions::Get().SelectedCharacterClass;
-	}
-	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
-		selectedClass))
+	if (iLevelIndex >= ETOUI(LEVEL::END) || characterClasses.empty())
 	{
 		return E_INVALIDARG;
+	}
+	for (const auto characterClass : characterClasses)
+	{
+		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+			characterClass))
+		{
+			return E_INVALIDARG;
+		}
 	}
 
 	CPlayableCharacterAssetService::Begin_LevelLoad(iLevelIndex);
@@ -568,15 +546,22 @@ HRESULT CLoader::Ready_Character_Rendering(
 			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
 			VTXANIMMESH::Elements,
 			VTXANIMMESH::iNumElements))) ||
-		FAILED(Ready_Character_Shared_Prototypes(iLevelIndex)) ||
-		FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		FAILED(Ready_Character_Shared_Prototypes(iLevelIndex)))
+	{
+		return E_FAIL;
+	}
+
+	for (const auto characterClass : characterClasses)
+	{
+		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
 			m_pDevice,
 			m_pContext,
 			iLevelIndex,
-			selectedClass,
+			characterClass,
 			&m_isCancellationRequested)))
-	{
-		return E_FAIL;
+		{
+			return E_FAIL;
+		}
 	}
 
 	return S_OK;

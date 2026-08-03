@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cstddef>
 #include <mutex>
+#include <span>
 
 NS_BEGIN(Client)
 
@@ -58,6 +59,7 @@ public:
 
 private:
 	HRESULT Ready_For_Lobby();
+	HRESULT Ready_For_CharacterSelect();
 	HRESULT Ready_For_Bern();
 	HRESULT Ready_For_ValtanArena();
 	HRESULT Ready_For_Development();
@@ -68,7 +70,9 @@ private:
 		const MAP_LOAD_SCOPE& loadScope = {});
 	HRESULT Ready_Camera_Prototype(uint32_t iLevelIndex);
 	HRESULT Ready_StaticMeshShader(uint32_t iLevelIndex);
-	HRESULT Ready_Character_Rendering(uint32_t iLevelIndex);
+	HRESULT Ready_Character_Rendering(
+		uint32_t iLevelIndex,
+		std::span<const LostArk::Shared::CHARACTER_CLASS_ID> characterClasses);
 	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
 	void Set_Status(const tchar_t* pStatus);

@@ -2,12 +2,10 @@
 
 #include "Camera_Free.h"
 #include "Character.h"
-#include "ClientLaunchOptions.h"
 #include "GameInstance.h"
-#include "LevelCatalog.h"
+#include "LevelRegistry.h"
+#include "LevelTransitionService.h"
 #include "NetworkPlayerCommandSink.h"
-#include "OfflinePlayerPreview.h"
-#include "SceneTransitionService.h"
 #include "Transform.h"
 
 #include <algorithm>
@@ -28,13 +26,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
 
-	const LEVEL_CATALOG_ENTRY* pEntry =
-		CLevelCatalog::Find(
-			CLIENT_SCENARIO::RAID_VALTAN_ARENA);
-	if (nullptr == pEntry || pEntry->strMapAreaId.empty() ||
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::VALTAN_ARENA);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
 		!m_MapRuntime.Load_Area(
 			ETOUI(LEVEL::VALTAN_ARENA),
-			pEntry->strMapAreaId,
+			pEntry->pMapAreaId,
 			pEntry->MapLoadScope))
 	{
 		OutputDebugStringA(("[Level_ValtanArena] " +
@@ -66,27 +63,8 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return E_FAIL;
 	}
 
-	if (CClientLaunchOptions::Get().isOfflinePreview)
-	{
-		std::string previewStatus;
-		if (!COfflinePlayerPreview::Spawn(
-			m_Replication,
-			pEntry->strMapAreaId,
-			previewStatus))
-		{
-			OutputDebugStringA((
-				"[Level_ValtanArena] " + previewStatus + "\n").c_str());
-			m_MapRuntime.Clear();
-			return E_FAIL;
-		}
-	}
-	else
-	{
-		m_pPlayerCommandSink =
-			make_shared<CNetworkPlayerCommandSink>();
-		m_PlayerController.Set_CommandSink(
-			m_pPlayerCommandSink);
-	}
+	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
+	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 
 	return S_OK;
 }
@@ -102,9 +80,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	}
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
-		if (CSceneTransitionService::Request(
+		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
-			CLIENT_SCENARIO::FRONT_LOBBY,
 			"network.connection-lost"))
 		{
 			m_Replication.Acknowledge_ConnectionLoss();
@@ -119,8 +96,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	m_PlayerController.Set_GameplayInputEnabled(
-		!CClientLaunchOptions::Get().isOfflinePreview &&
-		(nullptr == m_pCamera || m_pCamera->Is_FollowEnabled()));
+		nullptr == m_pCamera || m_pCamera->Is_FollowEnabled());
 	m_PlayerController.Update();
 }
 

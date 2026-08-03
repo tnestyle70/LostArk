@@ -1,6 +1,7 @@
 #include "LevelRegistry.h"
 
 #include "Level_Bern.h"
+#include "Level_CharacterSelect.h"
 #include "Level_Development.h"
 #include "Level_Lobby.h"
 #include "Level_ValtanArena.h"
@@ -28,6 +29,13 @@ namespace
 		return CLevel_Bern::Create(pDevice, pContext);
 	}
 
+	unique_ptr<CLevel> CreateCharacterSelect(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+	{
+		return CLevel_CharacterSelect::Create(pDevice, pContext);
+	}
+
 	unique_ptr<CLevel> CreateValtanArena(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -47,19 +55,32 @@ namespace
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
-	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 4> levels =
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 5> levels =
 	{{
 		{
 			LEVEL::LOBBY,
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"front.lobby",
+			nullptr,
+			{},
 			CreateLobby,
 			&CLoader::Ready_For_Lobby
+		},
+		{
+			LEVEL::CHARACTER_SELECT,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"front.character-select",
+			nullptr,
+			{},
+			CreateCharacterSelect,
+			&CLoader::Ready_For_CharacterSelect
 		},
 		{
 			LEVEL::BERN,
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.bern",
+			"LV_BER_BERNCASTLE",
+			{ true, true, -50.f, -50.f, 50.f, 50.f },
 			CreateBern,
 			&CLoader::Ready_For_Bern
 		},
@@ -67,13 +88,17 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			LEVEL::VALTAN_ARENA,
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"raid.valtan.arena",
+			"LV_LUT_HEARTRB_ED",
+			{ true, true, 120.5f, -157.5f, 191.5f, -86.f },
 			CreateValtanArena,
 			&CLoader::Ready_For_ValtanArena
 		},
 		{
 			LEVEL::DEVELOPMENT,
 			CLIENT_LEVEL_KIND::DEVELOPMENT,
-			"dev.lab",
+			"dev.training.ground",
+			"LV_DEV_TRAINING_GROUND",
+			{ true, false, -20.f, -20.f, 20.f, 20.f },
 			CreateDevelopment,
 			&CLoader::Ready_For_Development
 		}

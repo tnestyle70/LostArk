@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Server + Client",
+    "Projects": [
+      {
+        "Path": "Server\\Default\\Server.vcxproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Client\\Default\\Client.vcxproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

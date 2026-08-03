@@ -164,6 +164,14 @@ UI 담당자는 이 ViewModel을 소비하며 packet/snapshot을 직접 파싱�
 
 Bern/Valtan/Training에는 이 ViewModel을 읽는 runtime HUD overlay가 연결되어 선택 클래스, HP/resource, action, class별 skill/cooldown/damage, boss 상태를 표시한다. 최종 아트 layout과 party roster는 아직 남아 있다. 비-Lance class는 Server skill 계약이 없으므로 HUD가 스킬을 꾸며내지 않고 미지원 상태를 표시한다.
 
+2026-08-03 UI authoring/runtime 경계를 재검토했다. `CHUDLayoutTool`은 `Resources/UI` 이미지
+palette와 thumbnail, drag/drop, rect/rotation, layer order, hover preview, 두 `Data/UI` JSON의
+save/load까지 구현되어 있다. 반면 이 JSON을 제품 `CUIObject` image widget으로 stage/commit하는
+runtime factory, reference resolution 기반 2D hit-test router, stable command binding schema는
+아직 없다. 따라서 현재 상태를 “ImGui UI가 제품 이미지 UI와 picking으로 자동 전환된다”고
+표현하지 않는다. 목표 규칙과 완료 검증은 `AGENTS.md`, `CLAUDE.md`,
+`.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`에 정본별 역할로 반영했다.
+
 ## 7. Level, Lobby, ImGui 이동 현황
 
 엔진 enum은 `STATIC`, `LOADING`, `LOBBY`, `BERN`, `VALTAN_ARENA`, `DEVELOPMENT` 여섯 값이다. 사용자가 체감하는 제품 씬은 다음 세 개다.
@@ -440,3 +448,20 @@ Server authority 구현을 남기는 반쪽 기능이 생길 수 있었다.
 `ProjectAudit`의 `team.vertical-slice-ownership` 검사가 `AGENTS.md`, `CLAUDE.md`, 팀 README와
 인터페이스 핸드북에 이 의미가 함께 박제되어 있는지 확인한다. 교정 후 ProjectAudit는 60/60으로
 통과했다.
+
+## 22. LAN endpoint와 Character resource pack 갱신
+
+Server의 안전한 기본 bind `127.0.0.1`은 유지하고 LAN 실행에서만
+`Server.exe --bind-address 0.0.0.0`을 사용한다. Client는 `LOSTARK_SERVER_HOST` process
+환경값을 읽고 값이 없거나 `0.0.0.0`이면 `127.0.0.1`로 돌아간다. 개인 사설 IPv4는
+`.vcxproj.user` 같은 Git 제외 로컬 설정에만 저장한다.
+
+Character 폴더 갱신을 포함한 현재 Resources는 새 immutable pack으로 잠갔다.
+
+- pack: `lostark-resources@2026.08.03.4`
+- manifest: 9,180 files, 5,153,765,021 bytes
+- publish root: `C:\Users\user\Desktop\LostArk_Team_ResourcePacks\lostark-resources\2026.08.03.4`
+- `Manage-ResourcePack.ps1 -Mode Publish` 내부 Verify: PASS
+- ProjectAudit: 56/56 PASS
+
+Resources payload와 개인 IP는 Git에 포함하지 않고 `.4` manifest와 lock만 공유한다.

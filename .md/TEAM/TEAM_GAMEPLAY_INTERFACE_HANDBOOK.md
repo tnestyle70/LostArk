@@ -19,15 +19,15 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
-Lobby의 Bern/Valtan/Training은 `Local Preview`와 `Multiplayer`를 명시적으로 선택하며 기본 선택은 Local이다. Local은 canonical `Gameplay.world.json`의 player spawn에 선택 class의 presentation-only Character 하나만 만들고 socket, server ID, registry, command sink, skill/damage/boss authority를 만들지 않는다. Multiplayer는 입력한 서버 IPv4 또는 `localhost`와 port가 연결되고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 Local로 자동 전환하지 않는다.
+Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 socket 없는 3D preview 전용 Level이고, 확정된 class만 이후 월드 입장 요청에 사용한다. Test/Bern/Valtan은 실제 Server의 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Local Preview와 자동 우회 경로는 없다.
 
-같은 PC 테스트는 Server 기본 bind `127.0.0.1`을 사용한다. LAN 공동 플레이는 Server를 `--bind-address 0.0.0.0` 또는 특정 사설 IPv4로 실행하고 Client Lobby에 Server PC의 사설 IPv4를 입력한다. 자동 서버 탐색은 현재 범위가 아니다.
+같은 PC 테스트는 `Framework.slnLaunch`의 `Server + Client` profile과 기본 `127.0.0.1:7777` 계약을 사용한다. LAN에서는 Server를 `--bind-address 0.0.0.0`으로 실행하고 각 Client process에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 준다. 개인 IP는 Git에 저장하지 않으며 endpoint 입력 UI와 자동 서버 탐색은 현재 Lobby 범위가 아니다.
 
 ## 2. 팀원이 먼저 읽을 파일
 
 | 담당 | 시작 파일 | 데이터 정본 |
 |---|---|---|
-| UI | `Client/Public/CombatHUDViewModel.h`, `LobbyCommandService.h`, `SceneTransitionService.h` | `Data/UI`, `Data/Balance` |
+| UI | `Client/Public/CombatHUDViewModel.h`, `LobbyCommandService.h`, `LevelTransitionService.h` | `Data/UI`, `Data/Balance` |
 | Player/Input | `Client/Public/PlayerController.h`, `PlayerCommandSink.h` | `Data/Balance/PlayerSkills.json` |
 | Character/Animation | `Client/Public/Character.h`, `CharacterSpec.h`, `AnimationTargetService.h` | `Data/Actors`, `Data/Animation` |
 | Server/Player | `Server/Public/GameRoom.h`, `PlayerSkillSystem.h`, `ServerNavigation.h` | `Data/Balance`, `Data/Navigation`, `Data/Worlds` |
@@ -152,6 +152,76 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
+### 6.1 ImGui authoring에서 제품 이미지 UI로 전환
+
+ImGui는 최종 제품 UI가 아니라 layout authoring과 debug command를 위한 작업면이다. UI 담당자가
+ImGui로 만든 창이나 버튼을 스크린샷으로 떠서 교체하는 것이 아니다. `CHUDLayoutTool`에서 실제
+이미지 asset을 slot/layer에 연결하고, 저장된 JSON을 제품 런타임이 읽어 image widget을 만드는
+방식으로 전환한다.
+
+현재 정본과 구현 상태:
+
+| 항목 | 현재 상태 |
+|---|---|
+| Combat HUD layout | `Data/UI/HUD/HUD_Layout.json`, asset domain `UI/HUD/` |
+| Screen UI layout | `Data/UI/ScreenUI/ScreenUI.json`, asset domain `UI/ScreenUI/` |
+| ImGui authoring | asset palette, thumbnail, drag/drop, rect/rotation, layer order, hover preview, save/load 구현 |
+| runtime state | `CCombatHUDViewModel`과 임시 runtime HUD overlay 구현 |
+| 최종 image widget 생성 | layout JSON을 `CUIObject` 계열로 만드는 factory는 미구현 |
+| 제품 UI picking | screen-space input router와 command binding schema는 미구현 |
+
+작성에서 실행까지의 목표 흐름은 하나다.
+
+```text
+Resources/UI image asset
+-> CHUDLayoutTool (ImGui authoring)
+-> Data/UI/*.json (stable slot.id + geometry + draw order + image asset ID)
+-> runtime layout loader (parse -> validate -> stage -> commit)
+-> CUIObject image widget tree
+-> screen-space UI hit test
+-> stable UI command
+-> CLobbyCommandService / CLevelTransitionService / IPlayerCommandSink
+-> Server snapshot when authority is required
+-> CCombatHUDViewModel
+-> widget presentation
+```
+
+저장과 asset 규칙:
+
+- reference resolution은 현재 1280×720이며 viewport scale/letterbox 보정 뒤 같은 좌표계로
+  draw와 hit test를 수행한다.
+- `slot.id`가 stable widget identity다. pointer, vector index, ImGui label, 보이는 문자열을
+  저장 ID로 사용하지 않는다.
+- image는 `Client/Bin/Resources/UI/<Domain>/...`에 두고 JSON에는 `UI/...` 상대 asset ID만
+  저장한다. 절대 경로, drive path, `..`, `Resources/LostArk` wrapper는 거부한다.
+- render order와 picking order는 같은 계약을 사용한다. 뒤에서 앞으로 그리고, 겹친 widget은
+  앞에서 뒤로 검사해 최상위 하나만 pointer를 소비한다.
+- display-only HUD는 기본적으로 hit test하지 않는다. interactive widget은 향후 schema version
+  갱신과 함께 `enabled/visible`, hit-test shape, stable command ID, pointer capture 정책을
+  명시해야 한다. 현재 format version 1에는 runtime command binding이 없으므로 임의 문자열
+  필드를 끼워 넣지 않는다.
+- normal/hover/pressed/disabled 표현은 widget 상태로 선택하며 hover image 존재 여부가 command
+  권한을 뜻하지 않는다. alpha-mask picking은 성능과 판정 harness가 있는 별도 옵션으로만
+  추가하고 기본은 transformed rectangle hit test다.
+
+UI picking은 3D 월드 ray를 쏘는 `CPicking`과 다른 기능이다. mouse viewport 좌표를 reference
+resolution으로 변환하고 회전까지 반영한 slot rect를 검사한다. visible/enabled 상태가 아니거나
+크기가 0인 widget은 hit 대상이 아니다. UI가 click을 소비한 프레임에는
+`CGameInstance::SetInputBlocked()` 또는 동등한 단일 input arbitration 경계로 ground move와
+gameplay click을 보내지 않는다.
+
+interaction을 구현할 때 JSON의 stable command ID는 함수 이름이나 packet opcode가 아니다.
+런타임 registry가 이를 typed UI command로 해석하고 Lobby 선택은 `CLobbyCommandService`, scene
+이동은 `CLevelTransitionService`, gameplay action은 `IPlayerCommandSink`로 제출한다. UI가
+packet을 조립하거나 socket을 호출하고, click callback에서 `Change_Level`이나 Character 상태를
+직접 변경하는 것은 금지한다.
+
+이 수직 슬라이스의 완료 검증에는 duplicate/unknown slot ID, unsafe/missing asset, 잘못된 rect와
+rotation, unknown command, 겹침 시 topmost 선택, resolution/letterbox 보정, hidden/disabled 제외,
+중간 load 실패 시 기존 UI 유지, UI 소비 click의 gameplay 차단이 포함되어야 한다. runtime
+factory와 router가 생기기 전까지는 authoring tool의 save 성공만으로 제품 UI 전환 완료를
+선언하지 않는다.
+
 Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 수치 튜닝 절차와 무중단 reload를 아직 활성화하지 않은 이유는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 
 ## 7. Valtan Boss
@@ -239,22 +309,17 @@ Git commit과 Resource ZIP은 한 쌍의 인계 단위다. commit은 `Data/Asset
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -DeepAssetHash
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release -DeepAssetHash
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Debug
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-OfflineClientSmoke.ps1 -Configuration Release
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Debug
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke.ps1 -Configuration Release
 ```
 
-자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → 제품/개발 smoke → balance/world/navigation validate → ProjectAudit이다.
+자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation validate → ProjectAudit이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
 
 최소 성공 증거:
 
 - Protocol Harness `failures : 0`
 - Server gameplay contract `failures : 0`
-- Debug/Release lobby, Bern, Valtan 제품 smoke 성공
-- Debug/Release `dev.training.ground` 서버 연결 smoke 성공
-- Server 미기동 상태의 Bern, Valtan, Training local preview smoke 성공
-- Debug Development scenario smoke 성공
+- Debug/Release Client와 Server 빌드 성공
+- 실제 Server+Client에서 Lobby → Character Select → Lobby → Test/Bern/Valtan 진입 확인
+- 연결 실패 시 Lobby 유지와 제품 Level disconnect 후 Lobby 복귀 확인
 - ProjectAudit와 필요한 deep asset hash 성공
 - `git diff --check` 성공
 - 잔류 Client/Server/7777 listener 없음
@@ -275,7 +340,9 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-NetworkEndpointSmoke
 별도 수직 슬라이스:
 
 - Gunslinger/Slayer/Artist 고유 skill/action/damage balance와 animation mapping
-- runtime HUD widget의 최종 아트 레이아웃 연결
+- `Data/UI` layout에서 `CUIObject` image widget을 생성하는 runtime factory
+- 1280×720 reference 좌표 보정, draw-order 기반 2D UI picking과 input arbitration
+- stable UI command binding과 Lobby/Scene/Gameplay typed command service 연결
 - 추가 스킬
 - party/raid admission과 roster
 - 동적 collider, projectile, knockback/피격 판정

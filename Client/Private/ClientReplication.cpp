@@ -150,53 +150,7 @@ void Client::CClientReplication::Acknowledge_ConnectionLoss()
 
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
-	const std::shared_ptr<CCharacter> networkCharacter =
-		m_Registry.Resolve(m_LocalCharacterHandle);
-	return nullptr != networkCharacter ?
-		networkCharacter : m_LocalPreviewCharacter.lock();
-}
-
-bool Client::CClientReplication::Spawn_LocalPreview(
-	const LOCAL_PREVIEW_PLAYER_DESC& desc)
-{
-	if (!m_isInitialized ||
-		CNetworkManager::Get().Is_Connected() ||
-		!m_LocalPreviewCharacter.expired() ||
-		desc.strPlacementId.empty() ||
-		!LostArk::Shared::Is_Supported_Playable_Character_Class(
-			desc.eCharacterClass))
-	{
-		return false;
-	}
-
-	std::shared_ptr<CCharacter> character;
-	if (!Create_Character(
-		desc.eCharacterClass,
-		desc.strNickName,
-		desc.vPosition,
-		desc.fYawDegrees,
-		true,
-		character))
-	{
-		return false;
-	}
-
-	m_LocalPreviewCharacter = character;
-	m_strLocalPreviewPlacementId = desc.strPlacementId;
-	return true;
-}
-
-bool Client::CClientReplication::Is_LocalPreviewCharacter(
-	const std::shared_ptr<CCharacter>& character) const
-{
-	return nullptr != character &&
-		m_LocalPreviewCharacter.lock() == character;
-}
-
-const std::string&
-Client::CClientReplication::Get_LocalPreviewPlacementId() const
-{
-	return m_strLocalPreviewPlacementId;
+	return m_Registry.Resolve(m_LocalCharacterHandle);
 }
 
 bool Client::CClientReplication::Create_Character(
@@ -574,16 +528,6 @@ void Client::CClientReplication::Reset_World()
 	m_WorldEntities.clear();
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
-	if (const std::shared_ptr<CCharacter> preview =
-		m_LocalPreviewCharacter.lock())
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_Desc.iLayerLevelIndex,
-			m_Desc.strPlayerLayerTag,
-			preview);
-	}
-	m_LocalPreviewCharacter.reset();
-	m_strLocalPreviewPlacementId.clear();
 	m_iLastServerTick = 0;
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 }

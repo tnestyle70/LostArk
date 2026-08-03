@@ -167,53 +167,6 @@ try {
     }
     Add-Check 'ui.json-contract' $uiValid "documents=$($uiDocuments.Count) slots=$totalSlots"
 
-    $levelCatalog = Read-Json 'Data\Levels\LevelCatalog.json'
-    $requiredScenarios = @(
-        'front.lobby', 'world.bern', 'raid.valtan.arena',
-        'dev.training.ground', 'dev.map.active', 'asset.character.lance-master',
-        'render.hdr-readback', 'effect.preview', 'ui.hud.layout')
-    $scenarioIds = @($levelCatalog.levels | ForEach-Object id)
-    $missingScenarios = @($requiredScenarios | Where-Object { $_ -notin $scenarioIds })
-    $productActive = @($levelCatalog.levels | Where-Object {
-        $_.kind -eq 'product' -and $_.mapAreaId -eq '@ACTIVE' })
-    Add-Check 'levels.catalog' ($levelCatalog.schema -eq 'lostark.level-catalog' -and $missingScenarios.Count -eq 0 -and $productActive.Count -eq 0) "missing=$($missingScenarios -join ',') productActive=$($productActive.Count)"
-	$expectedLevelMetadata = @{
-		'front.lobby' = @{ domains = ''; tools = '' }
-		'world.bern' = @{ domains = 'Map,Character'; tools = '' }
-		'raid.valtan.arena' = @{ domains = 'Map,Character,Deploy,Effect,UI'; tools = '' }
-		'dev.training.ground' = @{ domains = 'Map,Character,UI'; tools = '' }
-		'dev.map.active' = @{ domains = 'Map'; tools = 'MapTool' }
-		'asset.character.lance-master' = @{ domains = 'Character'; tools = 'AnimationTool' }
-		'render.hdr-readback' = @{ domains = 'Effect'; tools = 'EffectTool' }
-		'effect.preview' = @{ domains = 'Effect'; tools = 'EffectTool' }
-		'ui.hud.layout' = @{ domains = 'UI'; tools = 'HUDLayoutTool' }
-	}
-	$metadataMismatches = @($levelCatalog.levels | Where-Object {
-		$expected = $expectedLevelMetadata[$_.id]
-		$null -eq $expected -or
-		(@($_.assetDomains) -join ',') -ne $expected.domains -or
-		(@($_.tools) -join ',') -ne $expected.tools
-	})
-	Add-Check 'levels.execution-metadata-parity' (
-		$metadataMismatches.Count -eq 0) "mismatches=$($metadataMismatches.id -join ',')"
-
-    $scopedProductLevels = @($levelCatalog.levels | Where-Object {
-        $_.kind -eq 'product' -and $_.mapAreaId -and $null -ne $_.mapLoadBounds })
-    $fullDevelopmentMaps = @($levelCatalog.levels | Where-Object {
-        $_.kind -eq 'development' -and $_.mapAreaId -and $null -eq $_.mapLoadBounds })
-    $scopedProductIds = (@($scopedProductLevels.id) | Sort-Object) -join ','
-    Add-Check 'levels.product-load-scope' (
-        $scopedProductLevels.Count -eq 2 -and
-        $scopedProductIds -eq 'raid.valtan.arena,world.bern' -and
-        $fullDevelopmentMaps.Count -eq 1 -and
-        $fullDevelopmentMaps[0].id -eq 'dev.map.active') "product=$($scopedProductLevels.id -join ',') fullDev=$($fullDevelopmentMaps.id -join ',')"
-	$trainingScenario = @($levelCatalog.levels | Where-Object id -eq 'dev.training.ground')
-	Add-Check 'levels.training-scope' (
-		$trainingScenario.Count -eq 1 -and
-		$trainingScenario[0].level -eq 'DEVELOPMENT' -and
-		$trainingScenario[0].mapAreaId -eq 'LV_DEV_TRAINING_GROUND' -and
-		$null -ne $trainingScenario[0].mapLoadBounds) "count=$($trainingScenario.Count)"
-
     $mapCatalog = Read-Json 'Data\Maps\MapCatalog.json'
     $mapRoot = 'Client\Bin\DataFiles\Map'
     $missingMapFiles = [Collections.Generic.List[string]]::new()
@@ -390,6 +343,7 @@ try {
     Add-Check 'projects.filters-xml' ($null -ne $clientFilters.Project -and $null -ne $engineFilters.Project -and $null -ne $serverFilters.Project) 'XML parsed'
 
 	$expectedDataIncludes = @(& git ls-files --cached --others --exclude-standard -- Data |
+		Where-Object { Test-Path -LiteralPath $_ } |
 		ForEach-Object { '..\..\' + $_.Replace('/', '\') } | Sort-Object)
 	$clientDataItems = @($clientItems | Where-Object Include -Like '..\..\Data\*')
 	$actualDataIncludes = @($clientDataItems | ForEach-Object Include | Sort-Object)
@@ -427,8 +381,9 @@ try {
     $legacyEffectCookHits = @($effectCookSource | Select-String -Pattern 'WintersAssetConverter|\.wmesh|\.wmat|CCookedModel' -AllMatches)
     Add-Check 'effect.no-legacy-mesh-cook' ($legacyEffectCookHits.Count -eq 0) "hits=$($legacyEffectCookHits.Count)"
 
-    $legacyLaunchHits = @($clientSourceFiles | Select-String -Pattern '--network-lobby|--map-level|--hdr-readback|world\.bern\.smoke|world\.valtan\.(smoke|tool)')
-    Add-Check 'source.canonical-launch-options' ($legacyLaunchHits.Count -eq 0) "legacyAliases=$($legacyLaunchHits.Count)"
+    $legacyLaunchHits = @($clientSourceFiles | Select-String -Pattern 'CLIENT_SCENARIO|CLIENT_ENTRY_MODE|LOCAL_PREVIEW|CClientLaunchOptions|CLevelCatalog|COfflinePlayerPreview|--smoke|--scenario')
+    Add-Check 'source.no-client-runtime-harness' (
+        $legacyLaunchHits.Count -eq 0) "legacyRuntimeHits=$($legacyLaunchHits.Count)"
 
     $readyGaraHits = @($activeFiles | Select-String -Pattern 'Ready_Gara')
     Add-Check 'source.runtime-authoring' ($readyGaraHits.Count -eq 0) "Ready_Gara hits=$($readyGaraHits.Count)"
@@ -470,100 +425,87 @@ try {
 
     $changeLevelHits = @($clientSourceFiles | Select-String -Pattern 'Change_Level\(')
     $unexpectedChangeLevelHits = @($changeLevelHits | Where-Object {
-        $_.Path -notlike '*Client\Private\MainApp.cpp' -and
-        $_.Path -notlike '*Client\Private\Level_Loading.cpp' })
-    Add-Check 'levels.transition-boundary' ($changeLevelHits.Count -eq 3 -and $unexpectedChangeLevelHits.Count -eq 0) "calls=$($changeLevelHits.Count) unexpected=$($unexpectedChangeLevelHits.Count)"
+        $_.Path -notlike '*Client\Private\MainApp.cpp' })
+    Add-Check 'levels.transition-boundary' (
+        $changeLevelHits.Count -eq 2 -and
+        $unexpectedChangeLevelHits.Count -eq 0) "calls=$($changeLevelHits.Count) unexpected=$($unexpectedChangeLevelHits.Count)"
 
     $mainAppSource = Get-Content -LiteralPath 'Client\Private\MainApp.cpp' -Raw
-    Add-Check 'levels.lobby-start' ($mainAppSource -match 'Start_Level\(LEVEL::LOBBY\)') 'MainApp starts Lobby'
-	$lobbySource = Get-Content -LiteralPath 'Client\Private\Level_Lobby.cpp' -Raw
-	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
-	Add-Check 'levels.lobby-release-entry-ui' (
-		$mainAppSource -match 'HRESULT CMainApp::ReadyImGuiRuntime\(\)' -and
-		$mainAppSource -match 'if \(FAILED\(ReadyImGuiRuntime\(\)\)\)' -and
-		$lobbySource -match 'Render_CharacterSelectPanel\(\);' -and
-		$lobbySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*void CLevel_Lobby::Render_CharacterSelectPanel' -and
-		$clientEntrySource -match 'CImGuiLayer::HandleWindowMessage' -and
-		$clientEntrySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*if \(CImGuiLayer::HandleWindowMessage') 'Lobby entry UI and ImGui input runtime are compiled in Release'
-	$launchOptionsHeader = Get-Content -LiteralPath 'Client\Public\ClientLaunchOptions.h' -Raw
-	$loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
-	$replicationHeader = Get-Content -LiteralPath 'Client\Public\ClientReplication.h' -Raw
-	$replicationSource = Get-Content -LiteralPath 'Client\Private\ClientReplication.cpp' -Raw
-	$offlinePreviewHeader = Get-Content -LiteralPath 'Client\Public\OfflinePlayerPreview.h' -Raw
-	$offlinePreviewSource = Get-Content -LiteralPath 'Client\Private\OfflinePlayerPreview.cpp' -Raw
-	$bernLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Bern.cpp' -Raw
-	$valtanLevelSource = Get-Content -LiteralPath 'Client\Private\Level_ValtanArena.cpp' -Raw
-	$developmentLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Development.cpp' -Raw
-	$clientProjectText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
-	$clientFilterText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj.filters' -Raw
-	$networkSinkHeader = Get-Content -LiteralPath 'Client\Public\NetworkPlayerCommandSink.h' -Raw
-	$offlineSmokeSource = Get-Content -LiteralPath 'Tools\Build\Invoke-OfflineClientSmoke.ps1' -Raw
-	Add-Check 'levels.offline-stage-entry' (
-		$lobbySource -match 'lobby\.local-preview' -and
-		$lobbySource -match 'Local Preview' -and
-		$lobbySource -match 'Multiplayer' -and
-		$lobbySource -match 'Connect_To_Server\(' -and
-		$lobbySource -notmatch 'Set_OfflinePreview' -and
-		$lobbySource -match 'SetNextWindowViewport\(mainViewport->ID\)' -and
-		$lobbySource -match 'ImGuiWindowFlags_NoSavedSettings' -and
-		$launchOptionsHeader -match 'SelectedCharacterClass' -and
-		$launchOptionsHeader -match 'CLIENT_ENTRY_MODE' -and
-		$launchOptionsHeader -match 'eEntryMode = CLIENT_ENTRY_MODE::LOCAL_PREVIEW' -and
-		$launchOptionsHeader -match 'strServerHost' -and
-		$launchOptionsHeader -match 'isOfflinePreview' -and
-		$loaderSource -match 'isOfflinePreview' -and
-		$loaderSource -match 'SelectedCharacterClass' -and
-		$replicationHeader -match 'LOCAL_PREVIEW_PLAYER_DESC' -and
-		$replicationHeader -match 'm_LocalPreviewCharacter' -and
-		$replicationSource -match 'Create_Character' -and
-		$replicationSource -match 'Spawn_LocalPreview' -and
-		$offlinePreviewSource -match 'CProjectDataRoot::Resolve' -and
-		$offlinePreviewSource -match 'CWorldGameplayDocument' -and
-		$offlinePreviewSource -match 'WORLD_PLACEMENT_KIND::PLAYER_SPAWN' -and
-		$offlinePreviewSource -match 'placementId <' -and
-		$offlinePreviewSource -notmatch 'S2C_PLAYER_SPAWNED|PLAYER_ID|NET_ENTITY_ID|CNetObjectRegistry' -and
-		$bernLevelSource -match 'COfflinePlayerPreview::Spawn' -and
-		$valtanLevelSource -match 'COfflinePlayerPreview::Spawn' -and
-		$developmentLevelSource -match 'COfflinePlayerPreview::Spawn' -and
-		$clientProjectText -match 'OfflinePlayerPreview\.cpp' -and
-		$clientProjectText -match 'OfflinePlayerPreview\.h' -and
-		$clientFilterText -match 'OfflinePlayerPreview\.cpp[\s\S]{0,80}<Filter>01\. Levels</Filter>' -and
-		$networkSinkHeader -match 'Get_LiveInstanceCount' -and
-		$mainAppSource -match 'Get_LiveInstanceCount\(\)' -and
-		$mainAppSource -match 'networkCommandSinkLiveCount' -and
-		$offlineSmokeSource -match 'networkCommandSinkLiveCount -ne 0' -and
-		$mainAppSource -match 'offline-stage-local-player-and-camera-ready') 'explicit local preview creates a non-network Character from canonical world playerSpawn and validates camera binding and command-sink absence'
-	$networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
-	$serverMainSource = Get-Content -LiteralPath 'Server\Private\Main.cpp' -Raw
-	$tcpListenerSource = Get-Content -LiteralPath 'Server\Private\TcpListener.cpp' -Raw
-	$networkEndpointSmokeSource = Get-Content -LiteralPath 'Tools\Build\Invoke-NetworkEndpointSmoke.ps1' -Raw
-	Add-Check 'network.explicit-mode-and-bind' (
-		$networkManagerSource -match 'Connect_To_Server\(' -and
-		$networkManagerSource -match 'InetPtonA' -and
-		$networkManagerSource -match 'WSAETIMEDOUT' -and
-		$networkManagerSource -match 'Receive_Loop\(const SOCKET serverSocket\)' -and
-		$networkManagerSource -match '::recv\([\s\S]{0,80}serverSocket' -and
-		$networkManagerSource -notmatch '::recv\([\s\S]{0,80}m_hServerSocket' -and
-		$networkManagerSource -match '::closesocket\(socketToClose\)[\s\S]*m_ReceiveThread\.join\(\)' -and
-		$serverMainSource -match '--bind-address' -and
-		$tcpListenerSource -match 'INADDR_ANY' -and
-		$tcpListenerSource -match 'INADDR_LOOPBACK' -and
-		$replicationHeader -match 'Has_PendingConnectionLoss' -and
-		$replicationHeader -match 'Acknowledge_ConnectionLoss' -and
-		$bernLevelSource -match 'network\.connection-lost' -and
-		$valtanLevelSource -match 'network\.connection-lost' -and
-		$developmentLevelSource -match 'network\.connection-lost' -and
-		$mainAppSource -match 'network-disconnect-returned-to-lobby' -and
-		$lobbySource -match 'm_isAwaitingEnterAcceptance' -and
-		$lobbySource -match 'steady_clock::now' -and
-		$lobbySource -match 'seconds\(5\)' -and
-		$mainAppSource -match 'network-enter-approval-timeout-returned-to-lobby' -and
-		$mainAppSource -match 'requestedScenarioId' -and
-		$networkEndpointSmokeSource -match "LocalAddress -eq '0\.0\.0\.0'" -and
-		$networkEndpointSmokeSource -match 'OwningProcess -eq \$Process\.Id' -and
-		$networkEndpointSmokeSource -match 'expect-disconnect-recovery' -and
-		$networkEndpointSmokeSource -match 'expect-enter-approval-timeout' -and
-		$networkEndpointSmokeSource -match 'TcpListener') 'Client selects an IPv4 endpoint explicitly; Server opt-in LAN binding, approval timeout, and disconnect-to-Lobby recovery have executable smoke contracts'
+    $mainAppHeader = Get-Content -LiteralPath 'Client\Public\MainApp.h' -Raw
+    $lobbySource = Get-Content -LiteralPath 'Client\Private\Level_Lobby.cpp' -Raw
+    $characterSelectSource = Get-Content -LiteralPath 'Client\Private\Level_CharacterSelect.cpp' -Raw
+    $levelRegistrySource = Get-Content -LiteralPath 'Client\Private\LevelRegistry.cpp' -Raw
+    $loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
+    $replicationHeader = Get-Content -LiteralPath 'Client\Public\ClientReplication.h' -Raw
+    $replicationSource = Get-Content -LiteralPath 'Client\Private\ClientReplication.cpp' -Raw
+    $bernLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Bern.cpp' -Raw
+    $valtanLevelSource = Get-Content -LiteralPath 'Client\Private\Level_ValtanArena.cpp' -Raw
+    $developmentLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Development.cpp' -Raw
+    $clientProjectText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+    $clientFilterText = Get-Content -LiteralPath 'Client\Default\Client.vcxproj.filters' -Raw
+    $clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
+
+    Add-Check 'levels.lobby-start' (
+        $mainAppSource -match 'Start_Level\(LEVEL::LOBBY\)') 'MainApp starts Lobby'
+    Add-Check 'levels.character-select-contract' (
+        $levelRegistrySource -match 'LEVEL::CHARACTER_SELECT' -and
+        $levelRegistrySource -match 'Ready_For_CharacterSelect' -and
+        $loaderSource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
+        $loaderSource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
+        $loaderSource -match 'CHARACTER_CLASS_ID::SLAYER' -and
+        $loaderSource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+        $characterSelectSource -match 'CCharacterSelectionState::Select' -and
+        $characterSelectSource -match 'character-select\.confirm' -and
+        $lobbySource -match '"Test"' -and
+        $lobbySource -match '"Character Select"' -and
+        $lobbySource -match '"Valtan"' -and
+        $lobbySource -match '"Bern"') 'Character Select is a registered level and Lobby exposes four stage commands'
+    Add-Check 'levels.release-imgui-entry' (
+        $mainAppSource -match 'ReadyImGuiRuntime\(\)' -and
+        $lobbySource -match 'Render_StagePanel\(\);' -and
+        $lobbySource -notmatch '#ifdef _DEBUG[\s\S]{0,80}Render_StagePanel' -and
+        $clientEntrySource -match 'CImGuiLayer::HandleWindowMessage' -and
+        $clientEntrySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*if \(CImGuiLayer::HandleWindowMessage') 'Lobby and Character Select ImGui are available in Release'
+
+    $deletedRuntimeFiles = @(
+        'Client\Public\ClientLaunchOptions.h',
+        'Client\Private\ClientLaunchOptions.cpp',
+        'Client\Public\LevelCatalog.h',
+        'Client\Private\LevelCatalog.cpp',
+        'Client\Public\OfflinePlayerPreview.h',
+        'Client\Private\OfflinePlayerPreview.cpp',
+        'Data\Levels\LevelCatalog.json',
+        'Tools\Build\Invoke-OfflineClientSmoke.ps1',
+        'Tools\Build\Invoke-NetworkEndpointSmoke.ps1')
+    $presentDeletedRuntimeFiles = @($deletedRuntimeFiles | Where-Object {
+        Test-Path -LiteralPath $_ })
+    Add-Check 'levels.legacy-runtime-removed' (
+        $presentDeletedRuntimeFiles.Count -eq 0 -and
+        $mainAppHeader -notmatch 'SmokeHarness|OfflinePreview|CLIENT_SCENARIO' -and
+        $mainAppSource -notmatch 'SmokeHarness|OfflinePreview|CLIENT_SCENARIO' -and
+        $replicationHeader -notmatch 'LOCAL_PREVIEW|LocalPreview' -and
+        $replicationSource -notmatch 'LOCAL_PREVIEW|LocalPreview' -and
+        $clientProjectText -notmatch 'ClientLaunchOptions|LevelCatalog|OfflinePlayerPreview|SceneTransitionService' -and
+        $clientFilterText -notmatch 'ClientLaunchOptions|LevelCatalog|OfflinePlayerPreview|SceneTransitionService') "present=$($presentDeletedRuntimeFiles -join ',')"
+
+    $networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
+    $serverMainSource = Get-Content -LiteralPath 'Server\Private\Main.cpp' -Raw
+    $tcpListenerSource = Get-Content -LiteralPath 'Server\Private\TcpListener.cpp' -Raw
+    Add-Check 'network.server-authorized-entry' (
+        $networkManagerSource -match 'Connect_To_Server\(' -and
+        $networkManagerSource -match 'InetPtonA' -and
+        $serverMainSource -match '--bind-address' -and
+        $tcpListenerSource -match 'INADDR_ANY' -and
+        $tcpListenerSource -match 'INADDR_LOOPBACK' -and
+        $lobbySource -match 'LOSTARK_SERVER_HOST' -and
+        $lobbySource -match 'Connect_To_Server\(serverHost, SERVER_PORT\)' -and
+        $lobbySource -notmatch '192\.168\.' -and
+        $lobbySource -match 'Send_EnterWorld\(' -and
+        $lobbySource -match 'Try_Consume_EnterAccepted' -and
+        $lobbySource -match 'seconds\(5\)' -and
+        $bernLevelSource -match 'network\.connection-lost' -and
+        $valtanLevelSource -match 'network\.connection-lost' -and
+        $developmentLevelSource -match 'network\.connection-lost') 'Lobby waits for server approval and product levels recover to Lobby on disconnect'
 
     $playerControllerSource = Get-Content -LiteralPath 'Client\Private\PlayerController.cpp' -Raw
     Add-Check 'player.command-sink-boundary' ($playerControllerSource -notmatch 'NetworkManager' -and $playerControllerSource -match 'IPlayerCommandSink') 'PlayerController depends on command sink'
@@ -606,20 +548,30 @@ try {
 		$loaderSource -match 'TerminateProcess\(GetCurrentProcess\(\), ERROR_TIMEOUT\)') 'cooperative cancellation escalates to bounded process fail-fast, never thread termination'
 
     $regressionHarnessSource = Get-Content -LiteralPath 'Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
-    Add-Check 'harness.runtime-working-directory' (
-        $regressionHarnessSource -match '\$clientWorkingDirectory = Join-Path \$repoRoot ''Client\\Default''' -and
-        $regressionHarnessSource -match 'Assert-ClientRuntimeLayout' -and
-        $regressionHarnessSource -match 'finally') 'regression harness pins runtime roots and process cleanup'
+	Add-Check 'harness.runtime-boundary' (
+		$regressionHarnessSource -match 'Assert-RuntimeLayout' -and
+		$regressionHarnessSource -match 'NetworkProtocolHarness' -and
+		$regressionHarnessSource -match '--contract-test' -and
+		$regressionHarnessSource -notmatch 'Invoke-ClientSmoke|--smoke|--scenario') 'automation verifies protocol and server contracts without embedding a Client runtime harness'
 	Add-Check 'harness.server-gameplay-contract' (
 		$regressionHarnessSource -match '--contract-test' -and
 		(Test-Path -LiteralPath 'Server\Private\ServerGameplayContractTests.cpp')) 'regression runs server skill, damage, boss, and navigation contracts'
-	Add-Check 'harness.playable-class-runtime-matrix' (
-		$regressionHarnessSource -match "'lance-master', 'gunslinger', 'slayer', 'artist'" -and
-		$regressionHarnessSource -match '--character-class=\$CharacterClass') 'training smoke decodes and enters with each supported playable class'
 
-    $missingHarnessScenarios = @($requiredScenarios | Where-Object {
-        $regressionHarnessSource -notmatch ([regex]::Escape("'$_'")) })
-    Add-Check 'harness.scenario-coverage' ($missingHarnessScenarios.Count -eq 0) "missing=$($missingHarnessScenarios -join ',')"
+	$solutionLaunch = Read-Json 'Framework.slnLaunch'
+	$serverClientProfiles = @($solutionLaunch | Where-Object {
+		$_.Name -eq 'Server + Client' })
+	$launchProjects = if ($serverClientProfiles.Count -eq 1) {
+		@($serverClientProfiles[0].Projects)
+	}
+	else {
+		@()
+	}
+	Add-Check 'harness.server-client-launch' (
+		$launchProjects.Count -eq 2 -and
+		$launchProjects[0].Path -eq 'Server\Default\Server.vcxproj' -and
+		$launchProjects[0].Action -eq 'Start' -and
+		$launchProjects[1].Path -eq 'Client\Default\Client.vcxproj' -and
+		$launchProjects[1].Action -eq 'Start') 'Visual Studio launches the real Server before the real Client'
 
     $characterCatalog = Read-Json 'Data\Actors\CharacterCatalog.json'
     $bossCatalog = Read-Json 'Data\Actors\BossCatalog.json'
@@ -640,6 +592,7 @@ try {
     }
     Add-Check 'actors.catalog-assets' ($missingActorAssets.Count -eq 0) "missing=$($missingActorAssets -join ',')"
 	$lobbySource = Get-Content -LiteralPath 'Client\Private\Level_Lobby.cpp' -Raw
+	$characterSelectionStateSource = Get-Content -LiteralPath 'Client\Private\CharacterSelectionState.cpp' -Raw
 	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
 	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
 	Add-Check 'actors.playable-roster' (
@@ -650,7 +603,7 @@ try {
 		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
 		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
-		$lobbySource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
+		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
 	$hudViewModelHeader = Get-Content -LiteralPath 'Client\Public\CombatHUDViewModel.h' -Raw
 	$hudViewModelSource = Get-Content -LiteralPath 'Client\Private\CombatHUDViewModel.cpp' -Raw
 	Add-Check 'hud.selected-class-boundary' (

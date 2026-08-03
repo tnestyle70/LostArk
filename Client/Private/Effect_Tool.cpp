@@ -1,7 +1,6 @@
 #include "imgui.h"
 
 #include "Effect_Tool.h"
-#include "ClientLaunchOptions.h"
 #include "Effect_AssetIO.h"
 #include "Effect_Runtime.h"
 #include "ProjectDataRoot.h"
@@ -362,16 +361,6 @@ Client::CEffect_Tool::CEffect_Tool(ComPtr<ID3D11Device> pDevice)
 	Rebuild_Simulators();
 	Reload_SourceCatalog();
 	Refresh_AuthoredList();
-	Open_AssetFromCommandLine();
-
-	const CLIENT_LAUNCH_OPTIONS& launchOptions =
-		CClientLaunchOptions::Get();
-	m_isHDRReadbackRequested =
-		CLIENT_SCENARIO::DEVELOPMENT_HDR ==
-		launchOptions.eScenario;
-	m_isHDRAutoExitRequested =
-		m_isHDRReadbackRequested &&
-		launchOptions.isEffectAutoExit;
 
 	if (nullptr != m_pDevice)
 	{
@@ -611,35 +600,6 @@ filesystem::path Client::CEffect_Tool::Resolve_AuthoredPath(
 		RelativePath);
 }
 
-void Client::CEffect_Tool::Open_AssetFromCommandLine()
-{
-	const std::optional<std::wstring>& effectAssetId =
-		CClientLaunchOptions::Get().EffectAssetId;
-	if (!effectAssetId.has_value() ||
-		effectAssetId->empty())
-		return;
-
-	const string strAssetId = ConvertToUtf8(*effectAssetId);
-	if (strAssetId.empty())
-		return;
-
-	EFFECT_ASSET_DESC Loaded;
-	string strError;
-	if (!CEffect_AssetIO::Load_Authoring(
-		Resolve_AuthoredPath(strAssetId), Loaded, &strError))
-	{
-		m_strFileStatus = "Command line open failed: " + strError;
-		return;
-	}
-
-	Adopt_LoadedAsset(move(Loaded));
-	m_fPreviewZoom = Estimate_PreviewZoom();
-	m_isWorldPreviewEnabled = true;
-	m_isWorldPreviewDirty = true;
-	m_isFocusRequested = true;
-	m_strFileStatus = "Opened from command line: " + strAssetId;
-}
-
 void Client::CEffect_Tool::Capture_SceneHDR_Readback()
 {
 	if (!m_isHDRReadbackRequested || m_isHDRReadbackDone ||
@@ -754,8 +714,6 @@ void Client::CEffect_Tool::Capture_SceneHDR_Readback()
 		m_strFileStatus = ReportPath.empty()
 			? "SceneHDR readback finished; report path unavailable"
 			: "SceneHDR readback written: " + ReportPath.string();
-		if (m_isHDRAutoExitRequested && nullptr != g_hWnd)
-			PostMessageW(g_hWnd, WM_CLOSE, 0, 0);
 	};
 
 	if (0 == iWidth || 0 == iHeight)
@@ -1196,6 +1154,17 @@ void Client::CEffect_Tool::Render_Toolbar()
 	ImGui::SameLine();
 	if (ImGui::Button("Fit"))
 		m_fPreviewZoom = Estimate_PreviewZoom();
+	ImGui::SameLine();
+	if (ImGui::Button("Validate Scene HDR"))
+	{
+		m_iHDRReadbackFrame = 0;
+		m_isHDRReadbackDone = false;
+		m_isHDRReadbackRequested = true;
+		m_pSceneHDRStaging.Reset();
+		m_pBloomResultStaging.Reset();
+		m_pDistortionStaging.Reset();
+		m_strFileStatus = "SceneHDR validation requested.";
+	}
 	if (m_isWorldPreviewEnabled)
 	{
 		if (ImGui::DragFloat3("World Position",
