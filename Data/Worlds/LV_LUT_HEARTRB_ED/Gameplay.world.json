@@ -1,0 +1,53 @@
+{
+  "schema": "lostark.world-gameplay",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "revision": 2,
+  "placements": [
+    {
+      "placementId": "player.spawn.valtan.entry",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+	  "position": [144.75, 23.06843, -131.75],
+      "yawDegrees": 45.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.valtan.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+	  "position": [145.75, 23.06843, -132.75],
+      "yawDegrees": 45.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.valtan.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+	  "position": [146.75, 23.06843, -133.75],
+      "yawDegrees": 45.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.valtan.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+	  "position": [144.25, 23.06202, -131.25],
+      "yawDegrees": 45.0,
+      "enabled": true
+    },
+    {
+      "placementId": "boss.valtan.center",
+      "kind": "boss",
+      "archetypeId": "BOSS_VALTAN",
+      "encounterId": "ENCOUNTER_VALTAN",
+      "position": [151.25, 22.97, -121.75],
+      "yawDegrees": 225.0,
+      "enabled": true
+    }
+  ]
+}

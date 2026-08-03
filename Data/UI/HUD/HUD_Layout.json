@@ -1,0 +1,2987 @@
+{
+    "schema":  "lostark.ui-layout",
+    "formatVersion":  1,
+    "resolution":  {
+                       "width":  1280,
+                       "height":  720
+                   },
+    "classes":  [
+                    "Default",
+                    "Yinyangshi",
+                    "Slayer",
+                    "Gunslinger",
+                    "LanceMaster"
+                ],
+    "slots":  [
+                  {
+                      "id":  "HealthBar_BG",
+                      "ownerClass":  null,
+                      "type":  3,
+                      "rect":  {
+                                   "x":  313.629,
+                                   "y":  604.286,
+                                   "width":  270,
+                                   "height":  20
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Empty bar.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_Q",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  402.772,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_W",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  448.201,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_E",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  493.629,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_A",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  425.058,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_S",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  470.772,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_D",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  516.486,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "ManaBar_BG",
+                      "ownerClass":  null,
+                      "type":  4,
+                      "rect":  {
+                                   "x":  760.292,
+                                   "y":  604.286,
+                                   "width":  258,
+                                   "height":  20
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Empty bar reverse.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_2",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  807.721,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_3",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  853.436,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_4",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  897.721,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_5",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  942.007,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_6",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  987.721,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Item_2",
+                      "ownerClass":  null,
+                      "type":  8,
+                      "rect":  {
+                                   "x":  786.292,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Item_3",
+                      "ownerClass":  null,
+                      "type":  8,
+                      "rect":  {
+                                   "x":  832.007,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Item_4",
+                      "ownerClass":  null,
+                      "type":  8,
+                      "rect":  {
+                                   "x":  877.721,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "SpecialSkill_1",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  762.007,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_paint_1",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  581.449,
+                                   "y":  583.231,
+                                   "width":  76,
+                                   "height":  107
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id paint 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_paint_2",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  698.237,
+                                   "y":  599.487,
+                                   "width":  71,
+                                   "height":  84
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id paint 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_emblem",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  597.754,
+                                   "y":  568.226,
+                                   "width":  161,
+                                   "height":  157
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id emblem.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_brush",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  649.019,
+                                   "y":  555.176,
+                                   "width":  68,
+                                   "height":  165
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id brush.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_R",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  539.057,
+                                   "y":  626.572,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_gauge",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  609.831,
+                                   "y":  668.806,
+                                   "width":  134,
+                                   "height":  53
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id gauge.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yin_Skill_Z",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  7,
+                      "rect":  {
+                                   "x":  612.274,
+                                   "y":  621.158,
+                                   "width":  30,
+                                   "height":  30
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yin id skill Z.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yin_Skill_X",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  7,
+                      "rect":  {
+                                   "x":  707.521,
+                                   "y":  622.587,
+                                   "width":  30,
+                                   "height":  30
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yin id skill X.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "ManaBar",
+                      "ownerClass":  null,
+                      "type":  4,
+                      "rect":  {
+                                   "x":  761.721,
+                                   "y":  605.714,
+                                   "width":  258,
+                                   "height":  20
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/MP Bar.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yin_Skill_X_BG",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  7,
+                      "rect":  {
+                                   "x":  697.047,
+                                   "y":  609.735,
+                                   "width":  51,
+                                   "height":  54
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id skill edge.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yin_Skill_Z_BG",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  7,
+                      "rect":  {
+                                   "x":  601.802,
+                                   "y":  608.306,
+                                   "width":  51,
+                                   "height":  54
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id skill edge.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_orb_1_1",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  608.954,
+                                   "y":  672.456,
+                                   "width":  48,
+                                   "height":  44
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id orb.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_orb_1_1_1",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  650.742,
+                                   "y":  676.819,
+                                   "width":  48,
+                                   "height":  44
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id orb.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Yi_id_orb_1_1_1_1",
+                      "ownerClass":  "Yinyangshi",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  695.596,
+                                   "y":  672.126,
+                                   "width":  48,
+                                   "height":  44
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Yinyangshi/Yi id orb.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "HealthBar",
+                      "ownerClass":  null,
+                      "type":  3,
+                      "rect":  {
+                                   "x":  313.629,
+                                   "y":  604.286,
+                                   "width":  270,
+                                   "height":  20
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/HP Bar.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Emblem",
+                      "ownerClass":  "Slayer",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  577.801,
+                                   "y":  598.996,
+                                   "width":  196,
+                                   "height":  121
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id Emblem.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Wing_1",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  635.649,
+                                   "y":  607.446,
+                                   "width":  43,
+                                   "height":  89
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer Emblem wing 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Wing_2",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  672.162,
+                                   "y":  607.523,
+                                   "width":  41,
+                                   "height":  88
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer Emblem wing 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Emblem_3",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  572.643,
+                                   "y":  633.736,
+                                   "width":  69,
+                                   "height":  90
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id Emblem 3.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Skill_F",
+                      "ownerClass":  null,
+                      "type":  7,
+                      "rect":  {
+                                   "x":  562.201,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Emblem_4",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  708.269,
+                                   "y":  635.35,
+                                   "width":  64,
+                                   "height":  88
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id Emblem 4.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Emblem_2",
+                      "ownerClass":  "Slayer",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  592.421,
+                                   "y":  580.135,
+                                   "width":  162,
+                                   "height":  73
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id Emblem 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Gauge_BG",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  631.178,
+                                   "y":  655.207,
+                                   "width":  88,
+                                   "height":  65
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id gauge bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Slayer_Gauge",
+                      "ownerClass":  "Slayer",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  629.801,
+                                   "y":  652.963,
+                                   "width":  92,
+                                   "height":  67
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Slayer/Slayer id gauge.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Emblem",
+                      "ownerClass":  "Gunslinger",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  573.521,
+                                   "y":  567.092,
+                                   "width":  197,
+                                   "height":  180
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id Emblem.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Emblem_2",
+                      "ownerClass":  "Gunslinger",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  566.233,
+                                   "y":  598.44,
+                                   "width":  205,
+                                   "height":  43
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id Emblem 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Slot_L",
+                      "ownerClass":  "Gunslinger",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  579.385,
+                                   "y":  607.907,
+                                   "width":  68,
+                                   "height":  70
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Slot_C",
+                      "ownerClass":  "Gunslinger",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  697.218,
+                                   "y":  608.188,
+                                   "width":  68,
+                                   "height":  70
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Slot_R",
+                      "ownerClass":  "Gunslinger",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  638.008,
+                                   "y":  575.568,
+                                   "width":  68,
+                                   "height":  70
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Pistol",
+                      "ownerClass":  "Gunslinger",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  591.385,
+                                   "y":  620.907,
+                                   "width":  44,
+                                   "height":  44
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id pistol.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Shotgun",
+                      "ownerClass":  "Gunslinger",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  709.315,
+                                   "y":  627.381,
+                                   "width":  46,
+                                   "height":  36
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id shotgun.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Rifle",
+                      "ownerClass":  "Gunslinger",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  644.508,
+                                   "y":  592.568,
+                                   "width":  55,
+                                   "height":  36
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id rifle.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Arrow_L",
+                      "ownerClass":  "Gunslinger",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  575.965,
+                                   "y":  594.815,
+                                   "width":  40,
+                                   "height":  30
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id arrow L.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Gun_Arrow_R",
+                      "ownerClass":  "Gunslinger",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  728.077,
+                                   "y":  594.815,
+                                   "width":  40,
+                                   "height":  30
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Gunslinger/Gun id arrow R.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Item_1",
+                      "ownerClass":  null,
+                      "type":  8,
+                      "rect":  {
+                                   "x":  740.578,
+                                   "y":  673.429,
+                                   "width":  46,
+                                   "height":  46
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/Common/Slot Bg.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/Common/Empty Slot 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_Spear_1",
+                      "ownerClass":  "LanceMaster",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  655.643,
+                                   "y":  574.715,
+                                   "width":  43,
+                                   "height":  162
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id Spear 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_1",
+                      "ownerClass":  "LanceMaster",
+                      "type":  5,
+                      "rect":  {
+                                   "x":  569.643,
+                                   "y":  591.358,
+                                   "width":  205,
+                                   "height":  141
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     },
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_black_1",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  623.285,
+                                   "y":  620.142,
+                                   "width":  24,
+                                   "height":  63
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id black 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_white_1",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  623.286,
+                                   "y":  620.143,
+                                   "width":  24,
+                                   "height":  63
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  0
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id white 1.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  "UI/HUD/LanceMaster/Id shine left.png",
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  6,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  -2
+                                                   },
+                                        "frames":  [
+                                                       "UI/HUD/LanceMaster/Id fire left 1.png",
+                                                       "UI/HUD/LanceMaster/Id fire left 2.png",
+                                                       "UI/HUD/LanceMaster/Id fire left 3.png"
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_black_2",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  639.572,
+                                   "y":  671.286,
+                                   "width":  69,
+                                   "height":  21
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id black 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_white_2",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  639.571,
+                                   "y":  674.144,
+                                   "width":  69,
+                                   "height":  21
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  0
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id white 2.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  "UI/HUD/LanceMaster/Id shine bottom.png",
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  6,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  -2
+                                                   },
+                                        "frames":  [
+                                                       "UI/HUD/LanceMaster/Id fire bottom 1.png",
+                                                       "UI/HUD/LanceMaster/Id fire bottom 2.png",
+                                                       "UI/HUD/LanceMaster/Id fire bottom 3.png"
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_black_3",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  701.215,
+                                   "y":  622.643,
+                                   "width":  21,
+                                   "height":  60
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id black 3.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  null,
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  10,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  0
+                                                   },
+                                        "frames":  [
+
+                                                   ]
+                                    }
+                  },
+                  {
+                      "id":  "Lance_Id_white_3",
+                      "ownerClass":  "LanceMaster",
+                      "type":  6,
+                      "rect":  {
+                                   "x":  699.709,
+                                   "y":  622.605,
+                                   "width":  21,
+                                   "height":  60
+                               },
+                      "rotation":  0,
+                      "stages":  {
+                                     "baseFrom":  0,
+                                     "shineFrom":  1
+                                 },
+                      "layers":  [
+                                     {
+                                         "path":  "UI/HUD/LanceMaster/Lance Id white 3.png",
+                                         "hoverPath":  null,
+                                         "tint":  [
+                                                      1,
+                                                      1,
+                                                      1,
+                                                      1
+                                                  ],
+                                         "additive":  false,
+                                         "flipX":  false
+                                     }
+                                 ],
+                      "shine":  {
+                                    "texture":  "UI/HUD/LanceMaster/Id shine right.png",
+                                    "additive":  false
+                                },
+                      "animation":  {
+                                        "fps":  6,
+                                        "scale":  1.1,
+                                        "offset":  {
+                                                       "x":  0,
+                                                       "y":  -2
+                                                   },
+                                        "frames":  [
+                                                       "UI/HUD/LanceMaster/Id fire right 1.png",
+                                                       "UI/HUD/LanceMaster/Id fire right 2.png",
+                                                       "UI/HUD/LanceMaster/Id fire right 3.png"
+                                                   ]
+                                    }
+                  }
+              ]
+}

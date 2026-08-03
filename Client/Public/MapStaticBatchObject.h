@@ -33,7 +33,7 @@ class CMapStaticBatchObject final : public CGameObject
 public:
 	struct DESC final : public CGameObject::GAMEOBJECT_DESC
 	{
-		uint32_t PrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
+		uint32_t PrototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
 		std::string AssetId;
 		std::wstring ModelPrototypeTag;
 		MAP_ASSET_RENDER_PROFILE RenderProfile;

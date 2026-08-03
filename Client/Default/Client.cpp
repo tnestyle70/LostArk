@@ -13,9 +13,7 @@
 
 #include <fstream>
 
-#ifdef _DEBUG
 #include "ImGuiLayer.h"
-#endif
 
 #define MAX_LOADSTRING 100
 
@@ -573,10 +571,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-#ifdef _DEBUG
     if (CImGuiLayer::HandleWindowMessage(hWnd, message, wParam, lParam))
         return 1;
-#endif
 
     switch (message)
     {

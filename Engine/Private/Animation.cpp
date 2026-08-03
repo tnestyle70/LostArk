@@ -2,6 +2,8 @@
 #include "BinaryAsset/ModelAssetData.h"
 #include "Channel.h"
 
+#include <cmath>
+
 CAnimation::CAnimation()
 {
 }
@@ -59,14 +61,38 @@ HRESULT CAnimation::Initialize(const MODEL_ANIMATION_DATA& animation,
 bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<shared_ptr<class CBone>>& Bones, bool_t isLoop)
 {
 	/* 현재 재생 위치를 계산해준다. */
-	m_fCurrentTrackPosition += m_fTickPerSecond * fTimeDelta;
-
-	if (m_fCurrentTrackPosition >= m_fDuration)
+	if (!isfinite(fTimeDelta) || m_fDuration <= 0.f ||
+		m_fTickPerSecond <= 0.f)
 	{
-		if (false == isLoop)
-			return true;
+		return false;
+	}
 
-		m_fCurrentTrackPosition = 0.f;		
+	const f32_t previousPosition = m_fCurrentTrackPosition;
+	m_fCurrentTrackPosition += m_fTickPerSecond * fTimeDelta;
+	bool_t isFinished = false;
+	if (isLoop)
+	{
+		m_fCurrentTrackPosition = fmodf(
+			m_fCurrentTrackPosition, m_fDuration);
+		if (m_fCurrentTrackPosition < 0.f)
+			m_fCurrentTrackPosition += m_fDuration;
+	}
+	else if (m_fCurrentTrackPosition >= m_fDuration)
+	{
+		m_fCurrentTrackPosition = m_fDuration;
+		isFinished = true;
+	}
+	else if (m_fCurrentTrackPosition <= 0.f)
+	{
+		m_fCurrentTrackPosition = 0.f;
+		isFinished = fTimeDelta < 0.f;
+	}
+
+	if (fTimeDelta < 0.f ||
+		m_fCurrentTrackPosition < previousPosition)
+	{
+		for (uint32_t& leftKeyFrameIndex : m_iLeftKeyFrameIndices)
+			leftKeyFrameIndex = 0;
 	}
 
 	/* 현재 재생위치에 맞게 뼈들의 상태행렬을 갱신해준다. */
@@ -75,7 +101,7 @@ bool_t CAnimation::Update_TransformationMatrix(f32_t fTimeDelta, const vector<sh
 		m_Channels[i]->Update_TransformationMatrix(m_fCurrentTrackPosition, Bones, &m_iLeftKeyFrameIndices[i]);
 	}
 
-	return false;
+	return isFinished;
 }
 
 void CAnimation::Set_TrackPosition(f32_t fTrackPosition)

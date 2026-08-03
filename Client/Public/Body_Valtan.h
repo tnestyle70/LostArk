@@ -16,6 +16,7 @@ public:
 	typedef struct tagBodyValtanDesc : public CPartObject::PARTOBJECT_DESC
 	{
 		const uint32_t* pParentState = { nullptr };
+		uint32_t iPrototypeLevelIndex = {};
 	} BODY_VALTAN_DESC;
 
 private:
@@ -36,6 +37,7 @@ private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	const uint32_t* m_pParentState = { nullptr };
+	uint32_t m_iPrototypeLevelIndex = {};
 
 private:
 	HRESULT Ready_Components();

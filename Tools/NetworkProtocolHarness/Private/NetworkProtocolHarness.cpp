@@ -111,9 +111,57 @@ namespace
 
 		return true;
 	}
+	bool Build_WorldEntitySpawnedPayload(
+		const S2C_WORLD_ENTITY_SPAWNED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
 	//플레이어 디스폰
 	bool Build_PlayerDespawnedPayload(
 		const S2C_PLAYER_DESPAWNED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+
+		if (!Write_Message(writer, message))
+			return false;
+
+		payload = writer.Get_Buffer();
+		return true;
+	}
+
+	//플레이어 move
+	bool Build_MovePayload(
+		const C2S_MOVE& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+
+		if (!Write_Message(writer, message))
+			return false;
+
+		payload = writer.Get_Buffer();
+		return true;
+	}
+
+	bool Build_UseSkillPayload(
+		const C2S_USE_SKILL& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
+	//플레이어 payload
+	bool Build_WorldSnapshotPayload(
+		const S2C_WORLD_SNAPSHOT& message,
 		std::vector<std::uint8_t>& payload)
 	{
 		CPacketWriter writer;
@@ -130,6 +178,7 @@ namespace
 		TEST_RUNNER& testRunner)
 	{
 		C2S_ENTER_WORLD source{};
+		source.eWorldId = WORLD_ID::TRAINING_GROUND;
 
 		source.eCharacterClass =
 			CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -157,6 +206,11 @@ namespace
 			"Read Enter World");
 
 		testRunner.Require(
+			decoded.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
+			decoded.eWorldId == WORLD_ID::TRAINING_GROUND,
+			"Enter World Contract Round Trip");
+
+		testRunner.Require(
 			decoded.eCharacterClass ==
 			source.eCharacterClass,
 			"Character Class Round Trip");
@@ -169,6 +223,27 @@ namespace
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
 			"Consume Entire Payload");
+	}
+
+	void Test_PlayableCharacterRoster(TEST_RUNNER& testRunner)
+	{
+		testRunner.Require(
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::LANCE_MASTER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::GUNSLINGER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::SLAYER) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::ARTIST),
+			"Accept Four Playable Character Classes");
+
+		testRunner.Require(
+			!Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::DESTROYER) &&
+			!Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::END),
+			"Reject Reserved Character Classes");
 	}
 	//유효한 입력에 대한 테스트
 	void Test_EnterAcceptedRoundTrip(
@@ -192,7 +267,7 @@ namespace
 			payload);
 
 		testRunner.Require(
-			8 == payload.size(),
+			12 == payload.size(),
 			"Enter Accepted Payload Size");
 
 		CPacketReader reader{ payload };
@@ -202,6 +277,11 @@ namespace
 		testRunner.Require(
 			Read_Message(reader, decoded),
 			"Read Enter Accepted");
+
+		testRunner.Require(
+			source.iProtocolVersion == decoded.iProtocolVersion &&
+			source.eWorldId == decoded.eWorldId,
+			"Accepted Contract Round Trip");
 
 		testRunner.Require(
 			source.iPlayerId ==
@@ -449,6 +529,47 @@ namespace
 			unchanged.fYawDegrees == 40.f,
 			"Failed Spawn Does Not Mutate Message");
 	}
+
+	void Test_WorldEntitySpawnedRoundTrip(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_ENTITY_SPAWNED source{};
+		source.iNetEntityId = 900;
+		source.eKind = WORLD_ENTITY_KIND::BOSS;
+		source.strArchetypeId = "BOSS_VALTAN";
+		source.strEncounterId = "ENCOUNTER_VALTAN";
+		source.fPositionX = 151.25f;
+		source.fPositionY = 22.97f;
+		source.fPositionZ = -121.75f;
+		source.fYawDegrees = 225.f;
+
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_WorldEntitySpawnedPayload(source, payload),
+			"Writer World Entity Spawned");
+		CPacketReader reader{ payload };
+		S2C_WORLD_ENTITY_SPAWNED decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded),
+			"Read World Entity Spawned");
+		testRunner.Require(
+			decoded.iNetEntityId == source.iNetEntityId &&
+			decoded.eKind == source.eKind &&
+			decoded.strArchetypeId == source.strArchetypeId &&
+			decoded.strEncounterId == source.strEncounterId &&
+			decoded.fPositionX == source.fPositionX &&
+			decoded.fYawDegrees == source.fYawDegrees,
+			"World Entity Spawned Round Trip");
+		testRunner.Require(
+			0 == reader.Get_RemainingSize(),
+			"Consume Entire World Entity Spawn");
+
+		S2C_WORLD_ENTITY_SPAWNED invalid = source;
+		invalid.strArchetypeId = "../BOSS_VALTAN";
+		CPacketWriter invalidWriter;
+		testRunner.Require(
+			!Write_Message(invalidWriter, invalid),
+			"Reject Unstable World Archetype ID");
+	}
 	//유효하지 않은 입력에 대한 테스트 
 	void Test_InvalidEnterAcceptedPayloads(
 		TEST_RUNNER& testRunner)
@@ -484,6 +605,9 @@ namespace
 			"Reject Zero Net Entity ID From Writer");
 
 		CPacketWriter zeroPlayerPayloadWriter;
+		zeroPlayerPayloadWriter.Write_U16(NETWORK_PROTOCOL_VERSION);
+		zeroPlayerPayloadWriter.Write_U16(
+			static_cast<std::uint16_t>(WORLD_ID::BERN));
 
 		zeroPlayerPayloadWriter.Write_U32(
 			INVALID_PLAYER_ID);
@@ -504,6 +628,9 @@ namespace
 			"Reject Zero Player ID From Reader");
 
 		CPacketWriter zeroEntityPayloadWriter;
+		zeroEntityPayloadWriter.Write_U16(NETWORK_PROTOCOL_VERSION);
+		zeroEntityPayloadWriter.Write_U16(
+			static_cast<std::uint16_t>(WORLD_ID::BERN));
 
 		zeroEntityPayloadWriter.Write_U32(1);
 
@@ -524,6 +651,8 @@ namespace
 		const std::vector<std::uint8_t>
 			truncatedAccepted
 		{
+			0x02, 0x00,
+			0x01, 0x00,
 			0x01, 0x00, 0x00, 0x00,
 			0x64, 0x00, 0x00
 		};
@@ -571,8 +700,27 @@ namespace
 				tooLong),
 			"Reject Long Nickname");
 
+		C2S_ENTER_WORLD invalidProtocol = tooLong;
+		invalidProtocol.strNickName = "valid";
+		invalidProtocol.iProtocolVersion =
+			NETWORK_PROTOCOL_VERSION + 1;
+		CPacketWriter protocolWriter;
+		testRunner.Require(
+			!Write_Message(protocolWriter, invalidProtocol),
+			"Reject Unsupported Protocol Version");
+
+		C2S_ENTER_WORLD invalidWorld = invalidProtocol;
+		invalidWorld.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+		invalidWorld.eWorldId = WORLD_ID::END;
+		CPacketWriter worldWriter;
+		testRunner.Require(
+			!Write_Message(worldWriter, invalidWorld),
+			"Reject Unknown World ID");
+
 		const std::vector<std::uint8_t> invalidClass
 		{
+			0x02, 0x00,
+			0x01, 0x00,
 			0xFF, 0x00, 0x00
 		};
 
@@ -591,6 +739,8 @@ namespace
 		//이 truncated string이 의미하는 게 뭐지?
 		const std::vector<std::uint8_t> truncatedString
 		{
+			0x02, 0x00,
+			0x01, 0x00,
 			0x00, 0x06, 0x00, 0xEA
 		};
 
@@ -846,6 +996,264 @@ namespace
 			PLAYER_DESPAWN_REASON::KICKED,
 			"Failed Despawn Does Not Mutate");
 	}
+
+	void Test_MoveRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_MOVE source{};
+		source.iClientSequence = 7;
+		source.fGoalX = 10.f;
+		source.fGoalZ = -5.f;
+
+		std::vector<std::uint8_t> payload;
+
+		testRunner.Require(
+			Build_MovePayload(source, payload),
+			"Writer Move Goal");
+
+		const std::vector<std::uint8_t> expected
+		{
+			0x07, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x20, 0x41,
+			0x00, 0x00, 0xA0, 0xC0
+		};
+
+		testRunner.Require(
+			payload == expected,
+			"Move Goal Payload Layout");
+
+		CPacketReader reader{ payload };
+		C2S_MOVE decoded{};
+
+		testRunner.Require(
+			Read_Message(reader, decoded),
+			"Read Move Goal");
+
+		testRunner.Require(
+			decoded.iClientSequence == 7 &&
+			decoded.fGoalX == 10.f &&
+			decoded.fGoalZ == -5.f,
+			"Move Goal Round Trip");
+
+		testRunner.Require(
+			0 == reader.Get_RemainingSize(),
+			"Consume Entire Move Goal");
+
+		C2S_MOVE invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter sequenceWriter;
+
+		testRunner.Require(
+			!Write_Message(sequenceWriter, invalidSequence),
+			"Reject Zero Move Sequence");
+
+		C2S_MOVE invalidGoal = source;
+		invalidGoal.fGoalX =
+			std::numeric_limits<float>::infinity();
+		CPacketWriter goalWriter;
+
+		testRunner.Require(
+			!Write_Message(goalWriter, invalidGoal),
+			"Reject Infinite Move Goal");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_MOVE unchanged{};
+		unchanged.iClientSequence = 99;
+		unchanged.fGoalX = 77.f;
+		unchanged.fGoalZ = 88.f;
+
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged),
+			"Reject Truncated Move Goal");
+
+		testRunner.Require(
+			unchanged.iClientSequence == 99 &&
+			unchanged.fGoalX == 77.f &&
+			unchanged.fGoalZ == 88.f,
+			"Failed Move Does Not Mutate");
+	}
+
+	void Test_UseSkillRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_USE_SKILL source{};
+		source.iClientSequence = 9;
+		source.iSkillId = 34060;
+		source.fAimX = 151.f;
+		source.fAimZ = -122.f;
+
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_UseSkillPayload(source, payload),
+			"Writer Use Skill");
+		testRunner.Require(
+			16 == payload.size(),
+			"Use Skill Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_USE_SKILL decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded),
+			"Read Use Skill");
+		testRunner.Require(
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSkillId == source.iSkillId &&
+			decoded.fAimX == source.fAimX &&
+			decoded.fAimZ == source.fAimZ &&
+			0 == reader.Get_RemainingSize(),
+			"Use Skill Round Trip");
+
+		C2S_USE_SKILL invalid = source;
+		invalid.iSkillId = INVALID_SKILL_ID;
+		CPacketWriter invalidWriter;
+		testRunner.Require(
+			!Write_Message(invalidWriter, invalid),
+			"Reject Invalid Skill ID");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_USE_SKILL unchanged{};
+		unchanged.iClientSequence = 77;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			77 == unchanged.iClientSequence,
+			"Reject Truncated Skill Without Mutation");
+	}
+
+	void Test_WorldSnapshotRoundTrip(
+		TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_SNAPSHOT source{};
+		source.iServerTick = 30;
+
+		PLAYER_SNAPSHOT first{};
+		first.iNetEntityId = 100;
+		first.fPositionX = 1.f;
+		first.fPositionY = 0.f;
+		first.fPositionZ = 2.f;
+		first.fYawDegrees = 90.f;
+		first.eLocomotionState =
+			PLAYER_LOCOMOTION_STATE::MOVING;
+		first.eAction = PLAYER_ACTION_STATE::SKILL;
+		first.iSkillId = 34060;
+		first.iActionStartTick = 25;
+		first.iCurrentHp = 875;
+		first.iMaximumHp = 1000;
+		first.iCurrentResource = 80;
+		first.iMaximumResource = 100;
+		first.Cooldowns.push_back({ 34060, 330 });
+
+		PLAYER_SNAPSHOT second{};
+		second.iNetEntityId = 101;
+		second.fPositionX = 3.f;
+		second.fPositionY = 0.f;
+		second.fPositionZ = 4.f;
+		second.fYawDegrees = 180.f;
+		second.eLocomotionState =
+			PLAYER_LOCOMOTION_STATE::IDLE;
+
+		source.Players.push_back(first);
+		source.Players.push_back(second);
+
+		WORLD_ENTITY_SNAPSHOT entity{};
+		entity.iNetEntityId = 900;
+		entity.eAction = WORLD_ENTITY_ACTION::CHASE;
+		entity.fPositionX = 150.f;
+		entity.fPositionY = 22.97f;
+		entity.fPositionZ = -122.f;
+		entity.fYawDegrees = 225.f;
+		entity.iActionStartTick = 20;
+		entity.iCurrentHp = 9500;
+		entity.iMaximumHp = 10000;
+		entity.iPhase = 1;
+		source.Entities.push_back(entity);
+
+		std::vector<std::uint8_t> payload;
+
+		testRunner.Require(
+			Build_WorldSnapshotPayload(source, payload),
+			"Writer World Snapshot");
+
+		testRunner.Require(
+			148 == payload.size(),
+			"World Snapshot Payload Size");
+
+		CPacketReader reader{ payload };
+		S2C_WORLD_SNAPSHOT decoded{};
+
+		testRunner.Require(
+			Read_Message(reader, decoded),
+			"Read World Snapshot");
+
+		testRunner.Require(
+			decoded.iServerTick == 30 &&
+			decoded.eWorldId == WORLD_ID::BERN &&
+			decoded.Players.size() == 2 &&
+			decoded.Entities.size() == 1,
+			"World Snapshot Header Round Trip");
+
+		testRunner.Require(
+			decoded.Players[0].iNetEntityId == 100 &&
+			decoded.Players[0].fPositionX == 1.f &&
+			decoded.Players[0].fPositionZ == 2.f &&
+			decoded.Players[0].eLocomotionState ==
+			PLAYER_LOCOMOTION_STATE::MOVING &&
+			decoded.Players[0].eAction == PLAYER_ACTION_STATE::SKILL &&
+			decoded.Players[0].iSkillId == 34060 &&
+			decoded.Players[0].iActionStartTick == 25 &&
+			decoded.Players[0].iCurrentHp == 875 &&
+			decoded.Players[0].Cooldowns.size() == 1 &&
+			decoded.Players[0].Cooldowns[0].iCooldownEndTick == 330 &&
+			decoded.Players[1].iNetEntityId == 101 &&
+			decoded.Players[1].fPositionX == 3.f &&
+			decoded.Players[1].fPositionZ == 4.f &&
+			decoded.Players[1].eLocomotionState ==
+			PLAYER_LOCOMOTION_STATE::IDLE,
+			"World Snapshot Players Round Trip");
+
+		testRunner.Require(
+			decoded.Entities[0].iNetEntityId == 900 &&
+			decoded.Entities[0].eAction == WORLD_ENTITY_ACTION::CHASE &&
+			decoded.Entities[0].fPositionX == 150.f &&
+			decoded.Entities[0].iCurrentHp == 9500 &&
+			decoded.Entities[0].iMaximumHp == 10000 &&
+			decoded.Entities[0].iPhase == 1,
+			"World Snapshot Entities Round Trip");
+
+		testRunner.Require(
+			0 == reader.Get_RemainingSize(),
+			"Consume Entire World Snapshot");
+
+		S2C_WORLD_SNAPSHOT empty{};
+		empty.iServerTick = 1;
+		CPacketWriter emptyWriter;
+
+		testRunner.Require(
+			!Write_Message(emptyWriter, empty),
+			"Reject Empty World Snapshot");
+
+		S2C_WORLD_SNAPSHOT invalid = source;
+		invalid.Players[0].eLocomotionState =
+			PLAYER_LOCOMOTION_STATE::END;
+		CPacketWriter invalidWriter;
+
+		testRunner.Require(
+			!Write_Message(invalidWriter, invalid),
+			"Reject Invalid Locomotion State");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		S2C_WORLD_SNAPSHOT unchanged{};
+		unchanged.iServerTick = 777;
+
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged),
+			"Reject Truncated World Snapshot");
+
+		testRunner.Require(
+			unchanged.iServerTick == 777 &&
+			unchanged.Players.empty(),
+			"Failed Snapshot Does Not Mutate");
+	}
 }
 
 int main()
@@ -853,6 +1261,7 @@ int main()
 	TEST_RUNNER testRunner{};
 
 	Test_EnterWorldRoundTrip(testRunner);
+	Test_PlayableCharacterRoster(testRunner);
 	Test_InvalidPayloads(testRunner);
 
 	Test_EnterAcceptedRoundTrip(testRunner);
@@ -861,7 +1270,12 @@ int main()
 	Test_F32RoundTrip(testRunner);
 	Test_PlayerSpawnedRoundTrip(testRunner);
 	Test_InvalidPlayerSpawnedPayloads(testRunner);
+	Test_WorldEntitySpawnedRoundTrip(testRunner);
 	Test_PlayerDespawnedRoundTrip(testRunner);
+	//Move, Snapshot roundtrip
+	Test_MoveRoundTrip(testRunner);
+	Test_UseSkillRoundTrip(testRunner);
+	Test_WorldSnapshotRoundTrip(testRunner);
 
 	Test_StreamFraming(testRunner);
 

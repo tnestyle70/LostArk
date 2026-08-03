@@ -11,15 +11,18 @@ class CCharacter;
 and ordering differ per class, so the logic addresses those by name itself. */
 enum class CHARACTER_ANIM { IDLE, RUN, HIT, DEAD, END };
 
-/* Per-class behaviour. One implementation per class, each in its own file so the
-four of us never edit the same source. */
+/* Per-class presentation behaviour. Input, network transport and gameplay truth
+stay outside this interface. One implementation per class keeps team ownership
+separate without allowing class code to issue commands. */
 class ICharacterLogic
 {
 public:
 	virtual ~ICharacterLogic() = default;
 
 public:
-	virtual void Update(CCharacter& Character, f32_t fTimeDelta) = 0;
+	virtual void Update_Presentation(
+		CCharacter& Character,
+		f32_t fTimeDelta) = 0;
 };
 
 struct EQUIPMENT_PART_SPEC
@@ -31,8 +34,8 @@ struct EQUIPMENT_PART_SPEC
 /* A piece that rides one bone instead of the whole palette. Classes differ in how
 many they carry and what the bone is called -- LanceMaster holds one lance at
 b_weapon_rhand, GunSlinger dual-wields at b_wp_1 and b_wp_2 -- so this is a list,
-not a fixed pair of fields. A socket bone the rig does not have fails silently:
-Get_BoneMatrix returns identity and the piece renders unparented. */
+not a fixed pair of fields. Character creation must reject a missing socket; an
+unparented weapon is invalid content, not a runtime fallback. */
 struct WEAPON_PART_SPEC
 {
 	const tchar_t* pPartTag;      /* sorts after equipment, e.g. "Part_90_Weapon_R" */
@@ -44,8 +47,8 @@ struct WEAPON_PART_SPEC
 that class's logic; CCharacter itself stays class-agnostic. */
 struct CHARACTER_SPEC
 {
-	/* Names the data files that belong to this class, e.g. "LanceMaster" finds
-	../Bin/DataFiles/Anim/LanceMaster.clipseq. */
+	/* Stable data ID. For example LanceMaster resolves under
+	Data/Animation/{Authored,Reference}/LanceMaster. */
 	const char_t* pAssetName;
 
 	const tchar_t* pBodyModelTag;

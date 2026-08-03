@@ -12,6 +12,7 @@
 #include "DeployPropObject.h"
 #include "Model.h"
 #include "Navigation.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <array>
@@ -141,37 +142,19 @@ void Client::CMapTool::Toggle()
 	m_bOpen = !m_bOpen;
 }
 
+void Client::CMapTool::SetOpen(const bool_t isOpen)
+{
+	m_bOpen = isOpen;
+}
+
 void Client::CMapTool::Update(f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
 
 	const bool_t isAssetTest =
-		ETOUI(LEVEL::ASSET_TEST) == CGameInstance::Get().Get_CurrentLevelID();
+		ETOUI(LEVEL::DEVELOPMENT) == CGameInstance::Get().Get_CurrentLevelID();
 	Handle_LevelTransition(isAssetTest);
-	Update_EnvironmentShortcuts(isAssetTest);
 	Update_WorldInteraction(isAssetTest);
-}
-
-void Client::CMapTool::Update_EnvironmentShortcuts(bool_t isAssetTest)
-{
-	if (!isAssetTest || GetForegroundWindow() != g_hWnd)
-		return;
-
-	if (CGameInstance::Get().Get_DIKeyPressed(DIK_F7))
-	{
-		Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
-		m_Status = "Sky phase: Baseline (F7)";
-	}
-	else if (CGameInstance::Get().Get_DIKeyPressed(DIK_F8))
-	{
-		Set_EnvironmentPhase(ENVIRONMENT_PHASE::SPACEHOLE);
-		m_Status = "Sky phase: SpaceHole (F8)";
-	}
-	else if (CGameInstance::Get().Get_DIKeyPressed(DIK_F9))
-	{
-		Set_EnvironmentPhase(ENVIRONMENT_PHASE::CHAOS_GATE);
-		m_Status = "Sky phase: ChaosGate (F9)";
-	}
 }
 
 void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
@@ -189,6 +172,7 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 	if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
 	{
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bWorldGameplayPlacementArmed = false;
 		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 		m_Status = "Placement cancelled";
 		if (TOOL_MODE::NAVIGATION == m_eToolMode)
@@ -230,6 +214,12 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 
 	if (!canUseWorldMouse)
 		return;
+	if (TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode)
+	{
+		if (m_bWorldGameplayPlacementArmed && mousePressed)
+			Try_PlaceWorldGameplay();
+		return;
+	}
 
 	if (PLACEMENT_STATE::ARMED == m_ePlacementState && mousePressed)
 		Try_PlaceSelected();
@@ -241,7 +231,7 @@ void Client::CMapTool::Render()
 		return;
 
 	const bool_t isAssetTest =
-		ETOUI(LEVEL::ASSET_TEST) ==
+		ETOUI(LEVEL::DEVELOPMENT) ==
 		CGameInstance::Get().Get_CurrentLevelID();
 	Render_WorldOverlay(isAssetTest);
 
@@ -274,6 +264,10 @@ void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
 		Render_MapAssetsPanel(isAssetTest);
 		break;
 
+	case TOOL_MODE::WORLD_GAMEPLAY:
+		Render_WorldGameplayPanel(isAssetTest);
+		break;
+
 	case TOOL_MODE::NAVIGATION:
 		ImGui::BeginDisabled(!isAssetTest);
 		Render_NavigationPanel();
@@ -291,7 +285,7 @@ void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
 void Client::CMapTool::Render_MapAssetsPanel(bool_t isAssetTest)
 {
 	ImGui::Text("Level: %s",
-		isAssetTest ? "ASSET_TEST" : "Open ASSET_TEST with F2");
+		isAssetTest ? "DEVELOPMENT" : "Open Map Tool from F1 Developer Tools");
 	ImGui::SameLine();
 	ImGui::Text("| Catalog: %s",
 		m_Catalog.Is_Ready() ? "READY" : "NOT READY");
@@ -324,6 +318,209 @@ void Client::CMapTool::Render_MapAssetsPanel(bool_t isAssetTest)
 	ImGui::EndDisabled();
 }
 
+void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
+{
+	ImGui::TextUnformatted("World Gameplay Authoring");
+	ImGui::TextDisabled(
+		"Player/NPC/Boss definitions only. Runtime state stays server-authoritative.");
+	ImGui::TextWrapped("%s", m_WorldGameplayStatus.c_str());
+	ImGui::Separator();
+
+	ImGui::BeginDisabled(!isAssetTest || !m_Catalog.Is_Ready());
+	if (ImGui::Button("Save Gameplay"))
+		Save_WorldGameplay();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Gameplay"))
+		Load_WorldGameplay();
+	ImGui::SameLine();
+	ImGui::Text("Revision: %u | Placements: %zu%s",
+		m_WorldGameplayDocument.Get_Revision(),
+		m_WorldGameplayDocument.Get_Placements().size(),
+		m_bWorldGameplayDirty ? "  *unsaved" : "");
+	ImGui::Separator();
+
+	if (ImGui::RadioButton("Player Spawn",
+		WORLD_PLACEMENT_KIND::PLAYER_SPAWN == m_eWorldPlacementKind))
+		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::PLAYER_SPAWN;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("NPC",
+		WORLD_PLACEMENT_KIND::NPC == m_eWorldPlacementKind))
+		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::NPC;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Boss",
+		WORLD_PLACEMENT_KIND::BOSS == m_eWorldPlacementKind))
+		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::BOSS;
+
+	ImGui::InputText("Placement ID", m_WorldPlacementId,
+		std::size(m_WorldPlacementId));
+	ImGui::InputText("Archetype ID", m_WorldArchetypeId,
+		std::size(m_WorldArchetypeId));
+	ImGui::InputText("Encounter ID (optional)", m_WorldEncounterId,
+		std::size(m_WorldEncounterId));
+	if (ImGui::Button(m_bWorldGameplayPlacementArmed ?
+		"Cancel World Placement" : "Arm World Placement"))
+	{
+		m_bWorldGameplayPlacementArmed =
+			!m_bWorldGameplayPlacementArmed;
+		m_WorldGameplayStatus = m_bWorldGameplayPlacementArmed ?
+			"World placement armed: click a picked map surface; Esc cancels" :
+			"World placement cancelled";
+	}
+	if (m_bWorldGameplayPlacementArmed)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.85f, 0.2f, 1.f),
+			"PICKING: click the map surface to store the spawn position");
+	}
+
+	ImGui::Separator();
+	if (ImGui::BeginTable("WorldGameplayPlacements", 5,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_ScrollY, ImVec2(0.f, 280.f)))
+	{
+		ImGui::TableSetupColumn("Placement ID");
+		ImGui::TableSetupColumn("Kind");
+		ImGui::TableSetupColumn("Archetype");
+		ImGui::TableSetupColumn("Position");
+		ImGui::TableSetupColumn("Enabled");
+		ImGui::TableHeadersRow();
+		for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+			m_WorldGameplayDocument.Get_Placements())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t selected =
+				m_SelectedWorldPlacementId == placement.placementId;
+			if (ImGui::Selectable(placement.placementId.c_str(), selected,
+				ImGuiSelectableFlags_SpanAllColumns))
+			{
+				m_SelectedWorldPlacementId = placement.placementId;
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(
+				CWorldGameplayDocument::Kind_ToString(placement.eKind));
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextUnformatted(placement.archetypeId.c_str());
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%.2f, %.2f, %.2f", placement.position.x,
+				placement.position.y, placement.position.z);
+			ImGui::TableSetColumnIndex(4);
+			ImGui::TextUnformatted(placement.isEnabled ? "yes" : "no");
+		}
+		ImGui::EndTable();
+	}
+
+	WORLD_GAMEPLAY_PLACEMENT* selected =
+		m_WorldGameplayDocument.Find(m_SelectedWorldPlacementId);
+	if (nullptr != selected)
+	{
+		ImGui::SeparatorText("Selected Gameplay Placement");
+		WORLD_GAMEPLAY_PLACEMENT staged = *selected;
+		bool_t edited = false;
+		edited |= ImGui::DragFloat3("Position", &staged.position.x,
+			0.1f, -100000.f, 100000.f, "%.3f");
+		edited |= ImGui::DragFloat("Yaw Degrees", &staged.yawDegrees,
+			0.5f, -360.f, 360.f, "%.2f");
+		edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
+		if (edited)
+		{
+			if (CWorldGameplayDocument::Is_Valid(staged))
+			{
+				*selected = staged;
+				m_WorldGameplayDocument.Mark_Edited();
+				m_bWorldGameplayDirty = true;
+				m_WorldGameplayStatus = "Gameplay placement edited";
+			}
+			else
+			{
+				m_WorldGameplayStatus = "Gameplay edit rejected by validation";
+			}
+		}
+		if (ImGui::Button("Delete Gameplay Placement"))
+		{
+			const std::string deletedId = selected->placementId;
+			if (m_WorldGameplayDocument.Remove(deletedId))
+			{
+				m_SelectedWorldPlacementId.clear();
+				m_bWorldGameplayDirty = true;
+				m_WorldGameplayStatus = "Deleted gameplay placement: " + deletedId;
+			}
+		}
+	}
+	ImGui::EndDisabled();
+}
+
+std::filesystem::path Client::CMapTool::Get_WorldGameplayPath() const
+{
+	if (!m_Catalog.Is_Ready() || m_Catalog.Get_AreaId().empty())
+		return {};
+	return CProjectDataRoot::Resolve(
+		std::filesystem::path(L"Worlds") /
+		std::filesystem::path(m_Catalog.Get_AreaId()) /
+		L"Gameplay.world.json");
+}
+
+bool_t Client::CMapTool::Load_WorldGameplay()
+{
+	const std::filesystem::path path = Get_WorldGameplayPath();
+	if (path.empty())
+	{
+		m_WorldGameplayStatus = "Gameplay load requires a ready map catalog";
+		return false;
+	}
+	if (!m_WorldGameplayDocument.Load(
+		path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
+	{
+		return false;
+	}
+	m_SelectedWorldPlacementId.clear();
+	m_bWorldGameplayPlacementArmed = false;
+	m_bWorldGameplayDirty = false;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_WorldGameplay()
+{
+	const std::filesystem::path path = Get_WorldGameplayPath();
+	if (path.empty())
+	{
+		m_WorldGameplayStatus = "Gameplay save requires a ready map catalog";
+		return false;
+	}
+	if (!m_WorldGameplayDocument.Save(
+		path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
+	{
+		return false;
+	}
+	m_bWorldGameplayDirty = false;
+	return true;
+}
+
+bool_t Client::CMapTool::Try_PlaceWorldGameplay()
+{
+	float3_t position{};
+	if (!Try_PickPlacementPosition(position))
+	{
+		m_WorldGameplayStatus = "Gameplay placement failed: map pick missed";
+		return false;
+	}
+
+	WORLD_GAMEPLAY_PLACEMENT placement;
+	placement.placementId = m_WorldPlacementId;
+	placement.eKind = m_eWorldPlacementKind;
+	placement.archetypeId = m_WorldArchetypeId;
+	placement.encounterId = m_WorldEncounterId;
+	placement.position = position;
+	placement.yawDegrees = 0.f;
+	placement.isEnabled = true;
+	if (!m_WorldGameplayDocument.Add(placement, m_WorldGameplayStatus))
+		return false;
+
+	m_SelectedWorldPlacementId = placement.placementId;
+	m_bWorldGameplayPlacementArmed = false;
+	m_bWorldGameplayDirty = true;
+	return true;
+}
+
 bool Client::CMapTool::IsOpen() const
 {
 	return m_bOpen;
@@ -332,13 +529,15 @@ bool Client::CMapTool::IsOpen() const
 bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 {
 	if (!m_bOpen ||
-		ETOUI(LEVEL::ASSET_TEST) !=
+		ETOUI(LEVEL::DEVELOPMENT) !=
 		CGameInstance::Get().Get_CurrentLevelID())
 	{
 		return false;
 	}
 
 	return TOOL_MODE::NAVIGATION == m_eToolMode ||
+		(TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode &&
+			m_bWorldGameplayPlacementArmed) ||
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
@@ -349,6 +548,8 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 
 	m_bWasInAssetTest = isAssetTest;
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
+	m_bWorldGameplayPlacementArmed = false;
+	m_SelectedWorldPlacementId.clear();
 	m_iSelectedPlacementId = 0;
 	m_SelectedAssetId.clear();
 	m_pAssetTestCamera.reset();
@@ -362,9 +563,11 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 		m_DeployProps.clear();
 		m_iNextPlacementId = 1;
 		m_bDirty = false;
-		m_Status = "Enter AssetTest with F2";
-		m_NavigationStatus = "Enter AssetTest with F2";
-		m_CameraStatus = "Open ASSET_TEST with F2";
+		m_bWorldGameplayDirty = false;
+		m_Status = "Open Map Tool from F1 Developer Tools";
+		m_WorldGameplayStatus = "Development map scene is not active";
+		m_NavigationStatus = "Development map scene is not active";
+		m_CameraStatus = "Development map scene is not active";
 		return;
 	}
 
@@ -377,6 +580,7 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 		m_Status = m_Catalog.Get_Status();
 		if (Load_Placements())
 			Load_DeployProps();
+		Load_WorldGameplay();
 	}
 
 	Load_NavigationDocument();
@@ -387,7 +591,7 @@ bool_t Client::CMapTool::Find_AssetTestCamera()
 {
 	const shared_ptr<CGameObject> gameObject =
 		CGameInstance::Get().Get_GameObject(
-			ETOUI(LEVEL::ASSET_TEST),
+			ETOUI(LEVEL::DEVELOPMENT),
 			TEXT("Layer_Camera"),
 			0);
 	const shared_ptr<CCamera_Free> camera =
@@ -562,7 +766,7 @@ bool_t Client::CMapTool::Register_RuntimeBlockers()
 	shared_ptr<CNavigation> navigation =
 		dynamic_pointer_cast<CNavigation>(
 			CGameInstance::Get().Get_Component(
-				ETOUI(LEVEL::ASSET_TEST),
+				ETOUI(LEVEL::DEVELOPMENT),
 				TEXT("Layer_Player"),
 				TEXT("Com_Navigation"),
 				0));
@@ -626,7 +830,7 @@ bool_t Client::CMapTool::Set_NavigationCondition(
 	shared_ptr<CNavigation> navigation =
 		dynamic_pointer_cast<CNavigation>(
 			CGameInstance::Get().Get_Component(
-				ETOUI(LEVEL::ASSET_TEST),
+				ETOUI(LEVEL::DEVELOPMENT),
 				TEXT("Layer_Player"),
 				TEXT("Com_Navigation"),
 				0));
@@ -913,7 +1117,7 @@ bool_t Client::CMapTool::Create_Placement(
 	const MAP_PLACEMENT_RECORD& record, PLACED_ENTRY& outEntry)
 {
 	return CMapPlacementRuntime::Create_Placement(
-		ETOUI(LEVEL::ASSET_TEST), m_Catalog, record, outEntry);
+		ETOUI(LEVEL::DEVELOPMENT), m_Catalog, record, outEntry);
 }
 
 bool_t Client::CMapTool::Stage_PlacementRuntime(
@@ -922,7 +1126,7 @@ bool_t Client::CMapTool::Stage_PlacementRuntime(
 	vector<STATIC_BATCH_ENTRY>& outBatches)
 {
 	return CMapPlacementRuntime::Stage_PlacementRuntime(
-		ETOUI(LEVEL::ASSET_TEST),
+		ETOUI(LEVEL::DEVELOPMENT),
 		m_Catalog,
 		records,
 		outPlacements,
@@ -934,7 +1138,7 @@ void Client::CMapTool::Remove_PlacementRuntime(
 	vector<STATIC_BATCH_ENTRY>& batches)
 {
 	CMapPlacementRuntime::Remove_PlacementRuntime(
-		ETOUI(LEVEL::ASSET_TEST), placements, batches);
+		ETOUI(LEVEL::DEVELOPMENT), placements, batches);
 }
 
 bool_t Client::CMapTool::Set_RuntimeVisible(
@@ -956,7 +1160,7 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 	if (nullptr != iter->object)
 	{
 		if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), iter->layerTag,
+			ETOUI(LEVEL::DEVELOPMENT), iter->layerTag,
 			static_pointer_cast<CGameObject>(iter->object))))
 			return false;
 	}
@@ -985,12 +1189,6 @@ void Client::CMapTool::Remove_AllPlacements()
 
 bool_t Client::CMapTool::Save_Placements()
 {
-	if (m_Catalog.Is_Sharded())
-	{
-		m_Status = "Save disabled: shard-set placement documents are read-only";
-		return false;
-	}
-
 	vector<MAP_PLACEMENT_RECORD> document;
 	document.reserve(m_Placements.size());
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -1015,12 +1213,17 @@ bool_t Client::CMapTool::Save_Placements()
 		document.push_back(std::move(stored));
 	}
 
-	if (!CMapPlacementDocument::Write(
-		m_Catalog.Get_PlacementPath(), m_Catalog.Get_AreaId(),
+	const std::filesystem::path authoringPath =
+		CMapAssetCatalog::Get_AuthoringPlacementPath(
+			m_Catalog.Get_AreaId());
+	if (authoringPath.empty() ||
+		!CMapPlacementDocument::Write(
+		authoringPath, m_Catalog.Get_AreaId(),
 		document, m_Catalog, m_Status))
 		return false;
 
 	m_bDirty = false;
+	m_Status += " (authoring only; publish step required)";
 	return true;
 }
 
@@ -1031,8 +1234,20 @@ bool_t Client::CMapTool::Load_Placements()
 
 	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	if (!CMapPlacementRuntime::Read_Placements(
-		m_Catalog, document, loadStatus))
+	const std::filesystem::path authoringPath =
+		CMapAssetCatalog::Get_AuthoringPlacementPath(
+			m_Catalog.Get_AreaId());
+	std::error_code authoringError;
+	const bool_t hasAuthoring =
+		!authoringPath.empty() &&
+		std::filesystem::is_regular_file(
+			authoringPath, authoringError);
+	if (authoringError ||
+		(hasAuthoring ?
+			!CMapPlacementDocument::Read(
+				authoringPath, m_Catalog, document, loadStatus) :
+			!CMapPlacementRuntime::Read_Placements(
+				m_Catalog, document, loadStatus)))
 	{
 		m_Status = loadStatus;
 		return false;
@@ -1141,7 +1356,7 @@ bool_t Client::CMapTool::Load_DeployProps()
 		{
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp staging lost asset " + record.assetId;
 			return false;
@@ -1153,14 +1368,14 @@ bool_t Client::CMapTool::Load_DeployProps()
 		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
 		shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			ETOUI(LEVEL::ASSET_TEST),
+			ETOUI(LEVEL::DEVELOPMENT),
 			TEXT("Prototype_GameObject_DeployProp"),
-			ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+			ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
 			&desc, &gameObject)))
 		{
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp stage rolled back at " +
 				record.sourcePlacementId;
@@ -1171,10 +1386,10 @@ bool_t Client::CMapTool::Load_DeployProps()
 		if (nullptr == object)
 		{
 			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"), gameObject);
+				ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"), gameObject);
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp clone type mismatch";
 			return false;
@@ -1202,7 +1417,7 @@ void Client::CMapTool::Remove_DeployProps()
 {
 	for (const DEPLOY_ENTRY& entry : m_DeployProps)
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::ASSET_TEST), TEXT("Layer_DeployProps"),
+			ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
 			static_pointer_cast<CGameObject>(entry.object));
 	m_DeployProps.clear();
 }
@@ -1246,6 +1461,16 @@ void Client::CMapTool::Render_ModeBar()
 		TOOL_MODE::MAP_ASSETS == m_eToolMode))
 	{
 		m_eToolMode = TOOL_MODE::MAP_ASSETS;
+		m_bWorldGameplayPlacementArmed = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton(
+		"World Gameplay",
+		TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode))
+	{
+		m_eToolMode = TOOL_MODE::WORLD_GAMEPLAY;
+		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bNavigationStrokeActive = false;
 	}
 	ImGui::SameLine();
 	if (ImGui::RadioButton(
@@ -1254,6 +1479,7 @@ void Client::CMapTool::Render_ModeBar()
 	{
 		m_eToolMode = TOOL_MODE::NAVIGATION;
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bWorldGameplayPlacementArmed = false;
 	}
 	ImGui::SameLine();
 	if (ImGui::RadioButton(
@@ -1262,6 +1488,7 @@ void Client::CMapTool::Render_ModeBar()
 	{
 		m_eToolMode = TOOL_MODE::CAMERA;
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bWorldGameplayPlacementArmed = false;
 		m_bNavigationStrokeActive = false;
 	}
 }
@@ -1331,8 +1558,6 @@ void Client::CMapTool::Render_CameraPanel()
 	}
 
 	ImGui::TextUnformatted(m_CameraStatus.c_str());
-	ImGui::TextDisabled(
-		"F6: toggle Follow / Free Camera");
 	ImGui::TextDisabled(
 		"Tab: toggle Free Camera mouse look");
 	ImGui::TextDisabled(
@@ -1739,15 +1964,9 @@ void Client::CMapTool::Render_NavigationOverlay()
 
 void Client::CMapTool::Render_Toolbar()
 {
-	ImGui::BeginDisabled(m_Catalog.Is_Sharded());
 	if (ImGui::Button("Save"))
 		Save_Placements();
-	ImGui::EndDisabled();
-	if (m_Catalog.Is_Sharded())
-	{
-		ImGui::SameLine();
-		ImGui::TextDisabled("Shard set is read-only");
-	}
+	ImGui::TextDisabled("Data/Maps authoring; publish required");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
@@ -1779,7 +1998,7 @@ void Client::CMapTool::Render_Toolbar()
 	if (ImGui::RadioButton("Despawned##DeployPhase",
 		m_DeployPhase == DEPLOY_PROP_STATE::DESPAWNED))
 		Set_DeployPhase(DEPLOY_PROP_STATE::DESPAWNED);
-	ImGui::TextUnformatted("Sky phase (F7 Baseline / F8 SpaceHole / F9 ChaosGate):");
+	ImGui::TextUnformatted("Sky phase:");
 	ImGui::SameLine();
 	if (ImGui::RadioButton("Baseline##EnvironmentPhase",
 		m_EnvironmentPhase == ENVIRONMENT_PHASE::BASELINE))
@@ -2049,7 +2268,7 @@ void Client::CMapTool::Render_Inspector()
 					{
 						model = dynamic_pointer_cast<CModel>(
 							CGameInstance::Get().Clone_Prototype(
-								ETOUI(LEVEL::ASSET_TEST),
+								ETOUI(LEVEL::DEVELOPMENT),
 								asset->prototypeTag));
 					}
 
@@ -2079,7 +2298,7 @@ void Client::CMapTool::Render_Inspector()
 						else
 						{
 							CGameInstance::Get().Remove_GameObject_from_Layer(
-								ETOUI(LEVEL::ASSET_TEST), migrated.layerTag,
+								ETOUI(LEVEL::DEVELOPMENT), migrated.layerTag,
 								static_pointer_cast<CGameObject>(migrated.object));
 						}
 					}
@@ -2247,7 +2466,7 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 			shared_ptr<CModel> cloned =
 				dynamic_pointer_cast<CModel>(
 					CGameInstance::Get().Clone_Prototype(
-						ETOUI(LEVEL::ASSET_TEST),
+						ETOUI(LEVEL::DEVELOPMENT),
 						asset->prototypeTag));
 			if (nullptr == cloned || !cloned->Has_LocalBounds())
 			{

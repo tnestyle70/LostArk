@@ -1,0 +1,24 @@
+{
+  "schema": "lostark.boss-catalog",
+  "formatVersion": 1,
+  "bosses": [
+    {
+      "archetypeId": "BOSS_VALTAN",
+      "visualAssetId": "VALTAN_MN_RPBF_01",
+      "bodyModel": "Character/Valtan/MN_RPBF_01.wmodel",
+      "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
+      "animationSetId": "ANIM_MN_RPBF_01",
+      "serverProfileId": "boss.valtan.server.v1",
+      "clientPresentationId": "boss.valtan.client.v1",
+      "presentationStatus": "complete",
+      "presentationClips": {
+        "idle": "idle_battle_1",
+        "chase": "run_battle_1",
+        "patternWindup": "att_battle_2_01",
+        "patternActive": "att_battle_2_02",
+        "patternRecovery": "att_battle_2_03",
+        "dead": "dead_1"
+      }
+    }
+  ]
+}

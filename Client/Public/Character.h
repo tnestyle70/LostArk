@@ -4,6 +4,7 @@
 #include "ContainerObject.h"
 #include "CharacterSpec.h"
 #include "NavPathFollower.h"
+#include "Network/PacketMessages.h"
 
 NS_BEGIN(Engine)
 class CModel;
@@ -16,8 +17,8 @@ NS_BEGIN(Client)
 /* One playable character, whatever the class. Everything class-specific arrives
 as a CHARACTER_SPEC plus an ICharacterLogic, so this stays shared by the team.
 
-Input stays outside this object. A controller or level converts input into a
-world-space goal and calls Request_Move(). */
+Input stays outside this object. PlayerController submits semantic commands and
+replication applies approved movement or action presentation. */
 class CCharacter final : public CContainerObject
 {
 public:
@@ -74,12 +75,22 @@ public:
 	}
 
 	void Set_Position(fvector_t vPosition);
+	//charcter represent function
+	bool_t Apply_NetworkState(
+		const float3_t& position,
+		f32_t yawDegrees,
+		bool_t isMoving);
+	bool_t Apply_NetworkAction(
+		LostArk::Shared::PLAYER_ACTION_STATE action,
+		LostArk::Shared::SKILL_ID skillId,
+		std::uint32_t actionStartTick);
+
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
 	void Cancel_Move();
 	bool_t Is_Moving() const {
-		return m_PathFollower.Has_Path();
+		return m_isMoving;
 	}
 
 #ifdef _DEBUG
@@ -88,8 +99,8 @@ public:
 	}
 #endif
 
-	/* Starts the skill's chain and plays it through. Returns false when the skill
-	has no chain or one is already running. */
+	/* Applies an approved skill action to presentation. Input code must never call
+	this directly. Returns false when the chain is unknown or already running. */
 	bool_t Play_Skill(int32_t iSkillId, int32_t iSeqIndex = 0);
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
@@ -129,6 +140,15 @@ private:
 	std::string m_strNickName;
 	bool_t m_isLocallyControlled = { false };
 
+	//network persentation state
+	bool_t m_hasNetworkState = { false };
+	LostArk::Shared::PLAYER_ACTION_STATE m_eNetworkAction =
+		LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+	std::uint32_t m_iLastNetworkActionStartTick = 0;
+	//next goal pos that server notice
+	float3_t m_vNetworkTargetPosition = {};
+	f32_t m_fNetworkTargetYawDegrees = { 0.f };
+
 private:
 	HRESULT Ready_Components();
 	HRESULT Ready_PartObjects();
@@ -142,6 +162,9 @@ private:
 	/* Moves to the next clip once the current one ends, and drops back to idle
 	after the last. */
 	void Update_Chain();
+
+	//server snapshot interpolation
+	void Update_NetworkTransform(f32_t fTimeDelta);
 
 public:
 	static unique_ptr<CCharacter> Create(ComPtr<ID3D11Device> pDevice,

@@ -1,9 +1,9 @@
 #include "CharacterCatalog.h"
 
-#include "Logic_LanceMaster.h"
-#include "Logic_GunSlinger.h"
-#include "Logic_Slayer.h"
 #include "Logic_Artist.h"
+#include "Logic_GunSlinger.h"
+#include "Logic_LanceMaster.h"
+#include "Logic_Slayer.h"
 
 const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass)

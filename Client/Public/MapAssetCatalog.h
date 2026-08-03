@@ -88,6 +88,9 @@ public:
 	bool_t Is_Ready() const { return m_bReady; }
 
 	static std::filesystem::path Get_MapDataRoot();
+	static std::filesystem::path Get_MapAuthoringRoot();
+	static std::filesystem::path Get_AuthoringPlacementPath(
+		const std::string& areaId);
 	static std::filesystem::path Get_AreaSelectionPath();
 
 private:

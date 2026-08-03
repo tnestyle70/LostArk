@@ -1,0 +1,29 @@
+{
+  "schema": "lostark.encounter-profile",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "authority": "server",
+  "fixedTickHz": 30,
+  "states": [
+    { "id": "IDLE", "actionId": "valtan.idle", "next": "ACQUIRE_TARGET" },
+    { "id": "ACQUIRE_TARGET", "actionId": "valtan.acquire", "next": "CHASE" },
+    { "id": "CHASE", "actionId": "valtan.run", "next": "PATTERN_SELECT" },
+    { "id": "PATTERN_SELECT", "actionId": "valtan.select", "next": "PATTERN_EXECUTE" },
+    { "id": "PATTERN_EXECUTE", "actionId": "valtan.pattern", "next": "RECOVERY" },
+    { "id": "RECOVERY", "actionId": "valtan.recovery", "next": "ACQUIRE_TARGET" },
+    { "id": "DEAD", "actionId": "valtan.dead", "next": null }
+  ],
+  "patterns": [
+    {
+      "patternId": "VALTAN_BASIC_SWING",
+      "actionId": "valtan.attack.basic-swing",
+      "minimumRange": 0.0,
+      "maximumRange": 8.0,
+      "telegraphMs": 800,
+      "activeMs": 300,
+      "recoveryMs": 1200,
+      "serverDamageProfileId": "damage.valtan.basic-swing"
+    }
+  ]
+}

@@ -70,7 +70,7 @@ HRESULT CMapAssetPreview::Select_Asset(
 	{
 		stagedShader = dynamic_pointer_cast<CShader>(
 			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::ASSET_TEST),
+				ETOUI(LEVEL::DEVELOPMENT),
 				SHADER_PROTOTYPE_TAG));
 		if (nullptr == stagedShader)
 		{
@@ -82,7 +82,7 @@ HRESULT CMapAssetPreview::Select_Asset(
 	shared_ptr<CModel> stagedModel =
 		dynamic_pointer_cast<CModel>(
 			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::ASSET_TEST),
+				ETOUI(LEVEL::DEVELOPMENT),
 				asset.prototypeTag));
 	if (nullptr == stagedModel ||
 		!stagedModel->Has_LocalBounds())

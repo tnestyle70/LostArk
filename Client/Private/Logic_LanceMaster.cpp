@@ -1,36 +1,9 @@
 #include "Logic_LanceMaster.h"
 
 #include "Character.h"
-#include "GameInstance.h"
 
 namespace
 {
-	/* Key -> skill, for the skills that have a clip chain in LanceMaster.clipseq.
-	Skill ids are the game's own (EFTable_Skill), so the id is what ties this to
-	the extracted timing and notify data. */
-	struct SKILL_BIND
-	{
-		uint8_t byKey;
-		int32_t iSkillId;
-	};
-
-	/* Names are in the clipmap; this file stays ASCII so it keeps building under
-	the CP949 code page the rest of Client/ is compiled with. */
-	constexpr SKILL_BIND Binds[] =
-	{
-		{ DIK_Q, 34040 },   /* SharpSwing     */
-		{ DIK_W, 34060 },   /* StrongRotational */
-		{ DIK_E, 34070 },   /* Assault        */
-		{ DIK_R, 34110 },   /* CrescentSweep  */
-		{ DIK_A, 34120 },   /* ThreeTalonStrike */
-		{ DIK_S, 34130 },   /* Ruffle         */
-		{ DIK_D, 34140 },   /* ChestDestruction */
-		{ DIK_F, 34150 },   /* CrushingBlow   */
-		{ DIK_Z, 34100 },   /* CycloinLance   */
-		{ DIK_X, 34010 },   /* basic attack   */
-		{ DIK_1, 34630 },   /* awakening, plays out */
-	};
-
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
@@ -62,32 +35,12 @@ namespace
 
 NS_BEGIN(Client)
 
-void CLogic_LanceMaster::Update(CCharacter& Character, f32_t fTimeDelta)
+void CLogic_LanceMaster::Update_Presentation(
+	CCharacter& Character,
+	f32_t fTimeDelta)
 {
-	static_assert(size(Binds) <= size(CLogic_LanceMaster::m_bKeyDown),
-		"m_bKeyDown must cover every bind");
-
-	/* Skills and state transitions land here. The body already advances the clock,
-	so this only has to pick the clip. */
-
-	/* A chain owns the character until it ends. Cancel windows are extracted but
-	not wired yet, so a cast cannot be interrupted. */
-	if (Character.Is_PlayingSkill())
-		return;
-
-	for (const SKILL_BIND& bind : Binds)
-	{
-		const bool_t bDown =
-			0 != (CGameInstance::Get().Get_DIKeyState(bind.byKey) & 0x80);
-
-		/* DirectInput is polled as a level, so the press edge is tracked here --
-		holding a key must not restart the skill every frame. */
-		const bool_t bWasDown = m_bKeyDown[&bind - Binds];
-		m_bKeyDown[&bind - Binds] = bDown;
-
-		if (bDown && !bWasDown && Character.Play_Skill(bind.iSkillId))
-			return;
-	}
+	(void)Character;
+	(void)fTimeDelta;
 }
 
 /* External linkage comes from the extern declaration in the header. */

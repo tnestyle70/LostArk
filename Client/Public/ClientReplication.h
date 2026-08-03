@@ -1,17 +1,21 @@
 #pragma once
 
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
 #include "NetObjectRegistry.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 //Network Event를 실제 Engine GameObject 생성 제거로 번역되는 단 하나의 main-thread 경계
 
 namespace Client
 {
 	class CCharacter;
+	class CValtan;
 
 	class CClientReplication final
 	{
@@ -20,9 +24,12 @@ namespace Client
 		//rpelication이 level baren을 하드코딩할 필요가 없다.
 		struct DESC
 		{
+			ComPtr<ID3D11Device> pDevice;
+			ComPtr<ID3D11DeviceContext> pContext;
 			std::uint32_t iPrototypeLevelIndex = 0;
 			std::uint32_t iLayerLevelIndex = 0;
 			std::wstring strPlayerLayerTag;
+			std::wstring strWorldEntityLayerTag;
 		};
 
 	public:
@@ -37,6 +44,11 @@ namespace Client
 
 		bool Apply_Despawn(
 			const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned);
+		bool Apply_WorldEntitySpawn(
+			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
+		//snapshot의 netentityid를 실제 client character로 해석하는 함수
+		bool Apply_WorldSnapshot(
+			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
 
 		void Reset_World();
 
@@ -49,5 +61,19 @@ namespace Client
 		OBJECT_HANDLE m_LocalCharacterHandle;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
+		//마지막으로 적용한 snapshot tick
+		std::uint32_t m_iLastServerTick = 0;
+
+		struct WORLD_ENTITY_PRESENTATION
+		{
+			LostArk::Shared::WORLD_ENTITY_KIND eKind =
+				LostArk::Shared::WORLD_ENTITY_KIND::END;
+			std::string strArchetypeId;
+			std::string strEncounterId;
+			std::weak_ptr<CValtan> pValtan;
+		};
+		std::unordered_map<
+			LostArk::Shared::NET_ENTITY_ID,
+			WORLD_ENTITY_PRESENTATION> m_WorldEntities;
 	};
 }

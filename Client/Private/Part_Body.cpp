@@ -128,7 +128,7 @@ unique_ptr<CPart_Body> CPart_Body::Create(ComPtr<ID3D11Device> pDevice,
 	auto pInstance = unique_ptr<CPart_Body>(new CPart_Body(pDevice, pContext));
 	if (FAILED(pInstance->Initialize_Prototype()))
 	{
-		MSG_BOX("Failed to Created : CPart_Body");
+		OutputDebugStringA("[Client][PartBody] Create failed.\n");
 		return nullptr;
 	}
 	return pInstance;
@@ -139,7 +139,7 @@ shared_ptr<CPrototype> CPart_Body::Clone(void* pArg)
 	auto pInstance = shared_ptr<CPart_Body>(new CPart_Body(*this));
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned : CPart_Body");
+		OutputDebugStringA("[Client][PartBody] Clone failed.\n");
 		return nullptr;
 	}
 	return pInstance;

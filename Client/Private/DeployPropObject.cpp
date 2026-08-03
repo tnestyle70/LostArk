@@ -158,16 +158,16 @@ HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary") :
 		TEXT("Prototype_Component_Shader_VtxMeshBinary");
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST), shaderTag,
+		ETOUI(LEVEL::DEVELOPMENT), shaderTag,
 		TEXT("Com_Shader"), m_pShaderCom)) ||
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::ASSET_TEST), desc.intactPrototypeTag,
+			ETOUI(LEVEL::DEVELOPMENT), desc.intactPrototypeTag,
 			TEXT("Com_Model_Intact"), m_pIntactModelCom)))
 		return E_FAIL;
 
 	if (desc.modelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::ASSET_TEST), desc.fracturedPrototypeTag,
+			ETOUI(LEVEL::DEVELOPMENT), desc.fracturedPrototypeTag,
 			TEXT("Com_Model_Fractured"), m_pFracturedModelCom)))
 		return E_FAIL;
 	return S_OK;

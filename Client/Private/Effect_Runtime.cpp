@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "Effect_Runtime.h"
-#include "BinaryAsset/CookedModel.h"
+#include "BinaryAsset/ModelAssetData.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Profiler.h"
@@ -224,11 +224,11 @@ void CEffect_Runtime::Update(const f32_t fTimeDelta)
 
 		Runtime.Simulator.Set_LODDistance(fCameraDistance);
 		Runtime.Simulator.Update(fTimeDelta);
-		if (nullptr != Runtime.pCookedModel &&
-			Runtime.pCookedModel->Is_Skinned() &&
-			Runtime.pCookedModel->Has_Animations())
+		if (nullptr != Runtime.pModel &&
+			Runtime.pModel->Is_Skinned() &&
+			Runtime.pModel->Has_Animations())
 		{
-			Runtime.pCookedModel->Update_Animation(fTimeDelta);
+			Runtime.pModel->Update_Animation(fTimeDelta);
 		}
 	}
 }
@@ -483,12 +483,12 @@ bool_t CEffect_Runtime::Rebuild(
 						pRequired->Required.strMeshAssetId);
 				if (Has_Extension(MeshPath, L".wmesh"))
 				{
-					Runtime.pCookedModel = Load_CookedModel(
+					Runtime.pModel = Load_BinaryModel(
 						pRequired->Required);
 
-					if (nullptr != Runtime.pCookedModel &&
-						Runtime.pCookedModel->Is_Skinned() &&
-						Runtime.pCookedModel->Has_Animations())
+					if (nullptr != Runtime.pModel &&
+						Runtime.pModel->Is_Skinned() &&
+						Runtime.pModel->Has_Animations())
 					{
 						const EFFECT_MODULE_DESC* pMeshAnimation =
 							Find_Module(
@@ -499,7 +499,7 @@ bool_t CEffect_Runtime::Rebuild(
 							const uint32_t iAnimationIndex = min(
 								pMeshAnimation->
 									MeshAnimation.iAnimationIndex,
-								Runtime.pCookedModel->
+								Runtime.pModel->
 									Get_NumAnimations() - 1u);
 							const f32_t fPlayRate = isfinite(
 								pMeshAnimation->
@@ -510,9 +510,9 @@ bool_t CEffect_Runtime::Rebuild(
 									-16.f,
 									16.f)
 								: 1.f;
-							Runtime.pCookedModel->
+							Runtime.pModel->
 								Set_AnimationSpeed(fPlayRate);
-							Runtime.pCookedModel->Play_Animation(
+							Runtime.pModel->Start_Animation(
 								iAnimationIndex,
 								pMeshAnimation->
 									MeshAnimation.isLoop);
@@ -554,11 +554,11 @@ bool_t CEffect_Runtime::Rebuild(
 				{
 					Runtime.Simulator.Update(fStep);
 					if (Runtime.Desc.isEnabled &&
-						nullptr != Runtime.pCookedModel &&
-						Runtime.pCookedModel->Is_Skinned() &&
-						Runtime.pCookedModel->Has_Animations())
+						nullptr != Runtime.pModel &&
+						Runtime.pModel->Is_Skinned() &&
+						Runtime.pModel->Has_Animations())
 					{
-						Runtime.pCookedModel->
+						Runtime.pModel->
 							Update_Animation(fStep);
 					}
 				}
@@ -596,25 +596,16 @@ filesystem::path CEffect_Runtime::Resolve_AssetPath(
 		strAssetId.begin(), strAssetId.end());
 	filesystem::path RequestedPath =
 		filesystem::path(Utf8Path).lexically_normal();
-	error_code Error;
-	if (RequestedPath.is_absolute() &&
-		filesystem::is_regular_file(RequestedPath, Error))
-	{
-		return RequestedPath;
-	}
+	if (RequestedPath.is_absolute() || RequestedPath.has_root_path())
+		return {};
 
 	const filesystem::path Candidates[] = {
-		RequestedPath,
 		CRuntimeAssetRoot::Resolve(RequestedPath),
 		CRuntimeAssetRoot::Resolve(
-			filesystem::path(L"Effect") / RequestedPath),
-		filesystem::path(L"../Bin") / RequestedPath,
-		filesystem::path(L"../Bin/Resources/LostArk/Effect/Effect_Tool") / RequestedPath,
-		filesystem::path(L"../Bin/Resources/LostArk") / RequestedPath,
-		filesystem::path(L"../Bin/Resources/LostArk/Effect") /
-			RequestedPath
+			filesystem::path(L"Effect") / RequestedPath)
 	};
 
+	error_code Error;
 	for (const filesystem::path& Candidate : Candidates)
 	{
 		Error.clear();
@@ -702,7 +693,7 @@ shared_ptr<CModel> CEffect_Runtime::Load_StaticModel(
 	return pSharedModel;
 }
 
-shared_ptr<CCookedModel> CEffect_Runtime::Load_CookedModel(
+shared_ptr<CModel> CEffect_Runtime::Load_BinaryModel(
 	const EFFECT_REQUIRED_MODULE_DESC& RequiredDesc)
 {
 	const filesystem::path MeshPath =
@@ -782,15 +773,16 @@ shared_ptr<CCookedModel> CEffect_Runtime::Load_CookedModel(
 		LoadDesc.fallbackDiffusePath = FallbackDiffusePath;
 	}
 
-	/*
-	 * Do not cache cooked models here.  CCookedModel owns mutable animation
-	 * time and bone matrices, so sharing one instance between emitters would
-	 * make their play rate, loop mode, and pose overwrite each other.
-	 */
-	return CCookedModel::Create(
+	const MODEL modelType = LoadDesc.skeletonPath.empty()
+		? MODEL::NONANIM : MODEL::ANIM;
+	auto pModel = CModel::Create(
 		m_pDevice,
 		m_pContext,
-		LoadDesc);
+		modelType,
+		LoadDesc,
+		XMMatrixIdentity());
+	return nullptr == pModel
+		? nullptr : shared_ptr<CModel>(move(pModel));
 }
 
 HRESULT CEffect_Runtime::Render_SpriteEmitter(
@@ -959,108 +951,10 @@ HRESULT CEffect_Runtime::Render_SpriteEmitter(
 HRESULT CEffect_Runtime::Render_MeshEmitter(
 	const EFFECT_EMITTER_RUNTIME& Runtime)
 {
-	if (nullptr != Runtime.pCookedModel)
-		return Render_CookedMeshEmitter(Runtime);
-
-	if (nullptr == Runtime.pModel || nullptr == m_pMeshShader)
+	if (nullptr == Runtime.pModel)
 		return S_OK;
 
-	if (FAILED(CGameInstance::Get().Bind_Transform(
-			m_pMeshShader, "g_ViewMatrix", D3DTS::VIEW)) ||
-		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pMeshShader, "g_ProjMatrix", D3DTS::PROJ)) ||
-		FAILED(Bind_EffectMaterialResources(
-			m_pMeshShader, Runtime)))
-	{
-		return E_FAIL;
-	}
-
-	const uint32_t iPass =
-		(EFFECT_BLEND_MODE::ADDITIVE == Runtime.Desc.eBlendMode)
-		? 1u
-		: 0u;
-
-	for (const EFFECT_PARTICLE& Particle :
-		Runtime.Simulator.Get_Particles())
-	{
-		const float3_t vPosition = To_WorldPosition(Particle);
-		const matrix_t WorldMatrix =
-			XMMatrixScaling(
-				max(0.0001f, fabsf(Particle.vSize.x)),
-				max(0.0001f, fabsf(Particle.vSize.y)),
-				max(0.0001f, fabsf(Particle.vSize.z))) *
-			XMMatrixRotationRollPitchYaw(
-				XMConvertToRadians(Particle.vRotation.x),
-				XMConvertToRadians(Particle.vRotation.y),
-				XMConvertToRadians(Particle.vRotation.z)) *
-			XMMatrixTranslation(
-				vPosition.x, vPosition.y, vPosition.z);
-
-		float4x4_t WorldMatrixFloat{};
-		XMStoreFloat4x4(&WorldMatrixFloat, WorldMatrix);
-		if (FAILED(m_pMeshShader->Bind_Matrix(
-			"g_WorldMatrix", &WorldMatrixFloat)) ||
-			FAILED(m_pMeshShader->Bind_RawValue(
-				"g_vTint", &Particle.vColor,
-				sizeof(Particle.vColor))) ||
-			FAILED(Bind_DynamicParameter(
-				m_pMeshShader,
-				Particle.vDynamicParameter)))
-		{
-			return E_FAIL;
-		}
-
-		for (uint32_t i = 0;
-			i < Runtime.pModel->Get_NumMeshes();
-			++i)
-		{
-			const EFFECT_MODULE_DESC* pRequired = Find_Module(
-				Runtime.Desc, EFFECT_MODULE_TYPE::REQUIRED);
-			const bool_t hasRequiredTexture =
-				nullptr != pRequired &&
-				!pRequired->Required.strTextureAssetId.empty();
-
-			if (hasRequiredTexture)
-			{
-				if (FAILED(m_pMeshShader->Bind_Texture(
-					"g_Texture",
-					(nullptr != Runtime.pTextureSRV.Get())
-						? Runtime.pTextureSRV
-						: m_pFallbackTextureSRV)))
-				{
-					return E_FAIL;
-				}
-			}
-			else if (FAILED(Runtime.pModel->Bind_Material(
-				m_pMeshShader,
-				"g_Texture",
-				i,
-				aiTextureType_DIFFUSE)))
-			{
-				if (FAILED(m_pMeshShader->Bind_Texture(
-					"g_Texture",
-					m_pFallbackTextureSRV)))
-				{
-					return E_FAIL;
-				}
-			}
-
-			if (FAILED(m_pMeshShader->Begin(iPass)))
-				return E_FAIL;
-			if (FAILED(Runtime.pModel->Render(i)))
-				return E_FAIL;
-		}
-	}
-	return S_OK;
-}
-
-HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
-	const EFFECT_EMITTER_RUNTIME& Runtime)
-{
-	if (nullptr == Runtime.pCookedModel)
-		return E_FAIL;
-
-	const bool_t isSkinned = Runtime.pCookedModel->Is_Skinned();
+	const bool_t isSkinned = Runtime.pModel->Is_Skinned();
 	const shared_ptr<CShader> pShader =
 		isSkinned ? m_pAnimMeshShader : m_pMeshShader;
 	if (nullptr == pShader)
@@ -1069,29 +963,17 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 	if (FAILED(CGameInstance::Get().Bind_Transform(
 			pShader, "g_ViewMatrix", D3DTS::VIEW)) ||
 		FAILED(CGameInstance::Get().Bind_Transform(
-			pShader, "g_ProjMatrix", D3DTS::PROJ)))
+			pShader, "g_ProjMatrix", D3DTS::PROJ)) ||
+		FAILED(Bind_EffectMaterialResources(
+			pShader, Runtime)))
 	{
 		return E_FAIL;
 	}
-
-	if (isSkinned &&
-		FAILED(Runtime.pCookedModel->Bind_BoneMatrices(
-			pShader, "g_BoneMatrices")))
-	{
-		return E_FAIL;
-	}
-	if (FAILED(Bind_EffectMaterialResources(pShader, Runtime)))
-		return E_FAIL;
 
 	const uint32_t iPass =
 		(EFFECT_BLEND_MODE::ADDITIVE == Runtime.Desc.eBlendMode)
 		? 1u
 		: 0u;
-	const EFFECT_MODULE_DESC* pRequired = Find_Module(
-		Runtime.Desc, EFFECT_MODULE_TYPE::REQUIRED);
-	const bool_t hasRequiredTexture =
-		nullptr != pRequired &&
-		!pRequired->Required.strTextureAssetId.empty();
 
 	for (const EFFECT_PARTICLE& Particle :
 		Runtime.Simulator.Get_Particles())
@@ -1112,21 +994,27 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 		float4x4_t WorldMatrixFloat{};
 		XMStoreFloat4x4(&WorldMatrixFloat, WorldMatrix);
 		if (FAILED(pShader->Bind_Matrix(
-				"g_WorldMatrix", &WorldMatrixFloat)) ||
+			"g_WorldMatrix", &WorldMatrixFloat)) ||
 			FAILED(pShader->Bind_RawValue(
-				"g_vTint",
-				&Particle.vColor,
+				"g_vTint", &Particle.vColor,
 				sizeof(Particle.vColor))) ||
 			FAILED(Bind_DynamicParameter(
-				pShader, Particle.vDynamicParameter)))
+				pShader,
+					Particle.vDynamicParameter)))
 		{
 			return E_FAIL;
 		}
 
 		for (uint32_t i = 0;
-			i < Runtime.pCookedModel->Get_NumMeshes();
+			i < Runtime.pModel->Get_NumMeshes();
 			++i)
 		{
+			const EFFECT_MODULE_DESC* pRequired = Find_Module(
+				Runtime.Desc, EFFECT_MODULE_TYPE::REQUIRED);
+			const bool_t hasRequiredTexture =
+				nullptr != pRequired &&
+				!pRequired->Required.strTextureAssetId.empty();
+
 			if (hasRequiredTexture)
 			{
 				if (FAILED(pShader->Bind_Texture(
@@ -1138,11 +1026,11 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 					return E_FAIL;
 				}
 			}
-			else if (FAILED(Runtime.pCookedModel->Bind_Material(
+			else if (FAILED(Runtime.pModel->Bind_Material(
 				pShader,
 				"g_Texture",
 				i,
-				COOKED_TEXTURE_SLOT::DIFFUSE)))
+				aiTextureType_DIFFUSE)))
 			{
 				if (FAILED(pShader->Bind_Texture(
 					"g_Texture",
@@ -1152,8 +1040,10 @@ HRESULT CEffect_Runtime::Render_CookedMeshEmitter(
 				}
 			}
 
-			if (FAILED(pShader->Begin(iPass)) ||
-				FAILED(Runtime.pCookedModel->Render(i)))
+			if ((isSkinned && FAILED(Runtime.pModel->Bind_BoneMatrices(
+					pShader, "g_BoneMatrices", i))) ||
+				FAILED(pShader->Begin(iPass)) ||
+				FAILED(Runtime.pModel->Render(i)))
 			{
 				return E_FAIL;
 			}

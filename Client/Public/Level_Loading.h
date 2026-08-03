@@ -24,6 +24,12 @@ public:
 private:
 	LEVEL							m_eNextLevelID = { LEVEL::END };
 	unique_ptr<class CLoader>		m_pLoader = { nullptr };
+	bool_t							m_isFailureReported = { false };
+	bool_t							m_isRetryRequested = { false };
+
+private:
+	void Recover_FromFailure(HRESULT result);
+	void Retry_LobbyLoad();
 
 public:
 	static unique_ptr<CLevel_Loading> Create(ComPtr<ID3D11Device> pDevice, 

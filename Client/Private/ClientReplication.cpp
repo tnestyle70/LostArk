@@ -1,10 +1,14 @@
 #include "ClientReplication.h"
 
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "NetworkManager.h"
+#include "PlayableCharacterAssetService.h"
 #include "Transform.h"
+#include "Valtan.h"
 
 namespace
 {
@@ -51,7 +55,11 @@ bool Client::CClientReplication::Initialize(const DESC& desc)
 {
 	//Layer 정보가 유한한지 검사하고, 설정을 저장한다.
 	//현재 network 연결 상태도 기억해 두어, 이후 연결이 끊겼는지 감지할 수 있게 한다.
-	if (desc.strPlayerLayerTag.empty())
+	if (nullptr == desc.pDevice ||
+		nullptr == desc.pContext ||
+		desc.strPlayerLayerTag.empty() ||
+		desc.strWorldEntityLayerTag.empty() ||
+		!CCombatHUDViewModel::Get().Initialize_Definitions())
 		return false;
 
 	m_Desc = desc;
@@ -104,9 +112,20 @@ bool Client::CClientReplication::Update()
 				Apply_Spawn(event.PlayerSpawned) && allSucceeded;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED:
+			allSucceeded =
+				Apply_WorldEntitySpawn(event.WorldEntitySpawned) &&
+				allSucceeded;
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED:
 			allSucceeded =
 				Apply_Despawn(event.PlayerDespawned) &&
+				allSucceeded;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT:
+			allSucceeded = Apply_WorldSnapshot(event.WorldSnapshot) &&
 				allSucceeded;
 			break;
 		}
@@ -139,6 +158,15 @@ bool Client::CClientReplication::Apply_Spawn(
 	{
 		//같은 event 재전송은 no-op, 다른 내용의 같은 id는  protocol conflict이다.
 		return Is_Same_Record(*existing, stagedRecord);
+	}
+
+	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		m_Desc.pDevice,
+		m_Desc.pContext,
+		m_Desc.iPrototypeLevelIndex,
+		spawned.eCharacterClass)))
+	{
+		return false;
 	}
 
 	const CHARACTER_SPEC* spec =
@@ -250,6 +278,190 @@ bool Client::CClientReplication::Apply_Despawn(
 	return true;
 }
 
+bool Client::CClientReplication::Apply_WorldEntitySpawn(
+	const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned)
+{
+	using namespace LostArk::Shared;
+	const auto existing = m_WorldEntities.find(spawned.iNetEntityId);
+	if (existing != m_WorldEntities.end())
+	{
+		return existing->second.eKind == spawned.eKind &&
+			existing->second.strArchetypeId == spawned.strArchetypeId &&
+			existing->second.strEncounterId == spawned.strEncounterId &&
+			!existing->second.pValtan.expired();
+	}
+	const BOSS_ACTOR_ENTRY* pBoss =
+		CActorCatalog::Find_Boss(spawned.strArchetypeId);
+	if (spawned.eKind != WORLD_ENTITY_KIND::BOSS ||
+		nullptr == pBoss ||
+		pBoss->clientPresentationId != "boss.valtan.client.v1")
+	{
+		return false;
+	}
+
+	CValtan::VALTAN_DESC desc{};
+	desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+	desc.vPosition = float3_t(
+		spawned.fPositionX,
+		spawned.fPositionY,
+		spawned.fPositionZ);
+	desc.isServerAuthoritative = true;
+	std::shared_ptr<CGameObject> gameObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		m_Desc.iPrototypeLevelIndex,
+		TEXT("Prototype_GameObject_Valtan"),
+		m_Desc.iLayerLevelIndex,
+		m_Desc.strWorldEntityLayerTag,
+		&desc,
+		&gameObject)))
+	{
+		return false;
+	}
+	const std::shared_ptr<CValtan> valtan =
+		std::dynamic_pointer_cast<CValtan>(gameObject);
+	if (nullptr == valtan || !valtan->Apply_NetworkState(
+		desc.vPosition,
+		spawned.fYawDegrees,
+		WORLD_ENTITY_ACTION::IDLE,
+		{}))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			gameObject);
+		return false;
+	}
+
+	WORLD_ENTITY_PRESENTATION presentation{};
+	presentation.eKind = spawned.eKind;
+	presentation.strArchetypeId = spawned.strArchetypeId;
+	presentation.strEncounterId = spawned.strEncounterId;
+	presentation.pValtan = valtan;
+	const auto [iter, inserted] = m_WorldEntities.emplace(
+		spawned.iNetEntityId,
+		std::move(presentation));
+	(void)iter;
+	if (!inserted)
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			valtan);
+	}
+	return inserted;
+}
+
+bool Client::CClientReplication::Apply_WorldSnapshot(
+	const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot)
+{
+	//server tick 유효성 검사 -> 마지막 tick보다 새 snapshot인지 검사
+	//->snapshot의 player 배열 순회 -> netentityid로 objecthandle 검색
+	//handle로 살아 있는 character resolve
+	//위치 float3 생성 -> locomotion을 bool ismoving으로 변환
+	//character apply networkstate -> 마지막 servertick 갱신
+
+	//snapshot 안에 있는 packet타입이나 session 정보를 character로 넘기지 않는다.
+	//character가 받는 값을 순수 표현 값이다.
+
+	using namespace LostArk::Shared;
+
+	if (0 == snapshot.iServerTick)
+		return false;
+
+	// 현재 TCP 경로는 순서가 보장된다. 중복 또는 역전 Tick은 다시 적용하지 않는다.
+	if (snapshot.iServerTick <= m_iLastServerTick)
+		return true;
+
+	bool allSucceeded = true;
+
+	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
+	{
+		OBJECT_HANDLE handle{};
+
+		if (!m_Registry.Find_Handle(
+			player.iNetEntityId,
+			handle))
+		{
+			allSucceeded = false;
+			continue;
+		}
+
+		const std::shared_ptr<CCharacter> character =
+			m_Registry.Resolve(handle);
+
+		if (nullptr == character)
+		{
+			allSucceeded = false;
+			continue;
+		}
+
+		const float3_t position(
+			player.fPositionX,
+			player.fPositionY,
+			player.fPositionZ);
+
+		const bool_t isMoving =
+			player.eLocomotionState ==
+			PLAYER_LOCOMOTION_STATE::MOVING;
+
+		if (!character->Apply_NetworkState(
+			position,
+			player.fYawDegrees,
+			isMoving) ||
+			!character->Apply_NetworkAction(
+				player.eAction,
+				player.iSkillId,
+				player.iActionStartTick))
+		{
+			allSucceeded = false;
+		}
+		if (player.iNetEntityId ==
+			CNetworkManager::Get().Get_LocalEntityId())
+		{
+			const NET_PLAYER_RECORD* localRecord =
+				m_Registry.Find_Record(player.iNetEntityId);
+			if (nullptr == localRecord)
+			{
+				allSucceeded = false;
+			}
+			else
+			{
+				CCombatHUDViewModel::Get().Apply_LocalPlayer(
+					snapshot.iServerTick,
+					localRecord->eCharacterClass,
+					player);
+			}
+		}
+	}
+	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
+	{
+		const auto iter = m_WorldEntities.find(entity.iNetEntityId);
+		if (iter == m_WorldEntities.end())
+		{
+			allSucceeded = false;
+			continue;
+		}
+		const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock();
+		if (nullptr == valtan || !valtan->Apply_NetworkState(
+			float3_t(entity.fPositionX, entity.fPositionY, entity.fPositionZ),
+			entity.fYawDegrees,
+			entity.eAction,
+			entity.strActionId))
+		{
+			allSucceeded = false;
+		}
+		if (iter->second.eKind == WORLD_ENTITY_KIND::BOSS)
+		{
+			CCombatHUDViewModel::Get().Apply_Boss(
+				iter->second.strArchetypeId,
+				entity);
+		}
+	}
+
+	m_iLastServerTick = snapshot.iServerTick;
+	return allSucceeded;
+}
+
 void Client::CClientReplication::Reset_World()
 {
 	//접속이 끊겼을 때 현재 registry의 살아있는 character를 모두 layer에서 제거하고,
@@ -271,6 +483,20 @@ void Client::CClientReplication::Reset_World()
 			m_Desc.strPlayerLayerTag,
 			character);
 	}
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (const std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				valtan);
+		}
+	}
+	m_WorldEntities.clear();
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
+	m_iLastServerTick = 0;
+	CCombatHUDViewModel::Get().Reset_RuntimeState();
 }

@@ -1,8 +1,49 @@
 # LostArk 월드 데이터·에셋·ImGui·서버 통합 계획
 
 작성일: 2026-08-02  
+최종 실측 갱신: 2026-08-03
 대상: 맵, 플레이어 스폰, NPC/발탄, 캐릭터, 이펙트, 애니메이션, HUD, ImGui 편집, 서버 권한, 팀 데이터 공유  
 문서 성격: 전체 방향을 고정하는 마스터 계획. 실제 구현은 아래 세로 조각 순서로 나눈다.
+정본 규칙: 2026-08-03 실측으로 추가한 41절 이후의 복구 계약이 앞 절의 제안 또는 다른 병렬 계획과 충돌하면 41절 이후를 우선한다. 기존 동작을 즉시 삭제하라는 뜻이 아니라, 아래 전환 게이트를 만족한 뒤 순서대로 제거한다.
+
+## 0. 2026-08-03 구현 정본 — 이 절이 문서 전체보다 우선한다
+
+이 문서의 과거 조사표에 남은 `Resources/LostArk`, “Fonts만 남긴다”, `Models/Textures` 루트, SourceData 런타임 입력 제안은 모두 **이전 상태 기록**이며 현재 계약으로 사용하지 않는다. 사용자가 바로잡은 최종 물리 구조는 아래 하나다.
+
+```text
+Client/Bin/Resources/
+  Fonts/
+  Character/
+  Deploy/
+  Effect/
+  Map/
+  UI/
+```
+
+- `LostArk` 래퍼를 만들지 않는다. 기존 `LostArk` 아래에서 승인된 실행 에셋은 위 도메인 폴더로 풀어서 배치한다.
+- `SourceData`, raw 추출물, 수업용 background/effect/model은 런타임 팩에 포함하지 않는다.
+- `.wmodel` 내부에 남은 `Resource/LostArk/...` 문자열은 binary metadata migration 입력으로만 인식하고 실제 `Resources/LostArk` 경로를 탐색하지 않는다.
+- 현재 pack 정본은 `Data/AssetPacks.lock.json`과 manifest이며 최상위 폴더 정확성, 파일 수/바이트, hash를 audit한다.
+- UI와 gameplay 정본은 JSON이다. `.cfg` reader와 새 `.cfg` 파일은 허용하지 않는다.
+
+레벨/로더 정본도 구현 상태로 고정한다.
+
+| stable ID | 구분 | Loader 계약 |
+|---|---|---|
+| `front.lobby` | 제품 시작 | 카메라와 UI 최소 원형만 적재 |
+| `world.bern` | 제품 | gameplay spawn 주변 `mapLoadBounds`와 배경만 적재 |
+| `raid.valtan.arena` | 제품 | nav/전투 영역 `mapLoadBounds`와 배경, player, Valtan presentation만 적재 |
+| `dev.map.active` | 개발 | 명시적으로 전체 활성 맵 적재; 제품에서 사용 금지 |
+
+Loader와 `CMapPlacementRuntime`은 동일한 `MAP_LOAD_SCOPE`를 소비한다. 제품 레벨에서 catalog 전체를 읽고 모든 모델을 원형으로 만드는 방식은 금지한다. 로더 실패는 HRESULT/status/rollback으로 끝내며 worker thread에서 modal message box를 띄우지 않는다.
+
+서버-클라이언트 정본은 `Data/Worlds/<AreaId>/Gameplay.world.json -> Publish-WorldGameplay.ps1 -> Server/Bin/DataFiles/World/*.worldbootstrap`이다. Server fixed 30 Hz가 player/world entity/Valtan action을 소유하고 Shared protocol v2 snapshot을 보낸다. Client는 `CPlayerController -> IPlayerCommandSink`로 명령을 제출하고 `CClientReplication`으로 표현만 갱신한다.
+
+Character class별 `Logic_*`는 `ICharacterLogic::Update_Presentation`만 구현한다. DirectInput과 `Play_Skill` 직접 호출은 제거했다. Shared/Server action command가 아직 없는 스킬은 로컬 우회 재생으로 보존하지 않으며, command → server approval → replication 수직 계약과 하네스가 함께 생길 때 다시 활성화한다.
+
+이번 통합에서 World Gameplay가 지원하는 kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 `CMonster`와 이를 전제로 한 과거 Monster 설계 절은 legacy 기록이며 구현 정본이 아니다. 빈 `MonsterCatalog`, placeholder `MONSTER` enum, MapTool Monster 선택지도 두지 않는다. 향후 Monster가 필요하면 실제 요구, 새 서버 상태, Client presentation 계약, 전용 하네스를 갖춘 별도 계획으로 시작한다.
+
+검증 정본은 `Tools/Build/Invoke-BuildAndRegression.ps1`이다. 올바른 Client 작업 디렉터리, shader/resource 배치, Engine/UpdateLib/Client 순서, protocol harness, Lobby/Bern/Valtan smoke, ProjectAudit를 한 흐름으로 강제한다.
 
 ## 1. 먼저 내릴 결론
 
@@ -2327,3 +2368,1311 @@ parse → validate → stage → commit → broadcast 순서를 이해한다. �
 - CPlayer와 CMonster legacy를 공통 기반이라고 가정하기.
 
 지금의 가장 중요한 산출물은 완벽한 클래스 다이어그램이 아니라 Player spawn 한 줄을 확실히 이해하고, 같은 registry와 lifecycle로 정지 NPC 한 명을 추가하는 것이다. 그 두 타입이 통과한 뒤 Monster와 Boss의 공통 component를 설계하면 추상화가 실제 요구에서 나온다.
+
+---
+
+## 41. 2026-08-03 통합 복구 기준선
+
+### 41.1 이번 갱신에서 고정하는 결론
+
+이 계획의 목표는 폴더 이름을 보기 좋게 바꾸는 것이 아니다. 다음 한 줄을 팀의 유일한 실행 경로로 만드는 것이다.
+
+    안정적인 시나리오 ID
+      -> 중앙 LaunchOptions 파서
+      -> LevelRegistry
+      -> 검증된 LevelLoadPlan
+      -> Data/Asset Pack 해석
+      -> parse -> validate -> stage -> commit
+      -> 레벨 활성화 또는 전체 rollback
+      -> 기계 판독 가능한 실행 보고서
+
+다음 사항을 즉시 동결한다.
+
+1. Lobby, 베른, 발탄, 테스트 목적을 한 Loader 분기 또는 한 레벨에 섞지 않는다.
+2. 새 레벨 enum, 새 모델 경로, 새 JSON, 새 Resources 하위 폴더를 개인 판단으로 추가하지 않는다.
+3. Loader는 에셋 경로, 캐릭터 클래스별 모델 목록, 맵 카탈로그 내용을 직접 소유하지 않는다.
+4. 저장 계약과 네트워크 계약에는 안정 ID만 사용한다. Prototype tag, 포인터, vector index, 물리 경로는 계약이 아니다.
+5. Resources 정리는 즉시 재귀 삭제로 시작하지 않는다. 소비자 제거, 외부 팩 동등성, clean-root smoke, 복구 영수증을 통과한 뒤 삭제한다.
+6. 현재 병렬 작업 중인 Player replication, Server, Shared 변경을 되돌리지 않는다. 이 계획의 P0 계약 게이트를 통과한 뒤 같은 ID와 소유권 규칙으로 재정렬한다.
+7. 같은 역할의 두 번째 런타임 경로를 만들지 않는다. CModel -> CMaterial 경로가 정본이다.
+
+### 41.2 작업 상태
+
+- 이 문서는 계획서이며, 이번 갱신 자체로 Resources나 99.수업 파일을 삭제하지 않는다.
+- 현재 작업 트리는 다른 작업의 수정과 미추적 계획서를 포함한다. 구현 PR은 기능별 별도 브랜치에서 시작하고 관련 없는 변경을 섞지 않는다.
+- 8월 3일 G4~G10 계획은 유스케이스 후보로 보존하되, 이 문서의 contract freeze 전에는 최종 계약으로 간주하지 않는다.
+
+## 42. 현재 코드와 데이터 실측
+
+아래 표는 2026-08-03 현재 작업 트리를 기준으로 한다. 구현 시작 시 ProjectAudit가 같은 항목을 다시 생성해 기준선 보고서로 남긴다.
+
+| 항목 | 실측 결과 | 판단 |
+|---|---|---|
+| Solution 프로젝트 | Client, Engine, Shared, NetworkProtocolHarness, Server | CLAUDE.md의 기존 프로젝트 설명을 현재 사실로 갱신해야 한다. |
+| 실제 레벨 enum | STATIC, LOADING, LOGO, LOBBY, BAREN, GAMEPLAY, ASSET_TEST, TEST_LEVEL2, VALTAN_ARENA | 문서와 코드가 어긋나 있으며 목적 분류가 없다. |
+| 시작 레벨 결정 | CMainApp에서 GetCommandLineW와 wcsstr로 분기 | 중앙 파서가 필요하다. |
+| 로딩 레벨 결정 | CLevel_Loading이 대상 레벨 factory와 자동 진행 조건을 다시 분기 | 같은 결정을 중복 소유한다. |
+| Loader | 약 1,510줄, 레벨 switch와 모델 경로와 클래스별 등록이 결합 | orchestration만 남기고 계획/실행기를 분리한다. |
+| ASSET_TEST | 캐릭터, 맵 catalog 전체, deploy, 발탄 body/weapon, navigation 등을 함께 준비 | 단일 테스트 목적이 아니므로 분해 대상이다. |
+| TEST_LEVEL2 | 기본 실행에서 여러 캐릭터/NPC를 로드하고 HDR readback 모드도 겸함 | 시나리오 기반 Development Lab으로 합친다. |
+| LOBBY | 카메라, 공용 캐릭터 prototype, LanceMaster 등을 로드 | 선택 미리보기만 요청하도록 축소한다. |
+| BAREN | 현재 network character 중심이며 맵 준비는 비활성 상태 | 현재 replication 작업을 보존하면서 world.bern 계약으로 확장한다. |
+| VALTAN_ARENA | HeartRB 맵, navigation, camera 중심 | boss/gameplay pack은 명시적 단계로 추가한다. |
+| 빈 placeholder | Level_MainMenu, Level_ChaosDungeon, Valtan_Weapon, TextureResourceCache | 소비자와 책임이 없으면 삭제한다. 빈 파일을 미래 예약석으로 두지 않는다. |
+| Resources 최상위 | Fonts 약 23.1 MiB, Models 약 115 MiB, Textures 약 94 MiB, LostArk 약 8.55 GiB | 최종 목표는 Fonts만 저장소 인접 Resources에 두고 나머지는 외부 팩/생성물로 이전하는 것이다. |
+| Resources/LostArk | 약 121,788개 파일. SourceData 약 4.26 GiB, Map 약 3.40 GiB | SourceData는 런타임 입력이 아니며 raw 추출물은 팩에 포함하지 않는다. |
+| 직접 Resources 경로 | Loader와 Effect/HUD/Material 도구 등에 다수 존재 | RuntimeAssetRoot 및 catalog ID를 통하지 않는 접근을 금지한다. |
+| Data 루트 | 저장소 루트 Data 폴더 없음 | 사람 편집 정본과 runtime output을 분리할 Data 루트가 필요하다. |
+| Bin/DataFiles | Client 쪽 tracked/LFS 파일 존재, Server 쪽 공유 데이터 배포 계약 부재 | cooker가 양쪽 런타임 루트에 원자적으로 배포해야 한다. |
+| 맵 파일 | maparea, mapassets, mapplacements, mapset의 기존 전용 형식 | 전부 JSON으로 재작성하지 않는다. JSON 정본에서 기존 런타임 형식을 생성하는 전환을 사용한다. |
+| HeartRB | catalog 약 269개, placement 약 13,103개 | 대규모 placement는 생성물/LFS 정책을 적용한다. |
+| Bern | 여러 shard에 총 약 50,017 placement | world shard와 부분 로딩 경계를 먼저 정한다. |
+| 서버 | Shared packet/framing을 쓰는 세션/room 기반 서버 | gameplay authority와 presentation asset을 분리한다. |
+| 프로토콜 하네스 | 기존 Debug 실행은 현 작업의 enter/spawn/despawn/move/snapshot 사례가 통과했으나 Release 실행물은 더 오래됨 | Debug/Release를 모두 새로 빌드하고 source/schema hash가 맞아야 통과로 인정한다. |
+
+### 42.1 명령행 실측
+
+현재 추적 코드에서 확인한 선택지는 다음과 같다.
+
+- --hdr-readback
+- --network-lobby
+- --map-level=bern
+- --map-level=valtan
+
+추적 코드에는 -rr 리터럴이 없다. 따라서 -rr이 로컬 Visual Studio 인수, .vs 파일, 개인 배치 파일, 또는 팀 구두 약속 중 무엇인지 현재 코드만으로 확정할 수 없다. 구현 시에는 다음 원칙을 적용한다.
+
+1. 추적 가능한 중앙 LaunchOptions만 정본으로 둔다.
+2. 발견되는 로컬 -rr 별칭은 한 전환 기간 동안 compatibility alias로만 매핑한다.
+3. 별칭 사용 시 deprecation 경고와 canonical scenario ID를 로그에 남긴다.
+4. 환경 변수는 Data/Asset root 같은 배포 위치에만 쓴다. 레벨 선택에는 쓰지 않는다.
+
+## 43. 목표 런타임 구조
+
+### 43.1 소유권 흐름
+
+    사용자/CI
+      -> ClientLaunchOptions: 인수 구문과 기본값만 소유
+      -> LevelRegistry: 안정 ID, level kind, factory, 허용 capability 소유
+      -> LevelLoadPlanBuilder: 필요한 task와 pack/data dependency 계산
+      -> Loader: task 순서, 진행률, 취소, rollback만 소유
+      -> RuntimeDataRoot / RuntimeAssetRoot: 루트와 ID 해석, 경계 검증
+      -> CModel / CMaterial 및 기존 map placement runtime
+      -> Level commit
+
+Server 쪽 흐름은 다음과 같이 분리한다.
+
+    Data gameplay subset
+      -> Shared의 JSON 비의존 DTO/ID
+      -> Server world/room/entity authority
+      -> packet
+      -> Client replication adapter
+      -> Client catalog가 visual asset ID로 해석
+
+Server는 WModel 경로, Prototype tag, CModel, ImGui를 알지 않는다. Client는 서버 권한 상태를 임의로 확정하지 않는다.
+
+### 43.2 세 개의 루트
+
+| 루트 | 예시 | 쓰기 주체 | 런타임 정책 |
+|---|---|---|---|
+| Project Data Root | 저장소/Data | 사람과 authoring tool | Debug authoring에서만 쓰며 schema 검증 필수 |
+| Runtime Data Root | Client/Bin/DataFiles, Server/Bin/DataFiles | cooker/deploy step | 실행 중 read-only |
+| Runtime Asset Root | 버전된 외부 pack mount | pack publisher | 실행 중 read-only, hash 검증 |
+
+Resources는 위 세 루트를 섞는 임시 창고로 더 이상 사용하지 않는다. 전환 완료 후 Client/Bin/Resources에는 Fonts만 남긴다. 외부 팩의 fallback mount가 필요하면 비어 있는 mount 설정만 남기며 실제 대형 asset tree를 두지 않는다.
+
+## 44. 레벨 분류와 추가 규칙
+
+### 44.1 정본 taxonomy
+
+| 분류 | canonical ID | 현재 대응 | 최종 책임 | 허용하지 않는 것 |
+|---|---|---|---|---|
+| Infrastructure | engine.static | LEVEL_STATIC | 엔진 공용 prototype/bootstrap | 월드, 캐릭터 roster, boss |
+| Infrastructure | engine.loading | LEVEL_LOADING | load plan 실행과 진행/실패 표시 | 대상별 asset path, level factory switch |
+| Product | front.lobby | LEVEL_LOBBY | 로그인/선택 UI, 선택 캐릭터 preview | Bern/Valtan map, NPC 전체, boss |
+| Product | world.bern | LEVEL_BAREN 임시 대응 | Bern world와 세션 플레이 | Valtan 전용 asset, 전체 catalog 선로드 |
+| Product | raid.valtan.arena | LEVEL_VALTAN_ARENA | Valtan arena, boss encounter, party | Bern map, tool catalog 전체 |
+| Development | dev.lab | ASSET_TEST/TEST_LEVEL2 전환 대상 | 정확히 한 scenario 실행 | 목적 없는 만능 로딩 |
+
+BAREN은 기존 enum 철자를 호환용으로 유지하되 외부 저장 ID와 명령행에는 world.bern만 쓴다. enum rename은 저장된 숫자 사용 여부를 audit한 별도 기계적 PR에서만 수행한다.
+
+### 44.2 제거 또는 전환 대상
+
+- LEVEL_LOGO: 현재 수업용 BackGround, 기본 texture, sound 경로를 제거한다. 제품 splash가 필요하면 Data 기반 UI presentation으로 별도 구현한다.
+- LEVEL_GAMEPLAY: 수업용 Player, Terrain, Snow, Explosion, ForkLift 흐름과 함께 제거한다.
+- LEVEL_ASSET_TEST와 LEVEL_TEST_LEVEL2: 아래 dev.lab scenario가 동등한 검증을 통과하면 제거한다.
+- Level_MainMenu와 Level_ChaosDungeon: enum과 구현이 없는 빈 등록 파일이면 제거한다. 실제 기능을 시작할 때 승인된 descriptor와 함께 새로 만든다.
+
+### 44.3 dev.lab 시나리오
+
+초기 canonical scenario는 다음으로 한정한다.
+
+- asset.character.lance-master
+- asset.character.slayer
+- asset.npc.one
+- asset.boss.valtan
+- world.bern.smoke
+- world.valtan.smoke
+- render.hdr-readback
+- effect.static.smoke
+- effect.skinned.smoke
+
+한 시나리오는 한 목적과 필요한 최소 dependency만 가진다. 여러 항목 비교가 필요하면 composite 시나리오를 새로 등록하되, 어떤 하위 시나리오를 결합하는지 manifest에 명시한다.
+
+### 44.4 새 레벨 승인 게이트
+
+다음 항목이 모두 없으면 enum과 cpp를 추가하지 않는다.
+
+1. 안정적인 LevelId와 사용자 가치.
+2. Infrastructure, Product, Development 중 하나의 분류.
+3. owner와 제거 조건.
+4. FLevelDescriptor와 factory.
+5. 최소 FLevelLoadPlan과 허용 capability.
+6. 필요한 Data schema와 AssetPack dependency.
+7. 정상, 누락, 손상, 취소 smoke scenario.
+8. vcxproj와 filters 등록 검증.
+9. CLAUDE.md 레벨 표 또는 상세 규칙 문서 갱신.
+
+테스트 하나를 위해 레벨 하나를 추가하는 행위는 금지한다. 먼저 dev.lab scenario로 해결한다.
+
+## 45. 시작 인수와 레벨 변경 하네스
+
+### 45.1 중앙 파서
+
+CMainApp, CLevel_Loading, CLoader, 각 tool에서 GetCommandLineW와 wcsstr를 직접 호출하지 않는다. ClientLaunchOptions.cpp 한 곳에서 CommandLineToArgvW 또는 동등한 정확한 토큰 파서를 사용한다.
+
+정본 명령은 다음 모양으로 고정한다.
+
+    Client.exe --scenario=front.lobby
+    Client.exe --scenario=world.bern.smoke --smoke --report=Reports/bern.json
+    Client.exe --scenario=raid.valtan.arena --server=127.0.0.1:7777
+    Client.exe --scenario=render.hdr-readback --smoke --timeout-ms=30000
+
+규칙은 다음과 같다.
+
+- 알 수 없는 옵션과 scenario ID는 즉시 실패한다.
+- 중복 옵션은 마지막 값이 아니라 오류로 처리한다.
+- timeout은 이름에 단위를 포함한다.
+- Debug 기본값은 front.lobby, Release는 배포 설정의 시작 ID를 사용한다.
+- --map-level과 기존 개별 flag는 한 전환 기간만 canonical scenario로 번역한다.
+- 레벨 실행 중 숨은 key press로 다음 상태를 만드는 방식은 smoke 하네스에서 사용하지 않는다.
+
+### 45.2 레벨 전환
+
+런타임 레벨 전환도 FLevelRequest를 만든 뒤 같은 LevelRegistry와 Loader를 통한다. 디버그 UI가 직접 CLevel_*를 new하거나 Loader의 private 준비 함수를 호출하지 않는다.
+
+FLevelRequest는 최소한 다음을 가진다.
+
+- stable scenarioId
+- resolved levelId
+- worldId 또는 encounterId
+- required pack IDs
+- connection profile ID
+- smoke/report/timeout 옵션
+
+물리 경로와 Prototype tag는 포함하지 않는다.
+
+## 46. LevelRegistry와 LoadPlan
+
+### 46.1 FLevelDescriptor의 책임
+
+FLevelDescriptor는 다음만 소유한다.
+
+- stable LevelId와 표시 이름
+- level kind
+- CLevel factory
+- load plan builder
+- 허용 capability와 기본 scenario
+- activation/deactivation policy
+
+에셋 경로나 catalog row를 소유하지 않는다.
+
+### 46.2 FLevelLoadPlan의 책임
+
+LoadPlan은 순서가 있는 task와 dependency를 소유한다.
+
+- task ID
+- 가중치
+- dependency task IDs
+- required data document IDs
+- required asset pack IDs
+- 결과 artifact handle
+- cancel/rollback action
+
+task 예시는 CoreShader, UITheme, CharacterVisualBundle, WorldCatalog, WorldPlacements, Navigation, BossVisualBundle, EffectBundle, NetworkConnect이다.
+
+### 46.3 Loader의 최종 책임
+
+CLoader는 다음만 한다.
+
+1. 요청의 descriptor를 확인한다.
+2. plan을 생성한다.
+3. dependency 순으로 task를 실행한다.
+4. 진행률과 현재 task를 게시한다.
+5. 실패 또는 취소 시 역순 rollback한다.
+6. 전부 성공하면 하나의 commit point에서 level activation을 허용한다.
+
+Loader는 다음을 하지 않는다.
+
+- 특정 WModel 경로 조립
+- 모든 캐릭터/NPC prototype 등록
+- map catalog 전체 순회 여부를 임의 결정
+- 발탄 body/weapon 직접 등록
+- 명령행 재파싱
+- level factory switch
+- 실패를 로그만 남기고 부분 상태로 계속 진행
+
+### 46.4 로딩 상태 계약
+
+모든 task 결과는 성공 여부만 반환하지 않고 다음을 기록한다.
+
+- task ID
+- 시작/종료 시각과 durationMs
+- 읽은 data/pack ID와 content hash
+- stage한 object/prototype 개수
+- 실패 코드와 사용자 메시지
+- rollback 결과
+
+초기 절대 시간 예산은 추측으로 정하지 않는다. P2에서 동일 머신의 10회 warm/cold 기준선을 얻고 median과 p95를 문서화한 뒤, 이후 PR은 p95 10% 초과 또는 허용 asset count 초과 시 실패시킨다.
+
+## 47. 레벨별 asset loading 규칙
+
+### 47.1 capability matrix
+
+| 레벨/시나리오 | 필수 | 요청 시 | 금지 |
+|---|---|---|---|
+| front.lobby | core render, font, UI, 선택 슬롯 데이터 | 선택된 캐릭터 preview bundle 하나 | world map, navigation, boss, NPC 전체 |
+| world.bern | core render, Bern world shard, navigation, session roster visual | 주변 shard/prefetch | Valtan encounter pack, 전체 class 선로드 |
+| raid.valtan.arena | core render, HeartRB/승인 arena, nav, Valtan encounter, party visual | phase effect/audio pack | Bern shard, tool catalog 전체 |
+| asset.character.* | core render, 선택 캐릭터 bundle, test light/camera | 선택 animation set | 다른 class, map, boss |
+| asset.npc.one | core render, NPC 하나, test light/camera | 해당 animation set | 전체 NPC catalog |
+| render.hdr-readback | 최소 render fixture | 없음 | character, map, network |
+
+### 47.2 Lobby
+
+Lobby는 “게임에서 언젠가 쓸 공용 에셋”을 미리 넣는 장소가 아니다.
+
+- 공용 CCharacter/CPart prototype 정의와 선택된 visual bundle의 실제 모델 로드를 구분한다.
+- preview 변경은 이전 bundle을 release 가능한 handle로 관리하고 새 bundle 검증 후 교체한다.
+- 선택 화면에서 모든 클래스 clip을 미리 읽지 않는다.
+- Bern, Valtan, NPC, map tool asset은 ProjectAudit의 금지 목록으로 막는다.
+
+### 47.3 Bern
+
+- world.bern manifest가 지정한 shard와 session roster만 로드한다.
+- 현재 replication 브랜치의 LanceMaster 경로는 첫 세로 조각으로 보존하되 catalog ID로 옮긴다.
+- Ready_MapArea 비활성 상태를 무심코 복구하지 않는다. Data/pack/hash와 rollback gate를 통과한 world task로 교체한다.
+- 플레이어가 아직 없는 class를 만날 가능성은 session roster handshake 또는 명시적 on-demand bundle로 해결한다.
+
+### 47.4 Valtan
+
+- map, navigation, boss gameplay data, boss visual, phase effect를 별도 task로 둔다.
+- HeartRB의 현재 mapassets/mapplacements는 초기 generated runtime input으로 보존한다.
+- boss visual load 성공이 서버 boss authority 생성 성공을 뜻하지 않는다.
+- 서버 encounter state가 없을 때는 명시적 offline presentation scenario에서만 local fixture를 허용한다.
+
+### 47.5 Tool
+
+- ToolHost/ImGui는 scenario와 명령을 전달한다.
+- 매 프레임 파일을 읽거나 모델을 decode하지 않는다.
+- catalog 변경은 validate -> stage -> preview -> save/commit을 따른다.
+- tool이 생성한 파일은 Project Data Root에 쓰고 Runtime Asset Root에는 직접 쓰지 않는다.
+
+## 48. Character, PartObject, Weapon 계약
+
+### 48.1 현재 정본과 제거 대상
+
+유지하고 확장할 현재 경로는 CCharacter + ICharacterLogic + CPart_Body + CPart_Equipment이다. 수업용 CPlayer + CBody_Player + CWeapon과 Fiona/ForkLift 경로는 LEVEL_GAMEPLAY와 함께 제거한다.
+
+CMonster는 99.수업 계층의 구현을 이름만 보고 서버 NPC/Monster 표현에 재사용하지 않는다. 새 replication 요구를 먼저 계약으로 만들고 CMonsterPresentation 또는 동등한 새 역할이 필요할 때 별도 구현한다.
+
+### 48.2 소유권
+
+| 구성 요소 | 소유 | 소유하지 않음 |
+|---|---|---|
+| CCharacter | instance composition, logic adapter, presentation 상태, part lifetime | 서버 gameplay truth, asset 물리 경로 |
+| ICharacterLogic | 클래스별 입력/animation semantic 선택 | model/mesh lifetime, 네트워크 entity authority |
+| CPart_Body | skeleton, animation clock, body model instance | weapon gameplay hitbox, parent lifetime |
+| CPart_Equipment | body palette borrow 또는 socket transform, visual equipment model | parent/world lifetime, skill 판정 |
+| Server entity | 위치/HP/action/phase 등 gameplay truth | WModel, material, socket 이름 |
+
+Part는 parent를 강하게 소유하지 않는다. parent가 child part의 lifetime을 소유한다. palette와 socket 참조는 generation이 검증되는 observer/handle로 전달한다.
+
+### 48.3 Weapon 규칙
+
+- 시각 무기는 기본적으로 CPart_Equipment의 weapon slot이다.
+- 다른 lifetime이나 simulation behavior가 실제로 필요할 때만 별도 클래스가 된다.
+- 공격 판정, cooldown, skill state는 서버/simulation 소유다.
+- visual trail, mesh, material, socket binding은 Client presentation 소유다.
+- 저장 데이터는 weapon asset ID와 slot ID를 사용하고 Prototype tag나 socket pointer를 저장하지 않는다.
+
+### 48.4 Character catalog
+
+Data/Characters/Characters.json 또는 분할 문서는 다음 의미를 소유한다.
+
+    {
+      \"schemaVersion\": 1,
+      \"characterClassId\": \"class.lance-master\",
+      \"logicId\": \"logic.lance-master\",
+      \"bodyAssetId\": \"character.lance-master.body.base\",
+      \"animationSetId\": \"anim.lance-master.default\",
+      \"equipment\": [
+        {
+          \"slotId\": \"weapon.main\",
+          \"assetId\": \"character.lance-master.weapon.default\",
+          \"attachMode\": \"socket\",
+          \"socketSemantic\": \"weapon.main\"
+        }
+      ],
+      \"requiredPackIds\": [
+        \"pack.character.lance-master\"
+      ]
+    }
+
+C++ registry는 logicId에서 ICharacterLogic factory로의 매핑만 소유한다. JSON parser나 Loader가 class enum switch로 모델 경로를 고르지 않는다.
+
+### 48.5 검증
+
+commit 전에 다음을 모두 검증한다.
+
+- characterClassId와 slotId 중복 없음
+- body 정확히 하나
+- animation semantic 필수 항목 충족
+- socket semantic 존재
+- skeleton/palette 호환
+- asset와 pack dependency 존재
+- case와 ID normalization 일치
+- stage 중 생성한 part가 실패 시 전부 해제됨
+
+CHARACTER_DESC는 임시 JSON 객체의 raw pointer를 보관하지 않는다. 안정 ID와 검증된 immutable spec handle 또는 값 복사만 받는다.
+
+## 49. Asset Pack과 데이터 관리
+
+### 49.1 Asset Pack 원칙
+
+pack manifest는 최소 다음을 가진다.
+
+- packId
+- semantic version
+- contentHash
+- target platform/configuration
+- asset ID와 cooked relative path의 매핑
+- dependency pack IDs와 hash
+- source/import/cook tool version
+- publish receipt
+
+팀원이 공유하는 단위는 임의의 Resources 폴더 복사본이 아니라 검증된 pack version이다. UModel raw 추출물과 SourceData는 runtime pack에 들어가지 않는다.
+
+### 49.2 배포 흐름
+
+    raw/source
+      -> import
+      -> cook/convert
+      -> schema 및 dependency 검증
+      -> content hash 계산
+      -> staging directory
+      -> atomic publish
+      -> receipt 생성
+      -> RuntimeAssetRoot mount
+
+실패하면 기존 published pack을 보존한다. 같은 version을 다른 내용으로 덮어쓰지 않는다.
+
+### 49.3 RuntimeAssetRoot 보강
+
+현재 LOSTARK_SHARED_ASSET_ROOT와 executable 인접 fallback은 전환 기간 동안 유지할 수 있다. 그러나 Resolve는 단순 lexical normalize로 끝내지 않고 다음을 검증해야 한다.
+
+- canonical root 아래에 최종 경로가 포함되는지
+- 절대 경로 주입과 .. escape가 없는지
+- junction/symlink를 통한 root escape가 없는지
+- manifest의 hash와 실제 파일 hash가 일치하는지
+- Release에서 SourceData 경로를 해석하지 않는지
+
+경계 검증 실패는 fallback 탐색으로 숨기지 않고 명확한 오류로 종료한다.
+
+### 49.4 Data 분류
+
+| 분류 | 정본 | runtime output |
+|---|---|---|
+| Catalog | Data/Catalogs의 JSON | 검증된 JSON 또는 compact cooked catalog |
+| Character/NPC/Boss | Data/Actors의 JSON | Client/Server별 subset |
+| World/Spawn | Data/Worlds의 JSON | mapset/mapplacements 또는 cooked world chunk |
+| UI/HUD | Data/UI | Bin/DataFiles의 runtime cfg/data |
+| Effect authoring | Data/Effects | cooked effect data와 pack dependency |
+| Navigation | source metadata + bake 설정 | nav runtime file |
+
+Client/Bin/DataFiles와 Server/Bin/DataFiles는 사람이 직접 고치는 정본이 아니다. cooker 결과가 완전하게 교체되며 receipt에 source hash를 남긴다.
+
+### 49.5 대형 데이터
+
+- 사람이 자주 고치는 작은 JSON은 일반 Git에 둔다.
+- 자동 생성된 대형 base placement는 LFS 또는 artifact storage에 둔다.
+- 작은 사람이 관리하는 overlay/patch는 일반 Git에 둔다.
+- generated 파일은 generated 표시, generator version, source hash를 가진다.
+- 같은 의미의 원본과 생성물을 둘 다 사람이 독립 편집하지 않는다.
+
+## 50. JSON, 맵, 서버-클라이언트 계약
+
+### 50.1 모든 것을 JSON으로 바꾸지 않는 이유
+
+기존 mapassets, mapplacements, mapset은 현재 runtime과 tool이 실제로 소비한다. 한 번에 모두 JSON으로 바꾸면 asset 정리와 runtime rewrite가 결합되어 rollback이 어려워진다.
+
+전환 순서는 다음과 같다.
+
+1. Data의 schema-versioned JSON을 authoring truth로 만든다.
+2. cooker가 기존 runtime 형식을 생성한다.
+3. golden map load와 placement count/hash를 비교한다.
+4. 새 runtime format의 실익이 확인될 때만 별도 PR로 reader를 교체한다.
+
+### 50.2 안정 ID
+
+다음 ID를 저장과 공유 계약으로 사용한다.
+
+- WorldId
+- ScenarioId
+- AssetPackId
+- AssetId
+- CharacterClassId
+- ActorArchetypeId
+- BossEncounterId
+- EffectAssetId
+- PlacementId
+- SpawnPointId
+- NetEntityId
+
+NetEntityId는 런타임 세션 ID이며 authoring placement ID와 섞지 않는다.
+
+### 50.3 좌표와 단위
+
+- 서버와 공유 데이터의 canonical 좌표는 X, Z, -Y meters 계약을 따른다.
+- Client 변환 경계는 한 곳에 둔다.
+- positionMeters, speedMetersPerSecond, timeoutMs처럼 이름에 단위를 포함한다.
+- quaternion의 component 순서와 handedness를 schema와 test fixture에 고정한다.
+- 음수 scale과 비균일 scale을 validation에서 임의로 정규화하지 않는다.
+
+### 50.4 JSON 의존성 경계
+
+JSON 라이브러리는 Shared의 public header에 노출하지 않는다.
+
+- Shared public: ID, DTO, enum, versioned binary/network contract
+- Shared private 또는 DataPipeline: JSON parse/validate/translation
+- Server: gameplay subset만 소비
+- Client: presentation subset과 visual catalog만 소비
+
+로드는 parse -> validate -> stage -> commit 순서다. parse 성공을 적용 성공으로 간주하지 않는다.
+
+### 50.5 권한
+
+| 데이터 | Server | Client |
+|---|---|---|
+| spawn/despawn | 정본 | 반영 |
+| transform/HP/action/phase | 정본 | 보간/표현 |
+| model/material/effect path | 모름 | AssetId로 해석 |
+| animation clip 파일명 | 모름 | semantic을 local set으로 변환 |
+| camera/HUD/ImGui | 모름 | 소유 |
+| editor 명령 | 검증 후 gameplay command로 수용 가능 | 명령 요청만 전달 |
+
+## 51. 레거시 보존·이전·삭제 원장
+
+### 51.1 유지
+
+| 항목 | 이유 |
+|---|---|
+| CModel, CMaterial, CMesh와 현재 decoder registry | 통합 runtime 모델 경로의 정본 |
+| MODEL_ASSET_LOAD_DESC, WModelDecoder 등 CModel이 실제 사용하는 해석 기반 | 이름에 binary가 들어가도 현재 소비자가 있으므로 유지 |
+| MapAssetCatalog와 PlacementRuntime | 안정 asset/placement ID와 stage/commit 흐름의 기반 |
+| CCharacter, CPart_Body, CPart_Equipment, ICharacterLogic | 신규 character composition의 정본 |
+| Effect_Types, Effect_Tool, Effect_Runtime, Effect_AssetIO 등 현재 Effect_* 시스템 | 수업용 Effect와 별개의 실제 시스템 |
+| LV_LUT_HEARTRB_ED mapassets/mapplacements와 Bern shard | cooker 전환 전 golden runtime input |
+| Fonts | 최종 Resources 잔존 허용 항목 |
+
+### 51.2 먼저 이전한 뒤 삭제
+
+| 항목 | 선행 이전 | 삭제 게이트 |
+|---|---|---|
+| Loader의 직접 model/texture 경로 | catalog + pack ID | 직접 Resources 경로 audit 0 |
+| Effect_Runtime의 CCookedModel skinned 경로 | CModel 기반 독립 clone/animation 계약 | static/skinned golden effect smoke 통과 |
+| HUD/effect authored cfg | Data/UI, Data/Effects | tool save/reload와 runtime output 검증 |
+| Resources/LostArk/Map, Character, Deploy, Effect_Tool, UI, Sound | versioned external pack 또는 Data runtime output | clean-root scenario 전체 통과 |
+| BG_RAD_VALTAN_A 직접 package/sample | 승인된 Valtan world/encounter manifest | selector와 fixture 소비 0 |
+| Resources 루트 AssetCatalog.json | Data catalog + pack manifest | reader/도구 소비 0 |
+
+### 51.3 삭제 대상
+
+다음은 dependency audit와 대체 smoke를 통과한 뒤 삭제한다.
+
+- 99.수업의 Level_Logo, Level_GamePlay
+- BackGround, Terrain, 수업용 Player, Body_Player, Weapon
+- 수업용 Monster, Snow, Explosion, ForkLift
+- 수업용 Effect.h/.cpp 90-frame flipbook
+- Client의 CBinaryAssetObject
+- migration 완료 후 Engine의 CCookedModel
+- 빈 Level_MainMenu, Level_ChaosDungeon
+- 빈 Valtan_Weapon
+- 소비자가 없는 빈 TextureResourceCache
+- Client/Bin/Resources/Models 전체
+- Client/Bin/Resources/Textures 전체
+- pack 동등성 완료 후 Client/Bin/Resources/LostArk 전체
+- runtime root에 남은 SourceData와 UModel raw 산출물
+
+이름이 Binary인 shader나 decoder를 일괄 삭제하지 않는다. 실제 include, prototype, shader binding 소비자가 0인지 각각 확인한다.
+
+### 51.4 CMonster 충돌 처리
+
+현재 99.수업 CMonster를 이후 G8류 서버 NPC/Monster 계획에서 그대로 확장하지 않는다. 해당 계획은 contract freeze 뒤 다음 중 하나를 명시해야 한다.
+
+1. 수업 의존을 전부 제거하고 새 물리 위치와 새 책임으로 presentation adapter를 재작성한다.
+2. 기존 파일을 삭제하고 CNetworkActorPresentation 계열의 새 클래스를 만든다.
+
+단순 rename이나 필드 추가로 레거시를 정본으로 승격하지 않는다.
+
+## 52. Resources 삭제 절차와 복구
+
+### 52.1 삭제 전 영수증
+
+각 삭제 PR은 다음 파일을 생성한다.
+
+- 대상의 절대 정규화 경로
+- 파일 수와 총 byte
+- 파일별 또는 pack별 content hash
+- 발견된 코드/데이터 소비자
+- 이전된 pack/data ID
+- 통과한 scenario report ID
+- 복구 위치와 보존 만료일
+
+gitignore된 대형 로컬 에셋은 먼저 프로젝트 밖의 명시적 quarantine/archive 위치로 이동하고 hash를 재검증한다. 이동 대상 경로는 workspace root나 환경 변수 glob이 아니라 확정된 자식 경로여야 한다.
+
+### 52.2 clean-root matrix
+
+| 환경 | 기대 결과 |
+|---|---|
+| Fonts만 있고 pack 없음 | 필요한 pack ID를 표시하며 activation 전 실패 |
+| Fonts + front.lobby 필수 pack | Lobby smoke 통과, map/boss asset 0 |
+| Fonts + Bern 필수 pack/data | Bern smoke 통과 |
+| Fonts + Valtan 필수 pack/data | Valtan smoke 통과 |
+| SourceData 없음 | 모든 runtime smoke 결과 동일 |
+| pack dependency 누락 | stage 전 또는 stage rollback 후 명확한 실패 |
+| hash 불일치 | 기존 active state 보존 |
+| ../ 또는 symlink root escape | resolver에서 거부 |
+
+### 52.3 삭제 단위
+
+1. 수업 레벨과 source/project/filter 등록
+2. 수업 전용 Models/Textures consumer
+3. top-level Models/Textures
+4. authored UI/effect data 이전
+5. external pack parity
+6. Resources/LostArk
+7. stale fallback과 catalog
+
+각 단계는 별도 PR과 별도 rollback point를 가진다. “Resources에서 Fonts 제외 전부 삭제”는 최종 상태이며 첫 번째 명령이 아니다.
+
+## 53. 코드 작성 규칙과 AI 작업 하네스
+
+### 53.1 함수와 변수 규칙
+
+| 금지 또는 검토 대상 | 권장 |
+|---|---|
+| data, info, temp, value | characterSpec, stagedPlacements, packManifest |
+| time, speed, position | timeoutMs, speedMetersPerSecond, positionMeters |
+| flag, check | isSmokeRun, hasRequiredPack, shouldActivate |
+| Manager라는 이름으로 모든 책임 수용 | Registry, Resolver, Loader, Publisher처럼 실제 역할 |
+| bool 반환 후 로그에서 원인 추측 | error code와 context를 가진 Result |
+| 함수 안에서 validate와 live state mutation 혼합 | Validate, Stage, Commit 함수 분리 |
+| raw pointer로 수명 불명확 | owner, observer, immutable handle을 계약에 표시 |
+
+기존 Client/Engine의 C 접두사와 m_ 멤버 규칙은 유지한다. 규칙을 핑계로 기능 PR에서 전체 이름을 갈아엎지 않는다.
+
+### 53.2 함수 계약
+
+public 또는 시스템 경계 함수는 구현 전에 다음을 답할 수 있어야 한다.
+
+- 호출자는 누구인가.
+- 입력의 단위와 lifetime은 무엇인가.
+- 성공 시 어떤 상태가 바뀌는가.
+- 실패 시 기존 상태가 보존되는가.
+- 어느 thread에서 호출 가능한가.
+- I/O, allocation, lock, network 같은 부작용이 있는가.
+
+한 함수는 의미상 한 단계만 담당한다. 40~60줄은 분리 검토를 시작하는 soft gate이고 80줄 초과는 명시적인 review 사유가 필요하다. 숫자만 맞추려고 의미 없는 helper를 만들지는 않는다.
+
+### 53.3 load 함수 기준 스니펫
+
+아래는 프로젝트 타입을 확정하는 전체 구현이 아니라 코드 리뷰에서 요구할 구조 예시다.
+
+    // Caller: CLoader worker thread.
+    // Success: outStagedBundle만 채우며 live level은 바꾸지 않는다.
+    // Failure: 생성한 임시 resource를 전부 해제한다.
+    TResult<FStagedCharacterBundle> StageCharacterBundle(
+        const FCharacterVisualSpec& characterSpec,
+        const FAssetPackView& mountedPacks);
+
+    HRESULT CCharacterLoadTask::Execute(FLoadTaskContext& context)
+    {
+        RETURN_IF_FAILED(ValidateCharacterSpec(m_CharacterSpec, context.Packs()));
+
+        TResult<FStagedCharacterBundle> stagedResult =
+            StageCharacterBundle(m_CharacterSpec, context.Packs());
+        RETURN_IF_FAILED(stagedResult.Error());
+
+        context.Stage(m_TaskId, stagedResult.ReleaseValue());
+        return S_OK;
+    }
+
+    HRESULT CCharacterLoadTask::Commit(FLoadTaskContext& context)
+    {
+        return context.CommitStagedArtifact(m_TaskId);
+    }
+
+Execute 안에서 현재 레벨의 live object를 먼저 생성하지 않는다. Commit 실패까지 포함해 rollback 가능한 artifact handle을 사용한다.
+
+### 53.4 LaunchOptions 기준 스니펫
+
+    struct FClientLaunchOptions final
+    {
+        std::string ScenarioId;
+        std::optional<std::string> ServerEndpoint;
+        std::optional<std::filesystem::path> ReportPath;
+        uint32_t TimeoutMs = 30'000;
+        bool IsSmokeRun = false;
+    };
+
+    TResult<FClientLaunchOptions> ParseClientLaunchOptions(
+        int argumentCount,
+        const wchar_t* const* arguments);
+
+파서는 레벨을 생성하지 않고 문법과 값만 검증한다. scenario 해석은 LevelRegistry의 책임이다.
+
+### 53.5 ID와 경로
+
+- 코드에 새 ../Bin/Resources 경로를 추가하지 않는다.
+- 물리 경로는 resolver private 경계에서만 다룬다.
+- 외부 contract는 string stable ID 또는 강타입 ID를 사용한다.
+- 확장자와 대소문자 normalization은 한 곳에서 한다.
+- vector index를 저장 ID로 쓰지 않는다.
+
+### 53.6 frame loop와 I/O
+
+- Update, Tick, Render에서 JSON/manifest를 매 프레임 열지 않는다.
+- 모델 decode와 catalog rebuild는 task 또는 명시적 tool command에서만 한다.
+- watcher가 변경을 감지해도 즉시 live mutation하지 않고 reload request를 queue한다.
+- ImGui draw 함수에서 파일 저장/네트워크 송신을 직접 완료하지 않는다. command를 발행한다.
+
+### 53.7 오류와 fallback
+
+- 필수 asset이 없을 때 다른 클래스 모델이나 default texture로 조용히 대체하지 않는다.
+- tool preview의 명시적 fallback과 product runtime fallback을 구분한다.
+- 오류는 stable code, user message, context ID, source hash를 가진다.
+- 부분 성공을 성공으로 보고하지 않는다.
+- rollback 실패는 원래 오류와 함께 별도 기록한다.
+
+### 53.8 주석과 문서화
+
+주석은 문법을 번역하지 않고 이유, 불변식, ownership, thread constraint를 설명한다. 함수 이름으로 설명할 수 있는 단계는 함수로 분리한다. 오래된 TODO를 예약석으로 두지 않고 issue/plan ID와 제거 조건이 있을 때만 남긴다.
+
+### 53.9 AI 작업 주문서
+
+AI에게 구현을 맡길 때 다음 입력이 없으면 코드를 쓰기 전에 조사만 한다.
+
+    Goal:
+    Stable IDs affected:
+    Owner of truth:
+    Input / output:
+    Success state:
+    Failure and rollback:
+    Thread / lifetime:
+    Allowed files:
+    Forbidden dependencies:
+    Required harness scenarios:
+    Documentation owner to update:
+
+AI는 수정 전에 다음 다섯 줄을 먼저 제시한다.
+
+1. 현재 실제 호출 흐름.
+2. 변경 후 한 줄 흐름.
+3. 정본 소유자와 소유하지 않는 것.
+4. 수정 파일과 각 파일의 변경 이유.
+5. 정상/실패/rollback 검증.
+
+구현 범위는 한 vertical slice로 제한한다. 요청과 무관한 정리, 전체 rename, 새 추상화 계층 추가, legacy 동시 재작성은 같은 PR에 넣지 않는다.
+
+### 53.10 PR 코드 리뷰 체크
+
+- 같은 결정을 두 곳에서 다시 파싱하거나 switch하지 않았는가.
+- 새 manager가 두 개 이상의 서로 다른 truth를 소유하지 않는가.
+- 새 C++ 파일이 물리 폴더, vcxproj, filters에 모두 등록됐는가.
+- 성공뿐 아니라 실패 후 기존 상태 보존을 검증했는가.
+- 이름에 단위와 의미가 드러나는가.
+- public header가 JSON/Client/Server 구현 라이브러리를 새로 노출하지 않는가.
+- 현재 파일 인코딩을 보존했는가.
+- AI가 만든 코드라도 작성자가 설명 가능한가.
+
+## 54. 하네스 설계
+
+하네스는 한 실행 파일에 모든 것을 넣지 않는다. 실패 원인을 좁힐 수 있도록 계층을 분리한다.
+
+### 54.1 ProjectAudit
+
+제안 위치는 Tools/ProjectAudit이다. 최소 검사 항목은 다음과 같다.
+
+- 물리 C++ 파일과 vcxproj/vcxproj.filters 등록 일치
+- 등록된 빈 placeholder source/header
+- resolver/font bootstrap 밖의 직접 Resources 경로
+- ClientLaunchOptions 밖의 GetCommandLineW, wcsstr
+- descriptor/load plan 없이 추가된 level enum
+- 금지된 CCookedModel/CBinaryAssetObject 신규 참조
+- SourceData에 대한 Release runtime 참조
+- absolute authoring path와 root escape
+- AGENTS.md, CLAUDE.md의 project/level 표와 실제 solution/enum 불일치
+- 변경된 C++ 파일의 기존 encoding class 보존
+
+보고서는 JSON과 사람이 읽는 Markdown을 함께 생성한다. 신규 위반 0을 CI gate로 둔다. 기존 위반은 baseline ID로 등록하고 PR마다 감소만 허용한다.
+
+### 54.2 DataPipeline validator/cooker
+
+제안 위치는 Tools/DataPipeline이다.
+
+- JSON schema 검증
+- ID uniqueness와 cross-reference
+- asset/pack dependency
+- character skeleton/socket/animation semantic
+- world placement와 asset catalog 참조
+- Client/Server subset 생성
+- 기존 map runtime output 생성
+- staging 후 atomic publish
+- source/tool/schema/output hash receipt
+
+정상 fixture뿐 아니라 duplicate ID, unknown asset, missing dependency, wrong hash, root escape, invalid quaternion, schema version mismatch fixture를 둔다.
+
+### 54.3 NetworkProtocolHarness
+
+현재 하네스는 packet framing과 DTO 계약의 정본 테스트로 유지한다.
+
+- 1,000줄 이상 단일 파일을 packet family별 test source로 분리한다.
+- enter, accepted, spawn, despawn, move, snapshot을 Debug/Release 모두 실행한다.
+- malformed size, truncated payload, unknown version, duplicate entity, out-of-order snapshot을 추가한다.
+- report에 git commit, Shared source hash, schema hash, build configuration을 넣는다.
+- 오래된 Release exe의 성공 결과를 현재 통과로 인정하지 않는다.
+
+### 54.4 RuntimeScenarioHarness
+
+Client는 --smoke에서 입력 대기 없이 종료하고 JSON report를 남긴다.
+
+보고서 필수 필드는 다음과 같다.
+
+- requested/resolved scenario와 level ID
+- build configuration과 commit
+- data/pack ID, version, hash
+- task별 durationMs와 result
+- stage/commit/rollback count
+- 생성된 prototype/object 수
+- peak memory와 총 load duration
+- activation 결과와 exit code
+
+초기 필수 시나리오는 다음과 같다.
+
+1. front.lobby.clean
+2. world.bern.smoke
+3. raid.valtan.arena.smoke
+4. asset.character.lance-master
+5. asset.npc.one
+6. asset.boss.valtan
+7. render.hdr-readback
+8. effect.static.smoke
+9. effect.skinned.smoke
+
+### 54.5 ServerClientIntegrationHarness
+
+coordinator는 자신이 시작한 process ID만 종료한다. image name 전체를 taskkill하지 않는다.
+
+    coordinator
+      -> server 시작 및 ready probe
+      -> client A/B 시작
+      -> join/accepted
+      -> spawn 상호 관측
+      -> move/snapshot
+      -> disconnect/despawn
+      -> reconnect
+      -> report 수집
+      -> 자신이 소유한 PID 종료
+
+Valtan 단계에서는 encounter start, phase transition, boss state snapshot, client visual semantic 매핑을 추가한다. 시각 모델 path는 report에 노출할 수 있지만 packet contract에는 포함하지 않는다.
+
+### 54.6 AssetCleanRootHarness
+
+임시로 조립한 명시적 sandbox root에서 52.2 matrix를 실행한다. 실제 사용자 Resources를 삭제하고 시험하지 않는다. 성공한 pack/data만 임시 root에 copy/mount한다.
+
+### 54.7 문서 검증
+
+CLAUDE.md의 solution project, level ID, launch flag, root 설명은 ProjectAudit가 생성한 fact block 또는 검사 가능한 표로 유지한다. 수기로 같은 사실을 여러 문서에 복제하지 않는다.
+
+## 55. 문서 체계
+
+### 55.1 문서별 정본 책임
+
+| 문서 | 소유하는 것 | 소유하지 않는 것 |
+|---|---|---|
+| AGENTS.md | 변경 불가 팀 경계, 필수 gate, 작업 시작 문서 | 긴 구현 설명과 파일별 튜토리얼 |
+| CLAUDE.md | 현재 solution/build/runtime 구조와 명령, 상세 규칙 링크 | 제품 방향과 임시 작업 일지 |
+| 북극성.md | 제품 방향, milestone, 현재 checkpoint | 현재 존재하지 않는 프로젝트를 사실처럼 기술 |
+| .md/rules/CODE_RULES.md | 함수/변수/ownership/thread/error 규칙과 snippet | level별 asset 목록 |
+| .md/rules/LEVEL_LOADER_RULES.md | level taxonomy, registry, load plan, scenario 승인 | JSON schema 세부 |
+| .md/rules/ASSET_DATA_RULES.md | root, pack, Data, ID, deletion receipt | gameplay authority |
+| Data/Schemas | 기계 판독 contract | 팀 프로세스 설명 |
+| 이 PLAN | 전환 순서, gate, 위험, 삭제 원장 | 매일 바뀌는 현재 상태 |
+| RESULT 문서 | 실제 명령, 결과, hash, 미완료 | 미래 계획 |
+
+같은 사실은 한 문서만 소유한다. 다른 문서는 링크한다.
+
+### 55.2 AGENTS.md 추가 규칙
+
+구현 P1에서 다음을 간결하게 추가한다.
+
+- 새 level은 descriptor/load plan/scenario 없이 추가 금지
+- Loader 직접 path/class switch 금지
+- 새 runtime asset은 pack manifest와 stable asset ID 필수
+- Data/Bin/Resources 쓰기 경계
+- Client/Server 권한과 Shared public JSON 비의존
+- parse/validate/stage/commit/rollback
+- ProjectAudit와 필수 smoke
+- legacy 삭제는 receipt와 clean-root gate 필수
+- AI 주문서와 vertical slice 제한
+
+### 55.3 CLAUDE.md 갱신
+
+현재 사실로 고친다.
+
+- Framework.sln의 다섯 프로젝트
+- Shared/Server/Harness 포함 빌드 순서
+- 실제 level과 canonical scenario의 대응
+- 중앙 launch 옵션
+- 세 root와 배포 흐름
+- CModel 통합 경로와 CCookedModel 제거 단계
+- 상세 rule 문서 링크
+
+### 55.4 인코딩
+
+현재 C++ 파일은 ASCII, CP949, UTF-8, UTF-8 BOM이 혼재한다. 따라서 “모두 CP949” 또는 “모두 UTF-8”로 현재 사실을 단정하지 않는다.
+
+- 기존 Client/Engine C++는 파일별 encoding을 보존한다.
+- Shared/Server/Tools 신규 파일은 UTF-8과 /utf-8을 사용한다.
+- 새 Client/Engine 파일은 팀이 승인한 legacy project 정책을 따른다.
+- 전체 변환은 기능 PR과 분리된 일회성 migration으로만 수행한다.
+- ProjectAudit가 우발적인 encoding 변경을 잡는다.
+
+## 56. 핵심 파일 책임 지도
+
+아래 경로는 구현 시 확정할 제안 경로다. 기존 물리 폴더 관례를 확인해 이름을 조정할 수 있지만 책임을 합치지는 않는다.
+
+### Client/Public/System/ClientLaunchOptions.h
+
+- 존재 이유: 명령행 contract를 한 타입으로 고정한다.
+- 소유: 파싱된 값과 기본값.
+- 비소유: level factory, asset path, connection 수행.
+- 호출: CMainApp 초기화.
+- 실패: unknown/duplicate/invalid unit를 오류로 반환.
+
+### Client/Private/System/ClientLaunchOptions.cpp
+
+- 존재 이유: raw Windows command line 처리를 한 곳으로 제한한다.
+- 소유: token parse와 legacy alias 번역.
+- 비소유: scenario semantics.
+- 호출: CMainApp.
+- 실패: canonical 대체 ID를 포함한 parse error.
+
+### Client/Public/Level/LevelRegistry.h 및 Private 대응 cpp
+
+- 존재 이유: level ID에서 factory/load plan으로 가는 유일한 레지스트리.
+- 소유: FLevelDescriptor와 duplicate ID 방지.
+- 비소유: 실제 asset decode와 live object.
+- 호출: MainApp, CLevel_Loading, debug transition command.
+- 실패: unknown/unsupported scenario를 activation 전에 거부.
+
+### Client/Public/Loader/LevelLoadPlan.h
+
+- 존재 이유: Loader의 일을 명시적 task graph로 표현한다.
+- 소유: task ID, dependency, weight, required pack/data.
+- 비소유: physical path와 live level.
+- 호출: descriptor별 plan builder와 CLoader.
+- 실패: cycle/missing dependency validation error.
+
+### 기존 Client Loader
+
+- 존재 이유: asynchronous plan orchestration과 progress.
+- 남기는 책임: execute, cancel, rollback, commit gate, report.
+- 제거하는 책임: level switch, command parse, character/model path.
+- 호출: Loading level.
+- 실패: target level을 만들지 않고 실패 화면/report로 전환.
+
+### Engine RuntimeAssetRoot
+
+- 존재 이유: mount된 pack 안에서 상대 경로를 안전하게 해석한다.
+- 소유: root containment와 canonical path 검증.
+- 비소유: asset ID catalog와 level dependency.
+- 호출: Client asset catalog/resource task.
+- 실패: escape/hash/missing file을 구분한 error.
+
+### Client CharacterVisualCatalog
+
+- 존재 이유: CharacterClassId와 visual spec의 data-driven 연결.
+- 소유: 검증된 immutable visual spec.
+- 비소유: ICharacterLogic 구현과 model lifetime.
+- 호출: CharacterVisualBundle task와 Client entity factory.
+- 실패: class/slot/socket/pack 오류를 stage 전에 반환.
+
+### Shared/Public/Data 또는 Contract의 ID/DTO
+
+- 존재 이유: Client와 Server가 같은 안정 ID, 좌표, version을 사용한다.
+- 소유: JSON 비의존 값 타입과 packet contract.
+- 비소유: CModel, ImGui, filesystem, JSON parser.
+- 호출: Server world loader, protocol, Client replication.
+- 실패: version/range validation.
+
+### Tools/ProjectAudit
+
+- 존재 이유: 문서 규칙을 CI가 검사할 수 있게 한다.
+- 소유: 정적 위반 탐지와 baseline.
+- 비소유: source 자동 대규모 수정.
+- 호출: 개발자 preflight와 CI.
+- 실패: 위반 위치, rule ID, 해결 문서 링크 출력.
+
+### Tools/DataPipeline
+
+- 존재 이유: authoring truth에서 검증된 Client/Server output과 pack receipt를 만든다.
+- 소유: schema validation, cross-reference, cook, publish receipt.
+- 비소유: gameplay runtime과 editor UI.
+- 호출: asset author, CI, release pipeline.
+- 실패: published output을 교체하지 않는다.
+
+신규 C++ 파일은 모두 물리 폴더와 같은 vcxproj/vcxproj.filters에 등록하고 Debug/Release에서 누락을 검증한다.
+
+## 57. 구현 단계와 PR 순서
+
+### P0. Freeze와 기준선
+
+작업:
+
+- 현재 branch/dirty 파일/병렬 계획 목록 기록
+- solution, level, direct path, Resources hash inventory 생성
+- current player replication 및 G4~G10의 contract 충돌 표 작성
+- 새 level/path/Resources 추가 임시 freeze 공지
+
+종료 조건:
+
+- audit baseline과 삭제 금지 목록이 review됨
+- 팀이 stable ID, authority, root 3개를 승인
+- 현재 진행 중 코드의 보존/재배치/중단이 파일 단위로 결정됨
+
+### P1. 규칙과 자동 audit
+
+작업:
+
+- AGENTS.md, CLAUDE.md, 북극성.md 사실 교정
+- CODE_RULES, LEVEL_LOADER_RULES, ASSET_DATA_RULES 추가
+- ProjectAudit 최소 버전과 CI/preflight 연결
+
+종료 조건:
+
+- project/filters/level/direct path/doc fact 검사 실행 가능
+- 신규 위반 0
+- 다른 개발자가 문서만 보고 build와 scenario를 실행 가능
+
+### P2. LaunchOptions, LevelRegistry, scenario report
+
+작업:
+
+- 중앙 option parser
+- 기존 flag compatibility mapping
+- descriptor registry
+- 기존 switch가 registry를 사용하도록 behavior-preserving migration
+- --smoke/--report/--timeout-ms
+
+종료 조건:
+
+- CMainApp 외 raw command parse 0
+- Loading/Loader level factory switch 0
+- 기존 Lobby/Bern/Valtan/HDR 진입 결과 동등
+- unknown/duplicate option failure harness 통과
+
+### P3. Loader task plan과 telemetry
+
+작업:
+
+- 현재 Ready_*를 task 경계로 감싸기
+- task dependency/progress/cancel/rollback
+- 레벨 capability와 asset count report
+- Loader에서 model path와 class switch 제거 시작
+
+종료 조건:
+
+- front.lobby load plan이 map/boss/NPC 0을 증명
+- 각 실패 주입 후 active state 보존
+- p50/p95 기준선 확정
+
+### P4. Data root와 schema/cooker
+
+작업:
+
+- Data/Schemas와 최소 Catalog, Character, World, Spawn 문서
+- Runtime Data Root 분리
+- Client/Server subset cooker
+- existing runtime map format generator와 receipt
+
+첫 vertical slice:
+
+    WorldId
+      -> PlayerSpawn
+      -> Server spawn
+      -> packet
+      -> Client CharacterVisualCatalog
+      -> Lobby/Bern smoke
+
+종료 조건:
+
+- 수동 Bin/DataFiles 편집 없이 같은 output 재생성
+- invalid/duplicate/missing reference fixtures 통과
+- Server와 Client output source hash 일치
+
+### P5. Asset pack과 resolver
+
+작업:
+
+- manifest/version/hash/dependency
+- external mount와 atomic publish
+- RuntimeAssetRoot containment 보강
+- direct Resources path를 ID lookup으로 교체
+
+종료 조건:
+
+- clean-root Lobby/Bern/Valtan 중 현재 지원 slice 통과
+- SourceData 없는 runtime 동일
+- root escape/hash failure가 activation 전 차단
+- 신규 direct Resources path 0
+
+### P6. Character/Part/Weapon 정리
+
+작업:
+
+- CharacterVisualCatalog
+- Loader 클래스별 경로 switch 제거
+- Lobby selected preview on-demand
+- Bern session roster bundle
+- part ownership/socket/palette validation
+
+종료 조건:
+
+- 한 class 누락이 다른 class fallback으로 숨지 않음
+- character 교체/레벨 종료 시 part leak 0
+- weapon visual과 server gameplay state 경계 테스트
+- legacy CPlayer 계열 소비자 0
+
+### P7. Development Lab 통합
+
+작업:
+
+- dev.lab와 scenario manifest
+- ASSET_TEST/TEST_LEVEL2 use case 이관
+- tool command와 runtime report 연결
+
+종료 조건:
+
+- 기존 두 레벨의 승인된 테스트 목적이 모두 시나리오로 통과
+- 한 scenario가 선언 밖 asset을 로드하면 실패
+- ASSET_TEST/TEST_LEVEL2 enum/source 제거 가능
+
+### P8. Effect model 통합
+
+작업:
+
+- CCookedModel을 쓰는 skinned Effect_Runtime 경로를 CModel로 이전
+- clone/animation/palette lifetime 명시
+- static/skinned golden effect 비교
+
+종료 조건:
+
+- 시각 기준, frame count, animation, resource release 동등
+- CCookedModel 소비자 0
+- CBinaryAssetObject 소비자 0
+- Engine/UpdateLib/Client Debug/Release 통과
+
+### P9. 수업 레거시와 Resources 제거
+
+작업:
+
+- LOGO/GAMEPLAY와 99.수업 source/project/filter 제거
+- 수업 Models/Textures 제거
+- empty placeholder 제거
+- stale catalog 제거
+- external pack parity 후 Resources/LostArk 제거
+
+종료 조건:
+
+- 52절 receipt 완전
+- Fonts-only + mounted pack matrix 통과
+- clean checkout/build에 legacy include/path 0
+- quarantine에서 복구 절차 검증
+
+### P10. Server, NPC, Valtan vertical slice
+
+작업:
+
+- 현재 Player replication을 frozen ID/authority 계약에 맞춤
+- 정지 NPC 한 명
+- 이동/행동 NPC
+- Valtan boss entity와 encounter state
+- Client presentation adapter
+
+종료 조건:
+
+- Server가 asset path를 전혀 모름
+- 두 Client가 동일 spawn/despawn/move/phase를 관측
+- disconnect/reconnect와 stale entity 정리
+- Valtan visual 누락이 Server simulation을 파괴하지 않음
+
+IOCP 전환은 기능 계약과 별도 vertical slice로 다룬다. transport 변경이 ID, authority, gameplay semantics를 동시에 재정의하지 않는다.
+
+### P11. 전체 검증과 문서 잠금
+
+작업:
+
+- 전체 build/runtime/clean-root matrix
+- 성능 기준과 asset count 고정
+- RESULT 문서와 삭제 영수증
+- CLAUDE fact block 재생성
+
+종료 조건:
+
+- 아래 58절 Definition of Done 전체 통과
+- 팀원이 새 level/asset/data를 같은 경로로 추가하는 리허설 성공
+- 임시 compatibility flag와 deprecated fallback 제거 일정 확정
+
+## 58. 빌드와 검증 매트릭스
+
+### 58.1 정적 및 데이터
+
+1. ProjectAudit Debug 정책
+2. Data schema 정상/실패 fixture
+3. Data cooker reproducibility
+4. Asset pack hash/dependency/containment
+5. generated receipt source hash
+
+### 58.2 C++ 빌드 순서
+
+1. Shared x64 Debug/Release
+2. NetworkProtocolHarness x64 Debug/Release 빌드와 실행
+3. Server x64 Debug/Release
+4. Engine x64 Debug/Release
+5. UpdateLib.bat Debug/Release
+6. Client x64 Debug/Release
+
+Engine public header가 바뀌면 UpdateLib 뒤 Client까지 반드시 검증한다. 실행 중 Client.exe가 output을 점유하면 해당 작업이 시작한 PID를 확인해 종료한 뒤 링크한다.
+
+### 58.3 runtime scenario
+
+| 대상 | 정상 | 실패 주입 | 상태 보존 |
+|---|---|---|---|
+| Lobby | selected preview | character pack 없음 | UI와 이전 선택 유지 |
+| Bern | world + session player | shard/hash 오류 | 이전 level 또는 loading failure state 유지 |
+| Valtan | arena + encounter | boss visual/effect 누락 | 서버 state는 유지, client는 명시적 presentation 오류 |
+| Character Lab | class 하나 | socket/skeleton 오류 | staged part 전부 rollback |
+| Map Lab | catalog/placement | unknown asset ID | live placement 미변경 |
+| Effect Lab | static/skinned | model/clip 누락 | 기존 preview 유지 |
+| Network | 2 clients | malformed/disconnect | registry 정리와 재접속 |
+
+### 58.4 release 판정
+
+빌드 성공만으로 완료하지 않는다.
+
+- 실행 level
+- requested/resolved scenario
+- load task와 asset count
+- save/reload
+- 실패 후 기존 상태 보존
+- process exit code
+- report/source/schema/pack hash
+
+가 모두 같은 RESULT에 있어야 한다.
+
+## 59. 위험과 rollback
+
+### 59.1 가장 큰 위험
+
+| 위험 | 예방 | rollback |
+|---|---|---|
+| 대형 에셋을 먼저 삭제해 소비자를 놓침 | inventory + clean-root + quarantine | hash가 같은 archive 복구 |
+| Loader rewrite와 기능 변경 결합 | behavior-preserving wrapper부터 | 기존 Ready_* adapter 유지 |
+| 모든 map을 JSON으로 동시 전환 | cooker로 기존 format 생성 | 기존 golden runtime input 사용 |
+| CMonster/course code를 새 시스템 기반으로 승격 | contract freeze와 새 presentation 책임 | 신규 adapter PR revert |
+| CCookedModel 조기 삭제 | effect 소비자 audit와 golden smoke | 이전 engine path 유지 |
+| current replication 작업과 충돌 | P0 file/contract map | 관련 PR rebase/보류 |
+| 문서만 있고 강제력 없음 | ProjectAudit/CI/report | baseline rule ID로 추적 |
+| 오래된 binary가 pass로 보임 | source/schema hash report | clean rebuild 강제 |
+
+### 59.2 데이터 적용 rollback
+
+모든 loader/cooker/publisher는 다음 원칙을 공유한다.
+
+    parse 실패      -> 아무 상태도 만들지 않음
+    validate 실패   -> stage하지 않음
+    stage 실패      -> 생성한 임시 artifact 역순 해제
+    commit 실패     -> 이전 live revision 유지
+    publish 실패    -> 이전 pack/data version 유지
+
+## 60. Definition of Done
+
+### 구조
+
+- [ ] 레벨 선택 raw parse가 한 파일에만 있다.
+- [ ] level factory와 load plan 등록이 한 registry에 있다.
+- [ ] Lobby/Bern/Valtan/Development capability가 분리되어 있다.
+- [ ] Loader에 class별 model path와 map catalog 내용이 없다.
+- [ ] 새 레벨 추가가 scenario/audit 없이 통과하지 않는다.
+
+### Character
+
+- [ ] character visual이 data/catalog ID로 선택된다.
+- [ ] Body/Equipment/Weapon ownership과 socket lifetime이 검증된다.
+- [ ] Lobby가 선택 preview 외 class/world/boss를 로드하지 않는다.
+- [ ] 수업용 CPlayer/CBody_Player/CWeapon 소비자가 0이다.
+
+### Asset/Data
+
+- [ ] Project Data, Runtime Data, Runtime Asset root가 분리되어 있다.
+- [ ] direct Resources 접근 신규 0, 최종 전체 0이다.
+- [ ] pack version/hash/dependency/receipt가 있다.
+- [ ] SourceData 없이 runtime scenario가 통과한다.
+- [ ] Resources에는 최종적으로 Fonts만 남는다.
+
+### Server/Client
+
+- [ ] Server가 asset path, Prototype tag, animation clip file명을 모른다.
+- [ ] Shared public contract가 JSON과 Client/Engine에 의존하지 않는다.
+- [ ] Player/NPC/Valtan이 같은 registry/lifecycle 원칙을 사용한다.
+- [ ] 두 Client integration과 reconnect가 통과한다.
+
+### Legacy
+
+- [ ] LOGO/GAMEPLAY/99.수업 source와 등록이 제거됐다.
+- [ ] 수업용 Effect만 제거되고 현재 Effect_* 시스템은 보존됐다.
+- [ ] Effect_Runtime 이전 후 CCookedModel 소비자 0이다.
+- [ ] CBinaryAssetObject와 빈 placeholder가 제거됐다.
+- [ ] Models/Textures/LostArk 삭제 receipt와 복구 위치가 있다.
+
+### 품질
+
+- [ ] Shared/Harness/Server/Engine/UpdateLib/Client Debug/Release가 모두 통과한다.
+- [ ] runtime 정상/실패/rollback matrix가 report로 남는다.
+- [ ] source/schema/data/pack hash가 결과에 기록된다.
+- [ ] AGENTS.md, CLAUDE.md, 북극성.md의 사실이 audit와 일치한다.
+- [ ] 새 팀원이 문서와 harness만으로 asset 하나와 dev scenario 하나를 승인 경로로 추가할 수 있다.
+
+## 61. 최종 고정 결정
+
+1. 레벨은 Lobby, Bern, Valtan 같은 제품 책임과 dev.lab 시나리오로 분리한다.
+2. Loader는 계획 실행기이며 에셋 지식 저장소가 아니다.
+3. Character는 CCharacter/Part 경로를 정본으로 하고 수업용 Player/Weapon을 제거한다.
+4. visual weapon은 기본적으로 equipment slot이며 gameplay 판정은 서버가 소유한다.
+5. Asset은 stable ID와 versioned pack으로 공유한다. Resources 폴더 복사는 배포 방식이 아니다.
+6. Data의 JSON은 책임별 정본이며 기존 대형 map 형식은 cooker output으로 단계적으로 전환한다.
+7. Server와 Client는 Shared의 ID/DTO만 공유하고 asset path를 공유하지 않는다.
+8. 레거시는 dependency 0, clean-root smoke, receipt를 만족한 뒤 지운다.
+9. AI가 만든 코드도 현재 흐름, 소유권, 실패, rollback, harness를 설명하지 못하면 merge하지 않는다.
+10. 오늘의 목표는 한 번에 전부 다시 쓰는 것이 아니라, 앞으로 아무도 우회할 수 없는 한 개의 통합 경로와 자동 검증 게이트를 먼저 세우는 것이다.

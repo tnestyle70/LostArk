@@ -3,6 +3,9 @@
 #include "Client_Defines.h"
 #include "ContainerObject.h"
 #include "NavPathFollower.h"
+#include "Network/PacketMessages.h"
+
+#include <string_view>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -18,15 +21,21 @@ public:
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
 		const tchar_t* pNavigationPrototypeTag = { nullptr };
+		uint32_t iPrototypeLevelIndex = {};
 		shared_ptr<CTransform> pTargetTransform = { nullptr };
 		float3_t vPosition = {};
 		f32_t fScale = 1.5f;
+		bool_t isServerAuthoritative = false;
 	} VALTAN_DESC;
 
 	enum VALTAN_STATE
 	{
 		IDLE = 0x00000001,
 		CHASE = 0x00000002,
+		PATTERN_WINDUP = 0x00000004,
+		PATTERN_ACTIVE = 0x00000008,
+		PATTERN_RECOVERY = 0x00000010,
+		DEAD = 0x00000020,
 	};
 
 private:
@@ -46,6 +55,12 @@ public:
 	PATH_RESULT_CODE Get_PathResult() const { return m_PathFollower.Get_LastResult(); }
 	uint32_t Get_PathExpandedNodes() const { return m_PathFollower.Get_LastExpandedNodes(); }
 	uint32_t Get_PathWaypointCount() const { return m_PathFollower.Get_NumWaypoints(); }
+	bool_t Apply_NetworkState(
+		const float3_t& position,
+		f32_t yawDegrees,
+		LostArk::Shared::WORLD_ENTITY_ACTION action,
+		std::string_view actionId);
+	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
 #endif
@@ -62,6 +77,9 @@ private:
 	shared_ptr<CNavigation> m_pNavigationCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	CNavPathFollower m_PathFollower;
+	uint32_t m_iPrototypeLevelIndex = {};
+	bool_t m_isServerAuthoritative = false;
+	std::string m_strServerActionId;
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
 #endif

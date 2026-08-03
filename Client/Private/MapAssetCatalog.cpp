@@ -1,6 +1,7 @@
 #include "MapAssetCatalog.h"
 
 #include "RuntimeAssetRoot.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <cctype>
@@ -595,5 +596,20 @@ std::filesystem::path CMapAssetCatalog::Get_MapDataRoot()
 
 std::filesystem::path CMapAssetCatalog::Get_AreaSelectionPath()
 {
-	return Get_MapDataRoot() / L"ACTIVE.maparea";
+	return Get_MapAuthoringRoot() / L"Editor" / L"ACTIVE.maparea";
+}
+
+std::filesystem::path CMapAssetCatalog::Get_MapAuthoringRoot()
+{
+	return CProjectDataRoot::Resolve(L"Maps");
+}
+
+std::filesystem::path CMapAssetCatalog::Get_AuthoringPlacementPath(
+	const std::string& areaId)
+{
+	if (!IsValidGroupId(areaId))
+		return {};
+	const std::filesystem::path areaPath(areaId);
+	return Get_MapAuthoringRoot() / L"Authoring" / areaPath /
+		(areaPath.wstring() + L".mapplacements");
 }

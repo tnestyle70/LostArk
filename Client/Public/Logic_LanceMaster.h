@@ -13,12 +13,9 @@ means adding a file pair like this one, not another GameObject. */
 class CLogic_LanceMaster final : public ICharacterLogic
 {
 public:
-	virtual void Update(CCharacter& Character, f32_t fTimeDelta) override;
-
-private:
-	/* Previous frame's state of each key bind, so a held key fires once. Sized
-	generously; the .cpp static_asserts the bind table fits. */
-	bool_t m_bKeyDown[16]{};
+	virtual void Update_Presentation(
+		CCharacter& Character,
+		f32_t fTimeDelta) override;
 };
 
 /* Defined in the .cpp so the tags and clip names stay out of the header. The name

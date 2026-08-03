@@ -5,6 +5,7 @@
 NS_BEGIN(Engine)
 
 struct MODEL_ASSET_DATA;
+struct MODEL_ASSET_LOAD_DESC;
 
 class ENGINE_DLL CModel final : public CComponent
 {
@@ -27,6 +28,12 @@ public:
 	bool_t Is_AnimLoop() const {
 		return m_isAnimLoop;
 	}
+	bool_t Is_Skinned() const {
+		return MODEL::ANIM == m_eType;
+	}
+	bool_t Has_Animations() const {
+		return !m_Animations.empty();
+	}
 	const char_t* Get_AnimationName(uint32_t iAnimIndex) const;
 	bool_t Get_AnimationProgress(uint32_t iAnimIndex, f32_t& fOutPosition, f32_t& fOutDuration) const;
 	f32_t Get_AnimationTickPerSecond(uint32_t iAnimIndex) const;
@@ -44,17 +51,38 @@ public:
 	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
+	bool_t Has_Bone(const char_t* pBoneName);
 
-	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false) {
+	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false,
+		f32_t fBlendSeconds = 0.f) {
 		if (iAnimIndex >= m_iNumAnimations)
 			return;
+		if (iAnimIndex != m_iCurrentAnimIndex)
+			Begin_AnimBlend(fBlendSeconds);
 		m_isAnimLoop = isLoop;
 		m_iCurrentAnimIndex = iAnimIndex;
 	}
-	bool_t Set_Animation(const char_t* pAnimationName, bool_t isLoop = false);
+	bool_t Set_Animation(const char_t* pAnimationName,
+		bool_t isLoop = false, f32_t fBlendSeconds = 0.f);
+	bool_t Is_AnimBlending() const {
+		return m_fBlendElapsed < m_fBlendDuration;
+	}
+	void Skip_Blend() {
+		m_fBlendDuration = 0.f;
+		m_fBlendElapsed = 0.f;
+	}
+	bool_t Start_Animation(uint32_t iAnimIndex, bool_t isLoop = true);
+	bool_t Start_Animation(const char_t* pAnimationName,
+		bool_t isLoop = true);
+	void Stop_Animation();
+	void Set_AnimationSpeed(f32_t speed);
+	bool_t Update_Animation(f32_t fTimeDelta);
 
 public:
 	virtual HRESULT Initialize_Prototype(MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
+	HRESULT Initialize_Prototype(MODEL eType,
+		const MODEL_ASSET_LOAD_DESC& loadDesc,
+		fmatrix_t PreTransformMatrix);
 	virtual HRESULT Initialize(void* pArg) override;
 
 public:
@@ -87,16 +115,23 @@ private:
 	vector<shared_ptr<class CAnimation>>	m_Animations;
 	bool_t									m_isAnimLoop = { false };
 	bool_t									m_isAnimPaused = { false };
+	f32_t									m_fAnimationSpeed = { 1.f };
+	vector<float4x4_t>						m_BlendFromPose;
+	f32_t									m_fBlendElapsed = {};
+	f32_t									m_fBlendDuration = {};
 	bool_t									m_bHasLocalBounds = { false };
 	float3_t								m_vLocalBoundsMin = {};
 	float3_t								m_vLocalBoundsMax = {};
 
 private:
+	void Begin_AnimBlend(f32_t fBlendSeconds);
+	void Update_AnimBlend(f32_t fTimeDelta);
 	HRESULT Ready_Meshes();
 	HRESULT Ready_Materials(const char_t* pModelFilePath);
 	HRESULT Ready_Bones(const aiNode* pAINode, int32_t iParentBoneIndex = -1);
 	HRESULT Ready_Animations();
 	HRESULT Ready_BinaryModel(const char_t* pModelFilePath);
+	HRESULT Ready_BinaryModel(const MODEL_ASSET_LOAD_DESC& loadDesc);
 	HRESULT Ready_Meshes(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Materials(const MODEL_ASSET_DATA& asset);
 	HRESULT Ready_Bones(const MODEL_ASSET_DATA& asset);
@@ -106,6 +141,12 @@ private:
 
 public:
 	static unique_ptr<CModel> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, MODEL eType, const char_t* pModelFilePath, fmatrix_t PreTransformMatrix);
+	static unique_ptr<CModel> Create(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		MODEL eType,
+		const MODEL_ASSET_LOAD_DESC& loadDesc,
+		fmatrix_t PreTransformMatrix);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
 	void Free();
 };

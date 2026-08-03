@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "MapAssetCatalog.h"
+#include "MapLoadScope.h"
 #include "MapPlacementDocument.h"
 #include "MapStaticBatchObject.h"
 
@@ -43,7 +44,10 @@ public:
 	CMapPlacementRuntime(const CMapPlacementRuntime&) = delete;
 	CMapPlacementRuntime& operator=(const CMapPlacementRuntime&) = delete;
 
-	bool_t Load_Area(uint32_t levelIndex, const std::string& areaId);
+	bool_t Load_Area(
+		uint32_t levelIndex,
+		const std::string& areaId,
+		const MAP_LOAD_SCOPE& loadScope = {});
 	void Clear();
 
 	const CMapAssetCatalog& Get_Catalog() const { return m_Catalog; }
@@ -61,6 +65,20 @@ public:
 		const CMapAssetCatalog& catalog,
 		std::vector<MAP_PLACEMENT_RECORD>& outRecords,
 		std::string& outStatus);
+	static void Apply_LoadScope(
+		const CMapAssetCatalog& catalog,
+		const MAP_LOAD_SCOPE& loadScope,
+		std::vector<MAP_PLACEMENT_RECORD>& records);
+	static void Cache_LoadStage(
+		const std::string& areaId,
+		const MAP_LOAD_SCOPE& loadScope,
+		const CMapAssetCatalog& catalog,
+		const std::vector<MAP_PLACEMENT_RECORD>& records);
+	static bool_t Try_GetCachedLoadStage(
+		const std::string& areaId,
+		const MAP_LOAD_SCOPE& loadScope,
+		CMapAssetCatalog& outCatalog,
+		std::vector<MAP_PLACEMENT_RECORD>& outRecords);
 
 	static bool_t Create_Placement(
 		uint32_t levelIndex,

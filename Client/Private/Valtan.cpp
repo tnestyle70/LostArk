@@ -1,5 +1,6 @@
 #include "Valtan.h"
 
+#include "ActorCatalog.h"
 #include "Body_Valtan.h"
 #include "GameInstance.h"
 #include "Model.h"
@@ -7,6 +8,8 @@
 
 #include "Part_Equipment.h"
 #include "Transform.h"
+
+#include <cmath>
 
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -41,6 +44,8 @@ HRESULT CValtan::Initialize(void* pArg)
 	}
 
 	m_fMoveSpeed = desc.fSpeedPerSec;
+	m_iPrototypeLevelIndex = desc.iPrototypeLevelIndex;
+	m_isServerAuthoritative = desc.isServerAuthoritative;
 	m_pTargetTransform = desc.pTargetTransform;
 
 	if (nullptr != desc.pNavigationPrototypeTag)
@@ -67,6 +72,11 @@ void CValtan::Priority_Update(f32_t fTimeDelta)
 
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (m_isServerAuthoritative)
+	{
+		__super::Update(fTimeDelta);
+		return;
+	}
 	if (nullptr == m_pNavigationCom)
 	{
 		m_PathFollower.Cancel();
@@ -162,9 +172,10 @@ HRESULT CValtan::Ready_PartObjects()
 
 	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 	bodyDesc.pParentState = &m_iState;
+	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 
 	if (FAILED(__super::Add_PartObject(
-		ETOUI(LEVEL::ASSET_TEST),
+		m_iPrototypeLevelIndex,
 		TEXT("Prototype_GameObject_Body_Valtan"),
 		TEXT("Part_Body"),
 		&bodyDesc)))
@@ -190,7 +201,7 @@ HRESULT CValtan::Ready_PartObjects()
 
 	weaponDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 
-	weaponDesc.iPrototypeLevelIndex = ETOUI(LEVEL::ASSET_TEST);
+	weaponDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 
 	weaponDesc.strModelTag = TEXT("Prototype_Component_Model_ValtanWeapon");
 
@@ -206,7 +217,7 @@ HRESULT CValtan::Ready_PartObjects()
 		pBodyVisualRoot->Get_WorldMatrixPtr();
 
 	return __super::Add_PartObject(
-		ETOUI(LEVEL::ASSET_TEST),
+		m_iPrototypeLevelIndex,
 		TEXT("Prototype_GameObject_Part_Equipment"),
 		TEXT("Part_Weapon_R"),
 		&weaponDesc);
@@ -218,7 +229,7 @@ HRESULT CValtan::Ready_Components()
 		return S_OK;
 
 	return __super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST),
+		m_iPrototypeLevelIndex,
 		m_strNavigationPrototypeTag,
 		TEXT("Com_Navigation"),
 		m_pNavigationCom);
@@ -252,13 +263,93 @@ void CValtan::Set_ChaseState(bool_t isChasing)
 	}
 }
 
+bool_t CValtan::Apply_NetworkState(
+	const float3_t& position,
+	const f32_t yawDegrees,
+	const LostArk::Shared::WORLD_ENTITY_ACTION action,
+	const std::string_view actionId)
+{
+	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) || !std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+
+	uint32_t nextState = VALTAN_STATE::IDLE;
+	switch (action)
+	{
+	case LostArk::Shared::WORLD_ENTITY_ACTION::IDLE:
+		nextState = VALTAN_STATE::IDLE;
+		break;
+	case LostArk::Shared::WORLD_ENTITY_ACTION::CHASE:
+		nextState = VALTAN_STATE::CHASE;
+		break;
+	case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP:
+		nextState = VALTAN_STATE::PATTERN_WINDUP;
+		break;
+	case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE:
+		nextState = VALTAN_STATE::PATTERN_ACTIVE;
+		break;
+	case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY:
+		nextState = VALTAN_STATE::PATTERN_RECOVERY;
+		break;
+	case LostArk::Shared::WORLD_ENTITY_ACTION::DEAD:
+		nextState = VALTAN_STATE::DEAD;
+		break;
+	default:
+		return false;
+	}
+
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	m_strServerActionId.assign(actionId);
+	if (m_iState != nextState && nullptr != m_pBodyModelCom)
+	{
+		const BOSS_ACTOR_ENTRY* pActor =
+			CActorCatalog::Find_Boss("BOSS_VALTAN");
+		if (nullptr == pActor)
+			return false;
+		const std::string* pClip = nullptr;
+		switch (action)
+		{
+		case LostArk::Shared::WORLD_ENTITY_ACTION::IDLE:
+			pClip = &pActor->presentationClips.idle;
+			break;
+		case LostArk::Shared::WORLD_ENTITY_ACTION::CHASE:
+			pClip = &pActor->presentationClips.chase;
+			break;
+		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_WINDUP:
+			pClip = &pActor->presentationClips.patternWindup;
+			break;
+		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_ACTIVE:
+			pClip = &pActor->presentationClips.patternActive;
+			break;
+		case LostArk::Shared::WORLD_ENTITY_ACTION::PATTERN_RECOVERY:
+			pClip = &pActor->presentationClips.patternRecovery;
+			break;
+		case LostArk::Shared::WORLD_ENTITY_ACTION::DEAD:
+			pClip = &pActor->presentationClips.dead;
+			break;
+		default:
+			return false;
+		}
+		if (!m_pBodyModelCom->Set_Animation(pClip->c_str(), true))
+			return false;
+	}
+	m_iState = nextState;
+	return true;
+}
+
 unique_ptr<CValtan> CValtan::Create(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 {
 	auto pInstance = unique_ptr<CValtan>(new CValtan(pDevice, pContext));
 	if (FAILED(pInstance->Initialize_Prototype()))
 	{
-		MSG_BOX("Failed to Created : CValtan");
+		OutputDebugStringA("[Client][Valtan] Create failed.\n");
 		return nullptr;
 	}
 	return pInstance;
@@ -269,7 +360,7 @@ shared_ptr<CPrototype> CValtan::Clone(void* pArg)
 	auto pInstance = shared_ptr<CValtan>(new CValtan(*this));
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned : CValtan");
+		OutputDebugStringA("[Client][Valtan] Clone failed.\n");
 		return nullptr;
 	}
 	return pInstance;

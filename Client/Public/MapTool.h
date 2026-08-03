@@ -9,6 +9,7 @@
 #include "NavGridBaker.h"
 #include "NavGridPaintDocument.h"
 #include "NavRuntimeBlockerDocument.h"
+#include "WorldGameplayDocument.h"
 
 #include <memory>
 #include <string>
@@ -28,6 +29,7 @@ private:
 	enum class TOOL_MODE
 	{
 		MAP_ASSETS,
+		WORLD_GAMEPLAY,
 		NAVIGATION,
 		CAMERA,
 	};
@@ -83,6 +85,7 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext);
 
 	void Toggle();
+	void SetOpen(bool_t isOpen);
 	void Update(f32_t fTimeDelta);
 	void Render();
 
@@ -91,7 +94,6 @@ public:
 
 private:
 	/* Frame Update */
-	void Update_EnvironmentShortcuts(bool_t isAssetTest);
 	void Update_WorldInteraction(bool_t isAssetTest);
 	void Handle_LevelTransition(bool_t isAssetTest);
 
@@ -99,6 +101,7 @@ private:
 	void Render_WorldOverlay(bool_t isAssetTest);
 	void Render_ActiveMode(bool_t isAssetTest);
 	void Render_MapAssetsPanel(bool_t isAssetTest);
+	void Render_WorldGameplayPanel(bool_t isAssetTest);
 	void Render_ModeBar();
 	void Render_CameraPanel();
 	void Render_NavigationPanel();
@@ -167,6 +170,12 @@ private:
 	void Select_Asset(const MAP_ASSET_ENTRY& asset);
 	void Arm_SelectedAsset();
 
+	/* World Gameplay Authoring */
+	bool_t Load_WorldGameplay();
+	bool_t Save_WorldGameplay();
+	bool_t Try_PlaceWorldGameplay();
+	std::filesystem::path Get_WorldGameplayPath() const;
+
 	/* Queries */
 	PLACED_ENTRY* Find_Placement(uint64_t placementId);
 	const MAP_ASSET_ENTRY* Get_SelectedAsset() const;
@@ -200,6 +209,19 @@ private:
 	ENVIRONMENT_PHASE m_EnvironmentPhase = ENVIRONMENT_PHASE::BASELINE;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
+
+	/* World Gameplay State */
+	CWorldGameplayDocument m_WorldGameplayDocument;
+	bool_t m_bWorldGameplayDirty = false;
+	bool_t m_bWorldGameplayPlacementArmed = false;
+	WORLD_PLACEMENT_KIND m_eWorldPlacementKind =
+		WORLD_PLACEMENT_KIND::BOSS;
+	std::string m_SelectedWorldPlacementId;
+	std::string m_WorldGameplayStatus =
+		"Open Map Tool from F1 Developer Tools";
+	char m_WorldPlacementId[128] = "boss.valtan.center";
+	char m_WorldArchetypeId[128] = "BOSS_VALTAN";
+	char m_WorldEncounterId[128] = "ENCOUNTER_VALTAN";
 
 	/* Navigation State */
 	bool_t m_bNavigationStrokeActive = false;

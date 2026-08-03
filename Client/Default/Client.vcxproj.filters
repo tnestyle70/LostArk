@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="00.MainApp">
@@ -37,53 +37,11 @@
     <Filter Include="03. Tools\04. Animation">
       <UniqueIdentifier>{42322243-9f4d-4daa-9a43-c0122697c314}</UniqueIdentifier>
     </Filter>
+    <Filter Include="01.Levels\06. Development">
+      <UniqueIdentifier>{22145cb1-0a78-4f58-9c5c-fd2bf0402701}</UniqueIdentifier>
+    </Filter>
     <Filter Include="02.GameObjects\00. Character">
       <UniqueIdentifier>{d5864814-d199-42de-9bce-7329814f62a7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업">
-      <UniqueIdentifier>{ae7694ce-b8e0-498a-82aa-fa5e6cfa93ef}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\BackGround">
-      <UniqueIdentifier>{5299cef0-2d1b-4e90-8285-2fff6d1c03c1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Effect">
-      <UniqueIdentifier>{45d58a49-8aa9-40ce-b3ad-36ef0fd02f66}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\ForkLift">
-      <UniqueIdentifier>{2617b32f-2b18-46e5-9501-7124dfb4dd61}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Monster">
-      <UniqueIdentifier>{93f4303c-4368-4120-baea-660eb6c0a42f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Particle">
-      <UniqueIdentifier>{f3dc0a69-5bee-47a5-8849-e917b43fe84c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Particle\Snow">
-      <UniqueIdentifier>{55da8be6-2e61-4d65-9760-a85b79af04b5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Particle\Explosion">
-      <UniqueIdentifier>{02b2a18a-7d02-415b-abd4-4fdcf0b9da4f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Player">
-      <UniqueIdentifier>{64d83a7d-83f0-46fb-ac3c-2a186eb1bc54}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Player\Body">
-      <UniqueIdentifier>{2581ad90-3861-4b08-8fe4-2a4eec721a57}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Player\Weapon">
-      <UniqueIdentifier>{3082fe5f-2734-439e-9ea4-ecfc85e5611f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Player\Effect">
-      <UniqueIdentifier>{69d1e5bf-b1a1-49c8-841f-839bfb9bd47b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Sky">
-      <UniqueIdentifier>{744925d8-bca9-4088-b18f-7db2c9da36f2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\99. 수업\Terrain">
-      <UniqueIdentifier>{e9edaa3a-8381-4767-8cde-47a663fa4020}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.GameObjects\98. TestBinaryAsset">
-      <UniqueIdentifier>{1d1cb11f-147b-4124-aab5-36a9909bc25f}</UniqueIdentifier>
     </Filter>
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
@@ -112,6 +70,42 @@
     <Filter Include="96.DataFiles\Map">
       <UniqueIdentifier>{a6622e2c-78fc-4fbb-b1db-d57f8e2947aa}</UniqueIdentifier>
     </Filter>
+	<Filter Include="96.DataFiles\Actors">
+	  <UniqueIdentifier>{089f59f9-abda-4a78-92c7-53a95517c63c}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation">
+	  <UniqueIdentifier>{8dfbc5a6-6d2a-4d81-83c6-e024eed35bad}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation\Authored">
+	  <UniqueIdentifier>{5b0cbb5f-7b8c-4d74-9e9c-9605010cb53b}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Animation\Reference">
+	  <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\AssetPacks">
+	  <UniqueIdentifier>{1d3cc5df-ce41-4c5b-87f8-b52a371b2e52}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Balance">
+	  <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Encounters">
+	  <UniqueIdentifier>{b09ba3ed-3f63-4c04-a1f7-05080a2f25e1}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Levels">
+	  <UniqueIdentifier>{336b076d-6971-435f-81f2-998308e2a98d}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Maps">
+	  <UniqueIdentifier>{eb2137ae-7265-469f-a381-976516cc4eb3}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Navigation">
+	  <UniqueIdentifier>{e808332f-5828-48f5-bab9-fc6884b75aa6}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\UI">
+	  <UniqueIdentifier>{d2366f07-bf45-415a-af35-4a70fdd20190}</UniqueIdentifier>
+	</Filter>
+	<Filter Include="96.DataFiles\Worlds">
+	  <UniqueIdentifier>{8de851af-10a5-49ba-bbea-b9564254c63e}</UniqueIdentifier>
+	</Filter>
     <Filter Include="02.GameObjects\00. Character\00. LanceMaster">
       <UniqueIdentifier>{f8e0d2c8-a70a-4338-9e85-443f90e003db}</UniqueIdentifier>
     </Filter>
@@ -133,35 +127,14 @@
     <Filter Include="02.GameObjects\06. Camera\Free">
       <UniqueIdentifier>{ab809c0d-7e47-4143-8399-63dabb6b67ae}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01.Levels\99. Legacy">
-      <UniqueIdentifier>{bc6ca31d-1f13-4118-bce4-e212eb41fcc5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\99. Legacy\00. TestLevel1">
-      <UniqueIdentifier>{ac3a4b66-9b72-49f3-a0dc-f36520670a51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\99. Legacy\02. TestLevel2">
-      <UniqueIdentifier>{990193aa-479d-457b-a42f-b4ce68ccecd8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\02. Baren">
+    <Filter Include="01.Levels\02. Bern">
       <UniqueIdentifier>{812b4a10-ea33-4813-90a1-6f295ebb9ae7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\03. ChaosDungeon">
-      <UniqueIdentifier>{1b9bf3b9-d645-45e1-ae1a-19bb9b4579a5}</UniqueIdentifier>
     </Filter>
     <Filter Include="01.Levels\04. ValtanArena">
       <UniqueIdentifier>{a4c9a668-668d-40d1-95bb-17c06b9257fa}</UniqueIdentifier>
     </Filter>
     <Filter Include="01.Levels\01. Lobby">
       <UniqueIdentifier>{82c14815-ff74-4634-8e69-11e1d363979b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\00. MainMenu">
-      <UniqueIdentifier>{a3654ea0-723c-450c-915e-8393c21876c9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\99. Legacy\GamePlay">
-      <UniqueIdentifier>{a57b5389-796b-4004-9549-86d2c642f5db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01.Levels\00. Logo">
-      <UniqueIdentifier>{8c9bceda-8729-4fc0-9363-481cf65a577f}</UniqueIdentifier>
     </Filter>
     <Filter Include="04. Network">
       <UniqueIdentifier>{82310efc-790a-485f-b427-faf8083dc8e8}</UniqueIdentifier>
@@ -172,10 +145,34 @@
     <Filter Include="01.Levels\05. Loading\Loader">
       <UniqueIdentifier>{c407bb7a-0764-43ac-abfc-a5b8dba1f941}</UniqueIdentifier>
     </Filter>
+    <Filter Include="04. Network\00. PlayerController">
+      <UniqueIdentifier>{6d3e8c9b-dbf3-4658-a892-5a2377112a72}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\MainApp.cpp">
       <Filter>00.MainApp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ClientLaunchOptions.cpp">
+      <Filter>00.MainApp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\LevelRegistry.cpp">
+      <Filter>01.Levels</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\AnimationTargetService.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\LevelCatalog.cpp">
+      <Filter>01.Levels</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\LobbyCommandService.cpp">
+      <Filter>01.Levels</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\SceneTransitionService.cpp">
+      <Filter>01.Levels</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Level_Development.cpp">
+      <Filter>01.Levels\06. Development</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp">
       <Filter>00.MainApp</Filter>
@@ -183,55 +180,19 @@
     <ClCompile Include="Client.cpp">
       <Filter>98.Default</Filter>
     </ClCompile>
-    <ClCompile Include="..\private\Level_Logo.cpp">
-      <Filter>01.Levels\00. Logo</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Level_GamePlay.cpp">
-      <Filter>01.Levels\99. Legacy\GamePlay</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Level_Loading.cpp">
       <Filter>01.Levels\05. Loading</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Loader.cpp">
       <Filter>01.Levels\05. Loading\Loader</Filter>
     </ClCompile>
-    <ClCompile Include="..\private\BackGround.cpp">
-      <Filter>02.GameObjects\99. 수업\BackGround</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Terrain.cpp">
-      <Filter>02.GameObjects\99. 수업\Terrain</Filter>
-    </ClCompile>
     <ClCompile Include="..\private\Camera_Free.cpp">
       <Filter>02.GameObjects\06. Camera\Free</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Monster.cpp">
-      <Filter>02.GameObjects\99. 수업\Monster</Filter>
-    </ClCompile>
-    <ClCompile Include="..\private\Player.cpp">
-      <Filter>02.GameObjects\99. 수업\Player</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Body_Player.cpp">
-      <Filter>02.GameObjects\99. 수업\Player\Body</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Weapon.cpp">
-      <Filter>02.GameObjects\99. 수업\Player\Weapon</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Sky.cpp">
-      <Filter>02.GameObjects\99. 수업\Sky</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Snow.cpp">
-      <Filter>02.GameObjects\99. 수업\Particle\Snow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\private\Explosion.cpp">
-      <Filter>02.GameObjects\99. 수업\Player\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\ForkLift.cpp">
-      <Filter>02.GameObjects\99. 수업\ForkLift</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Effect.cpp">
-      <Filter>02.GameObjects\99. 수업\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\MapTool.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldGameplayDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\NavGridBaker.cpp">
@@ -267,17 +228,17 @@
     <ClCompile Include="..\Private\MapAssetPreview.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Level_AssetTest.cpp">
-      <Filter>01.Levels\99. Legacy\00. TestLevel1</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\BinaryAssetObject.cpp">
-      <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Body_Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ProjectDataRoot.cpp">
+      <Filter>96.DataFiles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\DataJson.cpp">
+      <Filter>96.DataFiles</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Effect_Tool.cpp">
       <Filter>03. Tools\02. Effect</Filter>
@@ -287,9 +248,6 @@
     </ClCompile>
     <ClCompile Include="..\Private\HUDLayoutTool.cpp">
       <Filter>03. Tools\03. UI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Level_Test2.cpp">
-      <Filter>01.Levels\99. Legacy\02. TestLevel2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_ParticleSimulator.cpp">
       <Filter>03. Tools\02. Effect</Filter>
@@ -321,20 +279,11 @@
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Valtan_Weapon.cpp">
-      <Filter>02.GameObjects\01. Boss</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Level_MainMenu.cpp">
-      <Filter>01.Levels\00. MainMenu</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Level_Lobby.cpp">
       <Filter>01.Levels\01. Lobby</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\Level_Baren.cpp">
-      <Filter>01.Levels\02. Baren</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Level_ChaosDungeon.cpp">
-      <Filter>01.Levels\03. ChaosDungeon</Filter>
+    <ClCompile Include="..\Private\Level_Bern.cpp">
+      <Filter>01.Levels\02. Bern</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Level_ValtanArena.cpp">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -363,8 +312,23 @@
     <ClCompile Include="..\Private\CharacterCatalog.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ActorCatalog.cpp">
+      <Filter>04. Network</Filter>
+    </ClCompile>
+	<ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\PlayerController.cpp">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClCompile>
+	<ClCompile Include="..\Private\CombatHUDViewModel.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
+    <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp">
+      <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -389,11 +353,26 @@
     <ClInclude Include="..\Public\Client_Defines.h">
       <Filter>99.Defines</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\Level_Logo.h">
-      <Filter>01.Levels\00. Logo</Filter>
+    <ClInclude Include="..\Public\ClientLaunchOptions.h">
+      <Filter>00.MainApp</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Level_GamePlay.h">
-      <Filter>01.Levels\99. Legacy\GamePlay</Filter>
+    <ClInclude Include="..\Public\LevelRegistry.h">
+      <Filter>01.Levels</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\AnimationTargetService.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\LevelCatalog.h">
+      <Filter>01.Levels</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\LobbyCommandService.h">
+      <Filter>01.Levels</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SceneTransitionService.h">
+      <Filter>01.Levels</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Level_Development.h">
+      <Filter>01.Levels\06. Development</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_Loading.h">
       <Filter>01.Levels\05. Loading</Filter>
@@ -401,41 +380,8 @@
     <ClInclude Include="..\public\Loader.h">
       <Filter>01.Levels\05. Loading\Loader</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\BackGround.h">
-      <Filter>02.GameObjects\99. 수업\BackGround</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Terrain.h">
-      <Filter>02.GameObjects\99. 수업\Terrain</Filter>
-    </ClInclude>
     <ClInclude Include="..\public\Camera_Free.h">
       <Filter>02.GameObjects\06. Camera\Free</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Monster.h">
-      <Filter>02.GameObjects\99. 수업\Monster</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\Player.h">
-      <Filter>02.GameObjects\99. 수업\Player</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Body_Player.h">
-      <Filter>02.GameObjects\99. 수업\Player\Body</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Weapon.h">
-      <Filter>02.GameObjects\99. 수업\Player\Weapon</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Sky.h">
-      <Filter>02.GameObjects\99. 수업\Sky</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Snow.h">
-      <Filter>02.GameObjects\99. 수업\Particle\Snow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\Explosion.h">
-      <Filter>02.GameObjects\99. 수업\Player\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\ForkLift.h">
-      <Filter>02.GameObjects\99. 수업\ForkLift</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Effect.h">
-      <Filter>02.GameObjects\99. 수업\Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_Types.h">
       <Filter>03. Tools\02. Effect</Filter>
@@ -447,6 +393,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapTool.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldGameplayDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NavGridBaker.h">
@@ -473,6 +422,9 @@
     <ClInclude Include="..\Public\MapPlacementRuntime.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\MapLoadScope.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\MapAssetObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
@@ -482,17 +434,17 @@
     <ClInclude Include="..\Public\MapAssetPreview.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Level_AssetTest.h">
-      <Filter>01.Levels\99. Legacy\00. TestLevel1</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\BinaryAssetObject.h">
-      <Filter>02.GameObjects\98. TestBinaryAsset</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\Body_Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ProjectDataRoot.h">
+      <Filter>96.DataFiles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DataJson.h">
+      <Filter>96.DataFiles</Filter>
     </ClInclude>
     <ClInclude Include="..\public\Effect_Tool.h">
       <Filter>03. Tools\02. Effect</Filter>
@@ -502,9 +454,6 @@
     </ClInclude>
     <ClInclude Include="..\Public\HUDLayoutTool.h">
       <Filter>03. Tools\03. UI</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Level_Test2.h">
-      <Filter>01.Levels\99. Legacy\02. TestLevel2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_ResourceCatalog.h">
       <Filter>03. Tools\02. Effect</Filter>
@@ -533,20 +482,11 @@
     <ClInclude Include="..\Public\MapStaticBatchObject.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Valtan_Weapon.h">
-      <Filter>02.GameObjects\01. Boss</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Level_MainMenu.h">
-      <Filter>01.Levels\00. MainMenu</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\Level_Lobby.h">
       <Filter>01.Levels\01. Lobby</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\Level_Baren.h">
-      <Filter>01.Levels\02. Baren</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Level_ChaosDungeon.h">
-      <Filter>01.Levels\03. ChaosDungeon</Filter>
+    <ClInclude Include="..\Public\Level_Bern.h">
+      <Filter>01.Levels\02. Bern</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Level_ValtanArena.h">
       <Filter>01.Levels\04. ValtanArena</Filter>
@@ -578,8 +518,26 @@
     <ClInclude Include="..\Public\CharacterCatalog.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ActorCatalog.h">
+      <Filter>04. Network</Filter>
+    </ClInclude>
+	<ClInclude Include="..\Public\PlayableCharacterAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayerController.h">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClInclude>
+	<ClInclude Include="..\Public\CombatHUDViewModel.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
+    <ClInclude Include="..\Public\PlayerCommandSink.h">
+      <Filter>04. Network\00. PlayerController</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NetworkPlayerCommandSink.h">
+      <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -602,14 +560,50 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectMaterial.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
-    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapassets">
-      <Filter>96.DataFiles\Map</Filter>
-    </None>
-    <None Include="..\Bin\DataFiles\Map\BG_RAD_VALTAN_A.mapplacements">
-      <Filter>96.DataFiles\Map</Filter>
-    </None>
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navsource" />
     <None Include="..\Bin\DataFiles\Navigation\ValtanArena.navblockers" />
+	<None Include="..\..\Data\Actors\BossCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Actors\CharacterCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Actors\NpcCatalog.json"><Filter>96.DataFiles\Actors</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents"><Filter>96.DataFiles\Animation\Authored</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Artist\Artist.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\GunSlinger\GunSlinger.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.animnotify"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.clipmap"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.clipseq"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\Animation\Reference\Slayer\Slayer.skilltiming"><Filter>96.DataFiles\Animation\Reference</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.1.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.2.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.3.manifest.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\AssetPacks.lock.json"><Filter>96.DataFiles\AssetPacks</Filter></None>
+	<None Include="..\..\Data\Balance\BossProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\DamageProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\PlayerProfiles.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Balance\PlayerSkills.json"><Filter>96.DataFiles\Balance</Filter></None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json"><Filter>96.DataFiles\Encounters</Filter></None>
+	<None Include="..\..\Data\Levels\LevelCatalog.json"><Filter>96.DataFiles\Levels</Filter></None>
+	<None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Maps\Editor\ACTIVE.maparea"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Maps\MapCatalog.json"><Filter>96.DataFiles\Maps</Filter></None>
+	<None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json"><Filter>96.DataFiles\Navigation</Filter></None>
+	<None Include="..\..\Data\UI\HUD\HUD_Layout.json"><Filter>96.DataFiles\UI</Filter></None>
+	<None Include="..\..\Data\UI\ScreenUI\ScreenUI.json"><Filter>96.DataFiles\UI</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
+	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json"><Filter>96.DataFiles\Worlds</Filter></None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectAnimMesh.hlsl">
@@ -624,12 +618,6 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxNorTex.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMesh.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -640,15 +628,6 @@
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxCube.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticleRect.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxInstanceParticlePoint.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">

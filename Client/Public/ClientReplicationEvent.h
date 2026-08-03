@@ -15,15 +15,21 @@ namespace Client
 	enum class CLIENT_REPLICATION_EVENT_TYPE
 	{
 		PLAYER_SPAWNED,
-		PLAYER_DESPAWNED
+		WORLD_ENTITY_SPAWNED,
+		PLAYER_DESPAWNED,
+		WORLD_SNAPSHOT
 	};
 	//하나의 ordered_queue에 서로 다른 종류의 이벤트를 저장하기 위한 봉투
+	//spawn, despawn, snapshot을 서로 다른 queue에 넣지 않고, 하나의 queue가 tcp
+	//도착 순서를 보존해야, spawn->snapshot->despawn의 의미가 사라지지 않음
 	struct CLIENT_REPLICATION_EVENT
 	{
 		CLIENT_REPLICATION_EVENT_TYPE eType =
 			CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
 
 		LostArk::Shared::S2C_PLAYER_SPAWNED PlayerSpawned;
+		LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED WorldEntitySpawned;
 		LostArk::Shared::S2C_PLAYER_DESPAWNED PlayerDespawned;
+		LostArk::Shared::S2C_WORLD_SNAPSHOT WorldSnapshot;
 	};
 }

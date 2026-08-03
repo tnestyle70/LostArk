@@ -7,10 +7,6 @@
 #include "Transform.h"
 #include "Navigation.h"
 #include "VIBuffer_Rect.h"
-#include "VIBuffer_Cube.h"
-#include "VIBuffer_Terrain.h"
-#include "VIBuffer_Instance_Rect.h"
-#include "VIBuffer_Instance_Point.h"
 
 /* 원형객체를 레벨별로 모아서 보관한다. */
 

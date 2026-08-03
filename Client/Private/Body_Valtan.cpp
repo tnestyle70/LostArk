@@ -25,6 +25,7 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 
 	const auto pDesc = static_cast<BODY_VALTAN_DESC*>(pArg);
 	m_pParentState = pDesc->pParentState;
+	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
@@ -43,9 +44,7 @@ void CBody_Valtan::Priority_Update(f32_t fTimeDelta)
 void CBody_Valtan::Update(f32_t fTimeDelta)
 {
 	if (nullptr != m_pParentState &&
-		(*m_pParentState &
-			(CValtan::VALTAN_STATE::IDLE |
-				CValtan::VALTAN_STATE::CHASE)))
+		*m_pParentState != CValtan::VALTAN_STATE::DEAD)
 		m_pModelCom->Play_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(
@@ -86,14 +85,14 @@ HRESULT CBody_Valtan::Render()
 HRESULT CBody_Valtan::Ready_Components()
 {
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST),
+		m_iPrototypeLevelIndex,
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 		TEXT("Com_Shader"),
 		m_pShaderCom)))
 		return E_FAIL;
 
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::ASSET_TEST),
+		m_iPrototypeLevelIndex,
 		TEXT("Prototype_Component_Model_Valtan"),
 		TEXT("Com_Model"),
 		m_pModelCom)))
@@ -119,7 +118,7 @@ unique_ptr<CBody_Valtan> CBody_Valtan::Create(ComPtr<ID3D11Device> pDevice,
 	auto pInstance = unique_ptr<CBody_Valtan>(new CBody_Valtan(pDevice, pContext));
 	if (FAILED(pInstance->Initialize_Prototype()))
 	{
-		MSG_BOX("Failed to Created : CBody_Valtan");
+		OutputDebugStringA("[Client][ValtanBody] Create failed.\n");
 		return nullptr;
 	}
 	return pInstance;
@@ -130,7 +129,7 @@ shared_ptr<CPrototype> CBody_Valtan::Clone(void* pArg)
 	auto pInstance = shared_ptr<CBody_Valtan>(new CBody_Valtan(*this));
 	if (FAILED(pInstance->Initialize(pArg)))
 	{
-		MSG_BOX("Failed to Cloned : CBody_Valtan");
+		OutputDebugStringA("[Client][ValtanBody] Clone failed.\n");
 		return nullptr;
 	}
 	return pInstance;

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="99.Defines">
@@ -214,9 +214,6 @@
     <Filter Include="02.Utility\13. Profiler">
       <UniqueIdentifier>{173c126c-dc76-40ea-a8d8-971fdd23d3ee}</UniqueIdentifier>
     </Filter>
-    <Filter Include="02.Utility\14. TextureResourceCache">
-      <UniqueIdentifier>{a93bbeb6-bef8-47d6-bd72-2e7f37b245fe}</UniqueIdentifier>
-    </Filter>
     <Filter Include="02.Utility\15. Sound">
       <UniqueIdentifier>{58401d24-5b8f-4705-b240-42ad67f1a8a3}</UniqueIdentifier>
     </Filter>
@@ -297,9 +294,6 @@
     <ClInclude Include="..\public\UIObject.h">
       <Filter>02.Utility\02.GameObject\UIObject</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\VIBuffer_Terrain.h">
-      <Filter>02.Utility\04.Component\VIBuffer\Terrain</Filter>
-    </ClInclude>
     <ClInclude Include="..\public\Camera.h">
       <Filter>02.Utility\02.GameObject\Camera</Filter>
     </ClInclude>
@@ -339,9 +333,6 @@
     <ClInclude Include="..\public\Light.h">
       <Filter>02.Utility\06.Lights</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\VIBuffer_Cube.h">
-      <Filter>02.Utility\04.Component\VIBuffer\Cube</Filter>
-    </ClInclude>
     <ClInclude Include="..\public\Font_Manager.h">
       <Filter>02.Utility\07.Fonts\Manager</Filter>
     </ClInclude>
@@ -378,12 +369,6 @@
     <ClInclude Include="..\public\VIBuffer_Instance.h">
       <Filter>02.Utility\04.Component\VIBuffer\Instance</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\VIBuffer_Instance_Rect.h">
-      <Filter>02.Utility\04.Component\VIBuffer\Instance\Rect</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\VIBuffer_Instance_Point.h">
-      <Filter>02.Utility\04.Component\VIBuffer\Instance\Point</Filter>
-    </ClInclude>
     <ClInclude Include="..\public\RenderTarget.h">
       <Filter>02.Utility\08.RenderTargets</Filter>
     </ClInclude>
@@ -417,9 +402,6 @@
     <ClInclude Include="..\Public\BinaryAsset\WModelDecoder.h">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\BinaryAsset\CookedModel.h">
-      <Filter>02.Utility\12.BinaryAsset\04. Runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\Private\BinaryAsset\Winters\WFormatTypes.h">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClInclude>
@@ -437,9 +419,6 @@
     </ClInclude>
     <ClInclude Include="..\Public\Profiler.h">
       <Filter>02.Utility\13. Profiler</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\TextureResourceCache.h">
-      <Filter>02.Utility\14. TextureResourceCache</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NavGrid.h">
       <Filter>02.Utility\04.Component\Navigation</Filter>
@@ -512,9 +491,6 @@
     <ClCompile Include="..\private\UIObject.cpp">
       <Filter>02.Utility\02.GameObject\UIObject</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\VIBuffer_Terrain.cpp">
-      <Filter>02.Utility\04.Component\VIBuffer\Terrain</Filter>
-    </ClCompile>
     <ClCompile Include="..\private\Camera.cpp">
       <Filter>02.Utility\02.GameObject\Camera</Filter>
     </ClCompile>
@@ -554,9 +530,6 @@
     <ClCompile Include="..\private\Light.cpp">
       <Filter>02.Utility\06.Lights</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\VIBuffer_Cube.cpp">
-      <Filter>02.Utility\04.Component\VIBuffer\Cube</Filter>
-    </ClCompile>
     <ClCompile Include="..\private\Font_Manager.cpp">
       <Filter>02.Utility\07.Fonts\Manager</Filter>
     </ClCompile>
@@ -592,12 +565,6 @@
     </ClCompile>
     <ClCompile Include="..\private\VIBuffer_Instance.cpp">
       <Filter>02.Utility\04.Component\VIBuffer\Instance</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\VIBuffer_Instance_Rect.cpp">
-      <Filter>02.Utility\04.Component\VIBuffer\Instance\Rect</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\VIBuffer_Instance_Point.cpp">
-      <Filter>02.Utility\04.Component\VIBuffer\Instance\Point</Filter>
     </ClCompile>
     <ClCompile Include="..\private\RenderTarget.cpp">
       <Filter>02.Utility\08.RenderTargets</Filter>
@@ -644,9 +611,6 @@
     <ClCompile Include="..\Private\BinaryAsset\WModelDecoder.cpp">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\BinaryAsset\CookedModel.cpp">
-      <Filter>02.Utility\12.BinaryAsset\04. Runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\BinaryAsset\Winters\WMeshReader.cpp">
       <Filter>02.Utility\12.BinaryAsset\03. Formats\00. Winters</Filter>
     </ClCompile>
@@ -661,9 +625,6 @@
     </ClCompile>
     <ClCompile Include="..\Private\Profiler.cpp">
       <Filter>02.Utility\13. Profiler</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\TextureResourceCache.cpp">
-      <Filter>02.Utility\14. TextureResourceCache</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\NavGrid.cpp">
       <Filter>02.Utility\04.Component\Navigation</Filter>

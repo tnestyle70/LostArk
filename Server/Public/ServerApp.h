@@ -23,6 +23,8 @@
 #include <mutex>
 //종료된 sessionid 순서 보관
 #include <deque>
+#include <map>
+#include <cstdint>
 
 // CServerApp은 서버 전체의 시작, 실행, 종료를 조율하는 최상위 객체다.
 // WinSock/Listener 수명, Accept Thread, Room Thread, ClientSession 집합을 소유한다.
@@ -41,7 +43,7 @@ namespace LostArk::Server
 		//socket과 thread를 정리
 		~CServerApp();
 		//서버의 진입점
-		int Run();
+		int Run(std::uint32_t automaticShutdownMilliseconds = 0);
 
 	private:
 		//접속을 계속 받아 새로운 session을 생성
@@ -58,6 +60,12 @@ namespace LostArk::Server
 		void Request_SessionClose(SESSION_ID sessionId);
 		//종료 callback이 남긴 sessionid를 안전하게 정리
 		void Reap_ClosedSessions();
+		CGameRoom* Find_Room(LostArk::Shared::WORLD_ID worldId);
+		CGameRoom* Find_AssignedRoom(SESSION_ID sessionId);
+		bool Bind_SessionWorld(
+			SESSION_ID sessionId,
+			LostArk::Shared::WORLD_ID worldId);
+		void Unbind_SessionWorld(SESSION_ID sessionId);
 		//서버 전체 종료 순서 한 곳으로 모아서 정리
 		void Shutdown();
 
@@ -67,7 +75,9 @@ namespace LostArk::Server
 		//소멸 : TcpListener -> WinSockContext 소멸은 역순
 		CWinSockContext m_WinSockContext;
 		CTcpListener m_TcpListener;
-		CGameRoom m_GameRoom;
+		std::map<
+			LostArk::Shared::WORLD_ID,
+			std::unique_ptr<CGameRoom>> m_GameRooms;
 		//실행 상태 - 여러 스레드가 읽고 쓰기 때문에 atomic을 사용한다.
 		std::atomic_bool m_isRunning{ false };
 		std::atomic<SESSION_ID> m_iNextSessionId{ 1 };
@@ -82,6 +92,9 @@ namespace LostArk::Server
 		std::unordered_map<
 			SESSION_ID,
 			std::shared_ptr<CClientSession>> m_Sessions;
+		std::unordered_map<
+			SESSION_ID,
+			LostArk::Shared::WORLD_ID> m_WorldBySessionId;
 		//종료 대기 Queue
 		std::mutex m_ClosedSessionMutex;
 		std::deque<SESSION_ID> m_ClosedSessionIds;

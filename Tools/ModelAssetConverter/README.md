@@ -39,7 +39,7 @@ Tools/ModelAssetConverter/Bin/ModelAssetConverter.exe
 ```powershell
 .\Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
   "C:\Asset\Character\Hero.fbx" `
-  -o ".\Client\Bin\Resources\LostArk\Character\Hero\Hero.wmodel" `
+  -o ".\Client\Bin\Resources\Character\Hero\Hero.wmodel" `
   --texture-root "C:\Asset\Character\Textures"
 ```
 
@@ -48,7 +48,7 @@ Tools/ModelAssetConverter/Bin/ModelAssetConverter.exe
 ```powershell
 .\Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
   "C:\Asset\Map\Rock.fbx" `
-  -o ".\Client\Bin\Resources\LostArk\Map\Rock\Rock.wmodel" `
+  -o ".\Client\Bin\Resources\Map\Rock\Rock.wmodel" `
   --pretransform `
   --texture-root "C:\Asset\Map\Textures"
 ```
@@ -116,7 +116,7 @@ Diffuse 맵 예시:
 ```powershell
 .\Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
   "C:\Asset\Map\bg_rad_valtan_crystal01a_sm_khb.fbx" `
-  -o ".\Client\Bin\Resources\LostArk\Map\BG_RAD_VALTAN_A\CrystalKHB\CrystalKHB.wmodel" `
+  -o ".\Client\Bin\Resources\Map\BG_RAD_VALTAN_A\CrystalKHB\CrystalKHB.wmodel" `
   --pretransform `
   --no-auto-textures `
   --material-remap "dummy_material_0=C:\Asset\Textures\bg_rad_valtan_crystal01_d_khb.png"
@@ -127,7 +127,7 @@ Emissive 전용 맵 예시:
 ```powershell
 .\Tools\ModelAssetConverter\Bin\ModelAssetConverter.exe `
   "C:\Asset\Map\bg_rad_valtan_crystal01a_sm.fbx" `
-  -o ".\Client\Bin\Resources\LostArk\Map\BG_RAD_VALTAN_A\CrystalEmissive\CrystalEmissive.wmodel" `
+  -o ".\Client\Bin\Resources\Map\BG_RAD_VALTAN_A\CrystalEmissive\CrystalEmissive.wmodel" `
   --pretransform `
   --no-auto-textures `
   --emissive-remap "dummy_material_0=C:\Asset\Textures\bg_rad_valtan_crystal01_em_pcs.png"
@@ -179,7 +179,7 @@ CModel::Create(
     m_pDevice,
     m_pContext,
     MODEL::ANIM,
-    "../Bin/Resources/LostArk/Character/Hero/Hero.wmodel",
+    "../Bin/Resources/Character/Hero/Hero.wmodel",
     XMMatrixScaling(0.01f, 0.01f, 0.01f));
 ```
 
@@ -192,14 +192,14 @@ CModel::Create(
 ## 협업 규칙
 
 ```text
-Client/Bin/Resources/LostArk/
+Client/Bin/Resources/
 ├─ Character/<AssetName>/<AssetName>.wmodel
 ├─ Map/<Area>/<AssetName>/<AssetName>.wmodel
 └─ ...각 모델 옆 textures/
 ```
 
 - 코드와 `Tools/ModelAssetConverter`는 Git/LFS로 공유합니다.
-- 대용량 `Client/Bin/Resources/LostArk` 결과물은 팀 Drive/zip으로 같은 상대 경로에 배포합니다.
+- 대용량 `Client/Bin/Resources` 결과물은 asset pack으로 배포하며, 최상위에는 `Fonts`, `Character`, `Deploy`, `Effect`, `Map`, `UI`만 둡니다.
 - 팀원은 각자 같은 컨버터와 같은 WMA2/WMODEL 포맷을 사용합니다.
 - `.wmodel` 이름은 달라도 상관없습니다. 내부 magic/section 포맷이 같으면 모두 같은 `CModel` 파이프라인으로 렌더됩니다.
 - zip을 만들기 전 `info`, Engine/Client 빌드, AssetTest 실행을 확인합니다.
