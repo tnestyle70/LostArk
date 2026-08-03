@@ -35,7 +35,13 @@ void CCustomFont::Draw(const tchar_t* pText, const float2_t& vPosition, fvector_
 
     */
 
-    m_pFont->DrawString(m_pBatch.get(), pText, vPosition, vColor, fRotation, vOrigin, fScale);
+    /* vOrigin comes in as a 0~1 anchor fraction (0.5 = centered), but SpriteFont::DrawString
+    wants an absolute pixel offset within the string's own measured extent -- scale it here so
+    callers get real text-width-aware centering instead of a fixed sub-pixel nudge. */
+    const XMVECTOR vMeasured = m_pFont->MeasureString(pText);
+    const float2_t vPixelOrigin(XMVectorGetX(vMeasured) * vOrigin.x, XMVectorGetY(vMeasured) * vOrigin.y);
+
+    m_pFont->DrawString(m_pBatch.get(), pText, vPosition, vColor, fRotation, vPixelOrigin, fScale);
 
     m_pBatch->End();
 

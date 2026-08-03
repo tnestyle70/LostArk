@@ -1,0 +1,150 @@
+{
+    "schema": "lostark.ui-layout",
+    "formatVersion": 1,
+    "resolution": {
+        "width": 1280,
+        "height": 720
+    },
+    "classes": [
+        "Default"
+    ],
+    "slots": [
+        {
+            "id": "Background",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 0, "width": 1280, "height": 720 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/Loading_Background.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "Vignette_Top",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 0, "width": 1280, "height": 178.7 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_i24_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "Vignette_Bottom",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 562.7, "width": 1280, "height": 157.3 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_i25_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "TopDivider",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": -1.42869, "y": -2.85724, "width": 1280, "height": 60.8 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_i23_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "ScenarioBanner",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 52, "y": 554, "width": 1176, "height": 152 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_i21_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "ProgressTrack",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 690, "width": 1280, "height": 9 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_ib_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "ProgressFill",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 690, "width": 1280, "height": 9 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_ia_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "ProgressGlow",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 0, "y": 683, "width": 40, "height": 23 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [
+                { "path": "UI/Loading/loading_i9_nopack.dds", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+            ],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "TitleText",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 541.429, "y": 7, "width": 200, "height": 30 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "ScenarioLabel",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 558.571, "y": 585.714, "width": 200, "height": 30 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        },
+        {
+            "id": "TipText",
+            "ownerClass": null,
+            "type": 0,
+            "rect": { "x": 560, "y": 642.143, "width": 200, "height": 30 },
+            "rotation": 0,
+            "stages": { "baseFrom": 0, "shineFrom": 1 },
+            "layers": [],
+            "shine": { "texture": null, "additive": false },
+            "animation": { "fps": 10, "scale": 1.1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+        }
+    ]
+}

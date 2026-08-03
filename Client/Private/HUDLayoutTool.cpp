@@ -25,8 +25,9 @@ namespace
 
 	constexpr DOCUMENT_DEF g_Documents[] =
 	{
-		{ "Combat HUD", "UI/HUD/HUD_Layout.json",      "UI/HUD/",      true  },
-		{ "Screen UI",  "UI/ScreenUI/ScreenUI.json",   "UI/ScreenUI/", false },
+		{ "Combat HUD",     "UI/HUD/HUD_Layout.json",           "UI/HUD/",      true  },
+		{ "Screen UI",      "UI/ScreenUI/ScreenUI.json",        "UI/ScreenUI/", false },
+		{ "Loading Screen", "UI/Loading/LoadingLayout.json", "UI/Loading/",  false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
