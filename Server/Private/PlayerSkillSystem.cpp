@@ -78,8 +78,10 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		return false;
 	}
 	const auto cooldown = player.CooldownEndTickBySkillId.find(command.iSkillId);
+	/* Signed difference so a tick counter that wrapped keeps ordering; same
+	idiom as IsNewerSequence above. */
 	if ((cooldown != player.CooldownEndTickBySkillId.end() &&
-		cooldown->second > actionStartTick) ||
+		static_cast<std::int32_t>(cooldown->second - actionStartTick) > 0) ||
 		player.iCurrentResource < skill->iResourceCost)
 	{
 		return false;
@@ -128,7 +130,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const CGameplayCatalog& catalog,
 	const CServerNavigation* navigation,
 	const float fixedDeltaSeconds,
-	const std::uint32_t serverTick) const
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
 {
 	using namespace LostArk::Shared;
 	if (PLAYER_ACTION_STATE::DEAD == player.eAction || 0u == player.iCurrentHp)
@@ -142,8 +145,26 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	}
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
 	{
-		if (0u == serverTick % 6u && player.iCurrentResource < player.iMaximumResource)
+		(void)serverTick;
+		/* Regen is data now: the pool is sized to official CostMp, so the refill
+		rate has to come from the same profile document. The accumulator pays out
+		exactly resourceRegenPerSecond per second without float drift. */
+		if (player.iCurrentResource >= player.iMaximumResource)
+		{
+			player.iResourceAccumulator = 0;
+			return;
+		}
+		const PLAYER_RUNTIME_PROFILE* profile =
+			catalog.Find_Player(player.eCharacterClass);
+		if (nullptr == profile)
+			return;
+		player.iResourceAccumulator += profile->iResourceRegenPerSecond;
+		while (player.iResourceAccumulator >= SERVER_TICK_HZ &&
+			player.iCurrentResource < player.iMaximumResource)
+		{
+			player.iResourceAccumulator -= SERVER_TICK_HZ;
 			++player.iCurrentResource;
+		}
 		return;
 	}
 
@@ -201,7 +222,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	if (!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
-		float closestDistanceSquared = skill->fMaximumRange * skill->fMaximumRange;
+		float closestDistanceSquared = 0.f;
 		for (SERVER_WORLD_ENTITY& entity : worldEntities)
 		{
 			if (WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind ||
@@ -212,7 +233,15 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			const float deltaX = entity.fPositionX - player.fPositionX;
 			const float deltaZ = entity.fPositionZ - player.fPositionZ;
 			const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-			if (distanceSquared <= closestDistanceSquared)
+			/* Official ranges are measured to the target's surface while this test
+			is centre to centre, so the boss's collision radius extends the reach.
+			Without it every official melee range would whiff on its own boss. */
+			const BOSS_RUNTIME_PROFILE* bossProfile =
+				catalog.Find_Boss(entity.strArchetypeId);
+			const float reach = skill->fMaximumRange +
+				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius);
+			if (distanceSquared <= reach * reach &&
+				(nullptr == closestBoss || distanceSquared < closestDistanceSquared))
 			{
 				closestDistanceSquared = distanceSquared;
 				closestBoss = &entity;
@@ -220,9 +249,27 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		}
 		if (nullptr != closestBoss)
 		{
-			const std::uint32_t damage = catalog.Find_Damage(skill->strDamageProfileId);
+			const PLAYER_RUNTIME_PROFILE* playerProfile =
+				catalog.Find_Player(player.eCharacterClass);
+			const std::uint32_t damage = CGameplayCatalog::Resolve_Damage(
+				nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
+				catalog.Find_DamageRatePercent(skill->strDamageProfileId));
 			closestBoss->iCurrentHp =
 				damage >= closestBoss->iCurrentHp ? 0u : closestBoss->iCurrentHp - damage;
+			/* A zero amount is not a hit and the snapshot writer rejects it; the
+			cap keeps one overfull tick from suppressing the whole snapshot. */
+			if (0u != damage &&
+				outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+			{
+				LostArk::Shared::DAMAGE_EVENT damageEvent{};
+				damageEvent.iTargetNetEntityId = closestBoss->iNetEntityId;
+				damageEvent.iAmount = damage;
+				damageEvent.fPositionX = closestBoss->fPositionX;
+				damageEvent.fPositionY = closestBoss->fPositionY;
+				damageEvent.fPositionZ = closestBoss->fPositionZ;
+				damageEvent.isOutgoing = true;
+				outDamageEvents.push_back(damageEvent);
+			}
 			if (0u == closestBoss->iCurrentHp)
 			{
 				closestBoss->eAction = SERVER_ENTITY_ACTION::DEAD;

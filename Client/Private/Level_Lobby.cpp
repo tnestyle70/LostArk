@@ -12,33 +12,14 @@
 
 namespace
 {
-	constexpr char_t DEFAULT_SERVER_HOST[] = "127.0.0.1";
-	constexpr char_t SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
-	constexpr std::uint16_t SERVER_PORT = 7777;
 	constexpr char_t PLAYER_NICKNAME[] = "Player";
 	constexpr LostArk::Shared::CHARACTER_CLASS_ID DEFAULT_ENTRY_CLASS =
 		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
 
-	string Resolve_ServerHost()
-	{
-		char_t configuredHost[64]{};
-		const DWORD configuredLength = ::GetEnvironmentVariableA(
-			SERVER_HOST_ENVIRONMENT,
-			configuredHost,
-			static_cast<DWORD>(std::size(configuredHost)));
-		if (0 == configuredLength ||
-			configuredLength >= std::size(configuredHost) ||
-			"0.0.0.0" == string_view{ configuredHost })
-		{
-			return DEFAULT_SERVER_HOST;
-		}
-
-		return configuredHost;
-	}
-
 	string Describe_ServerEndpoint()
 	{
-		return Resolve_ServerHost() + ":" + to_string(SERVER_PORT);
+		return CNetworkManager::Resolve_ServerHost() + ":" +
+			to_string(CNetworkManager::DEFAULT_SERVER_PORT);
 	}
 
 	const char_t* Get_CharacterClassName(
@@ -106,7 +87,7 @@ void CLevel_Lobby::Update(const f32_t fTimeDelta)
 {
 	LOBBY_COMMAND command{};
 	if (CLobbyCommandService::Try_Consume(command))
-		Begin_StageRequest(command.eStage);
+		Begin_StageRequest(command);
 
 	Consume_EnterAccepted();
 
@@ -136,7 +117,7 @@ HRESULT CLevel_Lobby::Render()
 	return S_OK;
 }
 
-bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_STAGE eStage)
+bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_COMMAND& command)
 {
 	if (ENTRY_STATE::IDLE != m_eEntryState ||
 		CLevelTransitionService::Is_Pending())
@@ -145,8 +126,13 @@ bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_STAGE eStage)
 		return false;
 	}
 
-	if (LOBBY_STAGE::CHARACTER_SELECT == eStage)
+	if (LOBBY_STAGE::CHARACTER_SELECT == command.eStage)
 	{
+		if (LOBBY_COMMAND_PURPOSE::GAMEPLAY != command.ePurpose)
+		{
+			m_strStatus = "Character Select rejected an invalid command purpose.";
+			return false;
+		}
 		if (!CLevelTransitionService::Request_Load(
 			LEVEL::CHARACTER_SELECT,
 			"lobby.character-select"))
@@ -161,35 +147,68 @@ bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_STAGE eStage)
 
 	LostArk::Shared::WORLD_ID worldId = LostArk::Shared::WORLD_ID::END;
 	LEVEL targetLevel = LEVEL::END;
-	if (!Resolve_Stage(eStage, worldId, targetLevel))
+	if (!Resolve_Stage(
+		command.eStage,
+		command.ePurpose,
+		worldId,
+		targetLevel))
 	{
 		m_strStatus = "The selected stage is not registered.";
 		return false;
 	}
 
-	return Begin_NetworkEntry(worldId, targetLevel);
+	return Begin_NetworkEntry(worldId, targetLevel, command.ePurpose);
 }
 
 bool_t CLevel_Lobby::Begin_NetworkEntry(
 	const LostArk::Shared::WORLD_ID eWorldId,
-	const LEVEL eTargetLevel)
+	const LEVEL eTargetLevel,
+	const LOBBY_COMMAND_PURPOSE purpose)
 {
+	const bool_t entersCharacterSelectArena =
+		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == eWorldId;
+	if (LOBBY_COMMAND_PURPOSE::END == purpose ||
+		(LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose &&
+			LEVEL::DEVELOPMENT != eTargetLevel))
+	{
+		if (entersCharacterSelectArena)
+			CCharacterSelectionState::Clear_TestEntryMode();
+		m_strStatus = "The entry purpose is not valid for the selected stage.";
+		return false;
+	}
+#ifndef _DEBUG
+	if (LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose)
+	{
+		if (entersCharacterSelectArena)
+			CCharacterSelectionState::Clear_TestEntryMode();
+		m_strStatus = "Map Editor workspace is available only in Debug.";
+		return false;
+	}
+#endif
+
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
 	bool_t usedDefaultClass = false;
 	if (!Resolve_EntryCharacterClass(characterClass, usedDefaultClass))
 	{
+		if (entersCharacterSelectArena)
+			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "The default entry class could not be committed.";
 		return false;
 	}
 
 	CNetworkManager& networkManager = CNetworkManager::Get();
 	networkManager.Close_ServerConnection();
-	const string serverHost = Resolve_ServerHost();
-	if (!networkManager.Connect_To_Server(serverHost, SERVER_PORT))
+	const string serverHost = CNetworkManager::Resolve_ServerHost();
+	if (!networkManager.Connect_To_Server(
+		serverHost,
+		CNetworkManager::DEFAULT_SERVER_PORT))
 	{
+		if (entersCharacterSelectArena)
+			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "Server connection failed for " +
-			serverHost + ":" + to_string(SERVER_PORT) + " (WSA " +
+			serverHost + ":" +
+			to_string(CNetworkManager::DEFAULT_SERVER_PORT) + " (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
 		return false;
 	}
@@ -199,6 +218,8 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 		characterClass,
 		PLAYER_NICKNAME))
 	{
+		if (entersCharacterSelectArena)
+			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "C2S_ENTER_WORLD send failed (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
 		networkManager.Close_ServerConnection();
@@ -208,6 +229,7 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	m_eEntryState = ENTRY_STATE::WAITING_FOR_APPROVAL;
 	m_ePendingWorldId = eWorldId;
 	m_ePendingLevel = eTargetLevel;
+	m_ePendingPurpose = purpose;
 	m_ApprovalDeadline =
 		std::chrono::steady_clock::now() + std::chrono::seconds(5);
 	m_strStatus = usedDefaultClass ?
@@ -218,6 +240,7 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 
 bool_t CLevel_Lobby::Resolve_Stage(
 	const LOBBY_STAGE eStage,
+	const LOBBY_COMMAND_PURPOSE purpose,
 	LostArk::Shared::WORLD_ID& outWorldId,
 	LEVEL& outTargetLevel) const
 {
@@ -228,8 +251,16 @@ bool_t CLevel_Lobby::Resolve_Stage(
 	switch (eStage)
 	{
 	case LOBBY_STAGE::TEST:
-		outWorldId = WORLD_ID::TRAINING_GROUND;
-		outTargetLevel = LEVEL::DEVELOPMENT;
+		if (LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose)
+		{
+			outWorldId = WORLD_ID::TRAINING_GROUND;
+			outTargetLevel = LEVEL::DEVELOPMENT;
+		}
+		else
+		{
+			outWorldId = WORLD_ID::CHARACTER_SELECT_ARENA;
+			outTargetLevel = LEVEL::CHARACTER_SELECT;
+		}
 		return true;
 	case LOBBY_STAGE::VALTAN:
 		outWorldId = WORLD_ID::VALTAN_ARENA;
@@ -257,16 +288,29 @@ void CLevel_Lobby::Consume_EnterAccepted()
 		return;
 	}
 
-	if (accepted.eWorldId != m_ePendingWorldId)
+	if (accepted.iProtocolVersion != LostArk::Shared::NETWORK_PROTOCOL_VERSION ||
+		accepted.eWorldId != m_ePendingWorldId ||
+		accepted.iPlayerId == LostArk::Shared::INVALID_PLAYER_ID ||
+		accepted.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
 	{
-		Cancel_PendingEntry("Server approved a different world. Entry was rejected.");
+		Cancel_PendingEntry("Server returned an invalid world approval.");
 		return;
 	}
 
 	const LEVEL approvedLevel = m_ePendingLevel;
+	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA ==
+		accepted.eWorldId &&
+		!CCharacterSelectionState::Stage_TestEntryMode(
+			CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY))
+	{
+		Cancel_PendingEntry(
+			"Character Select gameplay handoff could not be staged.");
+		return;
+	}
 #ifdef _DEBUG
 	const bool_t opensMapEditorWorkspace =
-		LEVEL::DEVELOPMENT == approvedLevel;
+		LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE ==
+		m_ePendingPurpose;
 	if (opensMapEditorWorkspace)
 		CMapEditorWorkspaceService::Request();
 #endif
@@ -290,16 +334,23 @@ void CLevel_Lobby::Consume_EnterAccepted()
 	m_eEntryState = ENTRY_STATE::IDLE;
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
 	m_ePendingLevel = LEVEL::END;
+	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	m_ApprovalDeadline = {};
 	m_strStatus = "Server approved the world. Loading the stage.";
 }
 
 void CLevel_Lobby::Cancel_PendingEntry(const string& reason)
 {
+	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA ==
+		m_ePendingWorldId)
+	{
+		CCharacterSelectionState::Clear_TestEntryMode();
+	}
 	CNetworkManager::Get().Close_ServerConnection();
 	m_eEntryState = ENTRY_STATE::IDLE;
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
 	m_ePendingLevel = LEVEL::END;
+	m_ePendingPurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	m_ApprovalDeadline = {};
 	m_strStatus = reason;
 }
@@ -341,7 +392,15 @@ void CLevel_Lobby::Render_StagePanel()
 		CLevelTransitionService::Is_Pending();
 	ImGui::BeginDisabled(isBusy);
 	if (ImGui::Button("Test"))
+	{
+#ifdef _DEBUG
+		CLobbyCommandService::Request(
+			LOBBY_STAGE::TEST,
+			LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE);
+#else
 		CLobbyCommandService::Request(LOBBY_STAGE::TEST);
+#endif
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Character Select"))
 		CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);

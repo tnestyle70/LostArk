@@ -5,13 +5,14 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 6;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 9;
 
 	enum class WORLD_ID : std::uint16_t
 	{
 		BERN = 1,
 		VALTAN_ARENA = 2,
 		TRAINING_GROUND = 3,
+		CHARACTER_SELECT_ARENA = 4,
 		END
 	};
 
@@ -20,7 +21,8 @@ namespace LostArk::Shared
 	{
 		return WORLD_ID::BERN == worldId ||
 			WORLD_ID::VALTAN_ARENA == worldId ||
-			WORLD_ID::TRAINING_GROUND == worldId;
+			WORLD_ID::TRAINING_GROUND == worldId ||
+			WORLD_ID::CHARACTER_SELECT_ARENA == worldId;
 	}
 
 	enum class CHARACTER_CLASS_ID : std::uint8_t
@@ -62,6 +64,8 @@ namespace LostArk::Shared
 		S2C_ENTER_ACCEPTED,
 		S2C_PLAYER_SPAWNED,
 		S2C_WORLD_ENTITY_SPAWNED,
+		C2S_SPAWN_WORLD_ENTITY,
+		S2C_WORLD_ENTITY_SPAWN_RESULT,
 
 		C2S_MOVE,
 		C2S_USE_SKILL,
@@ -94,6 +98,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_ENTER_ACCEPTED:
 		case PACKET_TYPE::S2C_PLAYER_SPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+		case PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY:
+		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
 		case PACKET_TYPE::C2S_MOVE:
 		case PACKET_TYPE::C2S_USE_SKILL:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:

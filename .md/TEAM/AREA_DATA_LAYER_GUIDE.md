@@ -2,7 +2,7 @@
 
 ## 1. 결론
 
-Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 현재 일반 몬스터, wave/증분 spawn, trigger, Area별 balance override, NPC client presentation은 제품 계약이 없다.
+Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 현재 일반 몬스터, wave/증분 spawn, trigger runtime, Area별 balance override, NPC client presentation은 제품 계약이 없다.
 
 편집·추출 정본은 전부 repository root의 `Data` 아래에 둔다. `Data/Maps/Imported`는
 재추출한 catalog와 shard 기준, `Data/Maps/Authoring`은 현재 visual placement,
@@ -14,7 +14,7 @@ LevelCatalog scenario
   -> MapCatalog area
      -> visual asset admission / placement
      -> optional deploy asset / placement pair
-     -> Gameplay.world.json (playerSpawn / npc / boss)
+     -> Gameplay.world.json v2 (actor placement + gated trigger/destroyable authoring)
      -> navigation authoring -> runtime navgrid
      -> stable actor / encounter / balance ID 참조
 ```
@@ -26,7 +26,7 @@ LevelCatalog scenario
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | Server 제품 navgrid 없음 | NPC/boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,115 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
-| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | 없음 | authoring bootstrap 대상, 제품 runtime 없음 | Character Select visual 전용 |
+| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
 
 수련장은 Lobby의 `Enter Training`에서 Server 승인을 받은 뒤 `LEVEL::DEVELOPMENT`로 진입한다. Debug/Release network smoke는 map load, player spawn, Q command, Server action 승인, cooldown HUD 반영까지 검사한다.
@@ -38,7 +38,7 @@ LevelCatalog scenario
 | visual map | scenario가 Map domain을 요구하면 load 실패 | catalog/placement 참조 오류는 rollback |
 | deploy | `.deployassets`와 `.deployplacements`가 모두 없으면 skip | 둘 중 하나만 있으면 오류 |
 | NPC/boss placement | 해당 kind 행이 없으면 spawn하지 않음 | unknown archetype/encounter는 publish 실패 |
-| navigation | 현재 Bern처럼 Server nav를 사용하지 않는 world는 생략 가능 | nav를 요구하는 Valtan/Training은 누락·손상 시 room 기동 실패 |
+| navigation | 현재 Bern처럼 Server nav를 사용하지 않는 world는 생략 가능 | nav를 요구하는 Valtan/Training/Character Select Arena는 누락·손상 시 room 기동 실패 |
 | balance definition | 사용하지 않는 actor/skill 정의는 runtime state를 만들지 않음 | placement/action이 없는 stable ID를 참조하면 publish 또는 Server load 실패 |
 
 `Gameplay.world.json` 자체는 Server가 여는 world마다 필요하다. 접속 가능한 world는 최소 하나의 활성 `playerSpawn`이 필요하므로, 빈 placements 문서를 제품 world의 정상값으로 취급하지 않는다.
@@ -52,7 +52,7 @@ Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 
 
 | 선택 | visual source | navigation | gameplay |
 |---|---|---|---|
-| Character Select | `LV_LOBBY_CLASSSELECT_SL00` | source/paint, Nav Bounds bootstrap 허용 | disabled |
+| Character Select | `LV_LOBBY_CLASSSELECT_SL00` | source/paint, Nav Bounds bootstrap 허용 | exact `gameplayDocument` 필수 |
 | Bern | `LV_BER_BERNCASTLE` | disabled | exact `gameplayDocument` 필수 |
 | Valtan | `LV_LUT_HEARTRB_ED` | source/paint/blockers 필수 | exact `gameplayDocument` 필수 |
 | Training Map | `LV_SHS_RCARENA_D` | disabled | disabled |
@@ -68,7 +68,7 @@ Cancel` 중 하나를 요구한다. 전환 stage가 실패하면 기존 Area 객
 MapTool의 저장 대상은 Data 원본뿐이다.
 
 - visual: active descriptor의 `Data/Maps/Authoring/...mapplacements`
-- gameplay: Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
+- gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
 MapTool은 Client `.navgrid`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
@@ -83,7 +83,11 @@ Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이
 
 `NpcCatalog.json`은 현재 비어 있고 `CClientReplication`의 world entity presentation은 Valtan boss만 완성되어 있다. 따라서 NPC 버튼과 저장 형식은 있어도 제품 NPC의 catalog → Loader → replication → `CNpc` 표현은 아직 닫히지 않았다.
 
-일반 몬스터, spawn wave, 증분 생산, trigger volume/time/condition은 저장 schema와 Server consumer가 없다. 수업용 `CMonster`를 재사용하거나 `npc`/`boss`로 위장하지 않는다. 실제 요구가 생기면 archetype catalog, spawn/trigger 문서, Server brain, replication, Client presentation, balance, rollback harness를 한 수직 슬라이스로 추가한다.
+일반 몬스터, spawn wave, 증분 생산은 저장 schema와 Server consumer가 없다. triggerBox/destroyable은
+world formatVersion 2의 strict parse/save 구조만 있고 MapTool UI와 제품 publisher/Server consumer는
+아직 없다. 제품 publisher는 이 두 kind를 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나
+`npc`/`boss`로 위장하지 않는다. trigger runtime을 열 때는 Server OBB 판정, typed event, dynamic
+navigation, replication, Client deploy presentation과 rollback harness를 한 수직 슬라이스로 추가한다.
 
 ## 5. Balance 소유권
 
@@ -97,7 +101,9 @@ Balance는 현재 Area별 파일이 아니라 전역 stable definition이다.
 | `Data/Balance/BossProfiles.json` | boss HP/range/speed/phase threshold |
 | `Data/Encounters/<Boss>/...json` | stage/encounter state와 pattern timeline |
 
-Area는 수치를 복사하지 않고 stable actor/encounter ID를 참조한다. 지금은 ImGui Balance editor가 없으므로 JSON 수정 → `Publish-GameplayBalance.ps1 -Mode Validate` → Server contract/smoke 순서로 튜닝한다. 레벨별 override가 필요하면 별도 schema와 우선순위/rollback 계약부터 정해야 한다.
+Area는 수치를 복사하지 않고 stable actor/encounter ID를 참조한다. Debug F1 `Balance Tool`에서 JSON
+저작 → provenance 동기화 → Validate/Publish를 수행하고 Server를 재시작해 적용한다. 레벨별 override가
+필요하면 별도 schema와 우선순위/rollback 계약부터 정해야 한다.
 
 ## 6. 다섯 캐릭터 roster 상태
 

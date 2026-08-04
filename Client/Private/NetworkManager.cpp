@@ -19,6 +19,24 @@ CNetworkManager& CNetworkManager::Get()
 	return instance;
 }
 
+std::string CNetworkManager::Resolve_ServerHost()
+{
+	constexpr char DEFAULT_SERVER_HOST[] = "127.0.0.1";
+	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
+	char configuredHost[64]{};
+	const DWORD configuredLength = ::GetEnvironmentVariableA(
+		SERVER_HOST_ENVIRONMENT,
+		configuredHost,
+		static_cast<DWORD>(std::size(configuredHost)));
+	if (0 == configuredLength ||
+		configuredLength >= std::size(configuredHost) ||
+		"0.0.0.0" == std::string_view{ configuredHost })
+	{
+		return DEFAULT_SERVER_HOST;
+	}
+	return configuredHost;
+}
+
 bool CNetworkManager::Initialize()
 {
 	if (m_isWinSocketInitialized)
@@ -212,6 +230,7 @@ bool CNetworkManager::Connect_To_Server(
 
 	m_StreamParser.Reset();
 	m_ReplicationEvents.clear();
+	m_WorldEntitySpawnResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -318,6 +337,26 @@ bool CNetworkManager::Send_UseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_SpawnWorldEntity(
+	const std::string_view placementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_SPAWN_WORLD_ENTITY message{};
+	message.strPlacementId = std::string{ placementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
 {
 	// 승인 하나를 한 번만 소비하여 Lobby가 같은 승인으로 Level을 중복 전환하지 않게 한다.
@@ -328,6 +367,16 @@ bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEP
 
 	m_hasPendingEnterAccepted = false;
 
+	return true;
+}
+
+bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
+	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message)
+{
+	if (m_WorldEntitySpawnResults.empty())
+		return false;
+	message = std::move(m_WorldEntitySpawnResults.front());
+	m_WorldEntitySpawnResults.pop_front();
 	return true;
 }
 
@@ -365,6 +414,7 @@ void CNetworkManager::Close_ServerConnection()
 
 	m_StreamParser.Reset();
 	m_ReplicationEvents.clear();
+	m_WorldEntitySpawnResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -548,6 +598,18 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED;
 		event.WorldEntitySpawned = std::move(spawned);
 		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
+	{
+		S2C_WORLD_ENTITY_SPAWN_RESULT result{};
+		if (!Read_Message(reader, result) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		m_WorldEntitySpawnResults.push_back(std::move(result));
 		break;
 	}
 	//snapshot

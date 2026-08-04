@@ -168,6 +168,12 @@
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\BalanceTool.cpp">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\LobbyCommandService.cpp">
       <Filter>01.Levels</Filter>
     </ClCompile>
@@ -315,6 +321,12 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp">
+      <Filter>01.Sources\System</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp">
+      <Filter>01.Sources\System</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -458,6 +470,12 @@
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\BalanceTool.h">
+      <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\AnimationPreviewAssets.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
@@ -530,6 +548,15 @@
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanPresentationAssetService.h">
+      <Filter>02.Headers\System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldEntityCommandSink.h">
+      <Filter>02.Headers\System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h">
+      <Filter>02.Headers\System</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
@@ -596,16 +623,31 @@
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.skillbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
@@ -690,6 +732,9 @@
       <Filter>96.DataFiles\Balance</Filter>
     </None>
     <None Include="..\..\Data\Balance\PlayerProfiles.json">
+      <Filter>96.DataFiles\Balance</Filter>
+    </None>
+    <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
     <None Include="..\..\Data\Balance\PlayerSkills.json">
@@ -839,6 +884,12 @@
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navblockers">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
@@ -861,6 +912,9 @@
       <Filter>96.DataFiles\Worlds</Filter>
     </None>
     <None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
+    <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json">
       <Filter>96.DataFiles\Worlds</Filter>
     </None>
     <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json">

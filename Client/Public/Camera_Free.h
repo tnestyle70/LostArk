@@ -20,6 +20,7 @@ public:
 		float3_t vLookOffset = { 0.f, 1.2f, 0.f };
 		f32_t fFollowResponse = 18.f;
 		bool_t isFollowEnabled = { false };
+		bool_t allowCapturedKeyboardInput = { false };
 	}CAMERA_FREE_DESC;
 
 private:
@@ -44,6 +45,10 @@ public:
 	{
 		return m_bFollowEnabled;
 	}
+	bool_t Is_FollowRequested() const
+	{
+		return m_bFollowRequested;
+	}
 	shared_ptr<CTransform> Get_FollowTarget() const
 	{
 		return m_pFollowTarget.lock();
@@ -67,6 +72,7 @@ private:
 private:
 	f32_t				m_fMouseSensor = 0.1f;
 	bool_t				m_bFollowEnabled = false;
+	bool_t				m_bFollowRequested = false;
 	bool_t				m_bFollowInitialized = false;
 	bool_t				m_bMouseLookEnabled = true;
 	// 추적 대상의 수명은 Layer_Player가 소유하므로 카메라는 약한 참조만 유지한다.
@@ -75,6 +81,7 @@ private:
 	float3_t			m_vLookOffset = { 0.f, 1.2f, 0.f };
 	float3_t			m_vCurrentLookAt = {};
 	f32_t				m_fFollowResponse = 18.f;
+	bool_t				m_allowCapturedKeyboardInput = false;
 
 public:
 	static unique_ptr<CCamera_Free> Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);

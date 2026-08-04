@@ -881,8 +881,6 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 			descriptor.navigationPaint = ResolveDataCatalogPath(paint);
 			descriptor.navigationPolicy =
 				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT;
-			descriptor.allowNavigationBootstrap =
-				descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00";
 		}
 		if (descriptor.areaId == "LV_LUT_HEARTRB_ED")
 		{
@@ -897,7 +895,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS;
 		}
 
-		if (descriptor.areaId == "LV_BER_BERNCASTLE" ||
+		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
+			descriptor.areaId == "LV_BER_BERNCASTLE" ||
 			descriptor.areaId == "LV_LUT_HEARTRB_ED")
 		{
 			std::string gameplay;

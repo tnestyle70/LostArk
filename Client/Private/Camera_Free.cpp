@@ -1,3 +1,5 @@
+#include "imgui.h"
+
 #include "Camera_Free.h"
 
 #include "Transform.h"
@@ -32,8 +34,10 @@ HRESULT CCamera_Free::Initialize(void* pArg)
 	m_vPositionOffset = pDesc->vPositionOffset;
 	m_vLookOffset = pDesc->vLookOffset;
 	m_fFollowResponse = pDesc->fFollowResponse;
+	m_allowCapturedKeyboardInput = pDesc->allowCapturedKeyboardInput;
+	m_bFollowRequested = pDesc->isFollowEnabled;
 	m_bFollowEnabled =
-		pDesc->isFollowEnabled &&
+		m_bFollowRequested &&
 		nullptr != pDesc->pFollowTarget;
 	m_vCurrentLookAt = pDesc->vAt;
 
@@ -74,14 +78,15 @@ void CCamera_Free::Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget)
 		m_bFollowInitialized = false;
 
 	m_pFollowTarget = pFollowTarget;
-	if (nullptr == pFollowTarget)
-		m_bFollowEnabled = false;
+	m_bFollowEnabled =
+		m_bFollowRequested && nullptr != pFollowTarget;
 }
 
 void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 {
+	m_bFollowRequested = isEnabled;
 	const bool_t nextEnabled =
-		isEnabled && !m_pFollowTarget.expired();
+		m_bFollowRequested && !m_pFollowTarget.expired();
 	if (m_bFollowEnabled != nextEnabled)
 		m_bFollowInitialized = false;
 
@@ -114,6 +119,7 @@ void CCamera_Free::Frame_Area(
 	}
 
 	m_bFollowEnabled = false;
+	m_bFollowRequested = false;
 	m_bFollowInitialized = false;
 	const vector_t lookAt = XMLoadFloat3(&center);
 	const vector_t eye = XMVectorSet(
@@ -130,15 +136,24 @@ void CCamera_Free::Update_Shortcuts()
 {
 	if (GetForegroundWindow() != g_hWnd)
 		return;
+	if (ImGui::GetIO().WantTextInput)
+		return;
+	const bool_t useRawKeyboard = m_allowCapturedKeyboardInput;
+	const auto keyPressed = [useRawKeyboard](const uint8_t keyCode)
+	{
+		return useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyPressedRaw(keyCode) :
+			CGameInstance::Get().Get_DIKeyPressed(keyCode);
+	};
 
-	if (CGameInstance::Get().Get_DIKeyPressed(DIK_F6) &&
+	if (keyPressed(DIK_F6) &&
 		!m_pFollowTarget.expired())
 	{
-		Set_FollowEnabled(!m_bFollowEnabled);
+		Set_FollowEnabled(!m_bFollowRequested);
 	}
 
 	if (!m_bFollowEnabled &&
-		CGameInstance::Get().Get_DIKeyPressed(DIK_TAB))
+		keyPressed(DIK_TAB))
 	{
 		m_bMouseLookEnabled = !m_bMouseLookEnabled;
 	}
@@ -202,14 +217,23 @@ void CCamera_Free::Update_FreeCamera(f32_t fTimeDelta)
 	// DirectInput 장치가 BACKGROUND 모드이므로 다른 창을 조작할 때는 카메라 입력을 무시한다.
 	if (GetForegroundWindow() != g_hWnd)
 		return;
+	const bool_t textInputActive = ImGui::GetIO().WantTextInput;
+	const bool_t useRawKeyboard =
+		m_allowCapturedKeyboardInput && !textInputActive;
+	const auto keyState = [useRawKeyboard](const uint8_t keyCode)
+	{
+		return useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
+			CGameInstance::Get().Get_DIKeyState(keyCode);
+	};
 
-	if (CGameInstance::Get().Get_DIKeyState(DIK_W) & 0x80)
+	if (!textInputActive && keyState(DIK_W) & 0x80)
 		m_pTransformCom->Go_Straight(fTimeDelta);
-	if (CGameInstance::Get().Get_DIKeyState(DIK_S) & 0x80)
+	if (!textInputActive && keyState(DIK_S) & 0x80)
 		m_pTransformCom->Go_Backward(fTimeDelta);
-	if (CGameInstance::Get().Get_DIKeyState(DIK_A) & 0x80)
+	if (!textInputActive && keyState(DIK_A) & 0x80)
 		m_pTransformCom->Go_Left(fTimeDelta);
-	if (CGameInstance::Get().Get_DIKeyState(DIK_D) & 0x80)
+	if (!textInputActive && keyState(DIK_D) & 0x80)
 		m_pTransformCom->Go_Right(fTimeDelta);
 
 	if (!m_bMouseLookEnabled)

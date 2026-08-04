@@ -53,7 +53,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -71,7 +71,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+		<AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -85,9 +85,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientFrontendHarness.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
+	  <Link>Client\AnimationSkillBindingDocument.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
+	  <Link>Client\CharacterSelectionState.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+	  <Link>Client\DataJson.cpp</Link>
+	</ClCompile>
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Link>Client\LobbyCommandService.cpp</Link>
     </ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
+	  <Link>Client\PlayerSkillCatalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp">
+	  <Link>Client\ProjectDataRoot.cpp</Link>
+	</ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

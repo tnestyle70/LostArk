@@ -12,6 +12,7 @@
 #include "Transform.h"
 
 #include <charconv>
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -153,17 +154,22 @@ shared_ptr<Client::CCharacter> Client::CAnimation_Tool::Resolve_Character() cons
 	return CAnimationTargetService::Resolve_Character();
 }
 
+bool_t Client::CAnimation_Tool::Is_AnyDocumentDirty() const
+{
+	return m_bDirty || m_bSkillBindingDirty;
+}
+
 bool_t Client::CAnimation_Tool::Sync_AssetName()
 {
 	const string assetName =
 		CAnimationTargetService::Resolve_AssetName();
 	if (assetName.empty())
 	{
-		if (m_bDirty)
+		if (Is_AnyDocumentDirty())
 		{
 			m_PendingAssetName.clear();
 			m_Status =
-				"Animation target disappeared while Events are dirty. "
+				"Animation target disappeared while an authored document is dirty. "
 				"The unsaved document is preserved.";
 			return false;
 		}
@@ -174,11 +180,11 @@ bool_t Client::CAnimation_Tool::Sync_AssetName()
 		m_PendingAssetName.clear();
 		return true;
 	}
-	if (m_bDirty && !m_AssetName.empty())
+	if (Is_AnyDocumentDirty() && !m_AssetName.empty())
 	{
 		m_PendingAssetName = assetName;
 		m_Status =
-			"Target changed while Animation Events are dirty. "
+			"Target changed while an Animation document is dirty. "
 			"Return to the original target and Save, or discard explicitly.";
 		return false;
 	}
@@ -200,13 +206,19 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_ClipNotify.clear();
 	m_ClipLength.clear();
 	m_ClipSeqs.clear();
+	m_SkillBindingDocument = {};
 	m_iSelectedEvent = -1;
 	m_bDirty = false;
+	m_bSkillBindingDirty = false;
+	m_iSelectedSkillBinding = -1;
+	m_iSelectedSkillClip = 0;
+	m_SkillBindingStatus.clear();
 	m_bLoadAttempted = false;
 	m_bRefLoadAttempted = false;
 	m_bClipMapLoadAttempted = false;
 	m_bClipNotifyLoadAttempted = false;
 	m_bClipSeqLoadAttempted = false;
+	m_bSkillBindingLoadAttempted = false;
 }
 
 void Client::CAnimation_Tool::Render_TargetConflict()
@@ -216,13 +228,13 @@ void Client::CAnimation_Tool::Render_TargetConflict()
 	if (!m_PendingAssetName.empty())
 	{
 		ImGui::Text("Pending target: %s", m_PendingAssetName.c_str());
-		if (ImGui::Button("Discard Unsaved Events and Switch"))
+		if (ImGui::Button("Discard Unsaved Animation Documents and Switch"))
 			Adopt_AssetName(m_PendingAssetName);
 		return;
 	}
 
 	ImGui::TextUnformatted("The original target is no longer available.");
-	if (ImGui::Button("Discard Orphaned Unsaved Events"))
+	if (ImGui::Button("Discard Orphaned Animation Documents"))
 		Adopt_AssetName(std::string{});
 }
 
@@ -417,8 +429,8 @@ void Client::CAnimation_Tool::Render()
 
 	m_PreviewPanel.Refresh_Level();
 	m_PreviewPanel.Render_Selector(
-		m_bDirty,
-		"Save or discard Animation Events before changing target here.");
+		Is_AnyDocumentDirty(),
+		"Save or discard Animation Events and Skill Bindings before changing target here.");
 	if (!Sync_AssetName())
 	{
 		Render_TargetConflict();
@@ -490,6 +502,7 @@ void Client::CAnimation_Tool::Render()
 
 	Render_Playback(pModel);
 	Render_ClipChain(pModel);
+	Render_SkillBindings(pModel, Resolve_Character());
 	Render_HitEvents(pModel);
 	Render_SkillReference(pModel);
 
@@ -648,6 +661,423 @@ void Client::CAnimation_Tool::Render_ClipChain(const shared_ptr<Engine::CModel>&
 
 		ImGui::PopID();
 	}
+}
+
+std::vector<std::string> Client::CAnimation_Tool::Collect_ClipNames(
+	const shared_ptr<Engine::CModel>& pModel) const
+{
+	std::vector<std::string> clips;
+	if (nullptr == pModel)
+		return clips;
+	clips.reserve(pModel->Get_NumAnimations());
+	for (uint32_t index = 0; index < pModel->Get_NumAnimations(); ++index)
+	{
+		const char_t* clipName = pModel->Get_AnimationName(index);
+		if (nullptr != clipName)
+			clips.emplace_back(clipName);
+	}
+	return clips;
+}
+
+Client::ANIMATION_SKILL_BINDING*
+Client::CAnimation_Tool::Find_SkillBinding(
+	const LostArk::Shared::SKILL_ID skillId)
+{
+	for (ANIMATION_SKILL_BINDING& binding :
+		m_SkillBindingDocument.Bindings)
+	{
+		if (binding.iSkillId == skillId)
+			return &binding;
+	}
+	return nullptr;
+}
+
+bool_t Client::CAnimation_Tool::Load_SkillBindings(
+	const shared_ptr<Engine::CModel>& pModel,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	ANIMATION_SKILL_BINDING_DOCUMENT staged;
+	std::string status;
+	if (!CAnimationSkillBindingDocument::Load(
+		m_AssetName,
+		characterClass,
+		CPlayerSkillCatalog::Get_Skills(),
+		Collect_ClipNames(pModel),
+		staged,
+		status))
+	{
+		m_SkillBindingStatus =
+			"Load rejected; current Skill Bindings preserved: " + status;
+		return false;
+	}
+
+	m_SkillBindingDocument = std::move(staged);
+	m_iSelectedSkillBinding = -1;
+	m_iSelectedSkillClip = 0;
+	m_bSkillBindingDirty = false;
+	m_SkillBindingStatus = status;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Save_SkillBindings(
+	const shared_ptr<Engine::CModel>& pModel,
+	const shared_ptr<CCharacter>& pCharacter)
+{
+	if (nullptr == pCharacter || nullptr == pCharacter->Get_Spec() ||
+		nullptr == pCharacter->Get_Spec()->pAssetName ||
+		m_AssetName != pCharacter->Get_Spec()->pAssetName)
+	{
+		m_SkillBindingStatus =
+			"Skill Bindings can only be saved for the selected Scene Character.";
+		return false;
+	}
+
+	std::string status;
+	if (!CAnimationSkillBindingDocument::Save_Atomic(
+		m_SkillBindingDocument,
+		m_AssetName,
+		pCharacter->Get_Spec()->eCharacterClass,
+		CPlayerSkillCatalog::Get_Skills(),
+		Collect_ClipNames(pModel),
+		status))
+	{
+		m_SkillBindingStatus =
+			"Save rejected; destination and current bindings preserved: " + status;
+		return false;
+	}
+
+	m_bSkillBindingDirty = false;
+	if (!pCharacter->Reload_SkillAnimationBindings())
+	{
+		m_SkillBindingStatus = status +
+			" [saved, but the live Character kept its previous binding set]";
+		return true;
+	}
+	m_SkillBindingStatus = status + " [live Character refreshed]";
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Create_SkillBindingDraft(
+	const shared_ptr<Engine::CModel>& pModel,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	if (nullptr == pModel || m_AssetName.empty())
+		return false;
+	const char_t* currentClip = pModel->Get_AnimationName(
+		pModel->Get_CurrentAnimIndex());
+	if (nullptr == currentClip)
+	{
+		m_SkillBindingStatus =
+			"Select one model clip before creating a repair draft.";
+		return false;
+	}
+
+	ANIMATION_SKILL_BINDING_DOCUMENT staged;
+	staged.strAnimationAssetId = m_AssetName;
+	staged.eCharacterClass = characterClass;
+	for (const PLAYER_SKILL_DEFINITION& definition :
+		CPlayerSkillCatalog::Get_Skills())
+	{
+		if (definition.eCharacterClass != characterClass)
+			continue;
+		ANIMATION_SKILL_BINDING binding;
+		binding.iSkillId = definition.iSkillId;
+		const std::size_t clipCount =
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
+			definition.eSkillKind ? definition.iComboStageCount : 1u;
+		binding.Clips.assign(clipCount, currentClip);
+		staged.Bindings.push_back(std::move(binding));
+	}
+	if (staged.Bindings.empty())
+	{
+		m_SkillBindingStatus =
+			"PlayerSkills has no definitions for this Character class.";
+		return false;
+	}
+
+	m_SkillBindingDocument = std::move(staged);
+	m_iSelectedSkillBinding = 0;
+	m_iSelectedSkillClip = 0;
+	m_bSkillBindingDirty = true;
+	m_SkillBindingStatus =
+		"Created a complete repair draft. Every row currently uses " +
+		std::string(currentClip) +
+		"; assign intended clips before Save.";
+	return true;
+}
+
+void Client::CAnimation_Tool::Render_SkillBindingReloadConfirmation(
+	const shared_ptr<Engine::CModel>& pModel,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	if (m_bSkillBindingReloadConfirmationRequested)
+	{
+		ImGui::OpenPopup("Discard unsaved Skill Animation Bindings?");
+		m_bSkillBindingReloadConfirmationRequested = false;
+	}
+	if (!ImGui::BeginPopupModal(
+		"Discard unsaved Skill Animation Bindings?",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		return;
+	}
+	ImGui::TextUnformatted(
+		"Reload replaces only the unsaved key/skill animation binding document.");
+	if (ImGui::Button("Discard Bindings and Reload"))
+	{
+		if (Load_SkillBindings(pModel, characterClass))
+			ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel"))
+		ImGui::CloseCurrentPopup();
+	ImGui::EndPopup();
+}
+
+void Client::CAnimation_Tool::Render_SkillBindings(
+	const shared_ptr<Engine::CModel>& pModel,
+	const shared_ptr<CCharacter>& pCharacter)
+{
+	ImGui::SeparatorText("Key -> Skill Animation");
+	if (nullptr == pCharacter || nullptr == pCharacter->Get_Spec() ||
+		nullptr == pCharacter->Get_Spec()->pAssetName ||
+		m_AssetName != pCharacter->Get_Spec()->pAssetName)
+	{
+		ImGui::TextDisabled(
+			"Select Scene Character to author gameplay key bindings."
+			" Reference-only preview assets are not playable classes.");
+		return;
+	}
+
+	const CHARACTER_SPEC* spec = pCharacter->Get_Spec();
+	if (!m_bSkillBindingLoadAttempted)
+	{
+		m_bSkillBindingLoadAttempted = true;
+		Load_SkillBindings(pModel, spec->eCharacterClass);
+	}
+	if (m_SkillBindingDocument.Bindings.empty())
+	{
+		ImGui::TextWrapped("%s", m_SkillBindingStatus.c_str());
+		ImGui::TextWrapped(
+			"The Character remains available even when this document is missing or "
+			"invalid. Create a complete in-memory repair draft from the currently "
+			"selected model clip, then assign each skill and Save.");
+		if (ImGui::Button("Create Repair Draft from Current Clip"))
+			Create_SkillBindingDraft(pModel, spec->eCharacterClass);
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"PlayerSkills owns key -> skillId and Server timing. This panel saves only "
+		"the approved skillId -> ordered presentation clips. BA1/BA2/... are "
+		"indexed directly by the replicated comboStage.");
+	if (ImGui::Button("Save Skill Bindings"))
+		Save_SkillBindings(pModel, pCharacter);
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Skill Bindings"))
+	{
+		if (m_bSkillBindingDirty)
+			m_bSkillBindingReloadConfirmationRequested = true;
+		else
+			Load_SkillBindings(pModel, spec->eCharacterClass);
+	}
+	if (m_bSkillBindingDirty)
+	{
+		ImGui::SameLine();
+		ImGui::TextUnformatted("*");
+	}
+	Render_SkillBindingReloadConfirmation(pModel, spec->eCharacterClass);
+	if (!m_SkillBindingStatus.empty())
+		ImGui::TextWrapped("%s", m_SkillBindingStatus.c_str());
+
+	const uint32_t currentAnimationIndex = pModel->Get_CurrentAnimIndex();
+	const char_t* currentClip =
+		pModel->Get_AnimationName(currentAnimationIndex);
+	ImGui::TextDisabled(
+		"Current clip: %s",
+		nullptr != currentClip ? currentClip : "(none)");
+
+	std::vector<const PLAYER_SKILL_DEFINITION*> classSkills;
+	for (const PLAYER_SKILL_DEFINITION& definition :
+		CPlayerSkillCatalog::Get_Skills())
+	{
+		if (definition.eCharacterClass == spec->eCharacterClass)
+			classSkills.push_back(&definition);
+	}
+	const auto slotRank = [](const std::string& slot)
+	{
+		constexpr const char_t* preferred[] =
+		{
+			"Q", "W", "E", "R", "A", "S", "D", "F",
+			"T", "V", "ALT_V", "LMB"
+		};
+		for (int32_t index = 0; index < static_cast<int32_t>(std::size(preferred)); ++index)
+		{
+			if (slot == preferred[index])
+				return index;
+		}
+		return static_cast<int32_t>(std::size(preferred));
+	};
+	std::sort(classSkills.begin(), classSkills.end(),
+		[&](const PLAYER_SKILL_DEFINITION* left,
+			const PLAYER_SKILL_DEFINITION* right)
+		{
+			const int32_t leftRank = slotRank(left->strInputSlot);
+			const int32_t rightRank = slotRank(right->strInputSlot);
+			return leftRank != rightRank ? leftRank < rightRank :
+				left->strInputSlot < right->strInputSlot;
+		});
+
+	if (!ImGui::BeginChild(
+		"##skillbindings",
+		ImVec2(0.f, 300.f),
+		ImGuiChildFlags_Borders))
+	{
+		ImGui::EndChild();
+		return;
+	}
+	for (const PLAYER_SKILL_DEFINITION* definition : classSkills)
+	{
+		const std::string slotLabel =
+			"ALT_V" == definition->strInputSlot ? "ALT+V" :
+			("LMB" == definition->strInputSlot ? "BA / LMB" :
+				definition->strInputSlot);
+		ANIMATION_SKILL_BINDING* binding =
+			Find_SkillBinding(definition->iSkillId);
+		if (nullptr == binding)
+		{
+			ImGui::TextColored(
+				ImVec4(1.f, 0.35f, 0.35f, 1.f),
+				"%-8s  %u missing authored binding",
+				slotLabel.c_str(),
+				definition->iSkillId);
+			continue;
+		}
+		const int32_t bindingIndex = static_cast<int32_t>(
+			binding - m_SkillBindingDocument.Bindings.data());
+		ImGui::PushID(bindingIndex);
+		const bool_t isCombo =
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
+			definition->eSkillKind;
+		char_t header[192]{};
+		snprintf(
+			header,
+			sizeof(header),
+			"%s  %u  %s  [%s]",
+			slotLabel.c_str(),
+			definition->iSkillId,
+			definition->strDisplayName.c_str(),
+			isCombo ? "COMBO" : "ACTIVE");
+		if (ImGui::TreeNodeEx("##binding", ImGuiTreeNodeFlags_DefaultOpen, "%s", header))
+		{
+			for (int32_t clipIndex = 0;
+				clipIndex < static_cast<int32_t>(binding->Clips.size());
+				++clipIndex)
+			{
+				ImGui::PushID(clipIndex);
+				char_t clipLabel[MAX_PATH + 32]{};
+				snprintf(
+					clipLabel,
+					sizeof(clipLabel),
+					isCombo ? "BA%d  %s" : "clip%d  %s",
+					clipIndex + 1,
+					binding->Clips[clipIndex].c_str());
+				const bool_t selected =
+					m_iSelectedSkillBinding == bindingIndex &&
+					m_iSelectedSkillClip == clipIndex;
+				if (ImGui::Selectable(clipLabel, selected))
+				{
+					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillClip = clipIndex;
+					Select_Clip(pModel, binding->Clips[clipIndex]);
+				}
+				ImGui::PopID();
+			}
+
+			int32_t selectedClip =
+				m_iSelectedSkillBinding == bindingIndex ?
+				m_iSelectedSkillClip : 0;
+			if (selectedClip < 0 ||
+				selectedClip >= static_cast<int32_t>(binding->Clips.size()))
+			{
+				selectedClip = 0;
+			}
+			ImGui::BeginDisabled(nullptr == currentClip);
+			if (ImGui::Button(isCombo ?
+				"Assign Current Clip to Selected BA Stage" :
+				"Assign Current Clip to Selected Step"))
+			{
+				binding->Clips[selectedClip] = currentClip;
+				m_iSelectedSkillBinding = bindingIndex;
+				m_iSelectedSkillClip = selectedClip;
+				m_bSkillBindingDirty = true;
+				m_SkillBindingStatus =
+					"Assigned " + std::string(currentClip) + " to " +
+					slotLabel + (isCombo ?
+						(" BA" + std::to_string(selectedClip + 1)) :
+						(" clip" + std::to_string(selectedClip + 1)));
+			}
+			if (!isCombo)
+			{
+				ImGui::SameLine();
+				if (ImGui::Button("Add Current Step") &&
+					binding->Clips.size() < 16u)
+				{
+					binding->Clips.insert(
+						binding->Clips.begin() + selectedClip + 1,
+						currentClip);
+					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillClip = selectedClip + 1;
+					m_bSkillBindingDirty = true;
+				}
+			}
+			ImGui::EndDisabled();
+
+			if (!isCombo && binding->Clips.size() > 1u)
+			{
+				if (ImGui::SmallButton("Up") && selectedClip > 0)
+				{
+					std::swap(
+						binding->Clips[selectedClip],
+						binding->Clips[selectedClip - 1]);
+					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillClip = selectedClip - 1;
+					m_bSkillBindingDirty = true;
+				}
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Down") &&
+					selectedClip + 1 < static_cast<int32_t>(binding->Clips.size()))
+				{
+					std::swap(
+						binding->Clips[selectedClip],
+						binding->Clips[selectedClip + 1]);
+					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillClip = selectedClip + 1;
+					m_bSkillBindingDirty = true;
+				}
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Remove Step"))
+				{
+					binding->Clips.erase(binding->Clips.begin() + selectedClip);
+					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillClip = std::min(
+						selectedClip,
+						static_cast<int32_t>(binding->Clips.size()) - 1);
+					m_bSkillBindingDirty = true;
+				}
+			}
+			else if (isCombo)
+			{
+				ImGui::TextDisabled(
+					"BA stage count is fixed by PlayerSkills comboStages (%zu).",
+					definition->iComboStageCount);
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+	ImGui::EndChild();
 }
 
 void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>& pModel)

@@ -1,14 +1,16 @@
 {
   "schema": "lostark.boss-profiles",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
       "encounterId": "ENCOUNTER_VALTAN",
-	  "displayName": "발탄",
-      "maximumHp": 10000,
-      "engageDistance": 35.0,
-      "moveSpeed": 3.0,
+      "displayName": "발탄",
+      "maximumHp": 60000,
+      "attackPower": 100,
+      "collisionRadius": 3.0,
+      "engageDistance": 20.0,
+      "moveSpeed": 2.6,
       "phaseTwoHpPercent": 50
     }
   ]

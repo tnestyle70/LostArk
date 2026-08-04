@@ -44,6 +44,10 @@ namespace LostArk::Server
 		std::uint32_t iMaximumHp = 1000;
 		std::uint32_t iCurrentResource = 100;
 		std::uint32_t iMaximumResource = 100;
+		// Fixed-point regen carry in ticks: gains profile regen per tick and pays
+		// out one resource per SERVER_TICK_HZ accumulated, so a second restores
+		// exactly resourceRegenPerSecond with integers only.
+		std::uint32_t iResourceAccumulator = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =

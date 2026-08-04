@@ -81,6 +81,41 @@ namespace LostArk::Shared
 	inline constexpr std::size_t MAX_STABLE_NETWORK_ID_BYTES = 128;
 	inline constexpr std::size_t MAX_WORLD_SNAPSHOT_ENTITIES = 256;
 
+	struct C2S_SPAWN_WORLD_ENTITY
+	{
+		std::string strPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_SPAWN_WORLD_ENTITY& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_SPAWN_WORLD_ENTITY& message);
+
+	enum class WORLD_ENTITY_SPAWN_RESULT : std::uint8_t
+	{
+		SPAWNED,
+		ALREADY_EXISTS,
+		REJECTED,
+		END
+	};
+
+	struct S2C_WORLD_ENTITY_SPAWN_RESULT
+	{
+		std::string strPlacementId;
+		WORLD_ENTITY_SPAWN_RESULT eResult =
+			WORLD_ENTITY_SPAWN_RESULT::REJECTED;
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_WORLD_ENTITY_SPAWN_RESULT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_WORLD_ENTITY_SPAWN_RESULT& message);
+
 	enum class WORLD_ENTITY_KIND : std::uint8_t
 	{
 		NPC,
@@ -152,7 +187,12 @@ namespace LostArk::Shared
 	//플레이어 이동과 스냅샷을 server에게 전달하고 동기화 시키는 것까지 구현
 	inline constexpr std::size_t
 		MAX_WORLD_SNAPSHOT_PLAYERS = 32;
-	inline constexpr std::size_t MAX_PLAYER_COOLDOWNS = 8;
+	// Lance Master alone authors nine ACTIVE skills and can hold all nine on
+	// cooldown at once, so eight silently dropped one tile from the HUD.
+	inline constexpr std::size_t MAX_PLAYER_COOLDOWNS = 16;
+	// One tick applies at most one player hit and one boss hit per actor, so this
+	// bounds a 30 Hz frame rather than a fight.
+	inline constexpr std::size_t MAX_DAMAGE_EVENTS = 64;
 	// Matches the publisher's 2..8 comboStages bound.
 	inline constexpr std::uint8_t MAX_COMBO_STAGES = 8;
 	using SKILL_ID = std::uint32_t;
@@ -254,6 +294,28 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumHp = 1;
 		std::uint8_t iPhase = 1;
 	};
+	// One resolved hit. HP in the snapshots above is a level, so a client that
+	// only sees levels cannot tell 500 damage from two 250s inside one tick, and
+	// cannot place a number where the hit landed. The server already computes this
+	// value to subtract it; this carries the same number rather than letting the
+	// client re-derive one it has no authority for. This is the snapshot's only
+	// edge-triggered payload: a missed event never desyncs HP.
+	struct DAMAGE_EVENT
+	{
+		// Whoever took the damage: a player or a world entity, both of which live
+		// in the same NET_ENTITY_ID space.
+		NET_ENTITY_ID iTargetNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint32_t iAmount = 0;
+		// Where to anchor the number, in world units. Taken from the target at the
+		// moment of the hit so a number does not follow the target afterwards.
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		// True when a player dealt it. Presentation styles incoming and outgoing
+		// damage differently, and only the server knows which is which.
+		bool isOutgoing = false;
+	};
+
 	//player snapshot을 vector 구조체로 들고, servertick을 들고있다?
 	struct S2C_WORLD_SNAPSHOT
 	{
@@ -261,6 +323,7 @@ namespace LostArk::Shared
 		WORLD_ID eWorldId = WORLD_ID::BERN;
 		std::vector<PLAYER_SNAPSHOT> Players;
 		std::vector<WORLD_ENTITY_SNAPSHOT> Entities;
+		std::vector<DAMAGE_EVENT> DamageEvents;
 	};
 
 	bool Write_Message(

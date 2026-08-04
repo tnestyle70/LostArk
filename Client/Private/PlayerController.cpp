@@ -1,3 +1,5 @@
+#include "imgui.h"
+
 #include "PlayerController.h"
 
 #include "Character.h"
@@ -43,8 +45,8 @@ namespace
 
 	constexpr size_t SlotKeyCount = sizeof(SlotKeys) / sizeof(SlotKeys[0]);
 
-	/* Tighter than the narrowest combo window the balance data declares (224 ms
-	on the second basic-attack stage), so a held button cannot skip one. */
+	/* Tighter than the narrowest combo window the balance data declares (183 ms
+	on the Artist third basic-attack stage), so a held button cannot skip one. */
 	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
 }
 
@@ -58,9 +60,11 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
 	m_wasKeyDown.fill(false);
+	m_wasLeftMouseDown = false;
+	m_LastBasicAttackSentAt = {};
 }
 
-void Client::CPlayerController::Update()
+void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 {
 	//imgui로 mouse block된 상태가 아니고, Right Button
 	const bool_t isRightMouseDown =
@@ -68,14 +72,18 @@ void Client::CPlayerController::Update()
 		0 != (CGameInstance::Get().Get_DIMouseState(DIM::RB) & 0x80);
 	const bool_t isKeyboardBlocked =
 		CGameInstance::Get().IsKeyboardInputBlocked();
+	const bool_t useRawKeyboard =
+		m_allowCapturedKeyboardInput &&
+		GetForegroundWindow() == g_hWnd;
+	const bool_t suppressKeyboard = useRawKeyboard ?
+		ImGui::GetIO().WantTextInput : isKeyboardBlocked;
 	//weak_ptr로 가지고 있는 character lock
 	const shared_ptr<CCharacter> character =
 		m_pLocalCharacter.lock();
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
 
-	if (m_isGameplayInputEnabled &&
-		isRightMouseDown &&
+	if (gameplayCommandsEnabled && isRightMouseDown &&
 		!m_wasRightMouseDown &&
 		nullptr != character &&
 		nullptr != commandSink)
@@ -105,10 +113,13 @@ void Client::CPlayerController::Update()
 
 	LostArk::Shared::SKILL_ID requestedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
-	Poll_SkillSlots(isKeyboardBlocked, character, requestedSkillId);
+	Poll_SkillSlots(
+		suppressKeyboard || !gameplayCommandsEnabled,
+		useRawKeyboard,
+		character,
+		requestedSkillId);
 
-	if (m_isGameplayInputEnabled &&
-		LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
+	if (LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
 		nullptr != character && nullptr != commandSink)
 	{
 		const shared_ptr<CTransform> transform = character->Get_Transform();
@@ -143,12 +154,19 @@ void Client::CPlayerController::Update()
 
 void Client::CPlayerController::Poll_SkillSlots(
 	const bool_t isKeyboardBlocked,
+	const bool_t useRawKeyboard,
 	const shared_ptr<CCharacter>& character,
 	LostArk::Shared::SKILL_ID& outSkillId)
 {
-	const bool_t isAltDown = !isKeyboardBlocked &&
-		(0 != (CGameInstance::Get().Get_DIKeyState(DIK_LMENU) & 0x80) ||
-			0 != (CGameInstance::Get().Get_DIKeyState(DIK_RMENU) & 0x80));
+	const auto readKeyState = [useRawKeyboard](const uint8_t keyCode)
+	{
+		return useRawKeyboard ?
+			CGameInstance::Get().Get_DIKeyStateRaw(keyCode) :
+			CGameInstance::Get().Get_DIKeyState(keyCode);
+	};
+	const bool_t isAltDown =
+		(0 != (readKeyState(DIK_LMENU) & 0x80) ||
+			0 != (readKeyState(DIK_RMENU) & 0x80));
 
 	const CHARACTER_SPEC* pSpec =
 		nullptr != character ? character->Get_Spec() : nullptr;
@@ -160,15 +178,14 @@ void Client::CPlayerController::Poll_SkillSlots(
 	bool_t isDown[SlotKeyCount]{};
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 	{
-		isDown[index] = !isKeyboardBlocked &&
-			0 != (CGameInstance::Get().Get_DIKeyState(
-				SlotKeys[index].byKeyCode) & 0x80);
+		isDown[index] =
+			0 != (readKeyState(SlotKeys[index].byKeyCode) & 0x80);
 	}
 
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 	{
 		const SLOT_KEY& slot = SlotKeys[index];
-		if (slot.requiresAlt != isAltDown ||
+		if (isKeyboardBlocked || slot.requiresAlt != isAltDown ||
 			!isDown[index] || m_wasKeyDown[slot.byKeyCode] ||
 			nullptr == pSpec ||
 			LostArk::Shared::INVALID_SKILL_ID != outSkillId)
@@ -188,12 +205,13 @@ void Client::CPlayerController::Poll_SkillSlots(
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 		m_wasKeyDown[SlotKeys[index].byKeyCode] = isDown[index];
 
-	Poll_BasicAttack(pSpec, outSkillId);
+	Poll_BasicAttack(pSpec, outSkillId, isKeyboardBlocked);
 }
 
 void Client::CPlayerController::Poll_BasicAttack(
 	const CHARACTER_SPEC* pSpec,
-	LostArk::Shared::SKILL_ID& outSkillId)
+	LostArk::Shared::SKILL_ID& outSkillId,
+	const bool_t commandSuppressed)
 {
 	const bool_t isDown =
 		!CGameInstance::Get().IsMouseInputBlocked() &&
@@ -206,14 +224,14 @@ void Client::CPlayerController::Poll_BasicAttack(
 
 	const bool_t wasDown = m_wasLeftMouseDown;
 	m_wasLeftMouseDown = true;
-	if (nullptr == pSpec ||
+	if (commandSuppressed || nullptr == pSpec ||
 		LostArk::Shared::INVALID_SKILL_ID != outSkillId)
 	{
 		return;
 	}
 
 	/* The first press goes out immediately; holding repeats on an interval
-	narrower than the tightest combo window in the data (224 ms), so a held
+	narrower than the tightest combo window in the data (183 ms), so a held
 	button always lands at least one press inside it. */
 	const auto now = std::chrono::steady_clock::now();
 	if (wasDown && now - m_LastBasicAttackSentAt < BASIC_ATTACK_RESEND_INTERVAL)

@@ -1,0 +1,92 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "Slayer",
+  "characterClass": "SLAYER",
+  "bindings": [
+    {
+      "skillId": 45050,
+      "clips": [
+        "wbk_sk_updownslash_01",
+        "wbk_sk_updownslash_02"
+      ]
+    },
+    {
+      "skillId": 45060,
+      "clips": [
+        "wbk_sk_thrust_01",
+        "wbk_sk_thrust_custom_1",
+        "wbk_sk_thrust_02",
+        "wbk_sk_thrust_custom_6",
+        "wbk_sk_thrust_custom_5"
+      ]
+    },
+    {
+      "skillId": 45620,
+      "clips": [
+        "wbk_sk_maelstorm_01",
+        "wbk_sk_maelstorm_02"
+      ]
+    },
+    {
+      "skillId": 45210,
+      "clips": [
+        "wbk_sk_divingslash_jump",
+        "wbk_sk_divingslash_attack"
+      ]
+    },
+    {
+      "skillId": 45300,
+      "clips": [
+        "wbk_sk_finishstrike"
+      ]
+    },
+    {
+      "skillId": 45070,
+      "clips": [
+        "wbk_sk_whirlwind_loop",
+        "wbk_sk_whirlwind_fail",
+        "wbk_sk_whirlwind_success"
+      ]
+    },
+    {
+      "skillId": 45190,
+      "clips": [
+        "wbk_sk_tempestslashing_custom01"
+      ]
+    },
+    {
+      "skillId": 45600,
+      "clips": [
+        "wbk_sk_swordstrom_jump",
+        "wbk_sk_swordstrom_attack"
+      ]
+    },
+    {
+      "skillId": 45810,
+      "clips": [
+        "wbk_sk_ragnarok_00"
+      ]
+    },
+    {
+      "skillId": 45820,
+      "clips": [
+        "wbk_sk_super_ragestrike_01",
+        "wbk_sk_super_ragestrike_02",
+        "wbk_sk_super_ragestrike_03",
+        "wbk_sk_super_ragestrike_01",
+        "wbk_sk_super_ragestrike_02",
+        "wbk_sk_super_ragestrike_03"
+      ]
+    },
+    {
+      "skillId": 45000,
+      "clips": [
+        "wbk_att_battle_2_01",
+        "wbk_att_battle_2_02",
+        "wbk_att_battle_2_03",
+        "wbk_att_battle_2_04"
+      ]
+    }
+  ]
+}

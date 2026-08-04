@@ -22,16 +22,12 @@ replication applies approved movement or action presentation. */
 class CCharacter final : public CContainerObject
 {
 public:
-	/* One skill's clip chain, read from <asset>.clipseq. The game plays a skill
-	as a fixed run of clips; a skill has several chains because each tripod build
-	takes a different route, so a chain is picked by index. */
+	/* One approved skill's authored presentation chain. ACTIVE runs every clip in
+	order; COMBO advances only when the replicated Server comboStage changes. */
 	struct CLIP_CHAIN
 	{
 		int32_t iSkillId = {};
-		int32_t iSeqIndex = {};
-		/* COMBO advances a step per press, HOLD is a charge, ONESHOT/SEQUENCE
-		run to the end. Only carried for now -- every chain runs to the end. */
-		std::string sMode;
+		bool_t isCombo = false;
 		std::vector<std::string> clips;
 	};
 
@@ -103,8 +99,16 @@ public:
 #endif
 
 	/* Applies an approved skill action to presentation. Input code must never call
-	this directly. Returns false when the chain is unknown or already running. */
-	bool_t Play_Skill(int32_t iSkillId, int32_t iSeqIndex = 0);
+	this directly. isCombo comes from the Server-owned comboStage, so an ACTIVE
+	skill never gets trapped in a reference-only COMBO tripod chain. */
+	bool_t Play_Skill(
+		int32_t iSkillId,
+		bool_t isCombo);
+	/* Animation Tool Save refreshes the scene Character through the same staged
+	runtime loader. An action in flight keeps its current vector alive; the new
+	set commits at the next authoritative action edge. Failure preserves the
+	previously loaded chains. */
+	bool_t Reload_SkillAnimationBindings();
 	bool_t Is_PlayingSkill() const {
 		return nullptr != m_pChain;
 	}
@@ -136,6 +140,7 @@ private:
 #endif
 
 	std::vector<CLIP_CHAIN> m_Chains;
+	std::vector<CLIP_CHAIN> m_PendingChains;
 	/* The chain being played, and how far into it. Null when idle. */
 	const CLIP_CHAIN* m_pChain = { nullptr };
 	int32_t m_iChainStep = {};
@@ -157,6 +162,7 @@ private:
 	HRESULT Ready_PartObjects();
 	void Set_Locomotion(bool_t isMoving);
 	bool_t Load_ClipChains();
+	void Commit_PendingClipChains();
 	/* Plays a clip from its first frame. Set_Animation alone only switches the
 	index, so a clip that already ran would resume at its end -- which chains
 	that repeat a clip do hit. */

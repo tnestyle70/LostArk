@@ -1,0 +1,75 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "LanceMaster",
+  "characterClass": "LANCE_MASTER",
+  "bindings": [
+    {
+      "skillId": 34120,
+      "clips": [
+        "flm_sk_threetalonstrike_01"
+      ]
+    },
+    {
+      "skillId": 34080,
+      "clips": [
+        "flm_sk_assault"
+      ]
+    },
+    {
+      "skillId": 34070,
+      "clips": [
+        "flm_sk_downwardhit"
+      ]
+    },
+    {
+      "skillId": 34150,
+      "clips": [
+        "flm_sk_crushingblow"
+      ]
+    },
+    {
+      "skillId": 34110,
+      "clips": [
+        "flm_sk_crescentsweep",
+        "flm_sk_crescentsweep_custom_5"
+      ]
+    },
+    {
+      "skillId": 34090,
+      "clips": [
+        "flm_sk_dragonkick"
+      ]
+    },
+    {
+      "skillId": 34640,
+      "clips": [
+        "flm_sk_dragonsweep_01",
+        "flm_sk_dragonsweep_02"
+      ]
+    },
+    {
+      "skillId": 34600,
+      "clips": [
+        "flm_sk_gaebolg"
+      ]
+    },
+    {
+      "skillId": 34620,
+      "clips": [
+        "flm_sk_super_gabolg_01_re",
+        "flm_sk_super_gabolg_02_re",
+        "flm_sk_super_gabolg_03"
+      ]
+    },
+    {
+      "skillId": 34010,
+      "clips": [
+        "flm_att_identity1_1_01",
+        "flm_att_identity1_1_02",
+        "flm_att_identity1_1_03",
+        "flm_att_identity1_1_04"
+      ]
+    }
+  ]
+}

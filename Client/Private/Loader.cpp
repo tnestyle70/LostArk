@@ -21,6 +21,7 @@
 #include "PlayableCharacterAssetService.h"
 #include "RuntimeAssetRoot.h"
 #include "Valtan.h"
+#include "ValtanPresentationAssetService.h"
 
 #ifdef _DEBUG
 #include "MapEditorWorkspaceService.h"
@@ -230,9 +231,10 @@ HRESULT CLoader::Ready_For_Lobby()
 
 HRESULT CLoader::Ready_For_CharacterSelect()
 {
+	CValtanPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::CHARACTER_SELECT));
 	using LostArk::Shared::CHARACTER_CLASS_ID;
 	CHARACTER_CLASS_ID initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-
 	if (!CCharacterSelectionState::Try_Get_SelectedClass(initialClass) ||
 		!LostArk::Shared::Is_Supported_Playable_Character_Class(initialClass))
 	{
@@ -307,6 +309,8 @@ HRESULT CLoader::Ready_For_Bern()
 
 HRESULT CLoader::Ready_For_ValtanArena()
 {
+	CValtanPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::VALTAN_ARENA));
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::VALTAN_ARENA));
 	Set_Status(TEXT("VALTAN: arena map"));
@@ -769,56 +773,10 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 
 HRESULT CLoader::Ready_ValtanPresentation(const uint32_t iLevelIndex)
 {
-	const BOSS_ACTOR_ENTRY* pActor =
-		CActorCatalog::Find_Boss("BOSS_VALTAN");
-	if (nullptr == pActor ||
-		pActor->clientPresentationId != "boss.valtan.client.v1")
-	{
-		return E_FAIL;
-	}
-
-	const std::string bodyPath = ResolveAssetPath(
-		pActor->bodyModel);
-	const std::string weaponPath = ResolveAssetPath(
-		pActor->weaponModel);
-	if (bodyPath.empty() || weaponPath.empty())
-		return E_FAIL;
-
-	auto bodyModel = CModel::Create(
+	return CValtanPresentationAssetService::Ensure_Prototypes(
 		m_pDevice,
 		m_pContext,
-		MODEL::ANIM,
-		bodyPath.c_str(),
-		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
-	auto weaponModel = CModel::Create(
-		m_pDevice,
-		m_pContext,
-		MODEL::NONANIM,
-		weaponPath.c_str(),
-		XMMatrixScaling(100.f, 100.f, 100.f));
-	if (nullptr == bodyModel || nullptr == weaponModel)
-		return E_FAIL;
-
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_Component_Model_Valtan"),
-		std::move(bodyModel))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_Component_Model_ValtanWeapon"),
-		std::move(weaponModel))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_GameObject_Body_Valtan"),
-		CBody_Valtan::Create(m_pDevice, m_pContext))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_GameObject_Valtan"),
-		CValtan::Create(m_pDevice, m_pContext))))
-	{
-		return E_FAIL;
-	}
-	return S_OK;
+		iLevelIndex);
 }
 
 unique_ptr<CLoader> CLoader::Create(

@@ -88,9 +88,12 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 			value, "maximumHp", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* maximumResource = Required(
 			value, "maximumResource", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* attackPower = Required(
+			value, "attackPower", DATA_JSON_TYPE::NUMBER);
 		if (nullptr == characterClass || nullptr == maximumHp ||
 			nullptr == maximumResource || maximumHp->Get_Number() <= 0.0 ||
-			maximumResource->Get_Number() <= 0.0)
+			maximumResource->Get_Number() <= 0.0 ||
+			nullptr == attackPower || attackPower->Get_Number() <= 0.0)
 		{
 			return false;
 		}
@@ -102,6 +105,8 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 			maximumHp->Get_Number());
 		profile.iMaximumResource = static_cast<std::uint32_t>(
 			maximumResource->Get_Number());
+		profile.iAttackPower = static_cast<std::uint32_t>(
+			attackPower->Get_Number());
 		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
 			parsedClass) || !playerProfiles.emplace(parsedClass, profile).second)
 		{
@@ -174,6 +179,11 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 	const std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT>* pCooldowns)
 {
 	m_Player.Skills.clear();
+	/* Same formula as the server's Resolve_Damage, for display only: the number a
+	tooltip shows has to match the number the snapshot will subtract. */
+	const auto ownProfile = m_PlayerProfiles.find(characterClass);
+	const std::uint64_t attackPower = m_PlayerProfiles.end() == ownProfile ?
+		0ull : ownProfile->second.iAttackPower;
 	for (const PLAYER_SKILL_DEFINITION& definition :
 		CPlayerSkillCatalog::Get_Skills())
 	{
@@ -189,7 +199,8 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 		state.strInputSlot = definition.strInputSlot;
 		state.strDisplayName = definition.strDisplayName;
 		state.strActionId = definition.strActionId;
-		state.iDamage = definition.iDamage;
+		state.iDamage = static_cast<std::uint32_t>(
+			attackPower * definition.iDamageRatePercent / 100ull);
 		state.iCooldownDurationTicks =
 			(definition.iCooldownMs * SERVER_TICK_HZ + 999u) / 1000u;
 		state.iCooldownEndTick = serverTick;
@@ -225,8 +236,30 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 	m_Boss.strActionId = snapshot.strActionId;
 }
 
+void Client::CCombatHUDViewModel::Apply_DamageEvents(
+	const std::uint32_t serverTick,
+	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events)
+{
+	constexpr std::size_t MAX_RETAINED_DAMAGE_EVENTS = 128u;
+	for (const LostArk::Shared::DAMAGE_EVENT& event : events)
+	{
+		HUD_DAMAGE_EVENT retained{};
+		retained.iServerTick = serverTick;
+		retained.Event = event;
+		m_DamageEvents.push_back(std::move(retained));
+	}
+	if (m_DamageEvents.size() > MAX_RETAINED_DAMAGE_EVENTS)
+	{
+		m_DamageEvents.erase(
+			m_DamageEvents.begin(),
+			m_DamageEvents.begin() +
+				(m_DamageEvents.size() - MAX_RETAINED_DAMAGE_EVENTS));
+	}
+}
+
 void Client::CCombatHUDViewModel::Reset_RuntimeState()
 {
 	m_Player = {};
 	m_Boss = {};
+	m_DamageEvents.clear();
 }

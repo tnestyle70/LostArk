@@ -1,0 +1,53 @@
+{
+  "schema": "lostark.world-gameplay",
+  "formatVersion": 2,
+  "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+  "revision": 2,
+  "placements": [
+    {
+      "placementId": "player.spawn.character-select.party01",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [-772.0, -142.55, 197.0],
+      "yawDegrees": 180.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.character-select.party02",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [-770.0, -142.55, 197.0],
+      "yawDegrees": 180.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.character-select.party03",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [-774.0, -142.55, 197.0],
+      "yawDegrees": 180.0,
+      "enabled": true
+    },
+    {
+      "placementId": "player.spawn.character-select.party04",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [-772.0, -142.55, 199.0],
+      "yawDegrees": 180.0,
+      "enabled": true
+    },
+    {
+      "placementId": "boss.valtan.character-select.lazy",
+      "kind": "boss",
+      "archetypeId": "BOSS_VALTAN",
+      "encounterId": "ENCOUNTER_VALTAN",
+      "position": [-772.0, -142.55, 207.0],
+      "yawDegrees": 180.0,
+      "enabled": false
+    }
+  ]
+}

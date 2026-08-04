@@ -6,11 +6,13 @@
 
 1. 저장소 금지 경계와 완료 조건: `../../AGENTS.md`
 2. 최초 세팅, 빌드, 런타임 구조: `../../CLAUDE.md`
-3. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
-4. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
-5. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
-6. 밸런스 튜닝과 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-7. 최근 통합 검증 증거: `../GB/08-03/2026-08-03_LOSTARK_UNIFIED_FRAMEWORK_HARNESS_RESULT.md`
+3. 통합 데이터 수명·stable ID·publish 구조: `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md`
+4. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
+5. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
+6. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
+7. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
+8. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+9. 최근 통합 검증 증거: `../GB/08-05/2026-08-05_BALANCE_PROVENANCE_IMGUI_MAP_DATA_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -25,6 +27,8 @@
 |---|---|
 | `AGENTS.md` | 팀 전체 금지 규칙이나 완료 조건이 바뀔 때 |
 | `CLAUDE.md` | 경로, 빌드, 최초 세팅, 런타임 사용법이 바뀔 때 |
+| `UNIFIED_DATA_MANAGEMENT_ARCHITECTURE.md` | 데이터 domain 소유권, stable ID graph, authoring/publish/runtime 수명이나 확장 순서가 바뀔 때 |
+| `BALANCE_TOOL_OWNER_HANDOFF.md` | 공식 receipt, F1 Balance Tool, Server 적용·검증 절차가 바뀔 때 |
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |

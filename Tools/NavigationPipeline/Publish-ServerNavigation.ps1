@@ -70,7 +70,9 @@ function Split-NavigationTokens {
 function Convert-NavigationAuthoringGrid {
     param(
         [string]$RelativeSourcePath,
-        [string]$RelativePaintPath
+        [string]$RelativePaintPath,
+        [single]$MaximumStepHeight = 0.0,
+        [switch]$RequireSingleComponent
     )
 
     $sourcePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativeSourcePath))
@@ -206,6 +208,8 @@ function Convert-NavigationAuthoringGrid {
             AreaId = $areaId
             Bytes = $stream.ToArray()
             WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
+            MaximumStepHeight = $MaximumStepHeight
+            RequireSingleComponent = [bool]$RequireSingleComponent
         }
     }
     finally {
@@ -232,9 +236,82 @@ function Assert-NavigationGrid {
         throw "Navigation grid contract is invalid: $($Grid.AreaId)"
     }
 
+    $walkableOffset = 20
+    $heightOffset = $walkableOffset + [int]$cellCount
+    $walkableCount = 0
+    $maximumObservedStep = 0.0
+    for ($cellZ = 0; $cellZ -lt $height; ++$cellZ) {
+        for ($cellX = 0; $cellX -lt $width; ++$cellX) {
+            $index = $cellZ * $width + $cellX
+            if ($bytes[$walkableOffset + $index] -ne 1) { continue }
+            ++$walkableCount
+            $cellHeight = [BitConverter]::ToSingle(
+                $bytes, $heightOffset + 4 * $index)
+            foreach ($neighborIndex in @(
+                $(if ($cellX + 1 -lt $width) { $index + 1 } else { -1 }),
+                $(if ($cellZ + 1 -lt $height) { $index + $width } else { -1 })
+            )) {
+                if ($neighborIndex -lt 0 -or
+                    $bytes[$walkableOffset + $neighborIndex] -ne 1) {
+                    continue
+                }
+                $neighborHeight = [BitConverter]::ToSingle(
+                    $bytes, $heightOffset + 4 * $neighborIndex)
+                $maximumObservedStep = [Math]::Max(
+                    $maximumObservedStep,
+                    [Math]::Abs([double]$cellHeight - $neighborHeight))
+            }
+        }
+    }
+    if ($Grid.MaximumStepHeight -gt 0.0 -and
+        $maximumObservedStep -gt $Grid.MaximumStepHeight + 0.000001) {
+        throw "Navigation grid has an unsafe adjacent step: $($Grid.AreaId) max=$maximumObservedStep limit=$($Grid.MaximumStepHeight)"
+    }
+
+    if ($Grid.RequireSingleComponent) {
+        $firstWalkable = -1
+        for ($index = 0; $index -lt $cellCount; ++$index) {
+            if ($bytes[$walkableOffset + $index] -eq 1) {
+                $firstWalkable = $index
+                break
+            }
+        }
+        if ($firstWalkable -lt 0) {
+            throw "Navigation grid has no walkable component: $($Grid.AreaId)"
+        }
+        $visited = [byte[]]::new([int]$cellCount)
+        $queue = [Collections.Generic.Queue[int]]::new()
+        $queue.Enqueue($firstWalkable)
+        $visited[$firstWalkable] = 1
+        $visitedCount = 0
+        while ($queue.Count -ne 0) {
+            $current = $queue.Dequeue()
+            ++$visitedCount
+            $cellX = $current % $width
+            $cellZ = [Math]::Floor($current / $width)
+            foreach ($neighborIndex in @(
+                $(if ($cellX + 1 -lt $width) { $current + 1 } else { -1 }),
+                $(if ($cellX -gt 0) { $current - 1 } else { -1 }),
+                $(if ($cellZ + 1 -lt $height) { $current + $width } else { -1 }),
+                $(if ($cellZ -gt 0) { $current - $width } else { -1 })
+            )) {
+                if ($neighborIndex -lt 0 -or
+                    $bytes[$walkableOffset + $neighborIndex] -ne 1 -or
+                    $visited[$neighborIndex] -ne 0) {
+                    continue
+                }
+                $visited[$neighborIndex] = 1
+                $queue.Enqueue($neighborIndex)
+            }
+        }
+        if ($visitedCount -ne $walkableCount) {
+            throw "Navigation grid has disconnected walkable islands: $($Grid.AreaId) connected=$visitedCount total=$walkableCount"
+        }
+    }
+
     $world = Get-Content -LiteralPath (Join-Path $repoRoot $Grid.WorldPath) -Raw -Encoding UTF8 | ConvertFrom-Json
     foreach ($placement in @($world.placements | Where-Object {
-        $_.enabled -and $_.kind -in @('playerSpawn','boss') })) {
+        $_.kind -eq 'boss' -or ($_.enabled -and $_.kind -eq 'playerSpawn') })) {
         $cellX = [int][Math]::Floor(([double]$placement.position[0] - $originX) / $cellSize)
         $cellZ = [int][Math]::Floor(([double]$placement.position[2] - $originZ) / $cellSize)
         if ($cellX -lt 0 -or $cellZ -lt 0 -or $cellX -ge $width -or $cellZ -ge $height) {
@@ -250,7 +327,7 @@ function Assert-NavigationGrid {
             throw "Gameplay placement height differs from server navigation: $($placement.placementId)"
         }
     }
-    return "${width}x${height}, cellSize=$cellSize"
+    return "${width}x${height}, cellSize=$cellSize, walkable=$walkableCount, maxStep=$maximumObservedStep"
 }
 
 $grids = @(
@@ -258,7 +335,12 @@ $grids = @(
         -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint'),
     (New-UniformNavigationGrid `
-        -RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json')
+		-RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json'),
+    (Convert-NavigationAuthoringGrid `
+        -RelativeSourcePath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' `
+        -RelativePaintPath 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' `
+        -MaximumStepHeight 0.6 `
+        -RequireSingleComponent)
 )
 
 $validated = foreach ($grid in $grids) {

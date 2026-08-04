@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "AnimationSkillBindingDocument.h"
 #include "CharacterPreviewPanel.h"
 
 #include <filesystem>
@@ -175,6 +176,12 @@ private:
 	void Render_HitDetail(ANIM_EVENT& evt);
 	void Render_AnimationList(const shared_ptr<Engine::CModel>& pModel);
 	void Render_SkillReference(const shared_ptr<Engine::CModel>& pModel);
+	void Render_SkillBindings(
+		const shared_ptr<Engine::CModel>& pModel,
+		const shared_ptr<CCharacter>& pCharacter);
+	void Render_SkillBindingReloadConfirmation(
+		const shared_ptr<Engine::CModel>& pModel,
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 
 	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_Events(const shared_ptr<Engine::CModel>& pModel);
@@ -201,6 +208,20 @@ private:
 	bool_t Load_ClipMap();
 	bool_t Load_ClipNotify();
 	bool_t Load_ClipSeq();
+	bool_t Load_SkillBindings(
+		const shared_ptr<Engine::CModel>& pModel,
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+	bool_t Save_SkillBindings(
+		const shared_ptr<Engine::CModel>& pModel,
+		const shared_ptr<CCharacter>& pCharacter);
+	bool_t Create_SkillBindingDraft(
+		const shared_ptr<Engine::CModel>& pModel,
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+	std::vector<std::string> Collect_ClipNames(
+		const shared_ptr<Engine::CModel>& pModel) const;
+	ANIMATION_SKILL_BINDING* Find_SkillBinding(
+		LostArk::Shared::SKILL_ID skillId);
+	bool_t Is_AnyDocumentDirty() const;
 	/* Milliseconds of clip that play before iIndex in seq, i.e. where that clip
 	starts on the whole-cast clock the .skilltiming rows use. */
 	int32_t Get_ChainOffsetMs(const CLIP_SEQ& seq, int32_t iIndex) const;
@@ -267,6 +288,14 @@ private:
 
 	std::vector<CLIP_SEQ> m_ClipSeqs;
 	bool_t m_bClipSeqLoadAttempted = false;
+
+	ANIMATION_SKILL_BINDING_DOCUMENT m_SkillBindingDocument;
+	bool_t m_bSkillBindingLoadAttempted = false;
+	bool_t m_bSkillBindingDirty = false;
+	bool_t m_bSkillBindingReloadConfirmationRequested = false;
+	int32_t m_iSelectedSkillBinding = -1;
+	int32_t m_iSelectedSkillClip = 0;
+	std::string m_SkillBindingStatus;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand
 	rows, so being able to pull in just hits and cancels matters. */
 	bool_t m_bImportKind[ETOI(EVENT_KIND::END)]{};

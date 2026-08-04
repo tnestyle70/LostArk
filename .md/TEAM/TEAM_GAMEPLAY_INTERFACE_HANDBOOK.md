@@ -19,7 +19,7 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
-Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 socket 없는 3D preview 전용 Level이고, 확정된 class만 이후 월드 입장 요청에 사용한다. Test/Bern/Valtan은 실제 Server의 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Local Preview와 자동 우회 경로는 없다.
+Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 최초 Character Select는 socket 없는 3D preview Level이고, 선택 class와 `Enter Test`의 tokenized command만 Lobby에 제출한다. Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하고 같은 visual map을 Server gameplay로 다시 연다. 재진입 Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 `IWorldEntityCommandSink`를 통해 stable placement ID만 제출하고 Server가 world template/navigation/profile을 검증한 결과를 broadcast한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
 같은 PC 테스트는 `Framework.slnLaunch`의 `Server + Client` profile과 기본 `127.0.0.1:7777` 계약을 사용한다. LAN에서는 Server를 `--bind-address 0.0.0.0`으로 실행하고 각 Client process에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 준다. 개인 IP는 Git에 저장하지 않으며 endpoint 입력 UI와 자동 서버 탐색은 현재 Lobby 범위가 아니다.
 
@@ -126,7 +126,9 @@ CClientReplication::Apply_WorldSnapshot
 
 Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결과를 소유한다. damage, cooldown, resource, hit 여부, 위치 정답은 수정하지 않는다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다.
 
-현재 roster는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 class다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 승인과 presentation mapping을 사용한다. DimensionMaster는 combined body, L/S/P/E 네 정적 기본 무기 파츠, spawn, HUD class identity, IDLE/RUN과 Animation Tool Scene Character 경로까지 닫혔다. `Data/Animation/Reference/DimensionMaster`의 네 문서는 0-row 컨테이너이므로 실제 스킬 추출 데이터가 아니며, stable skill ID와 timing이 생기기 전에는 Q/W와 candidate-only effect를 연결하지 않는다.
+현재 roster는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 class다. 다섯 class의 quick slot ACTIVE 스킬과 LMB COMBO 평타는 모두 Server 승인과 snapshot presentation을 사용한다. `PlayerSkills.json`이 `(characterClass, inputSlot) -> skillId`, kind, timing, comboStages를 소유하고, `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`이 같은 skillId에 연결할 실제 model clip 순서를 소유한다. ACTIVE는 하나 이상의 순차 clip을 재생하고 마지막 pose를 Server `NONE`까지 유지한다. COMBO는 Server `iComboStage`가 지정한 BA 단계로 직접 이동한다. 누락되거나 잘못된 presentation 문서는 spawn/replication을 중단하지 않고 해당 action의 표현만 격리한다.
+
+Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만 저장할 수 있다. 작업자는 key/skill row에서 ACTIVE의 순차 clip 또는 COMBO의 BA1/BA2/BA3/BA4 clip을 지정하고 atomic Save한다. `inputSlot`, `skillId`, `skillKind`, timing, damage와 combo 단계 수는 Tool에서 바꾸지 않는다. `.skilltiming/.clipmap/.animnotify/.clipseq` 및 `Data/Animation/Reference`는 read-only 참고 자료다.
 
 ## 6. UI와 밸런스 데이터
 
@@ -148,6 +150,10 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 - phase
 - server action과 action ID
 
+`Get_DamageEvents()`는 최근 128개 Server `DAMAGE_EVENT`를 server tick과 함께 보관한다. 실제 적용
+damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI가 HP 차이로 damage를
+재계산하지 않는다. F1 Balance Tool은 이 경계로 최근 16개 event를 표시한다.
+
 쿨타임 남은 tick은 `max(0, cooldownEndTick - serverTick)`이며 UI가 별도 timer를 정답으로 만들지 않는다. 표시 damage는 데이터 정의를 읽은 값이고 실제 피해 적용은 Server만 한다.
 
 밸런스 정본:
@@ -156,11 +162,17 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 |---|---|---|
 | `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed | Server spawn, HUD snapshot |
 | `Data/Balance/PlayerSkills.json` | slot, 이름, `skillKind`, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId`, `comboStages` | Server skill, UI definition, Effect presentation |
-| `Data/Balance/DamageProfiles.json` | 실제 정수 damage | Server 판정, UI 표시 |
+| `Data/Balance/DamageProfiles.json` | attack power에 곱하는 damage rate percent | Server 판정, UI 예상 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
+
+Debug F1 `Balance Tool`은 다섯 class와 발탄을 선택해 stats/movement/skill/combo/pattern을 편집하고,
+field provenance와 Server snapshot/damage event를 같은 화면에서 검증한다. Save는 authoring JSON을
+staging한 뒤 변경 field를 `PROJECT_TUNED`로 동기화하고 publisher Validate를 수행한다. Publish 후
+Server 재시작이 필요하며 runtime Hot Reload 버튼은 없다. 세부 작업법은
+`BALANCE_TOOL_OWNER_HANDOFF.md`가 정본이다.
 
 ### 6.1 ImGui authoring에서 제품 이미지 UI로 전환
 
@@ -250,6 +262,10 @@ CGameRoom::Tick
 
 `BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 pattern timeline, `DamageProfiles.json`은 피해량을 소유한다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다.
 
+플레이어 profile의 defense는 발탄 incoming damage에 실제로 사용된다. 원작 Server 공식이 client
+payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며
+`CGameplayCatalog::Apply_Defense` 한 곳에서만 계산한다. boss defense/outgoing 감산은 아직 없다.
+
 수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. Monster runtime/catalog/schema, placeholder enum을 다시 만들지 않는다. 잡몹 요구가 승인되면 실제 archetype, spawn, brain, replication, harness를 별도 수직 슬라이스로 설계한다.
 
 ## 8. MapTool과 gameplay 저장
@@ -287,7 +303,17 @@ Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Ch
 원본 Training Map은 gameplay 문서를 만들지 않고, Bern/Training Map은 navigation 문서를
 추측 생성하지 않는다. Valtan DeployProp 편집은 현재 제외되어 있다.
 
-gameplay kind는 `playerSpawn`, `npc`, `boss`만 지원한다. placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다. NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를 저장하지 않는다.
+gameplay authoring은 formatVersion 2다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`만
+admission한다. placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다.
+NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는
+session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를
+저장하지 않는다.
+
+v2 `CWorldGameplayDocument`에는 `triggerBox`와 `destroyable`의 strict parse/save 구조가 추가됐다.
+`triggerBox`는 half extents, once 정책, typed event를, `destroyable`은 decimal-string
+`deployRuntimePlacementId`와 initial state를 소유한다. 그러나 두 kind는 Server trigger/dynamic nav/
+replication/Client presentation이 아직 없으므로 publisher가 fail-closed로 거부한다. 문서 parser가
+있다는 이유로 제품 runtime 지원 완료라고 판단하지 않는다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
@@ -367,17 +393,18 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 완료:
 
 - 서버 권위 우클릭 이동과 Navigation path
-- Q/W skill command, server approval, action/damage/cooldown/resource
+- 다섯 class 전체 quick slot과 LMB COMBO의 command, server approval, action/damage/cooldown/resource
 - snapshot 기반 Character skill/locomotion 표현
+- Animation Tool의 data-driven key/skill → ordered clip/BA stage authoring, atomic Save, safe action-boundary reload
 - HUD용 player/boss runtime ViewModel
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하는 로컬 payload이며 pack `.3` Hydrate 대상은 아니다.
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용한다. runtime payload는 `Data/AssetPacks.lock.json`의 정확한 pack만 Hydrate/Verify한다.
 
 별도 수직 슬라이스:
 
-- DimensionMaster 고유 skill/action/damage balance와 animation mapping
+- 이동기·스탠스 전환과 skill별 weapon visibility/reattach
 - `Data/UI` layout에서 `CUIObject` image widget을 생성하는 runtime factory
 - 1280×720 reference 좌표 보정, draw-order 기반 2D UI picking과 input arbitration
 - stable UI command binding과 Lobby/Scene/Gameplay typed command service 연결

@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
+    <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+    <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
     <ClInclude Include="..\Public\Character.h" />
     <ClInclude Include="..\Public\CharacterCatalog.h" />
@@ -29,6 +31,9 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
+    <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
+    <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
+    <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
     <ClInclude Include="..\Public\ClientReplication.h" />
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
@@ -96,12 +101,16 @@
   <ItemGroup>
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
+    <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
     <ClCompile Include="..\Private\CharacterCatalog.cpp" />
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
+    <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
+    <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
@@ -172,10 +181,15 @@
     <None Include="..\..\Data\Actors\CharacterCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
+    <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
+    <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents" />
+    <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents" />
+    <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
+    <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipmap" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipseq" />
@@ -205,6 +219,7 @@
     <None Include="..\..\Data\Balance\DamageProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
+    <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
@@ -253,6 +268,8 @@
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\MapCatalog.json" />
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json" />
+    <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navsource" />
+    <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navblockers" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
@@ -261,6 +278,7 @@
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json" />
+    <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json" />
   </ItemGroup>
   <ItemGroup>

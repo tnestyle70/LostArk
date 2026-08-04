@@ -38,6 +38,8 @@ namespace Client
 		bool Update();
 		bool Has_PendingConnectionLoss() const;
 		void Acknowledge_ConnectionLoss();
+		void Reset();
+		bool Has_WorldEntity(std::string_view archetypeId) const;
 
 		std::shared_ptr<CCharacter> Get_LocalCharacter() const;
 

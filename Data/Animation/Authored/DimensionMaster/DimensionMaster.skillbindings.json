@@ -1,0 +1,81 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "DimensionMaster",
+  "characterClass": "DIMENSIONMASTER",
+  "bindings": [
+    {
+      "skillId": 2050110,
+      "clips": [
+        "pc_sp_m_00_sk_sk_dimensionalbreak_01"
+      ]
+    },
+    {
+      "skillId": 2050150,
+      "clips": [
+        "pc_sp_m_00_sk_sk_riftslash_01",
+        "pc_sp_m_00_sk_sk_riftslash_02"
+      ]
+    },
+    {
+      "skillId": 2050220,
+      "clips": [
+        "pc_sp_m_00_sk_sk_momentaryrift"
+      ]
+    },
+    {
+      "skillId": 2050190,
+      "clips": [
+        "pc_sp_m_00_sk_sk_voidtrigger"
+      ]
+    },
+    {
+      "skillId": 2050240,
+      "clips": [
+        "pc_sp_m_00_sk_sk_telekinesisthrust_01",
+        "pc_sp_m_00_sk_sk_telekinesisthrust_04"
+      ]
+    },
+    {
+      "skillId": 2050210,
+      "clips": [
+        "pc_sp_m_00_sk_sk_willowrend"
+      ]
+    },
+    {
+      "skillId": 2050200,
+      "clips": [
+        "pc_sp_m_00_sk_sk_tearingsword_01",
+        "pc_sp_m_00_sk_sk_tearingsword_02"
+      ]
+    },
+    {
+      "skillId": 2050500,
+      "clips": [
+        "pc_sp_m_00_sk_sk_dimensionprison"
+      ]
+    },
+    {
+      "skillId": 2050510,
+      "clips": [
+        "pc_sp_m_00_sk_sk_dimensionthrust_01",
+        "pc_sp_m_00_sk_sk_dimensionthrust_02"
+      ]
+    },
+    {
+      "skillId": 2050540,
+      "clips": [
+        "pc_sp_m_00_sk_sk_super_timewave"
+      ]
+    },
+    {
+      "skillId": 2050010,
+      "clips": [
+        "pc_sp_m_00_sk_att_battle_1_01",
+        "pc_sp_m_00_sk_att_battle_1_02",
+        "pc_sp_m_00_sk_att_battle_1_03",
+        "pc_sp_m_00_sk_att_battle_1_04"
+      ]
+    }
+  ]
+}

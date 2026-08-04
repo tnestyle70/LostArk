@@ -56,7 +56,8 @@ Animation 담당자는 다음을 계속 소유한다.
 - `.animevents`의 point/window marker 편집
 - Effect Tool typed request로 stable `effectAssetId` point marker 생성
 - `.animevents`의 parse → validate → stage → commit Save/Load/Reload
-- Dirty 상태, 선택 event, 실패 메시지와 기존 document 보존
+- `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clip/BA stage 연결
+- event document와 skill binding document의 독립 Dirty 상태, 실패 메시지와 기존 document 보존
 
 Animation Tool의 저장 row는 다음 의미를 가진다.
 
@@ -641,3 +642,109 @@ AnimSet을 실제로 살릴 때는 animated weapon part와 preview target을 함
 Animation Tool은 위 미완료 기능을 로컬 clip 재생이나 임의 part toggle로 우회하지 않는다. Server action이
 필요한 표현은 command -> Server approval -> replicated action -> Character presentation 계약이 생긴 뒤에만
 제품 runtime에 연결한다.
+
+## 15. Key/Skill Animation Binding 작업 절차
+
+### 15.1 기존 데이터 구조에서 확장된 경계
+
+이번 확장은 키, 스킬 수치, 애니메이션을 한 JSON에 합치지 않는다. 각 정본은 다음처럼 분리된다.
+
+| 정본 | 소유 정보 | 수정 담당 |
+|---|---|---|
+| `Data/Balance/PlayerSkills.json` | class, `inputSlot`, `skillId`, `skillKind`, Server timing, resource, range, `comboStages` | Gameplay/Server |
+| `Data/Balance/DamageProfiles.json` | Server damage rate와 판정 profile | Gameplay/Server |
+| `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json` | `animationAssetId`, `characterClass`, skillId별 ordered model clip | Animation |
+| `Data/Animation/Reference`와 `.skilltiming/.clipmap/.animnotify/.clipseq` | 원작 추출·비교·초기 유도 자료 | read-only |
+| Server snapshot | 승인된 `action`, `skillId`, `actionStartTick`, `iComboStage` | Server runtime |
+
+`skillbindings.json`의 저장 schema는 다음 형태다.
+
+```json
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "DimensionMaster",
+  "characterClass": "DIMENSIONMASTER",
+  "bindings": [
+    { "skillId": 2050110, "clips": ["pc_sp_m_00_sk_..."] },
+    { "skillId": 2050010, "clips": ["ba_01", "ba_02", "ba_03", "ba_04"] }
+  ]
+}
+```
+
+문서는 현재 class의 `PlayerSkills.json` 정의를 정확히 한 번씩 전부 포함해야 한다. 알 수 없는/중복/누락
+skillId, 다른 owner class, 현재 model에 없는 clip, COMBO의 `comboStages`와 다른 clip 수는 Save 전에
+거부한다. `inputSlot`, `skillKind`, timing을 중복 저장하지 않으므로 두 정본이 갈라지지 않는다.
+
+### 15.2 Animation 담당자의 실제 작업
+
+1. Server와 Client를 실행해 Lobby에서 `Character Select`로 이동한다.
+2. 작업할 class를 ImGui에서 선택하고 F1 → Animation Tool → `Scene Character`를 선택한다.
+3. 기존 전체 clip 목록에서 확인할 clip을 고르고 Play/Pause/Scrub으로 동작을 확인한다.
+4. `Key -> Skill Animation` 패널에서 원하는 key/skill row를 연다.
+5. ACTIVE 스킬은 `Assign Current Clip`으로 현재 clip을 step에 넣는다. 필요한 경우 step을 추가하고 순서를
+   바꾸거나 제거해 하나 이상의 ordered clip chain을 만든다.
+6. LMB COMBO는 BA1/BA2/BA3/BA4처럼 Server `comboStages` 수만큼 고정된 row에 현재 clip을 각각 지정한다.
+   BA 단계 수 자체는 Animation Tool에서 추가하거나 삭제하지 않는다.
+7. Save를 누른다. Tool은 sibling temporary file에 쓴 뒤 flush, strict reparse/validate, destination replace를
+   수행한다. 실패하면 기존 destination 문서를 유지한다.
+8. 저장 성공 후 실행 중 Character는 새 mapping을 받는다. action 도중 reload한 chain은 즉시 포인터를
+   바꾸지 않고 다음 action 경계에서 commit한다.
+9. Server 연결 Character Select gameplay에서 실제 key 또는 LMB를 입력해 command → approval → snapshot →
+   지정 clip 재생을 확인한다. Remote character도 같은 snapshot stage를 소비하는지 함께 확인한다.
+
+문서가 없거나 잘못됐을 때는 `Create Repair Draft from Current Clip`을 사용한다. 이 기능은 현재 class의 모든
+Server skill을 임시로 채운 완전한 draft를 만들고 Dirty 상태로 남긴다. 작업자는 각 row를 올바른 clip으로
+교체한 뒤 Save해야 한다. 잘못된 문서를 조용히 정상값처럼 채택하거나 spawn 실패로 승격하지 않는다.
+
+### 15.3 재수정과 안전 경계
+
+- 애니메이션만 바꿀 때는 해당 row의 clip/순서만 수정하고 Save한다. key나 skillId를 바꾸지 않는다.
+- key 편성, 새 스킬, combo 단계 수가 바뀌면 Gameplay 담당자가 먼저 `PlayerSkills.json`과 damage 계약을
+  갱신하고 publisher/Server contract를 통과시킨다. 그 다음 Tool의 repair draft로 신규 row를 포함시켜
+  animation을 배정한다.
+- ACTIVE의 마지막 clip은 Server가 `NONE`을 내릴 때까지 마지막 pose를 유지한다. COMBO는 Client가 시간을
+  세어 다음 BA로 넘어가지 않고 Server `iComboStage`가 바뀔 때 해당 단계로 직접 이동한다.
+- presentation 문서 누락/오류/clip miss는 해당 action 표현만 한 번 보고하고 transform, HUD, 다른 player
+  replication과 Character spawn은 계속 진행한다.
+- Dimension Core/Summon과 reference preview는 playable Scene Character가 아니므로 key/skill binding Save
+  대상이 아니다.
+- Effect cue, trail, collider authoring은 이 문서와 별도 정본이다. 특히 collider/damage timing은 계속
+  Server data/publisher 수직 슬라이스로만 변경한다.
+
+### 15.4 현재 class별 row
+
+```text
+Lance Master    Q W E R A S T V ALT_V + LMB(4단)
+Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
+Slayer          Q W E R A S D F V ALT_V + LMB(4단)
+Artist          Q W E R A S V ALT_V + LMB(4단)
+DimensionMaster Q W E R A S D F T V + LMB(4단)
+```
+
+DimensionMaster에는 `ALT_V`가 없다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
+그리므로 이후 합법적으로 추가되는 `Z`, `SPACE`, `RMB` 등의 slot도 숨기지 않는다.
+
+## 16. Character Select Server Arena 검증 흐름 (2026-08-05)
+
+Character Select ImGui 상단의 mode 표시는 읽기 전용이다. Animation 담당자는 socket 없는 Preview에서
+class와 clip mapping을 저작한 뒤 `Enter Test`를 누른다. tokenized TEST command는 Lobby가 Server 승인을
+검증하고, 같은 visual map을 Server Arena로 다시 열 때 기존 socket과 queued snapshot을 one-shot handoff한다.
+Character Select Level 자체는 connect/send/approval을 반복하지 않는다.
+
+```text
+Preview: class 선택 -> F1 Animation Tool -> key/skill row 편집 -> Save -> Enter Test
+   -> Lobby Server approval -> 같은 map Server Arena 재진입
+   -> Q/W/E/R/A/S/D/F/T/V 또는 LMB 입력
+   -> Server approval/snapshot -> 저장한 ACTIVE/COMBO clip 재생 확인
+```
+
+- 저장 정본은 `Data/Animation/Authored/<Class>/<Class>.skillbindings.json`이다.
+- ImGui가 일반 keyboard를 capture해도 gameplay key 검증은 가능하다. 단, InputText 편집 중에는 gameplay
+  command를 보내지 않으며 편집 종료 시 누르고 있던 key도 새 press로 오인하지 않는다.
+- F6는 follow/free camera를 전환한다. free camera에서는 gameplay command를 제출하지 않으며 follow로
+  돌아온 뒤 새 key press부터 다시 제출한다.
+- `Summon Valtan (Lazy)`는 animation 저작 기능이 아니라 Server-authoritative 검증 target 생성 명령이다.
+  첫 요청에서 presentation asset을 준비하며, 중복 요청은 기존 Server entity를 재사용한다.
+- Valtan collider, damage timing, effect cue를 조정할 때도 animation binding JSON에 판정 수치를 넣지 않는다.
+  각 정본 데이터와 publisher를 통해 별도 수직 슬라이스로 변경한다.

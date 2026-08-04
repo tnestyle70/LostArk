@@ -10,8 +10,9 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 |---|---|
 | 빌드, Prototype/Clone, Level/Layer, Binary Asset, 리소스 배포 | `CLAUDE.md` |
 | 계획서, 설계서, 구현 가이드 | 아래 `계획서 규칙`에서 발견한 첫 번째 규칙 파일 |
-| G별 H/CPP/struct/변수 설명, 전체 코드 출력 원칙 | `.md/GB/local.md` |
+| G별 H/CPP/struct/변수 설명, 전체 코드 출력 원칙 | `.md/GB/계획서하네스규칙.local.md`가 있으면 먼저 읽고, 없으면 `.md/GB/local.md` |
 | 기존 작업 재개 | `.md/GB/<MM-DD>/`의 대응 `*_PLAN.md`, `*_RESULT.md` |
+| merge, pull, rebase, 충돌 해결 | `.md/GB/gotchas.md`, 있으면 `.md/GB/gotchas.local.md`, 영향받는 `*_PLAN.md`와 `*_RESULT.md` |
 | 팀 담당 인터페이스, Area 데이터 레이어, 신규 팀원 인계 | `.md/TEAM/README.md`에서 현재 정본 순서대로 읽기 |
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
 | 맵 에셋이 생성됐지만 안 보임, diffuse 누락, 스케일 오류, 레거시 런타임 혼선 | `.md/GB/07-29/gotchas.md` |
@@ -45,12 +46,15 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 
 계획서, 설계서, 구현 가이드를 작성할 때 다음 순서로 규칙 파일을 찾는다.
 
-1. `.md/계획서작성규칙.local.md`: 개인 활성화 파일. Git에 커밋하지 않는다.
-2. `.md/GB/local.md`: Git으로 공유하는 LostArk 계획서·대화 출력 규칙.
-3. `.md/계획서작성규칙.md`: 팀이 합의했을 때만 두는 선택적 root 공유 규칙.
-4. `.md/GB/계획서작성규칙.md`: 전체 코드 계획서의 Git 공유 fallback 규칙.
+1. `.md/GB/계획서하네스규칙.local.md`: 개인 G별 설명·전체 코드·검증 형식. Git에 커밋하지 않는다.
+2. `.md/계획서작성규칙.local.md`: 개인 활성화 파일. Git에 커밋하지 않는다.
+3. `.md/GB/local.md`: Git으로 공유하는 LostArk 계획서·대화 출력 규칙.
+4. `.md/계획서작성규칙.md`: 팀이 합의했을 때만 두는 선택적 root 공유 규칙.
+5. `.md/GB/계획서작성규칙.md`: 전체 코드 계획서의 Git 공유 fallback 규칙.
 
-개인 활성화 파일이 `.md/GB/local.md`를 지시하면 그 문서를 처음부터 끝까지 함께 읽는다.
+`.md/GB/계획서하네스규칙.local.md`가 있으면 처음부터 끝까지 읽고 계획서와 대화 출력의
+형식·문체에 우선 적용한다. 이 파일 또는 개인 활성화 파일이 다른 규칙 파일을 지시하면 그 문서도
+처음부터 끝까지 함께 읽는다.
 `.md/GB/코드작성규칙.local.md`는 이전 설명 원문 보존본이며 현재 출력 규칙으로 직접 사용하지 않는다.
 
 - 먼저 발견한 파일 하나를 처음부터 끝까지 읽고 그 형식과 문체를 따른다.
@@ -105,7 +109,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 ## 고정 런타임 계약
 
 - Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
-- `CHARACTER_SELECT`는 socket을 열지 않는 3D 선택 전용 Level이다. `LV_LOBBY_CLASSSELECT_SL00` visual map과 다섯 class preview를 로드하며 Enter는 선택 class와 tokenized `TEST` command를 commit한 뒤 Lobby의 기존 Server 승인 경로를 재사용한다. 선택 확정 전에는 기존 선택을 바꾸지 않으며, Test/Bern/Valtan은 확정된 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Local Preview와 자동 우회 경로는 존재하지 않는다.
+- `CHARACTER_SELECT`는 최초 진입에서 socket을 열지 않고 `LV_LOBBY_CLASSSELECT_SL00` visual map과 다섯 class preview를 제공한다. Enter Test는 선택 class와 tokenized `TEST` command를 commit하고 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` Server 승인을 받은 뒤 같은 visual map을 Server gameplay로 다시 연다. gameplay 재진입은 승인된 기존 socket을 one-shot handoff로 소비하고 `CClientReplication -> CPlayerController -> IPlayerCommandSink`를 사용해 우클릭 이동과 class quick-slot 스킬을 Server snapshot으로 반영한다. Character Select가 직접 connect/send/approval을 반복하지 않는다. Server는 필수이며 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고 자동 local fallback은 없다. 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Server Arena의 Valtan은 disabled world template의 stable placement ID를 typed command sink로 요청하고 Server가 navigation/profile을 검증해 broadcast한 뒤 Client presentation prototype을 batch lazy-load한다. Bern/Valtan도 확정 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다.
 - Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용한다. Client는 process-local `LOSTARK_SERVER_HOST` 값을 읽고, 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 개인 IP·방화벽 설정·탐색 결과는 `.vcxproj.user` 같은 Git 제외 로컬 설정에만 두고 Git 데이터에 저장하지 않는다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
@@ -140,12 +144,13 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - UI 담당자는 `CLobbyCommandService`와 `CLevelTransitionService`에 command를 제출하고, 전투 HUD는 `CCombatHUDViewModel`의 읽기 전용 player/boss 상태를 소비한다. UI 코드에서 packet 작성, socket 호출, snapshot 파싱, `Change_Level`을 하지 않는다.
 - 입력 담당자는 `CPlayerController -> IPlayerCommandSink` 계약을 사용한다. Controller에서 `CNetworkManager`를 직접 include하지 않는다. Controller는 quick slot 이름과 물리 키만 알고, (class, slot) → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`을 `CPlayerSkillCatalog`로 조회한다. Controller에 skill ID를 하드코딩하지 않는다.
 - Character/Animation 담당자는 `CHARACTER_SPEC`, presentation callback, `CAnimationTargetService`를 사용한다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다. 툴에서 level/layer/part tag/vector index를 추측하지 않는다.
-- 창술사 긴 창 quick slot 9개(`Q W E R A S T V ALT_V`)는 command → server approval → snapshot → Character presentation 계약이 닫혔다. 새 스킬은 `Data/Balance` 정의, Shared command/snapshot, Server 판정, Client presentation, protocol/server harness를 함께 추가할 때만 활성화하며 로컬 우회 재생하지 않는다. `skillKind`가 `ACTIVE`와 `COMBO`를 가르며 좌클릭 평타(34010)가 `COMBO`의 첫 소비자다. 콤보 단계는 Server가 확정해 `SNAPSHOT_PLAYER::iComboStage`로 내려보내고 Client는 단계를 스스로 세지 않는다. 이동기·스탠스 전환은 아직 어느 kind에도 들어가지 않으며 각각 별도 수직 슬라이스로 추가한다.
-- Character Select와 입장 roster는 `LANCE_MASTER, GUNSLINGER, SLAYER, ARTIST, DIMENSIONMASTER` 다섯 class다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 닫혔다. DimensionMaster는 combined body, 네 개의 정적 기본 무기 파츠, Server profile, spawn, HUD class identity, IDLE/RUN과 Animation Tool Scene Character 경로까지 지원한다. reference 4종에는 원작 `DIMENSIONMASTER.loa`와 balance DB에서 추출한 clip/notify/chain/timing 데이터가 들어 있으나, 이는 저작·비교용 참조이며 Server 계약이 아니다. Server 계약이 있는 skill ID가 생기기 전에는 DimensionMaster Q/W 또는 candidate-only effect를 활성화하지 않는다.
+- Character Select와 입장 roster는 `LANCE_MASTER, GUNSLINGER, SLAYER, ARTIST, DIMENSIONMASTER` 다섯 class다. 다섯 class의 quick slot ACTIVE 스킬과 LMB COMBO 평타는 `Data/Balance/PlayerSkills.json`에서 `(characterClass, inputSlot) -> skillId`를 resolve하고 command → Server approval → snapshot → Character presentation 계약을 사용한다. 현재 ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V`이며 DimensionMaster에는 `ALT_V`가 없다. LMB 평타는 각각 `34010/38000/45000/31000/2050010`이고 Server가 `SNAPSHOT_PLAYER::iComboStage`를 확정한다. Client와 Animation Tool은 콤보 단계를 스스로 만들지 않는다.
+- playable skill의 Server 수치 정본은 `Data/Balance/PlayerSkills.json`과 `DamageProfiles.json`, presentation 정본은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`이다. Animation Tool은 Scene Character의 실제 model clip만 현재 class의 skillId에 순서대로 연결해 저장한다. ACTIVE는 하나 이상의 순차 clip, COMBO는 `comboStages`와 정확히 같은 BA 단계 수를 요구한다. `inputSlot`, `skillId`, `skillKind`, timing, damage는 Animation Tool에서 편집하지 않는다. missing/corrupt presentation 문서는 spawn과 Server gameplay를 막지 않고 해당 action 표현만 격리한다. `.skilltiming/.clipmap/.animnotify/.clipseq`와 `Data/Animation/Reference`는 read-only 저작 참고 자료이며 제품 runtime 정본이 아니다. 이동기·스탠스 전환은 아직 별도 수직 슬라이스 범위다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
+- field-level 공식 근거 정본은 `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`이다. publisher는 5 profile, 53 skill definition, 54 damage profile과 Valtan encounter의 모든 저작 field coverage/result 일치를 검사한다. F1 Balance Tool에서 바뀐 field는 receipt 동기화 단계에서 `PROJECT_TUNED`로 분류하며 공식 basis를 수동 유지하지 않는다. Publish 뒤 Server 재시작 전에는 적용 완료가 아니다.
 - 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 정본으로 사용한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
-- Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. 현재 지원하는 player spawn/NPC/boss placement는 map static placement와 별도 gameplay 문서로 저장한다.
+- Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. `Gameplay.world.json` authoring은 formatVersion 2이며 actor placement와 gated `triggerBox`/`destroyable` 구조를 구분한다. 현재 제품 publisher/runtime가 지원하는 kind는 player spawn/NPC/boss뿐이다. trigger/destroyable은 Server authority·dynamic navigation·replication·Client presentation이 닫히기 전까지 publisher가 거부하며 authoring parser 존재만으로 제품 지원 완료 처리하지 않는다.
 - 수업용 `CMonster`와 그 전제를 새 월드 계약으로 승격하지 않는다. Monster runtime/catalog/schema는 현재 통합 범위 밖이며, 실제 요구와 별도 계획·하네스가 승인되기 전에는 placeholder enum이나 빈 catalog도 추가하지 않는다.
 - Valtan 제품 경로의 transform, action, phase, damage 판정은 Server authority다. Client `CValtan`의 로컬 AI는 Development preview 외에 사용하지 않는다.
 - MapTool gameplay 저장은 `Data/Worlds/<AreaId>/Gameplay.world.json`이 정본이다. `Publish-WorldGameplay.ps1`이 Server bootstrap을 생성하며 생성물을 직접 편집하지 않는다.

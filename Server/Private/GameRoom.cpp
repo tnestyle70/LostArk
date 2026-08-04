@@ -83,7 +83,8 @@ LostArk::Server::CGameRoom::CGameRoom(
 		return;
 	}
 	if ((LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
-		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId) &&
+		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId ||
+		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId) &&
 		!m_ServerNavigation.Load(m_WorldBootstrap.Get_AreaId()))
 	{
 		m_strStatus = m_ServerNavigation.Get_Status();
@@ -144,6 +145,11 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::USE_SKILL:
 			Handle_UseSkill(command.iSessionId, command.UseSkill);
 			break;
+		case ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY:
+			Handle_SpawnWorldEntity(
+				command.iSessionId,
+				command.SpawnWorldEntity);
+			break;
 		case ROOM_COMMAND_TYPE::LEAVE:
 			Leave(command.iSessionId, command.eLeaveReason);
 			break;
@@ -153,6 +159,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 		return;
 
+	m_TickDamageEvents.clear();
 	Update_Players(fixedDeltaSeconds);
 	Update_WorldEntities(fixedDeltaSeconds);
 	++m_iServerTick;
@@ -398,6 +405,90 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		actionStartTick);
 }
 
+void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId ||
+		!m_PlayerIdBySessionId.contains(sessionId) || nullptr == session)
+	{
+		Send_WorldEntitySpawnResult(
+			session,
+			request.strPlacementId,
+			WORLD_ENTITY_SPAWN_RESULT::REJECTED,
+			INVALID_NET_ENTITY_ID);
+		return;
+	}
+
+	const WORLD_BOOTSTRAP_PLACEMENT* placement =
+		Find_Placement(request.strPlacementId);
+	if (nullptr == placement || placement->isEnabled ||
+		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind ||
+		placement->strArchetypeId != "BOSS_VALTAN")
+	{
+		Send_WorldEntitySpawnResult(
+			session,
+			request.strPlacementId,
+			WORLD_ENTITY_SPAWN_RESULT::REJECTED,
+			INVALID_NET_ENTITY_ID);
+		return;
+	}
+	const auto existing = std::find_if(
+		m_WorldEntities.begin(),
+		m_WorldEntities.end(),
+		[&request](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.strPlacementId == request.strPlacementId;
+		});
+	if (m_WorldEntities.end() != existing)
+	{
+		if (!Send_WorldEntitySpawned(session, *existing) ||
+			!Send_WorldEntitySpawnResult(
+				session,
+				request.strPlacementId,
+				WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS,
+				existing->iNetEntityId))
+		{
+			session->Request_Close();
+		}
+		return;
+	}
+	if (m_iNextNetEntityId == INVALID_NET_ENTITY_ID)
+	{
+		Send_WorldEntitySpawnResult(
+			session,
+			request.strPlacementId,
+			WORLD_ENTITY_SPAWN_RESULT::REJECTED,
+			INVALID_NET_ENTITY_ID);
+		return;
+	}
+
+	SERVER_WORLD_ENTITY staged{};
+	if (!Build_WorldEntity(*placement, m_iNextNetEntityId, staged))
+	{
+		Send_WorldEntitySpawnResult(
+			session,
+			request.strPlacementId,
+			WORLD_ENTITY_SPAWN_RESULT::REJECTED,
+			INVALID_NET_ENTITY_ID);
+		return;
+	}
+
+	++m_iNextNetEntityId;
+	m_WorldEntities.push_back(std::move(staged));
+	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	if (!Send_WorldEntitySpawnResult(
+		session,
+		request.strPlacementId,
+		WORLD_ENTITY_SPAWN_RESULT::SPAWNED,
+		m_WorldEntities.back().iNetEntityId))
+	{
+		session->Request_Close();
+	}
+}
+
 bool LostArk::Server::CGameRoom::Send_Accepted(
 	const std::shared_ptr<CClientSession>& session,
 	const SERVER_PLAYER& player)
@@ -494,6 +585,36 @@ void LostArk::Server::CGameRoom::Broadcast_Despawned(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Send_WorldEntitySpawnResult(
+	const std::shared_ptr<CClientSession>& session,
+	const std::string& placementId,
+	const LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT result,
+	const LostArk::Shared::NET_ENTITY_ID netEntityId)
+{
+	using namespace LostArk::Shared;
+	S2C_WORLD_ENTITY_SPAWN_RESULT message{};
+	message.strPlacementId = placementId;
+	message.eResult = result;
+	message.iNetEntityId = netEntityId;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT,
+			writer.Get_Buffer());
+}
+
+void LostArk::Server::CGameRoom::Broadcast_WorldEntitySpawned(
+	const SERVER_WORLD_ENTITY& entity)
+{
+	for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+	{
+		(void)playerId;
+		const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+		if (nullptr != session && !Send_WorldEntitySpawned(session, entity))
+			session->Request_Close();
+	}
+}
+
 void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 {
 	using namespace LostArk::Shared;
@@ -521,14 +642,14 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
 		snapshot.iComboStage = player.iComboStage;
+		/* Collect, sort, then truncate: cutting during unordered_map iteration
+		made the surviving cooldowns depend on hash order. Signed difference keeps
+		ordering across a wrapped tick counter. */
 		for (const auto& [skillId, cooldownEndTick] :
 			player.CooldownEndTickBySkillId)
 		{
-			if (cooldownEndTick > m_iServerTick &&
-				snapshot.Cooldowns.size() < MAX_PLAYER_COOLDOWNS)
-			{
+			if (static_cast<std::int32_t>(cooldownEndTick - m_iServerTick) > 0)
 				snapshot.Cooldowns.push_back({ skillId, cooldownEndTick });
-			}
 		}
 		std::sort(snapshot.Cooldowns.begin(), snapshot.Cooldowns.end(),
 			[](const SKILL_COOLDOWN_SNAPSHOT& left,
@@ -536,6 +657,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			{
 				return left.iSkillId < right.iSkillId;
 			});
+		if (snapshot.Cooldowns.size() > MAX_PLAYER_COOLDOWNS)
+			snapshot.Cooldowns.resize(MAX_PLAYER_COOLDOWNS);
 		message.Players.push_back(snapshot);
 	}
 	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
@@ -559,6 +682,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iPhase = entity.iPhase;
 		message.Entities.push_back(std::move(snapshot));
 	}
+	message.DamageEvents = m_TickDamageEvents;
 
 	CPacketWriter writer;
 	if (!Write_Message(writer, message))
@@ -624,6 +748,89 @@ LostArk::Server::CGameRoom::Find_AvailablePlayerSpawn() const
 	return nullptr;
 }
 
+const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
+LostArk::Server::CGameRoom::Find_Placement(
+	const std::string& placementId) const
+{
+	const auto& placements = m_WorldBootstrap.Get_Placements();
+	const auto iter = std::find_if(
+		placements.begin(),
+		placements.end(),
+		[&placementId](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == placementId;
+		});
+	return placements.end() != iter ? &*iter : nullptr;
+}
+
+bool LostArk::Server::CGameRoom::Build_WorldEntity(
+	const WORLD_BOOTSTRAP_PLACEMENT& placement,
+	const LostArk::Shared::NET_ENTITY_ID netEntityId,
+	SERVER_WORLD_ENTITY& outEntity)
+{
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == netEntityId ||
+		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind ||
+		WORLD_BOOTSTRAP_KIND::END == placement.eKind)
+	{
+		m_strStatus = "World entity placement is invalid";
+		return false;
+	}
+
+	SERVER_WORLD_ENTITY staged{};
+	staged.iNetEntityId = netEntityId;
+	staged.strPlacementId = placement.strPlacementId;
+	staged.strArchetypeId = placement.strArchetypeId;
+	staged.strEncounterId = placement.strEncounterId;
+	staged.strPatternId = placement.strPatternId;
+	staged.strActionId = placement.strActionId;
+	staged.strDamageProfileId = placement.strDamageProfileId;
+	staged.eKind = placement.eKind;
+	staged.fPositionX = placement.fPositionX;
+	staged.fPositionY = placement.fPositionY;
+	staged.fPositionZ = placement.fPositionZ;
+	staged.fYawDegrees = placement.fYawDegrees;
+	staged.fPatternMinimumRange = placement.fPatternMinimumRange;
+	staged.fPatternMaximumRange = placement.fPatternMaximumRange;
+	staged.iPatternTelegraphMs = placement.iPatternTelegraphMs;
+	staged.iPatternActiveMs = placement.iPatternActiveMs;
+	staged.iPatternRecoveryMs = placement.iPatternRecoveryMs;
+	if (WORLD_BOOTSTRAP_KIND::BOSS == staged.eKind)
+	{
+		const BOSS_RUNTIME_PROFILE* profile =
+			m_GameplayCatalog.Find_Boss(staged.strArchetypeId);
+		if (nullptr == profile ||
+			profile->strEncounterId != staged.strEncounterId ||
+			0u == m_GameplayCatalog.Find_DamageRatePercent(
+				staged.strDamageProfileId))
+		{
+			m_strStatus = "Boss gameplay profile or damage profile is missing";
+			return false;
+		}
+		staged.iCurrentHp = profile->iMaximumHp;
+		staged.iMaximumHp = profile->iMaximumHp;
+		staged.fEngageDistance = profile->fEngageDistance;
+		staged.fMoveSpeed = profile->fMoveSpeed;
+		staged.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;
+		if (m_ServerNavigation.Is_Loaded())
+		{
+			SERVER_NAV_POINT projected{};
+			if (!m_ServerNavigation.Project_Point(
+				staged.fPositionX,
+				staged.fPositionZ,
+				projected))
+			{
+				m_strStatus = "Boss placement is outside server navigation";
+				return false;
+			}
+			staged.fPositionX = projected.x;
+			staged.fPositionY = projected.y;
+			staged.fPositionZ = projected.z;
+		}
+	}
+	outEntity = std::move(staged);
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 {
 	m_WorldEntities.clear();
@@ -641,53 +848,9 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 			return false;
 		}
 		SERVER_WORLD_ENTITY entity{};
-		entity.iNetEntityId = m_iNextNetEntityId++;
-		entity.strPlacementId = placement.strPlacementId;
-		entity.strArchetypeId = placement.strArchetypeId;
-		entity.strEncounterId = placement.strEncounterId;
-		entity.strPatternId = placement.strPatternId;
-		entity.strActionId = placement.strActionId;
-		entity.strDamageProfileId = placement.strDamageProfileId;
-		entity.eKind = placement.eKind;
-		entity.fPositionX = placement.fPositionX;
-		entity.fPositionY = placement.fPositionY;
-		entity.fPositionZ = placement.fPositionZ;
-		entity.fYawDegrees = placement.fYawDegrees;
-		entity.fPatternMinimumRange = placement.fPatternMinimumRange;
-		entity.fPatternMaximumRange = placement.fPatternMaximumRange;
-		entity.iPatternTelegraphMs = placement.iPatternTelegraphMs;
-		entity.iPatternActiveMs = placement.iPatternActiveMs;
-		entity.iPatternRecoveryMs = placement.iPatternRecoveryMs;
-		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
-		{
-			const BOSS_RUNTIME_PROFILE* profile =
-				m_GameplayCatalog.Find_Boss(entity.strArchetypeId);
-			if (nullptr == profile ||
-				profile->strEncounterId != entity.strEncounterId ||
-				0u == m_GameplayCatalog.Find_Damage(entity.strDamageProfileId))
-			{
-				m_strStatus = "Boss gameplay profile or damage profile is missing";
-				return false;
-			}
-			entity.iCurrentHp = profile->iMaximumHp;
-			entity.iMaximumHp = profile->iMaximumHp;
-			entity.fEngageDistance = profile->fEngageDistance;
-			entity.fMoveSpeed = profile->fMoveSpeed;
-			entity.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;
-			SERVER_NAV_POINT projected{};
-			if (m_ServerNavigation.Is_Loaded())
-			{
-				if (!m_ServerNavigation.Project_Point(
-					entity.fPositionX, entity.fPositionZ, projected))
-				{
-					m_strStatus = "Boss placement is outside server navigation";
-					return false;
-				}
-				entity.fPositionX = projected.x;
-				entity.fPositionY = projected.y;
-				entity.fPositionZ = projected.z;
-			}
-		}
+		if (!Build_WorldEntity(placement, m_iNextNetEntityId, entity))
+			return false;
+		++m_iNextNetEntityId;
 		m_WorldEntities.push_back(std::move(entity));
 	}
 	return true;
@@ -707,7 +870,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			m_GameplayCatalog,
 			m_ServerNavigation.Is_Loaded() ? &m_ServerNavigation : nullptr,
 			fixedDeltaSeconds,
-			updateTick);
+			updateTick,
+			m_TickDamageEvents);
 		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
 			continue;
 		if (!player.hasMoveGoal)
@@ -766,7 +930,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				m_GameplayCatalog,
 				m_ServerNavigation,
 				fixedDeltaSeconds,
-				updateTick);
+				updateTick,
+				m_TickDamageEvents);
 		}
 	}
 }

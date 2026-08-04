@@ -1,36 +1,51 @@
 {
   "schema": "lostark.player-profiles",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "players": [
     {
       "characterClass": "LANCE_MASTER",
-      "maximumHp": 5000,
-      "maximumResource": 100,
-      "moveSpeed": 6.0
+      "maximumHp": 5500,
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 25,
+      "attackPower": 100,
+      "defense": 105,
+      "moveSpeed": 2.95
     },
     {
       "characterClass": "GUNSLINGER",
       "maximumHp": 5000,
-      "maximumResource": 100,
-      "moveSpeed": 6.0
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 25,
+      "attackPower": 100,
+      "defense": 95,
+      "moveSpeed": 2.95
     },
     {
       "characterClass": "SLAYER",
-      "maximumHp": 5000,
-      "maximumResource": 100,
-      "moveSpeed": 6.0
+      "maximumHp": 5500,
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 25,
+      "attackPower": 100,
+      "defense": 110,
+      "moveSpeed": 2.95
     },
     {
       "characterClass": "ARTIST",
       "maximumHp": 5000,
-      "maximumResource": 100,
-      "moveSpeed": 6.0
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 25,
+      "attackPower": 100,
+      "defense": 90,
+      "moveSpeed": 2.95
     },
     {
       "characterClass": "DIMENSIONMASTER",
-      "maximumHp": 5000,
-      "maximumResource": 100,
-      "moveSpeed": 6.0
+      "maximumHp": 5250,
+      "maximumResource": 1000,
+      "resourceRegenPerSecond": 25,
+      "attackPower": 100,
+      "defense": 100,
+      "moveSpeed": 2.95
     }
   ]
 }
