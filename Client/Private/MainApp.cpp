@@ -514,7 +514,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::EFFECT:
 		if (nullptr == m_pEffectTool)
-			m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice);
+			m_pEffectTool = make_unique<CEffect_Tool>();
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)

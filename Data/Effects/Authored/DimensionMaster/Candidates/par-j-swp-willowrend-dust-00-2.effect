@@ -1,9 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-j-swp-willowrend-dust-00-2" name="par_j_swp_willowrend_dust_00_2" provenance=DERIVED_CONVERSION duration=0.5 warmup=0
-
-EMITTER id=2960 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
-  MODULE id=2961 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-  MODULE id=2962 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:2,0.05:1.98714,0.1:1.95023,0.15:1.89175,0.2:1.81417,0.25:1.71997,0.3:1.61164,0.35:1.49166,0.4:1.3625,0.45:1.22665,0.5:1.08659,0.55:0.944795,0.6:0.80375,0.65:0.665935,0.7:0.533829,0.75:0.409913,0.8:0.296667,0.85:0.196573,0.9:0.112109,0.95:0.045759,1:0
-  MODULE id=2963 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.2,0.2,0.2 shape=CYLINDER radius=0.1 inner=0 height=0.01 surface=0
-  MODULE id=2964 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.4,1:1 g=0:1.2,1:1 b=0:1.6,1:1 a=0:0.5,1:0.5
-  MODULE id=2965 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=64 start=0 end=31 loop=1 reltime=1

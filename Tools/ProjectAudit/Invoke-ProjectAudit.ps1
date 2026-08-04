@@ -617,15 +617,58 @@ try {
 	Add-Check 'source.no-course-sample-root' (
 		-not (Test-Path -LiteralPath 'astar') -and
 		-not (Test-Path -LiteralPath '99.수업') -and
-		-not (Test-Path -LiteralPath '_work\resource-layout-backup\legacy-map-packs\dev-lol-annie') -and
-		-not (Test-Path -LiteralPath 'Data\Effects\Editor\IntakeTest')) 'course and legacy smoke samples are quarantined outside the repository'
+		-not (Test-Path -LiteralPath '_work\resource-layout-backup\legacy-map-packs\dev-lol-annie')) 'course and legacy smoke samples are quarantined outside the repository'
+
+	$effectDocumentHeader = Get-Content -LiteralPath 'Client\Public\Effect_AuthoringDocument.h' -Raw
+	$effectToolHeader = Get-Content -LiteralPath 'Client\Public\Effect_Tool.h' -Raw
+	$effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
+	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
+	$engineImGuiSource = Get-Content -LiteralPath 'Engine\Private\ImGuiLayer.cpp' -Raw
+	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$removedEffectPaths = @(
+		'Client\Public\Effect_Types.h',
+		'Client\Public\Effect_AssetIO.h',
+		'Client\Private\Effect_AssetIO.cpp',
+		'Client\Public\Effect_ParticleSimulator.h',
+		'Client\Private\Effect_ParticleSimulator.cpp',
+		'Client\Public\Effect_Runtime.h',
+		'Client\Private\Effect_Runtime.cpp',
+		'Client\Public\Effect_ResourceCatalog.h',
+		'Client\Private\Effect_ResourceCatalog.cpp')
+	$removedEffectPathHits = @($removedEffectPaths |
+		Where-Object { Test-Path -LiteralPath $_ })
+	$authoredEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectIntakeFiles = @(Get-ChildItem -LiteralPath 'Tools\EffectResourceIntake' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectShaderFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\ShaderFiles' -File -Filter 'Shader_Effect*' -ErrorAction SilentlyContinue)
+	$legacyEffectSymbolHits = @($clientSourceFiles | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC')
+	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|Shader_Effect|Data\\Effects\\Authored')
+	$legacyEffectEntry =
+		$clientEntrySource -match 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC|--effect-' -or
+		$engineImGuiSource -match '--effect-'
+	$effectG1DocumentShape =
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*1u' -and
+		$effectDocumentHeader -match 'enum class EFFECT_ELEMENT_KIND[\s\S]*MESH,[\s\S]*SPRITE,[\s\S]*PARTICLE,[\s\S]*DECAL,[\s\S]*TRAIL,[\s\S]*END' -and
+		$effectDocumentHeader -match 'struct EFFECT_DOCUMENT_DESC[\s\S]*strEffectAssetId[\s\S]*strDisplayName[\s\S]*Elements' -and
+		$effectToolHeader -match 'optional<EFFECT_DOCUMENT_DESC>\s+m_ActiveDocument' -and
+		$effectToolHeader -match 'm_eSelectedEffectType\s*=\s*EFFECT_ELEMENT_KIND::MESH' -and
+		$effectToolSource -match 'Is_StableEffectAssetId' -and
+		$effectToolSource -match 'Try_CreateDocument' -and
+		$effectToolSource -match 'Discard_ActiveDocument' -and
+		$effectToolSource -match '"Mesh",\s*"Sprite",\s*"Particle",\s*"Decal",\s*"Trail"' -and
+		$effectToolSource -match 'LostArk Effect Tool###LostArkEffectToolG1' -and
+		$effectToolSource -notmatch 'filesystem|ifstream|ofstream|GetOpenFileName|ID3D11'
+	Add-Check 'effect.g1-document-boundary' (
+		$removedEffectPathHits.Count -eq 0 -and
+		$authoredEffectFiles.Count -eq 0 -and
+		$effectIntakeFiles.Count -eq 0 -and
+		$effectShaderFiles.Count -eq 0 -and
+		$legacyEffectSymbolHits.Count -eq 0 -and
+		$legacyEffectProjectHits.Count -eq 0 -and
+		-not $legacyEffectEntry -and
+		$effectG1DocumentShape) "paths=$($removedEffectPathHits.Count) authored=$($authoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry document=$effectG1DocumentShape"
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"
-
-    $effectCookSource = Get-Content -LiteralPath 'Tools\EffectResourceIntake\Cook-SelectedEffectAsset.ps1' -Raw
-    $legacyEffectCookHits = @($effectCookSource | Select-String -Pattern 'WintersAssetConverter|\.wmesh|\.wmat|CCookedModel' -AllMatches)
-    Add-Check 'effect.no-legacy-mesh-cook' ($legacyEffectCookHits.Count -eq 0) "hits=$($legacyEffectCookHits.Count)"
 
     $legacyLaunchHits = @($clientSourceFiles | Select-String -Pattern 'CLIENT_SCENARIO|CLIENT_ENTRY_MODE|LOCAL_PREVIEW|CClientLaunchOptions|CLevelCatalog|COfflinePlayerPreview|--smoke|--scenario')
     Add-Check 'source.no-client-runtime-harness' (
@@ -814,29 +857,6 @@ try {
     Add-Check 'character.presentation-boundary' (
         $characterLogicBoundaryHits.Count -eq 0 -and
         $characterSpecSource -match 'Update_Presentation') "forbiddenCalls=$($characterLogicBoundaryHits.Count)"
-
-    $effectRuntimeSource = Get-Content -LiteralPath 'Client\Private\Effect_Runtime.cpp' -Raw
-    $effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
-    Add-Check 'effect.resource-confinement' ($effectRuntimeSource -notmatch 'RequestedPath\.is_absolute\(\)\s*&&' -and $effectToolSource -notmatch 'Candidates\[\][\s\S]{0,120}RequestedPath') 'absolute path candidates rejected'
-	$dimensionmasterEffectAdmission = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_admission.json'
-	$dimensionmasterEffectCandidates = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_candidates.json'
-	$dimensionmasterEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored\DimensionMaster\Candidates' -File -Filter '*.effect')
-	$dimensionmasterEffectTextures = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.dds')
-	$dimensionmasterEffectModels = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.wmodel')
-	Add-Check 'effect.dimensionmaster-candidate-admission' (
-		$dimensionmasterEffectAdmission.schema -eq 'lostark.effect-authoring-admission' -and
-		$dimensionmasterEffectAdmission.status -eq 'candidate_only' -and
-		$dimensionmasterEffectAdmission.resourceRoot -eq 'Effect/DimensionMaster' -and
-		[int]$dimensionmasterEffectAdmission.summary.particleSystemCandidateCount -eq 459 -and
-		[int]$dimensionmasterEffectAdmission.summary.effectFileCount -eq 459 -and
-		[int]$dimensionmasterEffectAdmission.summary.runtimeTextureCount -eq 693 -and
-		[int]$dimensionmasterEffectAdmission.summary.runtimeMeshCount -eq 139 -and
-		[int]$dimensionmasterEffectCandidates.count -eq 459 -and
-		@($dimensionmasterEffectCandidates.rows).Count -eq 459 -and
-		$dimensionmasterEffectFiles.Count -eq 459 -and
-		$dimensionmasterEffectTextures.Count -eq 693 -and
-		$dimensionmasterEffectModels.Count -eq 139 -and
-		$effectToolSource -match 'recursive_directory_iterator') "effects=$($dimensionmasterEffectFiles.Count) textures=$($dimensionmasterEffectTextures.Count) models=$($dimensionmasterEffectModels.Count) status=$($dimensionmasterEffectAdmission.status)"
 
     $materialReaderSource = Get-Content -LiteralPath 'Engine\Private\BinaryAsset\Winters\WMaterialReader.cpp' -Raw
     $modelSource = Get-Content -LiteralPath 'Engine\Private\Model.cpp' -Raw

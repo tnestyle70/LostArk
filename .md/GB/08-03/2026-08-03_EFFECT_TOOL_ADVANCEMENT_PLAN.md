@@ -1,255 +1,674 @@
-# 2026-08-03 Effect 툴 발전 계획 (참조 영상 01~02 패리티 마감 + 게임플레이 적용)
+# Effect Tool 완전 재구축 계획
 
-참조 이미지: `C:\Users\user\Desktop\툴\01_EffectTool_Texture_EffectDetail.png`,
-`02_EffectTool_Mesh_Emissive.png`
-— Effect Type 5종(Mesh/Texture/Particle/Decal/Trail), 채널 5종(Base/Noise/Mask/
-Emissive/Dissolve), UV 시퀀스/타일, 빌보드, 블룸/왜곡 강도, 잔상, 이름 있는
-Data Files 저장/로드.
+기존 Effect Tool 발전 계획을 폐기하고 2026-08-04 사용자 결정에 따라 처음부터 다시 시작한다.
+G0는 참고 화면의 `Effect Type` 다섯 선택지만 ImGui에 만들었다. G1은 저장이나 GPU resource 없이
+안정 ID를 가진 Effect authoring document 한 건을 메모리에 생성·폐기하는 수명만 추가한다.
 
-작성 모드: STRUCTURE_FIRST. 내부 슬라이스 A~C로 나누며 한 번에 하나만 구현한다.
+참고 이미지:
 
-## 0. 현재 체크포인트 — 패리티 실측표
+- `C:/Users/user/Desktop/툴/10_EffectTool_Integrated_Workspace.png`
+- SHA-256: `1403d9b11189a09220d0f0d308be33b7a70a24e3ad623008d336afa439bcc885`
 
-우리 `CEffect_Tool`/`CEffect_Runtime`은 참조 영상의 어소링 기능 대부분을 이미
-갖고 있다. 참조 영상 UI 항목 대비:
-
-| 참조 영상 기능 | 우리 상태 |
-|---|---|
-| Effect Type: Texture(빌보드 스프라이트)/Particle/Trail | 있음 — SPRITE/BEAM/RIBBON/ANIM_TRAIL 이미터 |
-| Effect Type: Mesh | 있음 — MESH 이미터(.wmesh/.wskel/.wanim, CModel 단일 경로) |
-| Effect Type: **Decal** | **없음** — 이미터 타입에 DECAL 부재 (슬라이스 A) |
-| 채널 텍스처(Base/Noise/Mask/Emissive/Dissolve) | 부분 — 실측 매핑: Base→strTextureAssetId(g_Texture), Mask→strOpacityTextureAssetId(opacityMask+임계값), Dissolve→strDissolveTextureAssetId, Noise→strDistortionTextureAssetId. **Emissive는 텍스처 슬롯 없음**(`fEmissiveStrength` 스칼라만, Effect_Types.h:145-160) → 슬라이스 A |
-| UV 시퀀스(IsSequence/TileCount/TileIndex/Term) | 있음 — SubUV 모듈(CPU Calculate_UVRect) |
-| UV Speed/Wave/Start | 있음 — g_vUVTiling/Offset/Panner |
-| Billboard | 있음 — 스프라이트 경로 |
-| Bloom/Distortion 강도 | 있음 — MRT_SceneHDR(SceneHDR+Distortion) → 디퍼드 블룸/Final |
-| Radial Time/Intensity(방사형 UV 왜곡) | **없음** — Client/Engine 셰이더 전체에 radial/polar UV 항 부재(grep 0건) → 슬라이스 A |
-| Life/Delay/AfterImage(잔상) | Life/Delay 있음. 잔상 모듈은 **부재 확정**(Client 전역 grep 0건) — 본 행렬 스냅샷이 필요한 별도 시스템이라 후속 단계로 유예 |
-| 이름 있는 Data Files 저장/로드 | 있음 — Data/Effects/Authored/<id>.effect (LOSTARK_EFFECT 5) + Save As/Open/Refresh |
-| All Effects(Time Reset All/Delete/Clear All + 인스턴스 목록) | 부분 — 전역 1슬롯 프리뷰의 Play/Pause/Restart만. 다중 스폰 인스턴스 목록·일괄 제어는 없음 → 후속 단계(슬라이스 C의 pArg 다중 인스턴스화가 기반) |
-
-즉 "완벽하게 동일하게"의 잔여분은 Decal·Emissive 텍스처 슬롯·Radial UV(이상
-슬라이스 A)와 멀티 스폰 프리뷰·잔상(후속 유예)으로 확정됐고, 구조적 갭은
-**성능과 적용**이다:
-
-- **성능**: `Render_SpriteEmitter`가 파티클 1개당 1드로우(상수 바인드 포함).
-  `CVIBuffer_Instance`는 추상 기반만 있고 구체 서브클래스가 저장소에 0개.
-- **적용**: 게임플레이 트리거가 전무. `CEffect_Runtime`은 프로토타입/레이어에
-  등록된 적 없고, 유일 인스턴스를 툴이 수동 구동하며, 에디터→런타임 다리는
-  전역 1슬롯(`Publish_Preview`). `PlayerSkills.json`에 이펙트 필드 없음,
-  `Play_Skill`은 애니메이션 CLIP_CHAIN만 재생. `.weffect` 런타임 소비자/퍼블리셔 없음.
-- WORLD/LOCAL 시뮬레이션 공간이 직렬화만 되고 미적용, 본 어태치(strSourceBone)
-  저장만 되고 미소비.
-
----
-
-## 슬라이스 A — DECAL 이미터 + 패리티 잔여 마감
-
-### A-1. 완료 조건
-
-1. 이미터 타입 DECAL 추가: 표면에 투영되는 사각 데칼(위치+법선 기준 정렬,
-   페이드 인/아웃, 채널 텍스처 재사용).
-2. 확정된 매핑 공백을 보강한다: `EFFECT_MATERIAL_DESC`에 emissive 텍스처
-   asset id 슬롯 추가(+`Shader_EffectMaterial.hlsli`에 g_EmissiveTexture 항과
-   `Bind_EffectMaterialResources` 바인드), Radial Time/Intensity(방사형 UV
-   왜곡) 파라미터 추가. 저장 포맷 왕복(Validate_RoundTrip)까지 통과.
-   Noise→distortion·Mask→opacity는 기존 슬롯으로 매핑 종결이며, 잔상은
-   후속 단계로 유예한다(0절 표 참조).
-3. 기존 .effect 파일 하위 호환: 스키마 버전 5→6 승격 시 5 로드 허용
-   (AssetIO가 이미 4+5를 수용하는 전례를 따른다).
-
-### A-2. 설계 요점 (파일 책임)
+## 1. C1~C8 관점
 
 ```text
-수정 Client/Public/Effect_Types.h: EFFECT_EMITTER_TYPE에 DECAL 추가.
-  데칼 전용 desc(투영 크기, 표면 오프셋, 페이드 곡선 파라미터).
-  스키마 버전 상수 승격. 새 필드 기본값은 "없던 시절과 동일 동작".
-수정 Client/Private/Effect_AssetIO.cpp: 새 키 직렬화 + 구버전 로드 기본값.
-수정 Client/Private/Effect_Runtime.cpp: Render_DecalEmitter 추가.
-  1차 구현은 표면 위 오프셋 쿼드(월드 정렬)로 시작 — 깊이 재투영식 풀 데칼은
-  G-Buffer 접근이 필요한 별도 렌더 작업이라 후속으로 분리. Target_Depth를
-  이미 소프트 파티클로 샘플하므로 접촉 페이드는 1차에서도 가능.
-수정 Client/Bin/ShaderFiles/Shader_EffectPrimitive.hlsl 또는 데칼 전용 패스:
-  기존 DefaultTechnique Alpha/Additive 2패스 구조 유지, 패스 추가는 끝에만.
-수정 Client/Private/Effect_Tool.cpp: 타입 콤보에 DECAL 노출 + 전용 패널 절.
+C1 기준계          G0에는 좌표, 파일 ID, runtime transform이 없다.
+C2 이동>계산       중요: 파일 IO와 simulation을 모두 제거하고 ImGui selection만 남긴다.
+C3 공유는 비싸다   Animation/Preview를 Effect Tool 안으로 복사하지 않는다.
+C4 수명은 선언된다 중요: CMainApp이 Debug Effect Tool을 만들고 종료 때 파괴한다.
+C5 이산화와 오차   G0에는 time/frame/particle 수치가 없다.
+C6 가지치기        중요: 구 effect source/data/shader/intake 소비자를 함께 제거한다.
+C7 권위와 정합성   선택 enum은 아직 저장 포맷이나 runtime 계약이 아닌 Tool session state다.
+C8 검증이 병목     Debug/Release build와 F1 수동 화면 확인을 분리한다.
 ```
 
-### A-3. 검증
+## 2. 문제 해결 ①~⑤
 
-Validate_RoundTrip(신규 필드 포함), 구버전 .effect 로드 후 저장 시 데이터 보존,
-HDR readback 스모크(`render.hdr-readback`)가 기존 수치 유지(데칼 미사용 씬),
-데칼 사용 씬 눈 확인.
+① 문제·제약: 구 Effect 구현은 4천 줄 이상의 runtime/data/editor가 결합됐고 참고 화면과 새 Tool 본질을 단계적으로 설명하기 어렵다.
+② 단순 해법의 문제: C++ 파일만 지우면 Client CLI smoke, HLSL, ProjectAudit, 459개 Data project item이 고아가 된다.
+③ 해결 방식: 구 계약의 모든 소비자를 함께 제거하고 `Effect_Tool.h/.cpp`만 새 selection-only shell로 작성한다.
+④ 비교: 참고 화면은 Type, resource palette, viewport, detail, instance, data window가 있지만 G0는 첫 Type 행만 구현한다.
+⑤ 대가: G0는 effect 생성·표시·저장 기능이 전혀 없고 다음 G부터 한 계약씩 검증하며 추가한다.
 
-검토 Breakpoint와 관찰값: 스키마 5 파일 로드 분기(신규 필드가 기본값으로
-채워지는가) → 저장 직전 desc의 DECAL/emissive/radial 필드 값 → 재로드 후 동일
-값 왕복 → 기록된 헤더 버전이 6인지.
-
----
-
-## 슬라이스 B — GPU 스프라이트 인스턴싱
-
-### B-1. 완료 조건
-
-1. 스프라이트 이미터가 파티클 N개를 1드로우(DrawIndexedInstanced)로 렌더.
-2. 동일 이펙트의 화면 결과가 기존과 시각적으로 동일(HDR readback 수치로 회귀).
-3. 프로파일러 카운터로 드로우 콜 감소 확인(기존 Profiler 오버레이 활용).
-
-### B-2. 설계 요점
+## 3. 참고 이미지에서 읽은 UI 구조
 
 ```text
-신설 Engine 파생: CVIBuffer_Instance 최초의 구체 서브클래스
-  (예: CVIBuffer_Rect_Instance). 기반 클래스의 이중 스트림 바인드 +
-  DrawIndexedInstanced + 프로파일러 카운터는 이미 동작 — 서브클래스는
-  슬롯1 인스턴스 정점 레이아웃과 동적 버퍼 갱신만 소유한다.
-  근거: "두 번째 런타임 경로 금지"는 동일 역할의 중복 금지다. 추상 기반의
-  최초 구현은 기존 경로의 완성이며, 맵 배치 인스턴싱(CModel::Render_Instanced +
-  VTXMESHINSTANCE)과 같은 사상이다.
-인스턴스 정점: 위치/크기/회전/틴트/UVRect — 현재 파티클당 상수로 바인드하던
-  값들을 인스턴스 스트림으로 이동.
-수정 Shader_EffectSprite.hlsl: 인스턴스 입력 시맨틱 추가 버전의 VS.
-  (Shader_VtxMeshMapInstance.hlsl의 슬롯1 레이아웃 선례를 따른다.)
-수정 Effect_Runtime.cpp Render_SpriteEmitter: 파티클 루프 -> 인스턴스 버퍼
-  채우기(Map/Discard, 파티클 상한은 기존 캡 유지) -> 1회 드로우.
-  동적 버퍼는 이미터 rebuild 시 상한 크기로 생성, 렌더 루프 할당 금지.
+Effect Tool
+  Effect Type: Mesh / Texture / Particle / Decal / Trail
+  Reset / CreateEffect / resource update
+  resource palette: Base / Noise / Mask / Emissive / Dissolve
+
+Model View
+  실제 scene/model/effect preview
+
+Effect Detail
+  선택 effect의 위치·회전·스케일·수명 등 속성
+
+All Effects
+  preview instance reset/delete/clear
+
+Data Files
+  named authoring document save/load
 ```
 
-### B-3. 검증
+이것은 한 화면의 배치일 뿐 데이터 소유권은 합치지 않는다. Effect asset은 effect-local 모양과 수명,
+Animation cue는 clip time과 attachment binding, Preview owner는 현재 model pose와 anchor transform을 소유한다.
 
-동일 .effect의 before/after 스크린 비교 + HDR readback 평균 오차 허용치 내,
-파티클 수 스윕(1k/10k/65k)에서 프레임 시간 로그, Begin/End_MRT 균형 유지.
+## 4. 삭제·보존 범위
 
-검토 Breakpoint와 관찰값: Map/Discard 직후 채운 인스턴스 count == 살아있는
-파티클 count, 프로파일러 드로우 콜 카운터 N→1 감소, 인스턴스 스트라이드와
-슬롯1 입력 레이아웃 일치.
+삭제:
 
----
+- `Client/Public/Effect_Types.h`
+- `Client/Public|Private/Effect_AssetIO.*`
+- `Client/Public|Private/Effect_ParticleSimulator.*`
+- `Client/Public|Private/Effect_Runtime.*`
+- `Client/Public|Private/Effect_ResourceCatalog.*`
+- `Client/Bin/ShaderFiles/Shader_Effect*.hlsl|hlsli` 4개
+- `Tools/EffectResourceIntake`의 Git 관리 파일 전체
+- `Data/Effects/Authored`의 구 포맷 `.effect` 459개
+- `Client/Default/Client.cpp`의 `--effect-*` CLI와 구 parser/simulator smoke
+- 위 파일의 `Client.vcxproj`, `.filters`, `ProjectAudit` 참조
 
-## 슬라이스 C — 게임플레이 적용 (스킬 → 이펙트 수직 슬라이스)
+새 전체 교체:
 
-가장 크고, Data → (Shared/Server 판단) → Client 프레젠테이션 → 하네스를 관통한다.
-핵심 원칙: **서버 승인 경로에 이펙트를 싣되, 이펙트는 클라 연출 전용이다.**
-서버는 새 정보를 만들 필요가 없다 — 이미 스냅샷으로 오는 action/skillId가
-트리거의 전부다. 따라서 Shared/Server 계약 변경은 **불필요**하다는 것이 이 설계의
-결론이다(스냅샷의 PLAYER_ACTION_STATE + SKILL_ID를 클라가 이펙트로 매핑).
+- `Client/Public/Effect_Tool.h`
+- `Client/Private/Effect_Tool.cpp`
 
-### C-1. 완료 조건
+보존:
 
-1. `Data/Balance/PlayerSkills.json`의 스킬 항목에 선택적 `effectId` 필드(클라
-   연출 참조) — publisher(`Publish-GameplayBalance.ps1`) 검증 목록에 같은 변경으로
-   추가(Assert-ExactProperties가 미지 필드를 거부하므로 동시 수정 필수).
-2. Q(34060) 사용 시: 서버 승인 → 스냅샷 → `Apply_NetworkAction` → 스킬 매핑된
-   이펙트가 시전자 위치에서 재생되고 수명 종료 시 정리된다.
-3. Local Preview는 폐기한다. 실제 Server 승인 → snapshot presentation 경로만 지원한다.
-4. 이펙트 정의는 `.weffect`를 퍼블리셔가 `Client/Bin/DataFiles/Effects/`로 승격,
-   로더가 레벨 진입 시 선로드(매 프레임 파일 IO 금지 계약 준수).
-5. `.weffect` 산출물의 Git 배포 갈래를 **구현 착수 전 팀 합의로 확정**한다.
-   현재 `*.weffect`는 `.gitattributes`(LFS)에도 `.gitignore`에도 없어, 이대로
-   승격하면 비-LFS raw 바이너리가 커밋되거나 미커밋 누락으로 팀원 런타임 입력이
-   빠진다. 권장 (a): Server bootstrap처럼 로컬 생성물 취급 — Git 정본은
-   `Data/Effects/Authored/*.effect` 텍스트뿐이고 `.weffect`는 퍼블리셔가
-   재생성하며, ignore 규칙은 `!/Client/Bin/DataFiles/**` 부정 규칙(.gitignore:75)
-   **뒤에** 경로 한정(`/Client/Bin/DataFiles/Effects/`)으로 넣어야 실제로 먹힌다.
-   대안 (b): `.gitattributes`에 `*.weffect` LFS 패턴을 추가해 승인된 LFS 입력으로
-   승격(.mapset 계열 선례). 대안 (c): 리소스 팩 payload 이관.
+- Animation Tool, AnimationAuthoringBridge, Preview Model/Character 경로
+- `Data/Effects/SourceCatalog`, `SourceExtracted`: 로컬 원본 추출 증거이며 새 runtime 정본이 아니다.
+- `Client/Bin/Resources/Effect`: 외부 immutable resource pack payload이며 소스 변경에 포함하지 않는다.
+- 날짜별 기존 RESULT와 review 문서: 당시 구현 증거이며 현재 정본으로 소비하지 않는다.
 
-### C-2. 구조 변경 지도
+## 5. 자료구조와 불변식
 
 ```text
-1) CEffect_Runtime 다중 인스턴스화:
-   - Clone(pArg)의 pArg에 이펙트 초기화 desc(EFFECT_ASSET_DESC 참조 + 월드
-     트랜스폼 + 수명 정책)를 도입. 전역 Publish_Preview 다리는 툴 프리뷰
-     전용으로 유지하고, 게임플레이 인스턴스는 pArg 경로만 사용한다(두 경로의
-     소유권이 겹치지 않게 — 다리는 에디터, pArg는 게임).
-   - CLoader::Ready_For_Level_*에서 Prototype_GameObject_EffectRuntime 등록,
-     Layer_Effect 클론. 표준 5단계 GameObject 레시피 그대로.
-2) 신설 Client/Public·Private/EffectPlaybackService.{h,cpp}(가칭):
-   존재 이유: "어느 스킬이 어느 이펙트를" 매핑과 스폰/수명 관리를 Character에서
-     분리(Character는 이미 비대, 담당 경계상 이펙트는 별도 소유).
-   한 문장 역할: 승인된 스킬 프레젠테이션 이벤트를 Layer_Effect 인스턴스로 바꾼다.
-   소유하는 상태: effectId -> EFFECT_ASSET_DESC 캐시, 활성 인스턴스 목록.
-   소유하지 않는 상태: 이펙트 렌더 상태(인스턴스가 소유), 스킬 판정, 네트워크.
-   owner/생성 시점: CAnimationTargetService와 같은 Client 정적 서비스 계층.
-     수명은 CMainApp이 소유(명시적 Initialize/Shutdown), desc 캐시는 레벨
-     로더(Ready_For_Level_*)가 진입 시 구축. 제품 코드이므로 _DEBUG 아님.
-   파괴 시점: 캐시/활성 목록은 레벨 전환 정리 경로에서 비움, 서비스 자체는
-     CMainApp 종료 시.
-   입력 데이터의 출처: 스냅샷 액션 시작 에지(skillId, caster transform) +
-     publish된 밸런스 데이터의 effectId 매핑.
-   출력 데이터의 소비자: Layer_Effect의 CEffect_Runtime 인스턴스.
-   실패가 전달되는 경로: 레벨 진입 선로드 실패는 로더가 HRESULT/상태 문자열로
-     보고하고 빈 캐시로 진행(연출 결손은 페일 소프트, 레벨 진입은 막지 않되
-     로그로 반드시 드러낸다). 재생 시 매핑 부재/캐시 miss는 무동작 + 로그.
-     클론 상한 도달 시 가장 오래된 인스턴스 재사용(정책 명시).
-   금지: DirectInput/socket/판정 접근 없음. 프레젠테이션 전용.
-3) CCharacter::Apply_NetworkAction: 스킬 시작 판정 지점에서
-   EffectPlaybackService에 (skillId, casterTransform) 통지 — Play_Skill 내부에서
-   호출하지 않는다(Logic_*/입력 경로에서 이펙트를 트리거하지 않는 경계 유지,
-   네트워크 승인 경로에서만).
-4) 신설 Tools/EffectPipeline/Publish-EffectAuthoring.ps1:
-   Publish-GameplayBalance.ps1의 형태를 복제 — Validate|Publish 모드,
-   .effect 텍스트 왕복 검증, 참조 텍스처가 Resources/Effect에 존재하는지 확인,
-   .weffect 쿡 산출물을 staged promote + rollback, -FailureAfterPromote 주입.
-5) ProjectAudit: effect.authoring-contract(Validate 실행) +
-   effect.publish-rollback(픽스처) 체크 추가 — world.* 체크 구현을 본뜬다.
+EFFECT_TYPE_SELECTION
+  MESH, TEXTURE, PARTICLE, DECAL, TRAIL, END
+
+m_eSelectedEffectType
+  CEffect_Tool 한 instance가 소유하는 session-only 값이다.
+  기본값은 참고 이미지와 같은 MESH다.
+  파일, vector index, runtime object, Animation document에 저장하지 않는다.
 ```
 
-### C-3. CPP 흐름 (승인 → 재생)
+G0 불변식:
+
+- 다섯 값 중 하나만 선택된다.
+- 선택 변경은 ImGui frame의 Tool 상태만 바꾼다.
+- 파일 IO, asset scan, D3D resource 생성, GameObject 생성, Animation 변경을 하지 않는다.
+- F1 Developer Tools의 Effect Tool 선택 외 새 단축키와 Level 전환을 만들지 않는다.
+
+## 6. 파일 목록
+
+| 구분 | 절대 경로 | 역할 |
+|---|---|---|
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h` | G0 selection session 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp` | 다섯 ImGui radio selection 렌더 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Default/Client.cpp` | 구 effect CLI/smoke 제거 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj` | 삭제 source/data/shader 등록 제거 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj.filters` | 삭제 item/filter 등록 제거 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Engine/Private/ImGuiLayer.cpp` | 구 `--effect-reset-layout` 전용 CLI 제거 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | 삭제된 구 runtime/intake/data check 제거 |
+
+## 7. 파일별 전체 구현 코드
+
+### 7-1. C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+
+NS_BEGIN(Client)
+
+class CEffect_Tool final
+{
+private:
+	enum class EFFECT_TYPE_SELECTION
+	{
+		MESH,
+		TEXTURE,
+		PARTICLE,
+		DECAL,
+		TRAIL,
+		END
+	};
+
+public:
+	CEffect_Tool() = default;
+	~CEffect_Tool() = default;
+
+	void Render();
+
+private:
+	void Render_EffectTypeSelector();
+
+private:
+	EFFECT_TYPE_SELECTION m_eSelectedEffectType =
+		EFFECT_TYPE_SELECTION::MESH;
+};
+
+NS_END
+```
+
+### 7-2. C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Effect_Tool.h"
+
+namespace
+{
+	constexpr const char_t* EFFECT_TYPE_LABELS[] = {
+		"Mesh", "Texture", "Particle", "Decal", "Trail"
+	};
+}
+
+void Client::CEffect_Tool::Render()
+{
+	ImGui::SetNextWindowSize(ImVec2(620.f, 150.f),
+		ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("LostArk Effect Tool###LostArkEffectToolG0"))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"G0: choose one effect type. No effect asset is created, loaded, "
+		"saved, previewed, or bound in this step.");
+	ImGui::Separator();
+	Render_EffectTypeSelector();
+	ImGui::End();
+}
+
+void Client::CEffect_Tool::Render_EffectTypeSelector()
+{
+	ImGui::TextUnformatted("Effect Type");
+	for (int32_t iType = 0;
+		iType < static_cast<int32_t>(EFFECT_TYPE_SELECTION::END); ++iType)
+	{
+		ImGui::SameLine();
+		const EFFECT_TYPE_SELECTION eType =
+			static_cast<EFFECT_TYPE_SELECTION>(iType);
+		if (ImGui::RadioButton(EFFECT_TYPE_LABELS[iType],
+			m_eSelectedEffectType == eType))
+		{
+			m_eSelectedEffectType = eType;
+		}
+	}
+}
+```
+
+### 7-3. C:/Users/user/Desktop/LostArk/Client/Default/Client.cpp
+
+변경 종류: 블록 삭제
+
+- `Effect_AssetIO.h`, `Effect_ParticleSimulator.h`, `<fstream>` include를 삭제한다.
+- effect CLI helper namespace 전체를 삭제한다.
+- `wWinMain` 앞부분의 `--effect-sim`, `--effect-roundtrip`, `--effect-phase2-test` 분기를 삭제한다.
+- 일반 Client 시작, timer, message loop, ImGui window procedure는 그대로 보존한다.
+
+### 7-4. 프로젝트와 Audit 동기화
+
+- 삭제 source의 `ClInclude`/`ClCompile` item만 제거한다.
+- 삭제 HLSL의 `None`/`FxCompile` item과 filter item만 제거한다.
+- 삭제한 459개 `.effect`의 `None` item과 `96.DataFiles/Effects` item만 제거한다.
+- `Effect_Tool.h/.cpp` 기존 등록은 유지한다. 새 파일/Filter/GUID는 없다.
+- ProjectAudit의 구 intake cook, runtime confinement, Dimensionist candidate admission check를 제거한다.
+- 새 `effect.g0-selection-boundary` check로 삭제 경로 0건, 다섯 타입 selector, G0 비-IO 경계를 고정한다.
+- Engine ImGui 초기화의 구 `--effect-reset-layout` 예외를 제거하고 공통 `imgui.ini` 계약만 유지한다.
+- 보이는 창 제목은 유지하고 내부 ImGui ID를 `LostArkEffectToolG0`로 바꿔 구 `imgui.ini` 레이아웃과 분리한다.
+
+## 8. 적용 순서와 검증
+
+1. 참고 PNG를 `C:/Users/user/Desktop/툴`에 저장하고 hash를 기록한다.
+2. 구 effect source/shader/intake/authored data와 모든 직접 consumer를 삭제한다.
+3. `Effect_Tool.h/.cpp`를 G0 전체 코드로 교체한다.
+4. project/filter XML을 parse하고 물리 파일·등록 일치를 확인한다.
+5. `rg`로 구 `CEffect_Runtime`, `Effect_AssetIO`, `Effect_ParticleSimulator`, `.effect` project item이 0건인지 확인한다.
+6. Client x64 Debug/Release를 빌드한다.
+7. Debug Client에서 F1 → Effect Tool을 열고 다섯 radio가 상호 배타적으로 선택되는지 확인한다.
+8. 선택 전후 Data/Resources/Animation 파일이 바뀌지 않는지 확인한다.
+9. ProjectAudit와 `git diff --check`를 실행한다.
+
+다음 G는 사용자가 G0의 H 계약, enum, Render 흐름을 확인한 뒤 연다. 참고 화면의 Reset/CreateEffect,
+resource palette, Model View, Effect Detail, All Effects, Data Files를 한꺼번에 추가하지 않는다.
+
+## 9. G1 — 메모리 Effect document와 안정 ID
+
+### 9.1 목표와 종료 증거
+
+G1은 `EffectAssetId + DisplayName + Elements`를 가진 authoring document 한 건을 메모리에 생성하고
+명시적으로 폐기한다. `Particle` radio를 고르는 UI session state와 document 생성은 서로 독립이다.
+
+종료 증거:
 
 ```text
-S2C_WORLD_SNAPSHOT 수신 (기존)
--> CClientReplication -> CCharacter::Apply_NetworkAction(state, skillId, tick)
--> 액션 시작 에지 판정 (기존 애니 재생과 같은 지점)
--> EffectPlaybackService::On_SkillPresentation(skillId, casterTransform)
-   -> effectId 매핑 조회 (없으면 무동작 — 이펙트 없는 스킬은 정상)
-   -> desc 캐시 조회 (레벨 로드 시 채워짐; miss는 로그 후 무동작, 파일 IO 금지)
-   -> Layer_Effect에서 유휴 인스턴스 획득 또는 클론 상한 내 생성
-   -> 인스턴스 Reset(desc, 시전자 위치/방향)
-매 프레임: 인스턴스 Update가 수명 관리 -> 만료 시 서비스가 레이어 제거
-레벨 전환: LEVEL::STATIC이 아니므로 Change_Level 정리에 자연 편승 + 서비스
-  캐시는 레벨 로드 단위로 재구축
+Effect Asset ID와 Display Name 입력
+-> 유효한 stable ID일 때만 Create Document 성공
+-> Active Document에 formatVersion/id/name/elements=0 표시
+-> radio 선택만으로 elements와 document identity는 바뀌지 않음
+-> Discard Active Document로 메모리 document만 제거
+-> Data/Resources/Animation/GPU resource 변화 0건
 ```
 
-### C-4. 검증
+최신 `origin/main`의 gameplay `effectId`도 `^[A-Za-z0-9_.-]{1,128}$`를 사용하므로 G1의
+`EffectAssetId`가 같은 문법을 사용한다. `Dimensionist -> DimensionMaster`, 공용
+`CCharacterPreviewPanel`, skill `effectId` 변경은 현재 대규모 delete/rename conflict 때문에 아직
+현재 브랜치에 merge하지 않는다. G1은 Preview와 gameplay를 소비하지 않으므로 해당 계약을 복제하지 않는다.
+
+### 9.2 C1~C8와 불변식
 
 ```text
-publisher: Validate 정상/오류 픽스처(-FailureAfterPromote 롤백 포함).
-회귀: Visual Studio Server+Client 실행에서 Q 승인 후 이펙트 생성, 이펙트 없는 스킬(W)은
-  무변화를 수동 관찰한다. Client 내부 smoke/report 분기는 추가하지 않는다.
-  Release 빌드 컴파일(서비스는 제품 코드이므로 `_DEBUG`가 아님)을 함께 확인한다.
-
-검토 Breakpoint와 관찰값 — 실제 값 skillId=34060 하나를 종단 추적:
-(1) CClientReplication 스냅샷 파스: skillId / PLAYER_ACTION_STATE / tick 값
-(2) Apply_NetworkAction 액션 시작 에지: 이전/신규 action state 분기 조건
-(3) On_SkillPresentation: effectId 매핑 조회 결과, desc 캐시 hit 여부,
-    활성 인스턴스 count 변경 전후
-(4) 인스턴스 Reset: 적용된 caster transform 값, 수명 만료 시 count 감소
+C1 기준계          EffectAssetId는 경로가 아닌 stable ID, Display Name은 표시 문자열이다.
+C2 이동>계산       중요: G1은 파일 parse와 GPU load를 하지 않고 memory document만 만든다.
+C3 공유는 비싸다   data-only header는 ImGui/D3D/Character를 include하지 않는다.
+C4 수명은 선언된다 중요: optional이 no-document/active-document 두 상태를 표현한다.
+C5 이산화와 오차   G1에는 time, transform, particle 수치가 없다.
+C6 가지치기        stable ID와 display name만 검증하고 미래 renderer 필드를 만들지 않는다.
+C7 권위와 정합성   중요: active document가 authoring draft, radio/input buffer는 session state다.
+C8 검증이 병목     잘못된 ID와 빈 display name 거부, 기존 active document 보존을 확인한다.
 ```
 
----
+G1 불변식:
 
-## 후속 단계 (범위 밖)
+- `EFFECT_DOCUMENT_DESC::strEffectAssetId`는 비어 있지 않고 stable ID 문법을 만족한다.
+- `strDisplayName`은 공백만으로 구성되지 않으며 UTF-8 byte 기준 최대 64자 입력 buffer를 사용한다.
+- `Elements`는 G1 내내 비어 있고 화면은 count만 읽는다.
+- `EFFECT_ELEMENT_KIND::END`는 미초기화 Element를 검출하는 기본값이며 실제 Element로 commit하거나 저장하지 않는다.
+- 새 document는 local staging 값을 완성한 뒤 `m_ActiveDocument`에 한 번 대입한다.
+- active document가 있을 때 새 document 입력 UI를 노출하지 않아 암묵적 overwrite를 막는다.
+- `Discard Active Document`는 파일이나 runtime instance가 아닌 memory draft만 제거한다.
+- selected element kind, input buffer, status는 Effect document에 저장하지 않는다.
 
-- WORLD/LOCAL 공간·본 어태치 소비(트레일 strSourceBone) — 캐릭터 이펙트 밀착에
-  필요, C 완료 후.
-- 보스/몬스터 액션 이펙트 매핑(BossProfiles 쪽 동일 패턴).
-- 잔상(After Image) 전용 시스템(참조 영상 01의 After Image 필드) — 스킨드 메시
-  고스트는 본 행렬 스냅샷 링버퍼가 필요한 별도 설계.
-- 툴 멀티 스폰 프리뷰(참조 영상 All Effects 패리티) — 슬라이스 C의 pArg 다중
-  인스턴스 경로를 툴 소비자로 확장해 N개 스폰 목록 + 일괄 Time Reset/Delete/
-  Clear를 붙인다. 1슬롯 Publish_Preview 다리는 라이브 편집 프리뷰 전용으로 유지.
+### 9.3 파일 목록
 
-## 프로젝트 설정·등록
+| 구분 | 절대 경로 | 역할 |
+|---|---|---|
+| 추가 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_AuthoringDocument.h` | ImGui/D3D와 분리된 Effect document 자료형 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h` | G1 document와 ImGui session 수명 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp` | stable ID 검증, create/discard, G0 selector 렌더 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj` | 새 data-only header 등록 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj.filters` | Effect Tool 필터에 새 header 등록 |
+| 수정 | `C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | G0 selector check를 G1 document boundary check로 승격 |
 
-- 신설 파일 vcxproj/filters. `Data/Balance/PlayerSkills.json` 스키마 변경은
-  publisher Assert 목록과 **동일 커밋**. 신규 Data/Effects/Authored/*.effect
-  커밋 시 96.DataFiles 등록.
-- `.weffect` 배포 갈래 결정(C-1 조건 5)에 따른 `.gitignore` 또는 `.gitattributes`
-  변경을 **같은 커밋**에 포함(팀 합의 선행 — CLAUDE.md "새 바이너리 자산은
-  LFS/Drive 팩 판단 먼저" 규칙).
-- Engine 변경은 슬라이스 B의 VIBuffer 서브클래스뿐 — 해당 슬라이스만 UpdateLib.
-- 스모크: 기존 effect.preview / render.hdr-readback 유지 + C의 online smoke 확장.
+### 9.4 C:/Users/user/Desktop/LostArk/Client/Public/Effect_AuthoringDocument.h
 
-## 사용자가 먼저 작성할 범위
+변경 종류: 추가
 
-슬라이스 A의 Effect_Types desc 확장과 AssetIO 왕복부터. 슬라이스 C는 구조 확정
-후 EffectPlaybackService 골격 → Apply_NetworkAction 훅 순서로.
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+NS_BEGIN(Client)
+
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 1u;
+
+enum class EFFECT_ELEMENT_KIND : uint8_t
+{
+	MESH,
+	SPRITE,
+	PARTICLE,
+	DECAL,
+	TRAIL,
+	END
+};
+
+struct EFFECT_ELEMENT_DESC final
+{
+	std::string strElementId;
+	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
+	std::string strResourceId;
+};
+
+struct EFFECT_DOCUMENT_DESC final
+{
+	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	std::string strEffectAssetId;
+	std::string strDisplayName;
+	std::vector<EFFECT_ELEMENT_DESC> Elements;
+};
+
+NS_END
+```
+
+### 9.5 C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+#include "Effect_AuthoringDocument.h"
+
+#include <array>
+#include <optional>
+#include <string>
+
+NS_BEGIN(Client)
+
+class CEffect_Tool final
+{
+public:
+	CEffect_Tool() = default;
+	~CEffect_Tool() = default;
+
+	void Render();
+
+private:
+	void Render_NewDocumentPanel();
+	void Render_ActiveDocumentPanel();
+	void Render_EffectTypeSelector();
+	bool_t Try_CreateDocument();
+	void Discard_ActiveDocument();
+
+private:
+	EFFECT_ELEMENT_KIND m_eSelectedEffectType =
+		EFFECT_ELEMENT_KIND::MESH;
+	std::array<char_t, 129> m_NewAssetId{};
+	std::array<char_t, 65> m_NewDisplayName{};
+	std::optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+	std::string m_strDocumentStatus;
+};
+
+NS_END
+```
+
+### 9.6 C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Effect_Tool.h"
+
+#include <algorithm>
+#include <cctype>
+#include <utility>
+
+namespace
+{
+	constexpr const char_t* EFFECT_TYPE_LABELS[] = {
+		"Mesh", "Sprite", "Particle", "Decal", "Trail"
+	};
+
+	bool_t Is_StableEffectAssetId(const std::string& strValue)
+	{
+		if (strValue.empty() || strValue.size() > 128u)
+			return false;
+
+		return std::all_of(strValue.begin(), strValue.end(),
+			[](const char_t value)
+			{
+				const bool_t isUpper = value >= 'A' && value <= 'Z';
+				const bool_t isLower = value >= 'a' && value <= 'z';
+				const bool_t isDigit = value >= '0' && value <= '9';
+				return isUpper || isLower || isDigit ||
+					value == '_' || value == '.' || value == '-';
+			});
+	}
+
+	bool_t Has_VisibleCharacter(const std::string& strValue)
+	{
+		return std::any_of(strValue.begin(), strValue.end(),
+			[](const char_t value)
+			{
+				return 0 == std::isspace(
+					static_cast<unsigned char>(value));
+			});
+	}
+}
+
+void Client::CEffect_Tool::Render()
+{
+	ImGui::SetNextWindowSize(ImVec2(620.f, 310.f),
+		ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("LostArk Effect Tool###LostArkEffectToolG1"))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"G1: create one in-memory Effect document. Nothing is saved, "
+		"loaded, previewed, rendered, or bound to Animation yet.");
+	if (m_ActiveDocument.has_value())
+		Render_ActiveDocumentPanel();
+	else
+		Render_NewDocumentPanel();
+
+	ImGui::Separator();
+	Render_EffectTypeSelector();
+	ImGui::TextDisabled(
+		"The selected type is session-only until G2 adds an Element.");
+	ImGui::End();
+}
+
+void Client::CEffect_Tool::Render_NewDocumentPanel()
+{
+	ImGui::SeparatorText("Data File");
+	ImGui::InputText("Effect Asset ID", m_NewAssetId.data(),
+		m_NewAssetId.size());
+	ImGui::InputText("Display Name", m_NewDisplayName.data(),
+		m_NewDisplayName.size());
+
+	if (ImGui::Button("Create Document"))
+		Try_CreateDocument();
+
+	if (!m_strDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+}
+
+void Client::CEffect_Tool::Render_ActiveDocumentPanel()
+{
+	ImGui::SeparatorText("Active Document");
+	const EFFECT_DOCUMENT_DESC& Document = *m_ActiveDocument;
+	ImGui::Text("Format Version: %u", Document.iFormatVersion);
+	ImGui::Text("Effect Asset ID: %s",
+		Document.strEffectAssetId.c_str());
+	ImGui::Text("Display Name: %s", Document.strDisplayName.c_str());
+	ImGui::Text("Elements: %zu", Document.Elements.size());
+	ImGui::TextDisabled("Memory only. Save/Load starts in a later G.");
+
+	if (ImGui::Button("Discard Active Document"))
+		Discard_ActiveDocument();
+
+	if (!m_strDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+}
+
+void Client::CEffect_Tool::Render_EffectTypeSelector()
+{
+	ImGui::TextUnformatted("Next Element Type");
+	for (int32_t iType = 0;
+		iType < static_cast<int32_t>(EFFECT_ELEMENT_KIND::END); ++iType)
+	{
+		ImGui::SameLine();
+		const EFFECT_ELEMENT_KIND eType =
+			static_cast<EFFECT_ELEMENT_KIND>(iType);
+		if (ImGui::RadioButton(EFFECT_TYPE_LABELS[iType],
+			m_eSelectedEffectType == eType))
+		{
+			m_eSelectedEffectType = eType;
+		}
+	}
+}
+
+bool_t Client::CEffect_Tool::Try_CreateDocument()
+{
+	if (m_ActiveDocument.has_value())
+	{
+		m_strDocumentStatus =
+			"Discard the active document before creating another one.";
+		return false;
+	}
+
+	const std::string strAssetId = m_NewAssetId.data();
+	const std::string strDisplayName = m_NewDisplayName.data();
+	if (!Is_StableEffectAssetId(strAssetId))
+	{
+		m_strDocumentStatus =
+			"Effect Asset ID must be 1-128 ASCII letters, digits, '.', '_' or '-'.";
+		return false;
+	}
+	if (!Has_VisibleCharacter(strDisplayName))
+	{
+		m_strDocumentStatus = "Display Name must not be blank.";
+		return false;
+	}
+
+	EFFECT_DOCUMENT_DESC StagedDocument;
+	StagedDocument.strEffectAssetId = strAssetId;
+	StagedDocument.strDisplayName = strDisplayName;
+	m_ActiveDocument = std::move(StagedDocument);
+	m_NewAssetId.fill('\0');
+	m_NewDisplayName.fill('\0');
+	m_strDocumentStatus =
+		"Created in memory. This document has not been saved.";
+	return true;
+}
+
+void Client::CEffect_Tool::Discard_ActiveDocument()
+{
+	m_ActiveDocument.reset();
+	m_strDocumentStatus =
+		"Discarded the in-memory document. No file was changed.";
+}
+```
+
+### 9.7 C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj
+
+변경 종류: 항목 추가
+
+`Effect_Tool.h` 항목 바로 앞에 다음 항목을 추가한다.
+
+```xml
+    <ClInclude Include="..\public\Effect_AuthoringDocument.h" />
+    <ClInclude Include="..\public\Effect_Tool.h" />
+```
+
+### 9.8 C:/Users/user/Desktop/LostArk/Client/Default/Client.vcxproj.filters
+
+변경 종류: 항목 추가
+
+`Effect_Tool.h` filter 항목 바로 앞에 다음 항목을 추가한다.
+
+```xml
+    <ClInclude Include="..\public\Effect_AuthoringDocument.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\public\Effect_Tool.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+```
+
+### 9.9 C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+
+변경 종류: 블록 교체
+
+현재 `$effectToolHeader`부터 `effect.g0-selection-boundary`의 `Add-Check`까지를 다음으로 교체한다.
+
+```powershell
+	$effectDocumentHeader = Get-Content -LiteralPath 'Client\Public\Effect_AuthoringDocument.h' -Raw
+	$effectToolHeader = Get-Content -LiteralPath 'Client\Public\Effect_Tool.h' -Raw
+	$effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
+	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
+	$engineImGuiSource = Get-Content -LiteralPath 'Engine\Private\ImGuiLayer.cpp' -Raw
+	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$removedEffectPaths = @(
+		'Client\Public\Effect_Types.h',
+		'Client\Public\Effect_AssetIO.h',
+		'Client\Private\Effect_AssetIO.cpp',
+		'Client\Public\Effect_ParticleSimulator.h',
+		'Client\Private\Effect_ParticleSimulator.cpp',
+		'Client\Public\Effect_Runtime.h',
+		'Client\Private\Effect_Runtime.cpp',
+		'Client\Public\Effect_ResourceCatalog.h',
+		'Client\Private\Effect_ResourceCatalog.cpp')
+	$removedEffectPathHits = @($removedEffectPaths |
+		Where-Object { Test-Path -LiteralPath $_ })
+	$authoredEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectIntakeFiles = @(Get-ChildItem -LiteralPath 'Tools\EffectResourceIntake' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectShaderFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\ShaderFiles' -File -Filter 'Shader_Effect*' -ErrorAction SilentlyContinue)
+	$legacyEffectSymbolHits = @($activeFiles | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC')
+	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|Shader_Effect|Data\\Effects\\Authored')
+	$legacyEffectEntry =
+		$clientEntrySource -match 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC|--effect-' -or
+		$engineImGuiSource -match '--effect-'
+	$effectG1DocumentShape =
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*1u' -and
+		$effectDocumentHeader -match 'enum class EFFECT_ELEMENT_KIND[\s\S]*MESH,[\s\S]*SPRITE,[\s\S]*PARTICLE,[\s\S]*DECAL,[\s\S]*TRAIL,[\s\S]*END' -and
+		$effectDocumentHeader -match 'struct EFFECT_DOCUMENT_DESC[\s\S]*strEffectAssetId[\s\S]*strDisplayName[\s\S]*Elements' -and
+		$effectToolHeader -match 'optional<EFFECT_DOCUMENT_DESC>\s+m_ActiveDocument' -and
+		$effectToolHeader -match 'm_eSelectedEffectType\s*=\s*EFFECT_ELEMENT_KIND::MESH' -and
+		$effectToolSource -match 'Is_StableEffectAssetId' -and
+		$effectToolSource -match 'Try_CreateDocument' -and
+		$effectToolSource -match 'Discard_ActiveDocument' -and
+		$effectToolSource -match '"Mesh",\s*"Sprite",\s*"Particle",\s*"Decal",\s*"Trail"' -and
+		$effectToolSource -match 'LostArk Effect Tool###LostArkEffectToolG1' -and
+		$effectToolSource -notmatch 'filesystem|ifstream|ofstream|GetOpenFileName|ID3D11'
+	Add-Check 'effect.g1-document-boundary' (
+		$removedEffectPathHits.Count -eq 0 -and
+		$authoredEffectFiles.Count -eq 0 -and
+		$effectIntakeFiles.Count -eq 0 -and
+		$effectShaderFiles.Count -eq 0 -and
+		$legacyEffectSymbolHits.Count -eq 0 -and
+		$legacyEffectProjectHits.Count -eq 0 -and
+		-not $legacyEffectEntry -and
+		$effectG1DocumentShape) "paths=$($removedEffectPathHits.Count) authored=$($authoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry document=$effectG1DocumentShape"
+```
+
+### 9.10 사용자가 작성할 순서
+
+1. `Effect_AuthoringDocument.h`를 새 UTF-8 BOM 없음 파일로 만들고 data-only 타입만 작성한다.
+2. `Effect_Tool.h`에서 G0 private enum을 제거하고 document header의 `EFFECT_ELEMENT_KIND`를 사용한다.
+3. input buffer, optional active document, status 멤버와 다섯 private 함수를 선언한다.
+4. `Effect_Tool.cpp`의 stable ID/display name helper를 작성한다.
+5. `Render_NewDocumentPanel`, `Try_CreateDocument`를 작성해 staged memory create를 닫는다.
+6. `Render_ActiveDocumentPanel`, `Discard_ActiveDocument`를 작성한다.
+7. G0 selector를 `Next Element Type`으로 유지하되 `Texture` label을 `Sprite`로 바로잡는다.
+8. `.vcxproj`와 `.filters`에 새 header 한 건만 등록한다.
+9. ProjectAudit check를 G1 document boundary로 교체한다.
+
+### 9.11 검증
+
+```text
+잘못된 ID: 빈 값, slash, backslash, space, 129자 -> 생성 실패
+잘못된 이름: 빈 값, 공백만 -> 생성 실패
+정상: dimensionmaster.altv.portal_open + DimensionMaster Alt-V Portal -> 생성 성공
+Active Document: version=1, ID/name 동일, Elements=0
+radio 변경: Active Document identity와 Elements=0 유지
+Discard: no active document 복귀, 파일 변화 0건
+```
+
+자동 검증:
+
+1. `Client.vcxproj`, `.filters` XML parse.
+2. Client x64 Debug build.
+3. `effect.g1-document-boundary` PASS.
+4. `git diff --check`.
+
+수동 검증:
+
+1. `Client/Default` 작업 디렉터리에서 Debug Client 실행.
+2. F1 -> Effect Tool.
+3. 위 invalid/valid ID와 radio/discard 흐름 재현.
+4. 실행 전후 `Data`, `Resources`, `Animation` 파일 변화 0건 확인.

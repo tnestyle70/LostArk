@@ -5,9 +5,10 @@
 
 ## 1. 한 줄 계약
 
-Animation Tool은 `어떤 animation asset의 어떤 clip에서 언제 cue가 발생하는가`를 저작한다.
-Effect Tool은 `그 cue가 호출할 EffectAssetId의 모양과 부착 방식`을 저작한다. Character Preview Panel은
-두 Tool이 함께 보는 preview target과 매 frame anchor transform을 소유한다.
+Animation Tool은 `어떤 animation asset의 어떤 clip에서 언제 cue가 발생하고 어느 anchor에 어떻게
+붙는가`를 저작한다. Effect Tool은 `그 cue가 호출할 EffectAssetId 자체의 모양과 effect-local 수명`을
+저작한다. Character Preview Panel은 두 Tool이 함께 보는 preview target과 매 frame anchor transform을
+소유한다.
 
 ```text
 Character Preview Panel
@@ -17,10 +18,14 @@ Character Preview Panel
           │                      │
           │                      └─> effectAssetId binding
           │
-          └─> Effect Tool: emitter/module/trail/local transform/anchor policy
+          └─> Effect Tool: emitter/module/trail/effect-local transform/lifetime
                                  │
-                                 └─> same CEffect_Runtime preview
+                                 └─> future single Effect preview/runtime path
 ```
+
+Effect asset의 원점과 emitter local transform은 재사용 가능한 asset 내부 값이다. character root,
+weapon, bone, world point 중 무엇에 붙일지와 그 anchor 기준 offset, follow/detach, stop policy는 같은
+EffectAssetId를 clip마다 다르게 사용할 수 있어야 하므로 Animation cue/binding 값이다.
 
 ## 2. 현재 코드와 목표 상태를 구분한다
 
@@ -37,8 +42,9 @@ part 선택 UI, anchor slot 목록 열거다. 이 항목들을 채울 때도 pre
 vector에 읽은 뒤 교체하지만 owner/count와 malformed row를 엄격히 거부하지 않는다. 오늘 Animation 담당자의
 실제 수정 대상은 이 document safety와, 아직 닫힌 상태로 선언할 EffectAssetId binding 계약이다.
 
-현재 `Data/Effects/Authored/DimensionMaster/Candidates`는 `candidate_only`다. 이 후보는 admitted effect 선택
-목록이나 제품 runtime cue에 자동 연결하지 않는다.
+DimensionMaster로 rename된 `Data/Effects/Authored/.../Candidates`의 구형 authoring 문서 459개는 Effect Tool
+재구축과 함께 삭제했다. 원본 추출 증거인 SourceCatalog/SourceExtracted와 Resources payload는 보존하지만
+admitted effect 목록이나 제품 runtime cue에는 자동 연결하지 않는다.
 
 ## 3. Animation Tool이 소유하는 것
 
@@ -61,7 +67,15 @@ startMs           clip 시작 기준 cue 시작 시각이다.
 endMs             window cue의 종료 시각이다. point cue는 startMs와 같다.
 eventKind         HIT/CANCEL/SUPERARMOR/INVULN/MOVE/SOUND/EFFECT/SHAKE다.
 effectAssetId     authored EFFECT가 호출할 stable effect catalog ID다.
+anchorSlotId      character root/weapon/bone/world 중 검증된 stable anchor ID다.
+localTransform    anchor 기준 position/rotation/scale이다.
+followPolicy      spawn 뒤 anchor를 계속 따를지 world transform을 snapshot할지 정한다.
+stopPolicy        window 종료나 action 취소 때 emission/instance를 어떻게 끝낼지 정한다.
 ```
+
+현재 `.animevents` v4는 `effectAssetId` point binding까지만 준비되어 있고 anchor/local transform,
+follow/stop 직렬화는 아직 구현되지 않았다. 위 필드를 legacy payload 문자열에 임시로 넣지 않고 schema,
+publisher, preview/runtime consumer를 함께 추가하는 후속 수직 슬라이스로 연다.
 
 기존 EFFECT row의 `sPayload`는 원본 `.animnotify`에서 온 UE source cue 이름이거나 빈 문자열일 수 있다.
 실측상 LanceMaster에는 `src=orig`가 없는 빈 legacy row도 한 건 있으므로 `bImported`만으로 runtime admission을
@@ -79,7 +93,7 @@ Animation Tool에는 다음 기능을 넣지 않는다.
 
 - Character, `CPart_Body`, weapon, effect runtime object의 새 생성 경로
 - Effect emitter/module/material/texture/trail 수치 편집
-- Effect를 직접 spawn하거나 `CEffect_Runtime`을 직접 update/render하는 코드
+- Effect를 직접 spawn하거나 Effect preview/runtime을 직접 update/render하는 코드
 - socket, packet, Server damage, HP, cooldown 판정
 - Character layer/tag/index를 추측해 target을 찾는 코드
 - Effect Tool container 또는 파일을 직접 수정하는 코드
@@ -141,14 +155,18 @@ start/stop consumer를 먼저 추가해야 한다. trail lifetime을 임의의 E
 - emitter/module/effect-local timeline
 - texture/model/material과 Resources-relative asset ID
 - blend, color, velocity, lifetime, SubUV, ribbon/trail 수치
-- anchor policy와 anchor-relative local position/rotation/scale
+- effect root와 emitter의 effect-local position/rotation/scale
 - admitted effect catalog와 dependency/validation 상태
 - authoring Save/Load/Reload와 runtime cook
-- 동일 `CEffect_Runtime`을 통한 preview
+- 하나의 검증된 Effect preview/runtime 경로
 
-Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다. `Use Selected Effect`는 선택한
-`EffectAssetId`를 typed request로 제출할 뿐이다. Animation Tool에서 marker가 만들어지고 Save되기 전에는
-binding이 영구 저장됐다고 표시하지 않는다.
+2026-08-04 재구축 G0의 실제 구현 범위는 ImGui의 `Mesh / Texture / Particle / Decal / Trail` 중 하나를
+고르는 타입 selector뿐이다. 이 단계에는 EffectAssetId, 파일 format, Load/Save, catalog, preview/runtime
+계약이 없다. 위 asset 책임은 새 schema와 소비자를 함께 검증하는 후속 G에서 한 계약씩 다시 연다.
+
+Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다. 후속 `Use Selected Effect`가 생겨도
+선택한 `EffectAssetId`를 typed request로 제출할 뿐이며, Animation Tool에서 marker가 만들어지고 Save되기
+전에는 binding이 영구 저장됐다고 표시하지 않는다.
 
 ## 8. Character Preview Panel이 소유하는 것
 
@@ -183,7 +201,8 @@ request가 가진 generation과 소비 시점의 current generation이 다르면
 
 ## 9. Anchor와 위치 저장 규칙
 
-Effect asset에는 실제 world coordinate나 현재 마우스 좌표를 저장하지 않고 다음 정책을 저장한다.
+Effect asset에는 실제 world coordinate, character/weapon anchor 또는 현재 마우스 좌표를 저장하지 않는다.
+Animation cue/binding이 다음 정책을 저장한다.
 
 | anchor kind | 저장 의미 | preview/runtime 입력 |
 |---|---|---|
@@ -193,8 +212,10 @@ Effect asset에는 실제 world coordinate나 현재 마우스 좌표를 저장�
 | `WORLD_POINT` | spawn 시점 world point에 남는다 | cue context world position |
 | `MOUSE_GROUND` | spawn 시 커서 ground point를 사용한다 | picking 결과의 current world point |
 
-Effect Tool은 `anchorKind + anchorSlotId + localPosition + localRotation + localScale`을 편집한다. Preview
-Panel은 그 anchor의 current world transform을 계산한다. Effect runtime은 둘을 합성한다.
+Animation Tool은 EFFECT cue의
+`anchorKind + anchorSlotId + localPosition + localRotation + localScale + followPolicy + stopPolicy`를
+편집한다. Preview Panel은 그 anchor의 current world transform을 계산한다. Effect runtime은 cue의
+attachment transform과 Effect asset의 effect-local transform을 합성한다.
 
 `MOUSE_GROUND`는 “마우스 커서 anchor를 사용한다”는 정책만 저장한다. 사용자가 preview 중 가리킨 실제
 좌표를 Effect asset에 저장하지 않는다. 제품 스킬에서는 입력 command와 Server 승인 계약이 허용한 ground
@@ -217,10 +238,10 @@ Preview Panel에서 class/target 선택
 -> Animation Tool에서 clip 선택, pause/scrub
 -> Effect Tool에서 admitted EffectAssetId 선택·preview
 -> Use Selected Effect typed request
--> Animation Tool이 EFFECT_ASSET_ID point marker 한 건 생성, Dirty
+-> Animation Tool이 anchor/offset/follow/stop을 가진 EFFECT_ASSET_ID point marker 한 건 생성, Dirty
 -> atomic Save
 -> staged Reload
--> 같은 asset/clip/ms/EffectAssetId 복원
+-> 같은 asset/clip/ms/EffectAssetId/attachment binding 복원
 ```
 
 ### 10.2 Weapon Trail 저작
@@ -228,9 +249,9 @@ Preview Panel에서 class/target 선택
 ```text
 Preview Panel이 weapon anchor를 매 frame 제공
 -> Animation Tool이 trail start/end window 저작
--> Effect Tool이 WEAPON_SOCKET + stable anchorSlotId 선택
--> ribbon/trail width/lifetime/sampling/material 편집
--> CEffect_Runtime preview가 매 frame anchor를 sample
+-> Animation Tool이 WEAPON_SOCKET + stable anchorSlotId와 offset 선택
+-> Effect Tool이 ribbon/trail width/lifetime/sampling/material 편집
+-> 단일 Effect preview/runtime이 매 frame anchor를 sample
 -> Animation window 종료 시 cue stop
 ```
 
@@ -291,17 +312,17 @@ Preview Panel이 weapon anchor를 매 frame 제공
 - 수동: 다섯 class target, scrub 시각, Dirty target 전환 보존과 Level 전환 cleanup.
 - 미완료로 남길 것: admitted Effect fixture/catalog resolver, 실제 Effect Tool `Use Selected Effect` 성공 경로,
   anchor-relative local transform 편집, Server collider/damage publisher, EFFECT window/trail start-stop,
-  beam dual anchor, candidate-only DimensionMaster effect admission.
+  beam dual anchor, 새 Effect schema와 admitted fixture/catalog.
 
 root/weapon anchor의 현재 world transform 조회는
-`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸고
-Effect Tool의 world preview가 이를 소비한다. 없는 bone은 false를 반환하므로 누락된 anchor가
-원점으로 보이지 않는다. 아직 없는 것은 anchor에 상대적인 local transform 저작이다.
+`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸다. 없는 bone은 false를
+반환하므로 누락된 anchor를 원점으로 위장하지 않는다. 아직 없는 것은 새 Effect runtime preview가 이 값을
+소비하는 경로와 anchor에 상대적인 local transform 저작이다.
 
-현재 admitted Effect는 0개이며 459개는 전부 DimensionMaster `candidate_only`다. 따라서 오늘 Animation 문서
+현재 admitted Effect는 0개이고 구형 candidate authoring 문서 459개도 삭제됐다. 따라서 오늘 Animation 문서
 안전성 작업을 EffectAssetId 성공 Save나 preview로 검증하지 않는다. `EFFECT_ASSET_ID` 입력은 admission
 resolver가 없거나 ID가 catalog에 없으면 실패하고 memory/destination을 유지해야 한다. 다음 Effect/Preview
-설계 단계에서 의존성 검증을 통과한 fixture 1개와 catalog resolver를 먼저 만든 뒤 실제
+설계 단계에서 새 schema와 의존성 검증을 통과한 fixture 1개, catalog resolver를 먼저 만든 뒤 실제
 `Use Selected Effect` 성공 흐름을 연다.
 
 이 경계가 닫히면 Animation 담당자는 Animation document에 집중하고, Effect 담당자는 Animation Tool 내부나

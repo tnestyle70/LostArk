@@ -232,17 +232,21 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 {
 	using LostArk::Shared::CHARACTER_CLASS_ID;
 	CHARACTER_CLASS_ID initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+
 	if (!CCharacterSelectionState::Try_Get_SelectedClass(initialClass) ||
 		!LostArk::Shared::Is_Supported_Playable_Character_Class(initialClass))
 	{
 		initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 	}
+
 	const std::array characterClasses = { initialClass };
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::CHARACTER_SELECT));
+
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
 		return E_INVALIDARG;
 

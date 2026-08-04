@@ -1,7 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-s-swp-instance-flight-01" name="par_s_swp_instance_flight_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
-
-EMITTER id=19249 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=19250 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="enginematerials.defaultparticle" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-  MODULE id=19251 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.5,1:1.5 g=0:1,1:1 b=0:0.5,1:0.5 a=0:5,1:0
-  MODULE id=19252 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.6,1:2

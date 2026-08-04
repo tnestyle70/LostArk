@@ -1,5 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-k-swp-zoomblur-delay-01" name="par_k_swp_zoomblur_delay_01" provenance=DERIVED_CONVERSION duration=1.25 warmup=0
-
-EMITTER id=35214 name="delay=0.3" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.25 duration=1 loops=1
-  MODULE id=35215 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_post.fx_mi.fx_c_pa_zoomblur_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

@@ -1,7 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-m-swp-ts-zoomblur-01" name="par_m_swp_ts_zoomblur_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
-
-EMITTER id=29016 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=29017 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_post.fx_mi.fx_c_pa_zoomblur_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-  MODULE id=29018 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:0,0.05:0.008916,0.1:0.034294,0.15:0.074074,0.2:0.1262,0.25:0.188615,0.3:0.259259,0.35:0.336077,0.4:0.41701,0.45:0.5,0.5:0.58299,0.55:0.663923,0.6:0.740741,0.65:0.811386,0.7:0.8738,0.75:0.925926,0.8:0.965707,0.85:0.991084,0.9:1,0.95:0.802095,1:0
-  MODULE id=29019 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:0.641464,0.333333:1,0.666667:0.641464,1:1

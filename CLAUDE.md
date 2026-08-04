@@ -178,7 +178,7 @@ CPrototype (추상, enable_shared_from_this)
     ├── CUIObject, CCamera
     └── [Client] CCharacter, CPart_Body, CPart_Equipment, CNpc,
                  CValtan, CDeployPropObject, CMapAssetObject,
-                 CMapStaticBatchObject, CEffect_Runtime, CCamera_Free
+                 CMapStaticBatchObject, CCamera_Free
 ```
 
 ### 프로토타입 패턴
