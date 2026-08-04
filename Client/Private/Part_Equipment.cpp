@@ -25,6 +25,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	const auto pDesc = static_cast<PART_EQUIPMENT_DESC*>(pArg);
 	m_pSkeletonModelCom = pDesc->pSkeletonModel;
 	m_pSocketBoneName = pDesc->pSocketBoneName;
+	m_fSocketYawDegrees = pDesc->fSocketYawDegrees;
 	m_pSocketRootMatrix = pDesc->pSocketRootMatrix;
 
 	/* Both kinds need the body's model: a socketed piece reads one bone from it,
@@ -56,6 +57,9 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 	entirely in the bone palette bound at render time. */
 	if (nullptr != m_pSocketBoneName)
 	{
+		ChildMatrix =
+			XMMatrixRotationY(XMConvertToRadians(m_fSocketYawDegrees)) *
+			ChildMatrix;
 		ChildMatrix = ChildMatrix * m_pSkeletonModelCom->Get_BoneMatrix(m_pSocketBoneName);
 
 		if (nullptr != m_pSocketRootMatrix)

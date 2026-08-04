@@ -1,0 +1,29 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-exmove-01" name="par_s_swp_exmove_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=16984 name="glow" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16985 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_001.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16986 name="glow" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16987 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_001.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16988 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16989 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_c_glow_010.dds" mesh="" mat="bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16990 name="emitter_3" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=16991 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_004.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16992 name="emitter_4" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16993 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_11_dt5_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16994 name="emitter_5" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16995 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_11_dt5_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=16996 name="emitter_6" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16997 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_noise_001.dds" mesh="" mat="fx_m_mi_o_00.fx_mi.fx_o_pa_spritewave_01_29_tr" align=RECTANGLE opacitytex="" dissolvetex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_noise_001.dds" distortiontex="" uvtiling=0.3,0.6 uvoffset=0,0 uvpanner=0.1,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=30,50,90,1 softdistance=0 distortionstrength=0
+
+EMITTER id=16998 name="emitter_7" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=16999 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_noise_001.dds" mesh="" mat="fx_m_mi_o_00.fx_mi.fx_o_pa_spritewave_01_29_tr" align=RECTANGLE opacitytex="" dissolvetex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_noise_001.dds" distortiontex="" uvtiling=0.3,0.6 uvoffset=0,0 uvpanner=0.1,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=30,50,90,1 softdistance=0 distortionstrength=0
+
+EMITTER id=17000 name="emitter_8" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=17001 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_001.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

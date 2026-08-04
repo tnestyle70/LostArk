@@ -102,6 +102,30 @@ void CCamera_Free::Set_PositionOffset(
 	m_bFollowInitialized = false;
 }
 
+void CCamera_Free::Frame_Area(
+	const float3_t& center,
+	const f32_t radius)
+{
+	if (!std::isfinite(center.x) || !std::isfinite(center.y) ||
+		!std::isfinite(center.z) || !std::isfinite(radius) || radius <= 0.f ||
+		nullptr == m_pTransformCom)
+	{
+		return;
+	}
+
+	m_bFollowEnabled = false;
+	m_bFollowInitialized = false;
+	const vector_t lookAt = XMLoadFloat3(&center);
+	const vector_t eye = XMVectorSet(
+		center.x,
+		center.y + radius * 0.65f,
+		center.z - radius,
+		1.f);
+	m_pTransformCom->Set_State(STATE::POSITION, eye);
+	m_pTransformCom->LookAt(lookAt);
+	XMStoreFloat3(&m_vCurrentLookAt, lookAt);
+}
+
 void CCamera_Free::Update_Shortcuts()
 {
 	if (GetForegroundWindow() != g_hWnd)

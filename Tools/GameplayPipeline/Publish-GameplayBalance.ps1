@@ -63,7 +63,13 @@ if ($playerDocument.schema -ne 'lostark.player-profiles' -or $playerDocument.for
 }
 $playerClasses = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $playerRows = [Collections.Generic.List[string]]::new()
-$supportedPlayerClasses = @('LANCE_MASTER','GUNSLINGER','SLAYER','ARTIST')
+$supportedPlayerClasses = @(
+	'LANCE_MASTER',
+	'GUNSLINGER',
+	'SLAYER',
+	'ARTIST',
+	'DIMENSIONIST'
+)
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @('characterClass','maximumHp','maximumResource','moveSpeed') 'player profile'
 	Assert-StableId $player.characterClass 'player characterClass'

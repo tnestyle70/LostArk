@@ -98,7 +98,7 @@ Effect 원본 선별은 `Cook-SelectedEffectAsset.ps1`이 `Data/Effects/Cooked` 
 | 영역 | 정본 | 포맷/계약 |
 |---|---|---|
 | Level/Scenario | `Data/Levels/LevelCatalog.json` | `lostark.level-catalog` v1 |
-| Map high-level catalog | `Data/Maps/MapCatalog.json` | `lostark.map-catalog` v1 |
+| Map definition | `Data/Maps/MapCatalog.json`, `Data/Maps/Imported/<AreaId>/` | Area source/runtime 경로와 추출 catalog/shard 기준 |
 | Character/Boss/NPC | `Data/Actors/*.json` | stable archetype와 Resources-relative asset ID |
 | UI/HUD | `Data/UI/HUD/HUD_Layout.json`, `Data/UI/ScreenUI/ScreenUI.json` | `lostark.ui-layout` v1 |
 | visual placement authoring | `Data/Maps/Authoring/<AreaId>/<AreaId>.mapplacements` | placement document v2 |
@@ -106,12 +106,14 @@ Effect 원본 선별은 `Cook-SelectedEffectAsset.ps1`이 `Data/Effects/Cooked` 
 | gameplay placement | `Data/Worlds/<AreaId>/Gameplay.world.json` | `lostark.world-gameplay` v1 |
 | encounter | `Data/Encounters/Valtan/ValtanEncounter.json` | server gameplay profile |
 | player/boss balance | `Data/Balance/*.json` | player, skill, damage, boss 수치와 stable 참조 |
-| server navigation authoring | `Data/Navigation/<AreaId>.navgrid.json` | walkable cell, height, neighbor 입력의 생성 정본 |
+| server navigation authoring | `Data/Navigation/<AreaId>.*` | MapTool source/paint/blocker 또는 uniform grid 생성 정본 |
 | animation authored/reference | `Data/Animation/Authored`, `Data/Animation/Reference` | 작성 데이터와 추출 참조 분리 |
 
 UI와 gameplay 설정은 JSON만 사용한다. 신규 `.cfg`와 runtime cfg reader는 ProjectAudit에서 거부한다. visual map placement는 수만 행을 다루므로 검증된 전용 line format을 유지하되, MapTool 작성본과 runtime 생성물을 분리한다.
 
-Git 관리 대상 `Data` 파일 42개는 Client 프로젝트의 `96.DataFiles` 아래 `None` 항목으로 연결했다. Actors, Animation, AssetPacks, Balance, Encounters, Levels, Maps, Navigation, UI, Worlds 필터에서 원본을 바로 열 수 있지만 runtime 복사나 두 번째 정본을 만들지는 않는다. ignored Effect 추출 원본은 이 프로젝트 목록에 포함하지 않는다.
+Git 관리 대상 `Data` 파일은 Client 프로젝트의 `96.DataFiles` 아래 `None` 항목으로 연결했다.
+Actors, Animation, AssetPacks, Balance, Encounters, Maps, Navigation, UI, Worlds 필터에서
+원본을 바로 열 수 있지만 runtime 생성물을 편집 정본으로 취급하지 않는다.
 
 ## 5. Map과 MapTool
 
@@ -120,9 +122,12 @@ Git 관리 대상 `Data` 파일 42개는 Client 프로젝트의 `96.DataFiles` �
 | Area ID | catalog | placements | assets |
 |---|---|---:|---:|
 | `LV_BER_BERNCASTLE` | shard-set | 50,017 | catalog rows 3,021 / unique 1,003 |
-| `LV_LUT_HEARTRB_ED` | single | 13,103 | 269 |
+| `LV_LUT_HEARTRB_ED` | single | 13,115 | 275 |
 
-MapTool의 visual `Save`는 `Data/Maps/Authoring`만 갱신한다. 현재 저장소에는 Training authoring placement가 있고 Bern/Valtan runtime map은 기존 import/publish 결과다. 제품 runtime 파일은 `Publish-MapAuthoring.ps1`만 교체할 수 있다.
+MapTool의 visual `Save`는 `Data/Maps/Authoring`만 갱신한다. Bern/Valtan을 포함한 모든 현재
+Area의 추출 catalog와 shard 기준은 `Data/Maps/Imported`, 현재 placement는
+`Data/Maps/Authoring`에 통합했다. 제품 runtime 파일은 `Publish-MapAuthoring.ps1`만 교체할
+수 있다.
 
 Bern처럼 shard-set인 경우 publish는 다음을 보장한다.
 

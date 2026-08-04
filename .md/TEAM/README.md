@@ -7,9 +7,10 @@
 1. 저장소 금지 경계와 완료 조건: `../../AGENTS.md`
 2. 최초 세팅, 빌드, 런타임 구조: `../../CLAUDE.md`
 3. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
-4. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
-5. 밸런스 튜닝과 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-6. 최근 통합 검증 증거: `../GB/08-03/2026-08-03_LOSTARK_UNIFIED_FRAMEWORK_HARNESS_RESULT.md`
+4. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
+5. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
+6. 밸런스 튜닝과 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+7. 최근 통합 검증 증거: `../GB/08-03/2026-08-03_LOSTARK_UNIFIED_FRAMEWORK_HARNESS_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -25,6 +26,7 @@
 | `AGENTS.md` | 팀 전체 금지 규칙이나 완료 조건이 바뀔 때 |
 | `CLAUDE.md` | 경로, 빌드, 최초 세팅, 런타임 사용법이 바뀔 때 |
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
+| `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
 | 날짜별 `*_RESULT.md` | 실행한 검증과 당시 완료/미완료 증거를 남길 때 |

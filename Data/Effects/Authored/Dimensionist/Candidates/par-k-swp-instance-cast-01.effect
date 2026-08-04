@@ -1,0 +1,8 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-instance-cast-01" name="par_k_swp_instance_cast_01" provenance=DERIVED_CONVERSION duration=0.2 warmup=0
+
+EMITTER id=33296 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.2 loops=1
+  MODULE id=33297 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_spark_01_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=33298 name="Spawn" type=SPAWN enabled=1 rate=1000 burst=0 max=4016
+  MODULE id=33299 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.005,0.005,0.005 min=0.005,0.005,0.005 max=0.05,0.05,0.05
+  MODULE id=33300 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:0.4 b=0:1,1:1 a=0:1,1:0

@@ -12,6 +12,7 @@
 #include "WorldGameplayDocument.h"
 
 #include <memory>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -32,6 +33,36 @@ private:
 		WORLD_GAMEPLAY,
 		NAVIGATION,
 		CAMERA,
+	};
+
+	enum class EDITOR_NAVIGATION_POLICY
+	{
+		NONE,
+		SOURCE_PAINT,
+		SOURCE_PAINT_BLOCKERS,
+	};
+
+	enum class EDITOR_GAMEPLAY_POLICY
+	{
+		NONE,
+		REQUIRED,
+	};
+
+	struct EDITOR_AREA_DESCRIPTOR
+	{
+		std::string areaId;
+		std::string label;
+		std::filesystem::path sourceCatalog;
+		std::filesystem::path sourcePlacements;
+		std::filesystem::path navigationSource;
+		std::filesystem::path navigationPaint;
+		std::filesystem::path navigationBlockers;
+		std::filesystem::path gameplayDocument;
+		EDITOR_NAVIGATION_POLICY navigationPolicy =
+			EDITOR_NAVIGATION_POLICY::NONE;
+		EDITOR_GAMEPLAY_POLICY gameplayPolicy =
+			EDITOR_GAMEPLAY_POLICY::NONE;
+		bool_t allowNavigationBootstrap = false;
 	};
 
 	enum class NAVIGATION_MODE
@@ -95,10 +126,13 @@ public:
 private:
 	/* Frame Update */
 	void Update_WorldInteraction(bool_t isAssetTest);
-	void Handle_LevelTransition(bool_t isAssetTest);
+	void Handle_LevelTransition(
+		uint32_t currentLevelIndex,
+		bool_t isMapAuthoringLevel);
 
 	/* Frame Render */
 	void Render_WorldOverlay(bool_t isAssetTest);
+	void Render_WorkspaceBar(bool_t isAssetTest);
 	void Render_ActiveMode(bool_t isAssetTest);
 	void Render_MapAssetsPanel(bool_t isAssetTest);
 	void Render_WorldGameplayPanel(bool_t isAssetTest);
@@ -144,6 +178,13 @@ private:
 		const NAVGRID_BAKE_DESC& desc);
 
 	/* Map Asset Document and Runtime */
+	bool_t Ensure_AuthoringPrototypes();
+	bool_t Ensure_AuthoringPrototypes(const CMapAssetCatalog& catalog);
+	bool_t Load_EditorAreaRegistry();
+	bool_t Switch_EditorArea(size_t descriptorIndex);
+	bool_t Save_AllAuthoring();
+	bool_t Has_UnsavedAuthoring() const;
+	const EDITOR_AREA_DESCRIPTOR* Get_ActiveEditorArea() const;
 	bool_t Try_PickPlacementPosition(float3_t& outPosition) const;
 	bool_t Try_PlaceSelected();
 	bool_t Create_Placement(const MAP_PLACEMENT_RECORD& record,
@@ -182,10 +223,18 @@ private:
 
 private:
 	/* Shared Tool State */
+	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	bool_t m_bOpen = false;
-	bool_t m_bWasInAssetTest = false;
+	uint32_t m_iAuthoringLevelIndex = ETOUI(LEVEL::END);
 	TOOL_MODE m_eToolMode = TOOL_MODE::MAP_ASSETS;
+	std::vector<EDITOR_AREA_DESCRIPTOR> m_EditorAreas;
+	size_t m_iActiveEditorArea = SIZE_MAX;
+	size_t m_iPendingEditorArea = SIZE_MAX;
+	bool_t m_isEditorAreaSwitchPending = false;
+	bool_t m_isEditorExitPending = false;
+	std::unordered_map<std::wstring, std::filesystem::path>
+		m_PrototypeModelPaths;
 
 	/* World Interaction State */
 	bool_t m_bPreviousMouseDown = false;

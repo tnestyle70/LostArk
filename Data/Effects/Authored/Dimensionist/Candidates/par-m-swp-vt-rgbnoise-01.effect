@@ -1,0 +1,6 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-vt-rgbnoise-01" name="par_m_swp_vt_rgbnoise_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=32112 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=32113 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=32114 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:0,0.05:0.15625,0.1:0.5,0.15:0.84375,0.2:1,0.25:0.98877,0.3:0.957031,0.35:0.907715,0.4:0.84375,0.45:0.768066,0.5:0.683594,0.55:0.593262,0.6:0.5,0.65:0.406738,0.7:0.316406,0.75:0.231934,0.8:0.15625,0.85:0.092285,0.9:0.042969,0.95:0.01123,1:0

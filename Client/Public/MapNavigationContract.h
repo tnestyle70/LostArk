@@ -17,7 +17,6 @@ struct MAP_NAVIGATION_CONTRACT final
 	std::filesystem::path blockerPath;
 	std::wstring prototypeTag;
 	bool_t runtimeGridAvailable = false;
-	bool_t usesLegacyFilename = false;
 };
 
 class CMapNavigationContract final

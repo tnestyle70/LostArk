@@ -37,8 +37,18 @@ Git 관리 대상 데이터:
 
 Git 제외 런타임 리소스:
 
-- `Client/Bin/Resources/Map/LV_LOBBY_CLASSSELECT_SL00`: 55/55 `.wmodel`, 158개 복구 텍스처
-- `Client/Bin/Resources/Map/LV_SHS_RCARENA_D`: 302/302 `.wmodel`, 739개 복구 텍스처
+- `Client/Bin/Resources/Map/CHARACTERSELECTMAP`: 55/55 `.wmodel`, 158개 복구 텍스처
+- `Client/Bin/Resources/Map/TRAININGMAP`: 302/302 `.wmodel`, 739개 복구 텍스처
+
+사람이 폴더만 보고 용도를 알 수 있도록 runtime resource namespace만 위 두 이름으로
+변경했다. UE3 원본 Area ID, `.mapassets`/`.mapplacements` 파일명과 각 문서 헤더는
+`LV_LOBBY_CLASSSELECT_SL00`, `LV_SHS_RCARENA_D`를 그대로 유지한다. 런타임 catalog row의
+모델 경로와 `Data/Maps/MapCatalog.json`의 `runtimeAssetRoot`만 새 namespace를 가리킨다.
+
+2026-08-04 교정: 최초 rename에서는 폴더와 catalog만 바뀌고 WModel material section의
+texture path는 이전 Area ID로 남아 있었다. 따라서 당시의 material 검증 완료 주장은
+최종 설치 namespace까지 검증한 결과가 아니었다. 2026-08-04에 357개 WModel을 최종
+namespace로 재쿠킹했고, 저장된 919개 texture reference와 실제 파일을 다시 검증했다.
 
 외부 조사·추출 증거:
 

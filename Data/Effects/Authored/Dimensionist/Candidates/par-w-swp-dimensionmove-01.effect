@@ -1,0 +1,16 @@
+LOSTARK_EFFECT 5
+ASSET id="par-w-swp-dimensionmove-01" name="par_w_swp_dimensionmove_01" provenance=DERIVED_CONVERSION duration=3 warmup=0
+
+EMITTER id=4667 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=4668 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=4669 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.2 loops=1
+  MODULE id=4670 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_004.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_cyber_01.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=4672 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=10,8,3,0.9 min=10,8,3,0.9 max=10,8,3,0.9
+
+EMITTER id=4673 name="lightning1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=4674 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_electric_008.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_electric_008.dds" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=15 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=4675 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=10,8,3,0.9 min=10,8,3,0.9 max=10,8,3,0.9
+
+EMITTER id=4676 name="emitter_3" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=3 loops=1
+  MODULE id=4677 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

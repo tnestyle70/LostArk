@@ -1,0 +1,12 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-instance-bg-03" name="par_s_swp_instance_bg_03" provenance=DERIVED_CONVERSION duration=4 warmup=0
+
+EMITTER id=18612 name="emitter_0" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=18613 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="enginematerials.defaultparticle" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=18614 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=18615 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=3 min=3 max=3
+  MODULE id=18616 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=6.5,6.5,6.5
+  MODULE id=18617 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=3,2,1,1 min=3,2,1,1 max=3,2,1,1
+  MODULE id=18618 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=6,3.75,1.2,0.5 min=6,3.75,1.2,0.5 max=6,3.75,1.2,0.5
+  MODULE id=18619 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.6,0.6,0.6 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=18620 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,1:0 g=0:2.5,1:0 b=0:2,1:0 a=0:1,1:0

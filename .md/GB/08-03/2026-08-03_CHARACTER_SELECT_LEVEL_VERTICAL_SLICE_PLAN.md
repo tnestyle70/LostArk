@@ -1,1971 +1,2963 @@
-# Character Select와 LEVEL 단일 전환 구조 계획
-
-작성일
-2026-08-03
-
-작업 모드
-STRUCTURE_FIRST
-
-이 문서는 사용자가 직접 코드를 작성하기 위한 설계 정본이다.
-전체 C++ 코드를 대신 작성하지 않는다.
-파일이 왜 존재하는지, 어디에 추가하는지, 어떤 헤더가 필요한지, 누가 함수를 호출하는지, 어떤 상태를 바꾸는지, 어떤 불변식을 지켜야 하는지를 먼저 설명한다.
-
-## 1. Level_CharacterSelect가 정말 필요한가
-
-먼저 결론
-
-현재 목표를 기준으로는 `CLevel_CharacterSelect`가 필요하다.
-
-현재 목표는 단순히 ImGui에서 직업 enum 하나를 고르는 것이 아니다.
-
-캐릭터 네 직업 미리보기
-→ 선택 캐릭터 전환
-→ 전용 카메라와 조명
-→ 대기 애니메이션
-→ 장비와 색상 변경
-→ 외형 커스터마이징
-→ 뼈와 socket 확인
-→ Effect 연결
-→ secondary motion과 solver 확인
-→ PBR, SSAO, outline 결과 확인
-→ 선택 결과 저장
-→ Lobby 복귀
-→ 실제 Server 승인 입장에 같은 직업 사용
-
-이 범위는 Lobby의 버튼 패널 하나로 끝나지 않는다.
-전용 리소스 묶음, 전용 카메라, 전용 조명, 전용 Layer, 전용 ImGui 편집 상태, 독립적인 진입과 종료 수명이 필요하다.
-그래서 별도 Level로 분리하는 것이 맞다.
-
-반대로 다음 범위라면 `CLevel_CharacterSelect`를 만들면 안 된다.
-
-ImGui에 직업 버튼 네 개만 표시
-→ enum 하나 저장
-→ 바로 Lobby에서 Server 입장 요청
-
-이 정도라면 Lobby 내부 패널이나 Lobby sub-state면 충분하다.
-별도 Level을 만들면 Loader, Camera, Light, Layer, 전환 코드가 불필요하게 늘어난다.
-
-이번 계획의 판정 기준
-
-현재 사용자가 원하는 최종 범위에는 3D 미리보기와 제작 툴 연결이 포함된다.
-따라서 `LEVEL::CHARACTER_SELECT`와 `CLevel_CharacterSelect`를 유지한다.
-다만 첫 구현에서는 직업 선택과 3D 미리보기까지만 닫고, 장비·색상·물리·Effect 편집은 같은 Level 위에 후속 수직 슬라이스로 올린다.
-미래 기능을 위해 빈 Manager나 placeholder 파일을 미리 만들지는 않는다.
-
-## 2. 이번 변경이 해결하는 문제
-
-현재 구조의 문제
-
-`CLIENT_SCENARIO`가 Level, 개발 도구, 실행 옵션, smoke 시나리오를 한 enum 안에서 함께 표현한다.
-`ClientLaunchOptions`가 시작 Level, Local Preview, Multiplayer, 선택 직업, 서버 주소, Effect 자동 실행, smoke 종료까지 함께 소유한다.
-`LevelCatalog.json`이 실행 시나리오와 Level을 다시 연결한다.
-`CMainApp`이 실제 게임 루프뿐 아니라 smoke harness, offline overlay, 도구 자동 실행, scene parsing을 함께 담당한다.
-Lobby가 캐릭터 선택, Local Preview, Multiplayer 연결, 월드 선택을 동시에 담당한다.
-제품 Level에서도 Local Preview와 Server replicated path가 함께 존재한다.
-
-이 상태가 계속되면 기능 하나를 추가할 때 다음 경계를 모두 건드리게 된다.
-
-명령행 파서
-→ scenario enum
-→ catalog JSON
-→ registry
-→ loader
-→ MainApp smoke
-→ Lobby
-→ 실제 Level
-
-사용자가 지적한 Winters Engine의 문제도 같은 종류다.
-도구와 검증을 계속 MainApp과 런타임 분기에 붙이면 하나의 클래스가 모든 예외를 아는 괴물이 된다.
-
-수정 후 목표
-
-Client는 항상 Lobby에서 시작한다.
-Lobby에는 Test, Character Select, Valtan, Bern 네 진입 명령만 있다.
-Character Select는 네트워크 없이 전용 Level로 이동한다.
-Test, Valtan, Bern은 실제 Server 접속과 입장 승인을 통과한 뒤 해당 Level을 로드한다.
-Level 전환 요청은 `LEVEL`만 전달한다.
-Loader는 해당 Level에 필요한 리소스만 준비한다.
-MainApp은 한 프레임의 안전한 지점에서만 실제 `Change_Level`을 호출한다.
-Client 내부 smoke harness와 Local Preview 경로는 삭제한다.
-검증은 Visual Studio의 Server + Client 동시 실행, 기존 NetworkProtocolHarness, Server contract test, ProjectAudit으로 수행한다.
-
-## 3. 수정 후 전체 호출 흐름
-
-Client 시작
-
-`WinMain`
-→ `CMainApp::Initialize`
-→ 공용 Prototype과 ImGui 초기화
-→ `CMainApp::Start_Level(LEVEL::LOBBY)`
-→ `CLevel_Loading` 생성
-→ `CLoader::Ready_For_Lobby`
-→ `CLevel_Lobby` 생성
-→ MainApp이 안전한 프레임 경계에서 Lobby 활성화
-
-Character Select 진입
-
-Lobby의 Character Select 버튼
-→ `CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT)`
-→ `CLevel_Lobby::Update`가 command 소비
-→ `CLevelTransitionService::Request_Load(LEVEL::CHARACTER_SELECT)`
-→ `CMainApp::Update`가 Engine update 반환 후 request 소비
-→ `CMainApp::Start_Level(LEVEL::CHARACTER_SELECT)`
-→ Loading Level
-→ `CLoader::Ready_For_CharacterSelect`
-→ `CLevel_CharacterSelect` 생성
-→ MainApp이 activation request 적용
-
-직업 선택
-
-Character Select ImGui 버튼
-→ 선택 index 변경
-→ 선택한 직업의 preview를 먼저 staging
-→ staging 성공
-→ 기존 preview 제거
-→ 새 preview를 active로 교체
-→ 카메라 target 갱신
-
-확정
-
-Confirm 버튼
-→ `CCharacterSelectionState::Select`
-→ 선택 직업 유효성 확인
-→ 선택 상태 commit
-→ `CLevelTransitionService::Request_Load(LEVEL::LOBBY)`
-→ Loading
-→ Lobby 복귀
-
-Test 진입
-
-Lobby의 Test 버튼
-→ 선택 직업 존재 확인
-→ `CNetworkManager::Connect("127.0.0.1", 7777)`
-→ `C2S_ENTER_WORLD`에 `WORLD_ID::TRAINING_GROUND`와 선택 직업 전송
-→ Lobby가 최대 5초 동안 승인 대기
-→ 일치하는 `S2C_ENTER_ACCEPTED` 수신
-→ `CLevelTransitionService::Request_Load(LEVEL::DEVELOPMENT)`
-→ Loader가 `dev.training.ground` 범위 준비
-→ Development 활성화
-
-Valtan과 Bern 진입
-
-Test와 같은 흐름을 사용한다.
-차이는 Lobby stage가 고정된 `WORLD_ID`와 `LEVEL`로 변환되는 부분뿐이다.
-승인 전에는 절대로 제품 Level을 먼저 열지 않는다.
-
-제품 Level 이탈
-
-Server disconnect 감지
-→ replicated object와 pending state 정리
-→ `CLevelTransitionService::Request_Load(LEVEL::LOBBY)`
-→ MainApp이 프레임 경계에서 Loading으로 전환
-→ Local Preview로 자동 우회하지 않음
-
-## 4. 전체 파일 변경 지도
-
-유지하면서 수정할 파일
-
-`Client/Public/Client_Defines.h`
-`Client/Public/MainApp.h`
-`Client/Private/MainApp.cpp`
-`Client/Public/LevelRegistry.h`
-`Client/Private/LevelRegistry.cpp`
-`Client/Public/Loader.h`
-`Client/Private/Loader.cpp`
-`Client/Public/Level_Lobby.h`
-`Client/Private/Level_Lobby.cpp`
-`Client/Public/Level_Loading.h`
-`Client/Private/Level_Loading.cpp`
-`Client/Public/LobbyCommandService.h`
-`Client/Private/LobbyCommandService.cpp`
-`Client/Public/ClientReplication.h`
-`Client/Private/ClientReplication.cpp`
-`Client/Public/Level_Bern.h`
-`Client/Private/Level_Bern.cpp`
-`Client/Public/Level_ValtanArena.h`
-`Client/Private/Level_ValtanArena.cpp`
-`Client/Public/Level_Development.h`
-`Client/Private/Level_Development.cpp`
-`Client/Public/Effect_Tool.h`
-`Client/Private/Effect_Tool.cpp`
-`Client/Default/Client.vcxproj`
-`Client/Default/Client.vcxproj.filters`
-`Tools/Build/Invoke-BuildAndRegression.ps1`
-`Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
-
-기존 파일을 이름 변경하며 수정할 파일
-
-`Client/Public/SceneTransitionService.h`
-→ `Client/Public/LevelTransitionService.h`
-
-`Client/Private/SceneTransitionService.cpp`
-→ `Client/Private/LevelTransitionService.cpp`
-
-이것은 두 번째 전환 시스템을 추가하는 작업이 아니다.
-기존 service에서 `CLIENT_SCENARIO`를 제거하고 Level 수명 전환만 남긴 뒤 역할에 맞게 이름을 바꾸는 작업이다.
-
-새로 추가할 C++ 파일
-
-`Client/Public/Level_CharacterSelect.h`
-`Client/Private/Level_CharacterSelect.cpp`
-`Client/Public/CharacterSelectionState.h`
-`Client/Private/CharacterSelectionState.cpp`
-
-현재 worktree에는 `Level_CharacterSelect.h/.cpp` 경로와 프로젝트 항목이 이미 생겨 있다.
-그러나 내용이 비어 있거나 잘못된 문자가 있다면 신규 설계 기준으로 다시 작성해야 한다.
-이 계획서는 해당 파일을 이미 완성된 것으로 간주하지 않는다.
-
-새로 추가할 실행 설정 파일
-
-`Framework.slnLaunch`
-
-삭제할 파일
-
-`Client/Public/ClientLaunchOptions.h`
-`Client/Private/ClientLaunchOptions.cpp`
-`Client/Public/LevelCatalog.h`
-`Client/Private/LevelCatalog.cpp`
-`Client/Public/OfflinePlayerPreview.h`
-`Client/Private/OfflinePlayerPreview.cpp`
-`Data/Levels/LevelCatalog.json`
-`Tools/Build/Invoke-OfflineClientSmoke.ps1`
-`Tools/Build/Invoke-NetworkEndpointSmoke.ps1`
-
-삭제할 MainApp 함수
-
-`CMainApp::RenderOfflinePreviewOverlay`
-`CMainApp::UpdateSmokeHarness`
-`CMainApp::CompleteSmokeHarness`
-
-삭제할 개념
-
-`CLIENT_SCENARIO`
-`CLIENT_ENTRY_MODE`
-`LOCAL_PREVIEW`
-Client 실행 인자의 `--smoke`
-Client 실행 인자의 `--scenario`
-Client 실행 인자의 Effect 자동 실행과 자동 종료
-Client에서 제품 Stage를 offline Character로 대신 검증하는 경로
-
-## 5. Client_Defines.h
-
-수정 위치
-
-`Client/Public/Client_Defines.h`
-
-파일이 존재하는 이유
-
-Client 전체가 공유하는 고정 enum과 기본 타입 경계를 제공한다.
-Level 숫자는 Engine Level resource index와 연결되므로 각 Level이 임의의 정수를 사용하면 안 된다.
-
-LEVEL에 필요한 값
-
-`STATIC`
-`LOADING`
-`LOBBY`
-`CHARACTER_SELECT`
-`BERN`
-`VALTAN_ARENA`
-`DEVELOPMENT`
-`END`
-
-중요한 불변식
-
-`CHARACTER_SELECT`는 실행 scenario가 아니라 실제 Level resource index다.
-Test를 위해 새 `LEVEL::TEST`나 `LEVEL::TRAINING`을 추가하지 않는다.
-Test 버튼은 기존 `LEVEL::DEVELOPMENT`와 `WORLD_ID::TRAINING_GROUND`를 사용한다.
-모르는 값은 `LOBBY`로 fallback하지 않고 실패한다.
-
-왜 `FRONT_CHARACTER_SELECT`가 필요하지 않은가
-
-`LEVEL::CHARACTER_SELECT`가 이미 실제 화면과 resource lifetime을 표현한다.
-`FRONT_CHARACTER_SELECT` 같은 두 번째 enum은 같은 사실을 다른 축에서 중복 표현한다.
-중복 enum은 registry와 catalog의 호환성 검사를 다시 요구하고 잘못된 조합을 만들 수 있다.
-따라서 `CLIENT_SCENARIO::FRONT_CHARACTER_SELECT`는 추가하지 않고 `CLIENT_SCENARIO` 자체를 폐기한다.
-
-## 6. CharacterSelectionState.h
-
-정확한 추가 위치
-
-헤더
-`Client/Public/CharacterSelectionState.h`
-
-구현
-`Client/Private/CharacterSelectionState.cpp`
-
-프로젝트
-`Client/Default/Client.vcxproj`
-
-헤더 항목
-`ClInclude Include="..\Public\CharacterSelectionState.h"`
-
-CPP 항목
-`ClCompile Include="..\Private\CharacterSelectionState.cpp"`
-
-필터
-헤더와 CPP 모두 `01.Levels\01. CharacterSelect`
-
-추가 include directory
-없음
-
-추가 project reference
-없음
-
-추가 library
-없음
-
-파일이 존재하는 이유
-
-Character Select에서 확정한 직업은 Character Select Level이 파괴된 뒤에도 살아 있어야 한다.
-Lobby가 Server 입장 요청을 만들 때 같은 값을 읽어야 한다.
-제품 Level의 Loader가 선택 직업 Prototype을 준비할 때도 같은 값을 읽어야 한다.
-
-이 상태를 Level 멤버에 두면 Level 전환 순간 사라진다.
-NetworkManager에 두면 접속 전 선택이라는 의미와 맞지 않고 `Close()` 시 함께 초기화될 수 있다.
-CharacterCatalog에 두면 읽기 전용 캐릭터 정의와 현재 사용자의 가변 선택을 섞게 된다.
-LobbyCommandService에 두면 일회성 command queue와 지속 상태를 섞게 된다.
-
-현재 구조에서 가장 작은 경계는 Client process 범위의 선택 상태 하나다.
-나중에 계정 캐릭터 슬롯과 서버 저장이 생기면 이 클래스는 server-provided selection model로 교체될 수 있다.
-
-필요한 헤더
-
-`Network/PacketType.h`
-선택 직업 타입인 `LostArk::Shared::CHARACTER_CLASS_ID`가 선언돼 있다.
-
-`Engine_Defines.h`
-프로젝트에서 사용하는 `bool_t`와 공용 기본 타입이 필요할 때 사용한다.
-표준 `bool`만 쓸 수 있다면 이 include를 줄일 수 있는지 실제 정의를 확인한다.
-
-외부에 공개할 함수
-
-`Select(CHARACTER_CLASS_ID characterClass)`
-
-존재 이유
-검증되지 않은 enum 값을 상태에 직접 대입하지 않도록 commit 입구를 하나로 만든다.
-
-호출자
-`CLevel_CharacterSelect::Confirm_Selection`
-
-입력
-사용자가 확정한 직업 ID
-
-내부 흐름
-지원 직업인지 검사
-→ 유효하면 선택 값 저장
-→ 선택 존재 상태 true
-→ 성공 반환
-
-상태 변화
-현재 선택 직업과 선택 존재 여부를 함께 변경한다.
-
-실패
-지원하지 않는 ID면 기존 선택을 보존하고 false를 반환한다.
-
-`Has_Selection()`
-
-존재 이유
-Lobby가 Server 입장을 요청하기 전에 선택이 존재하는지 확인한다.
-
-호출자
-`CLevel_Lobby::Begin_StageRequest`
-제품 Level Loader의 직업 Prototype 준비 함수
-
-상태 변화
-없음
-
-`Get_SelectedClass()`
-
-존재 이유
-확정된 직업 ID를 읽는다.
-
-선행 조건
-`Has_Selection()`이 true여야 한다.
-
-실패 정책
-선택이 없을 때 임의의 LANCE_MASTER를 반환하면 안 된다.
-함수 계약을 optional 반환으로 만들거나, 호출자가 먼저 `Has_Selection()`을 확인하는 불변식을 명확히 고정한다.
-
-내부 자료구조
-
-선택 직업 ID 하나
-선택 존재 여부 하나
-
-자료구조가 작은 이유
-
-이 클래스는 외형 전체를 저장하는 장소가 아니다.
-첫 수직 슬라이스에서는 Server 입장에 필요한 stable class ID만 소유한다.
-장비, 염색, 얼굴 값이 실제 server 계약에 추가될 때 별도 immutable selection payload로 확장한다.
-
-핵심 불변식
-
-선택 없음과 기본 직업은 같은 상태가 아니다.
-지원하지 않는 enum은 저장하지 않는다.
-Level 전환이 선택을 지우지 않는다.
-Network disconnect가 선택을 지우지 않는다.
-
-## 7. Level_CharacterSelect.h
-
-정확한 추가 위치
-
-헤더
-`Client/Public/Level_CharacterSelect.h`
-
-구현
-`Client/Private/Level_CharacterSelect.cpp`
-
-프로젝트
-`Client/Default/Client.vcxproj`
-
-헤더 항목
-현재 등록된 `ClInclude Include="..\Public\Level_CharacterSelect.h"`를 사용한다.
-
-CPP 항목
-현재 등록된 `ClCompile Include="..\Private\Level_CharacterSelect.cpp"`를 사용한다.
-
-필터
-헤더와 CPP 모두 현재 존재하는 `01.Levels\01. CharacterSelect`
-
-추가 include directory
-없음
-
-추가 project reference
-없음
-
-추가 library
-없음
-
-파일이 존재하는 이유
-
-캐릭터 선택 제작 화면의 수명을 Lobby와 분리한다.
-선택 화면 전용 Camera, Light, Character preview, ImGui panel을 소유한다.
-이 Level이 닫히면 선택 화면에만 필요한 GameObject와 Level resource가 함께 정리돼야 한다.
-
-이 클래스가 소유하지 않는 것
-
-Server socket
-입장 승인
-월드 Player entity
-Network snapshot
-게임play authority
-Character 원본 catalog
-Effect asset 원본
-Physics solver 구현 자체
-
-필요한 헤더
-
-`Client_Defines.h`
-`LEVEL::CHARACTER_SELECT`와 Client 기본 타입을 사용한다.
-
-`Level.h`
-`Engine::CLevel`을 상속하고 override 함수를 선언한다.
-
-`Network/PacketType.h`
-멤버로 `CHARACTER_CLASS_ID` 값을 직접 보관한다면 완전한 enum 정의가 필요하다.
-
-`<array>`
-지원 직업 네 개가 컴파일 시점에 고정되어 있으므로 `std::array`를 사용한다.
-
-전방 선언 가능한 타입
-
-`CCamera_Free`
-`CCharacter`
-
-헤더에서는 `shared_ptr<CCamera_Free>`와 `shared_ptr<CCharacter>`만 보관한다.
-실제 함수 호출과 `dynamic_pointer_cast`가 있는 CPP에서 각각의 헤더를 include한다.
-
-왜 vector가 아니라 array인가
-
-현재 지원 직업은 LANCE_MASTER, GUNSLINGER, SLAYER, ARTIST 정확히 네 개다.
-런타임에 개수가 늘거나 줄지 않는다.
-고정 크기라는 불변식을 타입으로 표현하고 heap allocation을 피하기 위해 array가 맞다.
-향후 Server 캐릭터 슬롯 목록이 가변적으로 내려오면 그때 vector 기반 slot view model로 바꾼다.
-
-외부에 공개할 함수
-
-`Initialize()`
-
-존재 이유
-Loader가 준비한 Prototype을 사용해 Character Select 화면의 실제 객체를 만든다.
-
-호출자
-`CLevel_CharacterSelect::Create`
-
-내부 흐름
-부모 Level 초기화
-→ Light 준비
-→ Camera 준비
-→ 초기 preview 준비
-→ 하나라도 실패하면 초기화 실패 반환
-
-중요한 경계
-파일을 읽거나 Model을 디코드하지 않는다.
-무거운 리소스 준비는 Loader에서 끝나 있어야 한다.
-
-`Update(float deltaSeconds)`
-
-존재 이유
-Character Select의 매 프레임 입력과 UI command를 처리한다.
-
-호출자
-Engine Level update
-
-내부 흐름
-선택 panel 입력 반영
-→ preview 회전이나 camera update
-→ Confirm 또는 Back 요청 처리
-→ Level 전환은 service에 요청만 제출
-
-상태 변화
-현재 preview index
-UI status
-preview transform
-
-금지
-`Change_Level` 직접 호출
-Network connect
-Server packet 전송
-매 프레임 asset file 읽기
-
-`Render()`
-
-존재 이유
-Character Select 배경, preview, ImGui panel을 한 화면으로 보여준다.
-
-호출자
-Engine Level render
-
-내부 흐름
-Level name 또는 기본 UI 렌더
-→ 선택 직업 버튼
-→ 확정과 뒤로 버튼
-→ 현재 선택과 오류 상태 표시
-
-`Create(device, context)`
-
-존재 이유
-객체 생성과 Initialize 성공 여부를 한 지점에서 닫는다.
-
-내부 흐름
-객체 생성
-→ Initialize
-→ 실패하면 정리하고 nullptr
-→ 성공하면 unique_ptr 반환
-
-Character Select 내부 함수
-
-`Ready_Lights()`
-
-존재 이유
-PBR Character preview가 Lobby나 제품 맵 조명에 의존하지 않도록 전용 조명을 만든다.
-
-상태 변화
-Engine Light registry에 Character Select Level용 light 추가
-
-실패
-조명 추가 실패면 Level 초기화를 중단한다.
-
-`Ready_Camera()`
-
-존재 이유
-Character preview를 보는 전용 카메라를 만든다.
-
-내부 흐름
-Loader가 등록한 Camera Prototype clone
-→ `LAYER_CAMERA`에 추가
-→ `CCamera_Free`로 cast
-→ 성공한 shared pointer 저장
-
-불변식
-Initialize 성공 후 camera pointer는 null이 아니다.
-카메라가 preview를 강하게 소유하지 않도록 기존 camera target 계약을 확인한다.
-
-`Ready_Preview(characterClass)`
-
-존재 이유
-선택한 직업의 3D Character를 화면에 표시한다.
-
-내부 흐름
-직업 ID 검증
-→ CharacterCatalog에서 해당 `CHARACTER_SPEC` 조회
-→ 필요한 Prototype tag 확인
-→ 새 Character를 임시 local 변수로 clone
-→ transform과 animation 초기화
-→ 모든 준비 성공
-→ 기존 preview 제거
-→ 새 preview를 active pointer로 교체
-→ camera follow target 갱신
-
-왜 staging이 필요한가
-
-기존 preview를 먼저 지운 뒤 새 Character 생성에 실패하면 화면이 비어 버린다.
-새 preview가 완전히 준비된 뒤 교체하면 실패 시 기존 화면을 보존할 수 있다.
-
-`Select_Preview(index)`
-
-존재 이유
-ImGui index를 stable class ID로 변환하고 preview 교체를 요청한다.
-
-입력 검증
-index가 array 범위 안인지 확인한다.
-
-실패
-범위를 벗어나면 기존 index와 preview를 유지한다.
-새 preview 생성 실패면 기존 index를 유지하고 status에 원인을 남긴다.
-
-`Confirm_Selection()`
-
-존재 이유
-화면에서 보고 있는 직업을 process selection state에 확정한다.
-
-내부 흐름
-active preview 존재 확인
-→ current class 유효성 확인
-→ `CCharacterSelectionState::Select`
-→ 성공하면 Lobby load request 제출
-
-실패
-state commit 실패면 Character Select에 남고 기존 확정 선택을 보존한다.
-transition request가 이미 pending이면 중복 요청을 만들지 않는다.
-
-`Request_Back()`
-
-존재 이유
-이번 화면의 임시 선택을 확정하지 않고 Lobby로 돌아간다.
-
-불변식
-기존에 확정된 `CCharacterSelectionState`는 바꾸지 않는다.
-
-Character Select 멤버 자료구조
-
-지원 직업 목록
-`std::array<CHARACTER_CLASS_ID, 4>`
-
-현재 preview index
-array의 현재 위치
-
-현재 preview Character
-`shared_ptr<CCharacter>`
-
-전용 Camera
-`shared_ptr<CCamera_Free>`
-
-상태 문자열
-사용자가 실패 원인을 볼 수 있는 문자열
-
-중요한 불변식
-
-현재 index가 유효하면 array 범위 안이다.
-현재 preview가 존재하면 preview의 class ID는 array의 현재 값과 같다.
-Preview 전환 실패 시 기존 preview와 index가 보존된다.
-Confirm 전에는 전역 선택 상태를 바꾸지 않는다.
-Character Select는 Server authority를 만들지 않는다.
-
-## 8. LevelRegistry.h
-
-수정 위치
-
-`Client/Public/LevelRegistry.h`
-`Client/Private/LevelRegistry.cpp`
-
-파일이 존재하는 이유
-
-`LEVEL` 하나를 실제 Level 생성 함수와 Loader 함수에 연결하기 위해 존재한다.
-Level마다 MainApp switch와 Loader switch를 따로 만들면 같은 매핑이 여러 파일에 복제된다.
-Registry는 enum을 실행 함수로 변환하는 단일 dispatch table이다.
-
-Registry가 Catalog와 다른 이유
-
-Catalog는 외부 JSON의 stable scenario ID, kind, tool, asset domain을 파싱했다.
-Registry는 컴파일된 `LEVEL`과 함수 포인터의 연결만 가진다.
-사용자가 선택할 실행 시나리오를 저장하지 않는다.
-파일을 읽지 않는다.
-Prototype tag나 placement를 저장하지 않는다.
-
-필요한 헤더
-
-`Client_Defines.h`
-`LEVEL` 정의
-
-`Engine_Defines.h`
-`HRESULT`와 Engine 기본 타입
-
-`MapLoadScope.h`
-제품 map descriptor가 `MAP_LOAD_SCOPE`를 값으로 가진다면 필요하다.
-
-`<memory>`
-Level 생성 함수가 `unique_ptr<CLevel>`을 반환한다.
-
-전방 선언
-
-`Engine::CLevel`
-`CLoader`
-
-헤더에서 pointer와 함수 시그니처만 필요하므로 완전한 클래스 정의는 CPP로 미룬다.
-
-수정할 descriptor
-
-Level ID
-제품 또는 Development 구분
-디버그 표시용 stable name
-Level 생성 함수 포인터
-Loader 준비 함수 포인터
-필요한 경우 map area ID
-필요한 경우 map load scope
-
-stable name은 저장 ID가 아니다.
-로그와 도구 표시를 위한 읽기 전용 이름이다.
-
-외부에 공개할 함수
-
-`Find(LEVEL level)`
-
-존재 이유
-Level 하나의 descriptor를 찾는다.
-
-내부 흐름
-고정 array 순회
-→ 같은 LEVEL 검색
-→ 발견하면 주소 반환
-→ 없으면 nullptr
-
-`Create_Level(LEVEL level, device, context)`
-
-존재 이유
-MainApp이나 Loading이 구체 Level 헤더를 모두 알지 않고 생성하게 한다.
-
-내부 흐름
-Find
-→ descriptor 검증
-→ create function 호출
-→ 생성 결과 반환
-
-`Execute_Load(LEVEL level, CLoader& loader)`
-
-존재 이유
-Loader가 Level switch를 직접 소유하지 않게 한다.
-
-내부 흐름
-Find
-→ load function 검증
-→ 해당 `Ready_For_*` 호출
-
-등록해야 하는 Level
-
-Lobby
-Character Select
-Bern
-Valtan Arena
-Development
-
-Loading은 Loading 자신을 준비하기 위한 대상이 아니므로 일반 registry target에서 제외할 수 있다.
-
-자료구조
-
-`std::array<CLIENT_LEVEL_DESCRIPTOR, 5>`
-
-array인 이유
-제품에서 지원하는 Level 집합이 컴파일 시점에 고정되어 있다.
-동적 plugin registry가 아니므로 map allocation이 필요하지 않다.
-
-핵심 불변식
-
-각 LEVEL은 정확히 한 번만 등록된다.
-create function과 load function은 null이 아니다.
-모르는 LEVEL은 Lobby로 fallback하지 않는다.
-Character Select create와 load 함수가 같은 descriptor에 함께 등록된다.
-Loader와 runtime map scope가 같은 descriptor를 소비한다.
-
-## 9. Loader.h
-
-수정 위치
-
-`Client/Public/Loader.h`
-`Client/Private/Loader.cpp`
-
-파일이 존재하는 이유
-
-Level 진입 전에 shader, model, camera prototype, map placement와 navigation 같은 무거운 리소스를 준비하기 위해 존재한다.
-Level의 `Initialize` 안에서 이 작업을 전부 하면 화면 thread가 멈추고 중간 실패 rollback이 어려워진다.
-
-Loader는 Level을 선택하지 않는다.
-이미 결정된 `LEVEL`의 리소스를 준비한다.
-
-필요한 헤더
-
-현재 Loader thread, atomic state, D3D device/context, Level resource rollback에 필요한 기존 헤더를 유지한다.
-`ClientLaunchOptions.h`와 `LevelCatalog.h` include는 제거한다.
-선택 직업을 읽는 구현부에서 `CharacterSelectionState.h`를 include한다.
-Registry를 통한 dispatch에 필요한 선언은 기존 `LevelRegistry` 경계를 사용한다.
-
-외부에 공개할 핵심 함수
-
-`Initialize(LEVEL nextLevel)`
-대상 Level 저장
-→ state RUNNING 준비
-→ worker thread 생성
-
-`Start_Loading()`
-Registry에서 대상 Level load function 실행
-→ 성공이면 SUCCEEDED
-→ 실패면 FAILED와 HRESULT 보존
-
-`Finished()`
-worker가 종료 상태인지 조회한다.
-
-`Failed()`
-실패 종료인지 조회한다.
-
-`Get_Result()`
-원래 HRESULT를 반환한다.
-실패 이유를 `E_FAIL` 하나로 뭉개지 않는다.
-
-추가 또는 완성할 함수
-
-`Ready_For_CharacterSelect()`
-
-존재 이유
-Character Select 전용 Level resource bundle을 준비한다.
-
-처리 순서
-Character Select Level rollback scope 시작
-→ Camera Prototype 등록
-→ animated mesh shader 등록
-→ Character 공용 부품 Prototype 등록
-→ 네 지원 직업의 Character rendering Prototype 등록
-→ 전부 성공하면 commit
-
-Character Select에서 준비하지 않는 것
-
-Bern map
-Valtan map
-Navigation
-Server world entity
-Boss Prototype
-
-`Ready_For_Development()` 수정
-
-Test는 더 이상 scenario를 읽지 않는다.
-항상 `dev.training.ground`와 `WORLD_ID::TRAINING_GROUND` 계약에 필요한 리소스를 준비한다.
-선택 직업이 없으면 실패한다.
-
-`Ready_Character_Rendering(levelIndex, characterClass)` 형태 검토
-
-현재 함수가 `ClientLaunchOptions`를 내부에서 읽는다면 책임이 숨겨져 있다.
-필요한 직업을 인자로 받도록 바꾸는 편이 낫다.
-
-호출 흐름
-Character Select Loader는 네 직업 각각에 대해 호출
-제품 Level Loader는 확정된 직업 하나에 대해 호출
-
-장점
-함수 입력만 보면 무엇을 준비하는지 알 수 있다.
-명령행 전역 상태 의존성이 사라진다.
-테스트할 때 잘못된 class ID를 직접 전달할 수 있다.
-
-Loader 자료구조
-
-대상 LEVEL
-worker HANDLE
-atomic state
-atomic HRESULT
-cancellation flag
-status text와 mutex
-
-핵심 불변식
-
-한 Loader instance는 한 대상 LEVEL만 준비한다.
-실패한 Level resource는 rollback scope가 제거한다.
-완료 전에 Level을 생성하지 않는다.
-취소 시 worker를 강제 종료하지 않는다.
-ClientLaunchOptions나 scenario를 읽지 않는다.
-
-## 10. LevelTransitionService.h
-
-정확한 위치
-
-기존
-`Client/Public/SceneTransitionService.h`
-`Client/Private/SceneTransitionService.cpp`
-
-변경 후
-`Client/Public/LevelTransitionService.h`
-`Client/Private/LevelTransitionService.cpp`
-
-프로젝트
-`Client/Default/Client.vcxproj`
-
-필터
-헤더와 CPP 모두 기존 `01.Levels`
-
-작업 성격
-신규 service 추가가 아니라 기존 service 이름 변경과 책임 축소다.
-프로젝트에서 옛 두 파일 항목을 제거하고 새 두 경로를 등록한다.
-
-파일이 존재하는 이유
-
-Level 자신의 `Update()` 안에서 `Change_Level`을 직접 호출하지 않게 하는 수명 경계다.
-
-현재 `CLevel_Manager::Change_Level`은 기존 Level resource를 지우고 현재 Level pointer를 reset한다.
-어떤 Level이 자신의 `Update()` 도중 직접 이 함수를 호출하면 실행 중인 `this`가 파괴될 수 있다.
-함수가 아직 return하지 않았는데 객체 수명이 끝나는 undefined behavior다.
-
-그래서 Level은 요청만 제출한다.
-실제 `Change_Level`은 `Update_Engine()`이 완전히 반환된 뒤 MainApp이 호출한다.
-
-필요한 헤더
-
-`Client_Defines.h`
-대상 `LEVEL`
-
-`Engine_Defines.h`
-`bool_t`, `HRESULT`
-
-`<string>`
-요청 source와 status 보존
-
-`<optional>`은 구현 파일에서 pending request를 보관할 때 사용한다.
-
-요청 자료구조
-
-요청 단계
-LOAD 또는 ACTIVATE
-
-대상 LEVEL
-
-요청 source
-어느 객체가 요청했는지 디버깅 문자열
-
-왜 단계가 필요한가
-
-일반 Level에서 다른 Level로 갈 때는 먼저 Loading을 열어야 한다.
-Loading worker가 끝난 뒤에는 같은 target을 다시 load하는 것이 아니라 이미 준비된 실제 Level을 활성화해야 한다.
-둘 다 target은 LEVEL 하나지만 lifecycle 동작이 다르다.
-
-외부에 공개할 함수
-
-`Request_Load(LEVEL target, const char* source)`
-
-호출자
-Lobby
-Character Select
-Bern
-Valtan
-Development
-Loading failure recovery
-
-내부 흐름
-target 유효성 검사
-→ LOADING과 STATIC 같은 금지 target 검사
-→ mutex 잠금
-→ pending request 존재 검사
-→ LOAD request 저장
-→ status 갱신
-
-`Request_Activation(LEVEL target, const char* source)`
-
-호출자
-`CLevel_Loading::Update`
-
-존재 이유
-Loader가 성공한 target을 실제 Level로 생성해 활성화해 달라고 MainApp에 요청한다.
-
-`Try_Consume(LEVEL_TRANSITION_REQUEST& outRequest)`
-
-호출자
-`CMainApp::Apply_LevelRequest`
-
-내부 흐름
-mutex 잠금
-→ pending 없음이면 false
-→ outRequest로 이동
-→ pending 제거
-→ true
-
-`Is_Pending()`
-ImGui 버튼 중복 입력 차단과 상태 표시용이다.
-
-`Get_Status()`
-최근 요청이나 거부 원인을 사용자에게 보여준다.
-
-`Report_LoadFailure(HRESULT result)`와 failure consume
-Loading 실패 이유를 Lobby 또는 MainApp UI에 보존해야 한다면 유지한다.
-단순 bool로 실패를 숨기지 않는다.
-
-핵심 불변식
-
-동시에 pending request는 하나뿐이다.
-요청은 `LEVEL`만 식별한다.
-scenario, tool, local/multiplayer 모드를 포함하지 않는다.
-service는 `Change_Level`을 호출하지 않는다.
-MainApp만 request를 소비한다.
-
-## 11. MainApp.h
-
-수정 위치
-
-`Client/Public/MainApp.h`
-`Client/Private/MainApp.cpp`
-
-파일이 존재하는 이유
-
-Client process 전체의 시작과 종료를 조율한다.
-Engine frame, Network update, ImGui frame, debug tool lifetime, 안전한 Level 교체를 연결한다.
-게임 Stage의 세부 상태나 자동 검증 시나리오를 소유하지 않는다.
-
-삭제할 헤더 의존성
-
-`ClientLaunchOptions.h`
-`LevelCatalog.h`
-`OfflinePlayerPreview.h`
-smoke report file 작성에만 쓰던 헤더
-
-삭제할 함수
-
-`RenderOfflinePreviewOverlay()`
-Local Preview 개념이 사라진다.
-
-`UpdateSmokeHarness()`
-Client runtime이 자동 scenario를 실행하지 않는다.
-
-`CompleteSmokeHarness(bool_t succeeded, const char_t* reason)`
-Client가 report를 쓰고 자동 종료하지 않는다.
-
-`Apply_PendingSceneTransition()`
-이 이름과 scenario parsing 구현은 삭제한다.
-대신 최소 함수 `Apply_LevelRequest()`를 둔다.
-
-이 둘의 차이
-
-옛 함수는 scenario 선택, catalog compatibility, tool activation까지 해석했다.
-새 함수는 service에서 받은 LEVEL lifecycle request만 적용한다.
-
-삭제할 멤버
-
-smoke 시작 시간
-smoke scenario
-smoke dispatch 여부
-network stage 관찰 여부
-pending enter 관찰 여부
-smoke 완료 여부
-offline overlay 상태
-scenario 기반 transition status
-
-유지할 멤버
-
-ImGui layer
-MapTool
-EffectTool
-AnimationTool
-HUDLayoutTool
-Developer Tools 표시 상태
-Profiler 상태
-
-수정할 public 함수
-
-`Initialize()`
-
-처리 순서
-Engine 초기화
-→ Network/공용 서비스 초기화
-→ Font와 Static Prototype 준비
-→ ImGui와 debug tool 기반 준비
-→ 무조건 `Start_Level(LEVEL::LOBBY)`
-
-명령행 scenario를 읽지 않는다.
-
-`Update(deltaSeconds)`
-
-권장 순서
-ImGui BeginFrame
-→ UI가 입력을 소비하는지 계산
-→ NetworkManager Update
-→ Engine `Update_Engine`
-→ debug tool update
-→ `Apply_LevelRequest`
-
-가장 중요한 이유
-`Apply_LevelRequest`는 반드시 현재 Level의 Update가 반환된 뒤 실행해야 한다.
-
-`Render()`
-
-Engine render
-→ combat HUD
-→ Developer Tools
-→ ImGui EndFrame
-
-Offline preview overlay와 smoke overlay는 호출하지 않는다.
-
-MainApp private 함수
-
-`Start_Level(LEVEL target)`
-
-존재 이유
-target resource를 준비할 Loading Level을 연다.
-
-내부 흐름
-target descriptor 존재 확인
-→ `CLevel_Loading::Create(target)`
-→ `Change_Level(LEVEL::LOADING, loading)`
-
-`Apply_LevelRequest()`
-
-존재 이유
-실제 Level 파괴와 교체를 안전한 한 지점에서만 수행한다.
-
-내부 흐름
-request 하나 consume
-→ LOAD면 `Start_Level(target)`
-→ ACTIVATE면 Registry로 실제 Level 생성
-→ `Change_Level(target, newLevel)`
-→ 실패면 HRESULT 보존과 Lobby recovery 요청
-
-불변식
-
-Client에서 실제 `Change_Level`을 호출하는 곳은 MainApp뿐이다.
-Loading도 직접 호출하지 않는다.
-MainApp은 Server 승인 정책을 판단하지 않는다.
-MainApp은 Character class를 선택하지 않는다.
-MainApp은 Client smoke를 실행하지 않는다.
-
-## 12. LobbyCommandService.h
-
-수정 위치
-
-`Client/Public/LobbyCommandService.h`
-`Client/Private/LobbyCommandService.cpp`
-
-파일이 존재하는 이유
-
-ImGui나 다른 UI가 Lobby 객체를 직접 참조하지 않고 한 번의 Stage 선택 명령을 전달하게 한다.
-UI는 명령을 제출하고 Lobby Level이 실제 Network와 Level 전환을 판단한다.
-
-삭제할 command 필드
-
-character slot index
-entry mode
-nickname
-server host
-server port
-
-이번 단계에서 endpoint는 제품 실행 설정 `127.0.0.1:7777`로 고정한다.
-닉네임과 실제 계정 캐릭터 슬롯이 필요해지면 Server 계약과 함께 별도 vertical slice로 추가한다.
-
-새 command 자료구조
-
-`LOBBY_STAGE`
-TEST
-CHARACTER_SELECT
-VALTAN
-BERN
-END
-
-`LOBBY_COMMAND`
-선택한 `LOBBY_STAGE` 하나
-
-외부에 공개할 함수
-
-`Request(LOBBY_STAGE stage)`
-
-내부 흐름
-stage 유효성 검사
-→ mutex 잠금
-→ pending command 존재 검사
-→ command 저장
-→ status 갱신
-
-`Try_Consume(LOBBY_COMMAND& outCommand)`
-
-호출자
-`CLevel_Lobby::Update`
-
-내부 흐름
-mutex 잠금
-→ pending 없음이면 false
-→ command 이동
-→ pending 제거
-
-`Get_Status()`
-최근 명령 거부 원인을 ImGui에 보여준다.
-
-자료구조
-
-mutex 하나
-optional pending command 하나
-status string 하나
-
-핵심 불변식
-
-동시에 pending command는 하나뿐이다.
-command는 실제 Level 전환을 수행하지 않는다.
-command는 socket을 열지 않는다.
-Local과 Multiplayer 선택을 포함하지 않는다.
-
-## 13. Level_Lobby.h
-
-수정 위치
-
-`Client/Public/Level_Lobby.h`
-`Client/Private/Level_Lobby.cpp`
-
-파일이 존재하는 이유
-
-Client의 시작 화면이며 네 Stage 진입 의도를 받는다.
-Character Select에는 네트워크 없이 이동한다.
-Test, Valtan, Bern에는 Server 승인을 받은 뒤 이동한다.
-
-Lobby에서 삭제할 책임
-
-Character 네 개를 직접 생성하는 preview slot
-preview camera follow target 선택
-Local Preview
-Multiplayer mode selector
-사용자 입력 server host와 port
-scenario 변환
-LevelCatalog 조회
-
-필요한 헤더
-
-`Client_Defines.h`
-Level 기본 타입
-
-`Level.h`
-`CLevel` 상속
-
-`LobbyCommandService.h`
-command 구조를 멤버나 함수 시그니처에서 직접 사용한다면 필요하다.
-
-`Network/PacketType.h`
-`WORLD_ID`, enter accepted 패킷 타입, 선택 직업 ID
-
-`<chrono>`
-5초 승인 deadline
-
-`CCamera_Free`와 `CCharacter` 전방 선언은 preview 삭제 후 더 이상 필요하지 않다.
-
-외부에 공개할 함수
-
-`Initialize()`
-Lobby Light와 Camera 또는 배경 UI 준비
-→ network pending state 초기화
-
-`Update(deltaSeconds)`
-
-처리 순서
-Lobby command consume
-→ Stage 종류에 따라 분기
-→ Character Select면 Level load request
-→ 제품 Stage면 Server 입장 시작
-→ accepted packet consume
-→ world ID 일치 확인
-→ 성공하면 대응 Level load request
-→ connection failure와 timeout 확인
-
-`Render()`
-
-Test 버튼
-Character Select 버튼
-Valtan 버튼
-Bern 버튼
-현재 확정 직업
-network/transition status
-
-Lobby 내부 함수
-
-`Begin_StageRequest(LOBBY_STAGE stage)`
-
-Character Select 흐름
-pending network 상태가 없는지 확인
-→ `Request_Load(LEVEL::CHARACTER_SELECT)`
-
-Test, Valtan, Bern 흐름
-확정 직업 존재 확인
-→ stage를 `WORLD_ID`와 target `LEVEL`로 변환
-→ 기존 연결 정리 여부 확인
-→ `127.0.0.1:7777` 연결
-→ `C2S_ENTER_WORLD` 전송
-→ pending world와 target level 저장
-→ deadline 현재 시각 + 5초
-→ WAITING_FOR_APPROVAL
-
-`Resolve_Stage(LOBBY_STAGE stage, WORLD_ID&, LEVEL&)`
-
-매핑
-TEST → TRAINING_GROUND → DEVELOPMENT
-VALTAN → VALTAN_ARENA → VALTAN_ARENA
-BERN → BERN → BERN
-
-Character Select는 network world가 아니므로 이 함수에 넣지 않아도 된다.
-
-`Consume_EnterAccepted()`
-
-처리 순서
-accepted 존재 확인
-→ 현재 WAITING인지 확인
-→ accepted world가 pending world와 같은지 확인
-→ NetworkManager가 player/entity ID를 정상 등록했는지 확인
-→ target Level load request
-
-실패
-예상하지 않은 accepted면 연결을 닫고 Lobby에 남는다.
-world가 다르면 연결을 닫고 pending state를 초기화한다.
-
-`Cancel_PendingEntry(reason)`
-
-존재 이유
-연결 실패, packet 거부, timeout을 한 순서로 정리한다.
-
-처리 순서
-NetworkManager close
-→ pending world 초기화
-→ pending target 초기화
-→ state IDLE
-→ deadline 초기화
-→ reason 보존
-
-Lobby 상태 자료구조
-
-진입 상태
-IDLE
-WAITING_FOR_APPROVAL
-
-pending WORLD_ID
-pending LEVEL
-approval deadline
-status string
-
-왜 bool 두 개보다 enum state가 나은가
-
-`m_isEnterRequested`와 `m_isAwaitingEnterAcceptance` 두 bool은 둘 다 true이거나 둘 다 false인 조합의 의미가 불분명하다.
-enum 하나는 허용 상태를 제한하고 switch에서 누락을 찾기 쉽다.
-
-핵심 불변식
-
-WAITING이면 pending world와 level이 모두 유효하다.
-IDLE이면 pending world와 level은 END다.
-승인 전에는 제품 Level load request가 없다.
-실패 시 Lobby에 남는다.
-실패 시 Local Preview로 우회하지 않는다.
-Character Select 진입은 socket을 열지 않는다.
-
-## 14. Level_Loading.h
-
-수정 위치
-
-`Client/Public/Level_Loading.h`
-`Client/Private/Level_Loading.cpp`
-
-파일이 존재하는 이유
-
-대상 Level resource가 준비되는 동안 현재 화면을 유지하고 Loader의 성공 또는 실패를 관찰한다.
-Level 생성과 resource load를 한 프레임에 섞지 않는다.
-
-수정할 함수
-
-`Update(deltaSeconds)`
-
-현재 문제
-Loader 성공 후 Loading 자신의 Update 안에서 `Change_Level`을 직접 호출한다.
-이것도 실행 중인 Loading 객체를 파괴할 수 있는 같은 수명 문제다.
-
-변경 흐름
-Loader 미완료면 반환
-→ 실패면 `Recover_FromFailure(result)`
-→ 성공이면 target descriptor 확인
-→ `CLevelTransitionService::Request_Activation(target)`
-→ activation request가 받아들여지면 중복 요청 차단 상태 기록
-
-`Recover_FromFailure(HRESULT result)`
-
-처리 순서
-원래 HRESULT 보존
-→ 제품 Stage 연결이 열려 있으면 NetworkManager close
-→ 대상 Level partial resource rollback 확인
-→ Lobby가 target이 아니면 `Request_Load(LEVEL::LOBBY)`
-→ Lobby load 자체 실패면 사용자에게 오류 화면과 retry 제공
-
-`Retry_LobbyLoad()`
-
-직접 `Change_Level`하지 않는다.
-`Request_Load(LEVEL::LOBBY)`만 제출한다.
-
-멤버 상태
-
-대상 LEVEL
-Loader unique_ptr
-activation request 제출 여부
-failure 보고 여부
-retry 요청 여부
-
-핵심 불변식
-
-Loader 성공 전 ACTIVATE 요청을 보내지 않는다.
-ACTIVATE 요청은 한 번만 보낸다.
-Loading은 실제 Level을 직접 교체하지 않는다.
-실패 HRESULT를 보존한다.
-
-## 15. Bern, Valtan, Development Level
-
-수정 위치
-
-`Client/Public/Level_Bern.h`
-`Client/Private/Level_Bern.cpp`
-`Client/Public/Level_ValtanArena.h`
-`Client/Private/Level_ValtanArena.cpp`
-`Client/Public/Level_Development.h`
-`Client/Private/Level_Development.cpp`
-
-파일이 존재하는 이유
-
-각 실제 Stage의 runtime object, camera, map placement, replication presentation을 소유한다.
-Server가 승인하고 보낸 상태를 화면에 표시한다.
-
-삭제할 의존성
-
-`ClientLaunchOptions`
-`LevelCatalog`
-`OfflinePlayerPreview`
-Local Preview 분기
-scenario 기반 tool 분기
-
-공통 Initialize 흐름
-
-Registry descriptor에서 map area와 load scope 확인
-→ map placement 생성
-→ gameplay layer 준비
-→ `CClientReplication` 초기화
-→ network command sink 연결
-→ Server snapshot presentation 시작
-
-중요한 불변식
-
-제품 Level의 local Character는 Server의 Spawn packet을 통해서만 생긴다.
-선택 직업을 근거로 Client가 임의 Player ID나 NetEntityId를 만들지 않는다.
-disconnect 시 replicated state를 먼저 정리한 뒤 Lobby 전환을 요청한다.
-
-Development의 의미
-
-Lobby의 Test 버튼이 진입하는 최소 수련장이다.
-`dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND`를 유지한다.
-Map, Character, Effect, UI, HDR scenario를 하나의 enum으로 선택하지 않는다.
-F1 Developer Tools에서 필요한 도구를 명시적으로 열어 테스트한다.
-
-## 16. ClientReplication.h
-
-수정 위치
-
-`Client/Public/ClientReplication.h`
-`Client/Private/ClientReplication.cpp`
-
-파일이 존재하는 이유
-
-Server의 player/entity spawn, despawn, snapshot을 Client GameObject presentation으로 변환한다.
-Server entity ID와 Client object handle의 대응을 소유한다.
-
-삭제할 구조와 함수
-
-`LOCAL_PREVIEW_PLAYER_DESC`
-`Spawn_LocalPreview`
-`Matches_LocalPreviewCharacter`
-`Get_LocalPreviewPlacementId`
-`m_LocalPreviewCharacter`
-`m_strLocalPreviewPlacementId`
-
-수정할 `Get_LocalCharacter()`
-
-Network registry의 local character handle만 resolve한다.
-없으면 nullptr을 반환한다.
-offline preview pointer로 fallback하지 않는다.
-
-수정할 `Reset_World()`
-
-Network registry object 제거
-→ world entity 제거
-→ local handle 초기화
-→ server tick 초기화
-
-Local Preview 별도 제거 단계는 사라진다.
-
-핵심 불변식
-
-NetEntityId가 없는 Character를 replicated player로 등록하지 않는다.
-local player 판정은 Server가 승인한 local NetEntityId를 기준으로 한다.
-한 NetEntityId는 한 registry record만 가진다.
-disconnect 후 이전 object handle은 resolve되지 않는다.
-
-## 17. Debug Tool과 Effect Tool
-
-수정 위치
-
-`Client/Public/MainApp.h`
-`Client/Private/MainApp.cpp`
-`Client/Public/Effect_Tool.h`
-`Client/Private/Effect_Tool.cpp`
-
-Debug Tool이 존재하는 이유
-
-Map, Animation, Effect, UI, profiler를 제작자가 실제 runtime 데이터 위에서 검사하기 위해 존재한다.
-Level을 고르는 두 번째 메뉴가 아니다.
-
-수정 방향
-
-F1은 Developer Tools 창을 열고 닫는다.
-Developer Tools는 Test 즉 Development에서만 편집 도구를 활성화한다.
-도구 버튼은 `EnsureDebugTool(DEBUG_TOOL tool)`에 명시적 tool enum을 전달한다.
-`CLIENT_SCENARIO`나 LevelCatalog의 `Tools` 문자열을 읽지 않는다.
-
-금지
-
-F2부터 F5 또는 F7부터 F12로 Level 전환
-Developer Tools에서 Lobby, Bern, Valtan을 직접 전환
-도구를 열기 위해 Client를 특정 scenario로 재실행
-
-Effect Tool 수정
-
-명령행 Effect asset 자동 open 제거
-HDR profile 자동 시작 제거
-자동 종료와 smoke report 제거
-
-HDR 검증 기능 자체가 유용하다면 Effect Tool 안의 명시적 버튼으로 남긴다.
-사용자가 눌렀을 때만 capture하고 결과를 UI에 표시한다.
-
-Character Select와 툴의 후속 연결
-
-첫 단계에서는 Character Select가 직업 preview만 소유한다.
-Animation, Effect, physics 편집을 붙일 때 MainApp의 범용 도구가 선택 Character를 찾기 위해 Level tag나 vector index를 추측하면 안 된다.
-`CAnimationTargetService`처럼 이미 존재하는 public target 계약으로 active preview를 등록한다.
-후속 수직 슬라이스마다 저장 ID, 적용 대상, 실패 rollback을 따로 닫는다.
-
-## 18. Visual Studio Server와 Client 동시 실행
-
-추가 위치
-
-`Framework.slnLaunch`
-
-파일이 존재하는 이유
-
-Client 내부 smoke 대신 실제 Server와 Client를 같은 디버깅 세션에서 실행하기 위해 존재한다.
-개발자가 한 번의 실행으로 Server listener와 Lobby Client를 함께 띄운다.
-
-프로젝트 순서
-
-Server 먼저 Start
-Client 다음 Start
-
-Server 인자
-기본 listener가 `127.0.0.1`이면 추가 인자 없음
-명시해야 한다면 `--bind-address 127.0.0.1`
-
-Client 인자
-없음
-
-Client 작업 디렉터리
-`Client/Default`
-
-중요한 경계
-
-개인 LAN IP를 파일에 저장하지 않는다.
-Client가 Server 준비를 sleep으로 추측하지 않는다.
-연결 실패 시 Lobby에 원인을 보여주고 다시 시도할 수 있어야 한다.
-Visual Studio 공유 multi-project launch profile은 사용하는 VS 버전 지원 여부를 실제 환경에서 확인한다.
-
-## 19. BuildAndRegression과 ProjectAudit
-
-수정 위치
-
-`Tools/Build/Invoke-BuildAndRegression.ps1`
-`Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
-
-BuildAndRegression이 존재하는 이유
-
-정본 build 순서와 기존 독립 실행형 contract 검증을 한 명령으로 반복한다.
-Client runtime 안에 테스트 분기를 심지 않는다.
-
-유지할 검증
-
-Engine Debug/Release
-UpdateLib Debug/Release
-Shared와 NetworkProtocolHarness Debug/Release
-NetworkProtocolHarness 실행
-Server Debug/Release
-`Server.exe --contract-test`
-Client Debug/Release
-ProjectAudit
-
-삭제할 검증
-
-Client `--smoke`
-Client `--scenario`
-offline Client smoke script
-network endpoint Client smoke script
-MainApp 자동 종료 report 검사
-
-ProjectAudit에 추가할 규칙
-
-`ClientLaunchOptions.h/.cpp`가 존재하지 않는다.
-`LevelCatalog.h/.cpp`와 `Data/Levels/LevelCatalog.json`이 존재하지 않는다.
-`OfflinePlayerPreview.h/.cpp`가 존재하지 않는다.
-Client source에 `CLIENT_SCENARIO`가 없다.
-Client source에 `LOCAL_PREVIEW`가 없다.
-Client source에 `UpdateSmokeHarness`가 없다.
-Client source에 `CompleteSmokeHarness`가 없다.
-Client source에 `RenderOfflinePreviewOverlay`가 없다.
-`Change_Level` 호출은 MainApp의 허용 위치에만 있다.
-Registry에 Character Select가 정확히 한 번 등록된다.
-Character Select H와 CPP가 project와 filter에 등록돼 있다.
-
-왜 Client harness를 새로 만들지 않는가
-
-이번 목표는 MainApp과 실제 runtime에서 테스트 경계를 제거하는 것이다.
-삭제한 smoke를 이름만 바꿔 다른 Client harness로 되살리면 같은 문제가 반복된다.
-Protocol serialization처럼 process 밖에서 독립적으로 검증할 수 있는 기존 harness는 유지한다.
-실제 Level 진입은 Server와 Client를 함께 실행해 검증한다.
-
-## 20. 프로젝트와 filters 수정
-
-수정 위치
-
-`Client/Default/Client.vcxproj`
-`Client/Default/Client.vcxproj.filters`
-
-추가 확인
-
-`Level_CharacterSelect.h/.cpp` 항목이 정확히 한 번 존재하는지 확인한다.
-필터는 `01.Levels\01. CharacterSelect`를 유지한다.
-`CharacterSelectionState.h/.cpp`를 같은 필터에 추가한다.
-`LevelTransitionService.h/.cpp`를 `01.Levels`에 등록한다.
-
-삭제할 항목
-
-`ClientLaunchOptions.h/.cpp`
-`LevelCatalog.h/.cpp`
-`OfflinePlayerPreview.h/.cpp`
-옛 `SceneTransitionService.h/.cpp`
-`Data/Levels/LevelCatalog.json`의 `None` 항목
-
-주의
-
-기존 필터를 재배치하지 않는다.
-관련 없는 파일의 filter를 정리하지 않는다.
-새 include directory나 project reference를 추가하지 않는다.
-
-## 21. 구현 순서
-
-1단계
-`Client_Defines.h`에서 Level 집합을 확정한다.
-`CLIENT_SCENARIO`를 소비하는 위치를 `rg`로 전부 찾는다.
-아직 파일을 삭제하지 않고 소비자 목록을 만든다.
-
-2단계
-`CharacterSelectionState.h/.cpp`를 작성한다.
-지원 class 검증과 선택 없음 불변식을 먼저 닫는다.
-
-3단계
-SceneTransitionService를 LevelTransitionService로 바꾼다.
-request에서 scenario를 제거한다.
-LOAD와 ACTIVATE 단계만 남긴다.
-
-4단계
-LevelRegistry에 Character Select를 등록한다.
-Catalog가 제공하던 제품 map의 고정 정보 중 실제 필요한 것만 descriptor로 옮긴다.
-
-5단계
-Loader에서 launch option과 catalog 의존성을 제거한다.
-Character Select bundle과 선택 직업 인자 전달을 완성한다.
-
-6단계
-`Level_CharacterSelect.h/.cpp`를 작성한다.
-Camera, Light, 네 직업 preview, Confirm, Back만 먼저 닫는다.
-외형·physics·Effect 편집은 아직 넣지 않는다.
-
-7단계
-Lobby에서 preview와 Local/Multiplayer UI를 제거한다.
-네 Stage 버튼과 Server 승인 상태 머신만 남긴다.
-
-8단계
-Loading과 MainApp의 모든 `Change_Level`을 안전한 MainApp 경계로 모은다.
-이 단계가 끝나면 `rg "Change_Level" Client`로 호출 위치를 확인한다.
-
-9단계
-Bern, Valtan, Development와 ClientReplication에서 Local Preview를 제거한다.
-실제 Server spawn만 남긴다.
-
-10단계
-Debug Tool과 Effect Tool에서 scenario 자동 실행을 제거한다.
-
-11단계
-삭제 대상 파일과 project/filter 항목을 제거한다.
-삭제 전 `rg`로 include와 symbol 소비자가 0인지 확인한다.
-
-12단계
-`Framework.slnLaunch`, BuildAndRegression, ProjectAudit을 수정한다.
-
-13단계
-빌드와 실제 Server + Client 수동 검증을 수행한다.
-검증 결과를 대응 RESULT 문서에만 기록한다.
-
-## 22. 대표 실패 상황과 원인 찾기
-
-Character Select 버튼을 눌러도 이동하지 않는다.
-
-확인 순서
-Lobby button이 command를 제출했는가
-→ Lobby Update가 command를 consume했는가
-→ LevelTransitionService에 LOAD request가 생겼는가
-→ MainApp이 Update_Engine 뒤 request를 consume했는가
-→ Start_Level이 Registry descriptor를 찾았는가
-
-Character Select Loading이 실패한다.
-
-확인 순서
-Registry의 load function이 `Ready_For_CharacterSelect`인가
-→ Camera Prototype 등록 성공 여부
-→ animated shader 등록 성공 여부
-→ 네 직업 Character spec 존재 여부
-→ 중복 Prototype tag 여부
-→ rollback 후 해당 Level resource가 남아 있지 않은가
-
-직업을 바꾸면 화면이 비어 버린다.
-
-원인 후보
-기존 preview를 먼저 제거했다.
-새 preview clone 실패 이유를 버렸다.
-Layer에서 기존 객체를 제거한 뒤 rollback하지 않았다.
-
-해결 기준
-새 preview를 staging하고 성공 후 교체한다.
-
-Confirm 후 Lobby에서 선택이 없다.
-
-확인 순서
-Confirm이 임시 index만 바꾸고 state commit을 호출하지 않았는가
-→ state가 Level 멤버로 들어가 파괴됐는가
-→ Back과 Confirm이 같은 함수를 호출하는가
-→ unsupported enum 검증에서 거부됐는가
-
-Bern 버튼을 누르자 Server 없이 Level이 열린다.
-
-원인
-Lobby가 승인 전에 transition request를 제출했다.
-옛 Local Preview 분기가 남았다.
-MainApp smoke가 자동 transition을 제출했다.
-
-Audit 기준
-승인 packet을 소비한 분기에서만 제품 target LOAD가 발생해야 한다.
-
-Loading 전환 중 crash가 난다.
-
-원인 후보
-Level Update 안에서 `Change_Level`을 직접 호출했다.
-Loading Update 안에서 자신을 파괴했다.
-ACTIVATE request를 매 프레임 중복 제출했다.
-
-확인
-`rg -n "Change_Level" Client`
-MainApp 허용 위치 외 호출이 있으면 실패다.
-
-접속 실패 후 예전 Character가 남는다.
-
-원인
-disconnect recovery가 registry와 world entity를 reset하지 않았다.
-Local Preview fallback pointer가 남았다.
-
-해결 기준
-`CClientReplication::Reset_World` 후 local handle resolve가 nullptr여야 한다.
-
-## 23. 디버거에서 확인할 호출 순서
-
-Character Select 진입 breakpoint
-
-`CLobbyCommandService::Request`
-→ `CLobbyCommandService::Try_Consume`
-→ `CLevel_Lobby::Begin_StageRequest`
-→ `CLevelTransitionService::Request_Load`
-→ `CMainApp::Apply_LevelRequest`
-→ `CMainApp::Start_Level`
-→ `CLoader::Ready_For_CharacterSelect`
-→ `CLevelTransitionService::Request_Activation`
-→ `CMainApp::Apply_LevelRequest`
-→ `CLevelRegistry::Create_Level`
-→ `CLevel_CharacterSelect::Initialize`
-
-직업 확정 breakpoint
-
-`CLevel_CharacterSelect::Confirm_Selection`
-→ `CCharacterSelectionState::Select`
-→ `CLevelTransitionService::Request_Load`
-
-Bern 진입 breakpoint
-
-`CLevel_Lobby::Begin_StageRequest`
-→ `CNetworkManager::Connect`
-→ enter packet send
-→ `Try_Consume_EnterAccepted`
-→ world ID 검증
-→ `Request_Load(LEVEL::BERN)`
-
-각 breakpoint에서 볼 값
-
-target LEVEL
-pending WORLD_ID
-selected CHARACTER_CLASS_ID
-transition phase
-Loader HRESULT
-current Level ID
-Network connected 여부
-local NetEntityId
-
-## 24. 작은 요구사항 변경 연습
-
-Lobby 버튼 순서를 바꾸고 싶다.
-
-수정 대상
-`CLevel_Lobby::Render`
-
-수정하지 않을 대상
-Registry
-Loader
-Network protocol
-
-이유
-화면 순서만 바뀌고 stage 의미는 그대로다.
-
-승인 timeout을 5초에서 8초로 바꾸고 싶다.
-
-수정 대상
-Lobby의 timeout 상수 또는 duration
-
-확인할 불변식
-deadline은 request를 보낸 시점에 한 번 계산한다.
-매 프레임 현재 시각에 8초를 다시 더하면 timeout이 영원히 오지 않는다.
-
-지원 직업을 하나 추가하고 싶다.
-
-수정 대상
-Shared class ID와 protocol 지원 여부
-CharacterCatalog spec
-Character asset과 Prototype
-Character Select 지원 목록
-Loader 준비 목록
-Server enter validation
-
-주의
-array 크기만 늘리고 Server validation을 빼면 Client에서 보이지만 입장은 거부된다.
-
-Character preview를 마우스로 회전하고 싶다.
-
-수정 대상
-Character Select의 preview transform 입력 처리
-
-수정하지 않을 대상
-CharacterSelectionState
-NetworkManager
-Server packet
-
-이유
-회전은 편집 화면 presentation 상태이지 선택 저장 계약이 아니다.
-
-외형 색상을 저장하고 싶다.
-
-먼저 결정할 것
-로컬 preview 전용인가
-실제 계정 캐릭터 데이터인가
-
-로컬 preview 전용이면 Character Select의 임시 appearance state와 render parameter만 바꾼다.
-실제 게임에 반영한다면 stable appearance payload, Server validation, 저장, spawn snapshot, Client presentation을 한 수직 슬라이스로 추가한다.
-
-## 25. 주석 작성 규칙
-
-주석은 한글로 작성한다.
-문자 인코딩은 기존 C++ 파일의 인코딩을 감지해 유지한다.
-새 C++ 파일은 UTF-8 BOM 없음이다.
-
-좋은 주석
-
-Level Update 안에서 현재 Level을 교체하면 실행 중인 객체가 파괴되므로 실제 교체는 MainApp 프레임 경계에서 수행한다.
-
-새 preview 생성이 실패해도 기존 화면을 유지하기 위해 성공한 객체만 active preview로 교체한다.
-
-승인받지 않은 world로 전환하지 않도록 pending world와 accepted world가 같은 경우에만 Level load를 요청한다.
-
-피할 주석
-
-캐릭터를 선택한다.
-함수 이름을 반복한다.
-
-일단 임시로 처리한다.
-이유와 제거 조건이 없다.
-
-서버 승인 메시지를 받음.
-어떤 검증 뒤 어떤 상태가 변하는지 설명하지 않는다.
-
-## 26. 완료 조건
-
-구현 완료
-
-Client가 항상 Lobby에서 시작한다.
-Lobby에 Test, Character Select, Valtan, Bern 네 버튼이 있다.
-Character Select가 별도 Level과 Loader bundle으로 열린다.
-네 직업 preview와 Confirm, Back이 동작한다.
-확정한 class ID가 Lobby 복귀 후 유지된다.
-Test, Valtan, Bern은 Server 승인 후에만 열린다.
-제품 Level에 Local Preview 경로가 없다.
-ClientLaunchOptions와 LevelCatalog가 삭제됐다.
-MainApp smoke harness와 offline overlay가 삭제됐다.
-MainApp만 실제 `Change_Level`을 호출한다.
-F1 Developer Tools는 Development에서 명시적으로 도구를 연다.
-Server와 Client 동시 실행 profile이 있다.
-
-자동 검증 완료
-
-JSON parse 성공
-VCXPROJ와 filters XML parse 성공
-Engine Debug/Release 성공
-UpdateLib Debug/Release 성공
-Shared와 NetworkProtocolHarness Debug/Release 성공
-NetworkProtocolHarness 실행 성공
-Server Debug/Release 성공
-Server contract test 성공
-Client Debug/Release 성공
-ProjectAudit 성공
-`git diff --check` 성공
-
-수동 검증 완료
-
-Server와 Client 동시 실행
-Lobby 표시
-Character Select 왕복
-네 직업 preview 교체
-Confirm 선택 유지
-Server 없는 제품 Stage 진입 거부
-Server 실행 후 Test 진입
-Server 실행 후 Bern 진입
-Server 실행 후 Valtan 진입
-disconnect 시 Lobby 복귀와 replicated state 정리
-F1 도구 열기와 각 도구 명시적 활성화
-
-## 27. 이번 계획에 포함하지 않는 것
-
-외형 커스터마이징의 실제 Server 저장
-장비 inventory 계약
-PhysX bone branch와 spherical joint 구현
-cloth solver 구현
-Effect socket authoring 전체 구현
-PBR, SSAO, outline, fog render target 재구성
-frustum, occlusion, distance culling과 LOD 구현
-AI Behavior Tree editor 구현
-MapTool 전체 개편
-
-이 기능들은 Character Select Level이 실제 preview와 선택 상태까지 닫힌 뒤 각각 별도 vertical slice로 계획한다.
-같은 Level을 작업 무대로 사용할 수는 있지만, 아직 소비자가 없는 interface와 placeholder Manager를 먼저 만들지 않는다.
-
-## 28. 구현 전에 스스로 답할 문장
-
-`CLevel_CharacterSelect`가 필요한 이유를 Lobby panel과 비교해 설명할 수 있다.
-`CharacterSelectionState`가 Catalog나 NetworkManager가 아닌 이유를 설명할 수 있다.
-입력부터 실제 Level 활성화까지 호출 흐름을 그릴 수 있다.
-Loader와 Level Initialize의 책임 차이를 설명할 수 있다.
-MainApp만 `Change_Level`을 호출해야 하는 수명 이유를 설명할 수 있다.
-Lobby의 WAITING 상태에서 유효해야 하는 변수와 불변식을 설명할 수 있다.
-preview clone 실패와 Server 승인 timeout을 재현하고 원인을 찾을 수 있다.
-버튼 순서, timeout, 직업 추가 같은 작은 변경의 수정 범위를 스스로 고를 수 있다.
+# Character Select Map Loader와 Enter-to-Test 수직 슬라이스 PLAN
+
+작성: 2026-08-03
+전면 갱신: 2026-08-04
+상태: 구현 전 전체 코드 정답지
+
+## 0. 이번 목표와 비목표
+
+```text
+Lobby의 Character Select 클릭
+-> Loading Level
+-> Character Select 전용 map asset + 다섯 playable character asset 준비
+-> LEVEL::CHARACTER_SELECT 활성화
+-> LV_LOBBY_CLASSSELECT_SL00 visual map + preview Character + ImGui 표시
+-> class 선택
+-> Enter 키 또는 Enter Test 버튼
+-> 선택 class commit + LOBBY_STAGE::TEST command 예약
+-> Lobby Loading
+-> 기존 Lobby가 C2S_ENTER_WORLD(TRAINING_GROUND, selected class) 전송
+-> S2C_ENTER_ACCEPTED 확인
+-> DEVELOPMENT Loading
+-> Server spawn class로 실제 Character/HUD 생성
+-> CPlayerController의 우클릭 이동과 Q/W skill command 사용
+```
+
+이번 변경에서 하지 않는 것:
+
+```text
+새 LEVEL::TRAINING 추가
+Character Select Level에서 socket 직접 호출
+Character Select preview Character를 실제 player로 승격
+GameRoom/Shared packet/Server tick의 두 번째 경로 추가
+LV_LOBBY_CLASSSELECT_SL00를 Server navigation world로 사용
+trainingTarget/monster catalog/새 boss placement 추가
+MapTool navigation authoring 확장
+제품 HUD를 ImGui 구현으로 확정
+```
+
+Character Select를 거치지 않아도 Lobby에서 Test/Bern/Valtan을 누를 수 있다. 명시적으로 선택한 class가 없으면 이번 process의 entry class는 `LANCE_MASTER`로 commit하고 기존 Server 승인 경로를 사용한다.
+
+## 1. C1~C8 관점
+
+```text
+C1 기준계          중요: Character Select 원본 placement 좌표와 preview/camera 좌표를 같은 world space로 사용한다.
+C2 이동>계산       Loader가 map/model prototype을 준비하고 Level은 staged resource를 commit한다.
+C3 공유는 비싸다   다섯 class preview는 선택 화면에서만 모두 준비하며 제품 world는 승인된 class만 준비한다.
+C4 수명은 선언된다 중요: preview/map은 CHARACTER_SELECT Level 수명, 실제 player는 DEVELOPMENT Level 수명이다.
+C5 이산화와 오차   placement 실측 범위와 preview foot height를 고정한다.
+C6 가지치기        Character Select main cluster scope만 Loader가 admission한다.
+C7 권위와 정합성   중요: class 선택은 Client session state, 실제 entity/action/HUD 수치는 Server snapshot이 정본이다.
+C8 검증이 병목     map resource 실재, Loader rollback, Server approval, HUD/이동/스킬 runtime을 분리 검증한다.
+```
+
+## 2. 문제 해결 ①~⑤
+
+```text
+① 문제·제약: Character Select map resource는 추출됐지만 LevelRegistry/Loader/MapRuntime에 연결되지 않았고 Confirm은 Lobby 복귀만 수행한다.
+② 단순 해법의 문제: preview Character를 그대로 움직이거나 Character Select에서 socket을 열면 server entity와 local entity라는 두 gameplay 경로가 생긴다.
+③ 해결 방식: Character Select는 map+preview+선택만 소유하고 Enter가 기존 Lobby Test command를 예약한다. 실제 gameplay는 승인 후 DEVELOPMENT에서 시작한다.
+④ 비교: Lobby를 다시 거치지만 입장 state machine, timeout, endpoint, world mapping, rollback을 복제하지 않는다.
+⑤ 대가: Character Select -> Lobby -> Development로 Loading이 두 번 보인다. 추후 공용 entry coordinator가 실제 요구가 될 때만 별도 수직 슬라이스로 옮긴다.
+```
+
+## 3. 현재 데이터 실측과 고정값
+
+```text
+MapCatalog area                  LV_LOBBY_CLASSSELECT_SL00
+mapassets header                LOSTARK_MAP_ASSET_CATALOG 4 "LV_LOBBY_CLASSSELECT_SL00" 55
+mapplacements header            LOSTARK_MAP_PLACEMENTS 2 "LV_LOBBY_CLASSSELECT_SL00" 803
+runtime root                    Client/Bin/Resources/Map/CHARACTERSELECTMAP
+runtime manifest assetCount     55
+main cluster placement count    779
+main cluster X                  -790.837422 .. -751.900781
+main cluster Y                  -250.255215 .. -102.6
+main cluster Z                   159.164424 .. 216.79291
+central floor reference         approximately (-772.017, -142.7, 197.538)
+branch HEAD lock                lostark-resources 2026.08.03.4
+working-tree lock               lostark-resources 2026.08.03.3
+working-tree deleted manifest   lostark-resources-2026.08.03.4.manifest.json
+working-tree lock fileCount     7922
+current Resources fileCount     10158
+current extra / missing / size  2236 / 0 / 0
+next immutable pack version     2026.08.04.1
+```
+
+현재 로컬 Resources에는 Character Select 215개 파일이 `Map/CHARACTERSELECTMAP` 아래에 있고 runtime manifest는 model 55개를 모두 가리킨다. 에셋은 없는 상태가 아니다. 문제는 working-tree lock `2026.08.03.3`보다 Character/Effect/Map intake 2236개가 앞서 있어 팀원이 같은 payload를 Hydrate할 수 없고, 다른 세션이 branch HEAD의 immutable `.4` manifest를 삭제 표시한 점이다. 이 계획은 그 삭제나 lock downgrade를 소유하지 않는다. 담당 세션이 lock diff를 commit 또는 복구하고 기존 immutable manifest 삭제가 0개인 상태에서만 `2026.08.04.1`을 Snapshot → Verify → Publish → Hydrate로 고정한다. 기존 `.1`~`.4`를 덮어쓰거나 삭제하지 않고 새 manifest/lock/ZIP/SHA-256을 RESULT에 기록한다.
+
+정확한 Level load scope:
+
+```cpp
+{ true, true, -792.f, 158.f, -750.f, 218.f }
+```
+
+이 좌표는 전체 803 placement의 main cluster를 실측해서 잡은 값이다. 인게임에서 카메라/바닥이 맞지 않으면 숫자를 감으로 수정하지 않고 MapTool에서 실제 placement와 camera transform을 관찰한 뒤 같은 descriptor와 preview 상수를 함께 갱신한다.
+
+## 4. 파일 변경 지도
+
+| 구분 | 절대 경로 | 역할 |
+|---|---|---|
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Level_CharacterSelect.h` | map runtime, preview, Enter 계약 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_CharacterSelect.cpp` | map commit, preview 교체, Enter-to-Test command |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Level_Lobby.h` | default entry가 가능한 상태 문구와 기존 approval state 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_Lobby.cpp` | explicit selection 또는 Lance Master default로 기존 Server 입장 |
+| 객체 교체 | `C:/Users/user/Desktop/LostArk/Data/Maps/MapCatalog.json` | Character Select visual area를 제품 frontend admission으로 승격 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Data/Balance/PlayerSkills.json` | 검증된 기존 네 class가 각자 소유하는 Q/W Server skill 계약. Dimensionist는 실제 ID 확보 전 비워 둔다. |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Data/Balance/DamageProfiles.json` | 신규 여섯 skill의 명시적 training damage profile |
+| 블록 교체 | `C:/Users/user/Desktop/LostArk/Server/Private/ServerGameplayContractTests.cpp` | 기존 네 class Q/W catalog와 Server 승인, Dimensionist profile 검증 |
+| 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/LevelRegistry.cpp` | Character Select map area와 load scope 등록 |
+| 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Loader.cpp` | Character Select map + camera + 다섯 class prototype stage |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/LobbyCommandService.h` | stage command와 취소 가능한 handoff token 계약 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/LobbyCommandService.cpp` | token 발급·단일 pending·정확한 취소 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/LevelTransitionService.h` | Level request가 Lobby command token을 운반 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/LevelTransitionService.cpp` | token이 붙은 Lobby load/activation 검증 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Level_Loading.h` | Loader 구간의 token ownership 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_Loading.cpp` | load 실패 취소와 activation ownership transfer |
+| 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/MainApp.h`, `Client/Private/MainApp.cpp` | load 시작/activation 실패에서 token 취소 |
+| 새 프로젝트 | `C:/Users/user/Desktop/LostArk/Tools/ClientFrontendHarness` | Lobby command token ledger의 정상·중복·정확 취소·stale 단위 검증 |
+| 블록 추가 | `C:/Users/user/Desktop/LostArk/Framework.sln`, `Tools/Build/Invoke-BuildAndRegression.ps1` | 새 harness를 정본 regression에 포함 |
+| 도구 생성물 | `C:/Users/user/Desktop/LostArk/Data/AssetPacks.lock.json`, `Data/AssetManifests/lostark-resources-2026.08.04.1.manifest.json` | 현재 6-root Resources immutable snapshot |
+| 블록 추가/교체 | `C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | map/resource/entry 경계 정적 검사 |
+| 문단 교체 | `C:/Users/user/Desktop/LostArk/AGENTS.md` | fixed runtime contract 교정 |
+| 문단 교체 | `C:/Users/user/Desktop/LostArk/CLAUDE.md` | 실행/Loader 사용법 교정 |
+| 문단 교체 | `C:/Users/user/Desktop/LostArk/.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 팀 소비 계약 교정 |
+
+Client runtime의 새 H/CPP는 없다. `Client.vcxproj`와 `Client.vcxproj.filters` 등록 변경도 없다. 새 `ClientFrontendHarness.cpp`는 전용 `.vcxproj`, `.vcxproj.filters`, `Framework.sln`, build regression에 등록한다.
+
+다른 세션이 현재 수정 중인 다음 파일은 이 구현에서 덮어쓰지 않는다.
+
+```text
+Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapassets
+Client/Default/Client.vcxproj
+Client/Default/Client.vcxproj.filters
+Tools/ProjectAudit/Invoke-ProjectAudit.ps1의 unrelated effect/animation audit 변경
+```
+
+`Data/Maps/MapCatalog.json`은 다른 세션의 나머지 Area 변경을 그대로 보존하고 `LV_LOBBY_CLASSSELECT_SL00` 객체만 아래 코드로 교체한다. 현재 dirty mapassets 55개 row와 `Map/CHARACTERSELECTMAP` root는 다른 세션의 추출 결과이므로 재생성하거나 되돌리지 않고 ProjectAudit에서 catalog/manifest set 일치를 검증한다.
+
+## 5. G1 — Character Select visual map과 다섯 class Loader
+
+### 5-1. `C:/Users/user/Desktop/LostArk/Client/Public/Level_CharacterSelect.h`
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Level.h"
+#include "MapPlacementRuntime.h"
+#include "Network/PacketType.h"
+
+#include <array>
+
+NS_BEGIN(Client)
+
+class CCamera_Free;
+class CCharacter;
+
+class CLevel_CharacterSelect final : public CLevel
+{
+private:
+	CLevel_CharacterSelect(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+
+public:
+	virtual ~CLevel_CharacterSelect();
+
+public:
+	virtual HRESULT Initialize() override;
+	virtual void Update(f32_t fTimeDelta) override;
+	virtual HRESULT Render() override;
+
+private:
+	HRESULT Ready_Lights();
+	HRESULT Ready_Camera();
+	HRESULT Ready_Preview(
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
+	bool_t Select_Preview(size_t index);
+	bool_t Enter_TrainingGround();
+	void Render_SelectionPanel();
+
+private:
+	static constexpr std::array<
+		LostArk::Shared::CHARACTER_CLASS_ID, 5> SUPPORTED_CLASSES =
+	{
+		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
+		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
+		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST
+	};
+
+	CMapPlacementRuntime m_MapRuntime;
+	size_t m_iPreviewIndex = 0;
+	shared_ptr<CCharacter> m_pPreviewCharacter = { nullptr };
+	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
+	string m_strStatus =
+		"Choose a class, then press Enter to join the Test stage.";
+
+public:
+	static unique_ptr<CLevel_CharacterSelect> Create(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+};
+
+NS_END
+```
+
+### 5-2. `C:/Users/user/Desktop/LostArk/Client/Private/Level_CharacterSelect.cpp`
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Level_CharacterSelect.h"
+
+#include "AnimationTargetService.h"
+#include "Camera_Free.h"
+#include "Character.h"
+#include "CharacterCatalog.h"
+#include "CharacterSelectionState.h"
+#include "GameInstance.h"
+#include "LevelRegistry.h"
+#include "LevelTransitionService.h"
+#include "LobbyCommandService.h"
+#include "Transform.h"
+
+#include <algorithm>
+
+namespace
+{
+	constexpr f32_t PREVIEW_POSITION_X = -772.017f;
+	constexpr f32_t PREVIEW_POSITION_Y = -142.55f;
+	constexpr f32_t PREVIEW_POSITION_Z = 197.538f;
+
+	const char_t* Get_CharacterClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER:
+			return "Lance Master";
+		case CHARACTER_CLASS_ID::GUNSLINGER:
+			return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER:
+			return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST:
+			return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return "Dimensionist";
+		default:
+			return "Unknown";
+		}
+	}
+}
+
+CLevel_CharacterSelect::CLevel_CharacterSelect(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CLevel{ pDevice, pContext }
+{
+}
+
+CLevel_CharacterSelect::~CLevel_CharacterSelect()
+{
+	CAnimationTargetService::Unbind(m_pPreviewCharacter);
+	m_MapRuntime.Clear();
+}
+
+HRESULT CLevel_CharacterSelect::Initialize()
+{
+	if (FAILED(__super::Initialize()))
+		return E_FAIL;
+
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId ||
+		!m_MapRuntime.Load_Area(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			pEntry->pMapAreaId,
+			pEntry->MapLoadScope))
+	{
+		OutputDebugStringA((
+			"[Level_CharacterSelect] " +
+			m_MapRuntime.Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	if (FAILED(Ready_Lights()))
+		return E_FAIL;
+
+	LostArk::Shared::CHARACTER_CLASS_ID initialClass =
+		SUPPORTED_CLASSES.front();
+	if (CCharacterSelectionState::Try_Get_SelectedClass(initialClass))
+	{
+		const auto selected = std::find(
+			SUPPORTED_CLASSES.begin(),
+			SUPPORTED_CLASSES.end(),
+			initialClass);
+		if (SUPPORTED_CLASSES.end() == selected)
+			return E_INVALIDARG;
+		m_iPreviewIndex = static_cast<size_t>(
+			std::distance(SUPPORTED_CLASSES.begin(), selected));
+	}
+
+	if (FAILED(Ready_Preview(initialClass)) || FAILED(Ready_Camera()))
+		return E_FAIL;
+
+	return S_OK;
+}
+
+void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
+{
+	__super::Update(fTimeDelta);
+}
+
+HRESULT CLevel_CharacterSelect::Render()
+{
+	if (FAILED(__super::Render()))
+		return E_FAIL;
+
+	Render_SelectionPanel();
+	return S_OK;
+}
+
+HRESULT CLevel_CharacterSelect::Ready_Lights()
+{
+	return CMapPlacementRuntime::Ensure_DefaultLight();
+}
+
+HRESULT CLevel_CharacterSelect::Ready_Camera()
+{
+	if (nullptr == m_pPreviewCharacter ||
+		nullptr == m_pPreviewCharacter->Get_Transform())
+	{
+		return E_FAIL;
+	}
+
+	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
+	cameraDesc.vEye = float3_t(
+		PREVIEW_POSITION_X,
+		PREVIEW_POSITION_Y + 2.4f,
+		PREVIEW_POSITION_Z - 6.f);
+	cameraDesc.vAt = float3_t(
+		PREVIEW_POSITION_X,
+		PREVIEW_POSITION_Y + 1.f,
+		PREVIEW_POSITION_Z);
+	cameraDesc.fFovy = 45.f;
+	cameraDesc.fNear = 0.1f;
+	cameraDesc.fFar = 1000.f;
+	cameraDesc.fSpeedPerSec = 8.f;
+	cameraDesc.fRotationPerSec = 90.f;
+	cameraDesc.fMouseSensor = 0.1f;
+	cameraDesc.pFollowTarget = m_pPreviewCharacter->Get_Transform();
+	cameraDesc.vPositionOffset = float3_t(0.f, 2.4f, -6.f);
+	cameraDesc.vLookOffset = float3_t(0.f, 1.f, 0.f);
+	cameraDesc.fFollowResponse = 18.f;
+	cameraDesc.isFollowEnabled = true;
+
+	shared_ptr<CGameObject> gameObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Prototype_GameObject_Camera_Free"),
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Layer_Camera"),
+		&cameraDesc,
+		&gameObject)))
+	{
+		return E_FAIL;
+	}
+
+	m_pCamera = dynamic_pointer_cast<CCamera_Free>(gameObject);
+	if (nullptr == m_pCamera)
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			TEXT("Layer_Camera"),
+			gameObject);
+		return E_FAIL;
+	}
+
+	return S_OK;
+}
+
+HRESULT CLevel_CharacterSelect::Ready_Preview(
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
+		characterClass))
+	{
+		return E_INVALIDARG;
+	}
+
+	const CHARACTER_SPEC* pSpec = CCharacterCatalog::Find_Spec(characterClass);
+	if (nullptr == pSpec)
+		return E_FAIL;
+
+	CCharacter::CHARACTER_DESC characterDesc{};
+	characterDesc.iPrototypeLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
+	characterDesc.pSpec = pSpec;
+	characterDesc.pNavigationPrototypeTag = nullptr;
+	characterDesc.fSpeedPerSec = 0.f;
+	characterDesc.fRotationPerSec = 90.f;
+	characterDesc.vPosition = float3_t(
+		PREVIEW_POSITION_X,
+		PREVIEW_POSITION_Y,
+		PREVIEW_POSITION_Z);
+	characterDesc.strNickName = Get_CharacterClassName(characterClass);
+	characterDesc.isLocallyControlled = false;
+
+	shared_ptr<CGameObject> stagedObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Prototype_GameObject_Character"),
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		TEXT("Layer_PreviewCharacter"),
+		&characterDesc,
+		&stagedObject)))
+	{
+		return E_FAIL;
+	}
+
+	const shared_ptr<CCharacter> stagedCharacter =
+		dynamic_pointer_cast<CCharacter>(stagedObject);
+	if (nullptr == stagedCharacter ||
+		nullptr == stagedCharacter->Get_Transform() ||
+		!stagedCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			TEXT("Layer_PreviewCharacter"),
+			stagedObject);
+		return E_FAIL;
+	}
+
+	stagedCharacter->Get_Transform()->Rotation(0.f, 180.f, 0.f);
+
+	const shared_ptr<CCharacter> previousCharacter = m_pPreviewCharacter;
+	m_pPreviewCharacter = stagedCharacter;
+	if (nullptr != previousCharacter)
+		CAnimationTargetService::Unbind(previousCharacter);
+	CAnimationTargetService::Bind(m_pPreviewCharacter);
+
+	if (nullptr != m_pCamera)
+	{
+		m_pCamera->Set_FollowTarget(m_pPreviewCharacter->Get_Transform());
+		m_pCamera->Set_FollowEnabled(true);
+	}
+
+	if (nullptr != previousCharacter)
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			TEXT("Layer_PreviewCharacter"),
+			previousCharacter);
+	}
+
+	return S_OK;
+}
+
+bool_t CLevel_CharacterSelect::Select_Preview(const size_t index)
+{
+	if (index >= SUPPORTED_CLASSES.size())
+		return false;
+	if (index == m_iPreviewIndex && nullptr != m_pPreviewCharacter)
+		return true;
+
+	if (FAILED(Ready_Preview(SUPPORTED_CLASSES[index])))
+	{
+		m_strStatus =
+			"The new preview could not be created. The previous preview was kept.";
+		return false;
+	}
+
+	m_iPreviewIndex = index;
+	m_strStatus = std::string("Previewing ") +
+		Get_CharacterClassName(SUPPORTED_CLASSES[index]) +
+		". Press Enter to join Test.";
+	return true;
+}
+
+bool_t CLevel_CharacterSelect::Enter_TrainingGround()
+{
+	if (m_iPreviewIndex >= SUPPORTED_CLASSES.size() ||
+		nullptr == m_pPreviewCharacter)
+	{
+		m_strStatus = "There is no valid preview to enter with.";
+		return false;
+	}
+
+	if (!CCharacterSelectionState::Select(
+		SUPPORTED_CLASSES[m_iPreviewIndex]))
+	{
+		m_strStatus = "The selected class is not supported.";
+		return false;
+	}
+
+	LOBBY_COMMAND_TOKEN commandToken = INVALID_LOBBY_COMMAND_TOKEN;
+	if (!CLobbyCommandService::Request(
+		LOBBY_STAGE::TEST,
+		commandToken))
+	{
+		m_strStatus = CLobbyCommandService::Get_Status();
+		return false;
+	}
+
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		"character-select.enter-test",
+		commandToken))
+	{
+		CLobbyCommandService::Cancel(
+			commandToken,
+			"Lobby load request was rejected");
+		m_strStatus = CLevelTransitionService::Get_Status();
+		return false;
+	}
+
+	m_strStatus =
+		"Selection committed. Lobby will request the Test world from Server.";
+	return true;
+}
+
+void CLevel_CharacterSelect::Render_SelectionPanel()
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr != viewport)
+	{
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowPos(
+			ImVec2(viewport->WorkPos.x + 24.f, viewport->WorkPos.y + 24.f),
+			ImGuiCond_Always);
+	}
+
+	if (!ImGui::Begin(
+		"Character Select",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextUnformatted("Choose a playable class");
+	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
+	{
+		const bool_t isSelected = index == m_iPreviewIndex;
+		if (ImGui::Selectable(
+			Get_CharacterClassName(SUPPORTED_CLASSES[index]),
+			isSelected))
+		{
+			Select_Preview(index);
+		}
+	}
+
+	ImGui::Separator();
+	const bool_t transitionPending = CLevelTransitionService::Is_Pending();
+	const bool_t enterPressed =
+		ImGui::IsKeyPressed(ImGuiKey_Enter, false) ||
+		ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false);
+	ImGui::BeginDisabled(transitionPending);
+	if (ImGui::Button("Enter Test") ||
+		(!transitionPending && enterPressed))
+		Enter_TrainingGround();
+	ImGui::SameLine();
+	if (ImGui::Button("Back"))
+	{
+		if (!CLevelTransitionService::Request_Load(
+			LEVEL::LOBBY,
+			"character-select.back"))
+		{
+			m_strStatus = CLevelTransitionService::Get_Status();
+		}
+	}
+	ImGui::EndDisabled();
+
+	ImGui::TextDisabled(
+		"Enter: join Test  |  Back: keep the previous committed selection");
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::End();
+}
+
+unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	auto instance = unique_ptr<CLevel_CharacterSelect>(
+		new CLevel_CharacterSelect(pDevice, pContext));
+	if (FAILED(instance->Initialize()))
+		return nullptr;
+	return instance;
+}
+```
+
+### 5-3. `C:/Users/user/Desktop/LostArk/Data/Maps/MapCatalog.json`
+
+변경 종류: `LV_LOBBY_CLASSSELECT_SL00` 객체 전체 교체
+
+```json
+{
+  "id": "LV_LOBBY_CLASSSELECT_SL00",
+  "kind": "product",
+  "catalogType": "single",
+  "catalog": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapassets",
+  "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements",
+  "placementCount": 803,
+  "assetCount": 55,
+  "runtimeAssetRoot": "Map/CHARACTERSELECTMAP"
+}
+```
+
+### 5-4. `C:/Users/user/Desktop/LostArk/Client/Private/LevelRegistry.cpp`
+
+변경 종류: `CLevelRegistry::Find` 함수 전체 교체
+
+```cpp
+const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
+	const LEVEL eLevel)
+{
+	static const std::array<CLIENT_LEVEL_DESCRIPTOR, 5> levels =
+	{{
+		{
+			LEVEL::LOBBY,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"front.lobby",
+			nullptr,
+			{},
+			CreateLobby,
+			&CLoader::Ready_For_Lobby
+		},
+		{
+			LEVEL::CHARACTER_SELECT,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"front.character-select",
+			"LV_LOBBY_CLASSSELECT_SL00",
+			{ true, true, -792.f, 158.f, -750.f, 218.f },
+			CreateCharacterSelect,
+			&CLoader::Ready_For_CharacterSelect
+		},
+		{
+			LEVEL::BERN,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"world.bern",
+			"LV_BER_BERNCASTLE",
+			{ true, true, -50.f, -50.f, 50.f, 50.f },
+			CreateBern,
+			&CLoader::Ready_For_Bern
+		},
+		{
+			LEVEL::VALTAN_ARENA,
+			CLIENT_LEVEL_KIND::PRODUCT,
+			"raid.valtan.arena",
+			"LV_LUT_HEARTRB_ED",
+			{ true, true, 120.5f, -157.5f, 191.5f, -86.f },
+			CreateValtanArena,
+			&CLoader::Ready_For_ValtanArena
+		},
+		{
+			LEVEL::DEVELOPMENT,
+			CLIENT_LEVEL_KIND::DEVELOPMENT,
+			"dev.training.ground",
+			"LV_DEV_TRAINING_GROUND",
+			{ true, false, -20.f, -20.f, 20.f, 20.f },
+			CreateDevelopment,
+			&CLoader::Ready_For_Development
+		}
+	}};
+
+	const auto iter = std::find_if(
+		levels.begin(),
+		levels.end(),
+		[eLevel](const CLIENT_LEVEL_DESCRIPTOR& descriptor)
+		{
+			return descriptor.eLevel == eLevel;
+		});
+	return levels.end() == iter ? nullptr : &(*iter);
+}
+```
+
+### 5-5. `C:/Users/user/Desktop/LostArk/Client/Private/Loader.cpp`
+
+변경 종류: `CLoader::Ready_For_CharacterSelect` 함수 전체 교체
+
+```cpp
+HRESULT CLoader::Ready_For_CharacterSelect()
+{
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	constexpr std::array CHARACTER_CLASSES =
+	{
+		CHARACTER_CLASS_ID::LANCE_MASTER,
+		CHARACTER_CLASS_ID::GUNSLINGER,
+		CHARACTER_CLASS_ID::SLAYER,
+		CHARACTER_CLASS_ID::ARTIST
+	};
+
+	CLevelResourceRollbackScope rollback(
+		ETOUI(LEVEL::CHARACTER_SELECT));
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
+		return E_INVALIDARG;
+
+	Set_Status(TEXT("CHARACTER SELECT: visual map"));
+	if (FAILED(Ready_MapArea(
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		pEntry->pMapAreaId,
+		pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("CHARACTER SELECT: playable classes"));
+	if (FAILED(Ready_Character_Rendering(
+			ETOUI(LEVEL::CHARACTER_SELECT),
+			CHARACTER_CLASSES)) ||
+		FAILED(Ready_AnimationPreviewModels(
+			ETOUI(LEVEL::CHARACTER_SELECT))))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("Character Select loading complete"));
+	rollback.Commit();
+	return S_OK;
+}
+```
+
+## 6. G2 — 실패해도 남지 않는 Enter-to-Test ticket
+
+Character Select의 `Enter`는 Lobby가 소비할 `TEST` command와 Lobby Level 전환을 하나의 handoff로 묶는다. command를 먼저 예약한 뒤 load 시작, Loader, Lobby activation 중 하나라도 실패하면 같은 token의 command만 취소한다. 이미 소비됐거나 더 새로운 command는 오래된 실패가 취소할 수 없다.
+
+### 6-1. `C:/Users/user/Desktop/LostArk/Client/Public/LobbyCommandService.h`
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Engine_Defines.h"
+
+#include <cstdint>
+#include <string>
+
+NS_BEGIN(Client)
+
+enum class LOBBY_STAGE
+{
+	TEST,
+	CHARACTER_SELECT,
+	VALTAN,
+	BERN,
+	END
+};
+
+using LOBBY_COMMAND_TOKEN = std::uint64_t;
+inline constexpr LOBBY_COMMAND_TOKEN INVALID_LOBBY_COMMAND_TOKEN = 0;
+
+struct LOBBY_COMMAND final
+{
+	LOBBY_STAGE eStage = LOBBY_STAGE::END;
+	LOBBY_COMMAND_TOKEN iToken = INVALID_LOBBY_COMMAND_TOKEN;
+};
+
+class CLobbyCommandService final
+{
+public:
+	static bool_t Request(LOBBY_STAGE eStage);
+	static bool_t Request(
+		LOBBY_STAGE eStage,
+		LOBBY_COMMAND_TOKEN& outToken);
+	static bool_t Cancel(
+		LOBBY_COMMAND_TOKEN token,
+		const char_t* pReason);
+	static bool_t Try_Consume(LOBBY_COMMAND& outCommand);
+	static std::string Get_Status();
+};
+
+NS_END
+```
+
+### 6-2. `C:/Users/user/Desktop/LostArk/Client/Private/LobbyCommandService.cpp`
+
+변경 종류: 전체 교체
+
+```cpp
+#include "LobbyCommandService.h"
+
+#include <limits>
+#include <mutex>
+#include <optional>
+#include <utility>
+
+namespace
+{
+	std::mutex g_CommandMutex;
+	std::optional<Client::LOBBY_COMMAND> g_PendingCommand;
+	Client::LOBBY_COMMAND_TOKEN g_iNextToken = 1;
+	std::string g_Status = "No lobby command is pending.";
+}
+
+bool_t Client::CLobbyCommandService::Request(const LOBBY_STAGE eStage)
+{
+	LOBBY_COMMAND_TOKEN ignoredToken = INVALID_LOBBY_COMMAND_TOKEN;
+	return Request(eStage, ignoredToken);
+}
+
+bool_t Client::CLobbyCommandService::Request(
+	const LOBBY_STAGE eStage,
+	LOBBY_COMMAND_TOKEN& outToken)
+{
+	outToken = INVALID_LOBBY_COMMAND_TOKEN;
+	if (LOBBY_STAGE::END == eStage)
+	{
+		std::scoped_lock lock{ g_CommandMutex };
+		g_Status = "Rejected invalid lobby command.";
+		return false;
+	}
+
+	std::scoped_lock lock{ g_CommandMutex };
+	if (g_PendingCommand.has_value())
+	{
+		g_Status = "A lobby command is already pending.";
+		return false;
+	}
+	if ((std::numeric_limits<LOBBY_COMMAND_TOKEN>::max)() == g_iNextToken)
+	{
+		g_Status = "Lobby command token space is exhausted.";
+		return false;
+	}
+
+	outToken = g_iNextToken++;
+	g_PendingCommand = LOBBY_COMMAND{ eStage, outToken };
+	g_Status = "Lobby command staged with token " +
+		std::to_string(outToken) + ".";
+	return true;
+}
+
+bool_t Client::CLobbyCommandService::Cancel(
+	const LOBBY_COMMAND_TOKEN token,
+	const char_t* pReason)
+{
+	if (INVALID_LOBBY_COMMAND_TOKEN == token ||
+		nullptr == pReason || '\0' == *pReason)
+	{
+		std::scoped_lock lock{ g_CommandMutex };
+		g_Status = "Rejected invalid lobby command cancellation.";
+		return false;
+	}
+
+	std::scoped_lock lock{ g_CommandMutex };
+	if (!g_PendingCommand.has_value() ||
+		g_PendingCommand->iToken != token)
+	{
+		g_Status = "Lobby command cancellation token did not match.";
+		return false;
+	}
+
+	g_PendingCommand.reset();
+	g_Status = std::string("Lobby command cancelled: ") + pReason;
+	return true;
+}
+
+bool_t Client::CLobbyCommandService::Try_Consume(
+	LOBBY_COMMAND& outCommand)
+{
+	std::scoped_lock lock{ g_CommandMutex };
+	if (!g_PendingCommand.has_value())
+		return false;
+
+	outCommand = *g_PendingCommand;
+	g_PendingCommand.reset();
+	g_Status = "Lobby command consumed.";
+	return true;
+}
+
+std::string Client::CLobbyCommandService::Get_Status()
+{
+	std::scoped_lock lock{ g_CommandMutex };
+	return g_Status;
+}
+```
+
+### 6-3. `C:/Users/user/Desktop/LostArk/Client/Public/LevelTransitionService.h`
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+#include "LobbyCommandService.h"
+
+#include <string>
+
+NS_BEGIN(Client)
+
+enum class LEVEL_TRANSITION_PHASE
+{
+	LOAD,
+	ACTIVATE
+};
+
+struct LEVEL_TRANSITION_REQUEST final
+{
+	LEVEL_TRANSITION_PHASE ePhase = LEVEL_TRANSITION_PHASE::LOAD;
+	LEVEL eTargetLevel = LEVEL::END;
+	std::string strSource;
+	LOBBY_COMMAND_TOKEN iLobbyCommandToken =
+		INVALID_LOBBY_COMMAND_TOKEN;
+};
+
+class CLevelTransitionService final
+{
+public:
+	static bool_t Request_Load(
+		LEVEL eTargetLevel,
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
+	static bool_t Request_Activation(
+		LEVEL eTargetLevel,
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
+	static bool_t Try_Consume(LEVEL_TRANSITION_REQUEST& outRequest);
+	static bool_t Is_Pending();
+	static std::string Get_Status();
+	static void Report_LoadFailure(HRESULT result);
+	static bool_t Try_ConsumeLoadFailure(HRESULT& outResult);
+
+private:
+	static bool_t Request(
+		LEVEL_TRANSITION_PHASE ePhase,
+		LEVEL eTargetLevel,
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken);
+};
+
+NS_END
+```
+
+### 6-4. `C:/Users/user/Desktop/LostArk/Client/Private/LevelTransitionService.cpp`
+
+변경 종류: 전체 교체
+
+```cpp
+#include "LevelTransitionService.h"
+
+#include "LevelRegistry.h"
+
+#include <mutex>
+#include <optional>
+#include <utility>
+
+namespace
+{
+	std::mutex g_TransitionMutex;
+	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
+	std::optional<HRESULT> g_LoadFailure;
+	std::string g_Status = "No level transition is pending.";
+}
+
+bool_t Client::CLevelTransitionService::Request_Load(
+	const LEVEL eTargetLevel,
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	return Request(
+		LEVEL_TRANSITION_PHASE::LOAD,
+		eTargetLevel,
+		pSource,
+		lobbyCommandToken);
+}
+
+bool_t Client::CLevelTransitionService::Request_Activation(
+	const LEVEL eTargetLevel,
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	return Request(
+		LEVEL_TRANSITION_PHASE::ACTIVATE,
+		eTargetLevel,
+		pSource,
+		lobbyCommandToken);
+}
+
+bool_t Client::CLevelTransitionService::Try_Consume(
+	LEVEL_TRANSITION_REQUEST& outRequest)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_PendingRequest.has_value())
+		return false;
+
+	outRequest = std::move(*g_PendingRequest);
+	g_PendingRequest.reset();
+	g_Status = "Level transition request consumed.";
+	return true;
+}
+
+bool_t Client::CLevelTransitionService::Is_Pending()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_PendingRequest.has_value();
+}
+
+std::string Client::CLevelTransitionService::Get_Status()
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	return g_Status;
+}
+
+void Client::CLevelTransitionService::Report_LoadFailure(
+	const HRESULT result)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	g_LoadFailure = result;
+	g_Status = "Level loading failed with HRESULT " +
+		std::to_string(static_cast<long>(result)) + ".";
+}
+
+bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
+	HRESULT& outResult)
+{
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (!g_LoadFailure.has_value())
+		return false;
+
+	outResult = *g_LoadFailure;
+	g_LoadFailure.reset();
+	return true;
+}
+
+bool_t Client::CLevelTransitionService::Request(
+	const LEVEL_TRANSITION_PHASE ePhase,
+	const LEVEL eTargetLevel,
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	const bool_t hasLobbyCommand =
+		INVALID_LOBBY_COMMAND_TOKEN != lobbyCommandToken;
+	if (nullptr == CLevelRegistry::Find(eTargetLevel) ||
+		nullptr == pSource || '\0' == *pSource ||
+		(hasLobbyCommand && LEVEL::LOBBY != eTargetLevel))
+	{
+		std::scoped_lock lock{ g_TransitionMutex };
+		g_Status = "Rejected invalid level transition request.";
+		return false;
+	}
+
+	std::scoped_lock lock{ g_TransitionMutex };
+	if (g_PendingRequest.has_value())
+	{
+		g_Status =
+			"Rejected level transition while another request is pending.";
+		return false;
+	}
+
+	g_PendingRequest = LEVEL_TRANSITION_REQUEST{
+		ePhase,
+		eTargetLevel,
+		pSource,
+		lobbyCommandToken
+	};
+	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase)
+		g_LoadFailure.reset();
+	g_Status = "Level transition request staged by " +
+		g_PendingRequest->strSource + ".";
+	return true;
+}
+```
+
+### 6-5. `C:/Users/user/Desktop/LostArk/Client/Public/Level_Loading.h`
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Level.h"
+#include "LobbyCommandService.h"
+
+NS_BEGIN(Client)
+
+class CLevel_Loading final : public CLevel
+{
+private:
+	CLevel_Loading(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+
+public:
+	virtual ~CLevel_Loading();
+
+public:
+	virtual HRESULT Initialize(
+		LEVEL eNextLevelID,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken);
+	virtual void Update(f32_t fTimeDelta) override;
+	virtual HRESULT Render() override;
+
+private:
+	void Recover_FromFailure(HRESULT result);
+	void Cancel_LobbyCommand(const char_t* pReason);
+	void Retry_LobbyLoad();
+
+private:
+	LEVEL m_eNextLevelID = LEVEL::END;
+	LOBBY_COMMAND_TOKEN m_iLobbyCommandToken =
+		INVALID_LOBBY_COMMAND_TOKEN;
+	unique_ptr<class CLoader> m_pLoader = { nullptr };
+	bool_t m_isActivationRequested = { false };
+	bool_t m_isFailureReported = { false };
+	bool_t m_isRetryRequested = { false };
+
+public:
+	static unique_ptr<CLevel_Loading> Create(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		LEVEL eNextLevelID,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
+};
+
+NS_END
+```
+
+### 6-6. `C:/Users/user/Desktop/LostArk/Client/Private/Level_Loading.cpp`
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Level_Loading.h"
+
+#include "GameInstance.h"
+#include "LevelTransitionService.h"
+#include "Loader.h"
+#include "NetworkManager.h"
+
+CLevel_Loading::CLevel_Loading(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CLevel{ pDevice, pContext }
+{
+}
+
+CLevel_Loading::~CLevel_Loading()
+{
+}
+
+HRESULT CLevel_Loading::Initialize(
+	const LEVEL eNextLevelID,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	if (FAILED(__super::Initialize()))
+		return E_FAIL;
+	if (INVALID_LOBBY_COMMAND_TOKEN != lobbyCommandToken &&
+		LEVEL::LOBBY != eNextLevelID)
+	{
+		return E_INVALIDARG;
+	}
+
+	m_eNextLevelID = eNextLevelID;
+	m_iLobbyCommandToken = lobbyCommandToken;
+	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
+	return nullptr == m_pLoader ? E_FAIL : S_OK;
+}
+
+void CLevel_Loading::Update(const f32_t fTimeDelta)
+{
+	if (m_isRetryRequested)
+	{
+		m_isRetryRequested = false;
+		Retry_LobbyLoad();
+		return;
+	}
+
+	if (nullptr == m_pLoader)
+		return;
+
+	if (m_pLoader->Failed())
+	{
+		Recover_FromFailure(m_pLoader->Get_Result());
+		return;
+	}
+
+	if (m_pLoader->Finished() && !m_isActivationRequested)
+	{
+		if (CLevelTransitionService::Request_Activation(
+			m_eNextLevelID,
+			"loading.complete",
+			m_iLobbyCommandToken))
+		{
+			m_isActivationRequested = true;
+			m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
+		}
+		else
+		{
+			OutputDebugStringA(
+				"[Level_Loading] Activation request was rejected; retrying.\n");
+		}
+	}
+
+	__super::Update(fTimeDelta);
+}
+
+HRESULT CLevel_Loading::Render()
+{
+	if (FAILED(__super::Render()))
+		return E_FAIL;
+
+	if (m_isFailureReported && LEVEL::LOBBY == m_eNextLevelID)
+	{
+		ImGui::SetNextWindowPos(ImVec2(24.f, 24.f), ImGuiCond_Always);
+		if (ImGui::Begin(
+			"Loading recovery",
+			nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoCollapse))
+		{
+			ImGui::TextWrapped(
+				"Lobby resources could not be loaded. Partial resources were rolled back.");
+			if (ImGui::Button("Retry Lobby"))
+				m_isRetryRequested = true;
+		}
+		ImGui::End();
+	}
+
+#ifdef _DEBUG
+	if (nullptr != m_pLoader)
+		m_pLoader->Print_Text();
+#endif
+	return S_OK;
+}
+
+void CLevel_Loading::Recover_FromFailure(const HRESULT result)
+{
+	if (m_isFailureReported)
+		return;
+
+	m_isFailureReported = true;
+	Cancel_LobbyCommand("target level loading failed");
+	CLevelTransitionService::Report_LoadFailure(result);
+	CNetworkManager::Get().Close_ServerConnection();
+
+	if (FAILED(CGameInstance::Get().Clear_Resources(
+		ETOUI(m_eNextLevelID))))
+	{
+		OutputDebugStringA(
+			"[Level_Loading] Failed to clear partial target resources.\n");
+	}
+
+	OutputDebugStringA(
+		"[Level_Loading] Load failed; session closed and partial resources rolled back.\n");
+
+	if (LEVEL::LOBBY != m_eNextLevelID)
+		Retry_LobbyLoad();
+}
+
+void CLevel_Loading::Cancel_LobbyCommand(const char_t* pReason)
+{
+	if (INVALID_LOBBY_COMMAND_TOKEN == m_iLobbyCommandToken)
+		return;
+
+	CLobbyCommandService::Cancel(m_iLobbyCommandToken, pReason);
+	m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
+}
+
+void CLevel_Loading::Retry_LobbyLoad()
+{
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		"loading.recovery"))
+	{
+		OutputDebugStringA(
+			"[Level_Loading] Failed to stage Lobby recovery.\n");
+	}
+}
+
+unique_ptr<CLevel_Loading> CLevel_Loading::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const LEVEL eNextLevelID,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	auto instance = unique_ptr<CLevel_Loading>(
+		new CLevel_Loading(pDevice, pContext));
+	if (FAILED(instance->Initialize(eNextLevelID, lobbyCommandToken)))
+		return nullptr;
+	return instance;
+}
+```
+
+### 6-7. `C:/Users/user/Desktop/LostArk/Client/Public/MainApp.h`
+
+변경 종류: include와 선언 교체
+
+```cpp
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+#include "LobbyCommandService.h"
+```
+
+```cpp
+	HRESULT Start_Level(
+		LEVEL eTargetLevel,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
+	void Apply_LevelRequest();
+```
+
+### 6-8. `C:/Users/user/Desktop/LostArk/Client/Private/MainApp.cpp`
+
+변경 종류: include 추가
+
+```cpp
+#include "LobbyCommandService.h"
+```
+
+변경 종류: `Start_Level`, `Apply_LevelRequest` 함수 전체 교체
+
+```cpp
+HRESULT CMainApp::Start_Level(
+	const LEVEL eTargetLevel,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+{
+	if (nullptr == CLevelRegistry::Find(eTargetLevel))
+		return E_INVALIDARG;
+
+	unique_ptr<CLevel_Loading> loading =
+		CLevel_Loading::Create(
+			m_pDevice,
+			m_pContext,
+			eTargetLevel,
+			lobbyCommandToken);
+	if (nullptr == loading)
+		return E_FAIL;
+
+	return CGameInstance::Get().Change_Level(
+		ETOUI(LEVEL::LOADING),
+		move(loading));
+}
+
+void CMainApp::Apply_LevelRequest()
+{
+	LEVEL_TRANSITION_REQUEST request{};
+	if (!CLevelTransitionService::Try_Consume(request))
+		return;
+
+	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
+	{
+		const HRESULT result = Start_Level(
+			request.eTargetLevel,
+			request.iLobbyCommandToken);
+		if (FAILED(result))
+		{
+			if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
+			{
+				CLobbyCommandService::Cancel(
+					request.iLobbyCommandToken,
+					"target level loading could not start");
+			}
+			CLevelTransitionService::Report_LoadFailure(result);
+		}
+		return;
+	}
+
+	unique_ptr<CLevel> nextLevel = CLevelRegistry::Create_Level(
+		request.eTargetLevel,
+		m_pDevice,
+		m_pContext);
+	if (nullptr != nextLevel && SUCCEEDED(CGameInstance::Get().Change_Level(
+		ETOUI(request.eTargetLevel),
+		move(nextLevel))))
+	{
+		return;
+	}
+
+	if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
+	{
+		CLobbyCommandService::Cancel(
+			request.iLobbyCommandToken,
+			"target level activation failed");
+	}
+	CGameInstance::Get().Clear_Resources(ETOUI(request.eTargetLevel));
+	CNetworkManager::Get().Close_ServerConnection();
+	CLevelTransitionService::Report_LoadFailure(E_FAIL);
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		"main-app.activation-failure"))
+	{
+		OutputDebugStringA(
+			"[MainApp] Failed to stage Lobby recovery after activation failure.\n");
+	}
+}
+```
+
+일반 Level 전환은 invalid token이므로 `Cancel`을 호출하지 않는다. Character Select handoff failure에서만 유효한 token으로 정확히 해당 `TEST`를 제거한다.
+
+## 7. G3 — optional direct entry와 기존 Lobby Server approval
+
+### 7-1. `C:/Users/user/Desktop/LostArk/Client/Public/Level_Lobby.h`
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Level.h"
+#include "LobbyCommandService.h"
+#include "Network/PacketType.h"
+
+#include <chrono>
+
+NS_BEGIN(Client)
+
+class CLevel_Lobby final : public CLevel
+{
+private:
+	enum class ENTRY_STATE
+	{
+		IDLE,
+		WAITING_FOR_APPROVAL
+	};
+
+private:
+	CLevel_Lobby(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+
+public:
+	virtual ~CLevel_Lobby();
+
+public:
+	virtual HRESULT Initialize() override;
+	virtual void Update(f32_t fTimeDelta) override;
+	virtual HRESULT Render() override;
+
+private:
+	bool_t Begin_StageRequest(LOBBY_STAGE eStage);
+	bool_t Begin_NetworkEntry(
+		LostArk::Shared::WORLD_ID eWorldId,
+		LEVEL eTargetLevel);
+	bool_t Resolve_Stage(
+		LOBBY_STAGE eStage,
+		LostArk::Shared::WORLD_ID& outWorldId,
+		LEVEL& outTargetLevel) const;
+	void Consume_EnterAccepted();
+	void Cancel_PendingEntry(const string& reason);
+	void Render_StagePanel();
+
+private:
+	ENTRY_STATE m_eEntryState = ENTRY_STATE::IDLE;
+	LostArk::Shared::WORLD_ID m_ePendingWorldId =
+		LostArk::Shared::WORLD_ID::END;
+	LEVEL m_ePendingLevel = LEVEL::END;
+	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
+	string m_strStatus =
+		"Choose a stage directly or open Character Select to change class.";
+
+public:
+	static unique_ptr<CLevel_Lobby> Create(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+};
+
+NS_END
+```
+
+### 7-2. `C:/Users/user/Desktop/LostArk/Client/Private/Level_Lobby.cpp`
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Level_Lobby.h"
+
+#include "CharacterSelectionState.h"
+#include "LevelTransitionService.h"
+#include "NetworkManager.h"
+
+namespace
+{
+	constexpr char_t DEFAULT_SERVER_HOST[] = "127.0.0.1";
+	constexpr char_t SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
+	constexpr std::uint16_t SERVER_PORT = 7777;
+	constexpr char_t PLAYER_NICKNAME[] = "Player";
+	constexpr LostArk::Shared::CHARACTER_CLASS_ID DEFAULT_ENTRY_CLASS =
+		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
+
+	string Resolve_ServerHost()
+	{
+		char_t configuredHost[64]{};
+		const DWORD configuredLength = ::GetEnvironmentVariableA(
+			SERVER_HOST_ENVIRONMENT,
+			configuredHost,
+			static_cast<DWORD>(std::size(configuredHost)));
+		if (0 == configuredLength ||
+			configuredLength >= std::size(configuredHost) ||
+			"0.0.0.0" == string_view{ configuredHost })
+		{
+			return DEFAULT_SERVER_HOST;
+		}
+
+		return configuredHost;
+	}
+
+	string Describe_ServerEndpoint()
+	{
+		return Resolve_ServerHost() + ":" + to_string(SERVER_PORT);
+	}
+
+	const char_t* Get_CharacterClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER:
+			return "Lance Master";
+		case CHARACTER_CLASS_ID::GUNSLINGER:
+			return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER:
+			return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST:
+			return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return "Dimensionist";
+		default:
+			return "Not selected";
+		}
+	}
+
+	bool_t Resolve_EntryCharacterClass(
+		LostArk::Shared::CHARACTER_CLASS_ID& outCharacterClass,
+		bool_t& outUsedDefault)
+	{
+		outUsedDefault = false;
+		if (CCharacterSelectionState::Try_Get_SelectedClass(
+			outCharacterClass))
+		{
+			return true;
+		}
+
+		if (!CCharacterSelectionState::Select(DEFAULT_ENTRY_CLASS))
+		{
+			outCharacterClass =
+				LostArk::Shared::CHARACTER_CLASS_ID::END;
+			return false;
+		}
+
+		outCharacterClass = DEFAULT_ENTRY_CLASS;
+		outUsedDefault = true;
+		return true;
+	}
+}
+
+CLevel_Lobby::CLevel_Lobby(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CLevel{ pDevice, pContext }
+{
+}
+
+CLevel_Lobby::~CLevel_Lobby()
+{
+}
+
+HRESULT CLevel_Lobby::Initialize()
+{
+	return __super::Initialize();
+}
+
+void CLevel_Lobby::Update(const f32_t fTimeDelta)
+{
+	LOBBY_COMMAND command{};
+	if (CLobbyCommandService::Try_Consume(command))
+		Begin_StageRequest(command.eStage);
+
+	Consume_EnterAccepted();
+
+	if (ENTRY_STATE::WAITING_FOR_APPROVAL == m_eEntryState)
+	{
+		if (!CNetworkManager::Get().Is_Connected())
+		{
+			Cancel_PendingEntry(
+				"Server disconnected before approving entry. Lobby remains active.");
+		}
+		else if (std::chrono::steady_clock::now() >= m_ApprovalDeadline)
+		{
+			Cancel_PendingEntry(
+				"Server entry approval timed out after 5 seconds. Lobby remains active.");
+		}
+	}
+
+	__super::Update(fTimeDelta);
+}
+
+HRESULT CLevel_Lobby::Render()
+{
+	if (FAILED(__super::Render()))
+		return E_FAIL;
+
+	Render_StagePanel();
+	return S_OK;
+}
+
+bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_STAGE eStage)
+{
+	if (ENTRY_STATE::IDLE != m_eEntryState ||
+		CLevelTransitionService::Is_Pending())
+	{
+		m_strStatus = "Another entry or level transition is already pending.";
+		return false;
+	}
+
+	if (LOBBY_STAGE::CHARACTER_SELECT == eStage)
+	{
+		if (!CLevelTransitionService::Request_Load(
+			LEVEL::CHARACTER_SELECT,
+			"lobby.character-select"))
+		{
+			m_strStatus = CLevelTransitionService::Get_Status();
+			return false;
+		}
+
+		m_strStatus = "Opening Character Select.";
+		return true;
+	}
+
+	LostArk::Shared::WORLD_ID worldId = LostArk::Shared::WORLD_ID::END;
+	LEVEL targetLevel = LEVEL::END;
+	if (!Resolve_Stage(eStage, worldId, targetLevel))
+	{
+		m_strStatus = "The selected stage is not registered.";
+		return false;
+	}
+
+	return Begin_NetworkEntry(worldId, targetLevel);
+}
+
+bool_t CLevel_Lobby::Begin_NetworkEntry(
+	const LostArk::Shared::WORLD_ID eWorldId,
+	const LEVEL eTargetLevel)
+{
+	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	bool_t usedDefaultClass = false;
+	if (!Resolve_EntryCharacterClass(characterClass, usedDefaultClass))
+	{
+		m_strStatus = "The default entry class could not be committed.";
+		return false;
+	}
+
+	CNetworkManager& networkManager = CNetworkManager::Get();
+	networkManager.Close_ServerConnection();
+	const string serverHost = Resolve_ServerHost();
+	if (!networkManager.Connect_To_Server(serverHost, SERVER_PORT))
+	{
+		m_strStatus = "Server connection failed for " +
+			serverHost + ":" + to_string(SERVER_PORT) + " (WSA " +
+			to_string(networkManager.Get_LastErrorCode()) + ").";
+		return false;
+	}
+
+	if (!networkManager.Send_EnterWorld(
+		eWorldId,
+		characterClass,
+		PLAYER_NICKNAME))
+	{
+		m_strStatus = "C2S_ENTER_WORLD send failed (WSA " +
+			to_string(networkManager.Get_LastErrorCode()) + ").";
+		networkManager.Close_ServerConnection();
+		return false;
+	}
+
+	m_eEntryState = ENTRY_STATE::WAITING_FOR_APPROVAL;
+	m_ePendingWorldId = eWorldId;
+	m_ePendingLevel = eTargetLevel;
+	m_ApprovalDeadline =
+		std::chrono::steady_clock::now() + std::chrono::seconds(5);
+	m_strStatus = usedDefaultClass ?
+		"No class was selected. Lance Master was committed and entry approval is pending." :
+		"C2S_ENTER_WORLD sent. Waiting for server approval.";
+	return true;
+}
+
+bool_t CLevel_Lobby::Resolve_Stage(
+	const LOBBY_STAGE eStage,
+	LostArk::Shared::WORLD_ID& outWorldId,
+	LEVEL& outTargetLevel) const
+{
+	using LostArk::Shared::WORLD_ID;
+	outWorldId = WORLD_ID::END;
+	outTargetLevel = LEVEL::END;
+
+	switch (eStage)
+	{
+	case LOBBY_STAGE::TEST:
+		outWorldId = WORLD_ID::TRAINING_GROUND;
+		outTargetLevel = LEVEL::DEVELOPMENT;
+		return true;
+	case LOBBY_STAGE::VALTAN:
+		outWorldId = WORLD_ID::VALTAN_ARENA;
+		outTargetLevel = LEVEL::VALTAN_ARENA;
+		return true;
+	case LOBBY_STAGE::BERN:
+		outWorldId = WORLD_ID::BERN;
+		outTargetLevel = LEVEL::BERN;
+		return true;
+	default:
+		return false;
+	}
+}
+
+void CLevel_Lobby::Consume_EnterAccepted()
+{
+	LostArk::Shared::S2C_ENTER_ACCEPTED accepted{};
+	CNetworkManager& networkManager = CNetworkManager::Get();
+	if (!networkManager.Try_Consume_EnterAccepted(accepted))
+		return;
+
+	if (ENTRY_STATE::WAITING_FOR_APPROVAL != m_eEntryState)
+	{
+		Cancel_PendingEntry("Unexpected server approval was rejected.");
+		return;
+	}
+
+	if (accepted.eWorldId != m_ePendingWorldId)
+	{
+		Cancel_PendingEntry("Server approved a different world. Entry was rejected.");
+		return;
+	}
+
+	const LEVEL approvedLevel = m_ePendingLevel;
+	if (!CLevelTransitionService::Request_Load(
+		approvedLevel,
+		"lobby.enter-accepted"))
+	{
+		Cancel_PendingEntry(CLevelTransitionService::Get_Status());
+		return;
+	}
+
+	m_eEntryState = ENTRY_STATE::IDLE;
+	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+	m_ePendingLevel = LEVEL::END;
+	m_ApprovalDeadline = {};
+	m_strStatus = "Server approved the world. Loading the stage.";
+}
+
+void CLevel_Lobby::Cancel_PendingEntry(const string& reason)
+{
+	CNetworkManager::Get().Close_ServerConnection();
+	m_eEntryState = ENTRY_STATE::IDLE;
+	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
+	m_ePendingLevel = LEVEL::END;
+	m_ApprovalDeadline = {};
+	m_strStatus = reason;
+}
+
+void CLevel_Lobby::Render_StagePanel()
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr != viewport)
+	{
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowPos(
+			ImVec2(viewport->WorkPos.x + 24.f, viewport->WorkPos.y + 24.f),
+			ImGuiCond_Always);
+	}
+
+	if (!ImGui::Begin(
+		"LostArk Lobby",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize |
+		ImGuiWindowFlags_NoSavedSettings))
+	{
+		ImGui::End();
+		return;
+	}
+
+	LostArk::Shared::CHARACTER_CLASS_ID selectedClass =
+		DEFAULT_ENTRY_CLASS;
+	const bool_t hasExplicitSelection =
+		CCharacterSelectionState::Try_Get_SelectedClass(selectedClass);
+	ImGui::Text(
+		"Entry character: %s%s",
+		Get_CharacterClassName(selectedClass),
+		hasExplicitSelection ? "" : " (default)");
+	const string serverEndpoint = Describe_ServerEndpoint();
+	ImGui::TextDisabled("Server: %s", serverEndpoint.c_str());
+	ImGui::Separator();
+
+	const bool_t isBusy = ENTRY_STATE::IDLE != m_eEntryState ||
+		CLevelTransitionService::Is_Pending();
+	ImGui::BeginDisabled(isBusy);
+	if (ImGui::Button("Test"))
+		CLobbyCommandService::Request(LOBBY_STAGE::TEST);
+	ImGui::SameLine();
+	if (ImGui::Button("Character Select"))
+		CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);
+	ImGui::SameLine();
+	if (ImGui::Button("Valtan"))
+		CLobbyCommandService::Request(LOBBY_STAGE::VALTAN);
+	ImGui::SameLine();
+	if (ImGui::Button("Bern"))
+		CLobbyCommandService::Request(LOBBY_STAGE::BERN);
+	ImGui::EndDisabled();
+
+	if (!hasExplicitSelection)
+	{
+		ImGui::TextDisabled(
+			"Direct entry commits Lance Master. Character Select changes it.");
+	}
+	ImGui::TextWrapped("%s", m_strStatus.c_str());
+	ImGui::End();
+}
+
+unique_ptr<CLevel_Lobby> CLevel_Lobby::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	auto instance = unique_ptr<CLevel_Lobby>(
+		new CLevel_Lobby(pDevice, pContext));
+	if (FAILED(instance->Initialize()))
+		return nullptr;
+	return instance;
+}
+```
+
+## 8. G4 — 기존 네 class Q/W 데이터와 Dimensionist 스킬 미승격 경계
+
+현재 `PlayerSkills.json`에는 Lance Master 9개와 Gunslinger/Slayer/Artist Q/W가 있다. 다섯 class 모두 Character Select, Server profile, spawn, HUD class identity, 이동과 IDLE/RUN을 사용한다. 검증된 Q/W는 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`이다. Dimensionist reference 문서는 정식 헤더와 0 row만 있으므로 실제 stable skill ID와 timing을 확보할 때까지 skill row를 만들지 않으며 Lance Master skill로 대체하지 않는다.
+
+추가 Q/W의 skill ID와 animation chain은 다음 실측 정본을 사용한다.
+
+```text
+GUNSLINGER Q 38020  Data/Animation/Reference/GunSlinger/GunSlinger.clipseq
+GUNSLINGER W 38050  Data/Animation/Reference/GunSlinger/GunSlinger.clipseq
+SLAYER      Q 45050  Data/Animation/Reference/Slayer/Slayer.clipseq
+SLAYER      W 45060  Data/Animation/Reference/Slayer/Slayer.clipseq
+ARTIST      Q 31210  Data/Animation/Reference/Artist/Artist.clipseq
+ARTIST      W 31230  Data/Animation/Reference/Artist/Artist.clipseq
+```
+
+damage/resource/range는 원작 밸런스라고 주장하지 않는 수련장 baseline이다. stable class/skill identity와 추출 animation은 실제 값이고, 수치는 `Data/Balance`에서 담당자가 튜닝한다.
+
+### 8-1. `C:/Users/user/Desktop/LostArk/Data/Balance/DamageProfiles.json`
+
+변경 종류: 전체 교체
+
+```json
+{
+  "schema": "lostark.damage-profiles",
+  "formatVersion": 1,
+  "profiles": [
+    { "damageProfileId": "damage.player.34120", "amount": 650 },
+    { "damageProfileId": "damage.player.34080", "amount": 700 },
+    { "damageProfileId": "damage.player.34070", "amount": 750 },
+    { "damageProfileId": "damage.player.34150", "amount": 1000 },
+    { "damageProfileId": "damage.player.34110", "amount": 850 },
+    { "damageProfileId": "damage.player.34090", "amount": 650 },
+    { "damageProfileId": "damage.player.34640", "amount": 1650 },
+    { "damageProfileId": "damage.player.34600", "amount": 2500 },
+    { "damageProfileId": "damage.player.34620", "amount": 2500 },
+    { "damageProfileId": "damage.player.38020", "amount": 600 },
+    { "damageProfileId": "damage.player.38050", "amount": 800 },
+    { "damageProfileId": "damage.player.45050", "amount": 750 },
+    { "damageProfileId": "damage.player.45060", "amount": 650 },
+    { "damageProfileId": "damage.player.31210", "amount": 550 },
+    { "damageProfileId": "damage.player.31230", "amount": 700 },
+    { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 }
+  ]
+}
+```
+
+### 8-2. `C:/Users/user/Desktop/LostArk/Data/Balance/PlayerSkills.json`
+
+변경 종류: 전체 교체
+
+```json
+{
+  "schema": "lostark.player-skills",
+  "formatVersion": 1,
+  "skills": [
+    {
+      "skillId": 34120,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "Q",
+      "displayName": "연환섬",
+      "actionId": "lancemaster.skill.34120",
+      "cooldownMs": 10000,
+      "actionDurationMs": 2266,
+      "hitTimeMs": 1295,
+      "resourceCost": 15,
+      "movementDistance": 0.0,
+      "maximumRange": 7.3,
+      "serverDamageProfileId": "damage.player.34120"
+    },
+    {
+      "skillId": 34080,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "W",
+      "displayName": "일섬각",
+      "actionId": "lancemaster.skill.34080",
+      "cooldownMs": 12000,
+      "actionDurationMs": 1366,
+      "hitTimeMs": 0,
+      "resourceCost": 17,
+      "movementDistance": 0.0,
+      "maximumRange": 4.0,
+      "serverDamageProfileId": "damage.player.34080"
+    },
+    {
+      "skillId": 34070,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "E",
+      "displayName": "회선창",
+      "actionId": "lancemaster.skill.34070",
+      "cooldownMs": 14000,
+      "actionDurationMs": 2000,
+      "hitTimeMs": 300,
+      "resourceCost": 19,
+      "movementDistance": 0.0,
+      "maximumRange": 9.9,
+      "serverDamageProfileId": "damage.player.34070"
+    },
+    {
+      "skillId": 34150,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "R",
+      "displayName": "맹룡열파",
+      "actionId": "lancemaster.skill.34150",
+      "cooldownMs": 24000,
+      "actionDurationMs": 2266,
+      "hitTimeMs": 1345,
+      "resourceCost": 29,
+      "movementDistance": 0.0,
+      "maximumRange": 9.2,
+      "serverDamageProfileId": "damage.player.34150"
+    },
+    {
+      "skillId": 34110,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "A",
+      "displayName": "반월섬",
+      "actionId": "lancemaster.skill.34110",
+      "cooldownMs": 18000,
+      "actionDurationMs": 3200,
+      "hitTimeMs": 1857,
+      "resourceCost": 23,
+      "movementDistance": 0.0,
+      "maximumRange": 9.9,
+      "serverDamageProfileId": "damage.player.34110"
+    },
+    {
+      "skillId": 34090,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "S",
+      "displayName": "철량추",
+      "actionId": "lancemaster.skill.34090",
+      "cooldownMs": 10000,
+      "actionDurationMs": 2100,
+      "hitTimeMs": 1730,
+      "resourceCost": 15,
+      "movementDistance": 0.0,
+      "maximumRange": 9.2,
+      "serverDamageProfileId": "damage.player.34090"
+    },
+    {
+      "skillId": 34640,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "T",
+      "displayName": "맹룡난무",
+      "actionId": "lancemaster.skill.34640",
+      "cooldownMs": 50000,
+      "actionDurationMs": 3166,
+      "hitTimeMs": 1730,
+      "resourceCost": 0,
+      "movementDistance": 0.0,
+      "maximumRange": 10.6,
+      "serverDamageProfileId": "damage.player.34640"
+    },
+    {
+      "skillId": 34600,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "V",
+      "displayName": "은하유성탄",
+      "actionId": "lancemaster.skill.34600",
+      "cooldownMs": 300000,
+      "actionDurationMs": 5600,
+      "hitTimeMs": 1390,
+      "resourceCost": 0,
+      "movementDistance": 0.0,
+      "maximumRange": 12.2,
+      "serverDamageProfileId": "damage.player.34600"
+    },
+    {
+      "skillId": 34620,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "ALT_V",
+      "displayName": "은하비섬창",
+      "actionId": "lancemaster.skill.34620",
+      "cooldownMs": 300000,
+      "actionDurationMs": 6300,
+      "hitTimeMs": 1930,
+      "resourceCost": 0,
+      "movementDistance": 0.0,
+      "maximumRange": 18.2,
+      "serverDamageProfileId": "damage.player.34620"
+    },
+    {
+      "skillId": 38020,
+      "characterClass": "GUNSLINGER",
+      "inputSlot": "Q",
+      "displayName": "퀵 스텝",
+      "actionId": "gunslinger.skill.38020",
+      "cooldownMs": 10000,
+      "actionDurationMs": 3533,
+      "hitTimeMs": 1000,
+      "resourceCost": 15,
+      "movementDistance": 0.0,
+      "maximumRange": 5.8,
+      "serverDamageProfileId": "damage.player.38020"
+    },
+    {
+      "skillId": 38050,
+      "characterClass": "GUNSLINGER",
+      "inputSlot": "W",
+      "displayName": "심판의 시간",
+      "actionId": "gunslinger.skill.38050",
+      "cooldownMs": 30000,
+      "actionDurationMs": 1767,
+      "hitTimeMs": 1000,
+      "resourceCost": 25,
+      "movementDistance": 0.0,
+      "maximumRange": 4.0,
+      "serverDamageProfileId": "damage.player.38050"
+    },
+    {
+      "skillId": 45050,
+      "characterClass": "SLAYER",
+      "inputSlot": "Q",
+      "displayName": "퓨리 블레이드",
+      "actionId": "slayer.skill.45050",
+      "cooldownMs": 12000,
+      "actionDurationMs": 4533,
+      "hitTimeMs": 1100,
+      "resourceCost": 15,
+      "movementDistance": 0.0,
+      "maximumRange": 3.5,
+      "serverDamageProfileId": "damage.player.45050"
+    },
+    {
+      "skillId": 45060,
+      "characterClass": "SLAYER",
+      "inputSlot": "W",
+      "displayName": "와일드 러시",
+      "actionId": "slayer.skill.45060",
+      "cooldownMs": 14000,
+      "actionDurationMs": 4600,
+      "hitTimeMs": 500,
+      "resourceCost": 18,
+      "movementDistance": 0.0,
+      "maximumRange": 5.0,
+      "serverDamageProfileId": "damage.player.45060"
+    },
+    {
+      "skillId": 31210,
+      "characterClass": "ARTIST",
+      "inputSlot": "Q",
+      "displayName": "필법 : 콩콩이",
+      "actionId": "artist.skill.31210",
+      "cooldownMs": 16000,
+      "actionDurationMs": 5334,
+      "hitTimeMs": 1445,
+      "resourceCost": 18,
+      "movementDistance": 0.0,
+      "maximumRange": 2.5,
+      "serverDamageProfileId": "damage.player.31210"
+    },
+    {
+      "skillId": 31230,
+      "characterClass": "ARTIST",
+      "inputSlot": "W",
+      "displayName": "묵법 : 옹달샘",
+      "actionId": "artist.skill.31230",
+      "cooldownMs": 24000,
+      "actionDurationMs": 1500,
+      "hitTimeMs": 1445,
+      "resourceCost": 22,
+      "movementDistance": 0.0,
+      "maximumRange": 6.5,
+      "serverDamageProfileId": "damage.player.31230"
+    }
+  ]
+}
+```
+
+`Publish-GameplayBalance.ps1 -Mode Publish`가 이 두 JSON과 기존 player/boss profiles를 검증한 뒤 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`을 다시 생성한다. 생성물은 직접 편집하지 않는다.
+
+### 8-3. `C:/Users/user/Desktop/LostArk/Server/Private/ServerGameplayContractTests.cpp`
+
+변경 종류: 표준 include 추가
+
+```cpp
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <map>
+```
+
+변경 종류: `catalog.Load()` 직후의 기존 단일 Lance Master skill resolve assertion을 아래 블록으로 교체
+
+```cpp
+	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+
+	struct EXPECTED_QUICK_SKILL final
+	{
+		SKILL_ID iSkillId;
+		CHARACTER_CLASS_ID eCharacterClass;
+		const char* pInputSlot;
+		const char* pName;
+	};
+	constexpr std::array EXPECTED_QUICK_SKILLS =
+	{
+		EXPECTED_QUICK_SKILL{
+			34120, CHARACTER_CLASS_ID::LANCE_MASTER, "Q", "Lance Master Q" },
+		EXPECTED_QUICK_SKILL{
+			34080, CHARACTER_CLASS_ID::LANCE_MASTER, "W", "Lance Master W" },
+		EXPECTED_QUICK_SKILL{
+			38020, CHARACTER_CLASS_ID::GUNSLINGER, "Q", "Gunslinger Q" },
+		EXPECTED_QUICK_SKILL{
+			38050, CHARACTER_CLASS_ID::GUNSLINGER, "W", "Gunslinger W" },
+		EXPECTED_QUICK_SKILL{
+			45050, CHARACTER_CLASS_ID::SLAYER, "Q", "Slayer Q" },
+		EXPECTED_QUICK_SKILL{
+			45060, CHARACTER_CLASS_ID::SLAYER, "W", "Slayer W" },
+		EXPECTED_QUICK_SKILL{
+			31210, CHARACTER_CLASS_ID::ARTIST, "Q", "Artist Q" },
+		EXPECTED_QUICK_SKILL{
+			31230, CHARACTER_CLASS_ID::ARTIST, "W", "Artist W" }
+	};
+	for (const EXPECTED_QUICK_SKILL& expected : EXPECTED_QUICK_SKILLS)
+	{
+		const PLAYER_SKILL_DEFINITION* skill =
+			catalog.Find_Skill(expected.iSkillId);
+		const std::string resolveName =
+			std::string("Resolve ") + expected.pName + " skill binding";
+		tests.Require(
+			nullptr != skill &&
+			expected.eCharacterClass == skill->eCharacterClass &&
+			skill->strInputSlot == expected.pInputSlot,
+			resolveName.c_str());
+
+		SERVER_PLAYER probePlayer{};
+		probePlayer.eCharacterClass = expected.eCharacterClass;
+		probePlayer.iCurrentResource = 100;
+		probePlayer.iMaximumResource = 100;
+		C2S_USE_SKILL probeCommand{};
+		probeCommand.iClientSequence = 1;
+		probeCommand.iSkillId = expected.iSkillId;
+		probeCommand.fAimX = 0.f;
+		probeCommand.fAimZ = 1.f;
+		CPlayerSkillSystem probeSystem;
+		const std::string approvalName =
+			std::string("Approve ") + expected.pName +
+			" through server skill authority";
+		tests.Require(
+			probeSystem.Try_Start(
+				probePlayer,
+				probeCommand,
+				catalog,
+				10),
+			approvalName.c_str());
+	}
+```
+
+기존 player profile, navigation, damage-once, cooldown, Valtan brain assertions는 이 블록 뒤에 그대로 둔다. 이 교체는 기존 test를 삭제하지 않는다.
+
+다음 기존 단일 runtime 경로를 검증한다.
+
+```text
+Character Select Enter
+-> CCharacterSelectionState::Select
+-> CLobbyCommandService::Request(TEST)
+-> Lobby Begin_NetworkEntry
+-> CNetworkManager::Send_EnterWorld(TRAINING_GROUND, selected class)
+-> ServerApp::On_SessionFrame
+-> CGameRoom::Join
+-> S2C_ENTER_ACCEPTED + S2C_PLAYER_SPAWNED
+-> DEVELOPMENT Loader가 Get_LocalCharacterClass()로 selected class prototype 준비
+-> CClientReplication::Create_Character
+-> CNetObjectRegistry local handle
+-> CCombatHUDViewModel class-specific player/skill rows
+-> CPlayerController
+-> right click C2S_MOVE / Q,W C2S_USE_SKILL
+-> GameRoom 30 Hz movement/skill update
+-> S2C_WORLD_SNAPSHOT
+-> Character locomotion/action presentation + HUD cooldown
+```
+
+G4에서 수정하지 않는 C++ 파일:
+
+```text
+Shared/*
+Server/Public/GameRoom.h
+Server/Private/GameRoom.cpp
+Client/Public/Level_Development.h
+Client/Private/Level_Development.cpp
+Client/Public/ClientReplication.h
+Client/Private/ClientReplication.cpp
+Client/Public/PlayerController.h
+Client/Private/PlayerController.cpp
+Client/Public/CombatHUDViewModel.h
+Client/Private/CombatHUDViewModel.cpp
+```
+
+generic `CPlayerSkillCatalog`, `CGameplayCatalog`, `CPlayerSkillSystem`, `CCharacter::Play_Skill`은 이미 class와 stable skill ID를 데이터로 소비하므로 새 switch를 추가하지 않는다. 이 파일 중 하나가 runtime 검증에서 실패할 때만 최초 실패 원인을 재현하고 별도 diff로 최소 수정한다. PLAN에 미리 중복 Manager나 placeholder를 추가하지 않는다.
+
+## 9. G5 — token service 단위 harness와 integration ProjectAudit
+
+### 9-1. `C:/Users/user/Desktop/LostArk/Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp`
+
+변경 종류: 새 파일 전체
+
+```cpp
+#include "LobbyCommandService.h"
+
+#include <cstddef>
+#include <iostream>
+#include <string>
+
+namespace
+{
+	struct TEST_RUNNER final
+	{
+		void Require(const bool_t condition, const char_t* pName)
+		{
+			if (condition)
+			{
+				std::cout << "[PASS] " << pName << '\n';
+				return;
+			}
+
+			++iFailureCount;
+			std::cout << "[FAILURE] " << pName << '\n';
+		}
+
+		std::size_t iFailureCount = 0;
+	};
+
+	void Require_NoPendingCommand(
+		TEST_RUNNER& runner,
+		const char_t* pName)
+	{
+		Client::LOBBY_COMMAND command{};
+		runner.Require(
+			!Client::CLobbyCommandService::Try_Consume(command),
+			pName);
+	}
+
+	void Test_NormalHandoff(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			CLobbyCommandService::Request(LOBBY_STAGE::TEST, token) &&
+			INVALID_LOBBY_COMMAND_TOKEN != token,
+			"Normal Handoff Stages Tokenized Test Command");
+
+		LOBBY_COMMAND_TOKEN duplicateToken = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			!CLobbyCommandService::Request(
+				LOBBY_STAGE::BERN,
+				duplicateToken) &&
+			INVALID_LOBBY_COMMAND_TOKEN == duplicateToken,
+			"Duplicate Enter Does Not Replace Pending Command");
+
+		LOBBY_COMMAND command{};
+		runner.Require(
+			CLobbyCommandService::Try_Consume(command) &&
+			LOBBY_STAGE::TEST == command.eStage &&
+			token == command.iToken,
+			"Lobby Consumes Exact Handoff Command Once");
+		Require_NoPendingCommand(
+			runner,
+			"Consumed Handoff Leaves No Stale Command");
+	}
+
+	void Test_ExactCancellation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			CLobbyCommandService::Request(LOBBY_STAGE::TEST, token),
+			"Cancellation Fixture Stages Test Command");
+		runner.Require(
+			CLobbyCommandService::Cancel(token, "handoff owner failed"),
+			"Exact Token Cancels Pending Command");
+		Require_NoPendingCommand(
+			runner,
+			"Exact Cancellation Leaves No Stale Command");
+	}
+
+	void Test_StaleTokenCannotCancelNewCommand(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		LOBBY_COMMAND_TOKEN oldToken = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			CLobbyCommandService::Request(LOBBY_STAGE::TEST, oldToken) &&
+			CLobbyCommandService::Cancel(oldToken, "old handoff cancelled"),
+			"Old Handoff Is Cancelled");
+
+		LOBBY_COMMAND_TOKEN newToken = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			CLobbyCommandService::Request(LOBBY_STAGE::BERN, newToken) &&
+			newToken > oldToken,
+			"New Handoff Receives New Token");
+		runner.Require(
+			!CLobbyCommandService::Cancel(oldToken, "stale failure"),
+			"Stale Failure Cannot Cancel New Handoff");
+
+		LOBBY_COMMAND command{};
+		runner.Require(
+			CLobbyCommandService::Try_Consume(command) &&
+			LOBBY_STAGE::BERN == command.eStage &&
+			newToken == command.iToken,
+			"New Handoff Survives Stale Cancellation");
+	}
+
+	void Test_InvalidRequestsPreservePendingCommand(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			!CLobbyCommandService::Request(LOBBY_STAGE::END, token) &&
+			INVALID_LOBBY_COMMAND_TOKEN == token,
+			"Invalid Stage Is Rejected");
+
+		runner.Require(
+			CLobbyCommandService::Request(LOBBY_STAGE::VALTAN, token),
+			"Valid Command Is Staged After Invalid Stage");
+		runner.Require(
+			!CLobbyCommandService::Cancel(
+				INVALID_LOBBY_COMMAND_TOKEN,
+				"invalid token"),
+			"Invalid Token Is Rejected");
+
+		LOBBY_COMMAND command{};
+		runner.Require(
+			CLobbyCommandService::Try_Consume(command) &&
+			LOBBY_STAGE::VALTAN == command.eStage &&
+			token == command.iToken,
+			"Invalid Cancellation Preserves Pending Command");
+	}
+}
+
+int main()
+{
+	TEST_RUNNER runner{};
+
+	Test_NormalHandoff(runner);
+	Test_ExactCancellation(runner);
+	Test_StaleTokenCannotCancelNewCommand(runner);
+	Test_InvalidRequestsPreservePendingCommand(runner);
+
+	std::cout << "failures : " << runner.iFailureCount << '\n';
+	return 0 == runner.iFailureCount ? 0 : 1;
+}
+```
+
+### 9-2. `C:/Users/user/Desktop/LostArk/Tools/ClientFrontendHarness/Default/ClientFrontendHarness.vcxproj`
+
+변경 종류: 새 파일 전체
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{78406C04-3D55-4F36-B6D1-B5180A48F521}</ProjectGuid>
+    <RootNamespace>ClientFrontendHarness</RootNamespace>
+    <ProjectName>ClientFrontendHarness</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>ClientFrontendHarness</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\ClientFrontendHarness.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
+      <Link>Client\LobbyCommandService.cpp</Link>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
+```
+
+### 9-3. `C:/Users/user/Desktop/LostArk/Tools/ClientFrontendHarness/Default/ClientFrontendHarness.vcxproj.filters`
+
+변경 종류: 새 파일 전체
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Private">
+      <UniqueIdentifier>{1FE078EF-A16A-4934-8D2C-A6949CCB5BAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Client">
+      <UniqueIdentifier>{BC0E9108-26E5-43E7-9D73-73A11EB40BFC}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\ClientFrontendHarness.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
+```
+
+### 9-4. `C:/Users/user/Desktop/LostArk/Framework.sln`
+
+변경 종류: project block 추가
+
+```text
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ClientFrontendHarness", "Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj", "{78406C04-3D55-4F36-B6D1-B5180A48F521}"
+EndProject
+```
+
+변경 종류: `ProjectConfigurationPlatforms`에 추가
+
+```text
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x64.ActiveCfg = Debug|x64
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x64.Build.0 = Debug|x64
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x86.ActiveCfg = Debug|x64
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x64.ActiveCfg = Release|x64
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x64.Build.0 = Release|x64
+		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x86.ActiveCfg = Release|x64
+```
+
+### 9-5. `C:/Users/user/Desktop/LostArk/Tools/Build/Invoke-BuildAndRegression.ps1`
+
+변경 종류: build 목록에서 NetworkProtocolHarness 다음에 추가
+
+```powershell
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj'
+```
+
+변경 종류: protocol harness 실행 다음에 추가
+
+```powershell
+    $frontendHarness = Join-Path $repoRoot `
+        "Tools\ClientFrontendHarness\Bin\$Configuration\ClientFrontendHarness.exe"
+    & $frontendHarness
+    if ($LASTEXITCODE -ne 0) {
+        throw 'ClientFrontendHarness failed.'
+    }
+```
+
+### 9-6. `C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1`
+
+변경 종류: 기존 `maps.training-area-contract` 바로 다음에 아래 블록 추가
+
+```powershell
+	$characterSelectArea = @($mapCatalog.areas |
+		Where-Object id -eq 'LV_LOBBY_CLASSSELECT_SL00')
+	$characterSelectAssetRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapassets') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapassets' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$characterSelectPlacementRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapplacements') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapplacements' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$characterSelectRuntimeRoot = if ($characterSelectArea.Count -eq 1) {
+		[string]$characterSelectArea[0].runtimeAssetRoot
+	} else { '' }
+	$characterSelectManifestPath = if ([string]::IsNullOrWhiteSpace($characterSelectRuntimeRoot)) {
+		''
+	} else {
+		Join-Path 'Client\Bin\Resources' `
+			(Join-Path $characterSelectRuntimeRoot 'map_asset_runtime_manifest.json')
+	}
+	$characterSelectManifest = if (-not [string]::IsNullOrWhiteSpace($characterSelectManifestPath) -and
+		(Test-Path -LiteralPath $characterSelectManifestPath)) {
+		Read-Json $characterSelectManifestPath
+	} else { $null }
+	Add-Check 'maps.character-select-area-contract' (
+		$characterSelectArea.Count -eq 1 -and
+		$characterSelectArea[0].kind -eq 'product' -and
+		$characterSelectArea[0].catalogType -eq 'single' -and
+		$characterSelectArea[0].assetCount -eq 55 -and
+		$characterSelectArea[0].placementCount -eq 803 -and
+		$characterSelectAssetRows -eq 55 -and
+		$characterSelectPlacementRows -eq 803 -and
+		$null -ne $characterSelectManifest -and
+		$characterSelectManifest.areaId -eq 'LV_LOBBY_CLASSSELECT_SL00' -and
+		$characterSelectManifest.assetCount -eq 55 -and
+		@($characterSelectManifest.assets).Count -eq 55) "assets=$characterSelectAssetRows placements=$characterSelectPlacementRows manifest=$($characterSelectManifest.assetCount)"
+```
+
+변경 종류: 기존 `levels.character-select-contract` Add-Check 전체 교체
+
+```powershell
+	$characterSelectLoaderFunction = [regex]::Match(
+		$loaderSource,
+		'HRESULT CLoader::Ready_For_CharacterSelect\(\)[\s\S]*?(?=HRESULT CLoader::Ready_For_Bern\(\))').Value
+	$lobbyCommandHeaderSource = Get-Content -LiteralPath 'Client\Public\LobbyCommandService.h' -Raw
+	$lobbyCommandSource = Get-Content -LiteralPath 'Client\Private\LobbyCommandService.cpp' -Raw
+	$transitionHeaderSource = Get-Content -LiteralPath 'Client\Public\LevelTransitionService.h' -Raw
+	$loadingSource = Get-Content -LiteralPath 'Client\Private\Level_Loading.cpp' -Raw
+	$frontendHarnessSource = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Private\ClientFrontendHarness.cpp' -Raw
+	$frontendHarnessProject = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj' -Raw
+	$buildRegressionSource = Get-Content -LiteralPath 'Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
+
+	Add-Check 'levels.character-select-contract' (
+		$levelRegistrySource -match 'LEVEL::CHARACTER_SELECT' -and
+		$levelRegistrySource -match 'LV_LOBBY_CLASSSELECT_SL00' -and
+		$levelRegistrySource -match '\{ true, true, -792\.f, 158\.f, -750\.f, 218\.f \}' -and
+		$levelRegistrySource -match 'Ready_For_CharacterSelect' -and
+		$characterSelectLoaderFunction -match 'Ready_MapArea\(' -and
+		$characterSelectLoaderFunction -notmatch 'Ready_Camera_Prototype\(' -and
+		$characterSelectLoaderFunction -match 'Ready_Character_Rendering\(' -and
+		$characterSelectLoaderFunction -match 'Ready_AnimationPreviewModels\(' -and
+		$characterSelectLoaderFunction -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
+		$characterSelectLoaderFunction -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
+		$characterSelectLoaderFunction -match 'CHARACTER_CLASS_ID::SLAYER' -and
+		$characterSelectLoaderFunction -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
+		$characterSelectSource -match 'CCharacterSelectionState::Select' -and
+		$characterSelectSource -match 'CLobbyCommandService::Request\([\s\S]{0,120}LOBBY_STAGE::TEST[\s\S]{0,120}commandToken' -and
+		$characterSelectSource -match 'character-select\.enter-test' -and
+		$characterSelectSource -match 'ImGuiKey_Enter' -and
+		$characterSelectSource -notmatch 'NetworkManager|Connect_To_Server|Send_EnterWorld' -and
+		$lobbySource -match 'DEFAULT_ENTRY_CLASS' -and
+		$lobbySource -match 'Resolve_EntryCharacterClass' -and
+		$lobbySource -match 'Send_EnterWorld\(' -and
+		$lobbySource -match '"Test"' -and
+		$lobbySource -match '"Character Select"' -and
+		$lobbySource -match '"Valtan"' -and
+		$lobbySource -match '"Bern"') 'Character Select loads one map path and Enter reuses the Lobby server-authorized Test path'
+
+	Add-Check 'levels.character-select-handoff-ticket' (
+		$lobbyCommandHeaderSource -match 'LOBBY_COMMAND_TOKEN' -and
+		$lobbyCommandHeaderSource -match 'Cancel\(' -and
+		$lobbyCommandSource -match 'g_iNextToken' -and
+		$lobbyCommandSource -match 'g_PendingCommand->iToken != token' -and
+		$transitionHeaderSource -match 'iLobbyCommandToken' -and
+		$loadingSource -match 'Request_Activation\([\s\S]{0,160}m_iLobbyCommandToken' -and
+		$loadingSource -match 'Cancel_LobbyCommand\("target level loading failed"\)' -and
+		$mainAppSource -match 'target level loading could not start' -and
+		$mainAppSource -match 'target level activation failed' -and
+		$frontendHarnessSource -match 'Exact Cancellation Leaves No Stale Command' -and
+		$frontendHarnessSource -match 'Stale Failure Cannot Cancel New Handoff' -and
+		$frontendHarnessProject -match 'Client\\Private\\LobbyCommandService\.cpp' -and
+		$buildRegressionSource -match 'ClientFrontendHarness') 'token service has an executable unit harness and integration failure hooks are statically admitted'
+
+	$playerSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
+	$missingQuickSlots = [Collections.Generic.List[string]]::new()
+	foreach ($className in @('LANCE_MASTER','GUNSLINGER','SLAYER','ARTIST')) {
+		foreach ($slotName in @('Q','W')) {
+			$bindings = @($playerSkillDocument.skills | Where-Object {
+				$_.characterClass -eq $className -and $_.inputSlot -eq $slotName
+			})
+			if ($bindings.Count -ne 1) {
+				$missingQuickSlots.Add("${className}:$slotName")
+			}
+		}
+	}
+	Add-Check 'gameplay.playable-qw-contract' (
+		$missingQuickSlots.Count -eq 0) "missing=$($missingQuickSlots -join ',')"
+
+	$quickSkillAnimationContracts = @(
+		[pscustomobject]@{ Class = 'LANCE_MASTER'; Asset = 'LanceMaster'; Skills = @(34120, 34080) },
+		[pscustomobject]@{ Class = 'GUNSLINGER'; Asset = 'GunSlinger'; Skills = @(38020, 38050) },
+		[pscustomobject]@{ Class = 'SLAYER'; Asset = 'Slayer'; Skills = @(45050, 45060) },
+		[pscustomobject]@{ Class = 'ARTIST'; Asset = 'Artist'; Skills = @(31210, 31230) }
+	)
+	$quickSkillAnimationErrors = [Collections.Generic.List[string]]::new()
+	foreach ($contract in $quickSkillAnimationContracts) {
+		$sequencePath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipseq"
+		$clipMapPath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipmap"
+		if (-not (Test-Path -LiteralPath $sequencePath) -or
+			-not (Test-Path -LiteralPath $clipMapPath)) {
+			$quickSkillAnimationErrors.Add("$($contract.Class):missing animation document")
+			continue
+		}
+		$sequenceSource = Get-Content -LiteralPath $sequencePath -Raw
+		$clipMapSource = Get-Content -LiteralPath $clipMapPath -Raw
+		foreach ($skillId in $contract.Skills) {
+			if ($sequenceSource -notmatch "(?m)^$skillId\s") {
+				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipseq")
+			}
+			if ($clipMapSource -notmatch "skill=$skillId(?:\s|$)") {
+				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipmap")
+			}
+		}
+	}
+	$characterRuntimeSource = Get-Content -LiteralPath 'Client\Private\Character.cpp' -Raw
+	Add-Check 'gameplay.playable-qw-animation-contract' (
+		$quickSkillAnimationErrors.Count -eq 0 -and
+		$characterRuntimeSource -match 'Load_ClipChains\(\)' -and
+		$characterRuntimeSource -match 'filesystem::path\(assetName \+ "\.clipseq"\)' -and
+		$characterRuntimeSource -match 'Play_Skill\(static_cast<int32_t>\(skillId\)\)') "errors=$($quickSkillAnimationErrors -join ',')"
+```
+
+## 10. G6 — public 문서와 RESULT의 정확한 교체 문단
+
+### 10-1. `C:/Users/user/Desktop/LostArk/AGENTS.md`
+
+변경 종류: `고정 런타임 계약`의 Character Select 문단 전체 교체
+
+```markdown
+- `CHARACTER_SELECT`는 socket을 직접 열지 않는 3D 선택 Level이다. Lobby에서 진입하면 Loader가 `LV_LOBBY_CLASSSELECT_SL00` visual map과 다섯 playable class를 준비하고, Level은 같은 map 위에 preview Character와 ImGui 선택 panel을 만든다. Enter는 선택 class를 commit하고 tokenized `TEST` command를 예약한 뒤 Lobby로 돌아가 기존 `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 경로를 재사용한다. token은 Lobby load 시작, Loader, activation 실패에서 같은 command만 취소하므로 재시도 때 stale 자동 진입이 없다. Character Select를 거치지 않은 직접 Test/Bern/Valtan 진입은 `LANCE_MASTER`를 명시적 process selection으로 commit한다. Server 승인 전에는 제품 Level로 전환하지 않으며, 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Preview Character를 실제 player로 승격하거나 Character Select에서 packet/socket을 직접 호출하는 우회 경로는 존재하지 않는다.
+```
+
+변경 종류: Character/Animation 담당 bullet 전체 교체
+
+```markdown
+- 검증된 기존 네 playable class의 Q/W는 각각 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`으로 `Data/Balance/PlayerSkills.json`에 연결한다. 입력은 `(class, inputSlot)`으로 stable skill ID를 찾고 command → server approval → snapshot → Character presentation을 통과한다. 수치는 수련장 baseline이며 원작 수치라고 주장하지 않는다. Dimensionist는 선택·spawn·HUD class identity·IDLE/RUN·Animation Tool 모델 열람까지만 이번 계약이며, 스킬 ID와 timing row가 0이므로 Q/W를 활성화하지 않는다.
+```
+
+### 10-2. `C:/Users/user/Desktop/LostArk/CLAUDE.md`
+
+변경 종류: `최소 수련장 Area`의 첫 문단 전체 교체
+
+```markdown
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Test 진입이다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. `LEVEL::CHARACTER_SELECT` 진입 Loader는 `LV_LOBBY_CLASSSELECT_SL00` visual map과 다섯 class preview resource를 준비하지만 socket은 열지 않는다. class 선택 후 Enter는 tokenized `LOBBY_STAGE::TEST`를 예약하고 Lobby의 기존 Server 승인 state machine을 거쳐 DEVELOPMENT로 진입한다. Lobby load 또는 activation 실패 시 같은 token의 command를 취소한다. Character Select를 거치지 않고 Test/Bern/Valtan을 누르면 `LANCE_MASTER`를 process selection으로 commit한 뒤 같은 Server 승인 경로를 사용한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀한다. Local Preview나 자동 offline gameplay 우회 경로는 없다.
+```
+
+변경 종류: runtime validation bullet 전체 교체
+
+```markdown
+- runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행하고 Lobby → Loading → Character Select map/preview → Enter → Lobby approval → Test 진입, Lobby direct Test/Bern/Valtan 진입, disconnect 복귀를 확인
+```
+
+### 10-3. `C:/Users/user/Desktop/LostArk/.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
+
+변경 종류: Lobby/Character Select 계약 문단 전체 교체
+
+```markdown
+Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 socket 없는 3D preview Level이며 Loader가 `LV_LOBBY_CLASSSELECT_SL00` visual map과 다섯 playable class를 준비한다. Enter는 선택 class를 commit하고 tokenized Lobby `TEST` command를 예약한다. load/activation 실패는 같은 token만 취소하며 실제 Test 진입은 Lobby의 `C2S_ENTER_WORLD -> S2C_ENTER_ACCEPTED` 경로를 그대로 통과한다. Character Select를 생략한 direct entry는 `LANCE_MASTER`를 명시적 process selection으로 commit한다. Test/Bern/Valtan은 실제 Server 승인을 받은 뒤에만 진입하고, 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남으며 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Preview Character를 actual player로 승격하거나 UI/Character Select가 packet과 socket을 직접 호출하는 경로는 금지한다.
+```
+
+변경 종류: 최소 성공 증거의 Character Select bullet 전체 교체
+
+```markdown
+- 실제 Server+Client에서 Lobby → Character Select map/다섯 class preview → Enter → Test 진입과 다섯 class Character/HUD/이동을 확인한다. Q/W는 기존 네 class만 확인하며 Dimensionist는 skill data가 생기기 전 비활성임을 확인한다.
+- Character Select를 생략한 direct Test/Bern/Valtan entry와 연결 실패/timeout/진입 후 disconnect 복귀 확인
+```
+
+변경 종류: class quick-slot 표를 아래 행으로 교체
+
+```markdown
+| Class | Q | W | 수치 정본 |
+|---|---:|---:|---|
+| Lance Master | `34120` | `34080` | `Data/Balance/PlayerSkills.json` |
+| Gunslinger | `38020` | `38050` | `Data/Balance/PlayerSkills.json` |
+| Slayer | `45050` | `45060` | `Data/Balance/PlayerSkills.json` |
+| Artist | `31210` | `31230` | `Data/Balance/PlayerSkills.json` |
+```
+
+### 10-4. `C:/Users/user/Desktop/LostArk/.md/GB/08-03/2026-08-03_CHARACTER_SELECT_LEVEL_VERTICAL_SLICE_RESULT.md`
+
+변경 종류: 구현 시작 전에 맨 아래 추가
+
+```markdown
+## 11. 2026-08-04 후속 수직 슬라이스 상태
+
+계획서 정본은 같은 이름의 PLAN으로 전면 갱신했다. 새 범위는 Character Select visual map admission, Enter-to-Test token handoff, direct Lance Master entry, 다섯 class 선택/입장, 기존 네 playable class Q/W balance 연결과 ClientFrontendHarness다.
+
+현재 상태는 계획 완료, 구현 전이다. 이 절을 추가한 시점에는 새 범위의 C++/balance/harness를 반영하지 않았고 build, 자동 harness, Server+Client 수동 진입도 실행하지 않았다. 기존 2026-08-03 결과와 새 목표를 혼동해 완료 처리하지 않는다.
+```
+
+구현 후에는 위 절 아래에 실제 실행한 Debug/Release build, `ClientFrontendHarness failures : 0`, ProjectAudit, resource `Hydrate -> Verify`, 다섯 class runtime 결과와 미검증 항목을 사실대로 추가한다. 실행하지 않은 검증을 성공으로 미리 적지 않는다.
+
+## 12. 프로젝트 등록
+
+```text
+Client.vcxproj 변경 없음
+Client.vcxproj.filters 변경 없음
+DataFiles filter 변경 없음
+Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp 신규
+Tools/ClientFrontendHarness/Default/ClientFrontendHarness.vcxproj 신규
+Tools/ClientFrontendHarness/Default/ClientFrontendHarness.vcxproj.filters 신규
+Framework.sln project/config 등록
+Tools/Build/Invoke-BuildAndRegression.ps1 build/run 등록
+```
+
+현재 다른 세션의 `Client.vcxproj`, `.filters`, mapassets 변경을 이 작업에서 재정렬하거나 덮어쓰지 않는다.
+
+## 13. 적용 순서
+
+1. `MapCatalog.json`의 해당 Area와 `LevelRegistry.cpp` descriptor를 교체한다.
+2. `Loader.cpp::Ready_For_CharacterSelect`를 map → class → animation preview 순서로 교체한다. `Ready_MapArea`가 camera prototype을 준비하므로 다시 호출하지 않는다.
+3. `LobbyCommandService`, `LevelTransitionService`, `Level_Loading`, `MainApp`에 token ownership과 failure cancellation을 반영한다.
+4. `Level_CharacterSelect.h/.cpp`, `Level_Lobby.h/.cpp`를 최종 코드로 교체한다.
+5. 기존 네 class Q/W balance와 damage profile을 publish하고 Dimensionist skill row는 비어 있는지 검사한다.
+6. ClientFrontendHarness project/source와 build regression을 등록한다.
+7. 현재 dirty `ProjectAudit`의 unrelated 변경을 보존하며 지정 audit 블록만 병합한다.
+8. AGENTS/CLAUDE/팀 handbook/RESULT의 지정 문단만 교체한다.
+9. 다른 세션의 Character/Effect/Map intake가 끝난 같은 Resources를 새 immutable pack으로 Snapshot/Publish한다.
+10. 새 pack을 Hydrate/Verify하고 diff·build·audit·runtime 순으로 검증한다.
+
+## 14. 빌드·자동 검증 명령
+
+```powershell
+Set-Location C:\Users\user\Desktop\LostArk
+
+if ([string]::IsNullOrWhiteSpace($env:LOSTARK_PACK_ROOT)) {
+	throw 'LOSTARK_PACK_ROOT must point to the external immutable pack root.'
+}
+$assetContractStatus = @(
+	git status --short -- 'Data/AssetPacks.lock.json' 'Data/AssetManifests')
+if ($assetContractStatus.Count -ne 0) {
+	$assetContractStatus | ForEach-Object { Write-Host $_ }
+}
+$deletedImmutableManifests = @(
+	git diff --name-only --diff-filter=D -- 'Data/AssetManifests/*.manifest.json'
+	git diff --cached --name-only --diff-filter=D -- 'Data/AssetManifests/*.manifest.json') |
+	Sort-Object -Unique
+if ($deletedImmutableManifests.Count -ne 0) {
+	throw "Resolve immutable manifest deletions before Snapshot: $($deletedImmutableManifests -join ', ')"
+}
+$dirtyAssetLock = @(
+	git diff --name-only -- 'Data/AssetPacks.lock.json'
+	git diff --cached --name-only -- 'Data/AssetPacks.lock.json'
+	git ls-files --others --exclude-standard -- 'Data/AssetPacks.lock.json') |
+	Sort-Object -Unique
+if ($dirtyAssetLock.Count -ne 0) {
+	throw 'The asset lock has an unresolved owner diff. Commit or restore that diff before Snapshot.'
+}
+$packVersion = '2026.08.04.1'
+$packRoot = [IO.Path]::GetFullPath($env:LOSTARK_PACK_ROOT)
+$zipPath = Join-Path $packRoot "lostark-resources-$packVersion.zip"
+if (Test-Path -LiteralPath $zipPath) {
+	throw "Immutable ZIP already exists: $zipPath"
+}
+powershell -ExecutionPolicy Bypass -File .\Tools\AssetPipeline\Manage-ResourcePack.ps1 `
+	-Mode Snapshot -Version $packVersion
+powershell -ExecutionPolicy Bypass -File .\Tools\AssetPipeline\Manage-ResourcePack.ps1 `
+	-Mode Verify
+powershell -ExecutionPolicy Bypass -File .\Tools\AssetPipeline\Manage-ResourcePack.ps1 `
+	-Mode Publish -PackRoot $packRoot
+tar.exe -a -cf $zipPath -C $packRoot "lostark-resources/$packVersion"
+Get-FileHash -LiteralPath $zipPath -Algorithm SHA256
+powershell -ExecutionPolicy Bypass -File .\Tools\AssetPipeline\Manage-ResourcePack.ps1 `
+	-Mode Hydrate -PackRoot $packRoot
+powershell -ExecutionPolicy Bypass -File .\Tools\AssetPipeline\Manage-ResourcePack.ps1 `
+	-Mode Verify
+
+powershell -ExecutionPolicy Bypass -File .\Tools\GameplayPipeline\Publish-GameplayBalance.ps1 `
+	-Mode Validate
+powershell -ExecutionPolicy Bypass -File .\Tools\GameplayPipeline\Publish-GameplayBalance.ps1 `
+	-Mode Publish
+
+powershell -ExecutionPolicy Bypass -File .\Tools\Build\Invoke-BuildAndRegression.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File .\Tools\Build\Invoke-BuildAndRegression.ps1 -Configuration Release
+
+.\Tools\NetworkProtocolHarness\Bin\Debug\NetworkProtocolHarness.exe
+.\Tools\ClientFrontendHarness\Bin\Debug\ClientFrontendHarness.exe
+.\Tools\ClientFrontendHarness\Bin\Release\ClientFrontendHarness.exe
+.\Server\Bin\Debug\Server.exe --contract-test
+
+powershell -ExecutionPolicy Bypass -File .\Tools\ProjectAudit\Invoke-ProjectAudit.ps1 -DeepAssetHash
+
+git diff --check
+```
+
+실행 경로가 현재 산출물 구조와 다르면 `CLAUDE.md`의 정본 출력 경로를 먼저 확인하고 같은 binary를 중복 실행하지 않는다.
+
+## 15. 필수 런타임 검증
+
+### 15.1 Character Select resource/preview
+
+```text
+1. Server + Client 실행
+2. Client가 Lobby에서 시작
+3. Character Select 클릭
+4. Loading text에 CHARACTER SELECT: visual map 표시
+5. LV_LOBBY_CLASSSELECT_SL00 main cluster가 보임
+6. Lance Master/Gunslinger/Slayer/Artist 선택 시 이전 preview를 잃지 않고 교체
+7. Back은 이전 committed class를 바꾸지 않음
+```
+
+### 15.2 Enter-to-Test
+
+```text
+1. 각 class를 선택
+2. Enter 키 또는 Enter Test 버튼
+3. Lobby가 TEST command를 한 번만 소비
+4. C2S_ENTER_WORLD world=TRAINING_GROUND, class=선택 class
+5. 승인 전 DEVELOPMENT로 가지 않음
+6. S2C_ENTER_ACCEPTED 후 DEVELOPMENT Loading
+7. 실제 local Character가 선택 class
+8. HUD class 이름/HP/resource/skill row가 선택 class
+9. 우클릭 이동이 Server snapshot으로 반영
+10. Q/W가 C2S_USE_SKILL -> Server approval -> action/cooldown snapshot으로 반영
+```
+
+### 15.3 Character Select 생략
+
+```text
+1. 새 Client process에서 Character Select를 열지 않음
+2. Lobby의 Test 클릭 가능
+3. LANCE_MASTER가 process selection으로 commit
+4. Server 승인 후 DEVELOPMENT 진입
+5. Bern/Valtan도 같은 default selection으로 승인 가능
+```
+
+### 15.4 실패와 rollback
+
+```text
+Character Select mapassets/placement/model 하나 누락
+-> Loader FAILED
+-> CHARACTER_SELECT Level resource rollback
+-> 부분 map/preview commit 없음
+
+preview class 교체 실패
+-> 이전 preview 유지
+
+Enter 시 Lobby command 예약 후 Level request 실패
+-> 방금 발급한 token의 TEST command 취소
+-> 나중에 Lobby에서 의도치 않은 자동 입장 없음
+
+Lobby Loader 실패 또는 Lobby activation 실패
+-> ownership 중인 token의 TEST command 취소
+-> Retry Lobby 뒤 stale 자동 입장 없음
+
+오래된 failure callback이 더 새 command token을 취소 시도
+-> token mismatch로 거부
+-> 새 command 유지
+
+Server 없음/connection 거부/5초 timeout/world mismatch
+-> Lobby 유지
+-> socket close
+-> 제품 Level 전환 없음
+
+진입 후 disconnect
+-> replication/HUD reset
+-> Lobby 복귀
+```
+
+## 16. 이번 계획의 완료 판정
+
+```text
+구현 완료:
+- 위 코드가 실제 파일에 반영되고 build 성공
+
+자동 검증 완료:
+- Debug/Release build regression 성공
+- Protocol Harness failures 0
+- ClientFrontendHarness Debug/Release failures 0
+- Server contract failures 0
+- ProjectAudit 전 항목 성공
+- immutable resource pack Hydrate/Verify와 DeepAssetHash 성공
+- git diff --check 성공
+
+수동 검증 완료:
+- Character Select map이 실제로 보임
+- 다섯 class preview 교체
+- Enter와 버튼 모두 Test 진입
+- selected class actual Character/HUD 일치
+- 이동/Q/W server snapshot 반영
+- direct default entry
+- failure/timeout/disconnect rollback
+
+후속 별도 수직 슬라이스:
+- MapTool에서 수련장 navigation paint/project/publish
+- trainingTarget stable kind와 Server damage contract
+- 잡몹 catalog/spawn trigger/runtime
+- 추가 boss placement/brain/encounter
+- 제품 CUIObject Character Select/HUD layout
+```
+
+문서에 코드가 있다는 사실은 구현 완료가 아니다. Character Select map은 추출·catalog·manifest까지 존재하지만 이 PLAN 작성 시점에는 인게임 표시가 검증되지 않았다.

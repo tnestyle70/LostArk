@@ -74,6 +74,10 @@ class CMapAssetCatalog final
 public:
 	bool_t Load_Default();
 	bool_t Load_Area(const std::string& areaId);
+	bool_t Load_Source(
+		const std::filesystem::path& catalogPath,
+		const std::filesystem::path& placementPath,
+		const std::string& expectedAreaId);
 	bool_t Load(const std::filesystem::path& path,
 		const std::string& expectedAreaId = {});
 
@@ -103,6 +107,8 @@ private:
 	std::filesystem::path m_PlacementPath;
 	bool_t m_bSharded = false;
 	bool_t m_bReady = false;
+	std::filesystem::path m_SourceCatalogOverride;
+	std::filesystem::path m_SourcePlacementOverride;
 };
 
 NS_END

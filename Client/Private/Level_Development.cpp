@@ -8,6 +8,10 @@
 #include "NetworkPlayerCommandSink.h"
 #include "Transform.h"
 
+#ifdef _DEBUG
+#include "MapEditorWorkspaceService.h"
+#endif
+
 CLevel_Development::CLevel_Development(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -17,12 +21,32 @@ CLevel_Development::CLevel_Development(
 
 CLevel_Development::~CLevel_Development()
 {
+#ifdef _DEBUG
+	if (m_isMapEditorWorkspace)
+		CMapEditorWorkspaceService::Cancel();
+#endif
 }
 
 HRESULT CLevel_Development::Initialize()
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
+
+#ifdef _DEBUG
+	m_isMapEditorWorkspace =
+		CMapEditorWorkspaceService::Is_Requested();
+	if (m_isMapEditorWorkspace)
+	{
+		if (FAILED(Ready_Lights()) ||
+			FAILED(Ready_Camera(TEXT("Layer_Camera"))))
+		{
+			CMapEditorWorkspaceService::Cancel();
+			return E_FAIL;
+		}
+		CMapEditorWorkspaceService::Set_Active(true);
+		return S_OK;
+	}
+#endif
 
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::DEVELOPMENT);
@@ -66,6 +90,9 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
 
+	if (m_isMapEditorWorkspace)
+		return;
+
 	if (!m_Replication.Update())
 	{
 		OutputDebugStringA(
@@ -100,7 +127,9 @@ HRESULT CLevel_Development::Render()
 		return E_FAIL;
 
 #ifdef _DEBUG
-	SetWindowText(g_hWnd, TEXT("LostArk Test Training Ground"));
+	SetWindowText(g_hWnd, m_isMapEditorWorkspace ?
+		TEXT("LostArk Map Editor Workspace") :
+		TEXT("LostArk Test Training Ground"));
 #endif
 	return S_OK;
 }

@@ -11,6 +11,12 @@
     { "damageProfileId": "damage.player.34640", "amount": 1650 },
     { "damageProfileId": "damage.player.34600", "amount": 2500 },
     { "damageProfileId": "damage.player.34620", "amount": 2500 },
+    { "damageProfileId": "damage.player.38020", "amount": 600 },
+    { "damageProfileId": "damage.player.38050", "amount": 800 },
+    { "damageProfileId": "damage.player.45050", "amount": 750 },
+    { "damageProfileId": "damage.player.45060", "amount": 650 },
+    { "damageProfileId": "damage.player.31210", "amount": 550 },
+    { "damageProfileId": "damage.player.31230", "amount": 700 },
     { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 }
   ]
 }

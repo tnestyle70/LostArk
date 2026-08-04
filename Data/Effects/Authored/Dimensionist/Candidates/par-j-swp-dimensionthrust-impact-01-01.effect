@@ -1,0 +1,10 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-dimensionthrust-impact-01-01" name="par_j_swp_dimensionthrust_impact_01_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=769 name="emitter_0" type=MESH enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=770 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_i_noise_03.dds" mesh="Effect/Dimensionist/Meshes/fm_d_ring_008.wmodel" mat="fx_m_mi_00.fx_mi.fx_d_me_master_01_021_ts_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=771 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.6,0.6,1.2,0.7 min=0.6,0.6,1.2,0.7 max=0.6,0.6,1.2,0.7
+
+EMITTER id=772 name="distortion" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=773 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_o_00.fx_mi.fx_o_pa_circledisort_01_01_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=774 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:3.2,1:3.2 a=0:0,0.05:0.013329,0.1:0.045765,0.15:0.085978,0.2:0.12264,0.25:0.144424,0.3:0.14,0.35:0.11959,0.4:0.100942,0.45:0.084014,0.5:0.068768,0.55:0.055163,0.6:0.04316,0.65:0.032719,0.7:0.023799,0.75:0.016361,0.8:0.010364,0.85:0.00577,0.9:0.002538,0.95:0.000628,1:0

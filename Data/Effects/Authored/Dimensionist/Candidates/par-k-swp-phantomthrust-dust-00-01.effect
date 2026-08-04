@@ -1,0 +1,15 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-phantomthrust-dust-00-01" name="par_k_swp_phantomthrust_dust_00_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=34155 name="ring-start" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=34156 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=34157 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=34158 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=34159 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,1:1 g=0:1.6,1:1 b=0:4,1:1 a=0:1,0.05:0.861645,0.1:0.736665,0.15:0.62438,0.2:0.524113,0.25:0.435182,0.3:0.356911,0.35:0.288618,0.4:0.229627,0.45:0.179256,0.5:0.136829,0.55:0.101664,0.6:0.073084,0.65:0.05041,0.7:0.032962,0.75:0.020061,0.8:0.011028,0.85:0.005185,0.9:0.001852,0.95:0.00035,1:0
+  MODULE id=34160 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=32 start=0 end=31 loop=1 reltime=1
+
+EMITTER id=34161 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=34162 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=34163 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,1:1 g=0:1.6,1:1 b=0:4,1:1 a=0:1,0.05:0.861645,0.1:0.736665,0.15:0.62438,0.2:0.524113,0.25:0.435182,0.3:0.356911,0.35:0.288618,0.4:0.229627,0.45:0.179256,0.5:0.136829,0.55:0.101664,0.6:0.073084,0.65:0.05041,0.7:0.032962,0.75:0.020061,0.8:0.011028,0.85:0.005185,0.9:0.001852,0.95:0.00035,1:0
+  MODULE id=34164 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=32 start=0 end=31 loop=1 reltime=1

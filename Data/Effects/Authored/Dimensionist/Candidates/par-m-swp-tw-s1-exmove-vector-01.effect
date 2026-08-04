@@ -1,0 +1,7 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-tw-s1-exmove-vector-01" name="par_m_swp_tw_s1_exmove_vector_01" provenance=DERIVED_CONVERSION duration=2.1 warmup=0
+
+EMITTER id=30042 name="ring_in" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=30043 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_circ_01_2_tr" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30044 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.1 min=0.1 max=1.1
+  MODULE id=30045 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=10,60,80,1 min=10,60,80,1 max=10,60,80,1

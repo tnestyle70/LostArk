@@ -183,8 +183,16 @@ namespace
 		if (path.empty())
 			return S_OK;
 		ComPtr<ID3D11ShaderResourceView> resource;
-		if (FAILED(LoadTexture(pDevice, path, IsColorTextureSlot(type), resource)))
-			return E_FAIL;
+		const HRESULT result = LoadTexture(
+			pDevice, path, IsColorTextureSlot(type), resource);
+		if (FAILED(result))
+		{
+			wstring message = L"[CMaterial] Texture load failed: ";
+			message += path.wstring();
+			message += L"\n";
+			OutputDebugStringW(message.c_str());
+			return result;
+		}
 		textures[type].push_back(resource);
 		return S_OK;
 	}
@@ -340,7 +348,7 @@ shared_ptr<CMaterial> CMaterial::Create(ComPtr<ID3D11Device> pDevice, ComPtr<ID3
 
 	if (FAILED(pInstance->Initialize(pAIMaterial, pModelFilePath)))
 	{
-		MSG_BOX("Failed to Created : CMaterial");
+		OutputDebugStringA("[CMaterial] Assimp material initialization failed.\n");
 		return nullptr;
 	}
 
@@ -353,7 +361,7 @@ shared_ptr<CMaterial> CMaterial::Create(ComPtr<ID3D11Device> pDevice,
 	auto pInstance = shared_ptr<CMaterial>(new CMaterial(pDevice, pContext));
 	if (FAILED(pInstance->Initialize(material)))
 	{
-		MSG_BOX("Failed to Created : CMaterial");
+		OutputDebugStringA("[CMaterial] Binary material initialization failed.\n");
 		return nullptr;
 	}
 	return pInstance;

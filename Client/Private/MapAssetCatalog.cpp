@@ -190,6 +190,30 @@ bool_t CMapAssetCatalog::Load_Default()
 	return Load_Area(selectedAreaId);
 }
 
+bool_t CMapAssetCatalog::Load_Source(
+	const std::filesystem::path& catalogPath,
+	const std::filesystem::path& placementPath,
+	const std::string& expectedAreaId)
+{
+	const std::filesystem::path normalizedCatalog =
+		catalogPath.lexically_normal();
+	const std::filesystem::path normalizedPlacements =
+		placementPath.lexically_normal();
+	if (normalizedCatalog.empty() || normalizedCatalog.is_relative() ||
+		normalizedPlacements.empty() || normalizedPlacements.is_relative() ||
+		(normalizedCatalog.extension() != L".mapassets" &&
+			normalizedCatalog.extension() != L".mapset") ||
+		normalizedPlacements.extension() != L".mapplacements")
+	{
+		m_Status = "Authoring source paths are invalid";
+		return false;
+	}
+
+	m_SourceCatalogOverride = normalizedCatalog;
+	m_SourcePlacementOverride = normalizedPlacements;
+	return Load_Area(expectedAreaId);
+}
+
 bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 {
 	if (!IsValidGroupId(areaId))
@@ -200,11 +224,17 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 
 	const std::string selectedAreaId = areaId;
 
-	const std::filesystem::path mapRoot = Get_MapDataRoot();
-	const std::filesystem::path shardSetPath = mapRoot /
-		(std::filesystem::path(selectedAreaId).wstring() + L".mapset");
+	const bool_t hasSourceOverride =
+		!m_SourceCatalogOverride.empty();
+	const std::filesystem::path mapRoot = hasSourceOverride ?
+		m_SourceCatalogOverride.parent_path() : Get_MapDataRoot();
+	const std::filesystem::path shardSetPath =
+		hasSourceOverride && m_SourceCatalogOverride.extension() == L".mapset" ?
+		m_SourceCatalogOverride :
+		mapRoot / (std::filesystem::path(selectedAreaId).wstring() + L".mapset");
 	std::error_code shardSetError;
-	const bool_t hasShardSet =
+	const bool_t hasShardSet = hasSourceOverride ?
+		m_SourceCatalogOverride.extension() == L".mapset" :
 		std::filesystem::exists(shardSetPath, shardSetError);
 	if (shardSetError)
 	{
@@ -357,7 +387,8 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 		m_Shards = std::move(stagedShards);
 		m_AreaId = std::move(selectedAreaId);
 		m_CatalogPath = shardSetPath;
-		m_PlacementPath.clear();
+		m_PlacementPath = hasSourceOverride ?
+			m_SourcePlacementOverride : std::filesystem::path{};
 		m_bSharded = true;
 		m_bReady = true;
 		m_Status = "Shard set ready: " + std::to_string(m_Shards.size()) +
@@ -365,14 +396,16 @@ bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)
 		return true;
 	}
 
-	const std::filesystem::path catalogPath = mapRoot /
-		(std::filesystem::path(selectedAreaId).wstring() + L".mapassets");
+	const std::filesystem::path catalogPath = hasSourceOverride ?
+		m_SourceCatalogOverride :
+		mapRoot / (std::filesystem::path(selectedAreaId).wstring() + L".mapassets");
 	if (!Load(catalogPath, selectedAreaId))
 		return false;
 
 	m_CatalogPath = catalogPath;
-	m_PlacementPath = mapRoot /
-		(std::filesystem::path(selectedAreaId).wstring() + L".mapplacements");
+	m_PlacementPath = hasSourceOverride ?
+		m_SourcePlacementOverride :
+		mapRoot / (std::filesystem::path(selectedAreaId).wstring() + L".mapplacements");
 	return true;
 }
 

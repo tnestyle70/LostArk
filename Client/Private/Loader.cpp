@@ -1,13 +1,16 @@
 #include "Loader.h"
 
 #include "ActorCatalog.h"
+#include "AnimationPreviewAssets.h"
 #include "Camera_Free.h"
 #include "Body_Valtan.h"
 #include "Character.h"
+#include "CharacterSelectionState.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "MapAssetCatalog.h"
 #include "MapAssetObject.h"
+#include "MapAssetPreview.h"
 #include "MapNavigationContract.h"
 #include "MapPlacementRuntime.h"
 #include "MapStaticBatchObject.h"
@@ -18,6 +21,10 @@
 #include "PlayableCharacterAssetService.h"
 #include "RuntimeAssetRoot.h"
 #include "Valtan.h"
+
+#ifdef _DEBUG
+#include "MapEditorWorkspaceService.h"
+#endif
 
 #include <algorithm>
 #include <array>
@@ -83,6 +90,27 @@ namespace
 	std::string ResolveAssetPath(const std::filesystem::path& relativePath)
 	{
 		return CRuntimeAssetRoot::Resolve(relativePath).string();
+	}
+
+	const tchar_t* Get_CharacterClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER:
+			return TEXT("Lance Master");
+		case CHARACTER_CLASS_ID::GUNSLINGER:
+			return TEXT("Gunslinger");
+		case CHARACTER_CLASS_ID::SLAYER:
+			return TEXT("Slayer");
+		case CHARACTER_CLASS_ID::ARTIST:
+			return TEXT("Artist");
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return TEXT("Dimensionist");
+		default:
+			return TEXT("Unknown");
+		}
 	}
 }
 
@@ -203,21 +231,36 @@ HRESULT CLoader::Ready_For_Lobby()
 HRESULT CLoader::Ready_For_CharacterSelect()
 {
 	using LostArk::Shared::CHARACTER_CLASS_ID;
-	constexpr std::array CHARACTER_CLASSES =
+	CHARACTER_CLASS_ID initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+	if (!CCharacterSelectionState::Try_Get_SelectedClass(initialClass) ||
+		!LostArk::Shared::Is_Supported_Playable_Character_Class(initialClass))
 	{
-		CHARACTER_CLASS_ID::LANCE_MASTER,
-		CHARACTER_CLASS_ID::GUNSLINGER,
-		CHARACTER_CLASS_ID::SLAYER,
-		CHARACTER_CLASS_ID::ARTIST
-	};
+		initialClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+	}
+	const std::array characterClasses = { initialClass };
 
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::CHARACTER_SELECT));
-	Set_Status(TEXT("CHARACTER SELECT: camera and playable classes"));
-	if (FAILED(Ready_Camera_Prototype(ETOUI(LEVEL::CHARACTER_SELECT))) ||
-		FAILED(Ready_Character_Rendering(
+	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
+		CLevelRegistry::Find(LEVEL::CHARACTER_SELECT);
+	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
+		return E_INVALIDARG;
+
+	Set_Status(TEXT("CHARACTER SELECT: visual map"));
+	if (FAILED(Ready_MapArea(
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		pEntry->pMapAreaId,
+		pEntry->MapLoadScope)))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("CHARACTER SELECT: playable classes"));
+	if (FAILED(Ready_Character_Rendering(
 			ETOUI(LEVEL::CHARACTER_SELECT),
-			CHARACTER_CLASSES)))
+			characterClasses)) ||
+		FAILED(Ready_AnimationPreviewModels(
+			ETOUI(LEVEL::CHARACTER_SELECT))))
 	{
 		return E_FAIL;
 	}
@@ -301,6 +344,23 @@ HRESULT CLoader::Ready_For_Development()
 {
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::DEVELOPMENT));
+
+#ifdef _DEBUG
+	if (CMapEditorWorkspaceService::Is_Requested())
+	{
+		Set_Status(TEXT("MAP EDITOR: core rendering resources"));
+		if (FAILED(Ready_MapAuthoringCore(ETOUI(LEVEL::DEVELOPMENT))))
+		{
+			CMapEditorWorkspaceService::Cancel();
+			return E_FAIL;
+		}
+
+		Set_Status(TEXT("Map Editor workspace loading complete"));
+		rollback.Commit();
+		return S_OK;
+	}
+#endif
+
 	const CLIENT_LEVEL_DESCRIPTOR* pEntry =
 		CLevelRegistry::Find(LEVEL::DEVELOPMENT);
 	if (nullptr == pEntry || nullptr == pEntry->pMapAreaId)
@@ -326,6 +386,11 @@ HRESULT CLoader::Ready_For_Development()
 	{
 		return E_FAIL;
 	}
+	if (FAILED(Ready_AnimationPreviewModels(
+		ETOUI(LEVEL::DEVELOPMENT))))
+	{
+		return E_FAIL;
+	}
 
 	Set_Status(TEXT("Development scenario loading complete"));
 	rollback.Commit();
@@ -340,22 +405,8 @@ HRESULT CLoader::Ready_MapArea(
 	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
 		return E_INVALIDARG;
 
-	if (FAILED(Ready_StaticMeshShader(iLevelIndex)))
+	if (FAILED(Ready_MapAuthoringCore(iLevelIndex)))
 		return E_FAIL;
-
-	Set_Status(TEXT("Map: instance shader"));
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_Component_Shader_VtxMeshMapInstance"),
-		CShader::Create(
-			m_pDevice,
-			m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxMeshMapInstance.hlsl"),
-			VTXMESHINSTANCE::Elements,
-			VTXMESHINSTANCE::iNumElements))))
-	{
-		return E_FAIL;
-	}
 
 	CMapAssetCatalog mapCatalog;
 	Set_Status(TEXT("Map: explicit area catalog"));
@@ -477,8 +528,37 @@ HRESULT CLoader::Ready_MapArea(
 		}
 	}
 
-	Set_Status(TEXT("Map: object prototypes"));
-	if (FAILED(Ready_Camera_Prototype(iLevelIndex)) ||
+	return S_OK;
+}
+
+HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
+{
+	if (iLevelIndex >= ETOUI(LEVEL::END) ||
+		FAILED(Ready_StaticMeshShader(iLevelIndex)) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+			iLevelIndex,
+			CMapAssetPreview::SHADER_PROTOTYPE_TAG,
+			CShader::Create(
+				m_pDevice,
+				m_pContext,
+				TEXT("../Bin/ShaderFiles/Shader_VtxMeshPreview.hlsl"),
+				VTXMESH::Elements,
+				VTXMESH::iNumElements))))
+	{
+		return E_FAIL;
+	}
+
+	Set_Status(TEXT("Map: editor core prototypes"));
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Shader_VtxMeshMapInstance"),
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxMeshMapInstance.hlsl"),
+			VTXMESHINSTANCE::Elements,
+			VTXMESHINSTANCE::iNumElements))) ||
+		FAILED(Ready_Camera_Prototype(iLevelIndex)) ||
 		FAILED(CGameInstance::Get().Add_Prototype(
 			iLevelIndex,
 			TEXT("Prototype_GameObject_MapAsset"),
@@ -551,14 +631,43 @@ HRESULT CLoader::Ready_Character_Rendering(
 		return E_FAIL;
 	}
 
-	for (const auto characterClass : characterClasses)
+	for (size_t classIndex = 0;
+		classIndex < characterClasses.size();
+		++classIndex)
 	{
+		const auto characterClass = characterClasses[classIndex];
+		const auto progress = [
+			this,
+			classIndex,
+			classCount = characterClasses.size(),
+			characterClass](
+			const size_t completedModelCount,
+			const size_t totalModelCount,
+			const std::string& assetId)
+		{
+			const std::wstring fileName =
+				std::filesystem::path(assetId).filename().wstring();
+			tchar_t status[MAX_PATH]{};
+			_snwprintf_s(
+				status,
+				std::size(status),
+				_TRUNCATE,
+				TEXT("Character %zu/%zu | %s models %zu/%zu | %s"),
+				classIndex + 1u,
+				classCount,
+				Get_CharacterClassName(characterClass),
+				completedModelCount,
+				totalModelCount,
+				fileName.c_str());
+			Set_Status(status);
+		};
 		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
 			m_pDevice,
 			m_pContext,
 			iLevelIndex,
 			characterClass,
-			&m_isCancellationRequested)))
+			&m_isCancellationRequested,
+			progress)))
 		{
 			return E_FAIL;
 		}
@@ -586,6 +695,71 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 		return E_FAIL;
 	}
 
+	return S_OK;
+}
+
+HRESULT CLoader::Ready_AnimationPreviewModels(
+	const uint32_t iLevelIndex)
+{
+#ifdef _DEBUG
+	if (iLevelIndex != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		iLevelIndex != ETOUI(LEVEL::DEVELOPMENT))
+	{
+		return E_INVALIDARG;
+	}
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	if (!CPlayableCharacterAssetService::Is_Ready(
+			iLevelIndex, CHARACTER_CLASS_ID::DIMENSIONIST))
+	{
+		Set_Status(TEXT("Animation preview: Dimensionist character"));
+		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			CHARACTER_CLASS_ID::DIMENSIONIST,
+			&m_isCancellationRequested)))
+		{
+			return E_FAIL;
+		}
+	}
+
+	// Core and summon use the same ActorX Blender unit contract as the playable
+	// Dimensionist body, not the older UModel character-pack scale.
+	const matrix_t previewTransform =
+		XMMatrixScaling(0.01f, 0.01f, 0.01f) *
+		XMMatrixRotationY(XMConvertToRadians(-90.f));
+	for (const ANIMATION_PREVIEW_ASSET& asset :
+		ANIMATION_PREVIEW_ASSETS)
+	{
+		// The main body is the playable Dimensionist prototype admitted above.
+		// Loading it again under a debug-only tag doubled a 154-clip decode.
+		if (0 == wcscmp(
+			asset.pPrototypeTag,
+			TEXT("Prototype_Component_Model_Dimensionist")))
+		{
+			continue;
+		}
+		const filesystem::path path =
+			CRuntimeAssetRoot::Resolve(asset.pModelAssetId);
+		if (path.empty() || !filesystem::is_regular_file(path))
+			continue;
+
+		unique_ptr<CPrototype> model = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::ANIM,
+			path.string().c_str(),
+			previewTransform);
+		if (nullptr == model ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				asset.pPrototypeTag,
+				move(model))))
+		{
+			return E_FAIL;
+		}
+	}
+#endif
 	return S_OK;
 }
 

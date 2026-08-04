@@ -6,6 +6,33 @@
 
 차원술사의 내부 클래스 코드는 `SWP`이며 코어 패키지는 `FX_PC_SWP_00~05`다. emitter 누락을 교정한 뒤 여섯 패키지에서 38,104개 graph-class export, 6,046개 `ParticleSpriteEmitter` 참조, 459개 `ParticleSystem` 후보를 읽었다. 모든 emitter 참조 target이 graph에 존재하고 tagged-property stream 종단 파싱 오류는 0개다. 다만 459개에는 old/test/camera/helper가 섞였으므로 제품 effect 수나 스킬 수가 아니다.
 
+## 2026-08-03 런타임 폴더 정리와 admission 갱신
+
+원본 UPK와 분석 보고서는 외부 `Resource_LostArk`에 유지하고, 런타임이 직접 읽는
+선별 결과만 다음 위치에 정리했다.
+
+- `Client/Bin/Resources/Effect/Dimensionist/Textures`: 693 DDS
+- `Client/Bin/Resources/Effect/Dimensionist/Meshes`: 139 `.wmodel`
+- 합계 832파일, 90,608,380 bytes, UModel/cook 실패 0
+- `Data/Effects/Authored/Dimensionist/Candidates`: 459 `.effect`
+- `Data/Effects/SourceCatalog/dimensionist_candidates.json`: 459개 선택 catalog
+- `Data/Effects/SourceCatalog/dimensionist_admission.json`: 재생 허용 여부와 누락 정본
+
+이 459개는 `provenance=DERIVED_CONVERSION`인 Effect Tool 후보이며 원본 1:1 effect가
+아니다. 기존 recipe 추출기가 LOD의 음수 package ref를 조용히 버리던 문제를 수정해
+외부 module 참조를 명시적으로 기록했다. 전체 459개 중 403개가 65,626개의 외부
+Cascade module ref에 영향을 받는다. LOD0 기준 4,885 emitter는 dependency module을
+materialize하기 전까지 비활성화했고, LOD payload 자체가 없는 158 emitter도 비활성화했다.
+따라서 6,046 emitter 중 현재 활성 candidate는 1,003개다. 누락 module을 감추기 위해
+Spawn/Lifetime을 발명하지 않으며, 현재 변환에서 발명된 값은 각각 0개/3개다.
+
+material은 1,050개 직접 참조 중 17개가 미해결이며 91개 ParticleSystem, 236개
+emitter/LOD occurrence에 영향을 준다. 5,888 REQUIRED module 중 4,372개만 runtime
+texture가 연결됐다. 이 수치는 resource export 성공과 effect admission을 분리한다.
+즉 693 texture와 139 mesh의 현재 로컬-export closure 추출은 완료됐지만, 외부 Cascade
+module 65,626개를 dependency package에서 materialize하고 미지원 module을 구현하기
+전까지 전체 차원술사를 제품 재생 완료로 판정하지 않는다.
+
 ## 스킬·연출 패키지 구성
 
 | 패키지 | ParticleSystem | 확인된 대표 계열 |
@@ -31,12 +58,21 @@
 - `InterpData` 3개
 - Director/Move/Anim/Event/Float 트랙
 - 카메라 타깃 전환과 캐릭터 애니메이션 참조
+- RemoteEvent `skillcam_dimensionmaster_01/02`에서 Attach, SetCameraTarget, Matinee로 이어지는 연결
+- 길이 3.7065/3.70/3.75초, 활성 Move track의 transform key와 Director target `cm01`
+- AnimControl `sk_super_instance`, `sk_super_timewave`
+- 이 패키지의 Texture/Movie/Media/Bink 계열 import 0개
 
-따라서 Alt+V 연출이 단일 카메라 애니메이션이나 단일 파티클은 아니라는 근거는 충분하다. 그러나 현재 extractor는 카메라 transform/FOV/duration/cut/move/anim/event key의 serial payload를 의미 디코딩하지 않는다. 정확한 패키지와 class inventory를 발견한 상태이며 Alt+V timeline을 추출하거나 재생 데이터로 변환한 상태는 아니다.
+따라서 Alt+V 핵심 연출은 PNG 프레임 시퀀스를 RenderTarget에 재생한 것이 아니라
+캐릭터/이펙트를 실시간 렌더링하면서 Matinee가 카메라, cut, 애니메이션을 약 3.7초 동안
+제어하는 3D 시퀀스라고 판정한다. RenderTarget은 이 실시간 장면의 후처리나 합성에 쓸 수
+있고 외부 ParticleSystem/material overlay도 공존할 수 있으므로, 전체 연출에 이미지 overlay가
+전혀 없다고 확대 해석하지는 않는다. 현재 추출은 원본 timeline 증거와 주요 key 해석까지이며
+Client용 cinematic sequencer 데이터로 변환·재생한 상태는 아니다.
 
 ## 외부 소스 팩
 
-불변 소스 팩:
+외부 분석 소스 묶음:
 
 `C:/Users/user/Desktop/Resource_LostArk/00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3`
 
@@ -108,4 +144,108 @@
 6. render-target inspector에서 SceneHDR/Bloom/Distortion 결과 검증
 7. Alt+V Matinee key extractor와 fullscreen post-process를 별도 수직 슬라이스로 구현
 
-현재 `Effect_Tool.cpp`, `MainApp`, Level 전환 및 프로젝트 파일에 다른 작업의 미검증 변경이 겹쳐 있으므로 이번 추출 변경에서는 해당 런타임 파일을 수정하지 않았다.
+## Effect 저장 형식 계약
+
+Effect Tool의 편집 정본은 JSON이나 `.wfx`가 아니라 UTF-8 텍스트 `.effect`다. 첫 줄은
+`LOSTARK_EFFECT 5`이며 emitter와 module 값을 사람이 diff 가능한 형태로 저장한다.
+`Data/Effects/Authored/Dimensionist/Candidates`의 459개 후보가 이 형식이므로 Effect Tool의
+`Authored` 목록에서 바로 열 수 있다.
+
+런타임 조리 형식은 `.weffect`다. 16-byte header에 magic, schema version, payload size,
+payload hash를 기록한 뒤 같은 effect payload를 직렬화한다. `.wfx` 경로는 만들지 않는다.
+JSON은 source catalog, admission, provenance 같은 목록·검증 데이터에만 사용한다. 현재
+459개 후보는 미지원 Cascade module이 남은 파생 후보이므로 일괄 `.weffect` 제품 배포하지
+않고, Effect Tool에서 검토·수정한 stable asset만 Cook한다. `.weffect`의 Save/Load와
+round-trip은 구현됐지만 스킬 stable ID에서 cooked effect를 생성하는 제품 runtime
+consumer는 아직 연결하지 않았다.
+
+대표 후보 `par-j-swp-dimensionthrust-impact-01-01.effect`를 Debug Client의 headless
+round-trip으로 검증했다. `Load -> Save -> Load -> Cook .weffect -> Binary Load` 결과가
+동일한 1,742-byte authoring payload를 복원했고 결과는 PASS였다. 활성 후보
+`old-par-m-swp-vt-exp-pierce-01.effect`도 headless simulator에서 초기화 가능한 emitter를
+재생해 peak alive 94 이상과 HDR color 값 보존을 확인했다. 이는 직렬화와 CPU particle
+simulation 검증이며 최종 화면 품질 검증을 대신하지 않는다.
+
+## Dimensionist 캐릭터·초월기 애니메이션
+
+차원술사 애니메이션은 원본 ActorX `PSK + PSA`를 별도 런타임으로 만들지 않고 다음 기존
+경로로 조리했다.
+
+```text
+PSK + PSA
+-> Blender ActorX import / all-actions FBX export
+-> ModelAssetConverter
+-> CModel -> CMaterial WModel
+```
+
+원본 `PC_SWP_M_00`에는 차원술사 PSA가 있지만 함께 들어 있던 `pc_swp_fx01_sk`는 26-bone
+FX rig라 캐릭터 본체 mesh로 쓸 수 없었다. 실제 222-bone Specialist 남성 본체
+`PC_SP_M_00/pc_sp_m_00_sk`와 차원술사 PSA의 bone 집합을 대조한 뒤 결합했다. 이 구분을
+하지 않은 것이 이전 추출에서 캐릭터 본체가 빠질 수 있었던 핵심 함정이다.
+
+런타임 결과는 `Client/Bin/Resources/Character/Dimensionist`에 정리했다.
+
+| 파일 | ActorX bones | cooked bones/meshes | animation |
+|---|---:|---:|---:|
+| `Dimensionist_Character.wmodel` | 222 | 225 / 10 | 154 |
+| `Dimensionist_DimensionCore.wmodel` | 26 | 29 / 2 | 1 |
+| `Dimensionist_DimensionSummon.wmodel` | 20 | 23 / 4 | 2 |
+
+본체 154개에는 Alt+V 연출에서 참조하는 `sk_super_instance`, `sk_super_timewave`가 모두
+포함된다. 코어는 `sk_super_instance`, 소환체는 `sk_dimensionprison`과
+`sk_dimensionprison_1`을 포함한다. 3개 WModel과 71개 texture의 총 크기는
+146,400,423 bytes다. 자동 texture 이름 추측은 사용하지 않고 diffuse, normal, emissive,
+ORM을 material별로 명시 remap했다.
+
+재현 도구는 `Tools/CharacterAnimationIntake/build_actorx_fbx.py`다. Blender에서 PSK/PSA
+bone subset을 먼저 검사하고 모든 PSA sequence가 Blender action이 됐을 때만 FBX와 JSON
+report를 만든다. 중간 ActorX/FBX/Blend/report는 외부
+`Resource_LostArk/01_Extracted/Character/Dimensionist`에 보존했다.
+
+Debug Animation Tool에는 `Scene Character`, `Dimensionist Character`, `Dimension Core`,
+`Dimension Summon` 선택을 추가했다. Character Select 또는 Development 진입 때 존재하는
+WModel만 optional prototype으로 등록하며, 선택하면 기존 `CPart_Body`와 anim shader로
+`Layer_AnimationPreview`에 배치한다. 즉 별도 animation runtime이나 플레이 가능한 class
+ID를 만들지 않는다. 리소스가 없으면 레벨 로드는 계속되고 선택 시 admission 오류를
+보여 주며, 파일이 존재하지만 decode가 실패하면 해당 레벨 로드를 실패시킨다.
+Tool은 preview를 weak reference로만 기억하므로 F1 창을 닫은 채 레벨을 전환해도 이전
+레벨의 Body/Model 수명을 붙잡지 않는다.
+
+사용 순서는 Debug Client 실행, Lobby에서 Character Select 또는 Development 진입,
+`F1 -> Animation Tool`, Target에서 Dimensionist 항목 선택이다. 모델은 scene character
+기준 오른쪽 2.5 m에 나타나고 기존 clip list와 playback UI가 선택한 CModel을 직접
+제어한다. Animation Tool 버튼만 Character Select와 Development에서 활성화하고,
+Map/Effect/HUD authoring은 기존대로 Development 전용으로 유지했다.
+
+이 preview는 애니메이션·skeleton 확인 경로다. `CPart_Body`는 diffuse/normal/bone을
+opaque pass로 그리므로 코어·소환체의 emissive, ORM, transparency를 원본과 같은 최종
+재질로 증명하지 않는다. 해당 품질은 Effect Runtime/전용 재질 연결 후 수동 smoke로
+판정해야 한다.
+
+## ResourcePack 2026.08.03.4 처리
+
+사용자 결정에 따라 `2026.08.03.4` immutable copy, ZIP, ZIP SHA-256,
+Hydrate/Verify 인계 작업은 폐기했다. 해당 버전의 manifest를 정본으로 갱신하거나 새
+snapshot을 만들지 않았다. 이미 Git에 들어가 있던 `.4` manifest는 제거하고
+`Data/AssetPacks.lock.json`은 직전 `.3`으로 되돌렸다. 원본 `Client/Bin/Resources`를
+교체·삭제하지도 않았다. 따라서
+현재 Resources inventory가 기존 `Data/AssetPacks.lock.json`과 다른 것은 의도된 로컬
+작업 상태이며 ProjectAudit의 `asset-lock.inventory`는 이 결정이 유지되는 동안 PASS로
+기록할 수 없다. clean `.3` Hydrate 환경에는 이번 두 맵과 Dimensionist 리소스가 없으므로
+이 로컬 payload 없이 동일 장면을 실행할 수 없다. 새 immutable pack 배포 완료로 표현하지
+않는다.
+
+## 이번 통합 검증
+
+- `ModelAssetConverter info`: 본체 157 sections/154 animations/skeleton yes, 코어
+  4/1/yes, 소환체 5/2/yes
+- 본체의 `sk_super_instance`, `sk_super_timewave` 및 코어·소환체 clip 이름 확인
+- Debug/Release x64 Client 전체 빌드 및 링크 PASS
+- `.effect -> .weffect -> .effect` headless round-trip PASS
+- 활성 후보 headless particle simulation PASS
+- ProjectAudit의 map, project XML/Data visibility, gameplay/navigation 검증 PASS
+- 새 두 맵의 runtime directory/manifest/asset ID/model 집합 누락 검출 PASS
+- ProjectAudit 전체 결과는 폐기 결정에 따른 `asset-lock.inventory` 한 항목만 FAIL
+
+창을 실제로 열어 모델 외형, 카메라 프레이밍, 모든 157개 clip의 시각 결과를 순회하는
+수동 smoke는 남아 있다. 자동 검증을 화면 품질 확인으로 확대 기록하지 않는다.

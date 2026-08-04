@@ -3,6 +3,8 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
+#include <filesystem>
+
 NS_BEGIN(Engine)
 class CModel;
 NS_END
@@ -10,6 +12,8 @@ NS_END
 NS_BEGIN(Client)
 
 class CCharacter;
+class CPart_Body;
+struct ANIMATION_PREVIEW_ASSET;
 
 class CAnimation_Tool final
 {
@@ -31,6 +35,13 @@ private:
 		EFFECT,
 		SHAKE,
 		END,
+	};
+
+	enum class EFFECT_REFERENCE_KIND
+	{
+		NONE,
+		SOURCE_REFERENCE,
+		EFFECT_ASSET_ID,
 	};
 
 	/* Extracted combat values shared by an authored HIT and a reference row, so
@@ -73,6 +84,8 @@ private:
 		int32_t iEndMs = {};
 		/* Point kinds only: which cue/particle to fire. */
 		std::string sPayload;
+		EFFECT_REFERENCE_KIND eEffectReferenceKind =
+			EFFECT_REFERENCE_KIND::NONE;
 		/* HIT only. */
 		HIT_PARAMS hit;
 		/* Came from Import_Notifies rather than being authored here. Re-importing
@@ -142,6 +155,9 @@ private:
 	};
 
 public:
+	CAnimation_Tool();
+	~CAnimation_Tool();
+
 	void Render();
 
 private:
@@ -151,7 +167,13 @@ private:
 	shared_ptr<CCharacter> Resolve_Character() const;
 	/* Points the file paths at the resolved character's asset and drops anything
 	loaded for a previous one. */
-	void Sync_AssetName();
+	bool_t Sync_AssetName();
+	void Adopt_AssetName(const std::string& assetName);
+	void Render_TargetConflict();
+	void Render_TargetSelector();
+	bool_t Select_PreviewAsset(const ANIMATION_PREVIEW_ASSET& asset);
+	void Release_Preview(bool_t removeFromLayer);
+	void Refresh_PreviewLevel();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitEvents(const shared_ptr<Engine::CModel>& pModel);
@@ -159,8 +181,27 @@ private:
 	void Render_AnimationList(const shared_ptr<Engine::CModel>& pModel);
 	void Render_SkillReference(const shared_ptr<Engine::CModel>& pModel);
 
-	bool_t Save_Events();
+	bool_t Save_Events(const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_Events(const shared_ptr<Engine::CModel>& pModel);
+	bool_t Load_EventsFromPath(
+		const std::filesystem::path& path,
+		const shared_ptr<Engine::CModel>& pModel,
+		std::vector<ANIM_EVENT>& outEvents,
+		int32_t& outSourceVersion,
+		std::string& outStatus) const;
+	bool_t Write_EventsToPath(
+		const std::filesystem::path& path,
+		const std::vector<ANIM_EVENT>& events,
+		std::string& outStatus) const;
+	bool_t Validate_Events(
+		const shared_ptr<Engine::CModel>& pModel,
+		const std::vector<ANIM_EVENT>& events,
+		std::string& outStatus) const;
+	bool_t Events_AreEqual(
+		const std::vector<ANIM_EVENT>& left,
+		const std::vector<ANIM_EVENT>& right) const;
+	void Render_ReloadConfirmation(
+		const shared_ptr<Engine::CModel>& pModel);
 	bool_t Load_SkillReference();
 	bool_t Load_ClipMap();
 	bool_t Load_ClipNotify();
@@ -199,13 +240,19 @@ private:
 private:
 	char m_Filter[128]{};
 	bool_t m_bLoop = true;
+	weak_ptr<CPart_Body> m_pPreviewBody;
+	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
+	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
+	float4x4_t m_PreviewParentMatrix{};
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */
 	std::string m_AssetName;
 	std::string m_Status;
 	bool_t m_bDirty = false;
+	bool_t m_bReloadConfirmationRequested = false;
 	bool_t m_bLoadAttempted = false;
+	std::string m_PendingAssetName;
 	int32_t m_iSelectedEvent = -1;
 
 	/* Buffer backing the payload text field of the selected point event. */

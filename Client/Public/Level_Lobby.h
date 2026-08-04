@@ -51,7 +51,7 @@ private:
 	LEVEL m_ePendingLevel = LEVEL::END;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
 	string m_strStatus =
-		"Open Character Select first, then enter a server-authorized stage.";
+		"Choose a stage directly or open Character Select to change class.";
 
 public:
 	static unique_ptr<CLevel_Lobby> Create(

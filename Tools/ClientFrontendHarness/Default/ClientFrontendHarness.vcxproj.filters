@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Private">
+      <UniqueIdentifier>{1FE078EF-A16A-4934-8D2C-A6949CCB5BAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Client">
+      <UniqueIdentifier>{BC0E9108-26E5-43E7-9D73-73A11EB40BFC}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\ClientFrontendHarness.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

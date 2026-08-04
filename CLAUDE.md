@@ -100,8 +100,9 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 종류 | 위치 | 배포 경로 |
 |---|---|---|
 | 소스 · 프로젝트 파일 | `Engine/`, `Client/`, `*.sln/.vcxproj/.filters` | Git 일반 추적 |
-| 프로젝트 데이터 정본 | `Data/`의 catalog, authoring, reference JSON/문서 | Git 일반 추적 |
-| 필수 바이너리 입력 | `Engine/ThirdPartyLib/`, 승인된 `Client/Bin/DataFiles/` | **Git LFS** (`.gitattributes` 패턴) |
+| 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
+| 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
+| 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
 | 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 버전 고정 외부 팩 (`Data/AssetPacks.lock.json`) |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
@@ -209,11 +210,11 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 MapTool의 현재 지원 범위인 player spawn/NPC/boss 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
 
-Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v5 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
+Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v6 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Test 진입이다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. `LEVEL::CHARACTER_SELECT`만 socket 없이 네 class의 3D preview를 제공한다. Test/Bern/Valtan은 확정한 class와 함께 실제 Server의 port `7777`에 접속하고 승인을 받은 뒤에만 전환한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀한다. Local Preview나 자동 우회 경로는 없다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Test 진입이다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. `LEVEL::CHARACTER_SELECT`만 socket 없이 다섯 class의 3D preview를 제공한다. Test/Bern/Valtan은 확정한 class와 함께 실제 Server의 port `7777`에 접속하고 승인을 받은 뒤에만 전환한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀한다. Local Preview나 자동 우회 경로는 없다.
 
 같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다.
 
@@ -227,9 +228,9 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
-Lobby에는 Lance Master, Gunslinger, Slayer, Artist 네 slot이 보이며 네 class 모두 immutable resource pack, Client Loader/Spec, Server player profile까지 연결되어 Bern/Valtan/Training에 진입할 수 있다. class별 스킬은 `PlayerSkills.json`에 실제 Server 계약이 있는 항목만 HUD와 입력에 노출하며, 누락 class를 Lance Master로 대체하지 않는다.
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist, Dimensionist 다섯 slot이 보이며 다섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 앞의 네 class payload는 immutable resource pack `2026.08.03.3`에 있고, Dimensionist payload는 사용자의 pack `.4` 폐기 결정에 따라 현재 로컬 `Client/Bin/Resources/Character`에만 있다. Dimensionist는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, 나머지 네 class는 body/equipment/weapon 형식이다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 계약이 있다. Dimensionist의 Animation reference 4종은 0-row 경로 컨테이너이고 검증된 skill ID가 없으므로 Q/W와 candidate-only effect는 비활성이다. class별 스킬은 `PlayerSkills.json`에 실제 Server 계약이 있는 항목만 HUD와 입력에 노출하며, 누락 class를 Lance Master로 대체하지 않는다.
 
-Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
+Area Loader는 다섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
 ### 바이너리 에셋 파이프라인
 
@@ -254,6 +255,8 @@ Area Loader는 네 class binary를 전부 선로드하지 않는다. `CPlayableC
 ### 디버그 툴 (ImGui / MapTool)
 
 `_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+
+Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
 ### UI 레이아웃 authoring과 제품 런타임 전환
 
@@ -344,12 +347,13 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 - 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`만 runtime bootstrap을 생성한다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
-- 서버 길찾기: 신규 Area는 `Data/Navigation/<AreaId>.navgrid.json` authoring이 정본이며 `Publish-ServerNavigation.ps1`이 runtime navgrid를 결정적으로 생성한다. 기존 Valtan binary source도 같은 publisher가 검증하며 gameplay spawn/boss의 walkable cell·높이 정합성까지 확인한다.
+- 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.
 - 애니메이션 작성 데이터: `Data/Animation/Authored/<AssetId>/`
-- 애니메이션 추출 참조: `Data/Animation/Reference/<AssetId>/`
+- 애니메이션 추출 참조: `Data/Animation/Reference/<AssetId>/`; 0-row 컨테이너는 Tool 경로/파서 계약일 뿐 추출 완료 증거가 아니다.
+- 맵 추출 기준본: `Data/Maps/Imported/<AreaId>/`; `.mapassets`, shard `.mapset`과 baseline placement를 소유한다.
 - MapTool 작성본: `Data/Maps/Authoring/<AreaId>/`; publish 후에만 `Client/Bin/DataFiles/Map/` 런타임 입력이 된다.
-- shard-set을 포함한 visual placement publish는 `Tools/MapPipeline/Publish-MapAuthoring.ps1`만 수행한다. 여러 shard placement와 mapset은 한 트랜잭션으로 교체되고 중간 실패 시 전부 rollback한다.
+- shard-set을 포함한 visual publish는 `Tools/MapPipeline/Publish-MapAuthoring.ps1`만 수행한다. `Imported` catalog와 `Authoring` placement를 읽어 catalog, 여러 shard placement, mapset, optional deploy pair를 한 트랜잭션으로 교체하고 중간 실패 시 전부 rollback한다.
 
 ## 팀 작업 인터페이스
 

@@ -1,0 +1,8 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-willowrend-swingdeco-00-2" name="par_j_swp_willowrend_swingdeco_00_2" provenance=DERIVED_CONVERSION duration=0.5 warmup=0
+
+EMITTER id=3024 name="ring_in" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=3025 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_circ_01_2_tr" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3026 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.01,0.01,0.01 min=0.01,0.01,0.01 max=0.1,0.1,0.1
+  MODULE id=3027 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=5,4.6,12,0.5 min=5,4.6,12,0.5 max=5,4.6,12,0.5
+  MODULE id=3028 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2,1:0 g=0:2,1:0 b=0:2,1:0 a=0:0,0.05:0.028,0.1:0.104,0.15:0.216,0.2:0.352,0.25:0.5,0.3:0.648,0.35:0.784,0.4:0.896,0.45:0.972,0.5:1,0.55:0.9,0.6:0.8,0.65:0.7,0.7:0.6,0.75:0.5,0.8:0.4,0.85:0.3,0.9:0.2,0.95:0.1,1:0

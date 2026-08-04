@@ -6,12 +6,18 @@
 #include "LevelTransitionService.h"
 #include "NetworkManager.h"
 
+#ifdef _DEBUG
+#include "MapEditorWorkspaceService.h"
+#endif
+
 namespace
 {
 	constexpr char_t DEFAULT_SERVER_HOST[] = "127.0.0.1";
 	constexpr char_t SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	constexpr std::uint16_t SERVER_PORT = 7777;
 	constexpr char_t PLAYER_NICKNAME[] = "Player";
+	constexpr LostArk::Shared::CHARACTER_CLASS_ID DEFAULT_ENTRY_CLASS =
+		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
 
 	string Resolve_ServerHost()
 	{
@@ -49,10 +55,35 @@ namespace
 		case CHARACTER_CLASS_ID::SLAYER:
 			return "Alchemist";
 		case CHARACTER_CLASS_ID::ARTIST:
+			return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
 			return "Dimension Master";
 		default:
 			return "Not selected";
 		}
+	}
+
+	bool_t Resolve_EntryCharacterClass(
+		LostArk::Shared::CHARACTER_CLASS_ID& outCharacterClass,
+		bool_t& outUsedDefault)
+	{
+		outUsedDefault = false;
+		if (CCharacterSelectionState::Try_Get_SelectedClass(
+			outCharacterClass))
+		{
+			return true;
+		}
+
+		if (!CCharacterSelectionState::Select(DEFAULT_ENTRY_CLASS))
+		{
+			outCharacterClass =
+				LostArk::Shared::CHARACTER_CLASS_ID::END;
+			return false;
+		}
+
+		outCharacterClass = DEFAULT_ENTRY_CLASS;
+		outUsedDefault = true;
+		return true;
 	}
 }
 
@@ -146,9 +177,10 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 {
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	if (!CCharacterSelectionState::Try_Get_SelectedClass(characterClass))
+	bool_t usedDefaultClass = false;
+	if (!Resolve_EntryCharacterClass(characterClass, usedDefaultClass))
 	{
-		m_strStatus = "Choose and confirm a character before entering a stage.";
+		m_strStatus = "The default entry class could not be committed.";
 		return false;
 	}
 
@@ -179,7 +211,8 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	m_ePendingLevel = eTargetLevel;
 	m_ApprovalDeadline =
 		std::chrono::steady_clock::now() + std::chrono::seconds(5);
-	m_strStatus =
+	m_strStatus = usedDefaultClass ?
+		"No class was selected. Lance Master was committed and entry approval is pending." :
 		"C2S_ENTER_WORLD sent. Waiting for server approval.";
 	return true;
 }
@@ -232,13 +265,28 @@ void CLevel_Lobby::Consume_EnterAccepted()
 	}
 
 	const LEVEL approvedLevel = m_ePendingLevel;
+#ifdef _DEBUG
+	const bool_t opensMapEditorWorkspace =
+		LEVEL::DEVELOPMENT == approvedLevel;
+	if (opensMapEditorWorkspace)
+		CMapEditorWorkspaceService::Request();
+#endif
 	if (!CLevelTransitionService::Request_Load(
 		approvedLevel,
 		"lobby.enter-accepted"))
 	{
+#ifdef _DEBUG
+		if (opensMapEditorWorkspace)
+			CMapEditorWorkspaceService::Cancel();
+#endif
 		Cancel_PendingEntry(CLevelTransitionService::Get_Status());
 		return;
 	}
+
+#ifdef _DEBUG
+	if (opensMapEditorWorkspace)
+		networkManager.Close_ServerConnection();
+#endif
 
 	m_eEntryState = ENTRY_STATE::IDLE;
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;
@@ -279,30 +327,26 @@ void CLevel_Lobby::Render_StagePanel()
 	}
 
 	LostArk::Shared::CHARACTER_CLASS_ID selectedClass =
-		LostArk::Shared::CHARACTER_CLASS_ID::END;
-	const bool_t hasSelection =
+		DEFAULT_ENTRY_CLASS;
+	const bool_t hasExplicitSelection =
 		CCharacterSelectionState::Try_Get_SelectedClass(selectedClass);
-	ImGui::Text("Selected character: %s",
-		Get_CharacterClassName(selectedClass));
+	ImGui::Text(
+		"Entry character: %s%s",
+		Get_CharacterClassName(selectedClass),
+		hasExplicitSelection ? "" : " (default)");
 	const string serverEndpoint = Describe_ServerEndpoint();
 	ImGui::TextDisabled("Server: %s", serverEndpoint.c_str());
 	ImGui::Separator();
 
 	const bool_t isBusy = ENTRY_STATE::IDLE != m_eEntryState ||
 		CLevelTransitionService::Is_Pending();
-	ImGui::BeginDisabled(isBusy || !hasSelection);
+	ImGui::BeginDisabled(isBusy);
 	if (ImGui::Button("Test"))
 		CLobbyCommandService::Request(LOBBY_STAGE::TEST);
-	ImGui::EndDisabled();
-
 	ImGui::SameLine();
-	ImGui::BeginDisabled(isBusy);
 	if (ImGui::Button("Character Select"))
 		CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);
-	ImGui::EndDisabled();
-
 	ImGui::SameLine();
-	ImGui::BeginDisabled(isBusy || !hasSelection);
 	if (ImGui::Button("Valtan"))
 		CLobbyCommandService::Request(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
@@ -310,8 +354,11 @@ void CLevel_Lobby::Render_StagePanel()
 		CLobbyCommandService::Request(LOBBY_STAGE::BERN);
 	ImGui::EndDisabled();
 
-	if (!hasSelection)
-		ImGui::TextDisabled("Confirm a class in Character Select first.");
+	if (!hasExplicitSelection)
+	{
+		ImGui::TextDisabled(
+			"Direct entry commits Lance Master. Character Select changes it.");
+	}
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
 }

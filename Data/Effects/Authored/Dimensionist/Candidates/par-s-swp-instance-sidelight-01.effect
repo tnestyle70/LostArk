@@ -1,0 +1,6 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-instance-sidelight-01" name="par_s_swp_instance_sidelight_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=19359 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=19360 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="enginematerials.defaultparticle" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=19361 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.3,1:0.3 g=0:0.2,1:0.2 b=0:0.1,1:0.1 a=0:2,1:2

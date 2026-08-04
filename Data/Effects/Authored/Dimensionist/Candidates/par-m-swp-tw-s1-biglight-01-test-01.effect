@@ -1,0 +1,6 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-tw-s1-biglight-01-test-01" name="par_m_swp_tw_s1_biglight_01_test_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=29826 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=29827 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="enginematerials.defaultparticle" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=29828 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.3,1:0.3 g=0:0.6,1:0.6 b=0:1,1:1 a=0:5.491,0.05:3.58955,0.1:1.72224,0.15:0.554928,0.2:0.473999,0.25:0.689357,0.3:1.0227,0.35:4.03861,0.4:4.18171,0.45:4.30033,0.5:4.39675,0.55:4.47321,0.6:4.532,0.65:4.57539,0.7:4.60563,0.75:4.62499,0.8:4.63575,0.85:4.64018,0.9:4.64053,0.95:4.63908,1:4.63809

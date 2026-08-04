@@ -7,6 +7,7 @@
 #include "WorldBootstrap.h"
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <map>
 
@@ -22,6 +23,33 @@ namespace
 		}
 		int failures = 0;
 	};
+
+	struct QUICK_SKILL_CONTRACT final
+	{
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass;
+		LostArk::Shared::SKILL_ID skillId;
+		const char* inputSlot;
+	};
+
+	constexpr std::array QUICK_SKILLS
+	{
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34120, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34080, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38020, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38050, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45050, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45060, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31210, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31230, "W" }
+	};
 }
 
 int LostArk::Server::Run_ServerGameplayContractTests()
@@ -30,7 +58,36 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
-	tests.Require(nullptr != catalog.Find_Skill(34120), "Resolve LanceMaster Q skill");
+	for (const QUICK_SKILL_CONTRACT& contract : QUICK_SKILLS)
+	{
+		const PLAYER_SKILL_DEFINITION* skill =
+			catalog.Find_Skill(contract.skillId);
+		tests.Require(
+			nullptr != skill &&
+			skill->eCharacterClass == contract.characterClass &&
+			skill->strInputSlot == contract.inputSlot,
+			"Resolve playable Q/W skill binding");
+
+		SERVER_PLAYER quickPlayer{};
+		quickPlayer.eCharacterClass = contract.characterClass;
+		quickPlayer.iCurrentHp = 1;
+		quickPlayer.iMaximumHp = 1;
+		quickPlayer.iCurrentResource = 100;
+		quickPlayer.iMaximumResource = 100;
+		C2S_USE_SKILL quickCommand{};
+		quickCommand.iClientSequence = 1;
+		quickCommand.iSkillId = contract.skillId;
+		quickCommand.fAimX = 1.f;
+		quickCommand.fAimZ = 0.f;
+		CPlayerSkillSystem quickSkillSystem;
+		tests.Require(
+			quickSkillSystem.Try_Start(
+				quickPlayer,
+				quickCommand,
+				catalog,
+				1),
+			"Approve playable Q/W skill command");
+	}
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER),
 		"Resolve LanceMaster player profile");
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::GUNSLINGER),
@@ -39,6 +96,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Resolve Slayer player profile");
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::ARTIST),
 		"Resolve Artist player profile");
+	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::DIMENSIONIST),
+		"Resolve Dimensionist player profile");
 	tests.Require(nullptr == catalog.Find_Player(CHARACTER_CLASS_ID::DESTROYER),
 		"Reject unsupported Destroyer player profile");
 	tests.Require(650u == catalog.Find_Damage("damage.player.34120"),

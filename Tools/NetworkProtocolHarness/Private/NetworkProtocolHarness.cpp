@@ -181,7 +181,7 @@ namespace
 		source.eWorldId = WORLD_ID::TRAINING_GROUND;
 
 		source.eCharacterClass =
-			CHARACTER_CLASS_ID::LANCE_MASTER;
+			CHARACTER_CLASS_ID::DIMENSIONIST;
 
 		source.strNickName = "건보";
 
@@ -235,8 +235,10 @@ namespace
 			Is_Supported_Playable_Character_Class(
 				CHARACTER_CLASS_ID::SLAYER) &&
 			Is_Supported_Playable_Character_Class(
-				CHARACTER_CLASS_ID::ARTIST),
-			"Accept Four Playable Character Classes");
+				CHARACTER_CLASS_ID::ARTIST) &&
+			Is_Supported_Playable_Character_Class(
+				CHARACTER_CLASS_ID::DIMENSIONIST),
+			"Accept Five Playable Character Classes");
 
 		testRunner.Require(
 			!Is_Supported_Playable_Character_Class(
@@ -362,7 +364,7 @@ namespace
 		source.iPlayerId = 1;
 		source.iNetEntityId = 100;
 		source.eCharacterClass =
-			CHARACTER_CLASS_ID::LANCE_MASTER;
+			CHARACTER_CLASS_ID::DIMENSIONIST;
 		source.strNickName = "건보";
 		source.fPositionX = 1.f;
 		source.fPositionY = 2.f;
@@ -385,7 +387,7 @@ namespace
 		{
 			0x01, 0x00, 0x00, 0x00,
 			0x64, 0x00, 0x00, 0x00,
-			0x00,
+			0x05,
 			0x06, 0x00,
 			0xEA, 0xB1, 0xB4,
 			0xEB, 0xB3, 0xB4,
@@ -651,7 +653,7 @@ namespace
 		const std::vector<std::uint8_t>
 			truncatedAccepted
 		{
-			0x02, 0x00,
+			0x06, 0x00,
 			0x01, 0x00,
 			0x01, 0x00, 0x00, 0x00,
 			0x64, 0x00, 0x00
@@ -719,7 +721,7 @@ namespace
 
 		const std::vector<std::uint8_t> invalidClass
 		{
-			0x02, 0x00,
+			0x06, 0x00,
 			0x01, 0x00,
 			0xFF, 0x00, 0x00
 		};
@@ -739,7 +741,7 @@ namespace
 		//이 truncated string이 의미하는 게 뭐지?
 		const std::vector<std::uint8_t> truncatedString
 		{
-			0x02, 0x00,
+			0x06, 0x00,
 			0x01, 0x00,
 			0x00, 0x06, 0x00, 0xEA
 		};

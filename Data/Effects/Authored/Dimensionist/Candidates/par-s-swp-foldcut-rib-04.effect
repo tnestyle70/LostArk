@@ -1,0 +1,9 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-foldcut-rib-04" name="par_s_swp_foldcut_rib_04" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=18217 name="cube" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=18218 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" mesh="Effect/Dimensionist/Meshes/fx_d_diamond_003_1.wmodel" mat="fx_m_mi_r_00.fx_mi.fx_r_me_localcrack_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" uvtiling=1,1 uvoffset=0.5,0.5 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=18219 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.001,0.001,0.001 min=0.001,0.001,0.001 max=0.0025,0.0025,0.0025
+  MODULE id=18220 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.5,0.5,0.5,1 min=0.5,0.5,0.5,1 max=0.5,0.5,0.5,1
+  MODULE id=18221 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:0 g=0:1,1:0 b=0:1,1:0 a=0:0,0.05:0.5,0.1:1,0.15:1,0.2:1,0.25:1,0.3:1,0.35:1,0.4:1,0.45:1,0.5:1,0.55:1,0.6:1,0.65:1,0.7:1,0.75:1,0.8:1,0.85:0.75,0.9:0.5,0.95:0.25,1:0
+  MODULE id=18222 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.4,0.0625:0.397754,0.125:0.391406,0.1875:0.381543,0.25:0.36875,0.3125:0.353613,0.375:0.336719,0.4375:0.318652,0.5:0.3,0.5625:0.281348,0.625:0.263281,0.6875:0.246387,0.75:0.23125,0.8125:0.218457,0.875:0.208594,0.9375:0.202246,1:0.2

@@ -60,6 +60,39 @@ namespace
 		return string(pName, length);
 	}
 
+	string MakeUniqueAnimationName(
+		const MODEL_SECTION_VIEW& section,
+		unordered_set<string>& animationNames)
+	{
+		if (section.name.empty())
+			return {};
+		if (animationNames.emplace(section.name).second)
+			return section.name;
+
+		// MODEL_SECTION_DESC stores only 40 bytes. Long ActorX action names can
+		// therefore share the same truncated prefix. The section index is stable
+		// inside the package, so use it to preserve every clip deterministically.
+		const string suffix = "#" + to_string(section.index);
+		string candidate = section.name;
+		if (candidate.size() + suffix.size() >= MAX_PATH)
+			candidate.resize(MAX_PATH - suffix.size() - 1u);
+		candidate += suffix;
+		if (animationNames.emplace(candidate).second)
+			return candidate;
+
+		for (uint32_t discriminator = 1u; ; ++discriminator)
+		{
+			const string fallbackSuffix = suffix + "_" +
+				to_string(discriminator);
+			candidate = section.name;
+			if (candidate.size() + fallbackSuffix.size() >= MAX_PATH)
+				candidate.resize(MAX_PATH - fallbackSuffix.size() - 1u);
+			candidate += fallbackSuffix;
+			if (animationNames.emplace(candidate).second)
+				return candidate;
+		}
+	}
+
 	bool_t ValidateMeshSkeleton(W_MESH_READ_RESULT& meshResult,
 		MODEL_ASSET_DATA& outAsset,
 		MODEL_DECODE_REPORT& outReport)
@@ -219,15 +252,17 @@ namespace
 				outAsset.animations.reserve(animations.size());
 				for (const MODEL_SECTION_VIEW* pAnimation : animations)
 				{
-					if (pAnimation->name.empty() || !animationNames.emplace(pAnimation->name).second)
+					const string animationName = MakeUniqueAnimationName(
+						*pAnimation, animationNames);
+					if (animationName.empty())
 					{
-						outReport.error = "WMOD contains an unnamed or duplicate animation clip.";
+						outReport.error = "WMOD contains an unnamed animation clip.";
 						return false;
 					}
 
 					MODEL_ANIMATION_DATA animation{};
 					if (!CWAnimationReader{}.ReadMemory(
-						pAnimation->pData, pAnimation->size, pAnimation->name,
+						pAnimation->pData, pAnimation->size, animationName,
 						outAsset.skeleton, animation, outReport))
 						return false;
 					outAsset.animations.push_back(move(animation));

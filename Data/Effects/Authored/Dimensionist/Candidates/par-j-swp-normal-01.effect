@@ -1,0 +1,25 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-normal-01" name="par_j_swp_normal_01" provenance=DERIVED_CONVERSION duration=2 warmup=0
+
+EMITTER id=2086 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=2087 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="bfx_m_mi_00.bfx_m.bfx_i_pa_backglow_cl_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=2088 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=2089 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_003.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_gl_01_2_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2090 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:0.7,1:0.7 b=0:1.5,1:1.5 a=0:1,0.05:0.99275,0.1:0.972,0.15:0.93925,0.2:0.896,0.25:0.84375,0.3:0.784,0.35:0.71825,0.4:0.648,0.45:0.57475,0.5:0.5,0.55:0.42525,0.6:0.352,0.65:0.28175,0.7:0.216,0.75:0.15625,0.8:0.104,0.85:0.06075,0.9:0.028,0.95:0.00725,1:0
+
+EMITTER id=2091 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.2 loops=1
+  MODULE id=2092 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_03/fx_e_atypical_011.dds" mesh="" mat="fx_m_mi_01.fx_mi.fx_e_pa_ht_01_1_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2093 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=5,4,5,1.5 min=5,4,5,1.5 max=5,4,5,1.5
+
+EMITTER id=2094 name="emitter_3" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.65 loops=1
+  MODULE id=2095 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_f_ring_001.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=2096 name="emitter_4" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0.03 duration=0.3 loops=1
+  MODULE id=2097 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2098 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:20,1:20 g=0:12,1:12 b=0:22,1:22 a=0:3,0.333333:9,0.666667:3,1:9
+  MODULE id=2099 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=26.6667 start=0 end=7 loop=1 reltime=1
+
+EMITTER id=2100 name="emitter_5" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=2 loops=1
+  MODULE id=2101 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_03/fx_e_hit_009r.dds" mesh="" mat="fx_m_mi_01.fx_mi.fx_e_pa_ht_12_3_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=2.5 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2102 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.5,1:1.5 g=0:0.9,1:0.9 b=0:1.5,1:1.5 a=0:0,0.05:0.75,0.1:1.5,0.15:1.33729,0.2:1.18399,0.25:1.04009,0.3:0.90558,0.35:0.780438,0.4:0.664652,0.45:0.558211,0.5:0.461098,0.55:0.3733,0.6:0.294804,0.65:0.225595,0.7:0.16566,0.75:0.114983,0.8:0.073552,0.85:0.041352,0.9:0.018369,0.95:0.00459,1:0

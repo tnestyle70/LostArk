@@ -80,6 +80,8 @@ try {
         Invoke-MSBuildProject $msbuild 'Shared\Default\Shared.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\NetworkProtocolHarness\Default\NetworkProtocolHarness.vcxproj'
+        Invoke-MSBuildProject $msbuild `
+            'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
     }
@@ -91,6 +93,13 @@ try {
     & $protocolHarness
     if ($LASTEXITCODE -ne 0) {
         throw 'NetworkProtocolHarness failed.'
+    }
+
+    $frontendHarness = Join-Path $repoRoot `
+        "Tools\ClientFrontendHarness\Bin\$Configuration\ClientFrontendHarness.exe"
+    & $frontendHarness
+    if ($LASTEXITCODE -ne 0) {
+        throw 'ClientFrontendHarness failed.'
     }
 
     & $serverExe --contract-test

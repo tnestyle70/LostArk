@@ -1,0 +1,172 @@
+# LostArk 개인 작업 출력·계획서 규칙
+
+이 문서는 LostArk 작업에서 사용자가 직접 코드를 이해하고 구현하기 위한 Git 공유 정본이다.
+계획서와 대화 설명의 역할을 섞지 않는 것이 가장 중요한 규칙이다.
+
+## 0. 연결 문서와 우선순위
+
+1. 저장소 금지 경계와 완료 조건은 `../../AGENTS.md`를 따른다.
+2. 빌드·Prototype·Clone·Level·Loader·Asset 구조는 `../../CLAUDE.md`를 따른다.
+3. 이 문서는 개인 계획서 형식과 대화 출력 형식을 정한다.
+4. 전체 코드 계획서의 공통 형식은 `계획서작성규칙.md`를 함께 따른다.
+5. 이전 설명 원문은 `코드작성규칙.local.md`에 수정 없이 보존한다.
+
+`local.md`라는 이름은 출력 방식의 로컬 정본이라는 뜻이며 이 파일 자체는 Git에 포함한다.
+`코드작성규칙.local.md`와 `.md/계획서작성규칙.local.md`만 개인 파일로 Git에서 제외한다.
+
+원문 보존 정보:
+
+```text
+출처: 2026-08-03 stash@{0}의 untracked parent에 있던 .md/코드작성규칙.local.md
+보존 범위: 원문 전체. 첫 줄은 실제로 "3. GameRoom.h"이며 뒤에 "4. ServerApp.h"가 이어진다.
+Git blob: a65548fedc8ba5f47285c2f88602c110fd0f54a0
+SHA-256: 082D40777677C7DF898CA40EE1A639C5DFDB184DD1E2798C8954C8582351C684
+```
+
+규칙이 충돌하면 `AGENTS.md`와 실제 코드·데이터·실행 결과가 우선한다.
+
+## 1. 작업 시작 전 실측
+
+계획서나 정답 코드를 쓰기 전에 반드시 다음을 확인한다.
+
+```text
+git status --short
+현재 branch와 origin/main 관계
+대응 PLAN/RESULT
+실제 H/CPP 호출자와 소유자
+Shared packet과 Server authority 경계
+Data authoring과 publisher/runtime 생성물
+vcxproj와 vcxproj.filters 등록 상태
+다른 세션의 미커밋 변경
+```
+
+문서가 코드와 다르면 코드를 먼저 읽는다. 다른 세션의 변경은 되돌리거나 섞지 않는다.
+
+## 2. PLAN의 고정 역할: 실제 반영 코드 정본
+
+PLAN은 설명 수업 자료가 아니라 구현자가 그대로 반영할 수 있는 코드 정답지다.
+
+- 새 파일은 처음부터 끝까지 전체 코드를 싣는다.
+- 기존 파일은 바뀌는 함수 전체 또는 교체 가능한 완전한 블록을 싣는다.
+- `...`, 생략, 의사 코드, 나중에 구현 같은 표식을 사용하지 않는다.
+- include, 전방 선언, enum, struct, 함수 선언, 멤버 변수를 빠뜨리지 않는다.
+- JSON/schema/publisher/generated runtime 형식이 바뀌면 실제 행과 전체 데이터 블록을 싣는다.
+- 새 C++ 파일은 `.vcxproj`와 `.vcxproj.filters`의 정확한 등록 코드까지 싣는다.
+- Shared 변경은 Writer/Reader와 protocol harness 코드를 함께 싣는다.
+- Server 변경은 command 처리, authority state, snapshot/event와 contract test를 함께 싣는다.
+- Client 변경은 실제 consumer, 실패 rollback, Level/Loader 연결을 함께 싣는다.
+- public 계약이 바뀌면 대응 팀 문서와 RESULT 갱신 위치를 적는다.
+
+PLAN에서 장문의 학습 설명을 코드 사이에 반복하지 않는다. 필요한 구조 설명은 문제·제약, 호출 흐름,
+파일 역할, 불변식과 검증 항목까지만 짧게 쓰고 본문은 전체 코드로 둔다.
+
+## 3. 대화 세션의 고정 역할: G별 이해와 직접 구현 지원
+
+대화에서는 전체 작업을 G 단위로 나누고 한 번에 한 G씩 설명한다. 사용자가 직접 구현하는 것이
+기본이며, 각 G는 다음 순서를 지킨다.
+
+```text
+1. 이번 G의 목표와 종료 증거
+2. 수정할 파일과 파일이 존재하는 이유
+3. H 계약
+4. enum/struct/멤버 변수 의미와 불변식
+5. CPP 함수별 한 줄 책임
+6. CPP 함수의 실제 호출 흐름
+7. 사용자가 작성할 순서
+8. 작성 후 diff·build·harness·runtime 검증
+```
+
+### 3.1 H 설명 규칙
+
+헤더는 선언을 그대로 읽는 데서 끝내지 않고 다음을 자연어로 설명한다.
+
+- 파일이 존재하는 이유와 소유하는 상태
+- 각 프로젝트 include가 필요한 이유
+- 각 표준 라이브러리 include가 필요한 이유
+- 전방 선언이 가능한 이유와 CPP include가 필요한 지점
+- public 함수의 호출자와 외부에 공개하는 계약
+- private 함수가 숨기는 세부 처리
+- enum과 struct의 각 필드 의미
+- 각 멤버 변수의 owner, 검색 인덱스 여부, 수명, thread 접근 규칙
+- 반드시 유지해야 하는 불변식
+
+### 3.2 CPP 함수 설명 규칙
+
+CPP의 모든 변경 함수는 먼저 한 줄 책임을 적고 다음 흐름을 설명한다.
+
+```text
+호출자
+→ 입력 검증
+→ 읽는 상태
+→ 변경하는 상태
+→ 호출하는 하위 함수
+→ 성공 출력
+→ 실패 시 정리와 기존 상태 보존
+```
+
+함수 이름만 한국어로 번역하지 않는다. 왜 이 함수가 이 계층에 있어야 하는지와 다른 함수가
+소유하면 안 되는 책임을 함께 설명한다.
+
+### 3.3 변수 설명 규칙
+
+변수는 자료형 번역이 아니라 의미를 설명한다.
+
+- ID면 누가 발급하고 무엇을 식별하는지
+- pointer면 강한 owner인지, weak reference인지
+- map이면 owner container인지 검색 인덱스인지
+- tick/sequence면 증가 주체와 wrap/중복 정책
+- 상태 enum이면 전이 주체와 금지 전이
+- pending 값이면 언제 설정되고 언제 반드시 초기화되는지
+- 좌표면 기준계, 단위, authority와 projection 주체
+
+## 4. 대화에서 전체 코드 출력 조건
+
+- 기본 대화에서는 H/CPP/struct/변수/흐름 설명을 먼저 하고 사용자가 직접 작성하게 한다.
+- 사용자가 전체 코드 출력을 요구하는 문맥에서 `정답 코드`, `전체 코드`, `코드 전문`, `전문 보여줘`라고
+  명시했을 때만 대화에도 전체 코드를 출력한다. 단순히 코드의 의미를 질문한 것은 전체 코드 요청이 아니다.
+- 전체 코드를 출력할 때도 코드보다 먼저 파일 역할, H 계약, 변수, 함수 한 줄 책임과 흐름을 적는다.
+- PLAN에는 사용자의 별도 요청이 없어도 항상 전체 반영 코드를 보존한다.
+- 대화의 코드를 PLAN에서 다시 복사해 설명문처럼 읽지 않는다. 대화 설명과 PLAN 코드의 역할을 분리한다.
+
+## 5. G 종료 조건
+
+각 G는 다음 증거가 모두 있어야 종료한다.
+
+```text
+실제 diff 검토
+해당 project/filter 등록 확인
+관련 Debug build
+Shared면 protocol harness failures 0
+Server면 contract test와 Room 호출 경로 확인
+Client면 실제 consumer와 rollback 경로 확인
+필요한 Server+Client runtime 재현
+잔류 process/listener 없음
+RESULT에 실행한 검증과 미검증을 분리 기록
+```
+
+빌드만 성공하고 실제 consumer가 없으면 완료가 아니다. 문서에 코드가 있다는 사실도 구현 완료 증거가 아니다.
+
+## 6. 비평 에이전트 체크리스트
+
+계획서와 큰 코드 계약은 작성 후 독립 비평을 받는다. 비평자는 다음을 확인한다.
+
+- 실제 현재 함수·타입·경로와 코드 전문이 일치하는가
+- 사용자 목표가 Client 편의 기능과 Server authority로 올바르게 분리됐는가
+- 동일 역할의 두 번째 Manager/Loader/Runtime 경로를 만들지 않았는가
+- Character가 damage를 판정하거나 UI가 socket을 호출하는 우회가 없는가
+- Server가 Client GameObject, asset path, animation clip을 알게 되지 않는가
+- parse → validate → stage → commit과 실패 rollback이 있는가
+- 신규 ID가 pointer, prototype tag, vector index에 의존하지 않는가
+- 데이터, publisher, runtime 생성물과 harness가 같은 변경 단위에 있는가
+- 전체 코드에 생략, 컴파일 불가능한 placeholder, 누락 include가 없는가
+- 구현 완료, 자동 검증, 수동 검증, 후속 목표가 구분됐는가
+
+비평 결과는 그대로 정답으로 복사하지 않는다. 실제 코드로 재현한 지적만 PLAN에 반영한다.
+
+## 7. 문체와 인코딩
+
+- H/CPP 설명은 사용자가 코드 옆에 주석으로 옮겨 적을 수 있는 자연어로 쓴다.
+- 같은 말을 표와 본문과 코드 주석에 세 번 반복하지 않는다.
+- C++ 기존 파일은 기존 인코딩을 유지하고 새 C++은 UTF-8 BOM 없음으로 작성한다.
+- Markdown은 UTF-8로 작성한다.
+- 코드 전문 안의 주석은 존재 이유와 불변식만 설명하고 줄 단위 번역 주석은 만들지 않는다.

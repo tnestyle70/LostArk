@@ -374,6 +374,135 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::End();
 }
 
+bool_t Client::CHUDLayoutTool::Select_Class(const string& classId)
+{
+	const auto found = find(m_ClassNames.begin(), m_ClassNames.end(), classId);
+	if (m_ClassNames.end() != found)
+	{
+		const int32_t selected = static_cast<int32_t>(
+			distance(m_ClassNames.begin(), found));
+		if (m_iSelectedClass != selected)
+		{
+			m_iSelectedClass = selected;
+			m_iLastScannedClass = -1;
+		}
+		return true;
+	}
+
+	const auto defaultClass = find(
+		m_ClassNames.begin(), m_ClassNames.end(), "Default");
+	if (m_ClassNames.end() != defaultClass)
+	{
+		m_iSelectedClass = static_cast<int32_t>(
+			distance(m_ClassNames.begin(), defaultClass));
+		m_iLastScannedClass = -1;
+	}
+	return false;
+}
+
+void Client::CHUDLayoutTool::Render_RuntimePreview(const string& classId)
+{
+	Select_Class(classId);
+	if (m_Slots.empty() || m_ClassNames.empty())
+		return;
+
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr == viewport || viewport->WorkSize.x <= 0.f ||
+		viewport->WorkSize.y <= 0.f)
+	{
+		return;
+	}
+
+	ImDrawList* pDrawList = ImGui::GetBackgroundDrawList(viewport);
+	const float scaleX = viewport->WorkSize.x / ms_fRefWidth;
+	const float scaleY = viewport->WorkSize.y / ms_fRefHeight;
+	constexpr int32_t previewStage = 1;
+
+	for (HUD_SLOT& slot : m_Slots)
+	{
+		if (!Is_Slot_Visible(slot))
+			continue;
+
+		const ImVec2 topLeft(
+			viewport->WorkPos.x + slot.fX * scaleX,
+			viewport->WorkPos.y + slot.fY * scaleY);
+		const ImVec2 bottomRight(
+			topLeft.x + slot.fSizeX * scaleX,
+			topLeft.y + slot.fSizeY * scaleY);
+		ImVec2 corners[4];
+		Get_Rotated_Rect_Corners(
+			topLeft, bottomRight, slot.fRotation, corners);
+
+		if (previewStage >= slot.iShineFromStage &&
+			!slot.AnimationFrames.empty())
+		{
+			const int32_t frameCount = static_cast<int32_t>(
+				slot.AnimationFrames.size());
+			const int32_t frameIndex = frameCount <= 1 ? 0 :
+				static_cast<int32_t>(
+					ImGui::GetTime() * slot.fAnimationFPS) % frameCount;
+			ID3D11ShaderResourceView* pFrame = Get_Or_Load_Texture(
+				slot.AnimationFrames[frameIndex]);
+			if (nullptr != pFrame)
+			{
+				const ImVec2 center(
+					(topLeft.x + bottomRight.x) * 0.5f +
+						slot.fAnimationOffsetX * scaleX,
+					(topLeft.y + bottomRight.y) * 0.5f +
+						slot.fAnimationOffsetY * scaleY);
+				const float halfWidth =
+					(bottomRight.x - topLeft.x) * 0.5f *
+					slot.fAnimationScale;
+				const float halfHeight =
+					(bottomRight.y - topLeft.y) * 0.5f *
+					slot.fAnimationScale;
+				ImVec2 animationCorners[4];
+				Get_Rotated_Rect_Corners(
+					ImVec2(center.x - halfWidth, center.y - halfHeight),
+					ImVec2(center.x + halfWidth, center.y + halfHeight),
+					slot.fRotation,
+					animationCorners);
+				pDrawList->AddImageQuad(
+					pFrame,
+					animationCorners[0], animationCorners[1],
+					animationCorners[2], animationCorners[3]);
+			}
+		}
+
+		if (previewStage >= slot.iBaseFromStage)
+		{
+			for (const TEXTURE_LAYER& layer : slot.TextureLayers)
+			{
+				ID3D11ShaderResourceView* pTexture =
+					Get_Or_Load_Texture(layer.strPath);
+				if (nullptr == pTexture)
+					continue;
+				const ImU32 tint = ImGui::ColorConvertFloat4ToU32(
+					ImVec4(
+						layer.vTint[0], layer.vTint[1],
+						layer.vTint[2], layer.vTint[3]));
+				Draw_Image_Quad(
+					pDrawList, pTexture, corners, tint,
+					layer.bAdditive, layer.bFlipX);
+			}
+		}
+
+		if (previewStage >= slot.iShineFromStage &&
+			!slot.strShineTexture.empty())
+		{
+			ID3D11ShaderResourceView* pShine =
+				Get_Or_Load_Texture(slot.strShineTexture);
+			if (nullptr != pShine)
+			{
+				Draw_Image_Quad(
+					pDrawList, pShine, corners,
+					IM_COL32(255, 255, 255, 255),
+					slot.bShineAdditive);
+			}
+		}
+	}
+}
+
 void Client::CHUDLayoutTool::Render_ClassBar()
 {
 	ImGui::SeparatorText("Character Class");

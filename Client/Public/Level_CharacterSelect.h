@@ -2,6 +2,8 @@
 
 #include "Client_Defines.h"
 #include "Level.h"
+#include "LobbyCommandService.h"
+#include "MapPlacementRuntime.h"
 #include "Network/PacketType.h"
 
 #include <array>
@@ -32,23 +34,26 @@ private:
 	HRESULT Ready_Preview(
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool_t Select_Preview(size_t index);
-	bool_t Confirm_Selection();
+	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
 
 private:
 	static constexpr std::array<
-		LostArk::Shared::CHARACTER_CLASS_ID, 4> SUPPORTED_CLASSES =
+		LostArk::Shared::CHARACTER_CLASS_ID, 5> SUPPORTED_CLASSES =
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
 		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
-		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST
+		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST
 	};
 
+	CMapPlacementRuntime m_MapRuntime;
 	size_t m_iPreviewIndex = 0;
 	shared_ptr<CCharacter> m_pPreviewCharacter = { nullptr };
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
-	string m_strStatus = "Choose a class, inspect the preview, then confirm.";
+	string m_strStatus =
+		"Choose a class and a stage. Enter joins Test.";
 
 public:
 	static unique_ptr<CLevel_CharacterSelect> Create(

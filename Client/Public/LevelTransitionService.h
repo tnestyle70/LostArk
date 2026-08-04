@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "LobbyCommandService.h"
 
 #include <string>
 
@@ -18,6 +19,8 @@ struct LEVEL_TRANSITION_REQUEST final
 	LEVEL_TRANSITION_PHASE ePhase = LEVEL_TRANSITION_PHASE::LOAD;
 	LEVEL eTargetLevel = LEVEL::END;
 	std::string strSource;
+	LOBBY_COMMAND_TOKEN iLobbyCommandToken =
+		INVALID_LOBBY_COMMAND_TOKEN;
 };
 
 class CLevelTransitionService final
@@ -25,10 +28,14 @@ class CLevelTransitionService final
 public:
 	static bool_t Request_Load(
 		LEVEL eTargetLevel,
-		const char_t* pSource);
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
 	static bool_t Request_Activation(
 		LEVEL eTargetLevel,
-		const char_t* pSource);
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
 	static bool_t Try_Consume(LEVEL_TRANSITION_REQUEST& outRequest);
 	static bool_t Is_Pending();
 	static std::string Get_Status();
@@ -39,7 +46,8 @@ private:
 	static bool_t Request(
 		LEVEL_TRANSITION_PHASE ePhase,
 		LEVEL eTargetLevel,
-		const char_t* pSource);
+		const char_t* pSource,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken);
 };
 
 NS_END

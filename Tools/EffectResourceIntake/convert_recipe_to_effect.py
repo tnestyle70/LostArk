@@ -271,6 +271,9 @@ class Converter:
         self.mesh_prefix = ""
         self.mesh_resolved = 0
         self.mesh_missing = 0
+        self.empty_lod_emitters = 0
+        self.unresolved_module_ref_emitters = 0
+        self.unresolved_module_ref_occurrences = 0
         self._material_layers_cache: dict[str, list[dict]] = {}
         self._material_controls_cache: dict[str, dict[str, Any]] = {}
 
@@ -697,6 +700,18 @@ class Converter:
         )
 
     def convert_emitter(self, emitter: dict, index: int) -> list[str]:
+        lod_levels = emitter.get("lod_levels") or []
+        has_lod = bool(lod_levels)
+        if not has_lod:
+            self.empty_lod_emitters += 1
+        unresolved_refs = (
+            lod_levels[0].get("unresolved_module_refs") or []
+            if has_lod else []
+        )
+        has_unresolved_modules = bool(unresolved_refs)
+        if has_unresolved_modules:
+            self.unresolved_module_ref_emitters += 1
+            self.unresolved_module_ref_occurrences += len(unresolved_refs)
         required = self.find_required(emitter) or {}
         material = (required.get("material") or {}).get("path", "")
         delay = float(required.get("emitterdelay") or 0.0)
@@ -736,7 +751,7 @@ class Converter:
             f" id={self.take_id()}"
             f" name={quote(emitter.get('emitter_name') or f'emitter_{index}')}"
             f" type={'MESH' if is_mesh else 'SPRITE'}"
-            f" enabled={0 if (is_mesh and not mesh_ready) else 1}"
+            f" enabled={0 if (not has_lod or has_unresolved_modules or (is_mesh and not mesh_ready)) else 1}"
             " space=LOCAL"
             f" blend={blend}"
             " sort=AGE_NEWEST_FIRST"
@@ -773,9 +788,9 @@ class Converter:
         # module, so an emitter missing either would silently draw nothing.
         # Mesh emitters are already disabled, but a sprite emitter has to be
         # given something. These are invented values, counted and reported.
-        if not is_mesh or mesh_ready:
+        if has_lod and not has_unresolved_modules and (not is_mesh or mesh_ready):
             duration = float(required.get("emitterduration") or 1.0)
-            peak = int(emitter.get("lod_levels", [{}])[0]
+            peak = int(emitter["lod_levels"][0]
                        .get("peak_active_particles") or 0)
             if not has_spawn:
                 if is_mesh:
@@ -1220,14 +1235,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"skipped modules the tool cannot represent: {summary}",
               file=sys.stderr)
     if converter.mesh_resolved or converter.mesh_missing:
-        print(f"mesh emitters: {converter.mesh_resolved} enabled with a cooked "
-              f".wmodel, {converter.mesh_missing} left disabled (not cooked)",
+        print(f"mesh emitters: {converter.mesh_resolved} matched a cooked "
+              f".wmodel, {converter.mesh_missing} had no cooked mesh match",
               file=sys.stderr)
     if converter.synthesized_spawn or converter.synthesized_lifetime:
         print(f"invented Spawn for {converter.synthesized_spawn} and Lifetime "
               f"for {converter.synthesized_lifetime} sprite emitter(s); the "
               f"package had none and the simulator needs both (named with *)",
               file=sys.stderr)
+    if converter.empty_lod_emitters:
+        print(f"disabled {converter.empty_lod_emitters} emitter(s) with no LOD "
+              "payload instead of inventing runnable modules",
+              file=sys.stderr)
+    if converter.unresolved_module_ref_emitters:
+        print(
+            f"disabled {converter.unresolved_module_ref_emitters} emitter(s) "
+            f"with {converter.unresolved_module_ref_occurrences} external or "
+            "missing module reference(s); dependency modules were not "
+            "materialized into this local-export recipe",
+            file=sys.stderr,
+        )
     if converter.unresolved_materials:
         unique = sorted(set(converter.unresolved_materials))
         print(f"{len(unique)} material(s) had no texture in the lookup; "
