@@ -153,6 +153,8 @@ namespace LostArk::Shared
 	inline constexpr std::size_t
 		MAX_WORLD_SNAPSHOT_PLAYERS = 32;
 	inline constexpr std::size_t MAX_PLAYER_COOLDOWNS = 8;
+	// Matches the publisher's 2..8 comboStages bound.
+	inline constexpr std::uint8_t MAX_COMBO_STAGES = 8;
 	using SKILL_ID = std::uint32_t;
 	inline constexpr SKILL_ID INVALID_SKILL_ID = 0;
 	//이게 플레이어의 스킬을 의미하는 건가?
@@ -232,6 +234,9 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
+		// 0 outside a combo, 1-based stage index while one runs. The server owns
+		// it; the client must not count stages itself.
+		std::uint8_t iComboStage = 0;
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 

@@ -442,7 +442,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			!character->Apply_NetworkAction(
 				player.eAction,
 				player.iSkillId,
-				player.iActionStartTick))
+				player.iActionStartTick,
+				player.iComboStage))
 		{
 			allSucceeded = false;
 		}

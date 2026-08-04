@@ -1142,6 +1142,7 @@ namespace
 		first.iMaximumHp = 1000;
 		first.iCurrentResource = 80;
 		first.iMaximumResource = 100;
+		first.iComboStage = 3;
 		first.Cooldowns.push_back({ 34060, 330 });
 
 		PLAYER_SNAPSHOT second{};
@@ -1176,7 +1177,7 @@ namespace
 			"Writer World Snapshot");
 
 		testRunner.Require(
-			148 == payload.size(),
+			150 == payload.size(),
 			"World Snapshot Payload Size");
 
 		CPacketReader reader{ payload };
@@ -1205,6 +1206,8 @@ namespace
 			decoded.Players[0].iCurrentHp == 875 &&
 			decoded.Players[0].Cooldowns.size() == 1 &&
 			decoded.Players[0].Cooldowns[0].iCooldownEndTick == 330 &&
+			decoded.Players[0].iComboStage == 3 &&
+			decoded.Players[1].iComboStage == 0 &&
 			decoded.Players[1].iNetEntityId == 101 &&
 			decoded.Players[1].fPositionX == 3.f &&
 			decoded.Players[1].fPositionZ == 4.f &&
@@ -1241,6 +1244,22 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Invalid Locomotion State");
+
+		{
+			S2C_WORLD_SNAPSHOT overflow = source;
+			overflow.Players[0].iComboStage = 9;
+			CPacketWriter overflowWriter;
+			testRunner.Require(
+				!Write_Message(overflowWriter, overflow),
+				"Reject Combo Stage Above Maximum");
+
+			S2C_WORLD_SNAPSHOT idleCombo = source;
+			idleCombo.Players[1].iComboStage = 1;
+			CPacketWriter idleComboWriter;
+			testRunner.Require(
+				!Write_Message(idleComboWriter, idleCombo),
+				"Reject Combo Stage Without Skill Action");
+		}
 
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };

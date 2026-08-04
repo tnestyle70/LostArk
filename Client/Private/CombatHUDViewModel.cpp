@@ -179,6 +179,9 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 	{
 		if (definition.eCharacterClass != characterClass)
 			continue;
+		/* A combo has no cooldown to count down, so it takes no quick-slot tile. */
+		if (LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind)
+			continue;
 
 		const LostArk::Shared::SKILL_ID skillId = definition.iSkillId;
 		HUD_SKILL_STATE state{};

@@ -173,6 +173,89 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(!skills.Try_Start(player, cooldownAttempt, catalog, 70),
 		"Reject skill during authoritative cooldown");
 
+	{
+		const PLAYER_SKILL_DEFINITION* combo = catalog.Find_Skill(34010);
+		tests.Require(
+			nullptr != combo &&
+			PLAYER_SKILL_KIND::COMBO == combo->eSkillKind &&
+			4u == combo->ComboStages.size() &&
+			0u == combo->ComboStages[3].iInputCloseMs,
+			"Resolve LanceMaster basic attack combo stages");
+
+		SERVER_PLAYER comboPlayer{};
+		comboPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		comboPlayer.iCurrentHp = 1000;
+		comboPlayer.iMaximumHp = 1000;
+		comboPlayer.iCurrentResource = 100;
+		comboPlayer.iMaximumResource = 100;
+		std::vector<SERVER_WORLD_ENTITY> comboEntities;
+		CPlayerSkillSystem comboSkills;
+
+		C2S_USE_SKILL press{};
+		press.iClientSequence = 1;
+		press.iSkillId = 34010;
+		press.fAimX = 1.f;
+		press.fAimZ = 0.f;
+		tests.Require(
+			comboSkills.Try_Start(comboPlayer, press, catalog, 10) &&
+			1u == comboPlayer.iComboStage,
+			"Approve basic attack first stage");
+
+		// 329ms is where stage one opens; 100ms is deliberately before it.
+		comboPlayer.fActionElapsedSeconds = 0.1f;
+		press.iClientSequence = 2;
+		comboSkills.Try_Start(comboPlayer, press, catalog, 12);
+		tests.Require(!comboPlayer.hasBufferedComboInput,
+			"Reject combo input before the window opens");
+
+		comboPlayer.fActionElapsedSeconds = 0.4f;
+		press.iClientSequence = 3;
+		comboSkills.Try_Start(comboPlayer, press, catalog, 14);
+		tests.Require(comboPlayer.hasBufferedComboInput,
+			"Buffer combo input inside the window");
+
+		press.iClientSequence = 4;
+		comboSkills.Try_Start(comboPlayer, press, catalog, 15);
+		tests.Require(1u == comboPlayer.iComboStage,
+			"Ignore a second press inside the same window");
+
+		C2S_USE_SKILL other{};
+		other.iClientSequence = 5;
+		other.iSkillId = 34120;
+		other.fAimX = 1.f;
+		other.fAimZ = 0.f;
+		tests.Require(
+			!comboSkills.Try_Start(comboPlayer, other, catalog, 16) &&
+			34010u == comboPlayer.iCurrentSkillId,
+			"Reject a different skill during a combo");
+
+		/* Stage one is 1633 ms long but its hit lands at 470 ms, so a buffered
+		press has to cut in there rather than waiting out the clip. 20 ticks is
+		about 667 ms: past the hit, nowhere near the full duration. */
+		for (std::uint32_t tick = 17; tick < 37; ++tick)
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+		tests.Require(
+			2u == comboPlayer.iComboStage &&
+			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
+			"Cancel into the next combo stage once the hit has landed");
+
+		/* Nothing is buffered now, so stage two has to run its whole 1367 ms
+		instead of cutting at its hit. */
+		for (std::uint32_t tick = 37; tick < 57; ++tick)
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+		tests.Require(
+			2u == comboPlayer.iComboStage &&
+			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
+			"Hold the stage past its hit when no press was buffered");
+
+		for (std::uint32_t tick = 57; tick < 120; ++tick)
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == comboPlayer.eAction &&
+			0u == comboPlayer.iComboStage,
+			"End the combo when no press was buffered");
+	}
+
 	std::map<PLAYER_ID, SERVER_PLAYER> players;
 	SERVER_PLAYER target{};
 	target.iPlayerId = 1;
