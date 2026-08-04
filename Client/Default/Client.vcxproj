@@ -38,6 +38,7 @@
     <ClInclude Include="..\Public\Level_Lobby.h" />
     <ClInclude Include="..\Public\LevelRegistry.h" />
     <ClInclude Include="..\Public\AnimationTargetService.h" />
+    <ClInclude Include="..\Public\CharacterPreviewPanel.h" />
     <ClInclude Include="..\Public\LobbyCommandService.h" />
     <ClInclude Include="..\Public\LevelTransitionService.h" />
     <ClInclude Include="..\Public\Level_ValtanArena.h" />
@@ -112,6 +113,7 @@
     <ClCompile Include="..\Private\Level_Lobby.cpp" />
     <ClCompile Include="..\Private\LevelRegistry.cpp" />
     <ClCompile Include="..\Private\AnimationTargetService.cpp" />
+    <ClCompile Include="..\Private\CharacterPreviewPanel.cpp" />
     <ClCompile Include="..\Private\LobbyCommandService.cpp" />
     <ClCompile Include="..\Private\LevelTransitionService.cpp" />
     <ClCompile Include="..\Private\Level_ValtanArena.cpp" />

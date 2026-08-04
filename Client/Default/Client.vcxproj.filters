@@ -168,6 +168,9 @@
     <ClCompile Include="..\Private\AnimationTargetService.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CharacterPreviewPanel.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -381,6 +384,9 @@
       <Filter>01.Levels</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationTargetService.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CharacterPreviewPanel.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h">

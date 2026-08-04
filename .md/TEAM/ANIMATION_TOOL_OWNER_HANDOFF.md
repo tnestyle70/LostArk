@@ -24,10 +24,14 @@ Character Preview Panel
 
 ## 2. 현재 코드와 목표 상태를 구분한다
 
-현재 `CAnimation_Tool` 안에는 `Render_TargetSelector`, `Select_PreviewAsset`, `Release_Preview`,
-`Refresh_PreviewLevel`과 `CPart_Body` preview 생성·제거가 들어 있다. 이것은 아직 공용 Character Preview
-Panel로 이동하지 않은 현재 상태다. 이동이 끝날 때까지 Animation 담당자는 이 코드에 신규 preview 기능을
-추가하지 않고 보존만 한다.
+`Render_TargetSelector`, `Select_PreviewAsset`, `Release_Preview`, `Refresh_PreviewLevel`과
+`CPart_Body` preview 생성·제거는 `Client/{Public,Private}/CharacterPreviewPanel.{h,cpp}`의
+`CCharacterPreviewPanel`로 이동했다. Animation Tool은 자기 document가 dirty인지만 패널에 알리고
+preview 수명에는 관여하지 않는다.
+
+패널이 아직 소유하지 않는 것은 preview camera/light/background, `mouseGroundPoint`, 다섯 class와
+part 선택 UI, anchor slot 목록 열거다. 이 항목들을 채울 때도 preview 생성 경로를 각 Tool 안에
+다시 만들지 않는다.
 
 현재 `.animevents` Save는 destination을 직접 `w` mode로 열며, Reload는 Dirty 확인이 없다. Load는 임시
 vector에 읽은 뒤 교체하지만 owner/count와 malformed row를 엄격히 거부하지 않는다. 오늘 Animation 담당자의
@@ -286,8 +290,13 @@ Preview Panel이 weapon anchor를 매 frame 제공
   ProjectAudit, `git diff --check`.
 - 수동: 다섯 class target, scrub 시각, Dirty target 전환 보존과 Level 전환 cleanup.
 - 미완료로 남길 것: admitted Effect fixture/catalog resolver, 실제 Effect Tool `Use Selected Effect` 성공 경로,
-  root/weapon anchor preview, Server collider/damage publisher, EFFECT window/trail start-stop, beam dual anchor,
-  candidate-only DimensionMaster effect admission.
+  anchor-relative local transform 편집, Server collider/damage publisher, EFFECT window/trail start-stop,
+  beam dual anchor, candidate-only DimensionMaster effect admission.
+
+root/weapon anchor의 현재 world transform 조회는
+`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸고
+Effect Tool의 world preview가 이를 소비한다. 없는 bone은 false를 반환하므로 누락된 anchor가
+원점으로 보이지 않는다. 아직 없는 것은 anchor에 상대적인 local transform 저작이다.
 
 현재 admitted Effect는 0개이며 459개는 전부 DimensionMaster `candidate_only`다. 따라서 오늘 Animation 문서
 안전성 작업을 EffectAssetId 성공 Save나 preview로 검증하지 않는다. `EFFECT_ASSET_ID` 입력은 admission
