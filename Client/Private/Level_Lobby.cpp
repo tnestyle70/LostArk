@@ -55,7 +55,7 @@ namespace
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
 			return "Artist";
-		case CHARACTER_CLASS_ID::DIMENSIONIST:
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "Dimension Master";
 		default:
 			return "Not selected";

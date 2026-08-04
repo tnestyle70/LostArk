@@ -127,7 +127,7 @@ HRESULT CChannel::Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
 
 	// Preserve the three compact WAnimation tracks. Expanding their union into
 	// full transform keyframes multiplies memory for long character packages and
-	// made the 154-clip Dimensionist body exhaust memory during level loading.
+	// made the 154-clip DimensionMaster body exhaust memory during level loading.
 	m_PositionKeys = channel.positionKeys;
 	m_RotationKeys = channel.rotationKeys;
 	m_ScaleKeys = channel.scaleKeys;

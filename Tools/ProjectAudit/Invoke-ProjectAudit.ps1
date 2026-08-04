@@ -818,25 +818,25 @@ try {
     $effectRuntimeSource = Get-Content -LiteralPath 'Client\Private\Effect_Runtime.cpp' -Raw
     $effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
     Add-Check 'effect.resource-confinement' ($effectRuntimeSource -notmatch 'RequestedPath\.is_absolute\(\)\s*&&' -and $effectToolSource -notmatch 'Candidates\[\][\s\S]{0,120}RequestedPath') 'absolute path candidates rejected'
-	$dimensionistEffectAdmission = Read-Json 'Data\Effects\SourceCatalog\dimensionist_admission.json'
-	$dimensionistEffectCandidates = Read-Json 'Data\Effects\SourceCatalog\dimensionist_candidates.json'
-	$dimensionistEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored\Dimensionist\Candidates' -File -Filter '*.effect')
-	$dimensionistEffectTextures = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\Dimensionist' -Recurse -File -Filter '*.dds')
-	$dimensionistEffectModels = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\Dimensionist' -Recurse -File -Filter '*.wmodel')
-	Add-Check 'effect.dimensionist-candidate-admission' (
-		$dimensionistEffectAdmission.schema -eq 'lostark.effect-authoring-admission' -and
-		$dimensionistEffectAdmission.status -eq 'candidate_only' -and
-		$dimensionistEffectAdmission.resourceRoot -eq 'Effect/Dimensionist' -and
-		[int]$dimensionistEffectAdmission.summary.particleSystemCandidateCount -eq 459 -and
-		[int]$dimensionistEffectAdmission.summary.effectFileCount -eq 459 -and
-		[int]$dimensionistEffectAdmission.summary.runtimeTextureCount -eq 693 -and
-		[int]$dimensionistEffectAdmission.summary.runtimeMeshCount -eq 139 -and
-		[int]$dimensionistEffectCandidates.count -eq 459 -and
-		@($dimensionistEffectCandidates.rows).Count -eq 459 -and
-		$dimensionistEffectFiles.Count -eq 459 -and
-		$dimensionistEffectTextures.Count -eq 693 -and
-		$dimensionistEffectModels.Count -eq 139 -and
-		$effectToolSource -match 'recursive_directory_iterator') "effects=$($dimensionistEffectFiles.Count) textures=$($dimensionistEffectTextures.Count) models=$($dimensionistEffectModels.Count) status=$($dimensionistEffectAdmission.status)"
+	$dimensionmasterEffectAdmission = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_admission.json'
+	$dimensionmasterEffectCandidates = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_candidates.json'
+	$dimensionmasterEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored\DimensionMaster\Candidates' -File -Filter '*.effect')
+	$dimensionmasterEffectTextures = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.dds')
+	$dimensionmasterEffectModels = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.wmodel')
+	Add-Check 'effect.dimensionmaster-candidate-admission' (
+		$dimensionmasterEffectAdmission.schema -eq 'lostark.effect-authoring-admission' -and
+		$dimensionmasterEffectAdmission.status -eq 'candidate_only' -and
+		$dimensionmasterEffectAdmission.resourceRoot -eq 'Effect/DimensionMaster' -and
+		[int]$dimensionmasterEffectAdmission.summary.particleSystemCandidateCount -eq 459 -and
+		[int]$dimensionmasterEffectAdmission.summary.effectFileCount -eq 459 -and
+		[int]$dimensionmasterEffectAdmission.summary.runtimeTextureCount -eq 693 -and
+		[int]$dimensionmasterEffectAdmission.summary.runtimeMeshCount -eq 139 -and
+		[int]$dimensionmasterEffectCandidates.count -eq 459 -and
+		@($dimensionmasterEffectCandidates.rows).Count -eq 459 -and
+		$dimensionmasterEffectFiles.Count -eq 459 -and
+		$dimensionmasterEffectTextures.Count -eq 693 -and
+		$dimensionmasterEffectModels.Count -eq 139 -and
+		$effectToolSource -match 'recursive_directory_iterator') "effects=$($dimensionmasterEffectFiles.Count) textures=$($dimensionmasterEffectTextures.Count) models=$($dimensionmasterEffectModels.Count) status=$($dimensionmasterEffectAdmission.status)"
 
     $materialReaderSource = Get-Content -LiteralPath 'Engine\Private\BinaryAsset\Winters\WMaterialReader.cpp' -Raw
     $modelSource = Get-Content -LiteralPath 'Engine\Private\Model.cpp' -Raw
@@ -914,55 +914,55 @@ try {
 	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
 	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
 	Add-Check 'actors.playable-roster' (
-		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONIST' -and
+		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONMASTER' -and
 		$rosterStatus -eq 'supported,supported,supported,supported,supported' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
-		$lobbySource -match 'CHARACTER_CLASS_ID::DIMENSIONIST' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::DIMENSIONMASTER' -and
 		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
-	$dimensionistActor = @($characterCatalog.characters | Where-Object networkClassId -eq 'DIMENSIONIST')
-	$dimensionistAnimationContracts = @(
-		[pscustomobject]@{ Path = 'Data\Animation\Authored\Dimensionist\Dimensionist.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "Dimensionist" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "Dimensionist" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "Dimensionist" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "Dimensionist" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.skilltiming'; Header = 'LOSTARK_SKILL_TIMING 2 "Dimensionist" 0' })
-	$invalidDimensionistAnimationDocuments = @(
-		foreach ($contract in $dimensionistAnimationContracts) {
+	$dimensionmasterActor = @($characterCatalog.characters | Where-Object networkClassId -eq 'DIMENSIONMASTER')
+	$dimensionmasterAnimationContracts = @(
+		[pscustomobject]@{ Path = 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "DimensionMaster" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "DimensionMaster" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "DimensionMaster" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "DimensionMaster" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.skilltiming'; Header = 'LOSTARK_SKILL_TIMING 2 "DimensionMaster" 0' })
+	$invalidDimensionMasterAnimationDocuments = @(
+		foreach ($contract in $dimensionmasterAnimationContracts) {
 			if (-not (Test-Path -LiteralPath $contract.Path -PathType Leaf) -or
 				(Get-Content -LiteralPath $contract.Path -Raw).Trim() -cne $contract.Header) {
 				$contract.Path
 			}
 		})
-	Add-Check 'actors.dimensionist-runtime-animation' (
-		$dimensionistActor.Count -eq 1 -and
+	Add-Check 'actors.dimensionmaster-runtime-animation' (
+		$dimensionmasterActor.Count -eq 1 -and
 		[int]$characterCatalog.formatVersion -eq 2 -and
-		$dimensionistActor[0].bodyModel -eq 'Character/Dimensionist/Dimensionist_Character.wmodel' -and
-		@($dimensionistActor[0].equipmentModels).Count -eq 0 -and
-		(@($dimensionistActor[0].weaponModels) -join ',') -eq (
+		$dimensionmasterActor[0].bodyModel -eq 'Character/DimensionMaster/DimensionMaster_Character.wmodel' -and
+		@($dimensionmasterActor[0].equipmentModels).Count -eq 0 -and
+		(@($dimensionmasterActor[0].weaponModels) -join ',') -eq (
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel') -and
-		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\Dimensionist\Dimensionist_Character.wmodel' -PathType Leaf) -and
-		$invalidDimensionistAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and exact 0-row Animation Tool documents exist; invalid=$($invalidDimensionistAnimationDocuments -join ',')"
+		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\DimensionMaster\DimensionMaster_Character.wmodel' -PathType Leaf) -and
+		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and exact 0-row Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
-	$dimensionistLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_Dimensionist.cpp' -Raw
-	Add-Check 'actors.dimensionist-four-part-weapon' (
-		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_L' -and
-		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_S' -and
-		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_P' -and
-		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_E' -and
-		$dimensionistLogicSource -match 'b_wp_swm_m_1' -and
-		$dimensionistLogicSource -match 'b_wp_swm_m_2' -and
-		$dimensionistLogicSource -match 'b_wp_swm_m_3' -and
-		$dimensionistLogicSource -match 'b_wp_swm_m_4_02' -and
-		$dimensionistLogicSource -match '180\.f') 'Dimensionist L/S/P/E prototype tags and exact battle sockets are connected'
-	Add-Check 'actors.dimensionist-actorx-scale' (
-		$playableAssetServiceSource -match 'CHARACTER_CLASS_ID::DIMENSIONIST == characterClass[\s\S]{0,80}0\.01f : 0\.0001f') 'ActorX Dimensionist uses 0.01 while legacy character packages retain 0.0001'
+	$dimensionmasterLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_DimensionMaster.cpp' -Raw
+	Add-Check 'actors.dimensionmaster-four-part-weapon' (
+		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_L' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_S' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_P' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_E' -and
+		$dimensionmasterLogicSource -match 'b_wp_swm_m_1' -and
+		$dimensionmasterLogicSource -match 'b_wp_swm_m_2' -and
+		$dimensionmasterLogicSource -match 'b_wp_swm_m_3' -and
+		$dimensionmasterLogicSource -match 'b_wp_swm_m_4_02' -and
+		$dimensionmasterLogicSource -match '180\.f') 'DimensionMaster L/S/P/E prototype tags and exact battle sockets are connected'
+	Add-Check 'actors.dimensionmaster-actorx-scale' (
+		$playableAssetServiceSource -match 'CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass[\s\S]{0,80}0\.01f : 0\.0001f') 'ActorX DimensionMaster uses 0.01 while legacy character packages retain 0.0001'
 	$hudViewModelHeader = Get-Content -LiteralPath 'Client\Public\CombatHUDViewModel.h' -Raw
 	$hudViewModelSource = Get-Content -LiteralPath 'Client\Private\CombatHUDViewModel.cpp' -Raw
 	$characterSelectSource = Get-Content -LiteralPath 'Client\Private\Level_CharacterSelect.cpp' -Raw
@@ -986,11 +986,11 @@ try {
 			}
 		}
 	}
-	$dimensionistSkillRows = @($playerSkillDocument.skills |
-		Where-Object characterClass -eq 'DIMENSIONIST')
+	$dimensionmasterSkillRows = @($playerSkillDocument.skills |
+		Where-Object characterClass -eq 'DIMENSIONMASTER')
 	Add-Check 'gameplay.playable-qw-contract' (
 		$missingQuickSlots.Count -eq 0 -and
-		$dimensionistSkillRows.Count -eq 0) "missing=$($missingQuickSlots -join ',') dimensionistUnverified=$($dimensionistSkillRows.Count)"
+		$dimensionmasterSkillRows.Count -eq 0) "missing=$($missingQuickSlots -join ',') dimensionmasterUnverified=$($dimensionmasterSkillRows.Count)"
 
 	$quickSkillAnimationContracts = @(
 		[pscustomobject]@{ Class = 'LANCE_MASTER'; Asset = 'LanceMaster'; Skills = @(34120, 34080) },

@@ -45,7 +45,7 @@ private:
 		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
 		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER
 	};
 
 	CMapPlacementRuntime m_MapRuntime;

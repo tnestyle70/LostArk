@@ -1,9 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-m-swp-tw-shockwave-01" name="par_m_swp_tw_shockwave_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
-
-EMITTER id=30648 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=30649 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_k_00.fx_d_pa_ring_12_ad_inst35" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-
-EMITTER id=30650 name="small-sonicboom" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=30651 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_h_sphere_01_1.wmodel" mat="fx_m_mi_d_00.fx_mi.fx_d_me_capturergbsplit_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0.02 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-  MODULE id=30652 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.5,1:0.1 g=0:0.15,1:0.5 b=0:1.5,1:1 a=0:1,1:1

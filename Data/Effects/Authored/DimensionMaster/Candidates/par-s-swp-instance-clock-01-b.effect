@@ -1,0 +1,11 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-instance-clock-01-b" name="par_s_swp_instance_clock_01_b" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=19063 name="bb" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=19064 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/SK_SWP_DMC_00/sk_swp_dmc_00_e.dds" mesh="Effect/DimensionMaster/Meshes/sk_swp_dmc_00-1_sk.wmodel" mat="fx_m_mi_s_00.fx_mi.fx_swp_instance_clock_01_pbr_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=0.5,0.5 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=6,4,2,1 softdistance=0 distortionstrength=0
+  MODULE id=19065 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:1,1:0 y=0:1,1:1 z=0:1,1:1 w=0:1,1:1
+
+EMITTER id=19066 name="bb" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=19067 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/SK_SWP_DMC_00/sk_swp_dmc_00_n.dds" mesh="Effect/DimensionMaster/Meshes/sk_swp_dmc_00-1_sk.wmodel" mat="fx_m_mi_s_00.fx_mi.fx_s_me_horn_13_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/DimensionMaster/Textures/SK_SWP_DMC_00/sk_swp_dmc_00_n.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=19068 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,1:0 y=0:0,1:0 z=0:0,1:0 w=0:1,1:1
+  MODULE id=19069 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.25,1:0.25 g=0:0.25,1:0.25 b=0:0.25,1:0.25 a=0:0.8,1:0

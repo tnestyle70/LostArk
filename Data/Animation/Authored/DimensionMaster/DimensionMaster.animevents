@@ -1,0 +1,1522 @@
+LOSTARK_ANIM_EVENTS 3 "DimensionMaster" 1521
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_01_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_02_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1_Vox1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=100 endms=510 payload="콤보선입력" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=100 endms=560 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=100 endms=560 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" HIT startms=100 endms=602 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=200 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=200 payload="FX_BS_06.Skill.Par_D_FT_Moving_02" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=200 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_0_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" SOUND startms=279 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1_Vox1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" SOUND startms=303 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=350 endms=4000 payload="이동기 캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=400 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_0_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=400 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=500 endms=4000 payload="콤보캔슬입력" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=500 endms=4000 payload="콤보입력중" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=550 endms=3012 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_01" CANCEL startms=1400 endms=4000 payload="강제종료" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=0 endms=310 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=0 endms=460 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=0 endms=1500 payload="이동기 캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=0 endms=410 payload="[선콤]" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1_Vox1_2" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" HIT startms=43 endms=257 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_att_battle_1_02" SOUND startms=53 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_2" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=100 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=300 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=400 endms=500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=446 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=500 endms=700 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" CANCEL startms=700 endms=1300 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=700 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_Signal_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=0 endms=410 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=0 endms=210 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_3" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1_Vox1_3" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" HIT startms=28 endms=184 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" SHAKE startms=50 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=150 endms=1067 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=200 endms=1067 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=400 endms=1067 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_Core_3_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_4" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" HIT startms=33 endms=278 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=98 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" SHAKE startms=100 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=131 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_Dust_3_2" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=200 endms=810 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=200 endms=610 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=200 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" HIT startms=335 endms=581 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_att_battle_1_04" SOUND startms=346 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1_Vox1_3" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" SOUND startms=376 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_5" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=380 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=380 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=380 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=400 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=400 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=400 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_Dust_3_1" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=500 endms=1700 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=600 endms=1700 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=800 endms=1700 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_SWP_CF_02" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" SOUND startms=10 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_1" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_SpeciaList_M_Vox1_1" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=664 payload="FX_PC_Confront_00.Par_J_SWP_CF_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=669 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_S" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SHAKE startms=669 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SOUND startms=800 payload="PC_COMMON_DUAL.PC_Common_Dual1_2" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" CANCEL startms=0 endms=501 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" CANCEL startms=0 endms=706 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_02" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_03" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_SWP_JustGuard_01" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" SOUND startms=1 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=52 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" CANCEL startms=494 endms=2000 payload="입력캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" CANCEL startms=697 endms=2000 payload="이동캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_start" SOUND startms=380 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Fail1_Specialist1_1" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_start" EFFECT startms=740 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_start" EFFECT startms=740 payload="FX_PC_Confront_00.Par_J_SWP_JustGuard_01" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_start" CANCEL startms=750 endms=1000 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_start" CANCEL startms=750 endms=1000 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=0 endms=400 payload="[선스]" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=0 endms=561 payload="[선이]" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" SOUND startms=1 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=180 endms=2000 payload="[회피캔슬]" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=400 endms=2000 payload="입력캔슬" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=550 endms=2000 payload="이동캔슬" src=orig
+"pc_sp_m_00_sk_idle_battle_1" EFFECT startms=0 payload="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" src=orig
+"pc_sp_m_00_sk_idle_battle_1" SUPERARMOR startms=0 endms=5000 payload="" src=orig
+"pc_sp_m_00_sk_idle_battle_1" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_7" src=orig
+"pc_sp_m_00_sk_idle_battle_1" EFFECT startms=10 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SUPERARMOR startms=0 endms=2010 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Wp_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=100 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Start_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=100 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Start_07" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=270 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=500 endms=2333 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=600 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_04" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_47" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=900 endms=2020 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=900 endms=2020 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=1000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=1198 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1300 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_02" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_07" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_07_2" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=1400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_5" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=2000 endms=2333 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" SUPERARMOR startms=0 endms=1010 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Wp_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" EFFECT startms=100 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Start_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" EFFECT startms=100 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Start_07" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" SOUND startms=270 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" CANCEL startms=400 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" CANCEL startms=400 endms=1010 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" CANCEL startms=500 endms=1967 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" EFFECT startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" CANCEL startms=1000 endms=1967 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil_custom_6" SOUND startms=1286 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_05" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalBreak1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalBreak1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" CANCEL startms=50 endms=860 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" CANCEL startms=50 endms=860 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=350 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=350 payload="FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_06" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=379 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" CANCEL startms=500 endms=2100 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" CANCEL startms=850 endms=2100 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Gate_Trail_00" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" SUPERARMOR startms=0 endms=1110 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" SOUND startms=188 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" CANCEL startms=400 endms=1110 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" CANCEL startms=400 endms=1110 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" CANCEL startms=500 endms=1767 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" EFFECT startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_01" CANCEL startms=1100 endms=1767 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=0 endms=310 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=0 endms=220 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=0 endms=967 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=0 endms=967 payload="체인캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionWp_00" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionMove_S" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SUPERARMOR startms=0 endms=320 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX007_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX047_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=48 payload="FX_PC_SWP_01.Par_W_SWP_DimensionGate_01_7" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=48 payload="FX_PC_SWP_01.Par_W_SWP_DimensionGate_01_47" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=98 payload="FX_PC_SWP_01.Par_W_SWP_DimensionWp_Trail" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=200 endms=967 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" CANCEL startms=300 endms=967 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionMove_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_05" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_01" SUPERARMOR startms=0 endms=400 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" CANCEL startms=0 endms=300 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" CANCEL startms=0 endms=300 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=110 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=110 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=110 payload="FX_PC_SWP_05.Par_K_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=110 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_02" EFFECT startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" CANCEL startms=0 endms=870 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" CANCEL startms=0 endms=720 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SUPERARMOR startms=0 endms=870 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=70 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SOUND startms=103 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SOUND startms=106 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=245 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Crack_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Ground_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=261 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" CANCEL startms=400 endms=1567 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" CANCEL startms=700 endms=1567 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" CANCEL startms=850 endms=1567 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SUPERARMOR startms=0 endms=1170 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=110 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=110 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=110 payload="FX_PC_SWP_05.Par_K_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=110 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=150 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" CANCEL startms=300 endms=1170 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" CANCEL startms=300 endms=1020 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=300 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=300 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=350 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=370 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SOUND startms=500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX040_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=545 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Ground_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Crack_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=560 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=650 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" CANCEL startms=700 endms=1967 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=750 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=850 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" CANCEL startms=1000 endms=1967 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" CANCEL startms=1150 endms=1967 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" CANCEL startms=0 endms=870 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" CANCEL startms=0 endms=720 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Flare_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" SUPERARMOR startms=0 endms=870 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=70 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" SOUND startms=338 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX048_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=400 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=400 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Crack_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=400 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=425 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" CANCEL startms=550 endms=1133 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" SOUND startms=550 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX048_4" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" CANCEL startms=700 endms=1133 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_custom" CANCEL startms=850 endms=1133 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_DemensionDetonate_wp" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_DemensionDetonate_Cast_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" SUPERARMOR startms=0 endms=710 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionDetonate1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionDetonate_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" CANCEL startms=200 endms=710 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" CANCEL startms=200 endms=710 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Rib_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" CANCEL startms=500 endms=1167 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_DemensionDetonate_Cast_02" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" CANCEL startms=700 endms=1167 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_locdust" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SUPERARMOR startms=0 endms=3310 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_P000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=239 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" CANCEL startms=500 endms=4367 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2367 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" CANCEL startms=2500 endms=3310 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" CANCEL startms=2500 endms=3310 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2550 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_P000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2750 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2800 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_P000_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=2823 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2858 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2858 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp_local" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2873 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2883 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2883 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2944 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" CANCEL startms=3300 endms=4367 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" SUPERARMOR startms=0 endms=910 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" CANCEL startms=300 endms=910 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" CANCEL startms=300 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" SOUND startms=350 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" CANCEL startms=600 endms=2033 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison_1" CANCEL startms=900 endms=2033 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=10 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=201 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=301 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" CANCEL startms=500 endms=600 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" CANCEL startms=0 endms=2400 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SUPERARMOR startms=0 endms=1410 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SOUND startms=754 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" CANCEL startms=800 endms=1410 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" CANCEL startms=800 endms=1410 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SOUND startms=800 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=900 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1000 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Impact_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_Bill_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_Post.FX_Par.Par_J_RGBNoise_Zaxis_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1002 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1102 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1153 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" CANCEL startms=1400 endms=2400 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SUPERARMOR startms=0 endms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=10 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=98 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SOUND startms=133 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=300 endms=910 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=300 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SOUND startms=300 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=350 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Impact_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_Bill_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_03" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_Post.FX_Par.Par_J_RGBNoise_Zaxis_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=500 endms=1967 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=550 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=900 endms=1967 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SUPERARMOR startms=0 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SOUND startms=200 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=300 payload="FX_PC_SWP_03.Par_S_SWP_Foldcut_Rib_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=300 payload="FX_PC_SWP_03.Par_S_SWP_Foldcut_Rib_04" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SOUND startms=300 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=480 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" CANCEL startms=500 endms=2333 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=500 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=500 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SOUND startms=590 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut" CANCEL startms=700 endms=1520 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_foldcut" CANCEL startms=700 endms=1320 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" SOUND startms=950 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1050 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1050 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1050 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1100 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" EFFECT startms=1100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut" CANCEL startms=1300 endms=2317 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut" CANCEL startms=1500 endms=2333 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" SUPERARMOR startms=0 endms=400 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" SOUND startms=230 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_01" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=0 payload="FX_PC_SWP_03.Par_S_SWP_Foldcut_Rib_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=0 payload="FX_PC_SWP_03.Par_S_SWP_Foldcut_Rib_04" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SUPERARMOR startms=0 endms=1533 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=56 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=56 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=56 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=56 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=56 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=60 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=89 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" CANCEL startms=100 endms=1533 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=160 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=284 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=480 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=480 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=480 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=480 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=480 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=580 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=670 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=850 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=880 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=890 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=890 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=890 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=890 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=890 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" CANCEL startms=900 endms=1533 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=999 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" CANCEL startms=1000 endms=1533 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1050 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1250 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" SOUND startms=1250 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1260 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1260 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1260 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1260 payload="FX_PC_SWP_03.Par_S_SWP_FoldCut_Body_04_02" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1360 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_02" EFFECT startms=1370 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" CANCEL startms=0 endms=1000 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" CANCEL startms=0 endms=110 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" CANCEL startms=0 endms=50 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" CANCEL startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" SUPERARMOR startms=0 endms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_foldcut_custom_8_03" CANCEL startms=100 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" SUPERARMOR startms=0 endms=733 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Ribbon_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Ribbon_01_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Wind_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Wind_01_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_01" SOUND startms=519 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" CANCEL startms=0 endms=67 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" CANCEL startms=0 endms=67 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_02" SUPERARMOR startms=0 endms=67 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" CANCEL startms=0 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" CANCEL startms=0 endms=1010 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=0 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Flare_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=0 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Flare_01_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=50 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=50 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" SOUND startms=374 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=400 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=400 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=400 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=400 payload="FX_PC_SWP_04.Par_M_SWP_GP_Spike_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" CANCEL startms=500 endms=1633 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_03" CANCEL startms=1000 endms=1633 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX050_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" EFFECT startms=350 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_02_05" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" EFFECT startms=350 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_02_05_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" SOUND startms=355 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX050_2" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" CANCEL startms=400 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" CANCEL startms=400 endms=1010 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" CANCEL startms=600 endms=1667 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" EFFECT startms=750 payload="FX_PC_SWP_04.Par_M_SWP_GP_HandRibbon_01_05" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" SOUND startms=754 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX050_3" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_5_" CANCEL startms=1000 endms=1667 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_FX060_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" SUPERARMOR startms=0 endms=733 payload="" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_GravityPoint1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Ribbon_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Ribbon_01_07" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Wind_01" src=orig
+"pc_sp_m_00_sk_sk_gravitypoint_custom_6_" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_GP_WP_Wind_01_07" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Cast_01" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SUPERARMOR startms=0 endms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Instance_wp_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=70 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=300 payload="FX_PC_SWP_05.Par_K_SWP_Instance_rib_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=400 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_L" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_sub_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" SHAKE startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_instance_02" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=452 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_01" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=480 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_01" src=orig
+"pc_sp_m_00_sk_sk_instance_03" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_03" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_03" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_03" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_03" SUPERARMOR startms=0 endms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Instance_wp_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=70 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=100 payload="FX_PC_SWP_05.Par_K_SWP_Instance_rib_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=300 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_instance_04" CANCEL startms=350 endms=500 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_instance_04" CANCEL startms=350 endms=500 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_sub_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" SHAKE startms=350 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=354 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=354 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_R" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=400 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" EFFECT startms=400 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_01" src=orig
+"pc_sp_m_00_sk_sk_instance_04" SOUND startms=400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_instance_05" CANCEL startms=0 endms=100 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_instance_05" CANCEL startms=0 endms=100 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_instance_05" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_05" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_05" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_05" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_05" SUPERARMOR startms=0 endms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" CANCEL startms=0 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_instance_06" CANCEL startms=0 endms=910 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Instance_wpend_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" SUPERARMOR startms=0 endms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=70 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" SOUND startms=428 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=450 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_5" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=480 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_end" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_Ground_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_crack_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_instance_06" EFFECT startms=550 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_instance_06" CANCEL startms=700 endms=2067 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_instance_06" CANCEL startms=900 endms=2067 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" SUPERARMOR startms=0 endms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_jump_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Moving1" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=80 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=156 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=156 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=156 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=176 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" CANCEL startms=200 endms=510 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_jump_04" CANCEL startms=200 endms=510 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=311 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=311 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=312 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=312 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=385 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" EFFECT startms=395 payload="" src=orig
+"pc_sp_m_00_sk_sk_jump_04" CANCEL startms=500 endms=1233 payload="" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_05" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_03" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SUPERARMOR startms=0 endms=1310 payload="" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=55 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=394 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=394 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_04" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=394 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=396 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=396 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SHAKE startms=396 payload="" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=500 endms=1667 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=700 endms=1310 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=700 endms=1310 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=984 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=1000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=1094 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=1100 payload="" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=1300 endms=1667 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" SUPERARMOR startms=0 endms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Moving1" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=80 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=156 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=156 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=156 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=176 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" CANCEL startms=200 endms=510 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" CANCEL startms=200 endms=510 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=311 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=311 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=312 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=312 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=385 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" EFFECT startms=395 payload="" src=orig
+"pc_sp_m_00_sk_sk_moving_normal_1_04" CANCEL startms=500 endms=1233 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" SOUND startms=100 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" CANCEL startms=200 endms=620 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" CANCEL startms=200 endms=620 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" EFFECT startms=280 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" CANCEL startms=500 endms=1400 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01" CANCEL startms=600 endms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=100 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=150 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_FX050_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=200 endms=810 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Remain_05_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Remain_57_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=270 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=280 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=300 endms=910 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=451 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_Vox2_2" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=500 endms=1700 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=650 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_05_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=650 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_FX050_2" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_Bill_01" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Ex_05_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Ground_05_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Ex_57_1" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=660 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=800 endms=1700 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=900 endms=1700 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_In_02" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Clock_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimelineEnter1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=10 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=200 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=300 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=600 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_In_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=800 endms=1633 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=900 endms=1633 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=1000 endms=1633 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimelineLeave1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=10 payload="FX_Post.FX_Par.Par_J_RGBNoise_01_Deactive" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=10 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=98 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_02" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" CANCEL startms=0 endms=510 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" CANCEL startms=0 endms=510 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_03" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Clock_02" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=10 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=10 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_04" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" EFFECT startms=200 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" CANCEL startms=400 endms=1433 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_02" CANCEL startms=500 endms=1433 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_01" SUPERARMOR startms=0 endms=633 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX008_1" src=orig
+"pc_sp_m_00_sk_sk_overslash_01" SOUND startms=9 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=0 endms=1500 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=0 endms=1500 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=59 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=150 endms=1500 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=250 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=0 endms=1500 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=0 endms=1500 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=59 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=150 endms=1500 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=250 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=0 endms=1210 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=0 endms=1210 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_1_s" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox2_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SUPERARMOR startms=0 endms=1210 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=61 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SHAKE startms=61 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=119 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=200 endms=1500 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=250 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=1200 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_05" CANCEL startms=0 endms=767 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_overslash_05" CANCEL startms=0 endms=50 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_overslash_05" CANCEL startms=0 endms=50 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_overslash_05" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_05" CANCEL startms=10 endms=767 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" CANCEL startms=0 endms=800 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_cast_wp" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_cast_gr" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" SUPERARMOR startms=0 endms=800 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" SOUND startms=9 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_02" CANCEL startms=100 endms=750 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_1_s" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_cast_wp2" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SUPERARMOR startms=0 endms=910 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX008_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" CANCEL startms=100 endms=910 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" CANCEL startms=100 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=509 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_08_E" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SHAKE startms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=582 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" CANCEL startms=600 endms=1800 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=600 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox2_2" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" CANCEL startms=900 endms=1800 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" CANCEL startms=100 endms=510 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" CANCEL startms=200 endms=610 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SOUND startms=271 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" HIT startms=279 endms=494 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Atk_00_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SHAKE startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Atk_08_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Dust_00_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=400 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Rib_00_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" CANCEL startms=500 endms=1400 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" CANCEL startms=500 endms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" CANCEL startms=600 endms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SOUND startms=1017 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" EFFECT startms=42 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" EFFECT startms=42 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" EFFECT startms=42 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" EFFECT startms=42 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" SOUND startms=43 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_PhantomThrust1_FX050_1" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" CANCEL startms=100 endms=200 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_custom_1" CANCEL startms=100 endms=200 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" SUPERARMOR startms=0 endms=367 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" SOUND startms=87 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=100 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_rib_00_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=100 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Rib_00_02" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" SOUND startms=227 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=270 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=270 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=0 endms=520 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=0 endms=420 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" SUPERARMOR startms=0 endms=520 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" HIT startms=37 endms=253 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" SHAKE startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=100 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dsut_00_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=300 endms=1567 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dust_00_02" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=400 endms=1567 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=500 endms=1567 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=0 endms=410 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=0 endms=410 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_FX080_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" SUPERARMOR startms=0 endms=1200 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" EFFECT startms=42 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" EFFECT startms=50 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Rib_00_02" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" EFFECT startms=50 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dash_08_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" SOUND startms=87 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=100 endms=310 payload="[선콤]" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=200 endms=1200 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=200 endms=1200 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=300 endms=1200 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_01" CANCEL startms=400 endms=1200 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Rib_00_02" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" SUPERARMOR startms=0 endms=367 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=50 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_rib_00_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" SOUND startms=150 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_Vox2_2" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" SOUND startms=229 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_RiftSlash1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=270 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=270 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_riftslash_custom_8_02" EFFECT startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_05" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_09" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" SUPERARMOR startms=0 endms=333 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" SOUND startms=9 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=119 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=121 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=121 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=121 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=196 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=196 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_11" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=197 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_03" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=197 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_02" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=198 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=198 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" SHAKE startms=198 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" CANCEL startms=233 endms=333 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=244 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" CANCEL startms=0 endms=800 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_09" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_10" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" SUPERARMOR startms=0 endms=800 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_02" EFFECT startms=406 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_09-2" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" CANCEL startms=0 endms=1900 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SUPERARMOR startms=0 endms=1010 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=95 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=95 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=95 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" CANCEL startms=100 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" CANCEL startms=100 endms=1010 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=105 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=239 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=239 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=239 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_06" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=239 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_07" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SOUND startms=337 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=380 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_04-2" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SHAKE startms=486 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" CANCEL startms=1000 endms=1900 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=0 endms=1767 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=0 endms=860 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=0 endms=860 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_06" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=0 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_08" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SUPERARMOR startms=0 endms=860 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=144 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_07" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SOUND startms=211 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=280 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_04-2" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SHAKE startms=336 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SOUND startms=337 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=850 endms=1767 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" SUPERARMOR startms=0 endms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_standup_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Moving1" src=orig
+"pc_sp_m_00_sk_sk_standup_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_StandUp1_Vox1" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=98 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=98 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=98 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_standup_04" CANCEL startms=100 endms=510 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=111 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=366 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=366 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=366 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=366 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_standup_04" EFFECT startms=376 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_04" CANCEL startms=500 endms=1100 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" SUPERARMOR startms=0 endms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Moving1" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_StandUp1_Vox1" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=98 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=98 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=98 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" CANCEL startms=100 endms=510 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=111 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=366 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=366 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=366 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=366 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_1" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" EFFECT startms=376 payload="" src=orig
+"pc_sp_m_00_sk_sk_standup_normal_1_04" CANCEL startms=500 endms=1100 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SUPERARMOR startms=0 endms=4500 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01_b" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=10 payload="FX_PC_SWP_03.Par_S_SWP_ExMove_02" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=30 payload="FX_PC_SWP_03.Par_S_SWP_Instance_FLight_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=30 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Sidelight_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=950 payload="FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=950 payload="FX_PC_SWP_03.Par_S_SWP_Instance_BG_02" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=950 payload="FX_PC_SWP_03.Par_S_SWP_Instance_BG_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=950 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=950 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=1400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=1500 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=2035 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_SuperInstance1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=2100 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=2178 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=2500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_5" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=2700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_6" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=2800 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=2900 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Light_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3000 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Hole_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3000 payload="FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SOUND startms=3381 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_SuperInstance1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3700 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3700 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Atk_03" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Back_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=3750 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" CANCEL startms=3800 endms=4510 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" CANCEL startms=4000 endms=5000 payload="회피기캔슬" src=orig
+"pc_sp_m_00_sk_sk_super_instance" CANCEL startms=4500 endms=5000 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SUPERARMOR startms=0 endms=4210 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_SuperInstance1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=30 payload="FX_PC_SWP_04.Par_M_SWP_TW_S1_BigLight_01_Test_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=30 payload="FX_PC_SWP_04.Par_M_SWP_TW_S1_Cube_UltOn_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=40 payload="FX_PC_SWP_04.Par_M_SWP_TW_S1_ExMove_Vector_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=600 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=650 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TW_S1_Hand_Deco_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=700 payload="FX_PC_WHK_02.Par_O_WHK_ExMove_03" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_Cube_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_Light_01_Loop" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_Hand_Deco_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_02" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_Aurora_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2000 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=2000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=2500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2950 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=3300 endms=4210 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=3300 endms=4210 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3700 payload="FX_PC_SWP_04.Par_M_SWP_TW_Light_01_Loop" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SOUND startms=3752 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_SuperInstance1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_ShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_Exp_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_Local_BoxShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=3950 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=4000 endms=5100 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=4200 endms=5100 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" SUPERARMOR startms=0 endms=467 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=300 payload="FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=0 endms=2167 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Stop1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SOUND startms=14 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=100 endms=910 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_WP_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=150 payload="FX_PC_SMW_14.Par_M_SMW_FilmNoise_Zaxis_03" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=200 endms=1010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SOUND startms=610 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_SphereRGB_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-2" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SHAKE startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SOUND startms=650 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_P000_2" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=900 endms=2167 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=1000 endms=2167 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_4_" EFFECT startms=0 payload="FX_PC_SWP_04.Par_M_SWP_TS_Charge_Body_01_04" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_4_" EFFECT startms=0 payload="FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_4_" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX040_1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_4_" SUPERARMOR startms=0 endms=333 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" SUPERARMOR startms=0 endms=467 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" EFFECT startms=200 payload="FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_5_" EFFECT startms=300 payload="FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=100 endms=610 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=100 endms=610 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_SphereRGB_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-2" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SHAKE startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SOUND startms=150 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_P000_2" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=300 endms=1667 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=600 endms=1667 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX047_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SOUND startms=270 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" SOUND startms=270 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX047_2" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=272 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=500 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=500 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=500 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=0 endms=1500 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_7" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SUPERARMOR startms=0 endms=810 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX047_3" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=97 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=193 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=195 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=200 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=200 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=250 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=250 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX047_4" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=260 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=300 endms=810 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=300 endms=770 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SHAKE startms=538 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=541 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=541 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=547 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=547 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=550 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX047_5" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SOUND startms=550 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_5" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=750 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=800 endms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=0 endms=1600 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_7" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SUPERARMOR startms=0 endms=810 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_3" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=97 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=193 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=195 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=200 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=200 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SOUND startms=250 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_4" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=260 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=300 endms=810 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=300 endms=770 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SHAKE startms=538 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=541 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=541 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=547 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=547 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SOUND startms=550 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TelekinesisThrust1_FX000_5" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=750 endms=1600 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=800 endms=1600 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimeLineCollapse1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeCollapse1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=342 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=500 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=521 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_Crack_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_Crack_02" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_Dust_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=531 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=601 payload="FX_Post.FX_Par.Par_J_RGBNoise_01_Deactive" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=601 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_02" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=601 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=0 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"pc_sp_m_00_sk_sk_timewave" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"pc_sp_m_00_sk_sk_timewave" SUPERARMOR startms=0 endms=1860 payload="" src=orig
+"pc_sp_m_00_sk_sk_timewave" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_timewave" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=690 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=691 payload="FX_PC_SWP_02.Par_R_SWP_TimeWave_00_03" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=693 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=693 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_timewave" SHAKE startms=696 payload="" src=orig
+"pc_sp_m_00_sk_sk_timewave" SOUND startms=700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_timewave" CANCEL startms=1000 endms=1860 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_timewave" CANCEL startms=1000 endms=1860 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_timewave" SOUND startms=1242 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_timewave" EFFECT startms=1550 payload="" src=orig
+"pc_sp_m_00_sk_sk_timewave" CANCEL startms=1700 endms=2533 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_timewave" CANCEL startms=1850 endms=2533 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Void_Curse_cast_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidCurse1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidCurse1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_01" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=0 endms=510 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=100 endms=610 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" SOUND startms=100 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidCurse1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_PC_SWP_05.Par_K_SWP_Void_Curse_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" SHAKE startms=200 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=400 endms=1400 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=500 endms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=600 endms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=700 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Rib_00_02" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=700 payload="FX_PC_SWP_05.Par_K_SWP_Void_Curse_End_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX040_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" HIT startms=220 endms=370 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=500 endms=2400 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=650 endms=1260 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=691 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=700 endms=1310 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=822 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=830 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX040_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=830 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=830 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX047_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=871 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX067_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_SphereRGB_01_4" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01-04" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_07" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=950 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=1050 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Ember_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=1250 endms=2400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=1300 endms=2400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX050_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_Vox2_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" HIT startms=200 endms=800 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_05" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=450 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_05" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=500 endms=2867 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_05" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=750 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=750 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=750 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=1110 endms=1720 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=1210 endms=1820 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SOUND startms=1289 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX050_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SOUND startms=1289 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX057_2" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01-1_05" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01-3_05" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Ember_01" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_07" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_05-2_07" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_05-1_07" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=1700 endms=2867 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=1800 endms=2867 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SUPERARMOR startms=0 endms=1700 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=90 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=90 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=90 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" HIT startms=100 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=200 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=200 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=370 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=390 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=390 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=390 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" CANCEL startms=500 endms=2767 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_willowrend" HIT startms=525 endms=775 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=690 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=690 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=690 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" HIT startms=844 endms=1094 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=850 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=999 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1000 endms=1720 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1000 endms=1520 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=1000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_3" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1090 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1090 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1090 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SOUND startms=1200 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend" HIT startms=1243 endms=1543 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1300 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1300 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1350 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1500 endms=2767 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1500 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1500 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1700 endms=2767 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1854 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SUPERARMOR startms=0 endms=2000 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=72 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=221 endms=386 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Wind_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_PC_FIF_12.Par_J_FIF_RageBomb_SonicWind_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=377 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=430 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=490 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=490 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=490 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=500 endms=3233 payload="회피캔슬" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=523 endms=689 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=640 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=640 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=640 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=689 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=750 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=810 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=810 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=810 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=823 endms=989 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=850 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1000 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1000 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1000 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=1007 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1029 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1090 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1090 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1090 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=1169 endms=1335 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=1200 endms=2010 payload="[선스]" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=1200 endms=2010 payload="[선이]" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1200 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1299 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Wind_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=1299 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=1321 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1352 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1412 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1412 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1412 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=1467 endms=1633 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1500 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=1529 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1550 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1550 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1550 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1630 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=1631 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_FX000_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SOUND startms=1676 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_3" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1690 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1690 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1690 payload="FX_PC_SWP_00.Par_J_SWP_Jump_00_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" HIT startms=1812 endms=1978 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1830 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1830 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1830 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1850 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1857 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=2000 endms=3233 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=2350 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1" src=orig

@@ -1,0 +1,19 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-ts-charge-wp-01-04-1" name="par_m_swp_ts_charge_wp_01_04-1" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=27102 name="glow" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.2 loops=1
+  MODULE id=27103 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_002.dds" mesh="" mat="fx_m_mi_01.fx_mi.fx_e_pa_gl_02_4_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=27104 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.5,1:0 g=0:1,1:0 b=0:5,1:0 a=0:1,1:0
+
+EMITTER id=27105 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0.03 duration=0.3 loops=1
+  MODULE id=27106 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=27107 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:15,1:15 g=0:10,1:10 b=0:100,1:100 a=0:3,0.333333:9,0.666667:3,1:9
+  MODULE id=27108 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=SPHERE radius=0.1 inner=0 height=0 surface=0
+  MODULE id=27109 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=26.6667 start=0 end=7 loop=1 reltime=1
+
+EMITTER id=27110 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=27111 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=27112 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=8,8,8
+
+EMITTER id=27113 name="emitter_3" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=27114 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

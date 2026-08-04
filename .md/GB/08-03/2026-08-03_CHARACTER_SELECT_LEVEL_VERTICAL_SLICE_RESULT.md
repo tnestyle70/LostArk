@@ -253,7 +253,7 @@ Character Select Level, ImGui, class preview, Lobby 복귀, 실제 Server 승인
 Lobby -> Character Select
 -> Loader가 LV_LOBBY_CLASSSELECT_SL00 map과 다섯 class prototype stage
 -> Level이 같은 scope의 803-placement map을 commit
--> Lance Master / Gunslinger / Slayer / Artist / Dimensionist preview
+-> Lance Master / Gunslinger / Slayer / Artist / DimensionMaster preview
 -> Enter가 선택 class와 tokenized TEST command를 commit
 -> Lobby load/activation
 -> Lobby가 command를 한 번 소비
@@ -275,7 +275,7 @@ map 조명은 재진입 때 직접 추가하지 않고 `CMapPlacementRuntime::En
 | Slayer | 45050 | 45060 |
 | Artist | 31210 | 31230 |
 
-Dimensionist는 선택, profile, network spawn, HUD class identity, IDLE/RUN과 Animation Tool 경로까지다. reference 문서가 0-row라서 Q/W를 임의로 만들지 않았다.
+DimensionMaster는 선택, profile, network spawn, HUD class identity, IDLE/RUN과 Animation Tool 경로까지다. reference 문서가 0-row라서 Q/W를 임의로 만들지 않았다.
 
 현재 변경 기준 자동 검증:
 
@@ -285,7 +285,7 @@ Dimensionist는 선택, profile, network spawn, HUD class identity, IDLE/RUN과 
 - Debug/Release NetworkProtocolHarness `failures : 0`
 - Debug/Release ClientFrontendHarness `failures : 0`
 - Debug/Release `Server.exe --contract-test` `failures : 0`
-- ProjectAudit의 신규 Character Select, five-class, Dimensionist, Q/W, effect admission check 통과
+- ProjectAudit의 신규 Character Select, five-class, DimensionMaster, Q/W, effect admission check 통과
 - Debug/Release ProjectAudit 각 64개 중 63개 통과. 실패는 `asset-lock.inventory` 한 건: lock `.3` 7,922 files, 현재 Resources 10,158 files
 - Debug local smoke: Server `127.0.0.1:7777` listener와 Client가 20초 동안 생존·응답함을 확인하고 시작한 PID만 종료
 
@@ -294,7 +294,7 @@ Dimensionist는 선택, profile, network spawn, HUD class identity, IDLE/RUN과 
 - 실제 화면에서 Character Select 803-placement map 표시
 - 다섯 preview 교체와 Enter 후 Test 진입
 - 각 class의 Character/HUD/이동, 기존 네 class Q/W
-- Dimensionist Animation Tool 154 clip 재생과 Effect Tool candidate open
+- DimensionMaster Animation Tool 154 clip 재생과 Effect Tool candidate open
 - 새 immutable pack의 Snapshot -> Verify -> Publish -> Hydrate
 
 따라서 코드·Debug/Release 자동 계약은 연결됐지만, 화면 조작 smoke와 팀 배포 pack까지 완료했다고 주장하지 않는다.

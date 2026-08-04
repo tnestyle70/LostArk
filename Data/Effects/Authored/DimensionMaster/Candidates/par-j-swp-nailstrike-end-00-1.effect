@@ -1,0 +1,17 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-nailstrike-end-00-1" name="par_j_swp_nailstrike_end_00_1" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=1019 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=1020 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=1021 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:0.5 g=0:1,1:0.5 b=0:1,1:0.5 a=0:1,1:0
+
+EMITTER id=1022 name="emitter_1" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=1023 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_03_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=1024 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:90,1:90 g=0:70,1:70 b=0:30,1:30 a=0:1,1:1
+  MODULE id=1025 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=SPHERE radius=0.06 inner=0 height=0 surface=0
+
+EMITTER id=1026 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=1027 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=1028 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.6,1:0.6 g=0:0.6,1:0.6 b=0:0.6,1:0.6 a=0:1,1:1
+  MODULE id=1029 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0.005,0.005,0.005 min=0.005,0.005,0.005 max=0.6,0.6,0.6
+  MODULE id=1030 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=SPHERE radius=0.05 inner=0 height=0 surface=0

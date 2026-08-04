@@ -1,0 +1,9 @@
+LOSTARK_EFFECT 5
+ASSET id="par-r-swp-momentaryrift-05-02-2" name="par_r_swp_momentaryrift_05_02-2" provenance=DERIVED_CONVERSION duration=0.25 warmup=0
+
+EMITTER id=11315 name="m" type=MESH enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.25 loops=1
+  MODULE id=11316 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/DimensionMaster/Meshes/fm_r_swp_spear_00_sm.wmodel" mat="fx_m_mi_00.fx_mi.fx_d_me_master_01_118_fs_dt_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=11317 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.1,1:0.1 y=0:1,1:1 z=0:1,1:1 w=0:3,1:3
+  MODULE id=11318 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:8,0.333333:10,0.666667:8,1:10 g=0:8,0.333333:10,0.666667:8,1:10 b=0:8,0.333333:10,0.666667:8,1:10 a=0:1,1:1
+  MODULE id=11319 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:1,0.0833333:1,0.166667:1,0.25:1,0.333333:1,0.416667:1,0.5:1,0.583333:1,0.666667:1,0.75:1,0.833333:1,0.916667:0.625,1:0
+  MODULE id=11320 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.75,0.75,0.75

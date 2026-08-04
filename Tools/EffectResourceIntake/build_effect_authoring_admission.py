@@ -66,7 +66,7 @@ def main() -> int:
     result = {
         "schema": "lostark.effect-authoring-admission",
         "formatVersion": 1,
-        "classId": "dimensionist",
+        "classId": "dimensionmaster",
         "status": "candidate_only" if blockers else "admitted",
         "sourcePackages": [f"FX_PC_SWP_{index:02d}" for index in range(6)],
         "resourceRoot": args.resource_root,

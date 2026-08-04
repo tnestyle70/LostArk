@@ -106,8 +106,8 @@ namespace
 			return TEXT("Slayer");
 		case CHARACTER_CLASS_ID::ARTIST:
 			return TEXT("Artist");
-		case CHARACTER_CLASS_ID::DIMENSIONIST:
-			return TEXT("Dimensionist");
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
+			return TEXT("DimensionMaster");
 		default:
 			return TEXT("Unknown");
 		}
@@ -709,14 +709,14 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 	}
 	using LostArk::Shared::CHARACTER_CLASS_ID;
 	if (!CPlayableCharacterAssetService::Is_Ready(
-			iLevelIndex, CHARACTER_CLASS_ID::DIMENSIONIST))
+			iLevelIndex, CHARACTER_CLASS_ID::DIMENSIONMASTER))
 	{
-		Set_Status(TEXT("Animation preview: Dimensionist character"));
+		Set_Status(TEXT("Animation preview: DimensionMaster character"));
 		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
 			m_pDevice,
 			m_pContext,
 			iLevelIndex,
-			CHARACTER_CLASS_ID::DIMENSIONIST,
+			CHARACTER_CLASS_ID::DIMENSIONMASTER,
 			&m_isCancellationRequested)))
 		{
 			return E_FAIL;
@@ -724,18 +724,18 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 	}
 
 	// Core and summon use the same ActorX Blender unit contract as the playable
-	// Dimensionist body, not the older UModel character-pack scale.
+	// DimensionMaster body, not the older UModel character-pack scale.
 	const matrix_t previewTransform =
 		XMMatrixScaling(0.01f, 0.01f, 0.01f) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
 	for (const ANIMATION_PREVIEW_ASSET& asset :
 		ANIMATION_PREVIEW_ASSETS)
 	{
-		// The main body is the playable Dimensionist prototype admitted above.
+		// The main body is the playable DimensionMaster prototype admitted above.
 		// Loading it again under a debug-only tag doubled a 154-clip decode.
 		if (0 == wcscmp(
 			asset.pPrototypeTag,
-			TEXT("Prototype_Component_Model_Dimensionist")))
+			TEXT("Prototype_Component_Model_DimensionMaster")))
 		{
 			continue;
 		}

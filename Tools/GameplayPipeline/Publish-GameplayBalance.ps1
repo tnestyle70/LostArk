@@ -68,7 +68,7 @@ $supportedPlayerClasses = @(
 	'GUNSLINGER',
 	'SLAYER',
 	'ARTIST',
-	'DIMENSIONIST'
+	'DIMENSIONMASTER'
 )
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @('characterClass','maximumHp','maximumResource','moveSpeed') 'player profile'

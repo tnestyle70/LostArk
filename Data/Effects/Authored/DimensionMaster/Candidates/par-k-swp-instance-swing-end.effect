@@ -1,0 +1,21 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-instance-swing-end" name="par_k_swp_instance_swing_end" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=33927 name="emitter_0" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33928 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_016.dds" mesh="Effect/DimensionMaster/Meshes/fm_h_swing_03.wmodel" mat="fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0.3 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=33929 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.03,0.01,0.1,1 min=0.03,0.01,0.1,1 max=0.03,0.01,0.1,1
+
+EMITTER id=33930 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33931 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_trail_002.dds" mesh="" mat="fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=1.5
+
+EMITTER id=33932 name="emitter_2" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33933 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_012.dds" mesh="Effect/DimensionMaster/Meshes/fm_h_swing_08.wmodel" mat="fx_m_mi_k_00.fx_mi.fx_k_me_spritewave_01_13_tr" align=RECTANGLE opacitytex="" dissolvetex="Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_012.dds" distortiontex="" uvtiling=2,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=5,3,10,1 softdistance=0 distortionstrength=0
+  MODULE id=33934 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:2 g=0:1,1:2 b=0:1,1:3 a=0:1,1:1
+  MODULE id=33935 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:-2.9935,0.0526316:-2.18729,0.105263:-1.53408,0.157895:-1.01116,0.210526:-0.59585,0.263158:-0.265453,0.315789:0.002719,0.368421:0.227745,0.421053:0.392359,0.473684:0.502435,0.526316:0.573373,0.578947:0.620572,0.631579:0.659429,0.684211:0.705343,0.736842:0.773714,0.789474:0.879939,0.842105:1.03942,0.894737:1.26755,0.947368:1.57973,1:1.99135 y=0:1.05248,0.0526316:1.06158,0.105263:1.07617,0.157895:1.09557,0.210526:1.1191,0.263158:1.14607,0.315789:1.17579,0.368421:1.20757,0.421053:1.24073,0.473684:1.27458,0.526316:1.30844,0.578947:1.34161,0.631579:1.37342,0.684211:1.40316,0.736842:1.43017,0.789474:1.45374,0.842105:1.4732,0.894737:1.48785,0.947368:1.49701,1:1.5 z=0:2,1:2 w=0:0,1:1
+
+EMITTER id=33936 name="enber_start" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=33937 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=33938 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=16 start=0 end=7 loop=1 reltime=1
+
+EMITTER id=33939 name="emitter_4" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.1 duration=0.2 loops=1
+  MODULE id=33940 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" mesh="Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" uvtiling=1,1 uvoffset=0.5,0.5 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

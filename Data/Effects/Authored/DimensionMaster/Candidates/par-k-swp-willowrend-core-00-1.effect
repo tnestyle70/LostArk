@@ -1,0 +1,9 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-willowrend-core-00-1" name="par_k_swp_willowrend_core_00_1" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=35209 name="lightning1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=35210 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_electric_008.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr" align=RECTANGLE opacitytex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_electric_008.dds" dissolvetex="" distortiontex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=15 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=35211 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=35212 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_movedissolve_01_01_tr" align=VELOCITY opacitytex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds" dissolvetex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_07.dds" distortiontex="" uvtiling=2,1 uvoffset=0,0.01 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=1,1,1,1 softdistance=0 distortionstrength=0
+  MODULE id=35213 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1.4,1.1,0.8,0.2 min=1.4,1.1,0.8,0.2 max=1.4,1.1,0.8,0.2

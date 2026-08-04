@@ -125,7 +125,7 @@ CClientReplication::Apply_WorldSnapshot
 
 Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결과를 소유한다. damage, cooldown, resource, hit 여부, 위치 정답은 수정하지 않는다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다.
 
-현재 roster는 Lance Master, Gunslinger, Slayer, Artist, Dimensionist 다섯 class다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 승인과 presentation mapping을 사용한다. Dimensionist는 combined body, L/S/P/E 네 정적 기본 무기 파츠, spawn, HUD class identity, IDLE/RUN과 Animation Tool Scene Character 경로까지 닫혔다. `Data/Animation/Reference/Dimensionist`의 네 문서는 0-row 컨테이너이므로 실제 스킬 추출 데이터가 아니며, stable skill ID와 timing이 생기기 전에는 Q/W와 candidate-only effect를 연결하지 않는다.
+현재 roster는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 class다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 승인과 presentation mapping을 사용한다. DimensionMaster는 combined body, L/S/P/E 네 정적 기본 무기 파츠, spawn, HUD class identity, IDLE/RUN과 Animation Tool Scene Character 경로까지 닫혔다. `Data/Animation/Reference/DimensionMaster`의 네 문서는 0-row 컨테이너이므로 실제 스킬 추출 데이터가 아니며, stable skill ID와 timing이 생기기 전에는 Q/W와 candidate-only effect를 연결하지 않는다.
 
 ## 6. UI와 밸런스 데이터
 
@@ -370,11 +370,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist/Dimensionist 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. Dimensionist는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하는 로컬 payload이며 pack `.3` Hydrate 대상은 아니다.
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하는 로컬 payload이며 pack `.3` Hydrate 대상은 아니다.
 
 별도 수직 슬라이스:
 
-- Dimensionist 고유 skill/action/damage balance와 animation mapping
+- DimensionMaster 고유 skill/action/damage balance와 animation mapping
 - `Data/UI` layout에서 `CUIObject` image widget을 생성하는 runtime factory
 - 1280×720 reference 좌표 보정, draw-order 기반 2D UI picking과 input arbitration
 - stable UI command binding과 Lobby/Scene/Gameplay typed command service 연결
