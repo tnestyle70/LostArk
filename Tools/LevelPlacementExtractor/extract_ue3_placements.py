@@ -26,6 +26,14 @@ from typing import Any, Iterable
 PACKAGE_FILE_TAG = 0x9E2A83C1
 LOSTARK_KR_AES_KEY = "V1ZEG1PL34V77SQW39A9I4VUW34T6L15"
 ROTATOR_UNITS_PER_TURN = 65536.0
+PLACEMENT_ACTOR_CLASSES = frozenset(
+    (
+        "staticmeshactor",
+        "interpactor",
+        "staticmeshcollectionactor",
+        "efmotionstaticmeshactor",
+    )
+)
 
 
 class ExtractionError(RuntimeError):
@@ -577,6 +585,23 @@ def package_ref_path(
     return ".".join(reversed(pieces))
 
 
+def resolve_component_actor(
+    component: ExportEntry,
+    imports: list[ImportEntry],
+    exports: list[ExportEntry],
+) -> ExportEntry | None:
+    if component.package_index <= 0:
+        return None
+    outer_index = component.package_index - 1
+    if not 0 <= outer_index < len(exports):
+        return None
+    candidate = exports[outer_index]
+    candidate_class = package_ref_name(
+        candidate.class_index, imports, exports
+    ).casefold()
+    return candidate if candidate_class in PLACEMENT_ACTOR_CLASSES else None
+
+
 def decode_property_value(
     property_type: str,
     struct_type: str | None,
@@ -763,12 +788,7 @@ def extract_package(
 
     properties_by_export: dict[int, dict[str, Any]] = {}
     property_errors: list[dict[str, Any]] = []
-    relevant_classes = {
-        "staticmeshactor",
-        "interpactor",
-        "staticmeshcomponent",
-        "staticmeshcollectionactor",
-    }
+    relevant_classes = set(PLACEMENT_ACTOR_CLASSES) | {"staticmeshcomponent"}
 
     for entry in exports:
         class_name = package_ref_name(entry.class_index, imports, exports).casefold()
@@ -789,6 +809,7 @@ def extract_package(
             )
 
     placements: list[dict[str, Any]] = []
+    unresolved_placements: list[dict[str, Any]] = []
     for component in exports:
         class_name = package_ref_name(component.class_index, imports, exports).casefold()
         if class_name != "staticmeshcomponent":
@@ -800,22 +821,56 @@ def extract_package(
         if not isinstance(static_mesh_ref, int) or static_mesh_ref == 0:
             continue
 
-        actor: ExportEntry | None = None
-        if component.package_index > 0:
-            outer_index = component.package_index - 1
-            if 0 <= outer_index < len(exports):
-                candidate = exports[outer_index]
-                candidate_class = package_ref_name(
-                    candidate.class_index, imports, exports
-                ).casefold()
-                if candidate_class in (
-                    "staticmeshactor",
-                    "interpactor",
-                    "staticmeshcollectionactor",
-                ):
-                    actor = candidate
+        actor = resolve_component_actor(component, imports, exports)
+        if actor is None or actor.index not in properties_by_export:
+            outer: ExportEntry | None = None
+            if component.package_index > 0:
+                outer_index = component.package_index - 1
+                if 0 <= outer_index < len(exports):
+                    outer = exports[outer_index]
+            unresolved_placements.append(
+                {
+                    "placementId": f"{logical_name}:export:{component.index}",
+                    "levelPackage": logical_name,
+                    "reason": (
+                        "unsupported-component-owner"
+                        if actor is None
+                        else "actor-properties-unavailable"
+                    ),
+                    "component": {
+                        "exportIndex": component.index,
+                        "objectName": component.object_name,
+                        "outerReference": component.package_index,
+                        "archetypePath": package_ref_path(
+                            component.archetype_index, imports, exports
+                        ),
+                    },
+                    "owner": {
+                        "exportIndex": outer.index if outer else None,
+                        "objectName": outer.object_name if outer else None,
+                        "class": (
+                            package_ref_name(outer.class_index, imports, exports)
+                            if outer
+                            else None
+                        ),
+                        "objectPath": package_ref_path(
+                            component.package_index, imports, exports
+                        ),
+                    },
+                    "asset": {
+                        "packageIndex": static_mesh_ref,
+                        "objectName": package_ref_name(
+                            static_mesh_ref, imports, exports
+                        ),
+                        "objectPath": package_ref_path(
+                            static_mesh_ref, imports, exports
+                        ),
+                    },
+                }
+            )
+            continue
 
-        actor_properties = properties_by_export.get(actor.index, {}) if actor else {}
+        actor_properties = properties_by_export[actor.index]
         actor_location = vector(
             property_value(actor_properties, "Location", None), (0.0, 0.0, 0.0)
         )
@@ -909,9 +964,11 @@ def extract_package(
                 {item["asset"]["objectPath"] for item in placements}
             ),
             "propertyErrorCount": len(property_errors),
+            "unresolvedPlacementCount": len(unresolved_placements),
         },
         "placements": placements,
         "propertyErrors": property_errors,
+        "unresolvedPlacements": unresolved_placements,
     }
 
 
@@ -971,6 +1028,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     all_asset_paths: set[str] = set()
     total_placements = 0
     total_property_errors = 0
+    total_unresolved_placements = 0
     for logical_name in args.packages:
         physical_path = resolve_physical_package(
             args.umodel, args.package_root, logical_name, args.region
@@ -982,6 +1040,9 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         total_placements += result["summary"]["placementCount"]
         total_property_errors += result["summary"]["propertyErrorCount"]
+        total_unresolved_placements += result["summary"][
+            "unresolvedPlacementCount"
+        ]
         all_asset_paths.update(
             item["asset"]["objectPath"] for item in result["placements"]
         )
@@ -1001,6 +1062,9 @@ def main(argv: Iterable[str] | None = None) -> int:
                     "placements": result["summary"]["placementCount"],
                     "uniqueStaticMeshes": result["summary"]["uniqueStaticMeshCount"],
                     "propertyErrors": result["summary"]["propertyErrorCount"],
+                    "unresolvedPlacements": result["summary"][
+                        "unresolvedPlacementCount"
+                    ],
                     "output": str(output_path),
                 },
                 ensure_ascii=False,
@@ -1016,6 +1080,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             "placementCount": total_placements,
             "uniqueStaticMeshCount": len(all_asset_paths),
             "propertyErrorCount": total_property_errors,
+            "unresolvedPlacementCount": total_unresolved_placements,
         },
     }
     manifest_path = args.output / "placement_manifest.json"
@@ -1023,7 +1088,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(json.dumps({"manifest": str(manifest_path), **manifest["summary"]}, ensure_ascii=False))
-    return 0
+    return 1 if total_property_errors or total_unresolved_placements else 0
 
 
 if __name__ == "__main__":

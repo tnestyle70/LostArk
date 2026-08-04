@@ -7,8 +7,14 @@
   "staticPlacementCount": 32324,
   "landscapePlacementCount": 42,
   "placementCount": 50017,
-  "anyNegativeScaleCount": 7983,
-  "reflectedScaleCount": 7979,
+  "anyNegativeScaleCount": 7990,
+  "reflectedScaleCount": 7986,
+  "defaultHiddenLevels": [
+    "LV_BER_BERNCASTLE_T_EVENT01",
+    "LV_BER_BERNCASTLE_T_SCENE03E"
+  ],
+  "defaultHiddenPlacementCount": 1178,
+  "hiddenPlacementCount": 1786,
   "maxPhysicalCatalogAssets": 422,
   "physicalCatalogLimit": 512,
   "levelCounts": {
@@ -36,8 +42,10 @@
       "placementFile": "LV_BER_BERNCASTLE_BASE.mapplacements",
       "assetCount": 94,
       "placementCount": 16077,
-      "anyNegativeScaleCount": 247,
-      "reflectedScaleCount": 247
+      "anyNegativeScaleCount": 253,
+      "reflectedScaleCount": 253,
+      "hiddenPlacementCount": 1502,
+      "defaultHiddenPlacementCount": 1178
     },
     {
       "shardId": "LANDSCAPE",
@@ -46,7 +54,9 @@
       "assetCount": 42,
       "placementCount": 42,
       "anyNegativeScaleCount": 0,
-      "reflectedScaleCount": 0
+      "reflectedScaleCount": 0,
+      "hiddenPlacementCount": 0,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL00",
@@ -55,7 +65,9 @@
       "assetCount": 222,
       "placementCount": 3776,
       "anyNegativeScaleCount": 591,
-      "reflectedScaleCount": 591
+      "reflectedScaleCount": 591,
+      "hiddenPlacementCount": 4,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL01",
@@ -64,7 +76,9 @@
       "assetCount": 422,
       "placementCount": 3809,
       "anyNegativeScaleCount": 917,
-      "reflectedScaleCount": 917
+      "reflectedScaleCount": 917,
+      "hiddenPlacementCount": 3,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL02",
@@ -73,7 +87,9 @@
       "assetCount": 300,
       "placementCount": 4574,
       "anyNegativeScaleCount": 1132,
-      "reflectedScaleCount": 1129
+      "reflectedScaleCount": 1129,
+      "hiddenPlacementCount": 2,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL03",
@@ -82,7 +98,9 @@
       "assetCount": 273,
       "placementCount": 3439,
       "anyNegativeScaleCount": 1146,
-      "reflectedScaleCount": 1146
+      "reflectedScaleCount": 1146,
+      "hiddenPlacementCount": 7,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL04",
@@ -91,7 +109,9 @@
       "assetCount": 368,
       "placementCount": 4068,
       "anyNegativeScaleCount": 810,
-      "reflectedScaleCount": 809
+      "reflectedScaleCount": 809,
+      "hiddenPlacementCount": 9,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL05",
@@ -100,7 +120,9 @@
       "assetCount": 124,
       "placementCount": 1057,
       "anyNegativeScaleCount": 336,
-      "reflectedScaleCount": 336
+      "reflectedScaleCount": 336,
+      "hiddenPlacementCount": 6,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL06",
@@ -108,8 +130,10 @@
       "placementFile": "LV_BER_BERNCASTLE_SL06.mapplacements",
       "assetCount": 301,
       "placementCount": 3902,
-      "anyNegativeScaleCount": 797,
-      "reflectedScaleCount": 797
+      "anyNegativeScaleCount": 798,
+      "reflectedScaleCount": 798,
+      "hiddenPlacementCount": 11,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL07",
@@ -118,7 +142,9 @@
       "assetCount": 291,
       "placementCount": 2150,
       "anyNegativeScaleCount": 616,
-      "reflectedScaleCount": 616
+      "reflectedScaleCount": 616,
+      "hiddenPlacementCount": 6,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL08",
@@ -127,7 +153,9 @@
       "assetCount": 251,
       "placementCount": 3175,
       "anyNegativeScaleCount": 474,
-      "reflectedScaleCount": 474
+      "reflectedScaleCount": 474,
+      "hiddenPlacementCount": 233,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL09",
@@ -136,7 +164,9 @@
       "assetCount": 317,
       "placementCount": 3764,
       "anyNegativeScaleCount": 900,
-      "reflectedScaleCount": 900
+      "reflectedScaleCount": 900,
+      "hiddenPlacementCount": 2,
+      "defaultHiddenPlacementCount": 0
     },
     {
       "shardId": "SL10",
@@ -145,7 +175,9 @@
       "assetCount": 16,
       "placementCount": 184,
       "anyNegativeScaleCount": 17,
-      "reflectedScaleCount": 17
+      "reflectedScaleCount": 17,
+      "hiddenPlacementCount": 1,
+      "defaultHiddenPlacementCount": 0
     }
   ],
   "inputs": {
@@ -181,7 +213,7 @@
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL02.placements.json",
         "path": "C:/LostArkExtract/bern/placements/LV_BER_BERNCASTLE_T_SL02.placements.json",
-        "sha256": "B48CB3ACF2C76D33013A3D006DAE4852C87A1AEF9AF13D9F141CFE1D8029AF4C"
+        "sha256": "2186BBB495502716F5D43D8E94A1B57F2125F040CCDDB06AD1E2FF3A32083AFD"
       },
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL03.placements.json",
@@ -191,17 +223,17 @@
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL04.placements.json",
         "path": "C:/LostArkExtract/bern/placements/LV_BER_BERNCASTLE_T_SL04.placements.json",
-        "sha256": "C12568BE963191BD7BD3C8CF7AB5E88E71D5997344DB993562BBE4B658C8C564"
+        "sha256": "9EB53BC457A5ADE0870722987E24B5AD7A165F1D344D891A1B291A86468B7906"
       },
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL05.placements.json",
         "path": "C:/LostArkExtract/bern/placements/LV_BER_BERNCASTLE_T_SL05.placements.json",
-        "sha256": "D046AE9B069114FDDC037BEDF62AA1B1B154242002A621957057EBCBC67BA96C"
+        "sha256": "D28CD65ED639C63B69978ED49672147DF83D1D9DF68B3D8D932939F5F7489531"
       },
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL06.placements.json",
         "path": "C:/LostArkExtract/bern/placements/LV_BER_BERNCASTLE_T_SL06.placements.json",
-        "sha256": "D39B944CCB1AA5D699ED22574125922700DB7F9A72BFCF8A7922F93F92E6E521"
+        "sha256": "F79DEB6F2D2E980E8EF39923E3A3E75BA7B11B0BCAB38D1197C83D1FBE2D5DEE"
       },
       {
         "key": "0/LV_BER_BERNCASTLE_T_SL07.placements.json",
@@ -241,7 +273,7 @@
       {
         "key": "1/LV_BER_BERNCASTLE_T_EVENT01.placements.json",
         "path": "C:/LostArkExtract/bern/placements_rest/LV_BER_BERNCASTLE_T_EVENT01.placements.json",
-        "sha256": "181DEFC7F6AA6477405C7E29EB160891F44D53A2BE96E02C1EAD235608E9B438"
+        "sha256": "DBAAF1880C2AE1BAFFC8A5CA982508D55A89E625361CC5187B9042891CC5F885"
       },
       {
         "key": "1/LV_BER_BERNCASTLE_T_LAND01.placements.json",
@@ -285,11 +317,11 @@
       }
     ],
     "landscapeCatalog": {
-      "path": "C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE_LANDSCAPE.mapassets",
+      "path": "Data/Maps/Imported/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE_LANDSCAPE.mapassets",
       "sha256": "8E52669FCF870D383A82ACFEA0CCE525136872D6DA7F0431A530451BCAEF493A"
     },
     "landscapePlacements": {
-      "path": "C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE_LANDSCAPE.mapplacements",
+      "path": "Data/Maps/Imported/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE_LANDSCAPE.mapplacements",
       "sha256": "D37D4BB0BFB7D3B5A5C36F60EB4E4CC20FBC76316DD52CCA37E322E9C59703BE"
     },
     "overlayManifest": {
@@ -300,7 +332,7 @@
   },
   "outputs": {
     "LV_BER_BERNCASTLE_BASE.mapassets": "87BA08D713631AB48FAF36C96B139CF055F11E70624F72F7C287EE0CA4F47C01",
-    "LV_BER_BERNCASTLE_BASE.mapplacements": "59E9B5D4C5D2587E7D597E4DECF0EC499FD5051163F33D8C1618F9138A155661",
+    "LV_BER_BERNCASTLE_BASE.mapplacements": "65D4D7EA5DA6A7351F1B109A4C42ECDFFD3A72CFDE1B1A50C0C575B472F4001D",
     "LV_BER_BERNCASTLE_LANDSCAPE.mapassets": "8E52669FCF870D383A82ACFEA0CCE525136872D6DA7F0431A530451BCAEF493A",
     "LV_BER_BERNCASTLE_LANDSCAPE.mapplacements": "D37D4BB0BFB7D3B5A5C36F60EB4E4CC20FBC76316DD52CCA37E322E9C59703BE",
     "LV_BER_BERNCASTLE_SL00.mapassets": "0FD865F54F8E5C53BE37E42C58110F66D6FF0126C3B7C89AB76BA64EA617D530",
@@ -308,15 +340,15 @@
     "LV_BER_BERNCASTLE_SL01.mapassets": "257E9618BF831E4E066621C7BD8564E7F63F44DB5E207284E728DC0AB9B6181C",
     "LV_BER_BERNCASTLE_SL01.mapplacements": "4147F948B2393A150BEB68083C49E78165A41CBFB80F5F62C6ADEFE41928EF81",
     "LV_BER_BERNCASTLE_SL02.mapassets": "A411D51BA687CB8FEBCF08AA267F580E51C759EBEDC03516250CB6D15716A87A",
-    "LV_BER_BERNCASTLE_SL02.mapplacements": "0D26B41F531A1972D2F3C77F8F421976AEA6160BC96515DC79940C3A163BE1FF",
+    "LV_BER_BERNCASTLE_SL02.mapplacements": "DE4402F1068D24D8DC05741C5D1732A6D781656E723C636B3FBA51A6D0F0E4FB",
     "LV_BER_BERNCASTLE_SL03.mapassets": "91E1326ED8C9E3016CC3179A701F626205CA76701039574C190464E71510265B",
     "LV_BER_BERNCASTLE_SL03.mapplacements": "B1A9B4A87ACC41238AB783275F6FAFD5B09F0612D687AECCE8DB717B7E6AEEC7",
     "LV_BER_BERNCASTLE_SL04.mapassets": "36DCFB1260D37B992B366F491A15668562D5FF45558542CB0F33FA31021BB45D",
-    "LV_BER_BERNCASTLE_SL04.mapplacements": "4E35CBC6C71E591055E385CEEE25639C9E5DC5F777EDE2A6ED2EC1EA4C8F3E14",
+    "LV_BER_BERNCASTLE_SL04.mapplacements": "5C8AD28AAFA5D4B7449BE2D93A463E9B6520127536A97DB63C98ECB0A0AF11C4",
     "LV_BER_BERNCASTLE_SL05.mapassets": "5EF3FDCDC10AC3F030288C2C877F1BF186B6216ED315C91B914EA4854DEDD1F5",
-    "LV_BER_BERNCASTLE_SL05.mapplacements": "9EDA473973DCC0422DF0C340BCB7869EEC4A25DD851AFC7CAA25D6D5131169BE",
+    "LV_BER_BERNCASTLE_SL05.mapplacements": "19B9264260E1D1581CD0557F71B43F32D72E402B1BCCAD3004859F2A8D4E89EE",
     "LV_BER_BERNCASTLE_SL06.mapassets": "3DD1A7498486C520C382FDFCD61687F5F9918D5B3DAD86A9B89FA2B0C974C617",
-    "LV_BER_BERNCASTLE_SL06.mapplacements": "E351F699CCB3E95AB0DFC4696D333D88EF70A2B6336FA925FEC6D8F136DDF5EC",
+    "LV_BER_BERNCASTLE_SL06.mapplacements": "7194C4690FEA74B4BA6FE6257D2AEF616BB754948E22F6753C9B29C7B1842395",
     "LV_BER_BERNCASTLE_SL07.mapassets": "05DF398001BF6A05B98C2D6C7F90CF5B993FEB8D33E01F59D46F61D9DBC72E92",
     "LV_BER_BERNCASTLE_SL07.mapplacements": "BB567FEFEFE803E0CC26DE978B97C2F2F24043BFC882E6A01FF475C3B89C0125",
     "LV_BER_BERNCASTLE_SL08.mapassets": "75ABD29FE138EA2F92B900A8688EA19CA8476568604BFFD5A42456D5DB108202",
