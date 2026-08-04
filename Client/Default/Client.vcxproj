@@ -32,6 +32,7 @@
     <ClInclude Include="..\Public\ClientReplication.h" />
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
+    <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_Development.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
@@ -105,6 +106,7 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
+    <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_Development.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />

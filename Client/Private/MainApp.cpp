@@ -4,6 +4,7 @@
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "HUDRuntimeView.h"
 #include "ImGuiLayer.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -65,16 +66,40 @@ namespace
 		{
 		case CHARACTER_CLASS_ID::LANCE_MASTER:
 			return "Lance Master";
+		// TODO: display-only relabel until real character assets exist; underlying class/binding is unchanged.
 		case CHARACTER_CLASS_ID::GUNSLINGER:
-			return "Gunslinger";
+			return "War Lord";
 		case CHARACTER_CLASS_ID::SLAYER:
-			return "Slayer";
+			return "Alchemist";
 		case CHARACTER_CLASS_ID::ARTIST:
 			return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONIST:
-			return "Dimensionist";
+			return "Dimension Master";
 		default:
 			return "Unknown";
+		}
+	}
+
+	/* HUD_Layout.json's "ownerClass" strings (no spaces) -- separate from the display name
+	above since the JSON schema/tool already used these exact names. */
+	const string GetHUDOwnerClassName(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER:
+			return "LanceMaster";
+		case CHARACTER_CLASS_ID::GUNSLINGER:
+			return "WarLord";
+		case CHARACTER_CLASS_ID::SLAYER:
+			return "Alchemist";
+		case CHARACTER_CLASS_ID::ARTIST:
+			return "Yinyangshi";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return "DimensionMaster";
+		default:
+			return "";
 		}
 	}
 }
@@ -90,6 +115,10 @@ CMainApp::~CMainApp()
 
 HRESULT CMainApp::Initialize()
 {
+	/* CreateWICTextureFromFile (used by the HUD runtime view for non-DDS art) needs COM on the
+	calling thread. The main thread never initializes it otherwise. */
+	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
 	ENGINE_DESC engineDesc{};
 	engineDesc.hInstance = g_hInst;
 	engineDesc.hWnd = g_hWnd;
@@ -117,11 +146,15 @@ HRESULT CMainApp::Initialize()
 #endif
 
 	if (FAILED(Ready_Fonts()) ||
-		FAILED(Ready_Prototype_For_Static()) ||
-		FAILED(Start_Level(LEVEL::LOBBY)))
+		FAILED(Ready_Prototype_For_Static()))
 	{
 		return E_FAIL;
 	}
+
+	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
+
+	if (FAILED(Start_Level(LEVEL::LOBBY)))
+		return E_FAIL;
 
 	return S_OK;
 }
@@ -319,6 +352,13 @@ void CMainApp::RenderCombatHUD()
 			ImGui::TextDisabled("No server-approved skills for this class");
 	}
 	ImGui::End();
+
+	if (nullptr != m_pHUDRuntimeView)
+	{
+		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
+		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
+		m_pHUDRuntimeView->Render(strOwnerClass, 0);
+	}
 }
 
 HRESULT CMainApp::Ready_Fonts()
