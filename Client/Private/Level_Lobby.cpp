@@ -43,12 +43,13 @@ namespace
 		{
 		case CHARACTER_CLASS_ID::LANCE_MASTER:
 			return "Lance Master";
+		// TODO: display-only relabel until real character assets exist; underlying class/binding is unchanged.
 		case CHARACTER_CLASS_ID::GUNSLINGER:
-			return "Gunslinger";
+			return "War Lord";
 		case CHARACTER_CLASS_ID::SLAYER:
-			return "Slayer";
+			return "Alchemist";
 		case CHARACTER_CLASS_ID::ARTIST:
-			return "Artist";
+			return "Dimension Master";
 		default:
 			return "Not selected";
 		}
