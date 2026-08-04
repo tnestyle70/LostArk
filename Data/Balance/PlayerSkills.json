@@ -8,6 +8,7 @@
       "inputSlot": "Q",
       "displayName": "연환섬",
       "actionId": "lancemaster.skill.34120",
+      "skillKind": "ACTIVE",
       "cooldownMs": 10000,
       "actionDurationMs": 2266,
       "hitTimeMs": 1295,
@@ -15,7 +16,8 @@
       "movementDistance": 0.0,
       "maximumRange": 7.3,
       "serverDamageProfileId": "damage.player.34120",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34080,
@@ -23,6 +25,7 @@
       "inputSlot": "W",
       "displayName": "일섬각",
       "actionId": "lancemaster.skill.34080",
+      "skillKind": "ACTIVE",
       "cooldownMs": 12000,
       "actionDurationMs": 1366,
       "hitTimeMs": 0,
@@ -30,7 +33,8 @@
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.34080",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34070,
@@ -38,6 +42,7 @@
       "inputSlot": "E",
       "displayName": "회선창",
       "actionId": "lancemaster.skill.34070",
+      "skillKind": "ACTIVE",
       "cooldownMs": 14000,
       "actionDurationMs": 2000,
       "hitTimeMs": 300,
@@ -45,7 +50,8 @@
       "movementDistance": 0.0,
       "maximumRange": 9.9,
       "serverDamageProfileId": "damage.player.34070",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34150,
@@ -53,6 +59,7 @@
       "inputSlot": "R",
       "displayName": "맹룡열파",
       "actionId": "lancemaster.skill.34150",
+      "skillKind": "ACTIVE",
       "cooldownMs": 24000,
       "actionDurationMs": 2266,
       "hitTimeMs": 1345,
@@ -60,7 +67,8 @@
       "movementDistance": 0.0,
       "maximumRange": 9.2,
       "serverDamageProfileId": "damage.player.34150",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34110,
@@ -68,6 +76,7 @@
       "inputSlot": "A",
       "displayName": "반월섬",
       "actionId": "lancemaster.skill.34110",
+      "skillKind": "ACTIVE",
       "cooldownMs": 18000,
       "actionDurationMs": 3200,
       "hitTimeMs": 1857,
@@ -75,7 +84,8 @@
       "movementDistance": 0.0,
       "maximumRange": 9.9,
       "serverDamageProfileId": "damage.player.34110",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34090,
@@ -83,6 +93,7 @@
       "inputSlot": "S",
       "displayName": "철량추",
       "actionId": "lancemaster.skill.34090",
+      "skillKind": "ACTIVE",
       "cooldownMs": 10000,
       "actionDurationMs": 2100,
       "hitTimeMs": 1730,
@@ -90,7 +101,8 @@
       "movementDistance": 0.0,
       "maximumRange": 9.2,
       "serverDamageProfileId": "damage.player.34090",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34640,
@@ -98,6 +110,7 @@
       "inputSlot": "T",
       "displayName": "맹룡난무",
       "actionId": "lancemaster.skill.34640",
+      "skillKind": "ACTIVE",
       "cooldownMs": 50000,
       "actionDurationMs": 3166,
       "hitTimeMs": 1730,
@@ -105,7 +118,8 @@
       "movementDistance": 0.0,
       "maximumRange": 10.6,
       "serverDamageProfileId": "damage.player.34640",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34600,
@@ -113,6 +127,7 @@
       "inputSlot": "V",
       "displayName": "은하유성탄",
       "actionId": "lancemaster.skill.34600",
+      "skillKind": "ACTIVE",
       "cooldownMs": 300000,
       "actionDurationMs": 5600,
       "hitTimeMs": 1390,
@@ -120,7 +135,8 @@
       "movementDistance": 0.0,
       "maximumRange": 12.2,
       "serverDamageProfileId": "damage.player.34600",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 34620,
@@ -128,6 +144,7 @@
       "inputSlot": "ALT_V",
       "displayName": "은하비섬창",
       "actionId": "lancemaster.skill.34620",
+      "skillKind": "ACTIVE",
       "cooldownMs": 300000,
       "actionDurationMs": 6300,
       "hitTimeMs": 1930,
@@ -135,7 +152,8 @@
       "movementDistance": 0.0,
       "maximumRange": 18.2,
       "serverDamageProfileId": "damage.player.34620",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 38020,
@@ -143,6 +161,7 @@
       "inputSlot": "Q",
       "displayName": "퀵 스텝",
       "actionId": "gunslinger.skill.38020",
+      "skillKind": "ACTIVE",
       "cooldownMs": 10000,
       "actionDurationMs": 3533,
       "hitTimeMs": 1000,
@@ -150,7 +169,8 @@
       "movementDistance": 0.0,
       "maximumRange": 5.8,
       "serverDamageProfileId": "damage.player.38020",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 38050,
@@ -158,6 +178,7 @@
       "inputSlot": "W",
       "displayName": "심판의 시간",
       "actionId": "gunslinger.skill.38050",
+      "skillKind": "ACTIVE",
       "cooldownMs": 30000,
       "actionDurationMs": 1767,
       "hitTimeMs": 1000,
@@ -165,7 +186,8 @@
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.38050",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 45050,
@@ -173,6 +195,7 @@
       "inputSlot": "Q",
       "displayName": "퓨리 블레이드",
       "actionId": "slayer.skill.45050",
+      "skillKind": "ACTIVE",
       "cooldownMs": 12000,
       "actionDurationMs": 4533,
       "hitTimeMs": 1100,
@@ -180,7 +203,8 @@
       "movementDistance": 0.0,
       "maximumRange": 3.5,
       "serverDamageProfileId": "damage.player.45050",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 45060,
@@ -188,6 +212,7 @@
       "inputSlot": "W",
       "displayName": "와일드 러시",
       "actionId": "slayer.skill.45060",
+      "skillKind": "ACTIVE",
       "cooldownMs": 14000,
       "actionDurationMs": 4600,
       "hitTimeMs": 500,
@@ -195,7 +220,8 @@
       "movementDistance": 0.0,
       "maximumRange": 5.0,
       "serverDamageProfileId": "damage.player.45060",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 31210,
@@ -203,6 +229,7 @@
       "inputSlot": "Q",
       "displayName": "필법 : 콩콩이",
       "actionId": "artist.skill.31210",
+      "skillKind": "ACTIVE",
       "cooldownMs": 16000,
       "actionDurationMs": 5334,
       "hitTimeMs": 1445,
@@ -210,7 +237,8 @@
       "movementDistance": 0.0,
       "maximumRange": 2.5,
       "serverDamageProfileId": "damage.player.31210",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
     },
     {
       "skillId": 31230,
@@ -218,6 +246,7 @@
       "inputSlot": "W",
       "displayName": "묵법 : 옹달샘",
       "actionId": "artist.skill.31230",
+      "skillKind": "ACTIVE",
       "cooldownMs": 24000,
       "actionDurationMs": 1500,
       "hitTimeMs": 1445,
@@ -225,7 +254,30 @@
       "movementDistance": 0.0,
       "maximumRange": 6.5,
       "serverDamageProfileId": "damage.player.31230",
-      "effectId": ""
+      "effectId": "",
+      "comboStages": []
+    },
+    {
+      "skillId": 34010,
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "LMB",
+      "displayName": "긴 창_평타",
+      "actionId": "lancemaster.skill.34010",
+      "skillKind": "COMBO",
+      "cooldownMs": 0,
+      "actionDurationMs": 1633,
+      "hitTimeMs": 470,
+      "resourceCost": 0,
+      "movementDistance": 0.0,
+      "maximumRange": 3.5,
+      "serverDamageProfileId": "damage.player.34010",
+      "effectId": "",
+      "comboStages": [
+        { "actionDurationMs": 1633, "hitTimeMs": 470, "inputOpenMs": 329, "inputCloseMs": 658 },
+        { "actionDurationMs": 1367, "hitTimeMs": 356, "inputOpenMs": 330, "inputCloseMs": 554 },
+        { "actionDurationMs": 1533, "hitTimeMs": 451, "inputOpenMs": 396, "inputCloseMs": 752 },
+        { "actionDurationMs": 1567, "hitTimeMs": 500, "inputOpenMs": 0, "inputCloseMs": 0 }
+      ]
     }
   ]
 }

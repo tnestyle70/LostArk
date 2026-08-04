@@ -120,3 +120,48 @@ Logo, Binary Asset Test Loading Complete를 거쳐 최종 창 제목
 
 현재 runtime `.navgrid`는 의도적으로 교체하지 않았다. 미완성 paint를 강제로 export해
 기존 이동을 망가뜨리지 않기 위한 선택이다.
+
+## 8. 2026-08-04 Valtan authoring 후속 반영
+
+MapTool에서 실제 플레이 구역 전체를 다시 bake하고 runtime publisher까지 닫았다.
+이번 반영은 기존 Navigation 저장 계약을 유지하며, 새로운 런타임 경로를 만들지 않는다.
+
+| 항목 | 결과 |
+|---|---:|
+| grid | `392 x 312` |
+| cell size | `0.5` |
+| 총 셀 | `122,304` |
+| resolved surface | `25,593` |
+| base walkable | `20,771` |
+| no surface | `96,711` |
+| paint blocked cell | `13` |
+| runtime blocker region | `0` |
+| runtime navgrid | `611,540 bytes` |
+
+- `CNavGridBaker::Save_Source`가 기록하는 version 2 header는 18필드이므로
+  `Publish-ServerNavigation.ps1`의 validator도 18필드 계약을 사용하도록 교정했다.
+- 대형 bake에서 `NO_SURFACE` 셀이 실제 표면을 가리지 않도록 MapTool Navigation 패널에
+  `Show empty cells`를 추가했고 기본값은 `false`다.
+- 원거리 backdrop이 전체 bounds 중심을 끌어가는 Valtan Area는 편집 카메라가 실제
+  플레이 구역 `(92, 15, -87)`을 frame하도록 조정했다.
+- `Publish-ServerNavigation.ps1 -Mode Validate`는 Valtan `392 x 312`와 Training
+  `32 x 32`를 모두 통과했다.
+
+같은 MapTool 작업에서 Valtan visual authoring에는 신규 editor placement 77개를 추가했다.
+기존 13,115개 placement의 ID, Transform, visibility는 유지했고 삭제·수정은 0개다.
+
+| asset | 추가 배치 |
+|---|---:|
+| `MAP_4E519A1C660E_BG_OCN_STONE_ROCK04_SM_KSR` | 30 |
+| `MAP_1073714E52D4_BG_FAT_OCASTLE_TILE_FLOOR01B_SM_KSR` | 15 |
+| `MAP_557CAE338ABF_BG_FAT_STONE_ROCK02_SM` | 13 |
+| `MAP_116B1DFFC4F3_BG_FAT_OCASTLE_TILE_FLOOR01C_SM_KSR` | 9 |
+| `MAP_0A63D07B8405_BG_FAT_OCASTLE_TILE_FLOOR02_SM_KSR` | 5 |
+| `MAP_4F06CDC0BB69_BG_FAT_OCASTLE_TILE_FLOOR01_SM_KSR` | 5 |
+
+`Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED` 실행 결과 Authoring과 Client runtime은
+13,192개로 일치한다. MapTool 저장 중 기존 quaternion 106개에 생긴 약 `1e-7` 단위의
+재직렬화 차이는 커밋 전에 제거해 신규 77개 배치만 데이터 변경으로 남겼다.
+
+자동 검증은 완료됐고, Debug Client에서 Valtan 진입 후 신규 바닥·바위 배치와 실제
+이동 경계를 확인하는 수동 smoke는 남아 있다.

@@ -42,6 +42,10 @@ namespace
 	};
 
 	constexpr size_t SlotKeyCount = sizeof(SlotKeys) / sizeof(SlotKeys[0]);
+
+	/* Tighter than the narrowest combo window the balance data declares (224 ms
+	on the second basic-attack stage), so a held button cannot skip one. */
+	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
 }
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
@@ -183,6 +187,45 @@ void Client::CPlayerController::Poll_SkillSlots(
 	releasing Alt while V is still held does not read as a fresh press. */
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 		m_wasKeyDown[SlotKeys[index].byKeyCode] = isDown[index];
+
+	Poll_BasicAttack(pSpec, outSkillId);
+}
+
+void Client::CPlayerController::Poll_BasicAttack(
+	const CHARACTER_SPEC* pSpec,
+	LostArk::Shared::SKILL_ID& outSkillId)
+{
+	const bool_t isDown =
+		!CGameInstance::Get().IsMouseInputBlocked() &&
+		0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80);
+	if (!isDown)
+	{
+		m_wasLeftMouseDown = false;
+		return;
+	}
+
+	const bool_t wasDown = m_wasLeftMouseDown;
+	m_wasLeftMouseDown = true;
+	if (nullptr == pSpec ||
+		LostArk::Shared::INVALID_SKILL_ID != outSkillId)
+	{
+		return;
+	}
+
+	/* The first press goes out immediately; holding repeats on an interval
+	narrower than the tightest combo window in the data (224 ms), so a held
+	button always lands at least one press inside it. */
+	const auto now = std::chrono::steady_clock::now();
+	if (wasDown && now - m_LastBasicAttackSentAt < BASIC_ATTACK_RESEND_INTERVAL)
+		return;
+
+	const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
+		pSpec->eCharacterClass, "LMB");
+	if (nullptr == pSkill)
+		return;
+
+	m_LastBasicAttackSentAt = now;
+	outSkillId = pSkill->iSkillId;
 }
 
 void Client::CPlayerController::Set_CommandSink(

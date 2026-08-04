@@ -54,6 +54,10 @@ namespace LostArk::Server
 		float fSkillAimDirectionX = 0.f;
 		float fSkillAimDirectionZ = 1.f;
 		bool hasAppliedSkillDamage = false;
+		// 1-based while a combo action runs, 0 otherwise.
+		std::uint8_t iComboStage = 0;
+		// Set by a press inside the open window, consumed when the stage ends.
+		bool hasBufferedComboInput = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
 			CooldownEndTickBySkillId;
 	};

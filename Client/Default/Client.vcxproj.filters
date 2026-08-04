@@ -327,6 +327,9 @@
     <ClCompile Include="..\Private\HUDRuntimeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\UI_Sprite.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
@@ -539,6 +542,9 @@
     <ClInclude Include="..\Public\HUDRuntimeView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\UI_Sprite.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\PlayerCommandSink.h">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
@@ -563,6 +569,9 @@
       <Filter>98.Default</Filter>
     </Image>
     <Image Include="small.ico">
+      <Filter>98.Default</Filter>
+    </Image>
+    <Image Include="cursor.cur">
       <Filter>98.Default</Filter>
     </Image>
   </ItemGroup>
@@ -840,6 +849,9 @@
       <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\Loading\LoadingLayout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json">

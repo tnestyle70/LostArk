@@ -8,6 +8,14 @@
 
 namespace LostArk::Server
 {
+	struct PLAYER_COMBO_STAGE final
+	{
+		std::uint32_t iActionDurationMs = 0;
+		std::uint32_t iHitTimeMs = 0;
+		std::uint32_t iInputOpenMs = 0;
+		std::uint32_t iInputCloseMs = 0;
+	};
+
 	struct PLAYER_SKILL_DEFINITION
 	{
 		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -22,6 +30,9 @@ namespace LostArk::Server
 		std::uint32_t iResourceCost = 0;
 		float fMovementDistance = 0.f;
 		float fMaximumRange = 0.f;
+		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
+		std::vector<PLAYER_COMBO_STAGE> ComboStages;
 	};
 
 	struct BOSS_RUNTIME_PROFILE

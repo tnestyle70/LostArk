@@ -72,6 +72,20 @@ namespace
 			});
 	}
 
+	bool ParseSkillKind(
+		const std::string_view value,
+		LostArk::Shared::PLAYER_SKILL_KIND& output)
+	{
+		using LostArk::Shared::PLAYER_SKILL_KIND;
+		if ("ACTIVE" == value)
+			output = PLAYER_SKILL_KIND::ACTIVE;
+		else if ("COMBO" == value)
+			output = PLAYER_SKILL_KIND::COMBO;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseCharacterClass(
 		const std::string_view value,
 		LostArk::Shared::CHARACTER_CLASS_ID& output)
@@ -150,7 +164,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
 			PLAYER_SKILL_DEFINITION skill{};
-			if (12u != fields.size() ||
+			if (13u != fields.size() ||
 				!ParseNumber(fields[1], skill.iSkillId) ||
 				LostArk::Shared::INVALID_SKILL_ID == skill.iSkillId ||
 				!ParseCharacterClass(fields[2], skill.eCharacterClass) ||
@@ -162,7 +176,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[9], skill.fMovementDistance) ||
 				!ParseNumber(fields[10], skill.fMaximumRange) ||
 				!IsStableId(fields[11]) ||
-				0u == skill.iCooldownMs || 0u == skill.iActionDurationMs ||
+				!ParseSkillKind(fields[12], skill.eSkillKind) ||
+				(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == skill.eSkillKind &&
+					0u == skill.iCooldownMs) ||
+				0u == skill.iActionDurationMs ||
 				/* iHitTimeMs may be 0: a skill can land as the cast starts, so only
 					the upper bound below is a real constraint. */
 				skill.iHitTimeMs > skill.iActionDurationMs ||
@@ -182,6 +199,40 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				m_strStatus = "Duplicate player skill ID";
 				return false;
 			}
+		}
+		else if (!fields.empty() && "SKILLSTAGE" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t stageIndex = 0;
+			PLAYER_COMBO_STAGE stage{};
+			if (7u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], stageIndex) ||
+				!ParseNumber(fields[3], stage.iActionDurationMs) ||
+				!ParseNumber(fields[4], stage.iHitTimeMs) ||
+				!ParseNumber(fields[5], stage.iInputOpenMs) ||
+				!ParseNumber(fields[6], stage.iInputCloseMs) ||
+				0u == stage.iActionDurationMs ||
+				stage.iHitTimeMs > stage.iActionDurationMs ||
+				stage.iInputCloseMs > stage.iActionDurationMs)
+			{
+				m_strStatus = "Combo stage row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			// Stages arrive after their skill and in order, so a row that names an
+			// unknown skill or skips an index is a corrupt bootstrap, not a
+			// tolerable gap.
+			if (owner == m_Skills.end() ||
+				LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
+					owner->second.eSkillKind ||
+				stageIndex != owner->second.ComboStages.size())
+			{
+				m_strStatus = "Combo stage does not follow its skill";
+				return false;
+			}
+			owner->second.ComboStages.push_back(stage);
 		}
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{

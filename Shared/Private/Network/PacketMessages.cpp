@@ -65,6 +65,9 @@ namespace
 			0 != snapshot.iMaximumResource &&
 			snapshot.iCurrentResource <= snapshot.iMaximumResource &&
 			Is_Valid_Cooldowns(snapshot.Cooldowns) &&
+			snapshot.iComboStage <= LostArk::Shared::MAX_COMBO_STAGES &&
+			(0 == snapshot.iComboStage ||
+				LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction) &&
 			((LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction &&
 				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
@@ -665,6 +668,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iMaximumHp);
 		writer.Write_U32(player.iCurrentResource);
 		writer.Write_U32(player.iMaximumResource);
+		writer.Write_U8(player.iComboStage);
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
 		{
@@ -744,6 +748,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumHp) ||
 			!reader.Read_U32(player.iCurrentResource) ||
 			!reader.Read_U32(player.iMaximumResource) ||
+			!reader.Read_U8(player.iComboStage) ||
+			player.iComboStage > MAX_COMBO_STAGES ||
 			!reader.Read_U8(cooldownCount) ||
 			cooldownCount > MAX_PLAYER_COOLDOWNS)
         {

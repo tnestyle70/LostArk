@@ -945,15 +945,19 @@ try {
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
 	$dimensionmasterActor = @($characterCatalog.characters | Where-Object networkClassId -eq 'DIMENSIONMASTER')
 	$dimensionmasterAnimationContracts = @(
-		[pscustomobject]@{ Path = 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "DimensionMaster" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "DimensionMaster" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "DimensionMaster" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "DimensionMaster" 0' },
-		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.skilltiming'; Header = 'LOSTARK_SKILL_TIMING 2 "DimensionMaster" 0' })
+		[pscustomobject]@{ Path = 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "DimensionMaster"' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "DimensionMaster"' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "DimensionMaster"' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "DimensionMaster"' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.skilltiming'; Header = 'LOSTARK_SKILL_TIMING 2 "DimensionMaster"' })
 	$invalidDimensionMasterAnimationDocuments = @(
 		foreach ($contract in $dimensionmasterAnimationContracts) {
-			if (-not (Test-Path -LiteralPath $contract.Path -PathType Leaf) -or
-				(Get-Content -LiteralPath $contract.Path -Raw).Trim() -cne $contract.Header) {
+			if (-not (Test-Path -LiteralPath $contract.Path -PathType Leaf)) {
+				$contract.Path
+				continue
+			}
+			if ((Get-Content -LiteralPath $contract.Path -TotalCount 1) -cnotmatch (
+				'^' + [regex]::Escape($contract.Header) + ' \d+$')) {
 				$contract.Path
 			}
 		})
@@ -968,7 +972,7 @@ try {
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel') -and
 		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\DimensionMaster\DimensionMaster_Character.wmodel' -PathType Leaf) -and
-		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and exact 0-row Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
+		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and owner-matched Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
 	$dimensionmasterLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_DimensionMaster.cpp' -Raw
 	Add-Check 'actors.dimensionmaster-four-part-weapon' (

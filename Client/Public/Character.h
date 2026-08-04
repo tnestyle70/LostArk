@@ -80,10 +80,13 @@ public:
 		const float3_t& position,
 		f32_t yawDegrees,
 		bool_t isMoving);
+	/* comboStage is the server's 1-based stage, 0 outside a combo. The client
+	never counts stages itself. */
 	bool_t Apply_NetworkAction(
 		LostArk::Shared::PLAYER_ACTION_STATE action,
 		LostArk::Shared::SKILL_ID skillId,
-		std::uint32_t actionStartTick);
+		std::uint32_t actionStartTick,
+		std::uint8_t comboStage = 0);
 
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
@@ -158,6 +161,9 @@ private:
 	index, so a clip that already ran would resume at its end -- which chains
 	that repeat a clip do hit. */
 	bool_t Start_Clip(const char_t* pClipName);
+	/* Jumps the running chain to the server's stage. Fails when no chain runs or
+	the stage is past its end, so the caller keeps the pose it had. */
+	bool_t Advance_ComboStage(std::uint8_t comboStage);
 	bool_t Is_ClipFinished() const;
 	/* Moves to the next clip once the current one ends, and drops back to idle
 	after the last. */

@@ -7,8 +7,8 @@ texture2D g_DepthTexture;
 
 
 
-/* Á¤Á¡¼ÎÀÌ´õ */ 
-/* Á¤Á¡¿¡´ëÇÑ ÇÊ¼öÀûÀÎ º¯È¯ÀÛ¾÷ */ 
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½ */ 
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ï¿½Û¾ï¿½ */ 
 struct VS_IN
 {
     float3 vPosition : POSITION;
@@ -41,9 +41,9 @@ VS_OUT VS_MAIN(VS_IN In)
     return Out;
 }
 
-/* Åõ¿µº¯È¯ (Z³ª´©±â) */
-/* ºäÆ÷Æ® º¯È¯(À©µµ¿ìÁÂÇ¥·Î º¯È¯) */ 
-/* ·¡½ºÅÍ¶óÀÌÁî(ÇÈ¼¿ÀÇ Á¤º¸¸¦ »ý¼ºÇÑ´Ù.) */ 
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¯ (Zï¿½ï¿½ï¿½ï¿½ï¿½ï¿½) */
+/* ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½È¯(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¥ï¿½ï¿½ ï¿½ï¿½È¯) */ 
+/* ï¿½ï¿½ï¿½ï¿½ï¿½Í¶ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½È¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.) */ 
 
 struct PS_IN
 {
@@ -58,8 +58,8 @@ struct PS_OUT
     float4 vColor : SV_TARGET0;
 };
 
-/* ÇÈ¼¿ ¼ÎÀÌ´õ */ 
-/* Àü´Þ¹ÞÀº ÇÈ¼¿ÀÇ Á¤º¸¸¦ ¹ÙÅÁÀ¸·ÎÇÏ¿© ÇÈ¼¿ÀÇ »öÀ» °áÁ¤ÇÑ´Ù */ 
+/* ï¿½È¼ï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ */ 
+/* ï¿½ï¿½ï¿½Þ¹ï¿½ï¿½ï¿½ ï¿½È¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½È¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½ */ 
 
 PS_OUT PS_MAIN(PS_IN In)
 {
@@ -114,6 +114,18 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SOFTEFFECT();
+    }
+
+    /* Plain alpha-blended textured quad, no depth-based soft fade -- for screen-space UI
+    sprites (CUI_Sprite) that have no depth texture to sample. */
+    pass UIBlend
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
     }
 }
 

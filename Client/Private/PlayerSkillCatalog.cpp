@@ -103,9 +103,10 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* damageId = Required(
 			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* kind = Required(value, "skillKind", DATA_JSON_TYPE::STRING);
 		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
 			nullptr == name || nullptr == action ||
-			nullptr == cooldown || nullptr == damageId)
+			nullptr == cooldown || nullptr == damageId || nullptr == kind)
 		{
 			outStatus = "PlayerSkills.json is missing a required skill field";
 			return false;
@@ -126,9 +127,24 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		}
 		definition.iDamage = damage->second;
 
+		const std::string& kindText = kind->Get_String();
+		if ("ACTIVE" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
+		else if ("COMBO" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
+		else
+		{
+			outStatus = "PlayerSkills.json has an unknown skillKind";
+			return false;
+		}
+
+		/* A combo runs off its stages and carries no cooldown, so only an ACTIVE
+		skill has to declare one. */
 		if (LostArk::Shared::INVALID_SKILL_ID == definition.iSkillId ||
 			LostArk::Shared::CHARACTER_CLASS_ID::END == definition.eCharacterClass ||
-			0u == definition.iCooldownMs || definition.strInputSlot.empty())
+			definition.strInputSlot.empty() ||
+			(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == definition.eSkillKind &&
+				0u == definition.iCooldownMs))
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;

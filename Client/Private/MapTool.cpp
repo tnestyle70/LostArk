@@ -1114,12 +1114,21 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 			maximum.y = (std::max)(maximum.y, entry.record.position.y);
 			maximum.z = (std::max)(maximum.z, entry.record.position.z);
 		}
-		const float3_t center(
+		float3_t center(
 			(minimum.x + maximum.x) * 0.5f,
 			(minimum.y + maximum.y) * 0.5f,
 			(minimum.z + maximum.z) * 0.5f);
-		const f32_t radius = (std::max)(50.f,
+		f32_t radius = (std::max)(50.f,
 			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
+		/* Valtan authoring keeps distant backdrop meshes whose positions reach
+		   X 1026 and Z -1367, so the bounds centre lands about 600 m away from
+		   the playable map. Frame the playable centre instead. Replace this with
+		   a gameplay spawn target once the editor consumes player placements. */
+		if ("LV_LUT_HEARTRB_ED" == descriptor.areaId)
+		{
+			center = float3_t(92.f, 15.f, -87.f);
+			radius = 100.f;
+		}
 		if (const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock())
 			camera->Frame_Area(center, radius);
 	}
@@ -2298,6 +2307,10 @@ void Client::CMapTool::Render_NavigationPanel()
 			static_cast<uint32_t>(brushRadius);
 	}
 
+	ImGui::Checkbox(
+		"Show empty cells",
+		&m_bShowUnresolvedCells);
+
 	ImGui::Separator();
 	if (ImGui::Button("Save Navigation"))
 		Save_Navigation();
@@ -2533,6 +2546,11 @@ void Client::CMapTool::Render_NavigationOverlay()
 	{
 		const NAVGRID_AUTHORING_CELL_STATE state =
 			m_NavigationDocument.Get_CellState(index);
+		if (!m_bShowUnresolvedCells &&
+			NAVGRID_AUTHORING_CELL_STATE::NO_SURFACE == state)
+		{
+			continue;
+		}
 
 		const uint32_t cellX = index % desc.width;
 		const uint32_t cellZ = index / desc.width;

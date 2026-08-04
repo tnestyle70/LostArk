@@ -21,6 +21,23 @@ namespace
 	{
 		return (milliseconds * SERVER_TICK_HZ + 999u) / 1000u;
 	}
+
+	bool IsInsideComboWindow(
+		const LostArk::Server::PLAYER_SKILL_DEFINITION& skill,
+		const LostArk::Server::SERVER_PLAYER& player)
+	{
+		if (0u == player.iComboStage ||
+			player.iComboStage > skill.ComboStages.size())
+		{
+			return false;
+		}
+		const auto& stage = skill.ComboStages[player.iComboStage - 1u];
+		if (0u == stage.iInputCloseMs)
+			return false;
+		const float elapsedMs = player.fActionElapsedSeconds * 1000.f;
+		return elapsedMs >= static_cast<float>(stage.iInputOpenMs) &&
+			elapsedMs <= static_cast<float>(stage.iInputCloseMs);
+	}
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_Start(
@@ -33,9 +50,31 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
 	if (!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
 		nullptr == skill || skill->eCharacterClass != player.eCharacterClass ||
-		PLAYER_ACTION_STATE::NONE != player.eAction || 0u == player.iCurrentHp ||
+		0u == player.iCurrentHp ||
 		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ))
 	{
+		return false;
+	}
+
+	/* A combo is the only reason to accept input while an action runs, and only
+	for the same skill inside the stage's own window. Everything else keeps the
+	original guard, so no skill can be interrupted by another. */
+	if (PLAYER_ACTION_STATE::NONE != player.eAction)
+	{
+		const bool isComboContinuation =
+			PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
+			PLAYER_ACTION_STATE::SKILL == player.eAction &&
+			player.iCurrentSkillId == command.iSkillId &&
+			IsInsideComboWindow(*skill, player);
+		/* Buffering reports false: GameRoom discards the result, and the client
+		only advances its sequence on true, so a buffered press must not look
+		like a fresh approval. A second press in the same window is dropped so
+		one window can never advance two stages. */
+		if (isComboContinuation && !player.hasBufferedComboInput)
+		{
+			player.iLastSkillSequence = command.iClientSequence;
+			player.hasBufferedComboInput = true;
+		}
 		return false;
 	}
 	const auto cooldown = player.CooldownEndTickBySkillId.find(command.iSkillId);
@@ -77,6 +116,9 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.MovePath.clear();
 	player.iMovePathIndex = 0;
 	player.fYawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
+	player.iComboStage =
+		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind ? 1u : 0u;
+	player.hasBufferedComboInput = false;
 	return true;
 }
 
@@ -94,6 +136,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.eAction = PLAYER_ACTION_STATE::DEAD;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
 		player.hasMoveGoal = false;
+		player.iComboStage = 0;
+		player.hasBufferedComboInput = false;
 		return;
 	}
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
@@ -109,11 +153,26 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
 		player.iActionStartTick = 0;
+		player.iComboStage = 0;
+		player.hasBufferedComboInput = false;
 		return;
 	}
 	player.fActionElapsedSeconds += fixedDeltaSeconds;
+	/* A combo's timing lives on the running stage, not on the skill row; the row
+	carries stage one so a non-combo path reads the same as before. */
+	const std::size_t stageIndex =
+		0u == player.iComboStage ? 0u : player.iComboStage - 1u;
+	const bool hasStage =
+		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
+		stageIndex < skill->ComboStages.size();
+	const std::uint32_t durationMs = hasStage ?
+		skill->ComboStages[stageIndex].iActionDurationMs :
+		skill->iActionDurationMs;
+	const std::uint32_t hitMs = hasStage ?
+		skill->ComboStages[stageIndex].iHitTimeMs :
+		skill->iHitTimeMs;
 	const float durationSeconds =
-		static_cast<float>(skill->iActionDurationMs) * MILLISECONDS_TO_SECONDS;
+		static_cast<float>(durationMs) * MILLISECONDS_TO_SECONDS;
 	if (skill->fMovementDistance > 0.f && durationSeconds > 0.f)
 	{
 		const float step = skill->fMovementDistance /
@@ -138,7 +197,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	}
 
 	const float hitSeconds =
-		static_cast<float>(skill->iHitTimeMs) * MILLISECONDS_TO_SECONDS;
+		static_cast<float>(hitMs) * MILLISECONDS_TO_SECONDS;
 	if (!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
@@ -174,12 +233,37 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasAppliedSkillDamage = true;
 	}
 
-	if (player.fActionElapsedSeconds >= durationSeconds)
+	const bool hasNextStage = hasStage &&
+		player.hasBufferedComboInput &&
+		static_cast<std::size_t>(player.iComboStage) <
+			skill->ComboStages.size();
+	/* A buffered press cancels the rest of the clip once the hit has landed,
+	which is what makes a combo read as fast. Every stage's hit time is inside
+	its own input window, so cutting here never drops damage. */
+	const bool cancelsIntoNextStage =
+		hasNextStage && player.hasAppliedSkillDamage;
+
+	if (cancelsIntoNextStage || player.fActionElapsedSeconds >= durationSeconds)
 	{
-		player.eAction = PLAYER_ACTION_STATE::NONE;
-		player.iCurrentSkillId = INVALID_SKILL_ID;
-		player.iActionStartTick = 0;
-		player.fActionElapsedSeconds = 0.f;
-		player.hasAppliedSkillDamage = false;
+		if (hasNextStage)
+		{
+			++player.iComboStage;
+			player.hasBufferedComboInput = false;
+			player.fActionElapsedSeconds = 0.f;
+			player.hasAppliedSkillDamage = false;
+			// The client treats a changed start tick as a new action edge, which
+			// is how it learns to play the next stage's clip.
+			player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+		}
+		else
+		{
+			player.eAction = PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = INVALID_SKILL_ID;
+			player.iActionStartTick = 0;
+			player.fActionElapsedSeconds = 0.f;
+			player.hasAppliedSkillDamage = false;
+			player.iComboStage = 0;
+			player.hasBufferedComboInput = false;
+		}
 	}
 }

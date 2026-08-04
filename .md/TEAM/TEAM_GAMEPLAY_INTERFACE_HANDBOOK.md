@@ -70,6 +70,7 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 | 입력 | stable ID | 결과 |
 |---|---:|---|
 | 우클릭 | move sequence | `C2S_MOVE`로 목표 X/Z 제출 |
+| 좌클릭 | `34010` | 평타 콤보. 누르고 있으면 100ms마다 재전송한다 |
 | Q | `34120` | 연환섬 사용 의도 제출 |
 | W | `34080` | 일섬각 사용 의도 제출 |
 | E | `34070` | 회선창 사용 의도 제출 |
@@ -154,7 +155,7 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 | 파일 | 수정하는 값 | 주 소비자 |
 |---|---|---|
 | `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed | Server spawn, HUD snapshot |
-| `Data/Balance/PlayerSkills.json` | slot, 이름, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId` | Server skill, UI definition, Effect presentation |
+| `Data/Balance/PlayerSkills.json` | slot, 이름, `skillKind`, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId`, `comboStages` | Server skill, UI definition, Effect presentation |
 | `Data/Balance/DamageProfiles.json` | 실제 정수 damage | Server 판정, UI 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |

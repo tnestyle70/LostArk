@@ -34,6 +34,13 @@ namespace LostArk::Shared
 		END
 	};
 
+	enum class PLAYER_SKILL_KIND : std::uint8_t
+	{
+		ACTIVE = 0,
+		COMBO = 1,
+		END
+	};
+
 	// A protocol value may be reserved before its runtime bundle exists. Only
 	// classes accepted here may enter a world on the current build.
 	[[nodiscard]]

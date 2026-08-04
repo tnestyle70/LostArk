@@ -286,6 +286,10 @@ private:
 	NAVIGATION_EDIT_ACTION m_eNavigationEditAction =
 		NAVIGATION_EDIT_ACTION::APPLY;
 	uint32_t m_iBrushRadius = {};
+	/* Cells without a baked surface carry no height, so the overlay has to
+	   draw them on the Nav Bounds floor. On a large bake they outnumber the
+	   real surface cells and hide it, so they stay off unless asked for. */
+	bool_t m_bShowUnresolvedCells = false;
 
 	CNavGridPaintDocument m_NavigationDocument;
 	CNavRuntimeBlockerDocument m_RuntimeBlockerDocument;
