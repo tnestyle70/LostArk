@@ -25,8 +25,9 @@ namespace
 
 	constexpr DOCUMENT_DEF g_Documents[] =
 	{
-		{ "Combat HUD", "UI/HUD/HUD_Layout.json",      "UI/HUD/",      true  },
-		{ "Screen UI",  "UI/ScreenUI/ScreenUI.json",   "UI/ScreenUI/", false },
+		{ "Combat HUD",     "UI/HUD/HUD_Layout.json",           "UI/HUD/",      true  },
+		{ "Screen UI",      "UI/ScreenUI/ScreenUI.json",        "UI/ScreenUI/", false },
+		{ "Loading Screen", "UI/Loading/LoadingLayout.json", "UI/Loading/",  false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -279,8 +280,12 @@ void Client::CHUDLayoutTool::Switch_Document(int32_t iDocument)
 	if (iDocument == m_iActiveDocument)
 		return;
 
-	/* Persist the document we are leaving so unsaved placement isn't lost on switch. */
-	Save(Current_Save_Path());
+	/* Persist the document we are leaving so unsaved placement isn't lost on switch -- but only if
+	it actually loaded successfully. If it never loaded (JSON contract rejected, unknown class,
+	etc.), what's on screen is a placeholder, not the real document; saving it would silently
+	destroy the file this session never actually opened. */
+	if (m_bActiveDocumentLoaded)
+		Save(Current_Save_Path());
 
 	m_iActiveDocument = iDocument;
 
@@ -413,10 +418,17 @@ void Client::CHUDLayoutTool::Render_RuntimePreview(const string& classId)
 		return;
 	}
 
-	ImDrawList* pDrawList = ImGui::GetBackgroundDrawList(viewport);
+	/* Foreground, not background: the combat HUD ImGui stat panel (semi-transparent black) sits at
+	SetNextWindowBgAlpha(0.78f) over roughly the same screen region, and a background draw list
+	renders underneath every window -- that panel's backdrop was painting over this preview and
+	reading as "everything is too dark" even though the source art itself is at full brightness. */
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(viewport);
 	const float scaleX = viewport->WorkSize.x / ms_fRefWidth;
 	const float scaleY = viewport->WorkSize.y / ms_fRefHeight;
-	constexpr int32_t previewStage = 1;
+	/* Was hardcoded to 1, forcing lit/shine art on for every preview regardless of the tool's own
+	Animation Stage toggle -- share that toggle instead so this defaults to 0 (off) like the real
+	runtime view, and only shows charged art when the user actually steps the stage up. */
+	const int32_t previewStage = m_iPreviewStage;
 
 	for (HUD_SLOT& slot : m_Slots)
 	{
@@ -1660,6 +1672,11 @@ bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 
 bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 {
+	/* Every early-out below leaves this false, so a failed load on an existing (but invalid) file
+	is distinguishable from a freshly-created empty document -- Switch_Document uses this to avoid
+	auto-saving placeholder state over the real file. */
+	m_bActiveDocumentLoaded = false;
+
 	ifstream file(path, ios::binary);
 	if (!file)
 	{
@@ -1902,6 +1919,7 @@ bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 	m_SelectedSlots.clear();
 	m_iLastScannedClass = -1;
 	m_strDataStatus = "JSON loaded";
+	m_bActiveDocumentLoaded = true;
 	return true;
 }
 

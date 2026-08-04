@@ -33,6 +33,7 @@
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
+    <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_Development.h" />
     <ClInclude Include="..\Public\Level_Lobby.h" />
@@ -108,6 +109,7 @@
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
+    <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_Development.cpp" />
     <ClCompile Include="..\Private\Level_Lobby.cpp" />
@@ -167,6 +169,7 @@
   <ItemGroup>
     <Image Include="Client.ico" />
     <Image Include="small.ico" />
+    <Image Include="cursor.cur" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Client.rc" />
@@ -722,6 +725,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navpaint" />
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
+    <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json" />

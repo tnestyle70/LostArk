@@ -44,6 +44,7 @@ public:
 private:
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();
+	HRESULT Ready_Prototype_For_LoadingChrome();
 	HRESULT Start_Level(
 		LEVEL eTargetLevel,
 		LOBBY_COMMAND_TOKEN lobbyCommandToken =

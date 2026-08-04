@@ -1,5 +1,7 @@
 #include "CustomFont.h"
 
+#include "GameInstance.h"
+
 CCustomFont::CCustomFont(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: m_pDevice { pDevice }
 	, m_pContext { pContext }
@@ -21,6 +23,13 @@ HRESULT CCustomFont::Initialize(const tchar_t* pFontFilePath)
 
 void CCustomFont::Draw(const tchar_t* pText, const float2_t& vPosition, fvector_t vColor, f32_t fRotation, const float2_t& vOrigin, f32_t fScale)
 {
+    /* SpriteBatch derives its projection from whatever viewport is currently bound. Shadow/bloom
+    passes earlier in the frame temporarily swap the viewport to a different size and restore it
+    afterward, but re-asserting the real screen viewport here removes any dependency on that
+    restore ordering still being correct by the time text is drawn. */
+    const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+    const D3D11_VIEWPORT ViewportDesc{ 0.f, 0.f, vViewportSize.x, vViewportSize.y, 0.f, 1.f };
+    m_pContext->RSSetViewports(1, &ViewportDesc);
 
     m_pBatch->Begin();
 
