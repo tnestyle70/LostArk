@@ -13,6 +13,7 @@ class CMapTool;
 class CEffect_Tool;
 class CAnimation_Tool;
 class CHUDLayoutTool;
+class CHUDRuntimeView;
 
 class CMainApp final
 {
@@ -60,6 +61,8 @@ private:
 	ComPtr<ID3D11Device> m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext> m_pContext = { nullptr };
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
+	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
+	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
 
 #ifdef _DEBUG
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };

@@ -1,4 +1,4 @@
-{
+﻿{
     "schema":  "lostark.ui-layout",
     "formatVersion":  1,
     "resolution":  {
@@ -10,7 +10,10 @@
                     "Yinyangshi",
                     "Slayer",
                     "Gunslinger",
-                    "LanceMaster"
+                    "LanceMaster",
+                    "WarLord",
+                    "Alchemist",
+                    "DimensionMaster"
                 ],
     "slots":  [
                   {
@@ -2764,8 +2767,8 @@
                                },
                       "rotation":  0,
                       "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  0
+                                     "baseFrom":  1,
+                                     "shineFrom":  1
                                  },
                       "layers":  [
                                      {
@@ -2856,8 +2859,8 @@
                                },
                       "rotation":  0,
                       "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  0
+                                     "baseFrom":  1,
+                                     "shineFrom":  1
                                  },
                       "layers":  [
                                      {
@@ -2948,7 +2951,7 @@
                                },
                       "rotation":  0,
                       "stages":  {
-                                     "baseFrom":  0,
+                                     "baseFrom":  1,
                                      "shineFrom":  1
                                  },
                       "layers":  [
@@ -2982,6 +2985,357 @@
                                                        "UI/HUD/LanceMaster/Id fire right 3.png"
                                                    ]
                                     }
-                  }
-              ]
+                  },
+    {
+      "id": "Dimen_Handle_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 720.603149, "y": 615.397034, "width": 60, "height": 75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id handle 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Curve",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 723.987549, "y": 598.577942, "width": 52, "height": 102 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id curve.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Lance_Id_white_2",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 639.570984, "y": 674.143982, "width": 69, "height": 21 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id white 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/LanceMaster/Id shine bottom.png", "additive": false },
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire bottom 1.png", "UI/HUD/LanceMaster/Id fire bottom 2.png", "UI/HUD/LanceMaster/Id fire bottom 3.png"] }
+    },
+    {
+      "id": "Dimen_Wing_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 683.861328, "y": 545.378113, "width": 85, "height": 84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen Emblem wing 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Lance_Id_black_3",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 701.215027, "y": 622.643005, "width": 21, "height": 60 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id black 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Emblem_Piece_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 581.328918, "y": 605.181946, "width": 56, "height": 92 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Emblem piece 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Circle",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 690.815125, "y": 695.157776, "width": 33, "height": 25 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id circle.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Handle_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 568.737854, "y": 577.430664, "width": 58, "height": 63 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id handle 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Lance_Id_white_3",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 699.708984, "y": 622.60498, "width": 21, "height": 60 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id white 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/LanceMaster/Id shine right.png", "additive": false },
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire right 1.png", "UI/HUD/LanceMaster/Id fire right 2.png", "UI/HUD/LanceMaster/Id fire right 3.png"] }
+    },
+    {
+      "id": "Dimen_Gear_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 711.232727, "y": 679.755859, "width": 32, "height": 36 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id gear 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Gear_Edge",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 704.525024, "y": 679.985291, "width": 44, "height": 44 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id gear edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Wing_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 594.067749, "y": 656.866211, "width": 86, "height": 83 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen Emblem wing 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Emblem_Basic",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Emblem Basic.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Emblem_Blue",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Emblem Blue.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Emblem_Shine",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 597.080811, "y": 566.470581, "width": 159, "height": 151 },
+      "rotation": 0,
+      "stages": { "baseFrom": 2, "shineFrom": 2 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Emblem Shine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Edge_Shine",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 591.657349, "y": 562.854736, "width": 160, "height": 166 },
+      "rotation": 0,
+      "stages": { "baseFrom": 2, "shineFrom": 2 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen edge shine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Word_Shine",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 618.173035, "y": 576.112732, "width": 116, "height": 125 },
+      "rotation": 0,
+      "stages": { "baseFrom": 2, "shineFrom": 2 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen word shine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Arrow_Short",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 661.544434, "y": 607.562866, "width": 28, "height": 57 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id arrow short.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 605.275818, "y": 663.45752, "width": 28, "height": 29 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_Blue_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 605.275818, "y": 663.45752, "width": 28, "height": 29 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker blue 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 717.475403, "y": 663.45752, "width": 28, "height": 29 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_Blue_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 717.475403, "y": 663.45752, "width": 28, "height": 29 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker blue 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Arrow",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id arrow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Arrow_Gold",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id arrow gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Arrow_Shine",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 657.3255, "y": 587.072998, "width": 34, "height": 84 },
+      "rotation": 0,
+      "stages": { "baseFrom": 2, "shineFrom": 2 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen arrow shine.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": true, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_3",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 661.580811, "y": 562.933716, "width": 30, "height": 31 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Dimen_Marker_Blue_3",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 661.580811, "y": 562.933716, "width": 30, "height": 31 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/DimensionMaster/Dimen id marker blue 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
 }
