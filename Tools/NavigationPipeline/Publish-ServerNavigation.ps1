@@ -88,7 +88,11 @@ function Convert-NavigationAuthoringGrid {
         throw "Navigation authoring header is invalid: $sourcePath"
     }
     $version = [uint32]$header[1]
-    $expectedHeaderCount = if ($version -eq 1) { 9 } else { 19 }
+    # Version 2 adds bake position/size/yaw/maxSlope/isReady to the v1 header.
+    # CNavGridBaker::Save_Source writes ten of those fields, not eleven: the bake
+    # cell size is not serialised because CNavGridPaintDocument restores it from
+    # the grid cell size on load.
+    $expectedHeaderCount = if ($version -eq 1) { 9 } else { 18 }
     if ($header.Count -ne $expectedHeaderCount) {
         throw "Navigation authoring header field count is invalid: $sourcePath"
     }

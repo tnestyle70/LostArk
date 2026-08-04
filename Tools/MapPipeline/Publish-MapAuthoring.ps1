@@ -4,13 +4,16 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+$')]
     [string]$AreaId,
 
-    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
+    [string]$ProjectRoot,
 
     [ValidateRange(0, 65537)]
     [int]$FailureAfterPromote = 0
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($ProjectRoot)) {
+    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+}
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $authoringPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapplacements"
 $authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.deployplacements"

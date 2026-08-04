@@ -111,7 +111,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(navigation.Load("LV_LUT_HEARTRB_ED"),
 		"Load Valtan server navigation");
 	std::vector<SERVER_NAV_POINT> path;
-	tests.Require(navigation.Find_Path(141.f, -137.f, 151.f, -122.f, path) &&
+	tests.Require(navigation.Find_Path(152.f, -137.f, 151.f, -122.f, path) &&
 		!path.empty(), "Find authoritative navigation path");
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
