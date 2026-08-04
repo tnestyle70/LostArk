@@ -1,4 +1,4 @@
-﻿{
+{
     "schema":  "lostark.ui-layout",
     "formatVersion":  1,
     "resolution":  {
@@ -11,8 +11,6 @@
                     "Slayer",
                     "Gunslinger",
                     "LanceMaster",
-                    "WarLord",
-                    "Alchemist",
                     "DimensionMaster"
                 ],
     "slots":  [
