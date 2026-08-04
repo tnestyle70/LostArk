@@ -163,6 +163,10 @@ private:
 	vector<string>		m_TextureAssetPaths;
 	int32_t				m_iLastScannedClass = -1;
 	string				m_strDataStatus;
+	/* False whenever the active document's on-disk file failed to parse/validate. Switch_Document's
+	auto-save must not fire while this is false, or a bad load (bug or a hand-edited file) would
+	silently overwrite the real file with whatever placeholder state is on screen. */
+	bool_t				m_bActiveDocumentLoaded = false;
 
 private:
 	static constexpr float ms_fRefWidth = 1280.f;
