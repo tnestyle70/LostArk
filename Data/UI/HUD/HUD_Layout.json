@@ -3013,6 +3013,19 @@
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
+      "id": "Lance_Id_white_2",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 639.570984, "y": 674.143982, "width": 69, "height": 21 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id white 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/LanceMaster/Id shine bottom.png", "additive": false },
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire bottom 1.png", "UI/HUD/LanceMaster/Id fire bottom 2.png", "UI/HUD/LanceMaster/Id fire bottom 3.png"] }
+    },
+    {
       "id": "Dimen_Wing_2",
       "ownerClass": "DimensionMaster",
       "type": 0,
@@ -3021,6 +3034,19 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
         { "path": "UI/HUD/DimensionMaster/Dimen Emblem wing 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Lance_Id_black_3",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 701.215027, "y": 622.643005, "width": 21, "height": 60 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id black 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
@@ -3063,6 +3089,19 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Lance_Id_white_3",
+      "ownerClass": "LanceMaster",
+      "type": 6,
+      "rect": { "x": 699.708984, "y": 622.60498, "width": 21, "height": 60 },
+      "rotation": 0,
+      "stages": { "baseFrom": 1, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/LanceMaster/Lance Id white 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": "UI/HUD/LanceMaster/Id shine right.png", "additive": false },
+      "animation": { "fps": 6, "scale": 1.10000002, "offset": { "x": 0, "y": -2 }, "frames": ["UI/HUD/LanceMaster/Id fire right 1.png", "UI/HUD/LanceMaster/Id fire right 2.png", "UI/HUD/LanceMaster/Id fire right 3.png"] }
     },
     {
       "id": "Dimen_Gear_2",
