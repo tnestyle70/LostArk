@@ -101,7 +101,7 @@ Area는 수치를 복사하지 않고 stable actor/encounter ID를 참조한다.
 
 ## 6. 다섯 캐릭터 roster 상태
 
-Lobby는 Lance Master, Gunslinger, Slayer, Artist, Dimensionist 다섯 slot을 모두 보여주고 선택할 수 있다. 실제 world 진입은 `Is_Supported_Playable_Character_Class`가 승인한 class만 가능하다.
+Lobby는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot을 모두 보여주고 선택할 수 있다. 실제 world 진입은 `Is_Supported_Playable_Character_Class`가 승인한 class만 가능하다.
 
 | Class | Lobby 선택 | Resource pack | Client Loader/Spec | Server profile | World 진입 |
 |---|---:|---:|---:|---:|---:|
@@ -109,9 +109,9 @@ Lobby는 Lance Master, Gunslinger, Slayer, Artist, Dimensionist 다섯 slot을 �
 | Gunslinger | 가능 | 있음 | 완료 | training baseline | 가능 |
 | Slayer | 가능 | 있음 | 완료 | training baseline | 가능 |
 | Artist | 가능 | 있음 | 완료 | training baseline | 가능 |
-| Dimensionist | 가능 | `.3`에는 없음, 로컬만 | 완료 | training baseline | 가능(로컬 payload 필요) |
+| DimensionMaster | 가능 | `.3`에는 없음, 로컬만 | 완료 | training baseline | 가능(로컬 payload 필요) |
 
-앞의 네 class는 body·equipment·weapon `.wmodel`과 texture를 6-root resource pack에 admission한다. Dimensionist는 combined body `Character/Dimensionist/Dimensionist_Character.wmodel`과 `Character/WP_WSWP_M_06`의 L/S/P/E 네 정적 기본 무기 파츠를 로컬 payload로 사용한다. 다섯 class 모두 `CharacterCatalog`, `CCharacterCatalog`, Loader prototype, Server `PlayerProfiles`, class parser, spawn/remote presentation까지 연결한다. 현재 비-Lance class의 profile 수치는 class별 스킬 계약 전까지 명시적인 training baseline이며, LanceMaster로 조용히 대체하는 identity fallback은 금지한다.
+앞의 네 class는 body·equipment·weapon `.wmodel`과 texture를 6-root resource pack에 admission한다. DimensionMaster는 combined body `Character/DimensionMaster/DimensionMaster_Character.wmodel`과 `Character/WP_WSWP_M_06`의 L/S/P/E 네 정적 기본 무기 파츠를 로컬 payload로 사용한다. 다섯 class 모두 `CharacterCatalog`, `CCharacterCatalog`, Loader prototype, Server `PlayerProfiles`, class parser, spawn/remote presentation까지 연결한다. 현재 비-Lance class의 profile 수치는 class별 스킬 계약 전까지 명시적인 training baseline이며, LanceMaster로 조용히 대체하는 identity fallback은 금지한다.
 
 Area 진입 시 다섯 class binary를 모두 선로드하지 않는다. Lobby 선택 class만 먼저 준비하고 다른 class는 실제 remote spawn에서 최초 한 번만 같은 `CPlayableCharacterAssetService`로 admission한다. 이 규칙은 mixed-class 표현을 유지하면서 불필요한 Level 로딩 증가를 막는 고정 경계다.
 

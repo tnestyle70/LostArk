@@ -14,7 +14,8 @@
       "resourceCost": 15,
       "movementDistance": 0.0,
       "maximumRange": 7.3,
-      "serverDamageProfileId": "damage.player.34120"
+      "serverDamageProfileId": "damage.player.34120",
+      "effectId": ""
     },
     {
       "skillId": 34080,
@@ -28,7 +29,8 @@
       "resourceCost": 17,
       "movementDistance": 0.0,
       "maximumRange": 4.0,
-      "serverDamageProfileId": "damage.player.34080"
+      "serverDamageProfileId": "damage.player.34080",
+      "effectId": ""
     },
     {
       "skillId": 34070,
@@ -42,7 +44,8 @@
       "resourceCost": 19,
       "movementDistance": 0.0,
       "maximumRange": 9.9,
-      "serverDamageProfileId": "damage.player.34070"
+      "serverDamageProfileId": "damage.player.34070",
+      "effectId": ""
     },
     {
       "skillId": 34150,
@@ -56,7 +59,8 @@
       "resourceCost": 29,
       "movementDistance": 0.0,
       "maximumRange": 9.2,
-      "serverDamageProfileId": "damage.player.34150"
+      "serverDamageProfileId": "damage.player.34150",
+      "effectId": ""
     },
     {
       "skillId": 34110,
@@ -70,7 +74,8 @@
       "resourceCost": 23,
       "movementDistance": 0.0,
       "maximumRange": 9.9,
-      "serverDamageProfileId": "damage.player.34110"
+      "serverDamageProfileId": "damage.player.34110",
+      "effectId": ""
     },
     {
       "skillId": 34090,
@@ -84,7 +89,8 @@
       "resourceCost": 15,
       "movementDistance": 0.0,
       "maximumRange": 9.2,
-      "serverDamageProfileId": "damage.player.34090"
+      "serverDamageProfileId": "damage.player.34090",
+      "effectId": ""
     },
     {
       "skillId": 34640,
@@ -98,7 +104,8 @@
       "resourceCost": 0,
       "movementDistance": 0.0,
       "maximumRange": 10.6,
-      "serverDamageProfileId": "damage.player.34640"
+      "serverDamageProfileId": "damage.player.34640",
+      "effectId": ""
     },
     {
       "skillId": 34600,
@@ -112,7 +119,8 @@
       "resourceCost": 0,
       "movementDistance": 0.0,
       "maximumRange": 12.2,
-      "serverDamageProfileId": "damage.player.34600"
+      "serverDamageProfileId": "damage.player.34600",
+      "effectId": ""
     },
     {
       "skillId": 34620,
@@ -126,7 +134,8 @@
       "resourceCost": 0,
       "movementDistance": 0.0,
       "maximumRange": 18.2,
-      "serverDamageProfileId": "damage.player.34620"
+      "serverDamageProfileId": "damage.player.34620",
+      "effectId": ""
     },
     {
       "skillId": 38020,
@@ -140,7 +149,8 @@
       "resourceCost": 15,
       "movementDistance": 0.0,
       "maximumRange": 5.8,
-      "serverDamageProfileId": "damage.player.38020"
+      "serverDamageProfileId": "damage.player.38020",
+      "effectId": ""
     },
     {
       "skillId": 38050,
@@ -154,7 +164,8 @@
       "resourceCost": 25,
       "movementDistance": 0.0,
       "maximumRange": 4.0,
-      "serverDamageProfileId": "damage.player.38050"
+      "serverDamageProfileId": "damage.player.38050",
+      "effectId": ""
     },
     {
       "skillId": 45050,
@@ -168,7 +179,8 @@
       "resourceCost": 15,
       "movementDistance": 0.0,
       "maximumRange": 3.5,
-      "serverDamageProfileId": "damage.player.45050"
+      "serverDamageProfileId": "damage.player.45050",
+      "effectId": ""
     },
     {
       "skillId": 45060,
@@ -182,7 +194,8 @@
       "resourceCost": 18,
       "movementDistance": 0.0,
       "maximumRange": 5.0,
-      "serverDamageProfileId": "damage.player.45060"
+      "serverDamageProfileId": "damage.player.45060",
+      "effectId": ""
     },
     {
       "skillId": 31210,
@@ -196,7 +209,8 @@
       "resourceCost": 18,
       "movementDistance": 0.0,
       "maximumRange": 2.5,
-      "serverDamageProfileId": "damage.player.31210"
+      "serverDamageProfileId": "damage.player.31210",
+      "effectId": ""
     },
     {
       "skillId": 31230,
@@ -210,7 +224,8 @@
       "resourceCost": 22,
       "movementDistance": 0.0,
       "maximumRange": 6.5,
-      "serverDamageProfileId": "damage.player.31230"
+      "serverDamageProfileId": "damage.player.31230",
+      "effectId": ""
     }
   ]
 }

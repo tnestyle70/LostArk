@@ -102,9 +102,9 @@ next immutable pack version     2026.08.04.1
 | 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Level_Lobby.h` | default entry가 가능한 상태 문구와 기존 approval state 선언 |
 | 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Level_Lobby.cpp` | explicit selection 또는 Lance Master default로 기존 Server 입장 |
 | 객체 교체 | `C:/Users/user/Desktop/LostArk/Data/Maps/MapCatalog.json` | Character Select visual area를 제품 frontend admission으로 승격 |
-| 전체 교체 | `C:/Users/user/Desktop/LostArk/Data/Balance/PlayerSkills.json` | 검증된 기존 네 class가 각자 소유하는 Q/W Server skill 계약. Dimensionist는 실제 ID 확보 전 비워 둔다. |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Data/Balance/PlayerSkills.json` | 검증된 기존 네 class가 각자 소유하는 Q/W Server skill 계약. DimensionMaster는 실제 ID 확보 전 비워 둔다. |
 | 전체 교체 | `C:/Users/user/Desktop/LostArk/Data/Balance/DamageProfiles.json` | 신규 여섯 skill의 명시적 training damage profile |
-| 블록 교체 | `C:/Users/user/Desktop/LostArk/Server/Private/ServerGameplayContractTests.cpp` | 기존 네 class Q/W catalog와 Server 승인, Dimensionist profile 검증 |
+| 블록 교체 | `C:/Users/user/Desktop/LostArk/Server/Private/ServerGameplayContractTests.cpp` | 기존 네 class Q/W catalog와 Server 승인, DimensionMaster profile 검증 |
 | 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/LevelRegistry.cpp` | Character Select map area와 load scope 등록 |
 | 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Loader.cpp` | Character Select map + camera + 다섯 class prototype stage |
 | 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/LobbyCommandService.h` | stage command와 취소 가능한 handoff token 계약 |
@@ -188,7 +188,7 @@ private:
 		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
 		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER
 	};
 
 	CMapPlacementRuntime m_MapRuntime;
@@ -249,8 +249,8 @@ namespace
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
 			return "Artist";
-		case CHARACTER_CLASS_ID::DIMENSIONIST:
-			return "Dimensionist";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
+			return "DimensionMaster";
 		default:
 			return "Unknown";
 		}
@@ -1533,8 +1533,8 @@ namespace
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
 			return "Artist";
-		case CHARACTER_CLASS_ID::DIMENSIONIST:
-			return "Dimensionist";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
+			return "DimensionMaster";
 		default:
 			return "Not selected";
 		}
@@ -1837,9 +1837,9 @@ unique_ptr<CLevel_Lobby> CLevel_Lobby::Create(
 }
 ```
 
-## 8. G4 — 기존 네 class Q/W 데이터와 Dimensionist 스킬 미승격 경계
+## 8. G4 — 기존 네 class Q/W 데이터와 DimensionMaster 스킬 미승격 경계
 
-현재 `PlayerSkills.json`에는 Lance Master 9개와 Gunslinger/Slayer/Artist Q/W가 있다. 다섯 class 모두 Character Select, Server profile, spawn, HUD class identity, 이동과 IDLE/RUN을 사용한다. 검증된 Q/W는 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`이다. Dimensionist reference 문서는 정식 헤더와 0 row만 있으므로 실제 stable skill ID와 timing을 확보할 때까지 skill row를 만들지 않으며 Lance Master skill로 대체하지 않는다.
+현재 `PlayerSkills.json`에는 Lance Master 9개와 Gunslinger/Slayer/Artist Q/W가 있다. 다섯 class 모두 Character Select, Server profile, spawn, HUD class identity, 이동과 IDLE/RUN을 사용한다. 검증된 Q/W는 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`이다. DimensionMaster reference 문서는 정식 헤더와 0 row만 있으므로 실제 stable skill ID와 timing을 확보할 때까지 skill row를 만들지 않으며 Lance Master skill로 대체하지 않는다.
 
 추가 Q/W의 skill ID와 animation chain은 다음 실측 정본을 사용한다.
 
@@ -2704,7 +2704,7 @@ EndProject
 변경 종류: Character/Animation 담당 bullet 전체 교체
 
 ```markdown
-- 검증된 기존 네 playable class의 Q/W는 각각 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`으로 `Data/Balance/PlayerSkills.json`에 연결한다. 입력은 `(class, inputSlot)`으로 stable skill ID를 찾고 command → server approval → snapshot → Character presentation을 통과한다. 수치는 수련장 baseline이며 원작 수치라고 주장하지 않는다. Dimensionist는 선택·spawn·HUD class identity·IDLE/RUN·Animation Tool 모델 열람까지만 이번 계약이며, 스킬 ID와 timing row가 0이므로 Q/W를 활성화하지 않는다.
+- 검증된 기존 네 playable class의 Q/W는 각각 `LANCE_MASTER 34120/34080`, `GUNSLINGER 38020/38050`, `SLAYER 45050/45060`, `ARTIST 31210/31230`으로 `Data/Balance/PlayerSkills.json`에 연결한다. 입력은 `(class, inputSlot)`으로 stable skill ID를 찾고 command → server approval → snapshot → Character presentation을 통과한다. 수치는 수련장 baseline이며 원작 수치라고 주장하지 않는다. DimensionMaster는 선택·spawn·HUD class identity·IDLE/RUN·Animation Tool 모델 열람까지만 이번 계약이며, 스킬 ID와 timing row가 0이므로 Q/W를 활성화하지 않는다.
 ```
 
 ### 10-2. `C:/Users/user/Desktop/LostArk/CLAUDE.md`
@@ -2732,7 +2732,7 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 변경 종류: 최소 성공 증거의 Character Select bullet 전체 교체
 
 ```markdown
-- 실제 Server+Client에서 Lobby → Character Select map/다섯 class preview → Enter → Test 진입과 다섯 class Character/HUD/이동을 확인한다. Q/W는 기존 네 class만 확인하며 Dimensionist는 skill data가 생기기 전 비활성임을 확인한다.
+- 실제 Server+Client에서 Lobby → Character Select map/다섯 class preview → Enter → Test 진입과 다섯 class Character/HUD/이동을 확인한다. Q/W는 기존 네 class만 확인하며 DimensionMaster는 skill data가 생기기 전 비활성임을 확인한다.
 - Character Select를 생략한 direct Test/Bern/Valtan entry와 연결 실패/timeout/진입 후 disconnect 복귀 확인
 ```
 
@@ -2782,7 +2782,7 @@ Tools/Build/Invoke-BuildAndRegression.ps1 build/run 등록
 2. `Loader.cpp::Ready_For_CharacterSelect`를 map → class → animation preview 순서로 교체한다. `Ready_MapArea`가 camera prototype을 준비하므로 다시 호출하지 않는다.
 3. `LobbyCommandService`, `LevelTransitionService`, `Level_Loading`, `MainApp`에 token ownership과 failure cancellation을 반영한다.
 4. `Level_CharacterSelect.h/.cpp`, `Level_Lobby.h/.cpp`를 최종 코드로 교체한다.
-5. 기존 네 class Q/W balance와 damage profile을 publish하고 Dimensionist skill row는 비어 있는지 검사한다.
+5. 기존 네 class Q/W balance와 damage profile을 publish하고 DimensionMaster skill row는 비어 있는지 검사한다.
 6. ClientFrontendHarness project/source와 build regression을 등록한다.
 7. 현재 dirty `ProjectAudit`의 unrelated 변경을 보존하며 지정 audit 블록만 병합한다.
 8. AGENTS/CLAUDE/팀 handbook/RESULT의 지정 문단만 교체한다.

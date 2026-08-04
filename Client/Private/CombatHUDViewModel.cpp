@@ -45,7 +45,7 @@ namespace
 		if (value == "GUNSLINGER") return CHARACTER_CLASS_ID::GUNSLINGER;
 		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
-		if (value == "DIMENSIONIST") return CHARACTER_CLASS_ID::DIMENSIONIST;
+		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		return CHARACTER_CLASS_ID::END;
 	}
 }

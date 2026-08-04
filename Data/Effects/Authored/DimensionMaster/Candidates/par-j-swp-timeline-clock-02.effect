@@ -1,0 +1,16 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-timeline-clock-02" name="par_j_swp_timeline_clock_02" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=2658 name="emitter_0" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=2659 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/SK_SWP_DMC_00/sk_swp_dmc_00_d.dds" mesh="Effect/DimensionMaster/Meshes/sk_swp_dmc_00-1_sk.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_chmesh_01_20_tr" align=RECTANGLE opacitytex="" dissolvetex="Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_005_ycl.dds" distortiontex="Effect/DimensionMaster/Textures/SK_SWP_DMC_00/sk_swp_dmc_00_n.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=2660 name="emitter_1" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=2661 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/PC_DL_AV_191A/pc_dl_av_191a_paning.dds" mesh="Effect/DimensionMaster/Meshes/sk_swp_dmc_00-1_sk.wmodel" mat="sk_swp_dmc_00.mat.sk_swp_dmc_00_mi" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1.2 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=2662 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=2663 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_utillight_01_03_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2664 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.7,0.7,0.7
+  MODULE id=2665 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1.1,1:1.1 b=0:2,1:2 a=0:0.2,1:0.2
+  MODULE id=2666 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:7,0.05:7.4962,0.1:7.80077,0.15:7.93167,0.2:7.90689,0.25:7.74438,0.3:7.46213,0.35:7.07809,0.4:6.61025,0.45:6.07656,0.5:5.49501,0.55:4.88355,0.6:4.26017,0.65:3.64282,0.7:3.04948,0.75:2.49813,0.8:2.00672,0.85:1.59324,0.9:1.27564,0.95:1.07191,1:1
+  MODULE id=2667 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:1,1:1 y=0:2,1:2 z=0:0.2,1:0.2 w=0:1,1:1
+  MODULE id=2668 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.9,0.333333:1.1,0.666667:0.9,1:1.1

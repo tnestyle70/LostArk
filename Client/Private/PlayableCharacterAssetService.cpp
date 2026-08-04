@@ -86,16 +86,16 @@ namespace
 			{ TEXT("Prototype_Component_Model_Artist_Weapon") },
 			1u
 		};
-		static const CHARACTER_PROTOTYPE_TAGS DIMENSIONIST
+		static const CHARACTER_PROTOTYPE_TAGS DIMENSIONMASTER
 		{
-			TEXT("Prototype_Component_Model_Dimensionist"),
+			TEXT("Prototype_Component_Model_DimensionMaster"),
 			{},
 			0u,
 			{
-				TEXT("Prototype_Component_Model_Dimensionist_Weapon_L"),
-				TEXT("Prototype_Component_Model_Dimensionist_Weapon_S"),
-				TEXT("Prototype_Component_Model_Dimensionist_Weapon_P"),
-				TEXT("Prototype_Component_Model_Dimensionist_Weapon_E")
+				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_L"),
+				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_S"),
+				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_P"),
+				TEXT("Prototype_Component_Model_DimensionMaster_Weapon_E")
 			},
 			4u
 		};
@@ -110,8 +110,8 @@ namespace
 			return &SLAYER;
 		case LostArk::Shared::CHARACTER_CLASS_ID::ARTIST:
 			return &ARTIST;
-		case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST:
-			return &DIMENSIONIST;
+		case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER:
+			return &DIMENSIONMASTER;
 		default:
 			return nullptr;
 		}
@@ -169,11 +169,11 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		return E_FAIL;
 	}
 
-	// The Dimensionist body was cooked from the ActorX Blender intake at roughly
+	// The DimensionMaster body was cooked from the ActorX Blender intake at roughly
 	// centimeter scale (about 111 units tall). The older UModel character pack
 	// keeps its existing 0.0001 admission transform.
 	const f32_t characterScale =
-		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST == characterClass ?
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass ?
 		0.01f : 0.0001f;
 	const matrix_t characterTransform =
 		XMMatrixScaling(

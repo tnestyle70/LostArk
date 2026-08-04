@@ -30,7 +30,7 @@ namespace LostArk::Shared
 		SLAYER = 2,
 		ARTIST = 3,
 		DESTROYER = 4,
-		DIMENSIONIST = 5,
+		DIMENSIONMASTER = 5,
 		END
 	};
 
@@ -44,7 +44,7 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::GUNSLINGER == characterClass ||
 			CHARACTER_CLASS_ID::SLAYER == characterClass ||
 			CHARACTER_CLASS_ID::ARTIST == characterClass ||
-			CHARACTER_CLASS_ID::DIMENSIONIST == characterClass;
+			CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass;
 	}
 
 	enum class PACKET_TYPE : std::uint16_t

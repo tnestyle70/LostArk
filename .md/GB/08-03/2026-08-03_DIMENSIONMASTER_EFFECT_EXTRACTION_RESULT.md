@@ -11,12 +11,12 @@
 원본 UPK와 분석 보고서는 외부 `Resource_LostArk`에 유지하고, 런타임이 직접 읽는
 선별 결과만 다음 위치에 정리했다.
 
-- `Client/Bin/Resources/Effect/Dimensionist/Textures`: 693 DDS
-- `Client/Bin/Resources/Effect/Dimensionist/Meshes`: 139 `.wmodel`
+- `Client/Bin/Resources/Effect/DimensionMaster/Textures`: 693 DDS
+- `Client/Bin/Resources/Effect/DimensionMaster/Meshes`: 139 `.wmodel`
 - 합계 832파일, 90,608,380 bytes, UModel/cook 실패 0
-- `Data/Effects/Authored/Dimensionist/Candidates`: 459 `.effect`
-- `Data/Effects/SourceCatalog/dimensionist_candidates.json`: 459개 선택 catalog
-- `Data/Effects/SourceCatalog/dimensionist_admission.json`: 재생 허용 여부와 누락 정본
+- `Data/Effects/Authored/DimensionMaster/Candidates`: 459 `.effect`
+- `Data/Effects/SourceCatalog/dimensionmaster_candidates.json`: 459개 선택 catalog
+- `Data/Effects/SourceCatalog/dimensionmaster_admission.json`: 재생 허용 여부와 누락 정본
 
 이 459개는 `provenance=DERIVED_CONVERSION`인 Effect Tool 후보이며 원본 1:1 effect가
 아니다. 기존 recipe 추출기가 LOD의 음수 package ref를 조용히 버리던 문제를 수정해
@@ -148,7 +148,7 @@ Client용 cinematic sequencer 데이터로 변환·재생한 상태는 아니다
 
 Effect Tool의 편집 정본은 JSON이나 `.wfx`가 아니라 UTF-8 텍스트 `.effect`다. 첫 줄은
 `LOSTARK_EFFECT 5`이며 emitter와 module 값을 사람이 diff 가능한 형태로 저장한다.
-`Data/Effects/Authored/Dimensionist/Candidates`의 459개 후보가 이 형식이므로 Effect Tool의
+`Data/Effects/Authored/DimensionMaster/Candidates`의 459개 후보가 이 형식이므로 Effect Tool의
 `Authored` 목록에서 바로 열 수 있다.
 
 런타임 조리 형식은 `.weffect`다. 16-byte header에 magic, schema version, payload size,
@@ -166,7 +166,7 @@ round-trip으로 검증했다. `Load -> Save -> Load -> Cook .weffect -> Binary 
 재생해 peak alive 94 이상과 HDR color 값 보존을 확인했다. 이는 직렬화와 CPU particle
 simulation 검증이며 최종 화면 품질 검증을 대신하지 않는다.
 
-## Dimensionist 캐릭터·초월기 애니메이션
+## DimensionMaster 캐릭터·초월기 애니메이션
 
 차원술사 애니메이션은 원본 ActorX `PSK + PSA`를 별도 런타임으로 만들지 않고 다음 기존
 경로로 조리했다.
@@ -183,13 +183,13 @@ FX rig라 캐릭터 본체 mesh로 쓸 수 없었다. 실제 222-bone Specialist
 `PC_SP_M_00/pc_sp_m_00_sk`와 차원술사 PSA의 bone 집합을 대조한 뒤 결합했다. 이 구분을
 하지 않은 것이 이전 추출에서 캐릭터 본체가 빠질 수 있었던 핵심 함정이다.
 
-런타임 결과는 `Client/Bin/Resources/Character/Dimensionist`에 정리했다.
+런타임 결과는 `Client/Bin/Resources/Character/DimensionMaster`에 정리했다.
 
 | 파일 | ActorX bones | cooked bones/meshes | animation |
 |---|---:|---:|---:|
-| `Dimensionist_Character.wmodel` | 222 | 225 / 10 | 154 |
-| `Dimensionist_DimensionCore.wmodel` | 26 | 29 / 2 | 1 |
-| `Dimensionist_DimensionSummon.wmodel` | 20 | 23 / 4 | 2 |
+| `DimensionMaster_Character.wmodel` | 222 | 225 / 10 | 154 |
+| `DimensionMaster_DimensionCore.wmodel` | 26 | 29 / 2 | 1 |
+| `DimensionMaster_DimensionSummon.wmodel` | 20 | 23 / 4 | 2 |
 
 본체 154개에는 Alt+V 연출에서 참조하는 `sk_super_instance`, `sk_super_timewave`가 모두
 포함된다. 코어는 `sk_super_instance`, 소환체는 `sk_dimensionprison`과
@@ -200,9 +200,9 @@ ORM을 material별로 명시 remap했다.
 재현 도구는 `Tools/CharacterAnimationIntake/build_actorx_fbx.py`다. Blender에서 PSK/PSA
 bone subset을 먼저 검사하고 모든 PSA sequence가 Blender action이 됐을 때만 FBX와 JSON
 report를 만든다. 중간 ActorX/FBX/Blend/report는 외부
-`Resource_LostArk/01_Extracted/Character/Dimensionist`에 보존했다.
+`Resource_LostArk/01_Extracted/Character/DimensionMaster`에 보존했다.
 
-Debug Animation Tool에는 `Scene Character`, `Dimensionist Character`, `Dimension Core`,
+Debug Animation Tool에는 `Scene Character`, `DimensionMaster Character`, `Dimension Core`,
 `Dimension Summon` 선택을 추가했다. Character Select 또는 Development 진입 때 존재하는
 WModel만 optional prototype으로 등록하며, 선택하면 기존 `CPart_Body`와 anim shader로
 `Layer_AnimationPreview`에 배치한다. 즉 별도 animation runtime이나 플레이 가능한 class
@@ -212,7 +212,7 @@ Tool은 preview를 weak reference로만 기억하므로 F1 창을 닫은 채 레
 레벨의 Body/Model 수명을 붙잡지 않는다.
 
 사용 순서는 Debug Client 실행, Lobby에서 Character Select 또는 Development 진입,
-`F1 -> Animation Tool`, Target에서 Dimensionist 항목 선택이다. 모델은 scene character
+`F1 -> Animation Tool`, Target에서 DimensionMaster 항목 선택이다. 모델은 scene character
 기준 오른쪽 2.5 m에 나타나고 기존 clip list와 playback UI가 선택한 CModel을 직접
 제어한다. Animation Tool 버튼만 Character Select와 Development에서 활성화하고,
 Map/Effect/HUD authoring은 기존대로 Development 전용으로 유지했다.
@@ -231,7 +231,7 @@ snapshot을 만들지 않았다. 이미 Git에 들어가 있던 `.4` manifest는
 교체·삭제하지도 않았다. 따라서
 현재 Resources inventory가 기존 `Data/AssetPacks.lock.json`과 다른 것은 의도된 로컬
 작업 상태이며 ProjectAudit의 `asset-lock.inventory`는 이 결정이 유지되는 동안 PASS로
-기록할 수 없다. clean `.3` Hydrate 환경에는 이번 두 맵과 Dimensionist 리소스가 없으므로
+기록할 수 없다. clean `.3` Hydrate 환경에는 이번 두 맵과 DimensionMaster 리소스가 없으므로
 이 로컬 payload 없이 동일 장면을 실행할 수 없다. 새 immutable pack 배포 완료로 표현하지
 않는다.
 

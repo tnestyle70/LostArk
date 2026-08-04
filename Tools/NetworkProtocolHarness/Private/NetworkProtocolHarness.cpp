@@ -181,7 +181,7 @@ namespace
 		source.eWorldId = WORLD_ID::TRAINING_GROUND;
 
 		source.eCharacterClass =
-			CHARACTER_CLASS_ID::DIMENSIONIST;
+			CHARACTER_CLASS_ID::DIMENSIONMASTER;
 
 		source.strNickName = "건보";
 
@@ -237,7 +237,7 @@ namespace
 			Is_Supported_Playable_Character_Class(
 				CHARACTER_CLASS_ID::ARTIST) &&
 			Is_Supported_Playable_Character_Class(
-				CHARACTER_CLASS_ID::DIMENSIONIST),
+				CHARACTER_CLASS_ID::DIMENSIONMASTER),
 			"Accept Five Playable Character Classes");
 
 		testRunner.Require(
@@ -364,7 +364,7 @@ namespace
 		source.iPlayerId = 1;
 		source.iNetEntityId = 100;
 		source.eCharacterClass =
-			CHARACTER_CLASS_ID::DIMENSIONIST;
+			CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		source.strNickName = "건보";
 		source.fPositionX = 1.f;
 		source.fPositionY = 2.f;

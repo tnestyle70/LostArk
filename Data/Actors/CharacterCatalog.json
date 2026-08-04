@@ -75,10 +75,10 @@
       "runtimeStatus": "supported"
     },
     {
-      "archetypeId": "PLAYER_DIMENSIONIST",
-      "networkClassId": "DIMENSIONIST",
-      "assetId": "Dimensionist",
-      "bodyModel": "Character/Dimensionist/Dimensionist_Character.wmodel",
+      "archetypeId": "PLAYER_DIMENSIONMASTER",
+      "networkClassId": "DIMENSIONMASTER",
+      "assetId": "DimensionMaster",
+      "bodyModel": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
       "equipmentModels": [],
       "weaponModels": [
         "Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel",
@@ -86,7 +86,7 @@
         "Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel",
         "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel"
       ],
-      "animationSetId": "ANIM_DIMENSIONIST",
+      "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported"
     }
   ]

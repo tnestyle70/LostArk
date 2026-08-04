@@ -24,16 +24,20 @@ Character Preview Panel
 
 ## 2. 현재 코드와 목표 상태를 구분한다
 
-현재 `CAnimation_Tool` 안에는 `Render_TargetSelector`, `Select_PreviewAsset`, `Release_Preview`,
-`Refresh_PreviewLevel`과 `CPart_Body` preview 생성·제거가 들어 있다. 이것은 아직 공용 Character Preview
-Panel로 이동하지 않은 현재 상태다. 이동이 끝날 때까지 Animation 담당자는 이 코드에 신규 preview 기능을
-추가하지 않고 보존만 한다.
+`Render_TargetSelector`, `Select_PreviewAsset`, `Release_Preview`, `Refresh_PreviewLevel`과
+`CPart_Body` preview 생성·제거는 `Client/{Public,Private}/CharacterPreviewPanel.{h,cpp}`의
+`CCharacterPreviewPanel`로 이동했다. Animation Tool은 자기 document가 dirty인지만 패널에 알리고
+preview 수명에는 관여하지 않는다.
+
+패널이 아직 소유하지 않는 것은 preview camera/light/background, `mouseGroundPoint`, 다섯 class와
+part 선택 UI, anchor slot 목록 열거다. 이 항목들을 채울 때도 preview 생성 경로를 각 Tool 안에
+다시 만들지 않는다.
 
 현재 `.animevents` Save는 destination을 직접 `w` mode로 열며, Reload는 Dirty 확인이 없다. Load는 임시
 vector에 읽은 뒤 교체하지만 owner/count와 malformed row를 엄격히 거부하지 않는다. 오늘 Animation 담당자의
 실제 수정 대상은 이 document safety와, 아직 닫힌 상태로 선언할 EffectAssetId binding 계약이다.
 
-현재 `Data/Effects/Authored/Dimensionist/Candidates`는 `candidate_only`다. 이 후보는 admitted effect 선택
+현재 `Data/Effects/Authored/DimensionMaster/Candidates`는 `candidate_only`다. 이 후보는 admitted effect 선택
 목록이나 제품 runtime cue에 자동 연결하지 않는다.
 
 ## 3. Animation Tool이 소유하는 것
@@ -286,10 +290,15 @@ Preview Panel이 weapon anchor를 매 frame 제공
   ProjectAudit, `git diff --check`.
 - 수동: 다섯 class target, scrub 시각, Dirty target 전환 보존과 Level 전환 cleanup.
 - 미완료로 남길 것: admitted Effect fixture/catalog resolver, 실제 Effect Tool `Use Selected Effect` 성공 경로,
-  root/weapon anchor preview, Server collider/damage publisher, EFFECT window/trail start-stop, beam dual anchor,
-  candidate-only Dimensionist effect admission.
+  anchor-relative local transform 편집, Server collider/damage publisher, EFFECT window/trail start-stop,
+  beam dual anchor, candidate-only DimensionMaster effect admission.
 
-현재 admitted Effect는 0개이며 459개는 전부 Dimensionist `candidate_only`다. 따라서 오늘 Animation 문서
+root/weapon anchor의 현재 world transform 조회는
+`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸고
+Effect Tool의 world preview가 이를 소비한다. 없는 bone은 false를 반환하므로 누락된 anchor가
+원점으로 보이지 않는다. 아직 없는 것은 anchor에 상대적인 local transform 저작이다.
+
+현재 admitted Effect는 0개이며 459개는 전부 DimensionMaster `candidate_only`다. 따라서 오늘 Animation 문서
 안전성 작업을 EffectAssetId 성공 Save나 preview로 검증하지 않는다. `EFFECT_ASSET_ID` 입력은 admission
 resolver가 없거나 ID가 catalog에 없으면 실패하고 memory/destination을 유지해야 한다. 다음 Effect/Preview
 설계 단계에서 의존성 검증을 통과한 fixture 1개와 catalog resolver를 먼저 만든 뒤 실제
@@ -339,16 +348,16 @@ Client/Bin/Resources/Character/
   Artist/                      body + 5 equipment
   WP_WSDM_09/                  현재 장착하는 붓
 
-  Dimensionist/
-    Dimensionist_Character.wmodel
-    Dimensionist_DimensionCore.wmodel
-    Dimensionist_DimensionSummon.wmodel
+  DimensionMaster/
+    DimensionMaster_Character.wmodel
+    DimensionMaster_DimensionCore.wmodel
+    DimensionMaster_DimensionSummon.wmodel
     textures/
 ```
 
 현재 다섯 class의 장착 무기는 모두 `animations=0`, `skeleton=no`인 정적 WModel이다. 무기 자체가 locomotion
 clip을 재생하는 것이 아니라 Character body의 socket bone matrix를 따라간다. 차원술사 body/core/summon은
-`Character/Dimensionist`, 기본 무기 네 파츠는 `Character/WP_WSWP_M_06`에 분리한다.
+`Character/DimensionMaster`, 기본 무기 네 파츠는 `Character/WP_WSWP_M_06`에 분리한다.
 
 ### 14.3 현재 Character 생성 연결
 
@@ -391,7 +400,7 @@ CPart_Equipment socket mode
 | Gunslinger | `WP_WGDH_02H.wmodel` 두 instance | `b_wp_1`, `b_wp_2` | 양손 권총 |
 | Slayer | `WP_WWBK_03.wmodel` | `b_weapon_rhand` | 대검 하나 |
 | Artist | `WP_WSDM_09.wmodel` | `b_wp_1` | 붓 하나 |
-| Dimensionist | `WP_WSWP_M_06{L,S,P,E}.wmodel` | `b_wp_swm_m_1`, `_2`, `_3`, `_4_02` | 네 파츠, E socket yaw 180도 |
+| DimensionMaster | `WP_WSWP_M_06{L,S,P,E}.wmodel` | `b_wp_swm_m_1`, `_2`, `_3`, `_4_02` | 네 파츠, E socket yaw 180도 |
 
 `CharacterCatalog`은 생성 가능한 asset을 소유하고, `CHARACTER_SPEC`은 해당 class가 몇 개의 part instance를
 만들고 어느 socket에 붙이는지를 소유한다. Server에는 model path, prototype tag, socket 이름을 넣지 않는다.
@@ -418,9 +427,9 @@ Clone하거나 layer에서 직접 찾지 않는다.
 현재 차원술사의 별도 preview target은 `Client/Public/AnimationPreviewAssets.h`에 다음 세 개만 있다.
 
 ```text
-dimensionist.character          Dimensionist body 154 clips
-dimensionist.dimension-core     preview-only core 1 clip
-dimensionist.dimension-summon   preview-only summon 2 clips
+dimensionmaster.character          DimensionMaster body 154 clips
+dimensionmaster.dimension-core     preview-only core 1 clip
+dimensionmaster.dimension-summon   preview-only summon 2 clips
 ```
 
 Core와 Summon을 선택하면 Tool이 `CPart_Body` preview 하나를 scene Character 오른쪽에 만들고
@@ -475,7 +484,7 @@ L/S/P는 root bone 하나이고 E는 8-bone clockwork skeleton, shared AnimSet�
 임시 추출 폴더에 의존하지 않도록 원본 추출 결과는 다음 외부 작업공간에 보존했다.
 
 ```text
-C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Character/Dimensionist/
+C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Character/DimensionMaster/
   ActorX/WP_WSWP_M_06/
     MaterialInstanceConstant/
     SkeletalMesh3/
@@ -508,10 +517,10 @@ Git 데이터는 `CharacterCatalog` formatVersion 2와 `weaponModels` 배열로 
 
 ```json
 {
-  "archetypeId": "PLAYER_DIMENSIONIST",
-  "networkClassId": "DIMENSIONIST",
-  "assetId": "Dimensionist",
-  "bodyModel": "Character/Dimensionist/Dimensionist_Character.wmodel",
+  "archetypeId": "PLAYER_DIMENSIONMASTER",
+  "networkClassId": "DIMENSIONMASTER",
+  "assetId": "DimensionMaster",
+  "bodyModel": "Character/DimensionMaster/DimensionMaster_Character.wmodel",
   "equipmentModels": [],
   "weaponModels": [
     "Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel",
@@ -519,7 +528,7 @@ Git 데이터는 `CharacterCatalog` formatVersion 2와 `weaponModels` 배열로 
     "Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel",
     "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel"
   ],
-  "animationSetId": "ANIM_DIMENSIONIST",
+  "animationSetId": "ANIM_DIMENSIONMASTER",
   "runtimeStatus": "supported"
 }
 ```
@@ -534,7 +543,7 @@ CharacterCatalog.weaponModels[4]
   -> CActorCatalog::CHARACTER_ACTOR_ENTRY::weaponModels
   -> CPlayableCharacterAssetService가 L/S/P/E 네 Prototype stage
   -> 전체 decode 성공 뒤 level Prototype 등록
-  -> Spec_Dimensionist::WEAPON_PART_SPEC[4]
+  -> Spec_DimensionMaster::WEAPON_PART_SPEC[4]
   -> CCharacter::Ready_PartObjects가 네 CPart_Equipment 생성
   -> 각 part가 body bone matrix를 따라감
 ```
@@ -542,16 +551,16 @@ CharacterCatalog.weaponModels[4]
 현재 part 계약은 다음과 같다.
 
 ```text
-Part_90_Weapon_L -> Prototype_Component_Model_Dimensionist_Weapon_L
+Part_90_Weapon_L -> Prototype_Component_Model_DimensionMaster_Weapon_L
                  -> b_wp_swm_m_1
 
-Part_91_Weapon_S -> Prototype_Component_Model_Dimensionist_Weapon_S
+Part_91_Weapon_S -> Prototype_Component_Model_DimensionMaster_Weapon_S
                  -> b_wp_swm_m_2
 
-Part_92_Weapon_P -> Prototype_Component_Model_Dimensionist_Weapon_P
+Part_92_Weapon_P -> Prototype_Component_Model_DimensionMaster_Weapon_P
                  -> b_wp_swm_m_3
 
-Part_93_Weapon_E -> Prototype_Component_Model_Dimensionist_Weapon_E
+Part_93_Weapon_E -> Prototype_Component_Model_DimensionMaster_Weapon_E
                  -> b_wp_swm_m_4_02 + socket-local Yaw 180 degrees
 ```
 
@@ -564,13 +573,13 @@ Part_93_Weapon_E -> Prototype_Component_Model_Dimensionist_Weapon_E
 
 무기 수직 슬라이스가 반영된 뒤 Animation 담당자는 다음만 확인한다.
 
-1. Lobby -> Character Select -> Dimensionist 선택 후 F1 -> Animation Tool -> `Scene Character`를 선택한다.
+1. Lobby -> Character Select -> DimensionMaster 선택 후 F1 -> Animation Tool -> `Scene Character`를 선택한다.
 2. `pc_sp_m_00_sk_idle_battle_1`에서 L/S/P/E 네 파츠가 모두 보이는지 확인한다.
 3. `pc_sp_m_00_sk_run_battle_1`에서 네 파츠가 body bone을 따라가고 원점에 남지 않는지 확인한다.
 4. `pc_sp_m_00_sk_mode_battle`, `pc_sp_m_00_sk_mode_normal`을 scrub해 body weapon bone 이동을 관찰한다.
 5. 첫 수직 슬라이스에는 원본 `ReAttachParts`가 없으므로 mode-normal 외형을 원작 완료로 판정하지 않는다.
 6. Dimension Core와 Dimension Summon은 기존 별도 target으로 확인하며 기본 무기와 합치지 않는다.
-7. Test/Bern/Valtan의 local/remote Dimensionist가 Character Select와 같은 네 파츠를 사용하는지 확인한다.
+7. Test/Bern/Valtan의 local/remote DimensionMaster가 Character Select와 같은 네 파츠를 사용하는지 확인한다.
 
 Animation 담당자는 무기 WModel을 직접 load하거나 `CAnimationTargetService`에 L/S/P/E target을 임의로
 추가하지 않는다. L/S/P는 animation target이 아니며 E도 첫 수직 슬라이스에서는 정적 bind pose다. E 내부
@@ -606,7 +615,7 @@ AnimSet을 실제로 살릴 때는 animated weapon part와 preview target을 함
 - skill별 weapon visibility/재배치
 - weapon trail과 hit window
 - Server action과 weapon presentation mode 연결
-- Dimensionist skill/effect admission
+- DimensionMaster skill/effect admission
 
 Animation Tool은 위 미완료 기능을 로컬 clip 재생이나 임의 part toggle로 우회하지 않는다. Server action이
 필요한 표현은 command -> Server approval -> replicated action -> Character presentation 계약이 생긴 뒤에만

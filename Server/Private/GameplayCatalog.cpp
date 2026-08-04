@@ -85,8 +85,8 @@ namespace
 			output = CHARACTER_CLASS_ID::SLAYER;
 		else if ("ARTIST" == value)
 			output = CHARACTER_CLASS_ID::ARTIST;
-		else if ("DIMENSIONIST" == value)
-			output = CHARACTER_CLASS_ID::DIMENSIONIST;
+		else if ("DIMENSIONMASTER" == value)
+			output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		else
 			return false;
 		return true;

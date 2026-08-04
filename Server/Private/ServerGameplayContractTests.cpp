@@ -96,8 +96,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Resolve Slayer player profile");
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::ARTIST),
 		"Resolve Artist player profile");
-	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::DIMENSIONIST),
-		"Resolve Dimensionist player profile");
+	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::DIMENSIONMASTER),
+		"Resolve DimensionMaster player profile");
 	tests.Require(nullptr == catalog.Find_Player(CHARACTER_CLASS_ID::DESTROYER),
 		"Reject unsupported Destroyer player profile");
 	tests.Require(650u == catalog.Find_Damage("damage.player.34120"),

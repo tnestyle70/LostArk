@@ -1,0 +1,59 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-tw-s2-cam-transition-01" name="par_m_swp_tw_s2_cam_transition_01" provenance=DERIVED_CONVERSION duration=1.55 warmup=0
+
+EMITTER id=30186 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=30187 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=30188 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_n_00.fx_mi.fx_n_pa_desaturation_03_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30189 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:-0.3,1:0.3 g=0:0.1,1:0.1 b=0:0.5,1:1 a=0:1,1:1
+
+EMITTER id=30190 name="aaa" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1.4 loops=1
+  MODULE id=30191 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_002.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_ht_01_2_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30192 name="SubUV" type=SUB_UV enabled=1 cols=2 rows=1 fps=1.42857 start=0 end=1 loop=1 reltime=1
+
+EMITTER id=30193 name="aaa" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1.4 loops=1
+  MODULE id=30194 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_002.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_ht_01_2_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30195 name="SubUV" type=SUB_UV enabled=1 cols=2 rows=1 fps=1.42857 start=0 end=1 loop=1 reltime=1
+
+EMITTER id=30196 name="emitter_4" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.1 loops=1
+  MODULE id=30197 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30198 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=100,100,100,5 min=100,100,100,5 max=100,100,100,5
+  MODULE id=30199 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.2,1:0.3 g=0:0.7,1:0.3 b=0:1,1:1 a=0:1,1:1
+  MODULE id=30200 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=80 start=0 end=7 loop=1 reltime=1
+
+EMITTER id=30201 name="1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=30202 name="1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=30203 name="emitter_7" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=30204 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_061.dds" mesh="" mat="fx_m_mi_o_00.fx_mi.fx_o_pa_sy_08_2_ts_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=30205 name="emitter_8" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=30206 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_post3ch_02_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30207 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2,0.0625:2.028,0.125:2.104,0.1875:2.216,0.25:2.352,0.3125:2.5,0.375:2.648,0.4375:2.784,0.5:2.896,0.5625:2.972,0.625:3,0.6875:2.6875,0.75:2,0.8125:1.3125,0.875:1,0.9375:2,1:3 g=0:1.3,0.0625:1.2916,0.125:1.2688,0.1875:1.2352,0.25:1.1944,0.3125:1.15,0.375:1.1056,0.4375:1.0648,0.5:1.0312,0.5625:1.0084,0.625:1,0.6875:1,0.75:1,0.8125:1,0.875:1,0.9375:1,1:1 b=0:5,0.0625:5.14,0.125:5.52,0.1875:6.08,0.25:6.76,0.3125:7.5,0.375:8.24,0.4375:8.92,0.5:9.48,0.5625:9.86,0.625:10,0.6875:8.59375,0.75:5.5,0.8125:2.40625,0.875:1,0.9375:3,1:5 a=0:0,1:1
+
+EMITTER id=30208 name="emitter_9" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=30209 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_post3ch_02_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30210 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2,0.0625:2.028,0.125:2.104,0.1875:2.216,0.25:2.352,0.3125:2.5,0.375:2.648,0.4375:2.784,0.5:2.896,0.5625:2.972,0.625:3,0.6875:2.6875,0.75:2,0.8125:1.3125,0.875:1,0.9375:2,1:3 g=0:1.3,0.0625:1.2916,0.125:1.2688,0.1875:1.2352,0.25:1.1944,0.3125:1.15,0.375:1.1056,0.4375:1.0648,0.5:1.0312,0.5625:1.0084,0.625:1,0.6875:1,0.75:1,0.8125:1,0.875:1,0.9375:1,1:1 b=0:5,0.0625:5.14,0.125:5.52,0.1875:6.08,0.25:6.76,0.3125:7.5,0.375:8.24,0.4375:8.92,0.5:9.48,0.5625:9.86,0.625:10,0.6875:8.59375,0.75:5.5,0.8125:2.40625,0.875:1,0.9375:3,1:5 a=0:0,1:1
+
+EMITTER id=30211 name="shine_loop" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.35 loops=1
+  MODULE id=30212 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_k_00.bfx_d_pa_shine_02_ad_inst32535" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30213 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.5,0,1,0.2 min=0.5,0,1,0.2 max=0.5,0,1,0.2
+
+EMITTER id=30214 name="emitter_11" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.35 loops=1
+  MODULE id=30215 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_017.dds" mesh="" mat="fx_m_mi_m_00.fx_mi.fx_m_pa_highpixelring_01_05-02_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_circuitboard_01.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0.3 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30216 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.3 min=0.3 max=1.2
+  MODULE id=30217 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=4,8,10,0 min=4,8,10,0 max=4,8,10,0
+  MODULE id=30218 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=1.5,1.5,1.5
+  MODULE id=30219 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,0.1:0.049837,0.2:0.090064,0.3:0.07274,0.4:0.055415,0.5:0.038091,0.6:0.020766,0.7:0.010385,0.8:0.006923,0.9:0.003462,1:0 y=0:0,1:1.4 z=0:1,1:1 w=0:1,1:1
+  MODULE id=30220 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0,1:3.09324
+  MODULE id=30221 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.3,-0.3,-0.3 min=-0.3,-0.3,-0.3 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+
+EMITTER id=30222 name="emitter_12" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.35 loops=1
+  MODULE id=30223 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_017.dds" mesh="" mat="fx_m_mi_m_00.fx_mi.fx_m_pa_highpixelring_01_05-02_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_circuitboard_01.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0.3 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=30224 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.3 min=0.3 max=1.2
+  MODULE id=30225 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.75,0.3,3,0.25 min=0.75,0.3,3,0.25 max=0.75,0.3,3,0.25
+  MODULE id=30226 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=1.5,1.5,1.5
+  MODULE id=30227 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,0.0769231:0.924981,0.153846:1.41656,0.230769:1.20637,0.307692:0.996175,0.384615:0.785982,0.461538:0.575789,0.538462:0.365597,0.615385:0.155404,0.692308:0.086753,0.769231:0.065065,0.846154:0.043377,0.923077:0.021688,1:0 y=0:1,1:1 z=0:0,0.333333:100,0.666667:0,1:100 w=0:1,1:1
+  MODULE id=30228 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0,1:3.09324
+  MODULE id=30229 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.3,-0.3,-0.3 min=-0.3,-0.3,-0.3 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0

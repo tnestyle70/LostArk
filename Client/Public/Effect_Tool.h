@@ -80,6 +80,13 @@ private:
 	// needs to zoom instead of the asset being scaled up.
 	f32_t m_fPreviewZoom = { 18.f };
 	float3_t m_vWorldPreviewPosition = { 0.f, 2.f, 0.f };
+	// A cue that will ride a weapon socket cannot be judged at a fixed point in
+	// space. When following, the world preview is placed on the named anchor of
+	// whatever character the shared preview panel currently publishes, so the
+	// effect is seen on the actual bone at the actual animation frame.
+	char_t m_AnchorSlot[64] = "b_wp_swm_m_1";
+	bool_t m_isAnchorFollow = { false };
+	string m_strAnchorStatus;
 	string m_strAuthoringPath;
 	string m_strBinaryPath;
 	string m_strSaveAsId;

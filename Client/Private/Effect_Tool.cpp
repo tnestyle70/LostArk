@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "Effect_Tool.h"
+#include "AnimationTargetService.h"
 #include "Effect_AssetIO.h"
 #include "Effect_Runtime.h"
 #include "ProjectDataRoot.h"
@@ -1167,11 +1168,28 @@ void Client::CEffect_Tool::Render_Toolbar()
 	}
 	if (m_isWorldPreviewEnabled)
 	{
+		if (ImGui::Checkbox("Follow Character Anchor", &m_isAnchorFollow))
+		{
+			m_strAnchorStatus.clear();
+			m_isWorldPreviewDirty = true;
+		}
+		if (m_isAnchorFollow)
+		{
+			if (ImGui::InputText("Anchor Slot",
+				m_AnchorSlot, IM_ARRAYSIZE(m_AnchorSlot)))
+			{
+				m_strAnchorStatus.clear();
+			}
+			if (!m_strAnchorStatus.empty())
+				ImGui::TextWrapped("%s", m_strAnchorStatus.c_str());
+		}
+		ImGui::BeginDisabled(m_isAnchorFollow);
 		if (ImGui::DragFloat3("World Position",
 			reinterpret_cast<float*>(&m_vWorldPreviewPosition), 0.1f))
 		{
 			m_isWorldPreviewDirty = true;
 		}
+		ImGui::EndDisabled();
 		ImGui::SameLine();
 		ImGui::TextDisabled(
 			"Rendered by CEffect_Runtime in RENDERGROUP::BLEND");
@@ -1444,6 +1462,29 @@ void Client::CEffect_Tool::Render_SourceCatalogPanel()
 void Client::CEffect_Tool::Update_WorldPreview(
 	const f32_t fTimeDelta)
 {
+	if (m_isAnchorFollow)
+	{
+		/* The anchor moves every frame with the animation, so the published
+		   position is refreshed rather than waiting on the dirty flag. A missing
+		   anchor keeps the last manual position instead of snapping the preview
+		   to the origin, which would read as a placed effect. */
+		float4x4_t anchorWorld{};
+		if (CAnimationTargetService::Resolve_AnchorTransform(
+				m_AnchorSlot, &anchorWorld))
+		{
+			m_vWorldPreviewPosition = float3_t{
+				anchorWorld._41, anchorWorld._42, anchorWorld._43 };
+			m_isWorldPreviewDirty = true;
+			m_strAnchorStatus.clear();
+		}
+		else if (m_strAnchorStatus.empty())
+		{
+			m_strAnchorStatus =
+				"No preview target exposes this anchor. Open the Animation Tool "
+				"target selector, then re-check the slot name.";
+		}
+	}
+
 	if (m_isWorldPreviewDirty)
 	{
 		CEffect_Runtime::Publish_Preview(

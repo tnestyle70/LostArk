@@ -1,5 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-m-swp-ts-spherergb-01" name="par_m_swp_ts_spherergb_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
-
-EMITTER id=28932 name="small-sonicboom" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=28933 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_h_candysphere_01_3.wmodel" mat="fx_m_mi_d_00.fx_mi.fx_d_me_capturergbsplit_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0.02 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

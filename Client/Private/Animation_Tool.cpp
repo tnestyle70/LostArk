@@ -139,15 +139,9 @@ namespace
 	}
 }
 
-Client::CAnimation_Tool::CAnimation_Tool()
-{
-	XMStoreFloat4x4(&m_PreviewParentMatrix, XMMatrixIdentity());
-}
+Client::CAnimation_Tool::CAnimation_Tool() = default;
 
-Client::CAnimation_Tool::~CAnimation_Tool()
-{
-	Release_Preview(false);
-}
+Client::CAnimation_Tool::~CAnimation_Tool() = default;
 
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 {
@@ -232,162 +226,9 @@ void Client::CAnimation_Tool::Render_TargetConflict()
 		Adopt_AssetName(std::string{});
 }
 
-void Client::CAnimation_Tool::Refresh_PreviewLevel()
-{
-	const shared_ptr<CPart_Body> previewBody =
-		m_pPreviewBody.lock();
-	if (nullptr == previewBody)
-	{
-		m_pPreviewBody.reset();
-		m_pPreviewAsset = nullptr;
-		m_iPreviewLevelIndex = UINT32_MAX;
-		return;
-	}
-
-	const uint32_t currentLevel =
-		CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel == m_iPreviewLevelIndex)
-		return;
-
-	CAnimationTargetService::Unbind_Preview(
-		previewBody->Get_Model());
-	m_pPreviewBody.reset();
-	m_pPreviewAsset = nullptr;
-	m_iPreviewLevelIndex = UINT32_MAX;
-}
-
-void Client::CAnimation_Tool::Release_Preview(
-	const bool_t removeFromLayer)
-{
-	const shared_ptr<CPart_Body> previewBody =
-		m_pPreviewBody.lock();
-	if (nullptr == previewBody)
-	{
-		m_pPreviewBody.reset();
-		m_pPreviewAsset = nullptr;
-		m_iPreviewLevelIndex = UINT32_MAX;
-		return;
-	}
-
-	CAnimationTargetService::Unbind_Preview(
-		previewBody->Get_Model());
-	if (removeFromLayer &&
-		m_iPreviewLevelIndex ==
-			CGameInstance::Get().Get_CurrentLevelID())
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_iPreviewLevelIndex,
-			TEXT("Layer_AnimationPreview"),
-			previewBody);
-	}
-	m_pPreviewBody.reset();
-	m_pPreviewAsset = nullptr;
-	m_iPreviewLevelIndex = UINT32_MAX;
-}
-
-bool_t Client::CAnimation_Tool::Select_PreviewAsset(
-	const ANIMATION_PREVIEW_ASSET& asset)
-{
-	const uint32_t currentLevel =
-		CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
-	{
-		m_Status =
-			"Animation previews are admitted in Character Select or Development.";
-		return false;
-	}
-
-	vector_t previewPosition =
-		XMVectorSet(2.5f, 0.f, 0.f, 1.f);
-	const shared_ptr<CCharacter> character = Resolve_Character();
-	if (nullptr != character && nullptr != character->Get_Transform())
-	{
-		previewPosition = XMVectorAdd(
-			previewPosition,
-			character->Get_Transform()->Get_State(STATE::POSITION));
-		previewPosition = XMVectorSetW(previewPosition, 1.f);
-	}
-	XMStoreFloat4x4(
-		&m_PreviewParentMatrix,
-		XMMatrixTranslationFromVector(previewPosition));
-
-	CPart_Body::PART_BODY_DESC desc{};
-	desc.pParentMatrix = &m_PreviewParentMatrix;
-	desc.iPrototypeLevelIndex = currentLevel;
-	desc.strModelTag = asset.pPrototypeTag;
-	desc.strShaderTag =
-		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
-	desc.pInitialAnimation = nullptr;
-
-	shared_ptr<CGameObject> stagedObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			currentLevel,
-			TEXT("Prototype_GameObject_Part_Body"),
-			currentLevel,
-			TEXT("Layer_AnimationPreview"),
-			&desc,
-			&stagedObject)))
-	{
-		m_Status = string("Preview asset is not admitted: ") +
-			asset.pModelAssetId;
-		return false;
-	}
-
-	const shared_ptr<CPart_Body> stagedBody =
-		dynamic_pointer_cast<CPart_Body>(stagedObject);
-	if (nullptr == stagedBody || nullptr == stagedBody->Get_Model())
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			currentLevel,
-			TEXT("Layer_AnimationPreview"),
-			stagedObject);
-		m_Status = "Preview body did not expose an animated CModel.";
-		return false;
-	}
-
-	Release_Preview(true);
-	m_pPreviewBody = stagedBody;
-	m_pPreviewAsset = &asset;
-	m_iPreviewLevelIndex = currentLevel;
-	CAnimationTargetService::Bind_Preview(
-		stagedBody->Get_Model(),
-		asset.pAssetName);
-	m_Status = string("Previewing ") + asset.pLabel +
-		" 2.5 m to the right of the scene character.";
-	return true;
-}
-
-void Client::CAnimation_Tool::Render_TargetSelector()
-{
-	ImGui::SeparatorText("Target");
-	ImGui::BeginDisabled(m_bDirty);
-	const bool_t sceneSelected = m_pPreviewBody.expired();
-	if (ImGui::Selectable("Scene Character", sceneSelected))
-		Release_Preview(true);
-
-	for (const ANIMATION_PREVIEW_ASSET& asset :
-		ANIMATION_PREVIEW_ASSETS)
-	{
-		ImGui::PushID(asset.pId);
-		const bool_t isSelected =
-			!m_pPreviewBody.expired() &&
-			m_pPreviewAsset == &asset;
-		if (ImGui::Selectable(asset.pLabel, isSelected) &&
-			!isSelected)
-		{
-			Select_PreviewAsset(asset);
-		}
-		ImGui::PopID();
-	}
-	ImGui::EndDisabled();
-	if (m_bDirty)
-		ImGui::TextDisabled(
-			"Save or discard Animation Events before changing target here.");
-	if (!m_Status.empty())
-		ImGui::TextWrapped("%s", m_Status.c_str());
-	ImGui::Separator();
-}
+/* Preview lifecycle now belongs to CCharacterPreviewPanel so Effect authoring
+   can read the same target. The tool keeps only the dirty-document policy that
+   decides when the target may change. */
 
 bool_t Client::CAnimation_Tool::Is_Window(EVENT_KIND eKind)
 {
@@ -574,8 +415,10 @@ void Client::CAnimation_Tool::Render()
 		return;
 	}
 
-	Refresh_PreviewLevel();
-	Render_TargetSelector();
+	m_PreviewPanel.Refresh_Level();
+	m_PreviewPanel.Render_Selector(
+		m_bDirty,
+		"Save or discard Animation Events before changing target here.");
 	if (!Sync_AssetName())
 	{
 		Render_TargetConflict();

@@ -1,8 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-s-swp-instance-crackcam-01" name="par_s_swp_instance_crackcam_01" provenance=DERIVED_CONVERSION duration=5 warmup=0
-
-EMITTER id=19129 name="2" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=19130 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_r_noise_002.dds" mesh="Effect/Dimensionist/Meshes/fx_n_plane_crack_03.wmodel" mat="fx_m_mi_n_00.fx_mi.fx_n_me_crackspace_02_21_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-
-EMITTER id=19131 name="icecrack_s" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=5 loops=1
-  MODULE id=19132 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_01/fx_c_ice_003.dds" mesh="Effect/Dimensionist/Meshes/fm_d_cracklight_001.wmodel" mat="fx_m_mi_00.fx_mi.fx_d_me_icecrack_01_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

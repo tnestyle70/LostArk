@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "CharacterPreviewPanel.h"
 
 #include <filesystem>
 
@@ -12,8 +13,6 @@ NS_END
 NS_BEGIN(Client)
 
 class CCharacter;
-class CPart_Body;
-struct ANIMATION_PREVIEW_ASSET;
 
 class CAnimation_Tool final
 {
@@ -170,10 +169,6 @@ private:
 	bool_t Sync_AssetName();
 	void Adopt_AssetName(const std::string& assetName);
 	void Render_TargetConflict();
-	void Render_TargetSelector();
-	bool_t Select_PreviewAsset(const ANIMATION_PREVIEW_ASSET& asset);
-	void Release_Preview(bool_t removeFromLayer);
-	void Refresh_PreviewLevel();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_HitEvents(const shared_ptr<Engine::CModel>& pModel);
@@ -240,10 +235,9 @@ private:
 private:
 	char m_Filter[128]{};
 	bool_t m_bLoop = true;
-	weak_ptr<CPart_Body> m_pPreviewBody;
-	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
-	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
-	float4x4_t m_PreviewParentMatrix{};
+	/* Owns the preview body and publishes the shared target. The tool only tells
+	it when its own document is too dirty to change target. */
+	CCharacterPreviewPanel m_PreviewPanel;
 
 	std::vector<ANIM_EVENT> m_Events;
 	/* Empty until a character resolves; Sync_AssetName fills it from the spec. */

@@ -1,7 +1,7 @@
 #include "CharacterCatalog.h"
 
 #include "Logic_Artist.h"
-#include "Logic_Dimensionist.h"
+#include "Logic_DimensionMaster.h"
 #include "Logic_GunSlinger.h"
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
@@ -22,8 +22,8 @@ const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 		return &Spec_Slayer;
 	case LostArk::Shared::CHARACTER_CLASS_ID::ARTIST:
 		return &Spec_Artist;
-	case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST:
-		return &Spec_Dimensionist;
+	case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER:
+		return &Spec_DimensionMaster;
 	//case LostArk::Shared::CHARACTER_CLASS_ID::DESTROYER:
 	//	break;
 	case LostArk::Shared::CHARACTER_CLASS_ID::END:

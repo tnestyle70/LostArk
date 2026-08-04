@@ -33,7 +33,7 @@ Animation Tool이 Effect를 직접 만들거나, Effect Tool이 Animation 파일
 - Gunslinger
 - Slayer
 - Artist
-- Dimensionist
+- DimensionMaster
 
 캐릭터를 바꾸면 Animation Tool의 **Scene Character** 대상도 선택한 캐릭터로 바뀐다.
 
@@ -71,7 +71,7 @@ Animation Tool의 Target 목록에는 다음 항목이 있다.
 | 항목 | 용도 |
 |---|---|
 | Scene Character | Character Select에서 현재 선택한 실제 캐릭터 |
-| Dimensionist Character | 차원술사 본체, 약 154개 clip |
+| DimensionMaster Character | 차원술사 본체, 약 154개 clip |
 | Dimension Core | sk_super_instance core model |
 | Dimension Summon | 소환체 model, 2개 clip |
 
@@ -103,7 +103,7 @@ EMITTER id=... name="..." type=SPRITE enabled=1 ...
   MODULE id=... name="Lifetime" type=LIFETIME ...
 ~~~
 
-현재 Dimensionist Effect 후보 459개는 모두 candidate_only다.
+현재 DimensionMaster Effect 후보 459개는 모두 candidate_only다.
 즉, 추출은 됐지만 바로 제품 runtime에 연결해도 된다고 승인된 Effect는 아직 0개다.
 
 ---
@@ -215,7 +215,7 @@ HIT marker를 저장했다고 Server damage timing이 자동으로 바뀌는 것
 현재 Animation Tool이 재생할 model을 고른다.
 
 - Scene Character: Character Select에서 선택한 캐릭터
-- Dimensionist Character/Core/Summon: 별도 차원술사 preview
+- DimensionMaster Character/Core/Summon: 별도 차원술사 preview
 
 ### Playback
 
@@ -294,7 +294,7 @@ Data/Animation/Authored/<AnimationAssetId>/<AnimationAssetId>.animevents
 
 ~~~text
 Data/Animation/Authored/Artist/Artist.animevents
-Data/Animation/Authored/Dimensionist/Dimensionist.animevents
+Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents
 ~~~
 
 ### 6.2 기존 v3
