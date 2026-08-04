@@ -96,8 +96,8 @@ $inputSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordin
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
-		'skillId','characterClass','inputSlot','displayName','actionId','cooldownMs','actionDurationMs',
-        'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId','effectId') 'player skill'
+		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','cooldownMs','actionDurationMs',
+        'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId','effectId','comboStages') 'player skill'
     Assert-StableId $skill.characterClass 'characterClass'
     Assert-StableId $skill.inputSlot 'inputSlot'
     Assert-StableId $skill.actionId 'actionId'
@@ -118,18 +118,62 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Duplicate skill ID or input slot: $id"
     }
     if ($skill.characterClass -notin $supportedPlayerClasses -or $skill.inputSlot -notin $playerSkillSlots -or
-        [uint32]$skill.cooldownMs -eq 0 -or [uint32]$skill.actionDurationMs -eq 0 -or
+        [uint32]$skill.actionDurationMs -eq 0 -or
         [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
         [uint32]$skill.resourceCost -gt 100 -or -not $damageIds.Contains([string]$skill.serverDamageProfileId)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
+	$skillKind = [string]$skill.skillKind
+	if ($skillKind -notin @('ACTIVE','COMBO')) {
+		throw "Unknown skillKind: $id $skillKind"
+	}
+	$stages = @($skill.comboStages)
+	if ($skillKind -eq 'ACTIVE') {
+		if ($stages.Count -ne 0) {
+			throw "ACTIVE skill must not carry comboStages: $id"
+		}
+		if ([uint32]$skill.cooldownMs -eq 0) {
+			throw "ACTIVE skill needs a cooldown: $id"
+		}
+	}
+	else {
+		if ($stages.Count -lt 2 -or $stages.Count -gt 8) {
+			throw "COMBO skill needs 2..8 stages: $id"
+		}
+		for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
+			$stage = $stages[$stageIndex]
+			Assert-ExactProperties $stage @(
+				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'combo stage'
+			if ([uint32]$stage.actionDurationMs -eq 0 -or
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs) {
+				throw "Combo stage timing is invalid: $id stage $stageIndex"
+			}
+			if ($stageIndex -eq $stages.Count - 1) {
+				if ([uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
+					throw "Final combo stage must not open an input window: $id"
+				}
+			}
+			elseif ([uint32]$stage.inputOpenMs -ge [uint32]$stage.inputCloseMs -or
+				[uint32]$stage.inputCloseMs -gt [uint32]$stage.actionDurationMs) {
+				throw "Combo input window is invalid: $id stage $stageIndex"
+			}
+		}
+	}
     $skillRows.Add((@(
         'SKILL', $id, $skill.characterClass, $skill.inputSlot, $skill.actionId,
         [uint32]$skill.cooldownMs, [uint32]$skill.actionDurationMs, [uint32]$skill.hitTimeMs,
         [uint32]$skill.resourceCost,
         (Format-InvariantFloat $skill.movementDistance "skill $id movementDistance"),
         (Format-InvariantFloat $skill.maximumRange "skill $id maximumRange"),
-        $skill.serverDamageProfileId) -join "`t"))
+        $skill.serverDamageProfileId,
+        $skillKind) -join "`t"))
+	for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
+		$stage = $stages[$stageIndex]
+		$skillRows.Add((@(
+			'SKILLSTAGE', $id, $stageIndex,
+			[uint32]$stage.actionDurationMs, [uint32]$stage.hitTimeMs,
+			[uint32]$stage.inputOpenMs, [uint32]$stage.inputCloseMs) -join "`t"))
+	}
 }
 
 $bossDocument = Read-JsonDocument 'Data/Balance/BossProfiles.json'

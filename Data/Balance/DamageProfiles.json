@@ -17,6 +17,7 @@
     { "damageProfileId": "damage.player.45060", "amount": 650 },
     { "damageProfileId": "damage.player.31210", "amount": 550 },
     { "damageProfileId": "damage.player.31230", "amount": 700 },
-    { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 }
+    { "damageProfileId": "damage.valtan.basic-swing", "amount": 350 },
+    { "damageProfileId": "damage.player.34010", "amount": 100 }
   ]
 }

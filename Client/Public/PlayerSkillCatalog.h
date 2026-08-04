@@ -26,6 +26,8 @@ namespace Client
 		std::string strActionId;
 		std::uint32_t iCooldownMs = 0;
 		std::uint32_t iDamage = 0;
+		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
 	};
 
 	class CPlayerSkillCatalog final

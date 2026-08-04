@@ -520,6 +520,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumHp = player.iMaximumHp;
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
+		snapshot.iComboStage = player.iComboStage;
 		for (const auto& [skillId, cooldownEndTick] :
 			player.CooldownEndTickBySkillId)
 		{

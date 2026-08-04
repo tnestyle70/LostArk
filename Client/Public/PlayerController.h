@@ -5,6 +5,7 @@
 #include "Network/PacketMessages.h"
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -15,6 +16,7 @@ namespace Client
 {
 	class CCharacter;
 	class IPlayerCommandSink;
+	struct CHARACTER_SPEC;
 
 	class CPlayerController final
 	{
@@ -44,6 +46,12 @@ namespace Client
 			const shared_ptr<CCharacter>& character,
 			LostArk::Shared::SKILL_ID& outSkillId);
 
+		/* Left mouse is not a key code, so it is polled after the slot table and
+		only fills a slot the keyboard left empty. */
+		void Poll_BasicAttack(
+			const CHARACTER_SPEC* pSpec,
+			LostArk::Shared::SKILL_ID& outSkillId);
+
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
 		shared_ptr<IPlayerCommandSink> m_pCommandSink;
@@ -56,5 +64,10 @@ namespace Client
 		already held read as a fresh press. */
 		std::array<bool_t, 256> m_wasKeyDown{};
 		bool_t m_isGameplayInputEnabled = true;
+		/* A held basic attack has to keep asking: the combo buffer only takes a
+		press inside a window the server owns and the client is not told about, so
+		the press is repeated at a fixed rate instead of being predicted. */
+		bool_t m_wasLeftMouseDown = false;
+		std::chrono::steady_clock::time_point m_LastBasicAttackSentAt{};
 	};
 }

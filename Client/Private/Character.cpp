@@ -221,6 +221,11 @@ void CCharacter::Update_Chain()
 	if (nullptr == m_pChain || !Is_ClipFinished())
 		return;
 
+	/* A combo holds on its last clip until the server confirms the next stage.
+	Every other mode keeps running to the end by itself. */
+	if ("COMBO" == m_pChain->sMode)
+		return;
+
 	++m_iChainStep;
 
 	if (m_iChainStep >= static_cast<int32_t>(m_pChain->clips.size()))
@@ -313,10 +318,22 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 	return true;
 }
 
+bool_t CCharacter::Advance_ComboStage(const std::uint8_t comboStage)
+{
+	if (nullptr == m_pChain || 0u == comboStage)
+		return false;
+	const int32_t step = static_cast<int32_t>(comboStage) - 1;
+	if (step >= static_cast<int32_t>(m_pChain->clips.size()))
+		return false;
+	m_iChainStep = step;
+	return Start_Clip(m_pChain->clips[step].c_str());
+}
+
 bool_t CCharacter::Apply_NetworkAction(
 	const LostArk::Shared::PLAYER_ACTION_STATE action,
 	const LostArk::Shared::SKILL_ID skillId,
-	const std::uint32_t actionStartTick)
+	const std::uint32_t actionStartTick,
+	const std::uint8_t comboStage)
 {
 	using namespace LostArk::Shared;
 	if (static_cast<std::uint8_t>(action) >=
@@ -333,8 +350,17 @@ bool_t CCharacter::Apply_NetworkAction(
 		{
 			return true;
 		}
-		if (!Play_Skill(static_cast<int32_t>(skillId)))
+		/* Stage one starts the chain; later stages step the one already running,
+		because the chain does not advance itself in COMBO mode. */
+		if (comboStage > 1u)
+		{
+			if (!Advance_ComboStage(comboStage))
+				return false;
+		}
+		else if (!Play_Skill(static_cast<int32_t>(skillId)))
+		{
 			return false;
+		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
