@@ -154,7 +154,7 @@ UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
 | 파일 | 수정하는 값 | 주 소비자 |
 |---|---|---|
 | `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed | Server spawn, HUD snapshot |
-| `Data/Balance/PlayerSkills.json` | slot, 이름, cooldown, action/hit time, cost, 이동 거리, range, damage 참조 | Server skill, UI definition |
+| `Data/Balance/PlayerSkills.json` | slot, 이름, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId` | Server skill, UI definition, Effect presentation |
 | `Data/Balance/DamageProfiles.json` | 실제 정수 damage | Server 판정, UI 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
@@ -304,7 +304,9 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 새 스킬을 추가할 때는 다음을 함께 변경한다.
 
-1. `PlayerSkills.json`과 참조 `DamageProfiles.json`
+1. `PlayerSkills.json`과 참조 `DamageProfiles.json`. `effectId`는 Client 연출 참조이며
+   stable ID여야 하고 Server bootstrap에는 싣지 않는다. 빈 문자열은 저작된 이펙트가
+   아직 없다는 뜻이다.
 2. Character presentation의 stable action/skill mapping
 3. 필요한 Shared message/snapshot 확장
 4. Server validation/action/damage 처리

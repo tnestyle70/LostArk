@@ -97,13 +97,20 @@ $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
 		'skillId','characterClass','inputSlot','displayName','actionId','cooldownMs','actionDurationMs',
-        'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId') 'player skill'
+        'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId','effectId') 'player skill'
     Assert-StableId $skill.characterClass 'characterClass'
     Assert-StableId $skill.inputSlot 'inputSlot'
     Assert-StableId $skill.actionId 'actionId'
     Assert-StableId $skill.serverDamageProfileId 'serverDamageProfileId'
 	if ([string]::IsNullOrWhiteSpace([string]$skill.displayName) -or ([string]$skill.displayName).Length -gt 64) {
 		throw "Skill displayName is invalid: $($skill.skillId)"
+	}
+	# Client presentation reference. Empty means the skill has no authored effect
+	# yet, which is the current state of every row; a non-empty value still has to
+	# be a stable id so a file path or a display string cannot be stored here.
+	$effectId = [string]$skill.effectId
+	if ($effectId.Length -gt 0) {
+		Assert-StableId $effectId 'effectId'
 	}
     $id = [uint32]$skill.skillId
     if ($id -eq 0 -or -not $skillIds.Add($id) -or
