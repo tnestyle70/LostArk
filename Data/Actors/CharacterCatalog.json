@@ -1,6 +1,6 @@
 {
   "schema": "lostark.character-catalog",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "characters": [
     {
       "archetypeId": "PLAYER_LANCE_MASTER",
@@ -14,7 +14,9 @@
         "Character/LanceMaster/LanceMaster_Shoulder.wmodel",
         "Character/LanceMaster/LanceMaster_Helmet.wmodel"
       ],
-      "weaponModel": "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+      "weaponModels": [
+        "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel"
+      ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported"
     },
@@ -30,7 +32,9 @@
         "Character/GunSlinger/GunSlinger_Shoulder.wmodel",
         "Character/GunSlinger/GunSlinger_Helmet.wmodel"
       ],
-      "weaponModel": "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel",
+      "weaponModels": [
+        "Character/WP_WGDH_02H/WP_WGDH_02H.wmodel"
+      ],
       "animationSetId": "ANIM_GUNSLINGER",
       "runtimeStatus": "supported"
     },
@@ -46,7 +50,9 @@
         "Character/Slayer/Slayer_Shoulder.wmodel",
         "Character/Slayer/Slayer_Helmet.wmodel"
       ],
-      "weaponModel": "Character/WP_WWBK_03/WP_WWBK_03.wmodel",
+      "weaponModels": [
+        "Character/WP_WWBK_03/WP_WWBK_03.wmodel"
+      ],
       "animationSetId": "ANIM_SLAYER",
       "runtimeStatus": "supported"
     },
@@ -62,8 +68,25 @@
         "Character/Artist/Artist_Shoulder.wmodel",
         "Character/Artist/Artist_Helmet.wmodel"
       ],
-      "weaponModel": "Character/WP_WSDM_09/WP_WSDM_09.wmodel",
+      "weaponModels": [
+        "Character/WP_WSDM_09/WP_WSDM_09.wmodel"
+      ],
       "animationSetId": "ANIM_ARTIST",
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_DIMENSIONIST",
+      "networkClassId": "DIMENSIONIST",
+      "assetId": "Dimensionist",
+      "bodyModel": "Character/Dimensionist/Dimensionist_Character.wmodel",
+      "equipmentModels": [],
+      "weaponModels": [
+        "Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel",
+        "Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel",
+        "Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel",
+        "Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel"
+      ],
+      "animationSetId": "ANIM_DIMENSIONIST",
       "runtimeStatus": "supported"
     }
   ]

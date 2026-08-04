@@ -103,6 +103,7 @@ __pycache__/
 
 # Personal planning style override. Shared agents fall back when it is absent.
 /.md/계획서작성규칙.local.md
+/.md/GB/코드작성규칙.local.md
 /.md/local.gotchas.md
 /.md/gotchas.local.md
 

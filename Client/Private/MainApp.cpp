@@ -8,6 +8,7 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Loading.h"
+#include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "Profiler.h"
 #include "RuntimeAssetRoot.h"
@@ -16,6 +17,7 @@
 #include "Animation_Tool.h"
 #include "Effect_Tool.h"
 #include "HUDLayoutTool.h"
+#include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
 #include "ProfilerCaptureIO.h"
 #endif
@@ -31,6 +33,27 @@ namespace
 		DWORD processId = {};
 		return 0 != GetWindowThreadProcessId(hWnd, &processId) &&
 			GetCurrentProcessId() == processId;
+	}
+
+	const char_t* GetHUDLayoutClassId(
+		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (characterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER:
+			return "LanceMaster";
+		case CHARACTER_CLASS_ID::GUNSLINGER:
+			return "Gunslinger";
+		case CHARACTER_CLASS_ID::SLAYER:
+			return "Slayer";
+		case CHARACTER_CLASS_ID::ARTIST:
+			return "Yinyangshi";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return "DimensionMaster";
+		default:
+			return "Default";
+		}
 	}
 #endif
 
@@ -48,6 +71,8 @@ namespace
 			return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST:
 			return "Artist";
+		case CHARACTER_CLASS_ID::DIMENSIONIST:
+			return "Dimensionist";
 		default:
 			return "Unknown";
 		}
@@ -165,6 +190,23 @@ HRESULT CMainApp::Render()
 
 	if (nullptr != m_pImGuiLayer)
 	{
+	#ifdef _DEBUG
+		const HUD_PLAYER_STATE& hudPlayer =
+			CCombatHUDViewModel::Get().Get_Player();
+		const uint32_t hudLevel =
+			CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t supportsAuthoredHUD =
+			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel ||
+			ETOUI(LEVEL::DEVELOPMENT) == hudLevel ||
+			ETOUI(LEVEL::BERN) == hudLevel ||
+			ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
+		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
+			supportsAuthoredHUD)
+		{
+			m_pHUDLayoutTool->Render_RuntimePreview(
+				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
+		}
+	#endif
 		RenderCombatHUD();
 #ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
@@ -210,7 +252,8 @@ void CMainApp::RenderCombatHUD()
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
 	{
 		return;
 	}
@@ -245,6 +288,8 @@ void CMainApp::RenderCombatHUD()
 	{
 		ImGui::Text("%s", GetCharacterClassDisplayName(
 			player.eCharacterClass));
+		if (player.isPreview)
+			ImGui::TextDisabled("Character Select preview");
 		ImGui::Text("HP  %u / %u", player.iCurrentHp, player.iMaximumHp);
 		ImGui::ProgressBar(
 			static_cast<float>(player.iCurrentHp) /
@@ -270,6 +315,8 @@ void CMainApp::RenderCombatHUD()
 				static_cast<float>(remainingTicks) / 30.f,
 				skill.iDamage);
 		}
+		if (player.Skills.empty())
+			ImGui::TextDisabled("No server-approved skills for this class");
 	}
 	ImGui::End();
 }
@@ -304,13 +351,19 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
 	return S_OK;
 }
 
-HRESULT CMainApp::Start_Level(const LEVEL eTargetLevel)
+HRESULT CMainApp::Start_Level(
+	const LEVEL eTargetLevel,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	if (nullptr == CLevelRegistry::Find(eTargetLevel))
 		return E_INVALIDARG;
 
 	unique_ptr<CLevel_Loading> loading =
-		CLevel_Loading::Create(m_pDevice, m_pContext, eTargetLevel);
+		CLevel_Loading::Create(
+			m_pDevice,
+			m_pContext,
+			eTargetLevel,
+			lobbyCommandToken);
 	if (nullptr == loading)
 		return E_FAIL;
 
@@ -327,9 +380,19 @@ void CMainApp::Apply_LevelRequest()
 
 	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
 	{
-		const HRESULT result = Start_Level(request.eTargetLevel);
+		const HRESULT result = Start_Level(
+			request.eTargetLevel,
+			request.iLobbyCommandToken);
 		if (FAILED(result))
+		{
+			if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
+			{
+				CLobbyCommandService::Cancel(
+					request.iLobbyCommandToken,
+					"target level loading could not start");
+			}
 			CLevelTransitionService::Report_LoadFailure(result);
+		}
 		return;
 	}
 
@@ -344,14 +407,21 @@ void CMainApp::Apply_LevelRequest()
 		return;
 	}
 
+	if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
+	{
+		CLobbyCommandService::Cancel(
+			request.iLobbyCommandToken,
+			"target level activation failed");
+	}
 	CGameInstance::Get().Clear_Resources(ETOUI(request.eTargetLevel));
 	CNetworkManager::Get().Close_ServerConnection();
 	CLevelTransitionService::Report_LoadFailure(E_FAIL);
-	if (LEVEL::LOBBY != request.eTargetLevel)
+	if (!CLevelTransitionService::Request_Load(
+		LEVEL::LOBBY,
+		"main-app.activation-failure"))
 	{
-		CLevelTransitionService::Request_Load(
-			LEVEL::LOBBY,
-			"main-app.activation-failure");
+		OutputDebugStringA(
+			"[MainApp] Failed to stage Lobby recovery after activation failure.\n");
 	}
 }
 
@@ -377,11 +447,16 @@ HRESULT CMainApp::ReadyDebugTools()
 		pProfiler->Set_Enabled(false);
 	}
 	m_bProfilerVisible = false;
+	m_pHUDLayoutTool =
+		make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
 	return S_OK;
 }
 
 HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 {
+	if (nullptr != m_pMapTool && DEBUG_TOOL::MAP != eTool)
+		m_pMapTool->SetOpen(false);
+
 	switch (eTool)
 	{
 	case DEBUG_TOOL::MAP:
@@ -428,18 +503,21 @@ void CMainApp::RenderDeveloperTools()
 
 	const uint32_t currentLevelId =
 		CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t isTestLevel =
-		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId;
+	const bool_t isMapEditorWorkspace =
+		ETOUI(LEVEL::DEVELOPMENT) == currentLevelId &&
+		CMapEditorWorkspaceService::Is_Active();
 	ImGui::Text("Current level id: %u", currentLevelId);
-	ImGui::TextDisabled(
-		"Authoring tools are enabled only in the server-authorized Test level.");
+	ImGui::TextDisabled(isMapEditorWorkspace ?
+		"Map Editor is active. Open Map Tool to author the selected Area." :
+		"F1 only toggles tools. Enter Map Editor through Lobby Test.");
 	ImGui::SeparatorText("Tools");
 
-	const auto toolButton = [this, isTestLevel](
+	const auto toolButton = [this](
 		const char_t* pLabel,
-		const DEBUG_TOOL eTool)
+		const DEBUG_TOOL eTool,
+		const bool_t isEnabled)
 	{
-		ImGui::BeginDisabled(!isTestLevel);
+		ImGui::BeginDisabled(!isEnabled);
 		if (ImGui::Button(pLabel))
 		{
 			m_strToolStatus = SUCCEEDED(EnsureDebugTool(eTool)) ?
@@ -448,12 +526,15 @@ void CMainApp::RenderDeveloperTools()
 		ImGui::EndDisabled();
 	};
 
-	toolButton("Map Tool", DEBUG_TOOL::MAP);
+	toolButton("Map Tool", DEBUG_TOOL::MAP, isMapEditorWorkspace);
 	ImGui::SameLine();
-	toolButton("Animation Tool", DEBUG_TOOL::ANIMATION);
-	toolButton("Effect Tool", DEBUG_TOOL::EFFECT);
+	toolButton(
+		"Animation Tool",
+		DEBUG_TOOL::ANIMATION,
+		true);
+	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
 	ImGui::SameLine();
-	toolButton("HUD Layout Tool", DEBUG_TOOL::UI);
+	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 
 	ImGui::SeparatorText("Diagnostics");

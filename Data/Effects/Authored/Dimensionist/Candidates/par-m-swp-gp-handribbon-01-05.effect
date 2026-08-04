@@ -1,0 +1,17 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-gp-handribbon-01-05" name="par_m_swp_gp_handribbon_01_05" provenance=DERIVED_CONVERSION duration=2 warmup=0
+
+EMITTER id=26296 name="1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=26297 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=26298 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.8,0.8,0.8
+  MODULE id=26299 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:-0.05,1:-0.05 g=0:-0.1,1:-0.1 b=0:0.1,1:0.1 a=0:0.5,1:0.5
+
+EMITTER id=26300 name="1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=26301 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=26302 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.6,0.6,0.6
+  MODULE id=26303 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.1,1:0.1 g=0:0.6,1:0.6 b=0:1,1:1 a=0:0.5,1:0.5
+
+EMITTER id=26304 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=2 loops=1
+  MODULE id=26305 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_016_ycl.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_trail_01_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=26306 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.1,0.1,0.1
+  MODULE id=26307 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:0 g=0:10,1:0 b=0:30,1:3 a=0:1,1:0

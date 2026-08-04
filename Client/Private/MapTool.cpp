@@ -4,8 +4,11 @@
 
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Camera_Free.h"
+#include "DataJson.h"
 #include "GameInstance.h"
+#include "LevelTransitionService.h"
 #include "MapAssetObject.h"
+#include "MapEditorWorkspaceService.h"
 #include "MapNavigationContract.h"
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
@@ -88,6 +91,52 @@ namespace
 		return left.lexically_normal() == right.lexically_normal();
 	}
 
+	bool_t ReadTextFile(
+		const std::filesystem::path& path,
+		std::string& outText)
+	{
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+			return false;
+		outText.assign(
+			std::istreambuf_iterator<char>(input),
+			std::istreambuf_iterator<char>());
+		return input.good() || input.eof();
+	}
+
+	bool_t ReadRequiredString(
+		const Client::DATA_JSON_VALUE& object,
+		const char_t* pName,
+		std::string& outValue)
+	{
+		const Client::DATA_JSON_VALUE* value = object.Find(pName);
+		if (nullptr == value || !value->Is_String() ||
+			value->Get_String().empty())
+		{
+			return false;
+		}
+		outValue = value->Get_String();
+		return true;
+	}
+
+	std::filesystem::path ResolveDataCatalogPath(
+		const std::string& value)
+	{
+		const std::filesystem::path serialized(value);
+		if (serialized.empty() || serialized.is_absolute() ||
+			serialized.has_root_path())
+		{
+			return {};
+		}
+		auto part = serialized.begin();
+		if (part == serialized.end() || *part != L"Data")
+			return {};
+		std::filesystem::path relative;
+		for (++part; part != serialized.end(); ++part)
+			relative /= *part;
+		return CProjectDataRoot::Resolve(relative);
+	}
+
 }
 
 struct Client::CMapTool::NAVIGATION_RENDER_RESOURCES final
@@ -131,6 +180,7 @@ HRESULT Client::CMapTool::Initialize(
 		return E_FAIL;
 	}
 
+	m_pDevice = pDevice;
 	m_pContext = pContext;
 	m_pAssetPreview = std::move(preview);
 	m_pNavigationRenderResources = std::move(navigationResources);
@@ -151,10 +201,13 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
 
-	const bool_t isAssetTest =
-		ETOUI(LEVEL::DEVELOPMENT) == CGameInstance::Get().Get_CurrentLevelID();
-	Handle_LevelTransition(isAssetTest);
-	Update_WorldInteraction(isAssetTest);
+	const uint32_t currentLevelIndex =
+		CGameInstance::Get().Get_CurrentLevelID();
+	const bool_t isMapAuthoringLevel =
+		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
+		CMapEditorWorkspaceService::Is_Active();
+	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
+	Update_WorldInteraction(isMapAuthoringLevel);
 }
 
 void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
@@ -230,17 +283,21 @@ void Client::CMapTool::Render()
 	if (!m_bOpen)
 		return;
 
-	const bool_t isAssetTest =
-		ETOUI(LEVEL::DEVELOPMENT) ==
+	const uint32_t currentLevelIndex =
 		CGameInstance::Get().Get_CurrentLevelID();
-	Render_WorldOverlay(isAssetTest);
+	const bool_t isMapAuthoringLevel =
+		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
+		CMapEditorWorkspaceService::Is_Active();
+	Render_WorldOverlay(isMapAuthoringLevel);
 
 	ImGui::SetNextWindowSize(ImVec2(1180.f, 900.f), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("LostArk Map Tool", &m_bOpen))
 	{
+		Render_WorkspaceBar(isMapAuthoringLevel);
+		ImGui::Separator();
 		Render_ModeBar();
 		ImGui::Separator();
-		Render_ActiveMode(isAssetTest);
+		Render_ActiveMode(isMapAuthoringLevel);
 	}
 	ImGui::End();
 }
@@ -254,6 +311,118 @@ void Client::CMapTool::Render_WorldOverlay(bool_t isAssetTest)
 		Render_NavigationBoundsOverlay();
 	else
 		Render_NavigationOverlay();
+}
+
+void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
+{
+	ImGui::TextUnformatted("Map Editor Workspace");
+	ImGui::SameLine();
+	ImGui::TextDisabled(
+		"Data authoring only; Client/Server runtime publish is separate");
+	if (!isAssetTest)
+	{
+		ImGui::TextWrapped(
+			"Waiting for the isolated Development editor shell.");
+		return;
+	}
+
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	const char_t* preview = nullptr != active ?
+		active->label.c_str() : "<select Area>";
+	ImGui::SetNextItemWidth(320.f);
+	if (ImGui::BeginCombo("Area", preview))
+	{
+		for (size_t index = 0; index < m_EditorAreas.size(); ++index)
+		{
+			const bool_t selected = index == m_iActiveEditorArea;
+			const std::string label = m_EditorAreas[index].label + "  [" +
+				m_EditorAreas[index].areaId + "]";
+			if (ImGui::Selectable(label.c_str(), selected) && !selected)
+			{
+				if (Has_UnsavedAuthoring())
+				{
+					m_iPendingEditorArea = index;
+					m_isEditorAreaSwitchPending = true;
+				}
+				else
+				{
+					Switch_EditorArea(index);
+				}
+			}
+			if (selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Exit to Lobby"))
+	{
+		if (Has_UnsavedAuthoring())
+			m_isEditorExitPending = true;
+		else if (!CLevelTransitionService::Request_Load(
+			LEVEL::LOBBY, "debug.map-editor.exit"))
+			m_Status = CLevelTransitionService::Get_Status();
+	}
+
+	if (m_isEditorAreaSwitchPending || m_isEditorExitPending)
+		ImGui::OpenPopup("Unsaved map authoring");
+	if (ImGui::BeginPopupModal(
+		"Unsaved map authoring",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::TextWrapped(
+			"The active Area has unsaved Data authoring changes.");
+		if (ImGui::Button("Save and Continue"))
+		{
+			if (Save_AllAuthoring())
+			{
+				if (m_isEditorExitPending)
+					CLevelTransitionService::Request_Load(
+						LEVEL::LOBBY, "debug.map-editor.exit");
+				else
+					Switch_EditorArea(m_iPendingEditorArea);
+				m_isEditorAreaSwitchPending = false;
+				m_isEditorExitPending = false;
+				ImGui::CloseCurrentPopup();
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Discard and Continue"))
+		{
+			if (m_isEditorExitPending)
+				CLevelTransitionService::Request_Load(
+					LEVEL::LOBBY, "debug.map-editor.exit");
+			else
+				Switch_EditorArea(m_iPendingEditorArea);
+			m_isEditorAreaSwitchPending = false;
+			m_isEditorExitPending = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel"))
+		{
+			m_iPendingEditorArea = SIZE_MAX;
+			m_isEditorAreaSwitchPending = false;
+			m_isEditorExitPending = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+}
+
+bool_t Client::CMapTool::Save_AllAuthoring()
+{
+	if (m_bDirty && !Save_Placements())
+		return false;
+	if (m_bWorldGameplayDirty && !Save_WorldGameplay())
+		return false;
+	if ((m_NavigationDocument.Is_Dirty() ||
+		m_RuntimeBlockerDocument.Is_Dirty()) && !Save_Navigation())
+	{
+		return false;
+	}
+	return true;
 }
 
 void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
@@ -284,8 +453,11 @@ void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
 
 void Client::CMapTool::Render_MapAssetsPanel(bool_t isAssetTest)
 {
-	ImGui::Text("Level: %s",
-		isAssetTest ? "DEVELOPMENT" : "Open Map Tool from F1 Developer Tools");
+	ImGui::Text("Level: %u", m_iAuthoringLevelIndex);
+	ImGui::SameLine();
+	ImGui::Text("| Area: %s",
+		isAssetTest && m_Catalog.Is_Ready() ?
+			m_Catalog.Get_AreaId().c_str() : "NO MAP AREA");
 	ImGui::SameLine();
 	ImGui::Text("| Catalog: %s",
 		m_Catalog.Is_Ready() ? "READY" : "NOT READY");
@@ -325,6 +497,14 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 		"Player/NPC/Boss definitions only. Runtime state stays server-authoritative.");
 	ImGui::TextWrapped("%s", m_WorldGameplayStatus.c_str());
 	ImGui::Separator();
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	if (nullptr == active ||
+		EDITOR_GAMEPLAY_POLICY::REQUIRED != active->gameplayPolicy)
+	{
+		ImGui::TextDisabled(
+			"This Area has no gameplay authoring document. No empty file will be created.");
+		return;
+	}
 
 	ImGui::BeginDisabled(!isAssetTest || !m_Catalog.Is_Ready());
 	if (ImGui::Button("Save Gameplay"))
@@ -451,12 +631,10 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 
 std::filesystem::path Client::CMapTool::Get_WorldGameplayPath() const
 {
-	if (!m_Catalog.Is_Ready() || m_Catalog.Get_AreaId().empty())
-		return {};
-	return CProjectDataRoot::Resolve(
-		std::filesystem::path(L"Worlds") /
-		std::filesystem::path(m_Catalog.Get_AreaId()) /
-		L"Gameplay.world.json");
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	return nullptr != active &&
+		EDITOR_GAMEPLAY_POLICY::REQUIRED == active->gameplayPolicy ?
+		active->gameplayDocument : std::filesystem::path{};
 }
 
 bool_t Client::CMapTool::Load_WorldGameplay()
@@ -529,7 +707,7 @@ bool Client::CMapTool::IsOpen() const
 bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 {
 	if (!m_bOpen ||
-		ETOUI(LEVEL::DEVELOPMENT) !=
+		m_iAuthoringLevelIndex !=
 		CGameInstance::Get().Get_CurrentLevelID())
 	{
 		return false;
@@ -541,12 +719,422 @@ bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
-void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
+bool_t Client::CMapTool::Ensure_AuthoringPrototypes()
 {
-	if (isAssetTest == m_bWasInAssetTest)
+	return Ensure_AuthoringPrototypes(m_Catalog);
+}
+
+bool_t Client::CMapTool::Ensure_AuthoringPrototypes(
+	const CMapAssetCatalog& catalog)
+{
+	if (!catalog.Is_Ready() ||
+		m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
+		nullptr == m_pDevice || nullptr == m_pContext)
+	{
+		m_Status = "Map authoring prototype admission is unavailable";
+		return false;
+	}
+
+	const matrix_t modelTransform =
+		XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	size_t admittedCount = 0;
+	for (const MAP_ASSET_ENTRY& asset : catalog.Get_Entries())
+	{
+		const shared_ptr<CModel> existing =
+			dynamic_pointer_cast<CModel>(
+				CGameInstance::Get().Clone_Prototype(
+					m_iAuthoringLevelIndex,
+					asset.prototypeTag));
+		if (nullptr != existing)
+		{
+			const auto fingerprint =
+				m_PrototypeModelPaths.find(asset.prototypeTag);
+			if (fingerprint == m_PrototypeModelPaths.end() ||
+				fingerprint->second.lexically_normal() !=
+					asset.resolvedModelPath.lexically_normal())
+			{
+				m_Status =
+					"Prototype tag already belongs to another model: " +
+					asset.id;
+				return false;
+			}
+			++admittedCount;
+			continue;
+		}
+
+		auto model = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::NONANIM,
+			asset.resolvedModelPath.string().c_str(),
+			modelTransform);
+		if (nullptr == model ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				m_iAuthoringLevelIndex,
+				asset.prototypeTag,
+				std::move(model))))
+		{
+			m_Status = "Map authoring model admission failed: " + asset.id;
+			return false;
+		}
+		m_PrototypeModelPaths.emplace(
+			asset.prototypeTag,
+			asset.resolvedModelPath.lexically_normal());
+		++admittedCount;
+	}
+
+	m_Status = "Map authoring admitted " +
+		std::to_string(admittedCount) + " model prototypes";
+	return admittedCount == catalog.Get_Entries().size();
+}
+
+bool_t Client::CMapTool::Load_EditorAreaRegistry()
+{
+	const std::filesystem::path path =
+		CProjectDataRoot::Resolve(L"Maps/MapCatalog.json");
+	std::string text;
+	std::string parseError;
+	DATA_JSON_VALUE root;
+	if (path.empty() || !ReadTextFile(path, text) ||
+		!CDataJson::Parse(text, root, parseError) || !root.Is_Object())
+	{
+		m_Status = "Map editor catalog parse failed: " + parseError;
+		return false;
+	}
+
+	const DATA_JSON_VALUE* schema = root.Find("schema");
+	const DATA_JSON_VALUE* version = root.Find("formatVersion");
+	const DATA_JSON_VALUE* areas = root.Find("areas");
+	if (nullptr == schema || !schema->Is_String() ||
+		schema->Get_String() != "lostark.map-catalog" ||
+		nullptr == version || !version->Is_Number() ||
+		version->Get_Number() != 1.0 ||
+		nullptr == areas || !areas->Is_Array())
+	{
+		m_Status = "Map editor catalog header is invalid";
+		return false;
+	}
+
+	const std::array<std::pair<const char_t*, const char_t*>, 4> targets =
+	{{
+		{ "LV_LOBBY_CLASSSELECT_SL00", "Character Select" },
+		{ "LV_BER_BERNCASTLE", "Bern" },
+		{ "LV_LUT_HEARTRB_ED", "Valtan" },
+		{ "LV_SHS_RCARENA_D", "Training Map" },
+	}};
+	std::vector<EDITOR_AREA_DESCRIPTOR> staged;
+	staged.reserve(targets.size());
+	for (const auto& target : targets)
+	{
+		const DATA_JSON_VALUE* selected = nullptr;
+		for (const DATA_JSON_VALUE& candidate : areas->Get_Array())
+		{
+			const DATA_JSON_VALUE* id = candidate.Find("id");
+			if (candidate.Is_Object() && nullptr != id && id->Is_String() &&
+				id->Get_String() == target.first)
+			{
+				if (nullptr != selected)
+				{
+					m_Status = "Duplicate MapCatalog area: " +
+						std::string(target.first);
+					return false;
+				}
+				selected = &candidate;
+			}
+		}
+		if (nullptr == selected)
+		{
+			m_Status = "MapCatalog area is missing: " +
+				std::string(target.first);
+			return false;
+		}
+
+		EDITOR_AREA_DESCRIPTOR descriptor;
+		descriptor.areaId = target.first;
+		descriptor.label = target.second;
+		std::string sourceCatalog;
+		std::string sourcePlacements;
+		if (!ReadRequiredString(*selected, "sourceCatalog", sourceCatalog) ||
+			!ReadRequiredString(*selected, "sourcePlacements", sourcePlacements))
+		{
+			m_Status = "MapCatalog authoring source is missing: " +
+				descriptor.areaId;
+			return false;
+		}
+		descriptor.sourceCatalog = ResolveDataCatalogPath(sourceCatalog);
+		descriptor.sourcePlacements =
+			ResolveDataCatalogPath(sourcePlacements);
+
+		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
+			descriptor.areaId == "LV_LUT_HEARTRB_ED")
+		{
+			std::string source;
+			std::string paint;
+			if (!ReadRequiredString(*selected, "navigationSource", source) ||
+				!ReadRequiredString(*selected, "navigationPaint", paint))
+			{
+				m_Status = "MapCatalog navigation source is missing: " +
+					descriptor.areaId;
+				return false;
+			}
+			descriptor.navigationSource = ResolveDataCatalogPath(source);
+			descriptor.navigationPaint = ResolveDataCatalogPath(paint);
+			descriptor.navigationPolicy =
+				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT;
+			descriptor.allowNavigationBootstrap =
+				descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00";
+		}
+		if (descriptor.areaId == "LV_LUT_HEARTRB_ED")
+		{
+			std::string blockers;
+			if (!ReadRequiredString(*selected, "navigationBlockers", blockers))
+			{
+				m_Status = "Valtan navigation blocker source is missing";
+				return false;
+			}
+			descriptor.navigationBlockers = ResolveDataCatalogPath(blockers);
+			descriptor.navigationPolicy =
+				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS;
+		}
+
+		if (descriptor.areaId == "LV_BER_BERNCASTLE" ||
+			descriptor.areaId == "LV_LUT_HEARTRB_ED")
+		{
+			std::string gameplay;
+			if (!ReadRequiredString(*selected, "gameplayDocument", gameplay))
+			{
+				m_Status = "MapCatalog gameplay document is missing: " +
+					descriptor.areaId;
+				return false;
+			}
+			descriptor.gameplayDocument = ResolveDataCatalogPath(gameplay);
+			descriptor.gameplayPolicy =
+				EDITOR_GAMEPLAY_POLICY::REQUIRED;
+		}
+
+		if (descriptor.sourceCatalog.empty() ||
+			descriptor.sourcePlacements.empty() ||
+			(EDITOR_NAVIGATION_POLICY::NONE != descriptor.navigationPolicy &&
+				(descriptor.navigationSource.empty() ||
+					descriptor.navigationPaint.empty())) ||
+			(EDITOR_GAMEPLAY_POLICY::REQUIRED == descriptor.gameplayPolicy &&
+				descriptor.gameplayDocument.empty()))
+		{
+			m_Status = "MapCatalog path escapes Data root: " +
+				descriptor.areaId;
+			return false;
+		}
+		staged.push_back(std::move(descriptor));
+	}
+
+	m_EditorAreas = std::move(staged);
+	return true;
+}
+
+const Client::CMapTool::EDITOR_AREA_DESCRIPTOR*
+Client::CMapTool::Get_ActiveEditorArea() const
+{
+	return m_iActiveEditorArea < m_EditorAreas.size() ?
+		&m_EditorAreas[m_iActiveEditorArea] : nullptr;
+}
+
+bool_t Client::CMapTool::Has_UnsavedAuthoring() const
+{
+	return m_bDirty || m_bWorldGameplayDirty ||
+		m_NavigationDocument.Is_Dirty() ||
+		m_RuntimeBlockerDocument.Is_Dirty();
+}
+
+bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
+{
+	if (descriptorIndex >= m_EditorAreas.size() ||
+		m_iAuthoringLevelIndex != ETOUI(LEVEL::DEVELOPMENT) ||
+		!CMapEditorWorkspaceService::Is_Active())
+	{
+		m_Status = "Map editor Area switch is unavailable";
+		return false;
+	}
+
+	const EDITOR_AREA_DESCRIPTOR& descriptor =
+		m_EditorAreas[descriptorIndex];
+	std::error_code error;
+	if (!std::filesystem::is_regular_file(descriptor.sourceCatalog, error) ||
+		error ||
+		!std::filesystem::is_regular_file(descriptor.sourcePlacements, error) ||
+		error)
+	{
+		m_Status = "Required authoring map source is missing: " +
+			descriptor.areaId;
+		return false;
+	}
+
+	CMapAssetCatalog stagedCatalog;
+	if (!stagedCatalog.Load_Source(
+		descriptor.sourceCatalog,
+		descriptor.sourcePlacements,
+		descriptor.areaId))
+	{
+		m_Status = stagedCatalog.Get_Status();
+		return false;
+	}
+
+	std::vector<MAP_PLACEMENT_RECORD> records;
+	std::string stagedStatus;
+	if (!CMapPlacementDocument::Read(
+		descriptor.sourcePlacements,
+		stagedCatalog,
+		records,
+		stagedStatus))
+	{
+		m_Status = stagedStatus;
+		return false;
+	}
+
+	CWorldGameplayDocument stagedWorld;
+	if (EDITOR_GAMEPLAY_POLICY::REQUIRED == descriptor.gameplayPolicy)
+	{
+		error.clear();
+		if (!std::filesystem::is_regular_file(
+			descriptor.gameplayDocument, error) || error ||
+			!stagedWorld.Load(
+				descriptor.gameplayDocument,
+				descriptor.areaId,
+				stagedStatus))
+		{
+			m_Status = error ?
+				"Could not inspect required gameplay document" : stagedStatus;
+			return false;
+		}
+	}
+
+	CNavGridPaintDocument stagedNavigation;
+	CNavRuntimeBlockerDocument stagedBlockers;
+	bool_t navigationLoaded = false;
+	if (EDITOR_NAVIGATION_POLICY::NONE != descriptor.navigationPolicy)
+	{
+		error.clear();
+		const bool_t hasSource = std::filesystem::is_regular_file(
+			descriptor.navigationSource, error);
+		if (error || (!hasSource && !descriptor.allowNavigationBootstrap))
+		{
+			m_Status = "Required navigation source is missing: " +
+				descriptor.areaId;
+			return false;
+		}
+		if (hasSource)
+		{
+			if (!stagedNavigation.Load(
+				descriptor.navigationSource,
+				descriptor.navigationPaint,
+				stagedStatus) ||
+				stagedNavigation.Get_Desc().areaId != descriptor.areaId ||
+				!stagedBlockers.Load(
+					descriptor.navigationBlockers,
+					stagedNavigation.Get_Desc(),
+					stagedStatus))
+			{
+				m_Status = stagedStatus;
+				return false;
+			}
+			navigationLoaded = true;
+		}
+	}
+
+	if (!Ensure_AuthoringPrototypes(stagedCatalog))
+		return false;
+
+	CMapAssetCatalog previousCatalog = m_Catalog;
+	m_Catalog = stagedCatalog;
+	std::vector<PLACED_ENTRY> stagedPlacements;
+	std::vector<STATIC_BATCH_ENTRY> stagedBatches;
+	if (!Stage_PlacementRuntime(records, stagedPlacements, stagedBatches))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		m_Catalog = std::move(previousCatalog);
+		m_Status = "Map Area runtime stage rolled back: " + descriptor.areaId;
+		return false;
+	}
+
+	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
+	Remove_DeployProps();
+	m_Placements = std::move(stagedPlacements);
+	m_StaticBatches = std::move(stagedBatches);
+	m_WorldGameplayDocument = std::move(stagedWorld);
+	m_NavigationDocument = std::move(stagedNavigation);
+	m_RuntimeBlockerDocument = std::move(stagedBlockers);
+	m_NavigationSourcePath = descriptor.navigationSource;
+	m_NavigationPaintPath = descriptor.navigationPaint;
+	m_RuntimeBlockerPath = descriptor.navigationBlockers;
+	m_NavigationRuntimePath.clear();
+	m_NavigationBakeDesc = navigationLoaded ?
+		m_NavigationDocument.Get_BakeDesc() : NAVGRID_BAKE_DESC{};
+	m_iActiveEditorArea = descriptorIndex;
+	m_iPendingEditorArea = SIZE_MAX;
+	m_isEditorAreaSwitchPending = false;
+	m_iSelectedPlacementId = 0;
+	m_SelectedWorldPlacementId.clear();
+	m_SelectedAssetId.clear();
+	m_iNextPlacementId = 1;
+	for (const PLACED_ENTRY& entry : m_Placements)
+	{
+		if ((entry.record.transformSource == "editor" ||
+			entry.record.transformSource == "legacy") &&
+			entry.record.placementId <=
+				CMapPlacementDocument::MAX_EDITOR_PLACEMENT_ID)
+		{
+			m_iNextPlacementId = (std::max)(
+				m_iNextPlacementId, entry.record.placementId + 1);
+		}
+	}
+	m_bDirty = false;
+	m_bWorldGameplayDirty = false;
+	m_WorldGameplayStatus =
+		EDITOR_GAMEPLAY_POLICY::REQUIRED == descriptor.gameplayPolicy ?
+		"Gameplay authoring ready" : "Gameplay authoring disabled for this Area";
+	m_NavigationStatus =
+		EDITOR_NAVIGATION_POLICY::NONE == descriptor.navigationPolicy ?
+		"Navigation authoring disabled for this Area" :
+		(navigationLoaded ? "Navigation authoring ready" :
+			"Navigation bootstrap: place Nav Bounds and Bake");
+	m_Status = "Active editor Area: " + descriptor.label + " (" +
+		descriptor.areaId + ") / " + std::to_string(m_Placements.size()) +
+		" placements. Runtime publish is separate.";
+	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
+
+	if (!m_Placements.empty())
+	{
+		float3_t minimum = m_Placements.front().record.position;
+		float3_t maximum = minimum;
+		for (const PLACED_ENTRY& entry : m_Placements)
+		{
+			minimum.x = (std::min)(minimum.x, entry.record.position.x);
+			minimum.y = (std::min)(minimum.y, entry.record.position.y);
+			minimum.z = (std::min)(minimum.z, entry.record.position.z);
+			maximum.x = (std::max)(maximum.x, entry.record.position.x);
+			maximum.y = (std::max)(maximum.y, entry.record.position.y);
+			maximum.z = (std::max)(maximum.z, entry.record.position.z);
+		}
+		const float3_t center(
+			(minimum.x + maximum.x) * 0.5f,
+			(minimum.y + maximum.y) * 0.5f,
+			(minimum.z + maximum.z) * 0.5f);
+		const f32_t radius = (std::max)(50.f,
+			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
+		if (const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock())
+			camera->Frame_Area(center, radius);
+	}
+	return true;
+}
+
+void Client::CMapTool::Handle_LevelTransition(
+	uint32_t currentLevelIndex,
+	bool_t isMapAuthoringLevel)
+{
+	const uint32_t targetLevelIndex = isMapAuthoringLevel ?
+		currentLevelIndex : ETOUI(LEVEL::END);
+	if (targetLevelIndex == m_iAuthoringLevelIndex)
 		return;
 
-	m_bWasInAssetTest = isAssetTest;
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	m_bWorldGameplayPlacementArmed = false;
 	m_SelectedWorldPlacementId.clear();
@@ -556,42 +1144,41 @@ void Client::CMapTool::Handle_LevelTransition(bool_t isAssetTest)
 	if (nullptr != m_pAssetPreview)
 		m_pAssetPreview->Reset_LevelResources();
 
-	if (!isAssetTest)
+	m_Placements.clear();
+	m_StaticBatches.clear();
+	m_DeployProps.clear();
+	m_iNextPlacementId = 1;
+	m_bDirty = false;
+	m_bWorldGameplayDirty = false;
+	m_Catalog = CMapAssetCatalog{};
+	m_DeployCatalog = CDeployPropCatalog{};
+	m_EditorAreas.clear();
+	m_iActiveEditorArea = SIZE_MAX;
+	m_iPendingEditorArea = SIZE_MAX;
+	m_isEditorAreaSwitchPending = false;
+	m_isEditorExitPending = false;
+	m_PrototypeModelPaths.clear();
+	m_iAuthoringLevelIndex = targetLevelIndex;
+
+	if (!isMapAuthoringLevel)
 	{
-		m_Placements.clear();
-		m_StaticBatches.clear();
-		m_DeployProps.clear();
-		m_iNextPlacementId = 1;
-		m_bDirty = false;
-		m_bWorldGameplayDirty = false;
-		m_Status = "Open Map Tool from F1 Developer Tools";
-		m_WorldGameplayStatus = "Development map scene is not active";
-		m_NavigationStatus = "Development map scene is not active";
-		m_CameraStatus = "Development map scene is not active";
+		m_Status = "Current level has no map Area to author";
+		m_WorldGameplayStatus = "Current level has no gameplay Area";
+		m_NavigationStatus = "Current level has no navigation Area";
+		m_CameraStatus = "Current level has no authoring camera";
 		return;
 	}
 
-	if (!m_Catalog.Load_Default())
-	{
-		m_Status = m_Catalog.Get_Status();
-	}
-	else
-	{
-		m_Status = m_Catalog.Get_Status();
-		if (Load_Placements())
-			Load_DeployProps();
-		Load_WorldGameplay();
-	}
-
-	Load_NavigationDocument();
 	Find_AssetTestCamera();
+	if (!Load_EditorAreaRegistry() || m_EditorAreas.empty())
+		return;
+	Switch_EditorArea(0);
 }
-
 bool_t Client::CMapTool::Find_AssetTestCamera()
 {
 	const shared_ptr<CGameObject> gameObject =
 		CGameInstance::Get().Get_GameObject(
-			ETOUI(LEVEL::DEVELOPMENT),
+			m_iAuthoringLevelIndex,
 			TEXT("Layer_Camera"),
 			0);
 	const shared_ptr<CCamera_Free> camera =
@@ -610,6 +1197,68 @@ bool_t Client::CMapTool::Find_AssetTestCamera()
 
 bool_t Client::CMapTool::Load_NavigationDocument()
 {
+	if (CMapEditorWorkspaceService::Is_Active())
+	{
+		const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+		if (nullptr == active ||
+			EDITOR_NAVIGATION_POLICY::NONE == active->navigationPolicy)
+		{
+			m_NavigationDocument = CNavGridPaintDocument{};
+			m_RuntimeBlockerDocument = CNavRuntimeBlockerDocument{};
+			m_NavigationStatus =
+				"Navigation authoring disabled for this Area";
+			return true;
+		}
+
+		std::error_code sourceError;
+		const bool_t hasSource = std::filesystem::is_regular_file(
+			active->navigationSource, sourceError);
+		if (sourceError || (!hasSource && !active->allowNavigationBootstrap))
+		{
+			m_NavigationStatus =
+				"Required navigation source is missing: " + active->areaId;
+			return false;
+		}
+
+		m_NavigationSourcePath = active->navigationSource;
+		m_NavigationPaintPath = active->navigationPaint;
+		m_RuntimeBlockerPath = active->navigationBlockers;
+		m_NavigationRuntimePath.clear();
+		if (!hasSource)
+		{
+			m_NavigationDocument = CNavGridPaintDocument{};
+			m_RuntimeBlockerDocument = CNavRuntimeBlockerDocument{};
+			m_NavigationBakeDesc = NAVGRID_BAKE_DESC{};
+			m_NavigationStatus =
+				"Navigation bootstrap: place Nav Bounds and Bake";
+			return false;
+		}
+
+		std::string status;
+		CNavGridPaintDocument stagedNavigation;
+		CNavRuntimeBlockerDocument stagedBlockers;
+		if (!stagedNavigation.Load(
+			active->navigationSource,
+			active->navigationPaint,
+			status) ||
+			stagedNavigation.Get_Desc().areaId != active->areaId ||
+			!stagedBlockers.Load(
+				active->navigationBlockers,
+				stagedNavigation.Get_Desc(),
+				status))
+		{
+			m_NavigationStatus = status;
+			return false;
+		}
+
+		m_NavigationDocument = std::move(stagedNavigation);
+		m_RuntimeBlockerDocument = std::move(stagedBlockers);
+		m_NavigationBakeDesc = m_NavigationDocument.Get_BakeDesc();
+		m_iSelectedRuntimeRegion = 0;
+		m_NavigationStatus = "Navigation authoring ready";
+		return true;
+	}
+
 	MAP_NAVIGATION_CONTRACT stagedContract;
 	std::string stagedStatus;
 	if (!CMapNavigationContract::Resolve_Area(
@@ -763,10 +1412,17 @@ bool_t Client::CMapTool::Load_RuntimeBlockers()
 
 bool_t Client::CMapTool::Register_RuntimeBlockers()
 {
+	if (CMapEditorWorkspaceService::Is_Active())
+	{
+		m_NavigationStatus =
+			"Runtime blocker registration is disabled in authoring workspace";
+		return false;
+	}
+
 	shared_ptr<CNavigation> navigation =
 		dynamic_pointer_cast<CNavigation>(
 			CGameInstance::Get().Get_Component(
-				ETOUI(LEVEL::DEVELOPMENT),
+				m_iAuthoringLevelIndex,
 				TEXT("Layer_Player"),
 				TEXT("Com_Navigation"),
 				0));
@@ -827,10 +1483,16 @@ bool_t Client::CMapTool::Set_NavigationCondition(
 		return false;
 
 	m_NavigationConditions[conditionId] = value;
+	if (CMapEditorWorkspaceService::Is_Active())
+	{
+		m_NavigationStatus =
+			"Authoring preview condition changed; runtime Navigation was not mutated";
+		return true;
+	}
 	shared_ptr<CNavigation> navigation =
 		dynamic_pointer_cast<CNavigation>(
 			CGameInstance::Get().Get_Component(
-				ETOUI(LEVEL::DEVELOPMENT),
+				m_iAuthoringLevelIndex,
 				TEXT("Layer_Player"),
 				TEXT("Com_Navigation"),
 				0));
@@ -862,83 +1524,51 @@ bool_t Client::CMapTool::Set_NavigationCondition(
 
 bool_t Client::CMapTool::Save_Navigation()
 {
-	if (!m_NavigationDocument.Is_Ready() ||
-		!m_RuntimeBlockerDocument.Is_Ready())
+	if (CMapEditorWorkspaceService::Is_Active())
 	{
-		m_NavigationStatus = "Navigation is not loaded";
-		return false;
-	}
+		const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+		if (nullptr == active ||
+			EDITOR_NAVIGATION_POLICY::NONE == active->navigationPolicy ||
+			!m_NavigationDocument.Is_Ready())
+		{
+			m_NavigationStatus = "Navigation authoring is unavailable";
+			return false;
+		}
+		if (!HasSameNavigationPath(
+			m_NavigationSourcePath, active->navigationSource) ||
+			!HasSameNavigationPath(
+				m_NavigationPaintPath, active->navigationPaint) ||
+			!HasSameNavigationPath(
+				m_RuntimeBlockerPath, active->navigationBlockers))
+		{
+			m_NavigationStatus =
+				"Navigation paths do not match the immutable active Area";
+			return false;
+		}
 
-	std::string status;
-	MAP_NAVIGATION_CONTRACT contract;
-	if (!CMapNavigationContract::Resolve_Area(
-		m_Catalog.Get_AreaId(), contract, status))
-	{
-		m_NavigationStatus = status;
-		return false;
-	}
-	if (!HasSameNavigationPath(
-			m_NavigationSourcePath, contract.sourcePath) ||
-		!HasSameNavigationPath(
-			m_NavigationPaintPath, contract.paintPath) ||
-		!HasSameNavigationPath(
-			m_NavigationRuntimePath, contract.runtimePath) ||
-		!HasSameNavigationPath(
-			m_RuntimeBlockerPath, contract.blockerPath))
-	{
+		std::string status;
+		if (!m_NavigationDocument.Save_Paint(
+			active->navigationPaint, status))
+		{
+			m_NavigationStatus = status;
+			return false;
+		}
+		if (EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS ==
+				active->navigationPolicy &&
+			!m_RuntimeBlockerDocument.Save(
+				active->navigationBlockers, status))
+		{
+			m_NavigationStatus = status;
+			return false;
+		}
 		m_NavigationStatus =
-			"Navigation paths do not match the active map area; reload before saving";
-		return false;
-	}
-
-	std::error_code sourceError;
-	if (!std::filesystem::is_regular_file(
-		contract.sourcePath, sourceError) || sourceError)
-	{
-		m_NavigationStatus =
-			"Navigation source is missing or unavailable; bake before saving";
-		return false;
-	}
-
-	const NAVGRID_AUTHORING_DESC& sourceDesc =
-		m_NavigationDocument.Get_Desc();
-	const NAVGRID_AUTHORING_DESC& blockerDesc =
-		m_RuntimeBlockerDocument.Get_Desc();
-	if (sourceDesc.areaId != contract.areaId ||
-		!HasSameNavigationGridIdentity(sourceDesc, blockerDesc))
-	{
-		m_NavigationStatus =
-			"Navigation documents do not match the active map grid; reload before saving";
-		return false;
-	}
-
-	if (!m_NavigationDocument.Save_Paint(
-		m_NavigationPaintPath,
-		status))
-	{
-		m_NavigationStatus = status;
-		return false;
-	}
-
-	if (!m_RuntimeBlockerDocument.Save(
-		m_RuntimeBlockerPath,
-		status))
-	{
-		m_NavigationStatus = status;
-		return false;
-	}
-
-	if (!m_NavigationDocument.Export_Runtime(
-		m_NavigationRuntimePath,
-		status))
-	{
-		m_NavigationStatus = status;
-		return false;
+			"Saved Data authoring only; publisher must build runtime navigation";
+		return true;
 	}
 
 	m_NavigationStatus =
-		"Saved. Re-enter ASSET_TEST to reload runtime navigation.";
-	return true;
+		"Navigation save is only available in the Map Editor workspace";
+	return false;
 }
 
 bool_t Client::CMapTool::Try_PickNavigationCell(
@@ -1117,7 +1747,7 @@ bool_t Client::CMapTool::Create_Placement(
 	const MAP_PLACEMENT_RECORD& record, PLACED_ENTRY& outEntry)
 {
 	return CMapPlacementRuntime::Create_Placement(
-		ETOUI(LEVEL::DEVELOPMENT), m_Catalog, record, outEntry);
+		m_iAuthoringLevelIndex, m_Catalog, record, outEntry);
 }
 
 bool_t Client::CMapTool::Stage_PlacementRuntime(
@@ -1126,7 +1756,7 @@ bool_t Client::CMapTool::Stage_PlacementRuntime(
 	vector<STATIC_BATCH_ENTRY>& outBatches)
 {
 	return CMapPlacementRuntime::Stage_PlacementRuntime(
-		ETOUI(LEVEL::DEVELOPMENT),
+		m_iAuthoringLevelIndex,
 		m_Catalog,
 		records,
 		outPlacements,
@@ -1138,7 +1768,7 @@ void Client::CMapTool::Remove_PlacementRuntime(
 	vector<STATIC_BATCH_ENTRY>& batches)
 {
 	CMapPlacementRuntime::Remove_PlacementRuntime(
-		ETOUI(LEVEL::DEVELOPMENT), placements, batches);
+		m_iAuthoringLevelIndex, placements, batches);
 }
 
 bool_t Client::CMapTool::Set_RuntimeVisible(
@@ -1160,7 +1790,7 @@ bool_t Client::CMapTool::Remove_Placement(uint64_t placementId)
 	if (nullptr != iter->object)
 	{
 		if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::DEVELOPMENT), iter->layerTag,
+			m_iAuthoringLevelIndex, iter->layerTag,
 			static_pointer_cast<CGameObject>(iter->object))))
 			return false;
 	}
@@ -1213,9 +1843,9 @@ bool_t Client::CMapTool::Save_Placements()
 		document.push_back(std::move(stored));
 	}
 
-	const std::filesystem::path authoringPath =
-		CMapAssetCatalog::Get_AuthoringPlacementPath(
-			m_Catalog.Get_AreaId());
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	const std::filesystem::path authoringPath = nullptr != active ?
+		active->sourcePlacements : std::filesystem::path{};
 	if (authoringPath.empty() ||
 		!CMapPlacementDocument::Write(
 		authoringPath, m_Catalog.Get_AreaId(),
@@ -1234,19 +1864,17 @@ bool_t Client::CMapTool::Load_Placements()
 
 	vector<MAP_PLACEMENT_RECORD> document;
 	std::string loadStatus;
-	const std::filesystem::path authoringPath =
-		CMapAssetCatalog::Get_AuthoringPlacementPath(
-			m_Catalog.Get_AreaId());
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	const std::filesystem::path authoringPath = nullptr != active ?
+		active->sourcePlacements : std::filesystem::path{};
 	std::error_code authoringError;
 	const bool_t hasAuthoring =
 		!authoringPath.empty() &&
 		std::filesystem::is_regular_file(
 			authoringPath, authoringError);
-	if ((hasAuthoring ?
-			!CMapPlacementDocument::Read(
-				authoringPath, m_Catalog, document, loadStatus) :
-			!CMapPlacementRuntime::Read_Placements(
-				m_Catalog, document, loadStatus)))
+	if (authoringError || !hasAuthoring ||
+		!CMapPlacementDocument::Read(
+			authoringPath, m_Catalog, document, loadStatus))
 	{
 		m_Status = loadStatus;
 		return false;
@@ -1355,7 +1983,7 @@ bool_t Client::CMapTool::Load_DeployProps()
 		{
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
+					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp staging lost asset " + record.assetId;
 			return false;
@@ -1367,14 +1995,14 @@ bool_t Client::CMapTool::Load_DeployProps()
 		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
 		shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			ETOUI(LEVEL::DEVELOPMENT),
+			m_iAuthoringLevelIndex,
 			TEXT("Prototype_GameObject_DeployProp"),
-			ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
+			m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
 			&desc, &gameObject)))
 		{
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
+					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp stage rolled back at " +
 				record.sourcePlacementId;
@@ -1385,10 +2013,10 @@ bool_t Client::CMapTool::Load_DeployProps()
 		if (nullptr == object)
 		{
 			CGameInstance::Get().Remove_GameObject_from_Layer(
-				ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"), gameObject);
+				m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"), gameObject);
 			for (const DEPLOY_ENTRY& rollback : staged)
 				CGameInstance::Get().Remove_GameObject_from_Layer(
-					ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
+					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
 					static_pointer_cast<CGameObject>(rollback.object));
 			m_Status = "DeployProp clone type mismatch";
 			return false;
@@ -1416,7 +2044,7 @@ void Client::CMapTool::Remove_DeployProps()
 {
 	for (const DEPLOY_ENTRY& entry : m_DeployProps)
 		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::DEVELOPMENT), TEXT("Layer_DeployProps"),
+			m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
 			static_pointer_cast<CGameObject>(entry.object));
 	m_DeployProps.clear();
 }
@@ -1565,6 +2193,15 @@ void Client::CMapTool::Render_CameraPanel()
 
 void Client::CMapTool::Render_NavigationPanel()
 {
+	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
+	if (nullptr == active ||
+		EDITOR_NAVIGATION_POLICY::NONE == active->navigationPolicy)
+	{
+		ImGui::TextDisabled(
+			"Navigation authoring is disabled for this Area.");
+		return;
+	}
+
 	if (ImGui::RadioButton(
 		"Bake",
 		NAVIGATION_MODE::BAKE == m_eNavigationMode))
@@ -1968,10 +2605,7 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::TextDisabled("Data/Maps authoring; publish required");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
-	{
-		if (Load_Placements())
-			Load_DeployProps();
-	}
+		Load_Placements();
 	ImGui::SameLine();
 	if (ImGui::Button("Clear"))
 		ImGui::OpenPopup("Clear all placements?");
@@ -1984,19 +2618,8 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::SameLine();
 	ImGui::Text("Objects: %zu%s", m_Placements.size(),
 		m_bDirty ? "  *unsaved" : "");
-	ImGui::Text("Gameplay DeployProps: %zu | phase:", m_DeployProps.size());
-	ImGui::SameLine();
-	if (ImGui::RadioButton("Intact##DeployPhase",
-		m_DeployPhase == DEPLOY_PROP_STATE::INTACT))
-		Set_DeployPhase(DEPLOY_PROP_STATE::INTACT);
-	ImGui::SameLine();
-	if (ImGui::RadioButton("Fractured##DeployPhase",
-		m_DeployPhase == DEPLOY_PROP_STATE::FRACTURED))
-		Set_DeployPhase(DEPLOY_PROP_STATE::FRACTURED);
-	ImGui::SameLine();
-	if (ImGui::RadioButton("Despawned##DeployPhase",
-		m_DeployPhase == DEPLOY_PROP_STATE::DESPAWNED))
-		Set_DeployPhase(DEPLOY_PROP_STATE::DESPAWNED);
+	ImGui::TextDisabled(
+		"DeployProp authoring is excluded until its source/stage contract is complete.");
 	ImGui::TextUnformatted("Sky phase:");
 	ImGui::SameLine();
 	if (ImGui::RadioButton("Baseline##EnvironmentPhase",
@@ -2267,7 +2890,7 @@ void Client::CMapTool::Render_Inspector()
 					{
 						model = dynamic_pointer_cast<CModel>(
 							CGameInstance::Get().Clone_Prototype(
-								ETOUI(LEVEL::DEVELOPMENT),
+								m_iAuthoringLevelIndex,
 								asset->prototypeTag));
 					}
 
@@ -2297,7 +2920,7 @@ void Client::CMapTool::Render_Inspector()
 						else
 						{
 							CGameInstance::Get().Remove_GameObject_from_Layer(
-								ETOUI(LEVEL::DEVELOPMENT), migrated.layerTag,
+								m_iAuthoringLevelIndex, migrated.layerTag,
 								static_pointer_cast<CGameObject>(migrated.object));
 						}
 					}
@@ -2347,7 +2970,7 @@ void Client::CMapTool::Select_Asset(const MAP_ASSET_ENTRY& asset)
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	if (nullptr == m_pAssetPreview ||
-		FAILED(m_pAssetPreview->Select_Asset(asset)))
+		FAILED(m_pAssetPreview->Select_Asset(m_iAuthoringLevelIndex, asset)))
 	{
 		m_Status = nullptr == m_pAssetPreview ?
 			"Preview service is not initialized." :
@@ -2466,7 +3089,7 @@ bool_t Client::CMapTool::Collect_NavigationBakePlacements(
 			shared_ptr<CModel> cloned =
 				dynamic_pointer_cast<CModel>(
 					CGameInstance::Get().Clone_Prototype(
-						ETOUI(LEVEL::DEVELOPMENT),
+						m_iAuthoringLevelIndex,
 						asset->prototypeTag));
 			if (nullptr == cloned || !cloned->Has_LocalBounds())
 			{

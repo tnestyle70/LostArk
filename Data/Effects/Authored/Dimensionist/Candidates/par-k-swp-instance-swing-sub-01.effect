@@ -1,0 +1,31 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-instance-swing-sub-01" name="par_k_swp_instance_swing_sub_01" provenance=DERIVED_CONVERSION duration=2 warmup=0
+
+EMITTER id=33941 name="dist_concave" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0.05 duration=1 loops=1
+  MODULE id=33942 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_01.fx_mi.fx_e_pa_gl_03_1_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=33943 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=33944 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_f_ring_001.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=33945 name="swing" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33946 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_m_trail_001_cl.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_05.wmodel" mat="fx_m_mi_m_00.fx_mi.fx_m_me_whk_flow_02_24_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1.5 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0.4
+  MODULE id=33947 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.34 min=0.34 max=1
+  MODULE id=33948 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.01,0.01,0.01 min=0.01,0.01,0.01 max=0.02,0.02,0.02
+
+EMITTER id=33949 name="swing" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33950 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_m_trail_001_cl.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_05.wmodel" mat="fx_m_mi_m_00.fx_mi.fx_m_me_whk_flow_02_24_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1.5 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0.4
+  MODULE id=33951 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.34 min=0.34 max=1
+  MODULE id=33952 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.01,0.01,0.01 min=0.01,0.01,0.01 max=0.02,0.02,0.02
+
+EMITTER id=33953 name="emitter_4" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33954 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_05/fx_m_atypical_007.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_05.wmodel" mat="fx_m_mi_m_00.fx_mi.fx_m_me_missiletrail_01_23_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_05/fx_m_atypical_007.dds" dissolvetex="Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_001.dds" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=33955 name="emitter_5" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=33956 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_032.dds" mesh="" mat="fx_m_mi_01.fx_mi.fx_j_pa_windwv_01_1_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=33957 name="shockwave_plan2" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=33958 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_glow_01_05_dt15_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+
+EMITTER id=33959 name="enber_start" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=33960 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=33961 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=16 start=0 end=7 loop=1 reltime=1

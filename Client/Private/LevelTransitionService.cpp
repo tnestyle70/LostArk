@@ -15,22 +15,26 @@ namespace
 
 bool_t Client::CLevelTransitionService::Request_Load(
 	const LEVEL eTargetLevel,
-	const char_t* pSource)
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	return Request(
 		LEVEL_TRANSITION_PHASE::LOAD,
 		eTargetLevel,
-		pSource);
+		pSource,
+		lobbyCommandToken);
 }
 
 bool_t Client::CLevelTransitionService::Request_Activation(
 	const LEVEL eTargetLevel,
-	const char_t* pSource)
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	return Request(
 		LEVEL_TRANSITION_PHASE::ACTIVATE,
 		eTargetLevel,
-		pSource);
+		pSource,
+		lobbyCommandToken);
 }
 
 bool_t Client::CLevelTransitionService::Try_Consume(
@@ -82,10 +86,14 @@ bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 bool_t Client::CLevelTransitionService::Request(
 	const LEVEL_TRANSITION_PHASE ePhase,
 	const LEVEL eTargetLevel,
-	const char_t* pSource)
+	const char_t* pSource,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
+	const bool_t hasLobbyCommand =
+		INVALID_LOBBY_COMMAND_TOKEN != lobbyCommandToken;
 	if (nullptr == CLevelRegistry::Find(eTargetLevel) ||
-		nullptr == pSource || '\0' == *pSource)
+		nullptr == pSource || '\0' == *pSource ||
+		(hasLobbyCommand && LEVEL::LOBBY != eTargetLevel))
 	{
 		std::scoped_lock lock{ g_TransitionMutex };
 		g_Status = "Rejected invalid level transition request.";
@@ -103,7 +111,8 @@ bool_t Client::CLevelTransitionService::Request(
 	g_PendingRequest = LEVEL_TRANSITION_REQUEST{
 		ePhase,
 		eTargetLevel,
-		pSource
+		pSource,
+		lobbyCommandToken
 	};
 	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase)
 		g_LoadFailure.reset();

@@ -60,20 +60,153 @@ function New-UniformNavigationGrid {
     }
 }
 
-function Read-BinaryNavigationGrid {
+function Split-NavigationTokens {
+    param([string]$Line)
+    return @([regex]::Matches($Line, '"[^"]*"|\S+') | ForEach-Object {
+        $_.Value.Trim('"')
+    })
+}
+
+function Convert-NavigationAuthoringGrid {
     param(
-        [string]$AreaId,
-        [string]$RelativePath,
-        [string]$WorldPath
+        [string]$RelativeSourcePath,
+        [string]$RelativePaintPath
     )
-    $source = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
-    if (-not [IO.File]::Exists($source)) {
-        throw "Server navigation source is missing: $source"
+
+    $sourcePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativeSourcePath))
+    if (-not [IO.File]::Exists($sourcePath)) {
+        throw "Navigation authoring source is missing: $sourcePath"
     }
-    return [pscustomobject]@{
-        AreaId = $AreaId
-        Bytes = [IO.File]::ReadAllBytes($source)
-        WorldPath = $WorldPath
+    $lines = @([IO.File]::ReadAllLines($sourcePath, [Text.Encoding]::UTF8))
+    if ($lines.Count -lt 2) {
+        throw "Navigation authoring source is empty: $sourcePath"
+    }
+
+    $header = @(Split-NavigationTokens $lines[0])
+    if ($header.Count -lt 9 -or $header[0] -ne 'LOSTARK_NAVGRID_SOURCE' -or
+        $header[1] -notin @('1', '2')) {
+        throw "Navigation authoring header is invalid: $sourcePath"
+    }
+    $version = [uint32]$header[1]
+    $expectedHeaderCount = if ($version -eq 1) { 9 } else { 19 }
+    if ($header.Count -ne $expectedHeaderCount) {
+        throw "Navigation authoring header field count is invalid: $sourcePath"
+    }
+
+    $culture = [Globalization.CultureInfo]::InvariantCulture
+    $areaId = [string]$header[2]
+    $width = [uint32]::Parse($header[3], $culture)
+    $height = [uint32]::Parse($header[4], $culture)
+    $cellSize = [single]::Parse($header[5], $culture)
+    $originX = [single]::Parse($header[6], $culture)
+    $originZ = [single]::Parse($header[7], $culture)
+    $declaredCellCount = [uint64]::Parse($header[-1], $culture)
+    $cellCount = [uint64]$width * [uint64]$height
+    if ($areaId -notmatch '^[A-Za-z0-9_.-]{1,128}$' -or
+        $width -eq 0 -or $height -eq 0 -or $cellCount -gt 1000000 -or
+        $declaredCellCount -ne $cellCount -or
+        $lines.Count -ne 1 + $cellCount -or
+        [single]::IsNaN($cellSize) -or [single]::IsInfinity($cellSize) -or
+        $cellSize -le 0) {
+        throw "Navigation authoring dimensions are invalid: $sourcePath"
+    }
+
+    $resolved = [byte[]]::new([int]$cellCount)
+    $baseWalkable = [byte[]]::new([int]$cellCount)
+    $heights = [single[]]::new([int]$cellCount)
+    $seen = [byte[]]::new([int]$cellCount)
+    for ($row = 0; $row -lt $cellCount; ++$row) {
+        $tokens = @(Split-NavigationTokens $lines[$row + 1])
+        $expectedRowCount = if ($version -eq 1) { 4 } else { 5 }
+        if ($tokens.Count -ne $expectedRowCount) {
+            throw "Navigation authoring row is invalid: $sourcePath row=$row"
+        }
+        $cellX = [int32]::Parse($tokens[0], $culture)
+        $cellZ = [int32]::Parse($tokens[1], $culture)
+        $surface = [uint32]::Parse($tokens[2], $culture)
+        $walkable = if ($version -eq 1) { $surface } else {
+            [uint32]::Parse($tokens[3], $culture)
+        }
+        $heightToken = if ($version -eq 1) { $tokens[3] } else { $tokens[4] }
+        $cellHeight = [single]::Parse($heightToken, $culture)
+        if ($cellX -lt 0 -or $cellZ -lt 0 -or
+            $cellX -ge $width -or $cellZ -ge $height -or
+            $surface -gt 1 -or $walkable -gt $surface -or
+            [single]::IsNaN($cellHeight) -or [single]::IsInfinity($cellHeight)) {
+            throw "Navigation authoring cell is invalid: $sourcePath row=$row"
+        }
+        $index = $cellZ * $width + $cellX
+        if ($seen[$index] -ne 0) {
+            throw "Navigation authoring has duplicate cells: $sourcePath"
+        }
+        $seen[$index] = 1
+        $resolved[$index] = [byte]$surface
+        $baseWalkable[$index] = [byte]$walkable
+        $heights[$index] = if ($surface -eq 0) { [single]0 } else { $cellHeight }
+    }
+
+    $blocked = [byte[]]::new([int]$cellCount)
+    $paintPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePaintPath))
+    if ([IO.File]::Exists($paintPath)) {
+        $paintLines = @([IO.File]::ReadAllLines($paintPath, [Text.Encoding]::UTF8))
+        if ($paintLines.Count -lt 1) { throw "Navigation paint is empty: $paintPath" }
+        $paintHeader = @(Split-NavigationTokens $paintLines[0])
+        if ($paintHeader.Count -ne 9 -or
+            $paintHeader[0] -ne 'LOSTARK_NAVGRID_PAINT' -or
+            $paintHeader[1] -ne '1' -or $paintHeader[2] -ne $areaId -or
+            [uint32]$paintHeader[3] -ne $width -or
+            [uint32]$paintHeader[4] -ne $height -or
+            [single]$paintHeader[5] -ne $cellSize -or
+            [single]$paintHeader[6] -ne $originX -or
+            [single]$paintHeader[7] -ne $originZ) {
+            throw "Navigation paint header does not match source: $paintPath"
+        }
+        $blockedCount = [uint32]::Parse($paintHeader[8], $culture)
+        if ($paintLines.Count -ne 1 + $blockedCount) {
+            throw "Navigation paint count is invalid: $paintPath"
+        }
+        for ($row = 0; $row -lt $blockedCount; ++$row) {
+            $tokens = @(Split-NavigationTokens $paintLines[$row + 1])
+            if ($tokens.Count -ne 2) { throw "Navigation paint row is invalid: $paintPath" }
+            $cellX = [int32]::Parse($tokens[0], $culture)
+            $cellZ = [int32]::Parse($tokens[1], $culture)
+            if ($cellX -lt 0 -or $cellZ -lt 0 -or
+                $cellX -ge $width -or $cellZ -ge $height) {
+                throw "Navigation paint cell is outside the grid: $paintPath"
+            }
+            $index = $cellZ * $width + $cellX
+            if ($blocked[$index] -ne 0) { throw "Navigation paint has duplicate cells: $paintPath" }
+            $blocked[$index] = 1
+        }
+    }
+
+    $stream = [IO.MemoryStream]::new()
+    $writer = [IO.BinaryWriter]::new($stream)
+    try {
+        $writer.Write($width)
+        $writer.Write($height)
+        $writer.Write($cellSize)
+        $writer.Write($originX)
+        $writer.Write($originZ)
+        for ($index = 0; $index -lt $cellCount; ++$index) {
+            $isWalkable = $resolved[$index] -ne 0 -and
+                $baseWalkable[$index] -ne 0 -and $blocked[$index] -eq 0
+            $walkableByte = if ($isWalkable) { [byte]1 } else { [byte]0 }
+            $writer.Write($walkableByte)
+        }
+        for ($index = 0; $index -lt $cellCount; ++$index) {
+            $writer.Write($heights[$index])
+        }
+        $writer.Flush()
+        return [pscustomobject]@{
+            AreaId = $areaId
+            Bytes = $stream.ToArray()
+            WorldPath = "Data/Worlds/$areaId/Gameplay.world.json"
+        }
+    }
+    finally {
+        $writer.Dispose()
+        $stream.Dispose()
     }
 }
 
@@ -117,9 +250,9 @@ function Assert-NavigationGrid {
 }
 
 $grids = @(
-    (Read-BinaryNavigationGrid -AreaId 'LV_LUT_HEARTRB_ED' `
-        -RelativePath 'Client/Bin/DataFiles/Navigation/ValtanArena.navgrid' `
-        -WorldPath 'Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json'),
+    (Convert-NavigationAuthoringGrid `
+        -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
+        -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint'),
     (New-UniformNavigationGrid `
         -RelativeAuthoringPath 'Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json')
 )
@@ -138,11 +271,9 @@ if ($Mode -eq 'Publish') {
         $destinations = @(
             (Join-Path $root "$($entry.Grid.AreaId).navgrid")
         )
-        if ($entry.Grid.AreaId -eq 'LV_DEV_TRAINING_GROUND') {
-            $clientRoot = Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation'
-            [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
-            $destinations += Join-Path $clientRoot 'LV_DEV_TRAINING_GROUND.navgrid'
-        }
+        $clientRoot = Join-Path $repoRoot 'Client/Bin/DataFiles/Navigation'
+        [IO.Directory]::CreateDirectory($clientRoot) | Out-Null
+        $destinations += Join-Path $clientRoot "$($entry.Grid.AreaId).navgrid"
         foreach ($destination in $destinations) {
             $destinationRoot = [IO.Path]::GetDirectoryName($destination)
             $token = [Guid]::NewGuid().ToString('N')

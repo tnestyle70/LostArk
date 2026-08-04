@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine_Defines.h"
+#include "BinaryAsset/ModelAssetData.h"
 
 NS_BEGIN(Engine)
 
@@ -23,6 +24,10 @@ private:
 
 	uint32_t				m_iNumKeyFrames = {};
 	vector<KEYFRAME>		m_KeyFrames;
+	vector<MODEL_VECTOR_KEY_DATA>	m_PositionKeys;
+	vector<MODEL_QUAT_KEY_DATA>	m_RotationKeys;
+	vector<MODEL_VECTOR_KEY_DATA>	m_ScaleKeys;
+	bool_t					m_bUsesSeparateTracks = { false };
 
 	int32_t				m_iBoneIndex = { -1 };
 	// uint32_t			m_iLeftKeyFrameIndex = { 0 };

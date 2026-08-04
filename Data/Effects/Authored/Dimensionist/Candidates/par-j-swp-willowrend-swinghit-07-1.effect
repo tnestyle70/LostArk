@@ -1,0 +1,214 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-willowrend-swinghit-07-1" name="par_j_swp_willowrend_swinghit_07_1" provenance=DERIVED_CONVERSION duration=2.7 warmup=0
+
+EMITTER id=3137 name="hole" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.02 duration=1 loops=1
+  MODULE id=3138 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=10
+  MODULE id=3139 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3140 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3141 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=2,2,2
+  MODULE id=3142 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1.3,1.3,3,1 min=1.3,1.3,3,1 max=1.3,1.3,3,1
+  MODULE id=3143 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.5,0.0555556:0.6,0.111111:0.7,0.166667:0.8,0.222222:0.9,0.277778:0.938776,0.333333:0.97533,0.388889:1.00955,0.444444:1.04132,0.5:1.07054,0.555556:1.09709,0.611111:1.12086,0.666667:1.14173,0.722222:1.15961,0.777778:1.17436,0.833333:1.18589,0.888889:1.19408,0.944444:1.19882,1:1.2 y=0:0,1:1 z=0:1,1:1 w=0:0,1:0
+  MODULE id=3144 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:1,1:1
+  MODULE id=3145 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:2,0.05:1.5,0.1:1,0.15:1.00292,0.2:1.00582,0.25:1.01254,0.3:1.02077,0.35:1.02819,0.4:1.0325,0.45:1.03138,0.5:1.02252,0.55:1.00361,0.6:0.972348,0.65:0.926413,0.7:0.863497,0.75:0.78129,0.8:0.67748,0.85:0.549757,0.9:0.39581,0.95:0.213328,1:0
+  MODULE id=3146 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=-0.25,-0.25,-0.25 min=-0.25,-0.25,-0.25 max=0,0,0
+  MODULE id=3147 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=2.5,2.5,2.5 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=3148 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.7,-0.7,-0.7 min=-0.7,-0.7,-0.7 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=3149 name="Initial Rotation" type=INITIAL_ROTATION enabled=1 dist=CONSTANT c=-10.8,-10.8,-10.8 min=-10.8,-10.8,-10.8 max=-10.8,-10.8,-10.8
+
+EMITTER id=3150 name="cube" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=3151 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_j_cube_01.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3152 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3153 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=1 min=1 max=1.1
+  MODULE id=3154 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.004,0.004,0.004 min=0.004,0.004,0.004 max=0.012,0.012,0.012
+  MODULE id=3155 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.6,0.6,1,1 min=0.6,0.6,1,1 max=0.6,0.6,1,1
+  MODULE id=3156 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:1,0.0666667:0.923885,0.133333:0.754535,0.2:0.580445,0.266667:0.488889,0.333333:0.444444,0.4:0.4,0.466667:0.355556,0.533333:0.311111,0.6:0.266667,0.666667:0.222222,0.733333:0.177778,0.8:0.133333,0.866667:0.088889,0.933333:0.044444,1:0
+  MODULE id=3157 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:50,1:28 g=0:30,1:20 b=0:120,1:30 a=0:1,1:1
+  MODULE id=3158 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.4,0.0555556:0.398217,0.111111:0.393141,0.166667:0.385185,0.222222:0.37476,0.277778:0.362277,0.333333:0.348148,0.388889:0.332785,0.444444:0.316598,0.5:0.3,0.555556:0.283402,0.611111:0.267215,0.666667:0.251852,0.722222:0.237723,0.777778:0.22524,0.833333:0.214815,0.888889:0.206859,0.944444:0.201783,1:0.2
+  MODULE id=3159 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=-0.3,-0.3,-0.3 min=-0.3,-0.3,-0.3 max=0.1,0.1,0.1
+  MODULE id=3160 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:100,1:100 y=0:1,1:1 z=0:1,1:1 w=0:1,1:1
+
+EMITTER id=3161 name="emitter_2" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.02 duration=1 loops=1
+  MODULE id=3162 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_slice_01_06_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3163 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3164 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=1.35 min=1.35 max=1.35
+  MODULE id=3165 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=15,15,15
+  MODULE id=3166 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:13,1:13 g=0:11,1:11 b=0:15,1:15 a=0:0.5,1:0.5
+  MODULE id=3167 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:25,0.0714286:20,0.142857:15,0.214286:10,0.285714:5,0.357143:4.62,0.428571:4.24,0.5:3.86,0.571429:3.48,0.642857:3.1,0.714286:2.72,0.785714:2.34,0.857143:1.96,0.928571:1.58,1:1.2 g=0:25,0.0714286:20,0.142857:15,0.214286:10,0.285714:5,0.357143:4.62,0.428571:4.24,0.5:3.86,0.571429:3.48,0.642857:3.1,0.714286:2.72,0.785714:2.34,0.857143:1.96,0.928571:1.58,1:1.2 b=0:25,0.0714286:20,0.142857:15,0.214286:10,0.285714:5,0.357143:4.62,0.428571:4.24,0.5:3.86,0.571429:3.48,0.642857:3.1,0.714286:2.72,0.785714:2.34,0.857143:1.96,0.928571:1.58,1:1.2 a=0:0,0.05:0.042969,0.1:0.15625,0.15:0.316406,0.2:0.5,0.25:0.683594,0.3:0.84375,0.35:0.957031,0.4:1,0.45:0.980324,0.5:0.925926,0.55:0.84375,0.6:0.740741,0.65:0.623843,0.7:0.5,0.75:0.376157,0.8:0.259259,0.85:0.15625,0.9:0.074074,0.95:0.019676,1:0
+  MODULE id=3168 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.8,0.05:0.733333,0.1:0.666667,0.15:0.6,0.2:0.6,0.25:0.6,0.3:0.6,0.35:0.6,0.4:0.6,0.45:0.6,0.5:0.6,0.55:0.6,0.6:0.6,0.65:0.6,0.7:0.6,0.75:0.6,0.8:0.6,0.85:0.6,0.9:0.6,0.95:0.6,1:0.6
+  MODULE id=3169 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:1,1:7 y=0:10,1:4 z=0:3,0.05:6.5,0.1:10,0.15:10.0556,0.2:10.1111,0.25:10.1667,0.3:10.2222,0.35:10.2778,0.4:10.3333,0.45:10.3889,0.5:10.4444,0.55:10.5,0.6:10.5556,0.65:10.6111,0.7:10.6667,0.75:10.7222,0.8:10.7778,0.85:10.8333,0.9:10.8889,0.95:10.9444,1:11 w=0:1,1:1
+  MODULE id=3170 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=4,4,4 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=3171 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.2,0.2,0.2
+  MODULE id=3172 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.7,-0.7,-0.7 min=-0.7,-0.7,-0.7 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=3173 name="Initial Rotation" type=INITIAL_ROTATION enabled=1 dist=CONSTANT c=-1.08,-1.08,-1.08 min=-1.08,-1.08,-1.08 max=-1.08,-1.08,-1.08
+
+EMITTER id=3174 name="emitter_3" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.1 duration=1 loops=1
+  MODULE id=3175 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" mesh="Effect/Dimensionist/Meshes/fm_a_broken_012.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds" uvtiling=1,1 uvoffset=0.5,0.5 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3176 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3177 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.9 min=0.9 max=1
+  MODULE id=3178 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.04,0.04,0.04 min=0.04,0.04,0.04 max=0.06,0.06,0.06
+  MODULE id=3179 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,1,1,1 min=1,1,1,1 max=1,1,1,1
+  MODULE id=3180 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:1,0.1:0.972,0.2:0.896,0.3:0.784,0.4:0.648,0.5:0.5,0.6:0.352,0.7:0.216,0.8:0.104,0.9:0.028,1:0
+  MODULE id=3181 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:120,1:600 g=0:30,1:600 b=0:1600,1:600 a=0:1,1:1
+  MODULE id=3182 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,1:0 y=0:5,1:5 z=0:1,1:1 w=0:1,1:1
+  MODULE id=3183 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.1,1:0.1
+  MODULE id=3184 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=SPHERE radius=0.03 inner=0 height=0 surface=0
+  MODULE id=3185 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:1,0.0714286:0.883333,0.142857:0.766667,0.214286:0.65,0.285714:0.533333,0.357143:0.416667,0.428571:0.3,0.5:0.2625,0.571429:0.225,0.642857:0.1875,0.714286:0.15,0.785714:0.1125,0.857143:0.075,0.928571:0.0375,1:0
+  MODULE id=3186 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=-6,-6,-6 min=-6,-6,-6 max=1.2,1.2,1.2
+
+EMITTER id=3187 name="meshtrail" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3188 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds" mesh="Effect/Dimensionist/Meshes/fm_m_trail_002.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_05_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,-0.2 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3189 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3190 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3191 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-0.05,-0.05,-0.05 min=-0.05,-0.05,-0.05 max=0.03,0.03,0.03
+  MODULE id=3192 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0,0.05:3.80431,0.1:7.60863,0.15:11.4129,0.2:2.28259,0.25:2.13993,0.3:1.99727,0.35:1.8546,0.4:1.71194,0.45:1.56928,0.5:1.42662,0.55:1.28396,0.6:1.14129,0.65:0.998633,0.7:0.855971,0.75:0.713309,0.8:0.570647,0.85:0.427985,0.9:0.285324,0.95:0.142662,1:0 g=0:0,0.05:3.80021,0.1:7.60042,0.15:11.4006,0.2:2.28013,0.25:2.13762,0.3:1.99511,0.35:1.8526,0.4:1.71009,0.45:1.56759,0.5:1.42508,0.55:1.28257,0.6:1.14006,0.65:0.997555,0.7:0.855047,0.75:0.712539,0.8:0.570032,0.85:0.427523,0.9:0.285016,0.95:0.142508,1:0 b=0:0,0.05:3.76003,0.1:7.52005,0.15:11.2801,0.2:2.25602,0.25:2.11502,0.3:1.97401,0.35:1.83301,0.4:1.69201,0.45:1.55101,0.5:1.41001,0.55:1.26901,0.6:1.12801,0.65:0.987007,0.7:0.846006,0.75:0.705005,0.8:0.564004,0.85:0.423003,0.9:0.282002,0.95:0.141001,1:0 a=0:2,0.0526316:1.98394,0.105263:1.9381,0.157895:1.86599,0.210526:1.7711,0.263158:1.65693,0.315789:1.52701,0.368421:1.38482,0.421053:1.23387,0.473684:1.07767,0.526316:0.919709,0.578947:0.763504,0.631579:0.612555,0.684211:0.470366,0.736842:0.340439,0.789474:0.226278,0.842105:0.131388,0.894737:0.059271,0.947368:0.013431,1:-0.002627
+  MODULE id=3193 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.7,0.05:0.83393,0.1:1.13215,0.15:1.43929,0.2:1.6,0.25:1.63363,0.3:1.66327,0.35:1.68917,0.4:1.71159,0.45:1.73077,0.5:1.74697,0.55:1.76043,0.6:1.77141,0.65:1.78016,0.7:1.78693,0.75:1.79197,0.8:1.79553,0.85:1.79786,0.9:1.79922,0.95:1.79985,1:1.8 y=0:0,0.05:0.25,0.1:0.5,0.15:0.75,0.2:1,0.25:1.01123,0.3:1.04297,0.35:1.09228,0.4:1.15625,0.45:1.23193,0.5:1.31641,0.55:1.40674,0.6:1.5,0.65:1.59326,0.7:1.68359,0.75:1.76807,0.8:1.84375,0.85:1.90772,0.9:1.95703,0.95:1.98877,1:2 z=0:0,0.05:0.00725,0.1:0.028,0.15:0.06075,0.2:0.104,0.25:0.15625,0.3:0.216,0.35:0.28175,0.4:0.352,0.45:0.42525,0.5:0.5,0.55:0.57475,0.6:0.648,0.65:0.71825,0.7:0.784,0.75:0.84375,0.8:0.896,0.85:0.93925,0.9:0.972,0.95:0.99275,1:1 w=0:1,0.05:1.00725,0.1:1.028,0.15:1.06075,0.2:1.104,0.25:1.15625,0.3:1.216,0.35:1.28175,0.4:1.352,0.45:1.42525,0.5:1.5,0.55:1.57475,0.6:1.648,0.65:1.71825,0.7:1.784,0.75:1.84375,0.8:1.896,0.85:1.93925,0.9:1.972,0.95:1.99275,1:2
+  MODULE id=3194 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.1,-0.1,-0.1 min=-0.1,-0.1,-0.1 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=3195 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:0.1 g=0:1,1:0.1 b=0:1,1:0.1 a=0:1,1:1
+
+EMITTER id=3196 name="2" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.6 loops=1
+  MODULE id=3197 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_h_swing_01.wmodel" mat="fx_m_mi_01.fx_m.fx_h_me_swing_01_1_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3198 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3199 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.5 min=0.5 max=0.5
+  MODULE id=3200 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.01,0.01,0.01 min=0.01,0.01,0.01 max=0.022,0.022,0.022
+  MODULE id=3201 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.16,0.15,0.3,0.1 min=0.16,0.15,0.3,0.1 max=0.16,0.15,0.3,0.1
+  MODULE id=3202 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:1,0.05:0.877105,0.1:0.764415,0.15:0.661509,0.2:0.567965,0.25:0.48336,0.3:0.407272,0.35:0.33928,0.4:0.27896,0.45:0.225892,0.5:0.179653,0.55:0.139821,0.6:0.105974,0.65:0.077689,0.7:0.054545,0.75:0.03612,0.8:0.021991,0.85:0.011737,0.9:0.004935,0.95:0.001163,1:0
+  MODULE id=3203 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:2.5843,1:25 y=0:5,1:5 z=0:1,1:1 w=0:1,1:1
+  MODULE id=3204 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.3,0.3,0.3 shape=BOX radius=0 inner=0 height=0 surface=0
+
+EMITTER id=3205 name="emitter_6" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3206 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_02.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_12_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,-0.2 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3207 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3208 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.8 min=0.8 max=0.8
+  MODULE id=3209 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-0.028,-0.028,-0.028 min=-0.028,-0.028,-0.028 max=0.05,0.05,0.05
+  MODULE id=3210 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=3.5,3,6,0.95 min=3.5,3,6,0.95 max=3.5,3,6,0.95
+  MODULE id=3211 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,0.05:0.866667,0.1:0.733333,0.15:0.6,0.2:0.466667,0.25:0.333333,0.3:0.2,0.35:0.185714,0.4:0.171429,0.45:0.157143,0.5:0.142857,0.55:0.128571,0.6:0.114286,0.65:0.1,0.7:0.085714,0.75:0.071429,0.8:0.057143,0.85:0.042857,0.9:0.028571,0.95:0.014286,1:0 g=0:0.5,0.05:0.45,0.1:0.4,0.15:0.35,0.2:0.3,0.25:0.25,0.3:0.2,0.35:0.185714,0.4:0.171429,0.45:0.157143,0.5:0.142857,0.55:0.128571,0.6:0.114286,0.65:0.1,0.7:0.085714,0.75:0.071429,0.8:0.057143,0.85:0.042857,0.9:0.028571,0.95:0.014286,1:0 b=0:3,0.05:2.53333,0.1:2.06667,0.15:1.6,0.2:1.13333,0.25:0.666667,0.3:0.2,0.35:0.185714,0.4:0.171429,0.45:0.157143,0.5:0.142857,0.55:0.128571,0.6:0.114286,0.65:0.1,0.7:0.085714,0.75:0.071429,0.8:0.057143,0.85:0.042857,0.9:0.028571,0.95:0.014286,1:0 a=0:1,0.05:1,0.1:1,0.15:1,0.2:1,0.25:1,0.3:1,0.35:0.985743,0.4:0.945787,0.45:0.884359,0.5:0.805685,0.55:0.713989,0.6:0.613498,0.65:0.508436,0.7:0.403031,0.75:0.301507,0.8:0.208089,0.85:0.127004,0.9:0.062477,0.95:0.018734,1:0
+  MODULE id=3212 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.8,0.05:0.85,0.1:0.9,0.15:0.95,0.2:1,0.25:1,0.3:1,0.35:1,0.4:1,0.45:1,0.5:1,0.55:1,0.6:1,0.65:1,0.7:1,0.75:1,0.8:1,0.85:1,0.9:1,0.95:1,1:1
+  MODULE id=3213 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.5,0.05:0.647485,0.1:0.95638,0.15:1.22635,0.2:1.30211,0.25:1.33504,0.3:1.36411,0.35:1.38956,0.4:1.41164,0.45:1.43057,0.5:1.4466,0.55:1.45998,0.6:1.47093,0.65:1.47969,0.7:1.48651,0.75:1.49163,0.8:1.49528,0.85:1.4977,0.9:1.49914,0.95:1.49982,1:1.5 y=0:0.8,0.05:0.940824,0.1:1.08381,0.15:1.20408,0.2:1.27675,0.25:1.30772,0.3:1.33511,0.35:1.3596,0.4:1.38133,0.45:1.40046,0.5:1.41714,0.55:1.43152,0.6:1.44374,0.65:1.45396,0.7:1.46233,0.75:1.469,0.8:1.47412,0.85:1.47784,0.9:1.48031,0.95:1.48169,1:1.48211 z=0:1,1:1 w=0:0,1:2
+  MODULE id=3214 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:4,1:1 g=0:4,1:1 b=0:10,1:1 a=0:1,1:1
+
+EMITTER id=3215 name="emitter_7" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3216 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_cloud_tile_01.dds" mesh="Effect/Dimensionist/Meshes/fm_m_trail_01.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_13_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=2,1 uvoffset=-0.4,0.5 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3217 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3218 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=1.7 min=1.7 max=1.7
+  MODULE id=3219 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-0.05,-0.05,-0.05 min=-0.05,-0.05,-0.05 max=0.04,0.04,0.04
+  MODULE id=3220 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=5,4,7,1 min=5,4,7,1 max=5,4,7,1
+  MODULE id=3221 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2,0.0526316:1.66667,0.105263:1.33333,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 g=0:2,0.0526316:1.66667,0.105263:1.33333,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 b=0:2,0.0526316:1.66667,0.105263:1.33333,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 a=0:1,1:0
+  MODULE id=3222 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:1.2,0.05:0.86238,0.1:0.678847,0.15:0.598569,0.2:0.570712,0.25:0.526807,0.3:0.458353,0.35:0.389899,0.4:0.321446,0.45:0.252992,0.5:0.184538,0.55:0.116084,0.6:0.04763,0.65:-0.020824,0.7:-0.089277,0.75:-0.157731,0.8:-0.226185,0.85:-0.294639,0.9:-0.363093,0.95:-0.431546,1:-0.5 y=0:0,1:0 z=0:0,1:4.08614 w=0:1,1:2
+  MODULE id=3223 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.2,1:1 g=0:1,1:1 b=0:3,1:1 a=0:1,1:1
+  MODULE id=3224 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-0.3,-0.3,-0.3 min=-0.3,-0.3,-0.3 max=0.3,0.3,0.3 shape=BOX radius=0 inner=0 height=0 surface=0
+
+EMITTER id=3225 name="emitter_8" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3226 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_05/fx_l_environment_001.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_02.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_06_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_02.dds" uvtiling=1,1 uvoffset=0,-0.5 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3227 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3228 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3229 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.01,0.01,0.01 min=0.01,0.01,0.01 max=0.031,0.031,0.031
+  MODULE id=3230 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=3.5,3.3,4.5,0.9 min=3.5,3.3,4.5,0.9 max=3.5,3.3,4.5,0.9
+  MODULE id=3231 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,0.0526316:2.33333,0.105263:1.66667,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 g=0:3,0.0526316:2.33333,0.105263:1.66667,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 b=0:3,0.0526316:2.33333,0.105263:1.66667,0.157895:1,0.210526:0.9375,0.263158:0.875,0.315789:0.8125,0.368421:0.75,0.421053:0.6875,0.473684:0.625,0.526316:0.5625,0.578947:0.5,0.631579:0.4375,0.684211:0.375,0.736842:0.3125,0.789474:0.25,0.842105:0.1875,0.894737:0.125,0.947368:0.0625,1:0 a=0:1,0.0714286:0.958333,0.142857:0.916667,0.214286:0.875,0.285714:0.833333,0.357143:0.791667,0.428571:0.75,0.5:0.708333,0.571429:0.666667,0.642857:0.625,0.714286:0.583333,0.785714:0.541667,0.857143:0.5,0.928571:0.3,1:0.1
+  MODULE id=3232 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:-2.72642,0.05:-2.18641,0.1:-0.974559,0.15:0.296901,0.2:1.01572,0.25:1.24211,0.3:1.44525,0.35:1.62633,0.4:1.78653,0.45:1.92707,0.5:2.04912,0.55:2.15388,0.6:2.24255,0.65:2.31632,0.7:2.37638,0.75:2.42393,0.8:2.46016,0.85:2.48626,0.9:2.50342,0.95:2.51284,1:2.51572 y=0:1,1:8 z=0:1,1:5 w=0:0,1:-0.1
+  MODULE id=3233 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+
+EMITTER id=3234 name="emitter_9" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3235 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_trail_007.dds" mesh="" mat="fx_m_mi_s_00.fx_mi.fx_s_pa_trail_03_01_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_trail_007.dds" dissolvetex="" distortiontex="" uvtiling=2,2 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3236 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3237 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3238 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-3,-3,-3 min=-3,-3,-3 max=3.8,3.8,3.8
+  MODULE id=3239 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:1.2,1:1.2 y=0:0.9,1:1.12377 z=0:5.70074,0.05:5.73046,0.1:5.79476,0.15:5.85632,0.2:5.88504,0.25:5.90639,0.3:5.9278,0.35:5.94908,0.4:5.97003,0.45:5.99044,0.5:6.01012,0.55:6.02887,0.6:6.04648,0.65:6.06278,0.7:6.07754,0.75:6.09058,0.8:6.10169,0.85:6.11068,0.9:6.11735,0.95:6.12149,1:6.12292 w=0:13,1:13
+  MODULE id=3240 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2.5,1:2.5 g=0:2,1:2 b=0:5,1:5 a=0:0,0.05:0.25,0.1:0.5,0.15:0.472222,0.2:0.444444,0.25:0.416667,0.3:0.388889,0.35:0.361111,0.4:0.333333,0.45:0.305556,0.5:0.277778,0.55:0.25,0.6:0.222222,0.65:0.194444,0.7:0.166667,0.75:0.138889,0.8:0.111111,0.85:0.083333,0.9:0.055556,0.95:0.027778,1:0
+  MODULE id=3241 name="Initial Rotation" type=INITIAL_ROTATION enabled=1 dist=CONSTANT c=-18,-18,-18 min=-18,-18,-18 max=-18,-18,-18
+  MODULE id=3242 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:0.1,1:0.1
+  MODULE id=3243 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.7,1:1
+  MODULE id=3244 name="Rotation Rate" type=ROTATION_RATE enabled=1 dist=CONSTANT c=-360,-360,-360 min=-360,-360,-360 max=-360,-360,-360
+  MODULE id=3245 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:0.6,1:1 b=0:2,1:1 a=0:1,1:1
+
+EMITTER id=3246 name="emitter_10" type=MESH enabled=1 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3247 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_007.dds" mesh="Effect/Dimensionist/Meshes/fm_b_ring_001.wmodel" mat="fx_m_mi_00.fx_mi.fx_a_me_ri_05_1_ad" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fire_003.dds" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=0 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3248 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3249 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3250 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.4,1:0.4 g=0:0.3,1:0.3 b=0:5,1:5 a=0:0,0.0625:0.268556,0.125:0.614151,0.1875:0.902671,0.25:1,0.3125:0.944217,0.375:0.866244,0.4375:0.771237,0.5:0.664348,0.5625:0.550732,0.625:0.435544,0.6875:0.323936,0.75:0.221063,0.8125:0.132079,0.875:0.062138,0.9375:0.016393,1:0
+  MODULE id=3251 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.025,0.025,0.025 min=0.025,0.025,0.025 max=0.036,0.036,0.036
+  MODULE id=3252 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.2,1:0.2 y=0:1,0.05:1.00618,0.1:1.02474,0.15:1.0557,0.2:1.09908,0.25:1.15491,0.3:1.22319,0.35:1.30397,0.4:1.39725,0.45:1.50306,0.5:1.62141,0.55:1.75235,0.6:1.89587,0.65:2.05201,0.7:2.22078,0.75:2.40222,0.8:2.59633,0.85:2.80314,0.9:3.02268,0.95:3.25496,1:3.5 z=0:1,1:1 w=0:1,0.05:0.878339,0.1:0.766631,0.15:0.664473,0.2:0.571465,0.25:0.487206,0.3:0.411292,0.35:0.343324,0.4:0.282899,0.45:0.229615,0.5:0.183072,0.55:0.142867,0.6:0.108599,0.65:0.079867,0.7:0.056268,0.75:0.037402,0.8:0.022866,0.85:0.01226,0.9:0.005181,0.95:0.001228,1:0
+  MODULE id=3253 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:5,1:5 g=0:5,1:5 b=0:5,1:5 a=0:1,1:1
+  MODULE id=3254 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.15,0.15,0.15 shape=BOX radius=0 inner=0 height=0 surface=0
+
+EMITTER id=3255 name="smoke_tail" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.1 duration=1 loops=1
+  MODULE id=3256 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_05/fx_k_smoketile_01.dds" mesh="" mat="fx_m_mi_s_00.fx_mi.fx_s_pa_turbpa_01_3_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_018.dds" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3257 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3258 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.5 min=0.5 max=0.6
+  MODULE id=3259 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=1,1,1
+  MODULE id=3260 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.7,0.05:0.785301,0.1:0.864719,0.15:0.938442,0.2:1.00665,0.25:1.06954,0.3:1.12729,0.35:1.18008,0.4:1.22811,0.45:1.27155,0.5:1.31059,0.55:1.34542,0.6:1.37623,0.65:1.4032,0.7:1.42651,0.75:1.44635,0.8:1.4629,0.85:1.47636,0.9:1.48691,0.95:1.49472,1:1.5
+  MODULE id=3261 name="Rotation Rate" type=ROTATION_RATE enabled=1 dist=UNIFORM_RANGE c=-7.2,-7.2,-7.2 min=-7.2,-7.2,-7.2 max=7.2,7.2,7.2
+  MODULE id=3262 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,0.0526316:0.002406,0.105263:0.009272,0.157895:0.020076,0.210526:0.034291,0.263158:0.051392,0.315789:0.070856,0.368421:0.092156,0.421053:0.114769,0.473684:0.138169,0.526316:0.161831,0.578947:0.185231,0.631579:0.207844,0.684211:0.229144,0.736842:0.248608,0.789474:0.265709,0.842105:0.279924,0.894737:0.290727,0.947368:0.297594,1:0.3 y=0:4,0.05:3.89777,0.1:3.79814,0.15:3.70115,0.2:3.60684,0.25:3.51527,0.3:3.42647,0.35:3.34049,0.4:3.25738,0.45:3.17718,0.5:3.09994,0.55:3.02569,0.6:2.9545,0.65:2.88639,0.7:2.82142,0.75:2.75964,0.8:2.70108,0.85:2.64579,0.9:2.59382,0.95:2.5452,1:2.5 z=0:0,1:0 w=0:0,1:0
+  MODULE id=3263 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,0.8,2,0.5 min=1,0.8,2,0.5 max=1,0.8,2,0.5
+  MODULE id=3264 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:0.01 g=0:1,1:0.01 b=0:1,1:0.01 a=0:1,1:1
+  MODULE id=3266 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=32 start=0 end=31 loop=1 reltime=1
+
+EMITTER id=3267 name="enber_start" type=SPRITE enabled=1 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=3268 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad" align=VELOCITY opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3269 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3270 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.8 min=0.8 max=1
+  MODULE id=3271 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.05,0.05,0.05
+  MODULE id=3272 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=16,15,30,3 min=16,15,30,3 max=16,15,30,3
+  MODULE id=3273 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:2,1:1 g=0:2.3,1:1 b=0:2.8,1:1 a=0:0,0.05:0.333333,0.1:0.666667,0.15:1,0.2:1,0.25:1,0.3:1,0.35:0.928571,0.4:0.857143,0.45:0.785714,0.5:0.714286,0.55:0.642857,0.6:0.571429,0.65:0.5,0.7:0.428571,0.75:0.357143,0.8:0.285714,0.85:0.214286,0.9:0.142857,0.95:0.071429,1:0
+  MODULE id=3274 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.33,0.05:0.434688,0.1:0.665,0.15:0.895312,0.2:1,0.25:0.992476,0.3:0.971211,0.35:0.938169,0.4:0.895312,0.45:0.844604,0.5:0.788008,0.55:0.727485,0.6:0.665,0.65:0.602515,0.7:0.541992,0.75:0.485396,0.8:0.434688,0.85:0.391831,0.9:0.358789,0.95:0.337524,1:0.33
+  MODULE id=3275 name="SubUV" type=SUB_UV enabled=1 cols=4 rows=2 fps=16 start=0 end=7 loop=1 reltime=1
+
+EMITTER id=3276 name="emitter_13" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.1 duration=1 loops=1
+  MODULE id=3277 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_a_broken_012.wmodel" mat="fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_03_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3278 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3279 name="Lifetime" type=LIFETIME enabled=1 dist=UNIFORM_RANGE c=0.9 min=0.9 max=1
+  MODULE id=3280 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0.03,0.03,0.03 min=0.03,0.03,0.03 max=0.06,0.06,0.06
+  MODULE id=3281 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,1,1,1 min=1,1,1,1 max=1,1,1,1
+  MODULE id=3282 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:1,0.1:0.972,0.2:0.896,0.3:0.784,0.4:0.648,0.5:0.5,0.6:0.352,0.7:0.216,0.8:0.104,0.9:0.028,1:0
+  MODULE id=3283 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:200,1:45 g=0:150,1:40 b=0:300,1:70 a=0:1,1:1
+  MODULE id=3284 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,1:0 y=0:500,1:500 z=0:1,1:1 w=0:1,1:1
+  MODULE id=3285 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.1,1:0.1
+  MODULE id=3286 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0 shape=SPHERE radius=0.06 inner=0 height=0 surface=0
+  MODULE id=3287 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:1,0.0555556:0.9125,0.111111:0.825,0.166667:0.7375,0.222222:0.65,0.277778:0.5625,0.333333:0.475,0.388889:0.3875,0.444444:0.3,0.5:0.27,0.555556:0.24,0.611111:0.21,0.666667:0.18,0.722222:0.15,0.777778:0.12,0.833333:0.09,0.888889:0.06,0.944444:0.03,1:0
+
+EMITTER id=3288 name="twril" type=SPRITE enabled=1 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=3289 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_i_atypical_02.dds" mesh="" mat="fx_m_mi_00.fx_mi.fx_d_pa_atta_05_11_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3290 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3291 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3292 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-3,-3,-3 min=-3,-3,-3 max=3.8,3.8,3.8
+  MODULE id=3293 name="Rotation Rate" type=ROTATION_RATE enabled=1 dist=CONSTANT c=720,720,720 min=720,720,720 max=720,720,720
+  MODULE id=3294 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,1,1,3 min=1,1,1,3 max=1,1,1,3
+  MODULE id=3296 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,0.05:0.99275,0.1:0.972,0.15:0.93925,0.2:0.896,0.25:0.84375,0.3:0.784,0.35:0.71825,0.4:0.648,0.45:0.57475,0.5:0.5,0.55:0.42525,0.6:0.352,0.65:0.28175,0.7:0.216,0.75:0.15625,0.8:0.104,0.85:0.06075,0.9:0.028,0.95:0.00725,1:0 g=0:1,0.05:0.99275,0.1:0.972,0.15:0.93925,0.2:0.896,0.25:0.84375,0.3:0.784,0.35:0.71825,0.4:0.648,0.45:0.57475,0.5:0.5,0.55:0.42525,0.6:0.352,0.65:0.28175,0.7:0.216,0.75:0.15625,0.8:0.104,0.85:0.06075,0.9:0.028,0.95:0.00725,1:0 b=0:1,0.05:0.99275,0.1:0.972,0.15:0.93925,0.2:0.896,0.25:0.84375,0.3:0.784,0.35:0.71825,0.4:0.648,0.45:0.57475,0.5:0.5,0.55:0.42525,0.6:0.352,0.65:0.28175,0.7:0.216,0.75:0.15625,0.8:0.104,0.85:0.06075,0.9:0.028,0.95:0.00725,1:0 a=0:1,0.05:0.99275,0.1:0.972,0.15:0.93925,0.2:0.896,0.25:0.84375,0.3:0.784,0.35:0.71825,0.4:0.648,0.45:0.57475,0.5:0.5,0.55:0.42525,0.6:0.352,0.65:0.28175,0.7:0.216,0.75:0.15625,0.8:0.104,0.85:0.06075,0.9:0.028,0.95:0.00725,1:0
+  MODULE id=3297 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.5,1:2
+  MODULE id=3298 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.7,1:0.7 g=0:0.7,1:0.7 b=0:0.7,1:0.7 a=0:0.8,1:0.8
+  MODULE id=3299 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.78,1:0.78
+  MODULE id=3300 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=3,3,3
+
+EMITTER id=3301 name="emitter_15" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3302 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_002.dds" mesh="" mat="fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=1.5
+  MODULE id=3303 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3304 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.4 min=0.4 max=0.4
+  MODULE id=3305 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=3.6,3.6,3.6
+  MODULE id=3306 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.45,1:0.1 g=0:0.4,1:0.1 b=0:0.6,1:0.1 a=0:1,0.1:0.972,0.2:0.896,0.3:0.784,0.4:0.648,0.5:0.5,0.6:0.352,0.7:0.216,0.8:0.104,0.9:0.028,1:0
+  MODULE id=3307 name="Initial Rotation" type=INITIAL_ROTATION enabled=1 dist=CONSTANT c=0,0,0 min=0,0,0 max=0,0,0
+  MODULE id=3308 name="Rotation Rate" type=ROTATION_RATE enabled=1 dist=CONSTANT c=-72,-72,-72 min=-72,-72,-72 max=-72,-72,-72
+  MODULE id=3309 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:0.8,1:0.8
+  MODULE id=3310 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.5,0.5,0.5
+
+EMITTER id=3311 name="emitter_16" type=SPRITE enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0.03 duration=1 loops=1
+  MODULE id=3312 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_trail_01_1.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_trail_01_09_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_04/fx_h_trail_01_1.dds" dissolvetex="" distortiontex="" uvtiling=2,2 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3313 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3314 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.35 min=0.35 max=0.35
+  MODULE id=3315 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-4,-4,-4 min=-4,-4,-4 max=3,3,3
+  MODULE id=3316 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.3,1:1.3 g=0:0.9,1:0.9 b=0:1.5,1:1.5 a=0:0,0.05:0.523792,0.1:1,0.15:0.906196,0.2:0.815316,0.25:0.727658,0.3:0.643515,0.35:0.563183,0.4:0.486957,0.45:0.415133,0.5:0.348006,0.55:0.28587,0.6:0.229022,0.65:0.177756,0.7:0.132368,0.75:0.093152,0.8:0.060405,0.85:0.034421,0.9:0.015495,0.95:0.003923,1:0
+  MODULE id=3317 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1.15,1:1.15 g=0:1.35,1:1.35 b=0:1.2,1:1.2 a=0:0.1,1:0.1
+  MODULE id=3318 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0.9,0.05:0.915437,0.1:0.929208,0.15:0.941408,0.2:0.952131,0.25:0.961472,0.3:0.969526,0.35:0.976386,0.4:0.982147,0.45:0.986905,0.5:0.990753,0.55:0.993786,0.6:0.996098,0.65:0.997785,0.7:0.99894,0.75:0.999657,0.8:1.00003,0.85:1.00016,0.9:1.00013,0.95:1.00005,1:1 y=0:1,1:1.12377 z=0:6,1:6 w=0:5,1:5
+  MODULE id=3319 name="Initial Rotation" type=INITIAL_ROTATION enabled=1 dist=CONSTANT c=-108,-108,-108 min=-108,-108,-108 max=-108,-108,-108
+  MODULE id=3320 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.7,0.5:0.968091,1:1
+  MODULE id=3321 name="Rotation Rate" type=ROTATION_RATE enabled=1 dist=CONSTANT c=-720,-720,-720 min=-720,-720,-720 max=-720,-720,-720
+  MODULE id=3322 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.5,1:0.5 g=0:0.5,1:0.5 b=0:0.5,1:0.5 a=0:1,1:1
+  MODULE id=3323 name="Initial Velocity" type=INITIAL_VELOCITY enabled=1 dist=UNIFORM_RANGE c=0,0,0 min=0,0,0 max=0.5,0.5,0.5
+
+EMITTER id=3324 name="smoke_tail" type=MESH enabled=1 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=3325 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_16.dds" mesh="Effect/Dimensionist/Meshes/fm_h_swing_01.wmodel" mat="fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr" align=RECTANGLE opacitytex="Effect/Dimensionist/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=3326 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
+  MODULE id=3327 name="Lifetime" type=LIFETIME enabled=1 dist=CONSTANT c=0.3 min=0.3 max=0.3
+  MODULE id=3328 name="Initial Size" type=INITIAL_SIZE enabled=1 dist=UNIFORM_RANGE c=-0.029,-0.029,-0.029 min=-0.029,-0.029,-0.029 max=0.022,0.022,0.022
+  MODULE id=3329 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:0.5,1:0.5 g=0:0.5,1:0.5 b=0:0.5,1:0.5 a=0:1,1:1
+  MODULE id=3330 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:0,0.05:0.014333,0.1:0.028725,0.15:0.043091,0.2:0.057344,0.25:0.071398,0.3:0.085169,0.35:0.098568,0.4:0.111512,0.45:0.123914,0.5:0.135688,0.55:0.146748,0.6:0.157008,0.65:0.166383,0.7:0.174786,0.75:0.182133,0.8:0.188336,0.85:0.19331,0.9:0.19697,0.95:0.199228,1:0.2 y=0:-0.2,0.0526316:-0.163339,0.105263:-0.088582,0.157895:-0.028566,0.210526:-0.013014,0.263158:-0.002207,0.315789:0.007388,0.368421:0.015841,0.421053:0.023221,0.473684:0.029597,0.526316:0.035039,0.578947:0.039614,0.631579:0.043393,0.684211:0.046444,0.736842:0.048836,0.789474:0.050638,0.842105:0.05192,0.894737:0.05275,0.947368:0.053197,1:0.053331 z=0:0,1:0 w=0:-0.25,0.05:-0.247455,0.1:-0.24163,0.15:-0.232898,0.2:-0.221629,0.25:-0.208197,0.3:-0.192973,0.35:-0.176329,0.4:-0.158637,0.45:-0.14027,0.5:-0.121598,0.55:-0.102994,0.6:-0.084831,0.65:-0.067479,0.7:-0.051312,0.75:-0.0367,0.8:-0.024016,0.85:-0.013632,0.9:-0.00592,0.95:-0.001252,1:0
+  MODULE id=3331 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:10,1:1.2 g=0:5,1:1 b=0:30,1:3 a=0:1,1:1
+  MODULE id=3332 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=32 start=0 end=31 loop=1 reltime=1

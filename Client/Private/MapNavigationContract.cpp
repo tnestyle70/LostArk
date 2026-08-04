@@ -1,6 +1,7 @@
 #include "MapNavigationContract.h"
 
 #include "MapAssetCatalog.h"
+#include "ProjectDataRoot.h"
 
 #include <algorithm>
 #include <cctype>
@@ -13,8 +14,6 @@ namespace
 	constexpr const char* AREA_SELECTION_MAGIC =
 		"LOSTARK_MAP_AREA_SELECTION";
 	constexpr uint32_t AREA_SELECTION_VERSION = 1;
-	constexpr const char* LEGACY_HEARTRB_AREA = "LV_LUT_HEARTRB_ED";
-	constexpr const wchar_t* LEGACY_VALTAN_STEM = L"ValtanArena";
 	constexpr const wchar_t* PROTOTYPE_PREFIX =
 		L"Prototype_Component_Navigation_";
 
@@ -75,26 +74,26 @@ bool_t Client::CMapNavigationContract::Resolve_Area(
 
 	const std::filesystem::path mapRoot =
 		CMapAssetCatalog::Get_MapDataRoot();
-	if (mapRoot.empty() || mapRoot.parent_path().empty())
+	const std::filesystem::path authoringRoot =
+		CProjectDataRoot::Resolve(L"Navigation");
+	if (mapRoot.empty() || mapRoot.parent_path().empty() ||
+		authoringRoot.empty())
 	{
 		outStatus = "Navigation data root is unavailable";
 		return false;
 	}
 
-	const std::filesystem::path navigationRoot =
+	const std::filesystem::path runtimeRoot =
 		(mapRoot.parent_path() / L"Navigation").lexically_normal();
-	const bool_t usesLegacyFilename = areaId == LEGACY_HEARTRB_AREA;
-	const std::wstring stem = usesLegacyFilename ?
-		LEGACY_VALTAN_STEM : ToWideAscii(areaId);
+	const std::wstring stem = ToWideAscii(areaId);
 
 	MAP_NAVIGATION_CONTRACT staged;
 	staged.areaId = areaId;
-	staged.sourcePath = navigationRoot / (stem + L".navsource");
-	staged.paintPath = navigationRoot / (stem + L".navpaint");
-	staged.runtimePath = navigationRoot / (stem + L".navgrid");
-	staged.blockerPath = navigationRoot / (stem + L".navblockers");
+	staged.sourcePath = authoringRoot / (stem + L".navsource");
+	staged.paintPath = authoringRoot / (stem + L".navpaint");
+	staged.runtimePath = runtimeRoot / (stem + L".navgrid");
+	staged.blockerPath = authoringRoot / (stem + L".navblockers");
 	staged.prototypeTag = PROTOTYPE_PREFIX + stem;
-	staged.usesLegacyFilename = usesLegacyFilename;
 
 	std::error_code runtimeError;
 	const std::filesystem::file_status runtimeStatus =

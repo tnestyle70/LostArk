@@ -13,10 +13,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 $authoringPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.mapplacements"
+$authoringDeployPath = Join-Path $ProjectRoot "Data\Maps\Authoring\$AreaId\$AreaId.deployplacements"
+$importRoot = Join-Path $ProjectRoot "Data\Maps\Imported\$AreaId"
+$sourceCatalogPath = Join-Path $importRoot "$AreaId.mapassets"
+$sourceShardSetPath = Join-Path $importRoot "$AreaId.mapset"
+$sourceDeployCatalogPath = Join-Path $importRoot "$AreaId.deployassets"
 $runtimeRoot = Join-Path $ProjectRoot 'Client\Bin\DataFiles\Map'
 $runtimePath = Join-Path $runtimeRoot "$AreaId.mapplacements"
 $shardSetPath = Join-Path $runtimeRoot "$AreaId.mapset"
 $utf8 = [Text.UTF8Encoding]::new($false)
+$importedPlacementMask = [uint64]::Parse(
+    '9223372036854775808',
+    [Globalization.CultureInfo]::InvariantCulture)
 
 function Read-PlacementDocument {
     param([string]$Path)
@@ -70,7 +78,7 @@ function Parse-PlacementRow {
 	$importedSource = $transformSource -in @('actor','component')
 	$editorSource = $transformSource -in @('editor','legacy','overlay')
 	$validIdDomain =
-		($importedSource -and 0 -ne ($placementId -band [uint64]0x8000000000000000)) -or
+		($importedSource -and 0 -ne ($placementId -band $importedPlacementMask)) -or
 		($editorSource -and $placementId -le [uint64]0x7fffffffffffffff)
 	$quaternionLength = [math]::Sqrt(
 		$values[3] * $values[3] + $values[4] * $values[4] +
@@ -90,16 +98,16 @@ function Parse-PlacementRow {
     }
 }
 
-function Assert-RuntimeLeaf {
+function Assert-ImportedLeaf {
 	param([string]$Name, [string]$Extension)
 	if ([IO.Path]::GetFileName($Name) -ne $Name -or
 		[IO.Path]::GetExtension($Name) -ne $Extension) {
 		throw "Shard path must be a leaf $Extension filename: $Name"
 	}
-	$fullPath = [IO.Path]::GetFullPath((Join-Path $runtimeRoot $Name))
+	$fullPath = [IO.Path]::GetFullPath((Join-Path $importRoot $Name))
 	if ([IO.Path]::GetDirectoryName($fullPath) -ne
-		[IO.Path]::GetFullPath($runtimeRoot).TrimEnd('\')) {
-		throw "Shard path escapes the runtime map root: $Name"
+		[IO.Path]::GetFullPath($importRoot).TrimEnd('\')) {
+		throw "Shard path escapes the imported map root: $Name"
 	}
 	return $fullPath
 }
@@ -113,7 +121,10 @@ function Invoke-FileSetTransaction {
     try {
         foreach ($file in $Files) {
             $staged = Join-Path $stagingRoot $file.Name
-            [IO.File]::WriteAllLines($staged, [string[]]$file.Lines, $utf8)
+            [IO.File]::WriteAllText(
+                $staged,
+                (([string[]]$file.Lines -join "`n") + "`n"),
+                $utf8)
             $entries.Add([ordered]@{
                 Staged = $staged
                 Destination = Join-Path $runtimeRoot $file.Name
@@ -170,15 +181,44 @@ function Invoke-FileSetTransaction {
 if (-not [IO.File]::Exists($authoringPath)) {
     throw "Authoring placement is missing: $authoringPath"
 }
+if (-not [IO.Directory]::Exists($importRoot)) {
+    throw "Imported map source is missing: $importRoot"
+}
 [IO.Directory]::CreateDirectory($runtimeRoot) | Out-Null
 $authoringRows = @(Read-PlacementDocument $authoringPath)
 
-if (-not [IO.File]::Exists($shardSetPath)) {
+if (-not [IO.File]::Exists($sourceShardSetPath)) {
+    if (-not [IO.File]::Exists($sourceCatalogPath)) {
+        throw "Imported map catalog is missing: $sourceCatalogPath"
+    }
     $lines = @("LOSTARK_MAP_PLACEMENTS 2 `"$AreaId`" $($authoringRows.Count)") + $authoringRows
-    Invoke-FileSetTransaction @([pscustomobject]@{
+    $files = [Collections.Generic.List[object]]::new()
+    $files.Add([pscustomobject]@{
+        Name = "$AreaId.mapassets"
+        Lines = [IO.File]::ReadAllLines($sourceCatalogPath, [Text.Encoding]::UTF8)
+    })
+    $files.Add([pscustomobject]@{
         Name = "$AreaId.mapplacements"
         Lines = $lines
     })
+
+    $hasDeployCatalog = [IO.File]::Exists($sourceDeployCatalogPath)
+    $hasDeployPlacements = [IO.File]::Exists($authoringDeployPath)
+    if ($hasDeployCatalog -ne $hasDeployPlacements) {
+        throw "Deploy authoring pair is incomplete for $AreaId"
+    }
+    if ($hasDeployCatalog) {
+        $files.Add([pscustomobject]@{
+            Name = "$AreaId.deployassets"
+            Lines = [IO.File]::ReadAllLines($sourceDeployCatalogPath, [Text.Encoding]::UTF8)
+        })
+        $files.Add([pscustomobject]@{
+            Name = "$AreaId.deployplacements"
+            Lines = [IO.File]::ReadAllLines($authoringDeployPath, [Text.Encoding]::UTF8)
+        })
+    }
+
+    Invoke-FileSetTransaction $files
     [pscustomobject]@{
         AreaId = $AreaId
         CatalogType = 'single'
@@ -189,14 +229,14 @@ if (-not [IO.File]::Exists($shardSetPath)) {
     return
 }
 
-$mapSetLines = @([IO.File]::ReadAllLines($shardSetPath, [Text.Encoding]::UTF8))
+$mapSetLines = @([IO.File]::ReadAllLines($sourceShardSetPath, [Text.Encoding]::UTF8))
 $mapSetHeader = [regex]::Match(
     $mapSetLines[0],
     '^LOSTARK_MAP_SHARD_SET\s+1\s+"(?<area>[A-Za-z0-9_.-]+)"\s+(?<count>[0-9]+)$')
 if (-not $mapSetHeader.Success -or
     $mapSetHeader.Groups['area'].Value -ne $AreaId -or
     [uint32]$mapSetHeader.Groups['count'].Value -ne ($mapSetLines.Count - 1)) {
-    throw "Shard set header is invalid: $shardSetPath"
+    throw "Shard set header is invalid: $sourceShardSetPath"
 }
 
 $shards = [Collections.Generic.List[object]]::new()
@@ -215,14 +255,16 @@ foreach ($line in @($mapSetLines | Select-Object -Skip 1)) {
         PlacementName = $match.Groups['placements'].Value
         AssetCount = [uint32]$match.Groups['assets'].Value
         Rows = [Collections.Generic.List[string]]::new()
+        CatalogLines = @()
     }
-	$catalogPath = Assert-RuntimeLeaf $shard.CatalogName '.mapassets'
-	$placementPath = Assert-RuntimeLeaf $shard.PlacementName '.mapplacements'
+	$catalogPath = Assert-ImportedLeaf $shard.CatalogName '.mapassets'
+	$placementPath = Assert-ImportedLeaf $shard.PlacementName '.mapplacements'
     if (-not [IO.File]::Exists($catalogPath) -or
         -not [IO.File]::Exists($placementPath)) {
         throw "Shard source is missing: $($shard.Id)"
     }
     $catalogLines = @([IO.File]::ReadAllLines($catalogPath, [Text.Encoding]::UTF8))
+    $shard.CatalogLines = $catalogLines
     $assetIds = @($catalogLines | Select-Object -Skip 1 | ForEach-Object {
         $assetMatch = [regex]::Match($_, '^"(?<id>[A-Za-z0-9_.:-]+)"\s+')
         if (-not $assetMatch.Success) { throw "Invalid asset catalog row: $catalogPath" }
@@ -283,6 +325,10 @@ foreach ($shard in $shards) {
     $files.Add([pscustomobject]@{
         Name = $shard.PlacementName
         Lines = $placementLines
+    })
+    $files.Add([pscustomobject]@{
+        Name = $shard.CatalogName
+        Lines = $shard.CatalogLines
     })
     $newMapSetLines.Add(
         "`"$($shard.Id)`" `"$($shard.CatalogName)`" `"$($shard.PlacementName)`" $($shard.AssetCount) $($shard.Rows.Count)")

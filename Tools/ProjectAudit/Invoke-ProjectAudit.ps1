@@ -40,6 +40,18 @@ function Get-ProjectItems {
     return @($project.SelectNodes('//m:ClInclude|//m:ClCompile|//m:FxCompile|//m:None', $manager))
 }
 
+function Get-WModelTextureReferences {
+    param([string]$Path)
+
+    $decoded = [Text.Encoding]::Unicode.GetString(
+        [IO.File]::ReadAllBytes($Path))
+    return @([regex]::Matches(
+        $decoded,
+        '(?:Resource|Resources)[\\/][^\x00\r\n]{1,259}?\.(?:dds|png|tga|jpg|jpeg|bmp)',
+        [Text.RegularExpressions.RegexOptions]::IgnoreCase) |
+        ForEach-Object { $_.Value })
+}
+
 try {
     $resourceRoot = Join-Path $repoRoot 'Client\Bin\Resources'
     $expectedDomains = @('Character', 'Deploy', 'Effect', 'Fonts', 'Map', 'UI')
@@ -170,17 +182,216 @@ try {
     $mapCatalog = Read-Json 'Data\Maps\MapCatalog.json'
     $mapRoot = 'Client\Bin\DataFiles\Map'
     $missingMapFiles = [Collections.Generic.List[string]]::new()
+    $invalidMapPaths = [Collections.Generic.List[string]]::new()
     foreach ($area in $mapCatalog.areas) {
-        foreach ($property in @('catalog', 'placements', 'deployCatalog', 'deployPlacements', 'gameplayDocument')) {
+        foreach ($requiredProperty in @('sourceCatalog', 'sourcePlacements', 'catalog')) {
+            if ($area.PSObject.Properties.Name -notcontains $requiredProperty) {
+                $invalidMapPaths.Add("$($area.id):missing-$requiredProperty")
+            }
+        }
+        foreach ($property in @(
+            'sourceCatalog', 'sourcePlacements',
+            'sourceDeployCatalog', 'sourceDeployPlacements',
+            'catalog', 'placements', 'deployCatalog', 'deployPlacements',
+            'navigationSource', 'navigationPaint', 'navigationBlockers',
+            'navigationRuntime',
+            'gameplayDocument')) {
+            $isCharacterSelectNavBootstrap =
+                $area.id -eq 'LV_LOBBY_CLASSSELECT_SL00' -and
+                $property -in @('navigationSource', 'navigationPaint')
             if ($area.PSObject.Properties.Name -contains $property -and
+                -not $isCharacterSelectNavBootstrap -and
                 -not (Test-Path -LiteralPath $area.$property)) {
                 $missingMapFiles.Add($area.$property)
             }
         }
+        foreach ($property in @(
+            'sourceCatalog', 'sourcePlacements',
+            'sourceDeployCatalog', 'sourceDeployPlacements')) {
+            if ($area.PSObject.Properties.Name -contains $property -and
+                -not ([string]$area.$property).StartsWith('Data/Maps/', [StringComparison]::Ordinal)) {
+                $invalidMapPaths.Add("$($area.id):$property")
+            }
+        }
+        foreach ($property in @('catalog', 'placements', 'deployCatalog', 'deployPlacements')) {
+            if ($area.PSObject.Properties.Name -contains $property -and
+                -not ([string]$area.$property).StartsWith('Client/Bin/DataFiles/Map/', [StringComparison]::Ordinal)) {
+                $invalidMapPaths.Add("$($area.id):$property")
+            }
+        }
+        foreach ($property in @('navigationSource', 'navigationPaint', 'navigationBlockers')) {
+            if ($area.PSObject.Properties.Name -contains $property -and
+                -not ([string]$area.$property).StartsWith('Data/Navigation/', [StringComparison]::Ordinal)) {
+                $invalidMapPaths.Add("$($area.id):$property")
+            }
+        }
+        if ($area.PSObject.Properties.Name -contains 'navigationRuntime' -and
+            -not ([string]$area.navigationRuntime).StartsWith(
+                'Client/Bin/DataFiles/Navigation/', [StringComparison]::Ordinal)) {
+            $invalidMapPaths.Add("$($area.id):navigationRuntime")
+        }
     }
     $mapDataNames = @(Get-ChildItem -LiteralPath $mapRoot -File | ForEach-Object Name)
     $legacyMapFiles = @($mapDataNames | Where-Object { $_ -like 'BG_RAD_VALTAN_A*' })
-    Add-Check 'maps.catalog' ($mapCatalog.schema -eq 'lostark.map-catalog' -and $missingMapFiles.Count -eq 0 -and $legacyMapFiles.Count -eq 0) "missing=$($missingMapFiles.Count) legacy=$($legacyMapFiles.Count)"
+	Add-Check 'maps.catalog' ($mapCatalog.schema -eq 'lostark.map-catalog' -and
+		$missingMapFiles.Count -eq 0 -and $invalidMapPaths.Count -eq 0 -and
+		$legacyMapFiles.Count -eq 0) "missing=$($missingMapFiles.Count) invalidPaths=$($invalidMapPaths.Count) legacy=$($legacyMapFiles.Count)"
+	$editorAreas = @{}
+	foreach ($area in $mapCatalog.areas) { $editorAreas[[string]$area.id] = $area }
+	$characterSelectEditor = $editorAreas['LV_LOBBY_CLASSSELECT_SL00']
+	$bernEditor = $editorAreas['LV_BER_BERNCASTLE']
+	$valtanEditor = $editorAreas['LV_LUT_HEARTRB_ED']
+	$trainingEditor = $editorAreas['LV_SHS_RCARENA_D']
+	$mapToolSource = Get-Content 'Client\Private\MapTool.cpp' -Raw
+	$loaderSource = Get-Content 'Client\Private\Loader.cpp' -Raw
+	$mainAppSource = Get-Content 'Client\Private\MainApp.cpp' -Raw
+	$lobbySource = Get-Content 'Client\Private\Level_Lobby.cpp' -Raw
+	$editorPoliciesValid =
+		$null -ne $characterSelectEditor -and
+		$characterSelectEditor.navigationSource -eq 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' -and
+		$characterSelectEditor.navigationPaint -eq 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' -and
+		$characterSelectEditor.PSObject.Properties.Name -notcontains 'gameplayDocument' -and
+		$null -ne $bernEditor -and
+		$bernEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
+		$bernEditor.PSObject.Properties.Name -notcontains 'navigationSource' -and
+		$null -ne $valtanEditor -and
+		$valtanEditor.PSObject.Properties.Name -contains 'navigationSource' -and
+		$valtanEditor.PSObject.Properties.Name -contains 'navigationPaint' -and
+		$valtanEditor.PSObject.Properties.Name -contains 'navigationBlockers' -and
+		$valtanEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
+		$null -ne $trainingEditor -and
+		$trainingEditor.PSObject.Properties.Name -notcontains 'navigationSource' -and
+		$trainingEditor.PSObject.Properties.Name -notcontains 'gameplayDocument' -and
+		$mapToolSource -match 'Load_Source\(' -and
+		$mapToolSource -notmatch '\.Export_Runtime\(' -and
+		$mapToolSource -match 'MapEditorWorkspaceService::Is_Active' -and
+		$loaderSource -match 'Ready_MapAuthoringCore' -and
+		$loaderSource -match 'MapEditorWorkspaceService::Is_Requested' -and
+		$mainAppSource -notmatch 'debug\.map-editor' -and
+		$lobbySource -match 'MapEditorWorkspaceService::Request\(' -and
+		$lobbySource -match 'LEVEL::DEVELOPMENT == approvedLevel'
+	Add-Check 'maps.editor-workspace-policy' $editorPoliciesValid 'Lobby Test owns editor entry; F1 only toggles tools; four exact editor Areas; Data-only save'
+	$singleAreaContractErrors = [Collections.Generic.List[string]]::new()
+	$exclusiveRuntimeAreaIds = @(
+		'LV_LOBBY_CLASSSELECT_SL00',
+		'LV_SHS_RCARENA_D'
+	)
+	$exclusiveRuntimeAreas = @($mapCatalog.areas | Where-Object {
+		$_.id -in $exclusiveRuntimeAreaIds
+	})
+	if ($exclusiveRuntimeAreas.Count -ne $exclusiveRuntimeAreaIds.Count) {
+		$singleAreaContractErrors.Add('missing extracted single-area contract')
+	}
+	foreach ($area in $exclusiveRuntimeAreas) {
+		$catalogLines = @(Get-Content -LiteralPath $area.catalog -Encoding utf8)
+		$catalogHeaderMatch = if ($catalogLines.Count -gt 0) {
+			[regex]::Match($catalogLines[0], '^LOSTARK_MAP_ASSET_CATALOG\s+\d+\s+"(?<Area>[^"]+)"\s+(?<Count>\d+)$')
+		} else { $null }
+		if ($null -eq $catalogHeaderMatch -or -not $catalogHeaderMatch.Success -or
+			$catalogHeaderMatch.Groups['Area'].Value -ne $area.id -or
+			($area.PSObject.Properties.Name -contains 'assetCount' -and
+				[int]$catalogHeaderMatch.Groups['Count'].Value -ne [int]$area.assetCount)) {
+			$singleAreaContractErrors.Add("$($area.id): catalog header/count")
+			continue
+		}
+
+		$runtimePrefix = [string]$area.runtimeAssetRoot
+		$runtimePrefix = $runtimePrefix.Replace('\', '/').TrimEnd('/')
+		$modelPaths = [Collections.Generic.List[string]]::new()
+		$catalogAssetKeys = [Collections.Generic.List[string]]::new()
+		foreach ($line in @($catalogLines | Select-Object -Skip 1)) {
+			if ($line -notmatch '^"(?<Asset>[^"]+)"\s+"[^"]+"\s+"(?<Model>[^"]+)"') {
+				$singleAreaContractErrors.Add("$($area.id): malformed asset row")
+				continue
+			}
+			$assetId = $Matches.Asset
+			$modelPath = $Matches.Model.Replace('\', '/')
+			$modelPaths.Add($modelPath)
+			if (-not $modelPath.StartsWith($runtimePrefix + '/', [StringComparison]::OrdinalIgnoreCase)) {
+				$singleAreaContractErrors.Add("$($area.id): model outside runtimeAssetRoot")
+			} else {
+				$relativeModel = $modelPath.Substring($runtimePrefix.Length + 1)
+				$catalogAssetKeys.Add("$assetId|$relativeModel")
+			}
+		}
+
+		if ($area.PSObject.Properties.Name -contains 'placements') {
+			$placementHeader = Get-Content -LiteralPath $area.placements -Encoding utf8 -TotalCount 1
+			$placementHeaderMatch = [regex]::Match($placementHeader, '^LOSTARK_MAP_PLACEMENTS\s+\d+\s+"(?<Area>[^"]+)"\s+(?<Count>\d+)$')
+			if (-not $placementHeaderMatch.Success -or
+				$placementHeaderMatch.Groups['Area'].Value -ne $area.id -or
+				($area.PSObject.Properties.Name -contains 'placementCount' -and
+					[int]$placementHeaderMatch.Groups['Count'].Value -ne [int]$area.placementCount)) {
+				$singleAreaContractErrors.Add("$($area.id): placement header/count")
+			}
+		}
+
+		$runtimeDirectory = Join-Path 'Client\Bin\Resources' $runtimePrefix.Replace('/', '\')
+		if (Test-Path -LiteralPath $runtimeDirectory -PathType Container) {
+			foreach ($modelPath in $modelPaths) {
+				$modelFile = Join-Path 'Client\Bin\Resources' $modelPath.Replace('/', '\')
+				if (-not (Test-Path -LiteralPath $modelFile -PathType Leaf)) {
+					$singleAreaContractErrors.Add("$($area.id): missing runtime model")
+					continue
+				}
+
+				$textureReferences = @(Get-WModelTextureReferences $modelFile)
+				if ($textureReferences.Count -eq 0) {
+					$singleAreaContractErrors.Add("$($area.id): model has no material texture")
+					continue
+				}
+				foreach ($textureReference in $textureReferences) {
+					if ($textureReference.Contains('\') -or
+						$textureReference.Contains(':') -or
+						-not $textureReference.StartsWith('Resource/', [StringComparison]::Ordinal)) {
+						$singleAreaContractErrors.Add("$($area.id): invalid material texture path")
+						continue
+					}
+
+					$relativeTexture = $textureReference.Substring('Resource/'.Length)
+					$invalidSegments = @($relativeTexture.Split('/') | Where-Object {
+						[string]::IsNullOrWhiteSpace($_) -or $_ -eq '.' -or $_ -eq '..'
+					})
+					if ($invalidSegments.Count -gt 0 -or
+						-not $relativeTexture.StartsWith($runtimePrefix + '/', [StringComparison]::OrdinalIgnoreCase)) {
+						$singleAreaContractErrors.Add("$($area.id): material outside runtimeAssetRoot")
+						continue
+					}
+
+					try {
+						$textureFile = [IO.Path]::GetFullPath((Join-Path $resourceRoot $relativeTexture.Replace('/', '\')))
+					} catch {
+						$singleAreaContractErrors.Add("$($area.id): invalid material texture path")
+						continue
+					}
+					$resourcePrefix = $resourceRoot + [IO.Path]::DirectorySeparatorChar
+					if (-not $textureFile.StartsWith($resourcePrefix, [StringComparison]::OrdinalIgnoreCase) -or
+						-not (Test-Path -LiteralPath $textureFile -PathType Leaf)) {
+						$singleAreaContractErrors.Add("$($area.id): unresolved material texture")
+					}
+				}
+			}
+			$runtimeManifestPath = Join-Path $runtimeDirectory 'map_asset_runtime_manifest.json'
+			if (Test-Path -LiteralPath $runtimeManifestPath -PathType Leaf) {
+				$runtimeManifest = Read-Json $runtimeManifestPath
+				$runtimeManifestKeys = @($runtimeManifest.assets | ForEach-Object {
+					"$($_.assetId)|$(([string]$_.model).Replace('\', '/'))"
+				} | Sort-Object)
+				$catalogKeys = @($catalogAssetKeys | Sort-Object)
+				if ($runtimeManifest.areaId -ne $area.id -or
+					[int]$runtimeManifest.assetCount -ne $modelPaths.Count -or
+					@($runtimeManifest.assets).Count -ne $modelPaths.Count -or
+					($runtimeManifestKeys -join "`n") -ne ($catalogKeys -join "`n")) {
+					$singleAreaContractErrors.Add("$($area.id): runtime manifest set/count")
+				}
+			} else {
+				$singleAreaContractErrors.Add("$($area.id): missing runtime manifest")
+			}
+		} else {
+			$singleAreaContractErrors.Add("$($area.id): missing runtime directory")
+		}
+	}
+	Add-Check 'maps.extracted-area-runtime-roots' ($singleAreaContractErrors.Count -eq 0) "errors=$($singleAreaContractErrors.Count)"
 	$trainingArea = @($mapCatalog.areas | Where-Object id -eq 'LV_DEV_TRAINING_GROUND')
 	$trainingAssetRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapassets') {
 		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_DEV_TRAINING_GROUND.mapassets' | Select-Object -Skip 1).Count
@@ -200,6 +411,39 @@ try {
 		@($trainingWorld.placements).Count -eq 4 -and
 		$invalidTrainingSpawns.Count -eq 0 -and
 		(Test-Path -LiteralPath 'Client\Bin\DataFiles\Navigation\LV_DEV_TRAINING_GROUND.navgrid')) "assets=$trainingAssetRows placements=$trainingPlacementRows spawns=$(@($trainingWorld.placements).Count)"
+	$characterSelectArea = @($mapCatalog.areas |
+		Where-Object id -eq 'LV_LOBBY_CLASSSELECT_SL00')
+	$characterSelectAssetRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapassets') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapassets' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$characterSelectPlacementRows = if (Test-Path -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapplacements') {
+		@(Get-Content -LiteralPath 'Client\Bin\DataFiles\Map\LV_LOBBY_CLASSSELECT_SL00.mapplacements' | Select-Object -Skip 1).Count
+	} else { 0 }
+	$characterSelectRuntimeRoot = if ($characterSelectArea.Count -eq 1) {
+		[string]$characterSelectArea[0].runtimeAssetRoot
+	} else { '' }
+	$characterSelectManifestPath = if ([string]::IsNullOrWhiteSpace($characterSelectRuntimeRoot)) {
+		''
+	} else {
+		Join-Path 'Client\Bin\Resources' `
+			(Join-Path $characterSelectRuntimeRoot 'map_asset_runtime_manifest.json')
+	}
+	$characterSelectManifest = if (-not [string]::IsNullOrWhiteSpace($characterSelectManifestPath) -and
+		(Test-Path -LiteralPath $characterSelectManifestPath)) {
+		Read-Json $characterSelectManifestPath
+	} else { $null }
+	Add-Check 'maps.character-select-area-contract' (
+		$characterSelectArea.Count -eq 1 -and
+		$characterSelectArea[0].kind -eq 'product' -and
+		$characterSelectArea[0].catalogType -eq 'single' -and
+		$characterSelectArea[0].assetCount -eq 55 -and
+		$characterSelectArea[0].placementCount -eq 803 -and
+		$characterSelectAssetRows -eq 55 -and
+		$characterSelectPlacementRows -eq 803 -and
+		$null -ne $characterSelectManifest -and
+		$characterSelectManifest.areaId -eq 'LV_LOBBY_CLASSSELECT_SL00' -and
+		$characterSelectManifest.assetCount -eq 55 -and
+		@($characterSelectManifest.assets).Count -eq 55) "assets=$characterSelectAssetRows placements=$characterSelectPlacementRows manifest=$($characterSelectManifest.assetCount)"
 	Add-Check 'resource.no-lol-annie' (
 		-not (Test-Path -LiteralPath 'Client\Bin\Resources\Map\LoL\Annie')) 'legacy Annie resources are quarantined outside the repository'
 
@@ -208,24 +452,26 @@ try {
 	$mapFixtureRoot = Join-Path $repoRoot ".codex_tmp\MapPublishFixture-$PID"
 	try {
 		$mapFixtureAuthoring = Join-Path $mapFixtureRoot 'Data\Maps\Authoring\FIXTURE'
+		$mapFixtureImported = Join-Path $mapFixtureRoot 'Data\Maps\Imported\FIXTURE'
 		$mapFixtureRuntime = Join-Path $mapFixtureRoot 'Client\Bin\DataFiles\Map'
 		[IO.Directory]::CreateDirectory($mapFixtureAuthoring) | Out-Null
+		[IO.Directory]::CreateDirectory($mapFixtureImported) | Out-Null
 		[IO.Directory]::CreateDirectory($mapFixtureRuntime) | Out-Null
 		$fixtureUtf8 = [Text.UTF8Encoding]::new($false)
 		$rowA = '1 "source:a" "A" "editor" "ASSET_A" 0 0 0 0 0 0 1 1 1 1 1'
 		$rowB = '2 "source:b" "B" "editor" "ASSET_B" 0 0 0 0 0 0 1 1 1 1 1'
 		$rowNew = '3 "source:new" "A" "editor" "ASSET_A" 1 0 0 0 0 0 1 1 1 1 1'
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'FIXTURE.mapset'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'FIXTURE.mapset'), @(
 			'LOSTARK_MAP_SHARD_SET 1 "FIXTURE" 2',
 			'"A" "A.mapassets" "A.mapplacements" 1 1',
 			'"B" "B.mapassets" "B.mapplacements" 1 1'), $fixtureUtf8)
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'A.mapassets'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'A.mapassets'), @(
 			'LOSTARK_MAP_ASSET_CATALOG 4 "FIXTURE" 1', '"ASSET_A" placeholder'), $fixtureUtf8)
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'B.mapassets'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'B.mapassets'), @(
 			'LOSTARK_MAP_ASSET_CATALOG 4 "FIXTURE" 1', '"ASSET_B" placeholder'), $fixtureUtf8)
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'A.mapplacements'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'A.mapplacements'), @(
 			'LOSTARK_MAP_PLACEMENTS 2 "FIXTURE" 1', $rowA), $fixtureUtf8)
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'B.mapplacements'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'B.mapplacements'), @(
 			'LOSTARK_MAP_PLACEMENTS 2 "FIXTURE" 1', $rowB), $fixtureUtf8)
 		[IO.File]::WriteAllLines((Join-Path $mapFixtureAuthoring 'FIXTURE.mapplacements'), @(
 			'LOSTARK_MAP_PLACEMENTS 2 "FIXTURE" 3', $rowA, $rowB, $rowNew), $fixtureUtf8)
@@ -276,7 +522,7 @@ try {
 
 		[IO.File]::WriteAllLines((Join-Path $mapFixtureAuthoring 'FIXTURE.mapplacements'), @(
 			'LOSTARK_MAP_PLACEMENTS 2 "FIXTURE" 3', $rowA, $rowB, $rowNew), $fixtureUtf8)
-		[IO.File]::WriteAllLines((Join-Path $mapFixtureRuntime 'FIXTURE.mapset'), @(
+		[IO.File]::WriteAllLines((Join-Path $mapFixtureImported 'FIXTURE.mapset'), @(
 			'LOSTARK_MAP_SHARD_SET 1 "FIXTURE" 2',
 			'"A" "..\outside.mapassets" "A.mapplacements" 1 2',
 			'"B" "B.mapassets" "B.mapplacements" 1 1'), $fixtureUtf8)
@@ -447,23 +693,75 @@ try {
 
     Add-Check 'levels.lobby-start' (
         $mainAppSource -match 'Start_Level\(LEVEL::LOBBY\)') 'MainApp starts Lobby'
+	$characterSelectLoaderFunction = [regex]::Match(
+		$loaderSource,
+		'HRESULT CLoader::Ready_For_CharacterSelect\(\)[\s\S]*?(?=HRESULT CLoader::Ready_For_Bern\(\))').Value
+	$lobbyCommandHeaderSource = Get-Content -LiteralPath 'Client\Public\LobbyCommandService.h' -Raw
+	$lobbyCommandSource = Get-Content -LiteralPath 'Client\Private\LobbyCommandService.cpp' -Raw
+	$transitionHeaderSource = Get-Content -LiteralPath 'Client\Public\LevelTransitionService.h' -Raw
+	$loadingSource = Get-Content -LiteralPath 'Client\Private\Level_Loading.cpp' -Raw
+	$frontendHarnessSource = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Private\ClientFrontendHarness.cpp' -Raw
+	$frontendHarnessProject = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj' -Raw
+	$buildRegressionSource = Get-Content -LiteralPath 'Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
     Add-Check 'levels.character-select-contract' (
         $levelRegistrySource -match 'LEVEL::CHARACTER_SELECT' -and
-        $levelRegistrySource -match 'Ready_For_CharacterSelect' -and
-        $loaderSource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
-        $loaderSource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
-        $loaderSource -match 'CHARACTER_CLASS_ID::SLAYER' -and
-        $loaderSource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$levelRegistrySource -match 'LV_LOBBY_CLASSSELECT_SL00' -and
+		$levelRegistrySource -match '\{ true, true, -792\.f, 158\.f, -750\.f, 218\.f \}' -and
+		$levelRegistrySource -match 'Ready_For_CharacterSelect' -and
+		$characterSelectLoaderFunction -match 'Ready_MapArea\(' -and
+		$characterSelectLoaderFunction -notmatch 'Ready_Camera_Prototype\(' -and
+		$characterSelectLoaderFunction -match 'Ready_Character_Rendering\(' -and
+		$characterSelectLoaderFunction -match 'Ready_AnimationPreviewModels\(' -and
+		$characterSelectLoaderFunction -match 'CCharacterSelectionState::Try_Get_SelectedClass' -and
+		$characterSelectLoaderFunction -match 'const std::array characterClasses = \{ initialClass \}' -and
+		$characterSelectSource -match 'CPlayableCharacterAssetService::Is_Ready' -and
+		$characterSelectSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
+		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
+		$characterSelectSource -match 'CMapPlacementRuntime::Ensure_DefaultLight' -and
         $characterSelectSource -match 'CCharacterSelectionState::Select' -and
-        $characterSelectSource -match 'character-select\.confirm' -and
+		$characterSelectSource -match 'CLobbyCommandService::Request\([\s\S]{0,120}eStage[\s\S]{0,120}commandToken' -and
+		$characterSelectSource -match 'character-select\.enter-test' -and
+		$characterSelectSource -match 'character-select\.enter-bern' -and
+		$characterSelectSource -match 'character-select\.enter-valtan' -and
+		$characterSelectSource -match 'ImGui::Button\("Enter Test"\)' -and
+		$characterSelectSource -match 'ImGui::Button\("Enter Bern"\)' -and
+		$characterSelectSource -match 'ImGui::Button\("Enter Valtan"\)' -and
+		$characterSelectSource -match 'ImGuiKey_Enter' -and
+		$characterSelectSource -notmatch 'NetworkManager|Connect_To_Server|Send_EnterWorld' -and
+		$lobbySource -match 'DEFAULT_ENTRY_CLASS' -and
+		$lobbySource -match 'Resolve_EntryCharacterClass' -and
+		$lobbySource -match 'Send_EnterWorld\(' -and
         $lobbySource -match '"Test"' -and
         $lobbySource -match '"Character Select"' -and
         $lobbySource -match '"Valtan"' -and
-        $lobbySource -match '"Bern"') 'Character Select is a registered level and Lobby exposes four stage commands'
+		$lobbySource -match '"Bern"') 'Character Select loads one map path and reuses the Lobby server-authorized Test, Bern and Valtan paths for five playable classes'
+	Add-Check 'levels.loading-progress-overlay' (
+		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
+		$loadingSource -match '"Loading progress"' -and
+		$loadingSource -match 'viewport->WorkPos\.y \+ 16\.f' -and
+		$loaderSource -match 'Character %zu/%zu \| %s models %zu/%zu \| %s' -and
+		$loaderSource -match 'completedModelCount' -and
+		$loaderSource -match 'totalModelCount') 'Loading renders top-screen character class/model counts and the active binary file'
+	Add-Check 'levels.character-select-handoff-ticket' (
+		$lobbyCommandHeaderSource -match 'LOBBY_COMMAND_TOKEN' -and
+		$lobbyCommandHeaderSource -match 'Cancel\(' -and
+		$lobbyCommandSource -match 'g_iNextToken' -and
+		$lobbyCommandSource -match 'g_PendingCommand->iToken != token' -and
+		$transitionHeaderSource -match 'iLobbyCommandToken' -and
+		$loadingSource -match 'Request_Activation\([\s\S]{0,160}m_iLobbyCommandToken' -and
+		$loadingSource -match 'Cancel_LobbyCommand\("target level loading failed"\)' -and
+		$mainAppSource -match 'target level loading could not start' -and
+		$mainAppSource -match 'target level activation failed' -and
+		$frontendHarnessSource -match 'Exact Cancellation Leaves No Stale Command' -and
+		$frontendHarnessSource -match 'Stale Failure Cannot Cancel New Handoff' -and
+		$frontendHarnessProject -match 'Client\\Private\\LobbyCommandService\.cpp' -and
+		$buildRegressionSource -match 'ClientFrontendHarness') 'token service has an executable unit harness and integration failure hooks are statically admitted'
     Add-Check 'levels.release-imgui-entry' (
         $mainAppSource -match 'ReadyImGuiRuntime\(\)' -and
         $lobbySource -match 'Render_StagePanel\(\);' -and
         $lobbySource -notmatch '#ifdef _DEBUG[\s\S]{0,80}Render_StagePanel' -and
+		$characterSelectSource -match 'Render_SelectionPanel\(\);' -and
+		$characterSelectSource -notmatch '#ifdef _DEBUG[\s\S]{0,80}Render_SelectionPanel' -and
         $clientEntrySource -match 'CImGuiLayer::HandleWindowMessage' -and
         $clientEntrySource -notmatch '#ifdef _DEBUG\s*\r?\n\s*if \(CImGuiLayer::HandleWindowMessage') 'Lobby and Character Select ImGui are available in Release'
 
@@ -520,6 +818,25 @@ try {
     $effectRuntimeSource = Get-Content -LiteralPath 'Client\Private\Effect_Runtime.cpp' -Raw
     $effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
     Add-Check 'effect.resource-confinement' ($effectRuntimeSource -notmatch 'RequestedPath\.is_absolute\(\)\s*&&' -and $effectToolSource -notmatch 'Candidates\[\][\s\S]{0,120}RequestedPath') 'absolute path candidates rejected'
+	$dimensionistEffectAdmission = Read-Json 'Data\Effects\SourceCatalog\dimensionist_admission.json'
+	$dimensionistEffectCandidates = Read-Json 'Data\Effects\SourceCatalog\dimensionist_candidates.json'
+	$dimensionistEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored\Dimensionist\Candidates' -File -Filter '*.effect')
+	$dimensionistEffectTextures = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\Dimensionist' -Recurse -File -Filter '*.dds')
+	$dimensionistEffectModels = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\Dimensionist' -Recurse -File -Filter '*.wmodel')
+	Add-Check 'effect.dimensionist-candidate-admission' (
+		$dimensionistEffectAdmission.schema -eq 'lostark.effect-authoring-admission' -and
+		$dimensionistEffectAdmission.status -eq 'candidate_only' -and
+		$dimensionistEffectAdmission.resourceRoot -eq 'Effect/Dimensionist' -and
+		[int]$dimensionistEffectAdmission.summary.particleSystemCandidateCount -eq 459 -and
+		[int]$dimensionistEffectAdmission.summary.effectFileCount -eq 459 -and
+		[int]$dimensionistEffectAdmission.summary.runtimeTextureCount -eq 693 -and
+		[int]$dimensionistEffectAdmission.summary.runtimeMeshCount -eq 139 -and
+		[int]$dimensionistEffectCandidates.count -eq 459 -and
+		@($dimensionistEffectCandidates.rows).Count -eq 459 -and
+		$dimensionistEffectFiles.Count -eq 459 -and
+		$dimensionistEffectTextures.Count -eq 693 -and
+		$dimensionistEffectModels.Count -eq 139 -and
+		$effectToolSource -match 'recursive_directory_iterator') "effects=$($dimensionistEffectFiles.Count) textures=$($dimensionistEffectTextures.Count) models=$($dimensionistEffectModels.Count) status=$($dimensionistEffectAdmission.status)"
 
     $materialReaderSource = Get-Content -LiteralPath 'Engine\Private\BinaryAsset\Winters\WMaterialReader.cpp' -Raw
     $modelSource = Get-Content -LiteralPath 'Engine\Private\Model.cpp' -Raw
@@ -531,6 +848,7 @@ try {
 	$loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
 	$loaderFactoryFiles = @(
 		'Engine\Private\Shader.cpp',
+		'Engine\Private\Material.cpp',
 		'Engine\Private\Model.cpp',
 		'Engine\Private\Navigation.cpp',
 		'Client\Private\Camera_Free.cpp',
@@ -577,7 +895,7 @@ try {
     $bossCatalog = Read-Json 'Data\Actors\BossCatalog.json'
     $missingActorAssets = [Collections.Generic.List[string]]::new()
     foreach ($character in @($characterCatalog.characters | Where-Object runtimeStatus -eq 'supported')) {
-		foreach ($assetPath in @($character.bodyModel, $character.weaponModel) + @($character.equipmentModels)) {
+		foreach ($assetPath in @($character.bodyModel) + @($character.weaponModels) + @($character.equipmentModels)) {
 			if ($assetPath -and -not (Test-Path -LiteralPath (Join-Path $resourceRoot $assetPath))) {
 				$missingActorAssets.Add($assetPath)
 			}
@@ -596,20 +914,116 @@ try {
 	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
 	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
 	Add-Check 'actors.playable-roster' (
-		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST' -and
-		$rosterStatus -eq 'supported,supported,supported,supported' -and
+		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONIST' -and
+		$rosterStatus -eq 'supported,supported,supported,supported,supported' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::DIMENSIONIST' -and
 		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
+	$dimensionistActor = @($characterCatalog.characters | Where-Object networkClassId -eq 'DIMENSIONIST')
+	$dimensionistAnimationContracts = @(
+		[pscustomobject]@{ Path = 'Data\Animation\Authored\Dimensionist\Dimensionist.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "Dimensionist" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "Dimensionist" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "Dimensionist" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "Dimensionist" 0' },
+		[pscustomobject]@{ Path = 'Data\Animation\Reference\Dimensionist\Dimensionist.skilltiming'; Header = 'LOSTARK_SKILL_TIMING 2 "Dimensionist" 0' })
+	$invalidDimensionistAnimationDocuments = @(
+		foreach ($contract in $dimensionistAnimationContracts) {
+			if (-not (Test-Path -LiteralPath $contract.Path -PathType Leaf) -or
+				(Get-Content -LiteralPath $contract.Path -Raw).Trim() -cne $contract.Header) {
+				$contract.Path
+			}
+		})
+	Add-Check 'actors.dimensionist-runtime-animation' (
+		$dimensionistActor.Count -eq 1 -and
+		[int]$characterCatalog.formatVersion -eq 2 -and
+		$dimensionistActor[0].bodyModel -eq 'Character/Dimensionist/Dimensionist_Character.wmodel' -and
+		@($dimensionistActor[0].equipmentModels).Count -eq 0 -and
+		(@($dimensionistActor[0].weaponModels) -join ',') -eq (
+			'Character/WP_WSWP_M_06/WP_WSWP_M_06L.wmodel,' +
+			'Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel,' +
+			'Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel,' +
+			'Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel') -and
+		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\Dimensionist\Dimensionist_Character.wmodel' -PathType Leaf) -and
+		$invalidDimensionistAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and exact 0-row Animation Tool documents exist; invalid=$($invalidDimensionistAnimationDocuments -join ',')"
+	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
+	$dimensionistLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_Dimensionist.cpp' -Raw
+	Add-Check 'actors.dimensionist-four-part-weapon' (
+		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_L' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_S' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_P' -and
+		$playableAssetServiceSource -match 'Prototype_Component_Model_Dimensionist_Weapon_E' -and
+		$dimensionistLogicSource -match 'b_wp_swm_m_1' -and
+		$dimensionistLogicSource -match 'b_wp_swm_m_2' -and
+		$dimensionistLogicSource -match 'b_wp_swm_m_3' -and
+		$dimensionistLogicSource -match 'b_wp_swm_m_4_02' -and
+		$dimensionistLogicSource -match '180\.f') 'Dimensionist L/S/P/E prototype tags and exact battle sockets are connected'
+	Add-Check 'actors.dimensionist-actorx-scale' (
+		$playableAssetServiceSource -match 'CHARACTER_CLASS_ID::DIMENSIONIST == characterClass[\s\S]{0,80}0\.01f : 0\.0001f') 'ActorX Dimensionist uses 0.01 while legacy character packages retain 0.0001'
 	$hudViewModelHeader = Get-Content -LiteralPath 'Client\Public\CombatHUDViewModel.h' -Raw
 	$hudViewModelSource = Get-Content -LiteralPath 'Client\Private\CombatHUDViewModel.cpp' -Raw
+	$characterSelectSource = Get-Content -LiteralPath 'Client\Private\Level_CharacterSelect.cpp' -Raw
 	Add-Check 'hud.selected-class-boundary' (
 		$hudViewModelHeader -match 'HUD_PLAYER_STATE[\s\S]{0,300}eCharacterClass' -and
+		$hudViewModelHeader -match 'Apply_CharacterPreview' -and
 		$hudViewModelSource -match 'definition\.eCharacterClass != characterClass' -and
-		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD carries local class and filters skill definitions by class'
+		$hudViewModelSource -match 'Balance/PlayerProfiles\.json' -and
+		$characterSelectSource -match 'Apply_CharacterPreview\(characterClass\)' -and
+		$mainAppSource -match 'LEVEL::CHARACTER_SELECT' -and
+		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD carries local class and Character Select preview while filtering skill definitions by class'
+	$playerSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
+	$missingQuickSlots = [Collections.Generic.List[string]]::new()
+	foreach ($className in @('LANCE_MASTER','GUNSLINGER','SLAYER','ARTIST')) {
+		foreach ($slotName in @('Q','W')) {
+			$bindings = @($playerSkillDocument.skills | Where-Object {
+				$_.characterClass -eq $className -and $_.inputSlot -eq $slotName
+			})
+			if ($bindings.Count -ne 1) {
+				$missingQuickSlots.Add("${className}:$slotName")
+			}
+		}
+	}
+	$dimensionistSkillRows = @($playerSkillDocument.skills |
+		Where-Object characterClass -eq 'DIMENSIONIST')
+	Add-Check 'gameplay.playable-qw-contract' (
+		$missingQuickSlots.Count -eq 0 -and
+		$dimensionistSkillRows.Count -eq 0) "missing=$($missingQuickSlots -join ',') dimensionistUnverified=$($dimensionistSkillRows.Count)"
+
+	$quickSkillAnimationContracts = @(
+		[pscustomobject]@{ Class = 'LANCE_MASTER'; Asset = 'LanceMaster'; Skills = @(34120, 34080) },
+		[pscustomobject]@{ Class = 'GUNSLINGER'; Asset = 'GunSlinger'; Skills = @(38020, 38050) },
+		[pscustomobject]@{ Class = 'SLAYER'; Asset = 'Slayer'; Skills = @(45050, 45060) },
+		[pscustomobject]@{ Class = 'ARTIST'; Asset = 'Artist'; Skills = @(31210, 31230) }
+	)
+	$quickSkillAnimationErrors = [Collections.Generic.List[string]]::new()
+	foreach ($contract in $quickSkillAnimationContracts) {
+		$sequencePath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipseq"
+		$clipMapPath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipmap"
+		if (-not (Test-Path -LiteralPath $sequencePath) -or
+			-not (Test-Path -LiteralPath $clipMapPath)) {
+			$quickSkillAnimationErrors.Add("$($contract.Class):missing animation document")
+			continue
+		}
+		$sequenceSource = Get-Content -LiteralPath $sequencePath -Raw
+		$clipMapSource = Get-Content -LiteralPath $clipMapPath -Raw
+		foreach ($skillId in $contract.Skills) {
+			if ($sequenceSource -notmatch "(?m)^$skillId\s") {
+				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipseq")
+			}
+			if ($clipMapSource -notmatch "skill=$skillId(?:\s|$)") {
+				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipmap")
+			}
+		}
+	}
+	$characterRuntimeSource = Get-Content -LiteralPath 'Client\Private\Character.cpp' -Raw
+	Add-Check 'gameplay.playable-qw-animation-contract' (
+		$quickSkillAnimationErrors.Count -eq 0 -and
+		$characterRuntimeSource -match 'Load_ClipChains\(\)' -and
+		$characterRuntimeSource -match 'filesystem::path\(assetName \+ "\.clipseq"\)' -and
+		$characterRuntimeSource -match 'Play_Skill\(static_cast<int32_t>\(skillId\)\)') "errors=$($quickSkillAnimationErrors -join ',')"
 	$actorCatalogSource = Get-Content -LiteralPath 'Client\Private\ActorCatalog.cpp' -Raw
 	$actorLoaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
@@ -654,6 +1068,20 @@ try {
 
 	$navigationValidationPassed = $true
 	$navigationValidationDetail = ''
+	$legacyNavigationFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\DataFiles\Navigation' `
+		-File -Filter 'ValtanArena.*' -ErrorAction SilentlyContinue)
+	$valtanNavigationAuthoring = @(
+		'Data\Navigation\LV_LUT_HEARTRB_ED.navsource',
+		'Data\Navigation\LV_LUT_HEARTRB_ED.navpaint',
+		'Data\Navigation\LV_LUT_HEARTRB_ED.navblockers')
+	$missingValtanNavigationAuthoring = @($valtanNavigationAuthoring | Where-Object {
+		-not (Test-Path -LiteralPath $_ -PathType Leaf)
+	})
+	Add-Check 'navigation.data-root-contract' (
+		$legacyNavigationFiles.Count -eq 0 -and
+		$missingValtanNavigationAuthoring.Count -eq 0 -and
+		(Test-Path -LiteralPath 'Client\Bin\DataFiles\Navigation\LV_LUT_HEARTRB_ED.navgrid' -PathType Leaf)) `
+		"legacy=$($legacyNavigationFiles.Count) missingAuthoring=$($missingValtanNavigationAuthoring.Count)"
 	try {
 		$navigationValidationDetail = (& .\Tools\NavigationPipeline\Publish-ServerNavigation.ps1 -Mode Validate 2>&1) -join ' '
 	}
@@ -782,6 +1210,6 @@ try {
     Write-Output "Project audit passed: $($checks.Count) checks. Report: $resolvedReport"
 }
 catch {
-    Write-Error $_
+    Write-Error ("{0}`n{1}" -f $_.Exception.Message, $_.ScriptStackTrace)
     exit 1
 }

@@ -42,6 +42,7 @@ struct WEAPON_PART_SPEC
 	const tchar_t* pPartTag;      /* sorts after equipment, e.g. "Part_90_Weapon_R" */
 	const tchar_t* pModelTag;
 	const char_t* pSocketBone;
+	f32_t fSocketYawDegrees = 0.f;
 };
 
 /* Everything that makes one class different, as data. Held as a constant next to

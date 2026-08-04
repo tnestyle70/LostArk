@@ -25,6 +25,12 @@
       "maximumHp": 5000,
       "maximumResource": 100,
       "moveSpeed": 6.0
+    },
+    {
+      "characterClass": "DIMENSIONIST",
+      "maximumHp": 5000,
+      "maximumResource": 100,
+      "moveSpeed": 6.0
     }
   ]
 }

@@ -6,6 +6,8 @@
 대응 계획서
 `.md/GB/08-03/2026-08-03_CHARACTER_SELECT_LEVEL_VERTICAL_SLICE_PLAN.md`
 
+현재 정본 주의: 아래 1~10절은 2026-08-03 최초 4-class/Confirm 구현 기록이다. 2026-08-04의 5-class map/Enter-to-Test 확장은 맨 아래 11절이 현재 상태를 대체한다.
+
 ## 1. 결과
 
 Character Select를 별도 `LEVEL`로 추가하고 Lobby에서 실제로 진입할 수 있게 연결했다.
@@ -242,3 +244,57 @@ Character Select Level, ImGui, class preview, Lobby 복귀, 실제 Server 승인
 
 외형 appearance payload, 장비 inventory, PhysX bone branch와 joint solver, Effect socket authoring, render target debugger, PBR/SSAO/outline/fog, AI/Map/Balance tool 전체 구현은 이번 변경에 placeholder로 추가하지 않았다.
 이 기능들은 Character Select를 실제 소비 Level로 사용하되 각각 Data, runtime, authoring UI, save/load, 실패 rollback과 검증을 닫는 별도 수직 슬라이스로 진행한다.
+
+## 11. 2026-08-04 5-class map/Enter-to-Test 확장
+
+현재 구현은 최초 결과의 네 class, 빈 배경, Confirm 후 Lobby 복귀 계약을 다음으로 대체한다.
+
+```text
+Lobby -> Character Select
+-> Loader가 LV_LOBBY_CLASSSELECT_SL00 map과 다섯 class prototype stage
+-> Level이 같은 scope의 803-placement map을 commit
+-> Lance Master / Gunslinger / Slayer / Artist / Dimensionist preview
+-> Enter가 선택 class와 tokenized TEST command를 commit
+-> Lobby load/activation
+-> Lobby가 command를 한 번 소비
+-> C2S_ENTER_WORLD(TRAINING_GROUND, selected class)
+-> S2C_ENTER_ACCEPTED
+-> DEVELOPMENT/Test 진입
+```
+
+Character Select 자체는 socket을 열지 않는다. handoff token은 command를 예약한 정확한 load/activation 실패만 취소하므로 이전 실패가 새 command를 지우지 않는다. Character Select를 건너뛴 Test/Bern/Valtan은 Lance Master를 명시적인 기본 선택으로 commit하고 같은 Server 승인 경로를 사용한다.
+
+map 조명은 재진입 때 직접 추가하지 않고 `CMapPlacementRuntime::Ensure_DefaultLight()`를 사용한다. 이 수정으로 Character Select 재진입 때 전역 light가 누적되지 않는다.
+
+스킬 완료 범위는 다섯 class가 아니다. 기존 네 class Q/W만 다음 ID로 Server catalog와 contract test가 닫혔다.
+
+| class | Q | W |
+|---|---:|---:|
+| Lance Master | 34120 | 34080 |
+| Gunslinger | 38020 | 38050 |
+| Slayer | 45050 | 45060 |
+| Artist | 31210 | 31230 |
+
+Dimensionist는 선택, profile, network spawn, HUD class identity, IDLE/RUN과 Animation Tool 경로까지다. reference 문서가 0-row라서 Q/W를 임의로 만들지 않았다.
+
+현재 변경 기준 자동 검증:
+
+- JSON, VCXPROJ/filters XML, PowerShell parse 성공
+- gameplay balance Validate: player profiles 5, skills 15, damage profiles 16, bosses 1
+- Debug/Release Engine -> UpdateLib -> Shared -> Server -> Client build 성공
+- Debug/Release NetworkProtocolHarness `failures : 0`
+- Debug/Release ClientFrontendHarness `failures : 0`
+- Debug/Release `Server.exe --contract-test` `failures : 0`
+- ProjectAudit의 신규 Character Select, five-class, Dimensionist, Q/W, effect admission check 통과
+- Debug/Release ProjectAudit 각 64개 중 63개 통과. 실패는 `asset-lock.inventory` 한 건: lock `.3` 7,922 files, 현재 Resources 10,158 files
+- Debug local smoke: Server `127.0.0.1:7777` listener와 Client가 20초 동안 생존·응답함을 확인하고 시작한 PID만 종료
+
+아직 현재 변경 기준으로 수동 확인하지 않은 항목:
+
+- 실제 화면에서 Character Select 803-placement map 표시
+- 다섯 preview 교체와 Enter 후 Test 진입
+- 각 class의 Character/HUD/이동, 기존 네 class Q/W
+- Dimensionist Animation Tool 154 clip 재생과 Effect Tool candidate open
+- 새 immutable pack의 Snapshot -> Verify -> Publish -> Hydrate
+
+따라서 코드·Debug/Release 자동 계약은 연결됐지만, 화면 조작 smoke와 팀 배포 pack까지 완료했다고 주장하지 않는다.

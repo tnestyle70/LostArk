@@ -74,6 +74,7 @@ namespace
 		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DESTROYER") return CHARACTER_CLASS_ID::DESTROYER;
+		if (value == "DIMENSIONIST") return CHARACTER_CLASS_ID::DIMENSIONIST;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -85,7 +86,7 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.character-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
+			pVersion->Get_Number() != 2.0 ||
 			nullptr == pEntries || !pEntries->Is_Array())
 		{
 			return false;
@@ -111,12 +112,12 @@ namespace
 			}
 			entry.networkClassId = ParseClass(networkClassId);
 			const DATA_JSON_VALUE* pEquipment = value.Find("equipmentModels");
-			const DATA_JSON_VALUE* pWeapon = value.Find("weaponModel");
+			const DATA_JSON_VALUE* pWeapons = value.Find("weaponModels");
 			if (LostArk::Shared::CHARACTER_CLASS_ID::END == entry.networkClassId ||
 				!IsResourceId(entry.bodyModel) ||
 				nullptr == pEquipment || !pEquipment->Is_Array() ||
-				nullptr == pWeapon ||
-				(!pWeapon->Is_Null() && !pWeapon->Is_String()) ||
+				nullptr == pWeapons || !pWeapons->Is_Array() ||
+				pWeapons->Get_Array().size() > 4u ||
 				(entry.runtimeStatus != "supported" &&
 				 entry.runtimeStatus != "reserved") ||
 				!archetypes.insert(entry.archetypeId).second ||
@@ -130,14 +131,21 @@ namespace
 					return false;
 				entry.equipmentModels.push_back(equipment.Get_String());
 			}
-			if (pWeapon->Is_String())
+			for (const DATA_JSON_VALUE& weapon : pWeapons->Get_Array())
 			{
-				entry.weaponModel = pWeapon->Get_String();
-				if (!IsResourceId(entry.weaponModel))
+				if (!weapon.Is_String() || !IsResourceId(weapon.Get_String()))
 					return false;
+				entry.weaponModels.push_back(weapon.Get_String());
 			}
-			if ((entry.runtimeStatus == "supported") !=
-				(!entry.equipmentModels.empty() && !entry.weaponModel.empty()))
+			const bool_t hasEquipment = !entry.equipmentModels.empty();
+			const bool_t hasWeapon = !entry.weaponModels.empty();
+			if (entry.runtimeStatus == "supported" &&
+				!hasWeapon)
+			{
+				return false;
+			}
+			if (entry.runtimeStatus == "reserved" &&
+				(hasEquipment || hasWeapon))
 			{
 				return false;
 			}

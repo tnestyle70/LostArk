@@ -18,12 +18,20 @@ CLevel_Loading::~CLevel_Loading()
 {
 }
 
-HRESULT CLevel_Loading::Initialize(const LEVEL eNextLevelID)
+HRESULT CLevel_Loading::Initialize(
+	const LEVEL eNextLevelID,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	if (FAILED(__super::Initialize()))
 		return E_FAIL;
+	if (INVALID_LOBBY_COMMAND_TOKEN != lobbyCommandToken &&
+		LEVEL::LOBBY != eNextLevelID)
+	{
+		return E_INVALIDARG;
+	}
 
 	m_eNextLevelID = eNextLevelID;
+	m_iLobbyCommandToken = lobbyCommandToken;
 	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
 	return nullptr == m_pLoader ? E_FAIL : S_OK;
 }
@@ -50,9 +58,11 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	{
 		if (CLevelTransitionService::Request_Activation(
 			m_eNextLevelID,
-			"loading.complete"))
+			"loading.complete",
+			m_iLobbyCommandToken))
 		{
 			m_isActivationRequested = true;
+			m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
 		}
 		else
 		{
@@ -68,6 +78,33 @@ HRESULT CLevel_Loading::Render()
 {
 	if (FAILED(__super::Render()))
 		return E_FAIL;
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	if (nullptr != viewport && nullptr != m_pLoader)
+	{
+		const std::string loadingStatus = CLoader::Get_ActiveStatus();
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::SetNextWindowPos(
+			ImVec2(
+				viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
+				viewport->WorkPos.y + 16.f),
+			ImGuiCond_Always,
+			ImVec2(0.5f, 0.f));
+		ImGui::SetNextWindowBgAlpha(0.82f);
+		if (ImGui::Begin(
+			"Loading progress",
+			nullptr,
+			ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoDecoration |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoNav |
+			ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoFocusOnAppearing))
+		{
+			ImGui::TextUnformatted(loadingStatus.c_str());
+		}
+		ImGui::End();
+	}
 
 	if (m_isFailureReported && LEVEL::LOBBY == m_eNextLevelID)
 	{
@@ -99,6 +136,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	Cancel_LobbyCommand("target level loading failed");
 	CLevelTransitionService::Report_LoadFailure(result);
 	CNetworkManager::Get().Close_ServerConnection();
 
@@ -116,6 +154,15 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		Retry_LobbyLoad();
 }
 
+void CLevel_Loading::Cancel_LobbyCommand(const char_t* pReason)
+{
+	if (INVALID_LOBBY_COMMAND_TOKEN == m_iLobbyCommandToken)
+		return;
+
+	CLobbyCommandService::Cancel(m_iLobbyCommandToken, pReason);
+	m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
+}
+
 void CLevel_Loading::Retry_LobbyLoad()
 {
 	if (!CLevelTransitionService::Request_Load(
@@ -130,11 +177,14 @@ void CLevel_Loading::Retry_LobbyLoad()
 unique_ptr<CLevel_Loading> CLevel_Loading::Create(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
-	const LEVEL eNextLevelID)
+	const LEVEL eNextLevelID,
+	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
 	auto instance = unique_ptr<CLevel_Loading>(
 		new CLevel_Loading(pDevice, pContext));
-	if (FAILED(instance->Initialize(eNextLevelID)))
+	if (FAILED(instance->Initialize(
+		eNextLevelID,
+		lobbyCommandToken)))
 		return nullptr;
 	return instance;
 }

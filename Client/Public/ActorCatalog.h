@@ -18,7 +18,7 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::string assetId;
 	std::string bodyModel;
 	std::vector<std::string> equipmentModels;
-	std::string weaponModel;
+	std::vector<std::string> weaponModels;
 	std::string animationSetId;
 	std::string runtimeStatus;
 };

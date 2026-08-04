@@ -121,34 +121,46 @@ HRESULT CChannel::Initialize(const MODEL_ANIMATION_CHANNEL_DATA& channel,
 		channel.resolvedBoneIndex >= static_cast<int32_t>(Bones.size()))
 		return E_FAIL;
 	m_iBoneIndex = channel.resolvedBoneIndex;
-
-	vector<f32_t> times;
-	times.reserve(channel.positionKeys.size() + channel.rotationKeys.size() +
-		channel.scaleKeys.size());
-	for (const auto& key : channel.positionKeys) times.push_back(key.timeTicks);
-	for (const auto& key : channel.rotationKeys) times.push_back(key.timeTicks);
-	for (const auto& key : channel.scaleKeys) times.push_back(key.timeTicks);
-	if (times.empty())
+	if (channel.positionKeys.empty() && channel.rotationKeys.empty() &&
+		channel.scaleKeys.empty())
 		return E_FAIL;
 
-	sort(times.begin(), times.end());
-	times.erase(unique(times.begin(), times.end()), times.end());
-	m_KeyFrames.reserve(times.size());
-	for (f32_t time : times)
-	{
-		KEYFRAME keyFrame{};
-		keyFrame.fTrackPosition = time;
-		keyFrame.vScale = SampleVector(channel.scaleKeys, time, float3_t(1.f, 1.f, 1.f));
-		keyFrame.vRotation = SampleQuaternion(channel.rotationKeys, time);
-		keyFrame.vTranslation = SampleVector(channel.positionKeys, time, float3_t(0.f, 0.f, 0.f));
-		m_KeyFrames.push_back(keyFrame);
-	}
-	m_iNumKeyFrames = static_cast<uint32_t>(m_KeyFrames.size());
+	// Preserve the three compact WAnimation tracks. Expanding their union into
+	// full transform keyframes multiplies memory for long character packages and
+	// made the 154-clip Dimensionist body exhaust memory during level loading.
+	m_PositionKeys = channel.positionKeys;
+	m_RotationKeys = channel.rotationKeys;
+	m_ScaleKeys = channel.scaleKeys;
+	m_iNumKeyFrames = static_cast<uint32_t>((max)({
+		m_PositionKeys.size(), m_RotationKeys.size(), m_ScaleKeys.size() }));
+	m_bUsesSeparateTracks = true;
 	return S_OK;
 }
 
 void CChannel::Update_TransformationMatrix(f32_t fCurrentTrackPosition, const vector<shared_ptr<class CBone>>& Bones, uint32_t* pLeftKeyFrameIndex)
 {
+	if (m_bUsesSeparateTracks)
+	{
+		const float3_t scale = SampleVector(
+			m_ScaleKeys, fCurrentTrackPosition,
+			float3_t(1.f, 1.f, 1.f));
+		const float4_t rotation = SampleQuaternion(
+			m_RotationKeys, fCurrentTrackPosition);
+		const float3_t translation = SampleVector(
+			m_PositionKeys, fCurrentTrackPosition,
+			float3_t(0.f, 0.f, 0.f));
+
+		const matrix_t boneTranslationMatrix =
+			XMMatrixAffineTransformation(
+				XMLoadFloat3(&scale),
+				XMVectorZero(),
+				XMLoadFloat4(&rotation),
+				XMVectorSetW(XMLoadFloat3(&translation), 1.f));
+		Bones[m_iBoneIndex]->Update_TransformationMatrix(
+			boneTranslationMatrix);
+		return;
+	}
+
 	if (m_KeyFrames.empty() || nullptr == pLeftKeyFrameIndex)
 		return;
 

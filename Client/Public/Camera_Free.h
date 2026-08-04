@@ -53,6 +53,7 @@ public:
 		return m_bMouseLookEnabled;
 	}
 	void Set_PositionOffset(const float3_t& vPositionOffset);
+	void Frame_Area(const float3_t& center, f32_t radius);
 	const float3_t& Get_PositionOffset() const
 	{
 		return m_vPositionOffset;

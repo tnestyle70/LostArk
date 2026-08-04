@@ -1,0 +1,38 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-timeline-incam-02" name="par_j_swp_timeline_incam_02" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=2810 name="emitter_0" type=MESH enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=2811 name="Required" type=REQUIRED enabled=1 tex="" mesh="Effect/Dimensionist/Meshes/fm_b_circle_002.wmodel" mat="fx_m_mi_j_00.fx_m.fx_j_me_softsplitline_01_01_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2812 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:2,1:2 y=0:-0.5,1:-0.5 z=0:1,1:0.6 w=0:1,1:1
+  MODULE id=2813 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.5,0.6,1.2,0.8 min=0.5,0.6,1.2,0.8 max=0.5,0.6,1.2,0.8
+  MODULE id=2814 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:4,1:2 g=0:4,1:2 b=0:4,1:2 a=0:0,0.0526316:0.259259,0.105263:0.740741,0.157895:1,0.210526:1,0.263158:1,0.315789:1,0.368421:1,0.421053:1,0.473684:1,0.526316:1,0.578947:1,0.631579:1,0.684211:1,0.736842:1,0.789474:1,0.842105:0.84375,0.894737:0.5,0.947368:0.15625,1:0
+  MODULE id=2815 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.865495,0.05:0.623212,0.1:0.287583,0.15:0.238185,0.2:0.214862,0.25:0.194323,0.3:0.17639,0.35:0.160887,0.4:0.147637,0.45:0.136463,0.5:0.127188,0.55:0.119635,0.6:0.113628,0.65:0.10899,0.7:0.105544,0.75:0.103114,0.8:0.101521,0.85:0.10059,0.9:0.100145,0.95:0.100007,1:0.1
+  MODULE id=2816 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.799238,0.05:0.799303,0.1:0.799476,0.15:0.799723,0.2:0.800011,0.25:0.800777,0.3:0.802338,0.35:0.804579,0.4:0.807382,0.45:0.81063,0.5:0.814209,0.55:0.817999,0.6:0.821886,0.65:0.825752,0.7:0.829481,0.75:0.832956,0.8:0.836061,0.85:0.838679,0.9:0.840693,0.95:0.841987,1:0.842445
+  MODULE id=2817 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-2,-2,-2 min=-2,-2,-2 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=2818 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,0.333333:1,0.666667:1,1:1 g=0:0.6,0.333333:1,0.666667:0.6,1:1 b=0:0.6,0.333333:1,0.666667:0.6,1:1 a=0:0,0.333333:1,0.666667:0,1:1
+
+EMITTER id=2819 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ADDITIVE sort=AGE_NEWEST_FIRST delay=0 duration=0.5 loops=1
+  MODULE id=2820 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/FX_TEX_00/fx_a_blankwhite_01.dds" mesh="" mat="fx_m_mi_j_00.fx_mi.fx_j_pa_customparticle_01_24_ad" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2821 name="Initial Location" type=INITIAL_LOCATION enabled=1 dist=UNIFORM_RANGE c=-2,-2,-2 min=-2,-2,-2 max=0,0,0 shape=BOX radius=0 inner=0 height=0 surface=0
+  MODULE id=2822 name="Dynamic Parameter" type=DYNAMIC_PARAMETER enabled=1 x=0:5,1:1 y=0:3,1:1 z=0:1,1:1 w=0:0,1:0
+  MODULE id=2823 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:5 g=0:1,1:1 b=0:2,1:1 a=0:0,0.05:0.25,0.1:0.5,0.15:0.75,0.2:1,0.25:1.25,0.3:1.5,0.35:1.75,0.4:2,0.45:1.83333,0.5:1.66667,0.55:1.5,0.6:1.33333,0.65:1.16667,0.7:1,0.75:0.833333,0.8:0.666667,0.85:0.5,0.9:0.333333,0.95:0.166667,1:0
+
+EMITTER id=2824 name="emitter_2" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2825 name="emitter_3" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2826 name="emitter_4" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2827 name="emitter_5" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2828 name="emitter_6" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2829 name="emitter_7" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2830 name="emitter_8" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2831 name="emitter_9" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2832 name="emitter_10" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=2833 name="emitter_11" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1

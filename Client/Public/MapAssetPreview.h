@@ -25,7 +25,9 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext);
 	void Reset_LevelResources();
 
-	HRESULT Select_Asset(const MAP_ASSET_ENTRY& asset);
+	HRESULT Select_Asset(
+		uint32_t prototypeLevelIndex,
+		const MAP_ASSET_ENTRY& asset);
 	HRESULT Render(uint32_t width, uint32_t height);
 
 	void Orbit(f32_t deltaX, f32_t deltaY);

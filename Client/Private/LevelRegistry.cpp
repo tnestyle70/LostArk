@@ -70,8 +70,8 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			LEVEL::CHARACTER_SELECT,
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"front.character-select",
-			nullptr,
-			{},
+			"LV_LOBBY_CLASSSELECT_SL00",
+			{ true, true, -792.f, 158.f, -750.f, 218.f },
 			CreateCharacterSelect,
 			&CLoader::Ready_For_CharacterSelect
 		},

@@ -2,23 +2,33 @@
 
 #include "Animation_Tool.h"
 
+#include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
+#include "GameInstance.h"
 #include "Model.h"
+#include "Part_Body.h"
 #include "ProjectDataRoot.h"
+#include "Transform.h"
 
+#include <charconv>
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <io.h>
+#include <system_error>
+#include <unordered_set>
 
 namespace
 {
 	constexpr const char_t* EVENT_FILE_MAGIC = "LOSTARK_ANIM_EVENTS";
-	/* v1 wrote positional columns ("clip" HIT 14 22). v2 writes key=value pairs so
-	rows of different kinds can carry different fields. v3 keeps the pairs but moves
-	times from frames to milliseconds and adds the extracted combat fields. All are
-	still read; v1/v2 frames are converted with the clip's tick rate on load. */
-	constexpr int32_t EVENT_FILE_VERSION = 3;
+	/* v1 wrote positional columns, v2 moved to key=value, and v3 changed frames to
+	milliseconds. v4 makes an EFFECT payload's meaning explicit so an extracted
+	source cue can never be mistaken for an admitted runtime EffectAssetId. */
+	constexpr int32_t EVENT_FILE_VERSION = 4;
+	constexpr int32_t MAX_EVENT_COUNT = 100000;
 
 	/* Used when a clip carries no usable rate, which would otherwise make the
 	frame <-> millisecond conversion divide by zero. */
@@ -71,8 +81,9 @@ namespace
 			++p;
 			while ('\0' != *p && '\"' != *p)
 				value.push_back(*p++);
-			if ('\"' == *p)
-				++p;
+			if ('\"' != *p)
+				return false;
+			++p;
 		}
 		else
 		{
@@ -80,6 +91,28 @@ namespace
 				value.push_back(*p++);
 		}
 		return true;
+	}
+
+	bool_t Parse_Integer(const std::string& text, int32_t& outValue)
+	{
+		if (text.empty())
+			return false;
+
+		const char_t* begin = text.data();
+		const char_t* end = begin + text.size();
+		const auto result = std::from_chars(begin, end, outValue);
+		return std::errc{} == result.ec && result.ptr == end;
+	}
+
+	bool_t Has_RemainingToken(const char_t* p)
+	{
+		Skip_Space(p);
+		return '\0' != *p && '\r' != *p && '\n' != *p;
+	}
+
+	bool_t Is_SafeQuotedText(const std::string& text)
+	{
+		return std::string::npos == text.find_first_of("\"\r\n");
 	}
 
 	bool_t Contains_NoCase(const char_t* pText, const char_t* pNeedle)
@@ -106,6 +139,16 @@ namespace
 	}
 }
 
+Client::CAnimation_Tool::CAnimation_Tool()
+{
+	XMStoreFloat4x4(&m_PreviewParentMatrix, XMMatrixIdentity());
+}
+
+Client::CAnimation_Tool::~CAnimation_Tool()
+{
+	Release_Preview(false);
+}
+
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 {
 	return CAnimationTargetService::Resolve_Model();
@@ -116,17 +159,47 @@ shared_ptr<Client::CCharacter> Client::CAnimation_Tool::Resolve_Character() cons
 	return CAnimationTargetService::Resolve_Character();
 }
 
-void Client::CAnimation_Tool::Sync_AssetName()
+bool_t Client::CAnimation_Tool::Sync_AssetName()
 {
-	const shared_ptr<CCharacter> pCharacter = Resolve_Character();
-	const CHARACTER_SPEC* pSpec = nullptr == pCharacter ? nullptr : pCharacter->Get_Spec();
-	const char_t* pAssetName = nullptr == pSpec ? nullptr : pSpec->pAssetName;
-	if (nullptr == pAssetName || m_AssetName == pAssetName)
-		return;
+	const string assetName =
+		CAnimationTargetService::Resolve_AssetName();
+	if (assetName.empty())
+	{
+		if (m_bDirty)
+		{
+			m_PendingAssetName.clear();
+			m_Status =
+				"Animation target disappeared while Events are dirty. "
+				"The unsaved document is preserved.";
+			return false;
+		}
+		return true;
+	}
+	if (m_AssetName == assetName)
+	{
+		m_PendingAssetName.clear();
+		return true;
+	}
+	if (m_bDirty && !m_AssetName.empty())
+	{
+		m_PendingAssetName = assetName;
+		m_Status =
+			"Target changed while Animation Events are dirty. "
+			"Return to the original target and Save, or discard explicitly.";
+		return false;
+	}
 
+	Adopt_AssetName(assetName);
+	return true;
+}
+
+void Client::CAnimation_Tool::Adopt_AssetName(
+	const std::string& assetName)
+{
 	/* A different class means every loaded file belongs to the wrong asset. Drop
 	them rather than mixing two classes' clips in one list. */
-	m_AssetName = pAssetName;
+	m_AssetName = assetName;
+	m_PendingAssetName.clear();
 	m_Events.clear();
 	m_SkillRef.clear();
 	m_ClipMap.clear();
@@ -140,6 +213,180 @@ void Client::CAnimation_Tool::Sync_AssetName()
 	m_bClipMapLoadAttempted = false;
 	m_bClipNotifyLoadAttempted = false;
 	m_bClipSeqLoadAttempted = false;
+}
+
+void Client::CAnimation_Tool::Render_TargetConflict()
+{
+	ImGui::TextWrapped("%s", m_Status.c_str());
+	ImGui::Text("Unsaved document: %s", m_AssetName.c_str());
+	if (!m_PendingAssetName.empty())
+	{
+		ImGui::Text("Pending target: %s", m_PendingAssetName.c_str());
+		if (ImGui::Button("Discard Unsaved Events and Switch"))
+			Adopt_AssetName(m_PendingAssetName);
+		return;
+	}
+
+	ImGui::TextUnformatted("The original target is no longer available.");
+	if (ImGui::Button("Discard Orphaned Unsaved Events"))
+		Adopt_AssetName(std::string{});
+}
+
+void Client::CAnimation_Tool::Refresh_PreviewLevel()
+{
+	const shared_ptr<CPart_Body> previewBody =
+		m_pPreviewBody.lock();
+	if (nullptr == previewBody)
+	{
+		m_pPreviewBody.reset();
+		m_pPreviewAsset = nullptr;
+		m_iPreviewLevelIndex = UINT32_MAX;
+		return;
+	}
+
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel == m_iPreviewLevelIndex)
+		return;
+
+	CAnimationTargetService::Unbind_Preview(
+		previewBody->Get_Model());
+	m_pPreviewBody.reset();
+	m_pPreviewAsset = nullptr;
+	m_iPreviewLevelIndex = UINT32_MAX;
+}
+
+void Client::CAnimation_Tool::Release_Preview(
+	const bool_t removeFromLayer)
+{
+	const shared_ptr<CPart_Body> previewBody =
+		m_pPreviewBody.lock();
+	if (nullptr == previewBody)
+	{
+		m_pPreviewBody.reset();
+		m_pPreviewAsset = nullptr;
+		m_iPreviewLevelIndex = UINT32_MAX;
+		return;
+	}
+
+	CAnimationTargetService::Unbind_Preview(
+		previewBody->Get_Model());
+	if (removeFromLayer &&
+		m_iPreviewLevelIndex ==
+			CGameInstance::Get().Get_CurrentLevelID())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_iPreviewLevelIndex,
+			TEXT("Layer_AnimationPreview"),
+			previewBody);
+	}
+	m_pPreviewBody.reset();
+	m_pPreviewAsset = nullptr;
+	m_iPreviewLevelIndex = UINT32_MAX;
+}
+
+bool_t Client::CAnimation_Tool::Select_PreviewAsset(
+	const ANIMATION_PREVIEW_ASSET& asset)
+{
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+	{
+		m_Status =
+			"Animation previews are admitted in Character Select or Development.";
+		return false;
+	}
+
+	vector_t previewPosition =
+		XMVectorSet(2.5f, 0.f, 0.f, 1.f);
+	const shared_ptr<CCharacter> character = Resolve_Character();
+	if (nullptr != character && nullptr != character->Get_Transform())
+	{
+		previewPosition = XMVectorAdd(
+			previewPosition,
+			character->Get_Transform()->Get_State(STATE::POSITION));
+		previewPosition = XMVectorSetW(previewPosition, 1.f);
+	}
+	XMStoreFloat4x4(
+		&m_PreviewParentMatrix,
+		XMMatrixTranslationFromVector(previewPosition));
+
+	CPart_Body::PART_BODY_DESC desc{};
+	desc.pParentMatrix = &m_PreviewParentMatrix;
+	desc.iPrototypeLevelIndex = currentLevel;
+	desc.strModelTag = asset.pPrototypeTag;
+	desc.strShaderTag =
+		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+	desc.pInitialAnimation = nullptr;
+
+	shared_ptr<CGameObject> stagedObject;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			currentLevel,
+			TEXT("Prototype_GameObject_Part_Body"),
+			currentLevel,
+			TEXT("Layer_AnimationPreview"),
+			&desc,
+			&stagedObject)))
+	{
+		m_Status = string("Preview asset is not admitted: ") +
+			asset.pModelAssetId;
+		return false;
+	}
+
+	const shared_ptr<CPart_Body> stagedBody =
+		dynamic_pointer_cast<CPart_Body>(stagedObject);
+	if (nullptr == stagedBody || nullptr == stagedBody->Get_Model())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			currentLevel,
+			TEXT("Layer_AnimationPreview"),
+			stagedObject);
+		m_Status = "Preview body did not expose an animated CModel.";
+		return false;
+	}
+
+	Release_Preview(true);
+	m_pPreviewBody = stagedBody;
+	m_pPreviewAsset = &asset;
+	m_iPreviewLevelIndex = currentLevel;
+	CAnimationTargetService::Bind_Preview(
+		stagedBody->Get_Model(),
+		asset.pAssetName);
+	m_Status = string("Previewing ") + asset.pLabel +
+		" 2.5 m to the right of the scene character.";
+	return true;
+}
+
+void Client::CAnimation_Tool::Render_TargetSelector()
+{
+	ImGui::SeparatorText("Target");
+	ImGui::BeginDisabled(m_bDirty);
+	const bool_t sceneSelected = m_pPreviewBody.expired();
+	if (ImGui::Selectable("Scene Character", sceneSelected))
+		Release_Preview(true);
+
+	for (const ANIMATION_PREVIEW_ASSET& asset :
+		ANIMATION_PREVIEW_ASSETS)
+	{
+		ImGui::PushID(asset.pId);
+		const bool_t isSelected =
+			!m_pPreviewBody.expired() &&
+			m_pPreviewAsset == &asset;
+		if (ImGui::Selectable(asset.pLabel, isSelected) &&
+			!isSelected)
+		{
+			Select_PreviewAsset(asset);
+		}
+		ImGui::PopID();
+	}
+	ImGui::EndDisabled();
+	if (m_bDirty)
+		ImGui::TextDisabled(
+			"Save or discard Animation Events before changing target here.");
+	if (!m_Status.empty())
+		ImGui::TextWrapped("%s", m_Status.c_str());
+	ImGui::Separator();
 }
 
 bool_t Client::CAnimation_Tool::Is_Window(EVENT_KIND eKind)
@@ -327,20 +574,29 @@ void Client::CAnimation_Tool::Render()
 		return;
 	}
 
+	Refresh_PreviewLevel();
+	Render_TargetSelector();
+	if (!Sync_AssetName())
+	{
+		Render_TargetConflict();
+		ImGui::End();
+		return;
+	}
+
 	const shared_ptr<Engine::CModel> pModel = Resolve_Model();
 	if (nullptr == pModel)
 	{
 		ImGui::TextUnformatted("No animated character resolved.");
 		ImGui::Separator();
-		ImGui::TextUnformatted("Enter TEST_LEVEL2 with F3 from the logo level.");
+		ImGui::TextUnformatted(
+			"Enter Character Select or Development from the Lobby.");
 		ImGui::End();
 		return;
 	}
 
-	Sync_AssetName();
 	if (m_AssetName.empty())
 	{
-		ImGui::TextUnformatted("Character spec carries no asset name.");
+		ImGui::TextUnformatted("The selected target carries no asset name.");
 		ImGui::End();
 		return;
 	}
@@ -577,6 +833,11 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 		ANIM_EVENT evt{};
 		evt.clipName = pCurrentName;
 		evt.eKind = eKind;
+		if (EVENT_KIND::EFFECT == eKind)
+		{
+			evt.eEffectReferenceKind =
+				EFFECT_REFERENCE_KIND::SOURCE_REFERENCE;
+		}
 		evt.iStartMs = iNowMs;
 		evt.iEndMs = iNowMs;
 		m_Events.push_back(evt);
@@ -609,13 +870,16 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 
 	ImGui::SameLine();
 	if (ImGui::Button("Save"))
-		Save_Events();
+		Save_Events(pModel);
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
 	{
-		m_iSelectedEvent = -1;
-		Load_Events(pModel);
+		if (m_bDirty)
+			m_bReloadConfirmationRequested = true;
+		else
+			Load_Events(pModel);
 	}
+	Render_ReloadConfirmation(pModel);
 
 	ImGui::SameLine();
 	ImGui::TextDisabled("%.0f fps", fRate);
@@ -982,13 +1246,561 @@ void Client::CAnimation_Tool::Render_AnimationList(const shared_ptr<Engine::CMod
 	ImGui::EndChild();
 }
 
-bool_t Client::CAnimation_Tool::Save_Events()
+bool_t Client::CAnimation_Tool::Write_EventsToPath(
+	const std::filesystem::path& path,
+	const std::vector<ANIM_EVENT>& events,
+	std::string& outStatus) const
 {
-	const std::string path = Get_EventFilePath();
+	outStatus.clear();
 
-	error_code directoryError;
-	filesystem::create_directories(
-		filesystem::path(path).parent_path(), directoryError);
+	FILE* file = nullptr;
+	if (0 != _wfopen_s(&file, path.c_str(), L"wb") || nullptr == file)
+	{
+		outStatus = "Could not open temporary Animation Events file.";
+		return false;
+	}
+
+	bool_t writeSucceeded = 0 <= fprintf(
+		file,
+		"%s %d \"%s\" %d\n",
+		EVENT_FILE_MAGIC,
+		EVENT_FILE_VERSION,
+		m_AssetName.c_str(),
+		static_cast<int32_t>(events.size()));
+
+	for (const ANIM_EVENT& event : events)
+	{
+		const char_t* kindName = Kind_Name(event.eKind);
+		if (EVENT_KIND::HIT == event.eKind)
+		{
+			const HIT_PARAMS& hit = event.hit;
+			writeSucceeded = writeSucceeded && 0 <= fprintf(
+				file,
+				"\"%s\" %s startms=%d endms=%d rep=%d repms=%d "
+				"fz=%d fzin=%d fzout=%d push=%d pushr=%d "
+				"area=%d ar=%d aa=%d ah=%d ax=%d arem=%d maxt=%d%s\n",
+				event.clipName.c_str(), kindName,
+				event.iStartMs, event.iEndMs,
+				hit.iRepeatCount, hit.iRepeatMs,
+				hit.iFreezeMs, hit.iFreezeInMs, hit.iFreezeOutMs,
+				hit.iPushMs, hit.iPushRange,
+				hit.iAreaType, hit.iAreaRange, hit.iAreaAngle,
+				hit.iAreaHeight, hit.iAreaOffsetX, hit.iAreaInner,
+				hit.iMaxTargets,
+				event.bImported ? " src=orig" : "");
+		}
+		else if (Is_Window(event.eKind))
+		{
+			writeSucceeded = writeSucceeded && 0 <= fprintf(
+				file,
+				"\"%s\" %s startms=%d endms=%d payload=\"%s\"%s\n",
+				event.clipName.c_str(), kindName,
+				event.iStartMs, event.iEndMs, event.sPayload.c_str(),
+				event.bImported ? " src=orig" : "");
+		}
+		else if (EVENT_KIND::EFFECT == event.eKind)
+		{
+			const char_t* effectReference =
+				EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID ==
+					event.eEffectReferenceKind ?
+				"asset-id" : "source";
+			writeSucceeded = writeSucceeded && 0 <= fprintf(
+				file,
+				"\"%s\" %s startms=%d payload=\"%s\" effectref=%s%s\n",
+				event.clipName.c_str(), kindName,
+				event.iStartMs, event.sPayload.c_str(),
+				effectReference,
+				event.bImported ? " src=orig" : "");
+		}
+		else
+		{
+			writeSucceeded = writeSucceeded && 0 <= fprintf(
+				file,
+				"\"%s\" %s startms=%d payload=\"%s\"%s\n",
+				event.clipName.c_str(), kindName,
+				event.iStartMs, event.sPayload.c_str(),
+				event.bImported ? " src=orig" : "");
+		}
+	}
+
+	const bool_t flushSucceeded = 0 == fflush(file);
+	const bool_t commitSucceeded =
+		flushSucceeded && 0 == _commit(_fileno(file));
+	const bool_t closeSucceeded = 0 == fclose(file);
+	if (!writeSucceeded || !flushSucceeded ||
+		!commitSucceeded || !closeSucceeded)
+	{
+		outStatus = "Could not flush Animation Events temporary file.";
+		return false;
+	}
+
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Validate_Events(
+	const shared_ptr<Engine::CModel>& pModel,
+	const std::vector<ANIM_EVENT>& events,
+	std::string& outStatus) const
+{
+	outStatus.clear();
+	if (nullptr == pModel || m_AssetName.empty() ||
+		events.size() > static_cast<size_t>(MAX_EVENT_COUNT))
+	{
+		outStatus = "Animation event document header is invalid.";
+		return false;
+	}
+
+	for (const ANIM_EVENT& event : events)
+	{
+		bool_t hasClip = false;
+		for (uint32_t index = 0;
+			index < pModel->Get_NumAnimations();
+			++index)
+		{
+			const char_t* clipName =
+				pModel->Get_AnimationName(index);
+			if (nullptr != clipName && event.clipName == clipName)
+			{
+				hasClip = true;
+				break;
+			}
+		}
+
+		if (!hasClip ||
+			!Is_SafeQuotedText(event.clipName) ||
+			!Is_SafeQuotedText(event.sPayload) ||
+			event.iStartMs < 0 ||
+			event.iEndMs < event.iStartMs ||
+			(!Is_Window(event.eKind) &&
+				event.iEndMs != event.iStartMs) ||
+			ETOI(event.eKind) < 0 ||
+			ETOI(event.eKind) >= ETOI(EVENT_KIND::END))
+		{
+			outStatus =
+				"Animation event clip, time, kind, or payload is invalid.";
+			return false;
+		}
+
+		if (EVENT_KIND::HIT == event.eKind &&
+			(event.hit.iRepeatCount < 1 ||
+				event.hit.iRepeatCount > 1024 ||
+				event.hit.iRepeatMs < 0))
+		{
+			outStatus = "Animation HIT repeat contract is invalid.";
+			return false;
+		}
+
+		if (EVENT_KIND::EFFECT == event.eKind)
+		{
+			if (EFFECT_REFERENCE_KIND::NONE ==
+				event.eEffectReferenceKind)
+			{
+				outStatus =
+					"Animation EFFECT row has no reference kind.";
+				return false;
+			}
+			if (EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID ==
+				event.eEffectReferenceKind)
+			{
+				outStatus =
+					"EffectAssetId admission is not connected yet. "
+					"Use the Effect Tool admission flow before binding.";
+				return false;
+			}
+		}
+		else if (EFFECT_REFERENCE_KIND::NONE !=
+			event.eEffectReferenceKind)
+		{
+			outStatus =
+				"Only Animation EFFECT rows may carry an effect reference.";
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Events_AreEqual(
+	const std::vector<ANIM_EVENT>& left,
+	const std::vector<ANIM_EVENT>& right) const
+{
+	if (left.size() != right.size())
+		return false;
+
+	const auto hitsAreEqual = [](const HIT_PARAMS& a, const HIT_PARAMS& b)
+	{
+		return a.iRepeatCount == b.iRepeatCount &&
+			a.iRepeatMs == b.iRepeatMs &&
+			a.iFreezeMs == b.iFreezeMs &&
+			a.iFreezeInMs == b.iFreezeInMs &&
+			a.iFreezeOutMs == b.iFreezeOutMs &&
+			a.iPushMs == b.iPushMs &&
+			a.iPushRange == b.iPushRange &&
+			a.iAreaType == b.iAreaType &&
+			a.iAreaRange == b.iAreaRange &&
+			a.iAreaAngle == b.iAreaAngle &&
+			a.iAreaHeight == b.iAreaHeight &&
+			a.iAreaOffsetX == b.iAreaOffsetX &&
+			a.iAreaInner == b.iAreaInner &&
+			a.iMaxTargets == b.iMaxTargets;
+	};
+
+	for (size_t index = 0; index < left.size(); ++index)
+	{
+		const ANIM_EVENT& a = left[index];
+		const ANIM_EVENT& b = right[index];
+		if (a.clipName != b.clipName ||
+			a.eKind != b.eKind ||
+			a.iStartMs != b.iStartMs ||
+			a.iEndMs != b.iEndMs ||
+			a.sPayload != b.sPayload ||
+			a.eEffectReferenceKind != b.eEffectReferenceKind ||
+			a.bImported != b.bImported ||
+			!hitsAreEqual(a.hit, b.hit))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Load_EventsFromPath(
+	const std::filesystem::path& path,
+	const shared_ptr<Engine::CModel>& pModel,
+	std::vector<ANIM_EVENT>& outEvents,
+	int32_t& outSourceVersion,
+	std::string& outStatus) const
+{
+	outEvents.clear();
+	outSourceVersion = {};
+	outStatus.clear();
+
+	FILE* file = nullptr;
+	if (0 != _wfopen_s(&file, path.c_str(), L"rb") || nullptr == file)
+	{
+		outStatus = "No event file: " + path.string();
+		return false;
+	}
+
+	int32_t lineNumber = 1;
+	const auto fail = [&](
+		const std::string& message) -> bool_t
+	{
+		fclose(file);
+		outStatus = message + " [line " +
+			std::to_string(lineNumber) + "]";
+		return false;
+	};
+
+	char_t line[4096]{};
+	if (nullptr == fgets(line, sizeof(line), file))
+		return fail("Animation event file is empty.");
+
+	const char_t* cursor = line;
+	std::string magic;
+	std::string versionToken;
+	std::string owner;
+	std::string countToken;
+	int32_t version = {};
+	int32_t declaredCount = {};
+	if (!Read_Token(cursor, magic) ||
+		!Read_Token(cursor, versionToken) ||
+		!Read_Quoted(cursor, owner) ||
+		!Read_Token(cursor, countToken) ||
+		Has_RemainingToken(cursor) ||
+		EVENT_FILE_MAGIC != magic ||
+		!Parse_Integer(versionToken, version) ||
+		!Parse_Integer(countToken, declaredCount) ||
+		version < 1 || version > EVENT_FILE_VERSION ||
+		declaredCount < 0 || declaredCount > MAX_EVENT_COUNT ||
+		owner != m_AssetName)
+	{
+		return fail("Animation event header is invalid.");
+	}
+
+	std::vector<ANIM_EVENT> staged;
+	staged.reserve(static_cast<size_t>(declaredCount));
+
+	while (nullptr != fgets(line, sizeof(line), file))
+	{
+		++lineNumber;
+		if (staged.size() >= static_cast<size_t>(declaredCount))
+			return fail("Animation event row count exceeds the header.");
+
+		const size_t lineLength = strlen(line);
+		if (lineLength == sizeof(line) - 1u &&
+			'\n' != line[lineLength - 1u] && !feof(file))
+		{
+			return fail("Animation event row is too long.");
+		}
+
+		cursor = line;
+		std::string clipName;
+		std::string kindName;
+		if (!Read_Quoted(cursor, clipName) ||
+			!Read_Token(cursor, kindName))
+		{
+			return fail("Malformed Animation event row.");
+		}
+
+		ANIM_EVENT event{};
+		event.clipName = clipName;
+		if ("HIT" == kindName)
+			event.eKind = EVENT_KIND::HIT;
+		else if ("CANCEL" == kindName)
+			event.eKind = EVENT_KIND::CANCEL;
+		else if ("SUPERARMOR" == kindName)
+			event.eKind = EVENT_KIND::SUPERARMOR;
+		else if ("INVULN" == kindName)
+			event.eKind = EVENT_KIND::INVULN;
+		else if ("MOVE" == kindName)
+			event.eKind = EVENT_KIND::MOVE;
+		else if ("SOUND" == kindName)
+			event.eKind = EVENT_KIND::SOUND;
+		else if ("EFFECT" == kindName)
+		{
+			event.eKind = EVENT_KIND::EFFECT;
+			if (version < 4)
+			{
+				event.eEffectReferenceKind =
+					EFFECT_REFERENCE_KIND::SOURCE_REFERENCE;
+			}
+		}
+		else if ("SHAKE" == kindName)
+			event.eKind = EVENT_KIND::SHAKE;
+		else
+			return fail("Unknown Animation event kind.");
+
+		int32_t startFrame = {};
+		int32_t endFrame = {};
+		int32_t intervalFrame = {};
+		bool_t hasStartFrame = false;
+		bool_t hasEndFrame = false;
+		bool_t hasStartMs = false;
+		bool_t hasEndMs = false;
+		bool_t hasEffectReference = false;
+
+		if (1 == version)
+		{
+			std::string startToken;
+			std::string endToken;
+			if (EVENT_KIND::HIT != event.eKind ||
+				!Read_Token(cursor, startToken) ||
+				!Read_Token(cursor, endToken) ||
+				Has_RemainingToken(cursor) ||
+				!Parse_Integer(startToken, startFrame) ||
+				!Parse_Integer(endToken, endFrame))
+			{
+				return fail("Invalid v1 Animation HIT row.");
+			}
+			hasStartFrame = true;
+			hasEndFrame = true;
+		}
+		else
+		{
+			std::unordered_set<std::string> keys;
+			while (Has_RemainingToken(cursor))
+			{
+				std::string key;
+				std::string value;
+				if (!Read_Pair(cursor, key, value) ||
+					!keys.insert(key).second)
+				{
+					return fail(
+						"Malformed or duplicate Animation event field.");
+				}
+
+				if ("payload" == key)
+				{
+					event.sPayload = value;
+					continue;
+				}
+				if ("src" == key)
+				{
+					if ("orig" != value)
+						return fail("Unknown Animation event source.");
+					event.bImported = true;
+					continue;
+				}
+				if ("effectref" == key)
+				{
+					if (version < 4 ||
+						EVENT_KIND::EFFECT != event.eKind)
+					{
+						return fail(
+							"effectref is only valid for v4 EFFECT rows.");
+					}
+					if ("source" == value)
+					{
+						event.eEffectReferenceKind =
+							EFFECT_REFERENCE_KIND::SOURCE_REFERENCE;
+					}
+					else if ("asset-id" == value)
+					{
+						event.eEffectReferenceKind =
+							EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID;
+					}
+					else
+						return fail("Unknown Animation effect reference kind.");
+					hasEffectReference = true;
+					continue;
+				}
+
+				int32_t number = {};
+				if (!Parse_Integer(value, number))
+					return fail("Animation event number is invalid.");
+
+				if ("start" == key)
+				{
+					startFrame = number;
+					hasStartFrame = true;
+				}
+				else if ("end" == key)
+				{
+					endFrame = number;
+					hasEndFrame = true;
+				}
+				else if ("count" == key)
+					event.hit.iRepeatCount = number;
+				else if ("interval" == key)
+					intervalFrame = number;
+				else if ("startms" == key)
+				{
+					event.iStartMs = number;
+					hasStartMs = true;
+				}
+				else if ("endms" == key)
+				{
+					event.iEndMs = number;
+					hasEndMs = true;
+				}
+				else if ("rep" == key)
+					event.hit.iRepeatCount = number;
+				else if ("repms" == key)
+					event.hit.iRepeatMs = number;
+				else if ("fz" == key)
+					event.hit.iFreezeMs = number;
+				else if ("fzin" == key)
+					event.hit.iFreezeInMs = number;
+				else if ("fzout" == key)
+					event.hit.iFreezeOutMs = number;
+				else if ("push" == key)
+					event.hit.iPushMs = number;
+				else if ("pushr" == key)
+					event.hit.iPushRange = number;
+				else if ("area" == key)
+					event.hit.iAreaType = number;
+				else if ("ar" == key)
+					event.hit.iAreaRange = number;
+				else if ("aa" == key)
+					event.hit.iAreaAngle = number;
+				else if ("ah" == key)
+					event.hit.iAreaHeight = number;
+				else if ("ax" == key)
+					event.hit.iAreaOffsetX = number;
+				else if ("arem" == key)
+					event.hit.iAreaInner = number;
+				else if ("maxt" == key)
+					event.hit.iMaxTargets = number;
+				else
+					return fail("Unknown Animation event field.");
+			}
+		}
+
+		if (2 == version)
+		{
+			if (!hasStartFrame ||
+				(Is_Window(event.eKind) && !hasEndFrame))
+			{
+				return fail("v2 Animation event time is missing.");
+			}
+			if (!hasEndFrame)
+				endFrame = startFrame;
+		}
+		else if (version >= 3)
+		{
+			if (!hasStartMs ||
+				(Is_Window(event.eKind) && !hasEndMs))
+			{
+				return fail("Animation event millisecond time is missing.");
+			}
+			if (!hasEndMs)
+				event.iEndMs = event.iStartMs;
+		}
+
+		if (version < 3)
+		{
+			const f32_t tickRate =
+				Get_ClipTickRate(pModel, event.clipName);
+			if (2 == version &&
+				intervalFrame > 0 &&
+				event.hit.iRepeatCount <= 1)
+			{
+				event.hit.iRepeatCount =
+					(endFrame - startFrame) / intervalFrame + 1;
+			}
+			if (event.hit.iRepeatCount > 1)
+			{
+				event.hit.iRepeatMs = intervalFrame > 0 ?
+					Frame_To_Ms(intervalFrame, tickRate) :
+					Frame_To_Ms(
+						endFrame - startFrame,
+						tickRate) /
+						(event.hit.iRepeatCount - 1);
+				endFrame = startFrame;
+			}
+			event.iStartMs = Frame_To_Ms(startFrame, tickRate);
+			event.iEndMs = Frame_To_Ms(endFrame, tickRate);
+		}
+
+		if (event.hit.iRepeatCount < 1)
+			event.hit.iRepeatCount = 1;
+		if (!Is_Window(event.eKind))
+			event.iEndMs = event.iStartMs;
+		if (version >= 4 &&
+			EVENT_KIND::EFFECT == event.eKind &&
+			!hasEffectReference)
+		{
+			return fail("v4 EFFECT row requires effectref.");
+		}
+
+		staged.push_back(std::move(event));
+	}
+
+	if (0 != ferror(file))
+		return fail("Animation event file read failed.");
+	if (0 != fclose(file))
+	{
+		outStatus = "Animation event file close failed.";
+		return false;
+	}
+	file = nullptr;
+
+	if (staged.size() != static_cast<size_t>(declaredCount))
+	{
+		outStatus = "Animation event row count does not match the header.";
+		return false;
+	}
+
+	outEvents = std::move(staged);
+	outSourceVersion = version;
+	return true;
+}
+
+bool_t Client::CAnimation_Tool::Save_Events(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	std::string validationStatus;
+	if (!Validate_Events(pModel, m_Events, validationStatus))
+	{
+		m_Status = "Save rejected: " + validationStatus;
+		return false;
+	}
+
+	const std::filesystem::path destination{ Get_EventFilePath() };
+	std::error_code directoryError;
+	std::filesystem::create_directories(
+		destination.parent_path(), directoryError);
 	if (directoryError)
 	{
 		m_Status = "Save failed to create authoring directory: " +
@@ -996,253 +1808,137 @@ bool_t Client::CAnimation_Tool::Save_Events()
 		return false;
 	}
 
-	FILE* pFile = nullptr;
-	if (0 != fopen_s(&pFile, path.c_str(), "w") || nullptr == pFile)
+	std::filesystem::path temporary = destination;
+	temporary += L".tmp";
+	std::error_code removeError;
+	std::filesystem::remove(temporary, removeError);
+	if (removeError)
 	{
-		m_Status = "Save failed: " + path;
+		m_Status = "Save failed to clear stale temporary file: " +
+			removeError.message();
 		return false;
 	}
 
-	fprintf(pFile, "%s %d \"%s\" %d\n", EVENT_FILE_MAGIC, EVENT_FILE_VERSION,
-		m_AssetName.c_str(), static_cast<int32_t>(m_Events.size()));
-
-	for (const ANIM_EVENT& evt : m_Events)
+	std::string transactionStatus;
+	if (!Write_EventsToPath(
+		temporary, m_Events, transactionStatus))
 	{
-		const char_t* pKind = Kind_Name(evt.eKind);
-
-		if (EVENT_KIND::HIT == evt.eKind)
-		{
-			const HIT_PARAMS& p = evt.hit;
-			fprintf(pFile, "\"%s\" %s startms=%d endms=%d rep=%d repms=%d "
-				"fz=%d fzin=%d fzout=%d push=%d pushr=%d "
-				"area=%d ar=%d aa=%d ah=%d ax=%d arem=%d maxt=%d%s\n",
-				evt.clipName.c_str(), pKind, evt.iStartMs, evt.iEndMs,
-				p.iRepeatCount, p.iRepeatMs,
-				p.iFreezeMs, p.iFreezeInMs, p.iFreezeOutMs, p.iPushMs, p.iPushRange,
-				p.iAreaType, p.iAreaRange, p.iAreaAngle, p.iAreaHeight, p.iAreaOffsetX,
-				p.iAreaInner, p.iMaxTargets, evt.bImported ? " src=orig" : "");
-		}
-		else if (Is_Window(evt.eKind))
-			/* State windows carry their span plus, for cancels, what they are for. */
-			fprintf(pFile, "\"%s\" %s startms=%d endms=%d payload=\"%s\"%s\n",
-				evt.clipName.c_str(), pKind, evt.iStartMs, evt.iEndMs,
-				evt.sPayload.c_str(), evt.bImported ? " src=orig" : "");
-		else
-			/* Point events store only the instant and the cue/effect key. */
-			fprintf(pFile, "\"%s\" %s startms=%d payload=\"%s\"%s\n",
-				evt.clipName.c_str(), pKind, evt.iStartMs, evt.sPayload.c_str(),
-				evt.bImported ? " src=orig" : "");
+		std::error_code cleanupError;
+		std::filesystem::remove(temporary, cleanupError);
+		m_Status = "Save failed; previous file preserved: " +
+			transactionStatus;
+		return false;
 	}
 
-	fclose(pFile);
+	std::vector<ANIM_EVENT> staged;
+	int32_t sourceVersion = {};
+	if (!Load_EventsFromPath(
+		temporary,
+		pModel,
+		staged,
+		sourceVersion,
+		transactionStatus) ||
+		EVENT_FILE_VERSION != sourceVersion ||
+		!Validate_Events(pModel, staged, transactionStatus) ||
+		!Events_AreEqual(staged, m_Events))
+	{
+		std::error_code cleanupError;
+		std::filesystem::remove(temporary, cleanupError);
+		if (transactionStatus.empty())
+		{
+			transactionStatus =
+				"Animation event round trip changed the document.";
+		}
+		m_Status = "Save validation failed; previous file preserved: " +
+			transactionStatus;
+		return false;
+	}
+
+	if (!MoveFileExW(
+		temporary.c_str(),
+		destination.c_str(),
+		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		const DWORD errorCode = GetLastError();
+		std::error_code cleanupError;
+		std::filesystem::remove(temporary, cleanupError);
+		m_Status = "Atomic replace failed; previous file preserved. Win32 error " +
+			std::to_string(errorCode) + ".";
+		return false;
+	}
 
 	m_bDirty = false;
-	m_Status = "Saved " + std::to_string(m_Events.size()) + " event(s) to " + path;
+	m_Status = "Saved " + std::to_string(m_Events.size()) +
+		" event(s) atomically to " + destination.string();
 	return true;
 }
 
-bool_t Client::CAnimation_Tool::Load_Events(const shared_ptr<Engine::CModel>& pModel)
+bool_t Client::CAnimation_Tool::Load_Events(
+	const shared_ptr<Engine::CModel>& pModel)
 {
-	const std::string path = Get_EventFilePath();
-
-	FILE* pFile = nullptr;
-	if (0 != fopen_s(&pFile, path.c_str(), "r") || nullptr == pFile)
+	const std::filesystem::path path{ Get_EventFilePath() };
+	std::vector<ANIM_EVENT> staged;
+	int32_t sourceVersion = {};
+	std::string loadStatus;
+	if (!Load_EventsFromPath(
+		path, pModel, staged, sourceVersion, loadStatus) ||
+		!Validate_Events(pModel, staged, loadStatus))
 	{
-		m_Status = "No event file yet: " + path;
+		m_Status =
+			"Load rejected; current document preserved: " + loadStatus;
 		return false;
 	}
 
-	char_t szLine[1024]{};
-	std::string magic, versionToken, owner, countToken;
-
-	const char_t* p = nullptr;
-	if (nullptr == fgets(szLine, sizeof(szLine), pFile))
+	m_Events = std::move(staged);
+	m_iSelectedEvent = -1;
+	/* v3 already stores milliseconds and can be represented by v4 without moving
+	any marker. Loading it must not create a false unsaved document that blocks a
+	Character Select target change. Only v1/v2 frame conversion is dirty. */
+	m_bDirty = sourceVersion < 3;
+	m_Status = "Loaded " + std::to_string(m_Events.size()) +
+		" event(s) from " + path.string();
+	if (m_bDirty)
 	{
-		fclose(pFile);
-		m_Status = "Empty event file: " + path;
-		return false;
+		m_Status += " [converted from v" +
+			std::to_string(sourceVersion) +
+			" in memory; review and Save explicitly]";
 	}
-
-	p = szLine;
-	if (!Read_Token(p, magic) || !Read_Token(p, versionToken) ||
-		!Read_Quoted(p, owner) || !Read_Token(p, countToken) ||
-		magic != EVENT_FILE_MAGIC)
+	else if (sourceVersion < EVENT_FILE_VERSION)
 	{
-		fclose(pFile);
-		m_Status = "Unrecognized event file header: " + path;
-		return false;
+		m_Status +=
+			" [v3 source references preserved; the next authored Save writes v4]";
 	}
-
-	const int32_t iVersion = atoi(versionToken.c_str());
-	if (iVersion < 1 || iVersion > EVENT_FILE_VERSION)
-	{
-		fclose(pFile);
-		m_Status = "Unsupported event file version " + versionToken + ": " + path;
-		return false;
-	}
-
-	std::vector<ANIM_EVENT> loaded;
-
-	while (nullptr != fgets(szLine, sizeof(szLine), pFile))
-	{
-		p = szLine;
-
-		std::string clip, kind;
-		if (!Read_Quoted(p, clip) || !Read_Token(p, kind))
-			continue;
-
-		ANIM_EVENT evt{};
-		evt.clipName = clip;
-
-		/* v1/v2 carried frames; they are converted once the kind and clip are known. */
-		int32_t iStartFrame = 0;
-		int32_t iEndFrame = 0;
-
-		/* Unknown kinds are skipped rather than treated as fatal, so a file written
-		by a still newer tool keeps loading the kinds this build understands. */
-		if ("HIT" == kind)
-			evt.eKind = EVENT_KIND::HIT;
-		else if ("CANCEL" == kind)
-			evt.eKind = EVENT_KIND::CANCEL;
-		else if ("SUPERARMOR" == kind)
-			evt.eKind = EVENT_KIND::SUPERARMOR;
-		else if ("INVULN" == kind)
-			evt.eKind = EVENT_KIND::INVULN;
-		else if ("MOVE" == kind)
-			evt.eKind = EVENT_KIND::MOVE;
-		else if ("SOUND" == kind)
-			evt.eKind = EVENT_KIND::SOUND;
-		else if ("EFFECT" == kind)
-			evt.eKind = EVENT_KIND::EFFECT;
-		else if ("SHAKE" == kind)
-			evt.eKind = EVENT_KIND::SHAKE;
-		else
-			continue;
-
-		if (1 == iVersion)
-		{
-			/* v1 only ever wrote HIT rows as two bare positional columns. */
-			std::string startToken, endToken;
-			if (!Read_Token(p, startToken) || !Read_Token(p, endToken))
-				continue;
-			iStartFrame = atoi(startToken.c_str());
-			iEndFrame = atoi(endToken.c_str());
-		}
-		else
-		{
-			HIT_PARAMS& hp = evt.hit;
-			std::string key, value;
-			int32_t iInterval = 0;
-			while (Read_Pair(p, key, value))
-			{
-				const int32_t v = atoi(value.c_str());
-
-				/* Unknown keys are ignored so new fields do not break old builds. */
-				if ("start" == key)            /* v2, frames */
-					iStartFrame = v;
-				else if ("end" == key)         /* v2, frames */
-					iEndFrame = v;
-				else if ("count" == key)       /* v2 */
-					hp.iRepeatCount = v;
-				else if ("interval" == key)    /* v2, frames */
-					iInterval = v;
-				else if ("startms" == key)
-					evt.iStartMs = v;
-				else if ("endms" == key)
-					evt.iEndMs = v;
-				else if ("rep" == key)
-					hp.iRepeatCount = v;
-				else if ("repms" == key)
-					hp.iRepeatMs = v;
-				else if ("fz" == key)
-					hp.iFreezeMs = v;
-				else if ("fzin" == key)
-					hp.iFreezeInMs = v;
-				else if ("fzout" == key)
-					hp.iFreezeOutMs = v;
-				else if ("push" == key)
-					hp.iPushMs = v;
-				else if ("pushr" == key)
-					hp.iPushRange = v;
-				else if ("area" == key)
-					hp.iAreaType = v;
-				else if ("ar" == key)
-					hp.iAreaRange = v;
-				else if ("aa" == key)
-					hp.iAreaAngle = v;
-				else if ("ah" == key)
-					hp.iAreaHeight = v;
-				else if ("ax" == key)
-					hp.iAreaOffsetX = v;
-				else if ("arem" == key)
-					hp.iAreaInner = v;
-				else if ("maxt" == key)
-					hp.iMaxTargets = v;
-				else if ("payload" == key)
-					evt.sPayload = value;
-				else if ("src" == key)
-					evt.bImported = ("orig" == value);
-			}
-
-			/* v2 spread its hits evenly across the window; v3 repeats them at a
-			fixed interval. Convert the spread into the interval it worked out to
-			so authored timing is not silently moved. */
-			if (iVersion < 3)
-			{
-				const f32_t fRate = Get_ClipTickRate(pModel, evt.clipName);
-
-				if (iInterval > 0 && hp.iRepeatCount <= 1)
-					hp.iRepeatCount = (iEndFrame - iStartFrame) / iInterval + 1;
-
-				if (hp.iRepeatCount > 1)
-				{
-					/* Divide in milliseconds rather than frames: a span that does
-					not split evenly into frames still lands its last hit where v2
-					put it instead of drifting a frame early. */
-					hp.iRepeatMs = iInterval > 0
-						? Frame_To_Ms(iInterval, fRate)
-						: Frame_To_Ms(iEndFrame - iStartFrame, fRate) / (hp.iRepeatCount - 1);
-
-					/* The v2 window was the whole spread; v3 wants one hit's tolerance. */
-					iEndFrame = iStartFrame;
-				}
-			}
-		}
-
-		if (iVersion < 3)
-		{
-			/* Frames are only meaningful against the clip they were authored on. */
-			const f32_t fRate = Get_ClipTickRate(pModel, evt.clipName);
-			evt.iStartMs = Frame_To_Ms(iStartFrame, fRate);
-			evt.iEndMs = Frame_To_Ms(iEndFrame, fRate);
-		}
-
-		if (evt.hit.iRepeatCount < 1)
-			evt.hit.iRepeatCount = 1;
-
-		/* A point event has no window; keep end pinned to start. */
-		if (!Is_Window(evt.eKind))
-			evt.iEndMs = evt.iStartMs;
-		if (evt.iEndMs < evt.iStartMs)
-			evt.iEndMs = evt.iStartMs;
-
-		loaded.push_back(evt);
-	}
-
-	fclose(pFile);
-
-	m_Events = std::move(loaded);
-	m_bDirty = false;
-	m_Status = "Loaded " + std::to_string(m_Events.size()) + " event(s) from " + path;
-
-	/* An older file was just converted from frames. Rounding a hit that sat on a
-	fractional frame can move it by one, so say so rather than let it pass as an
-	ordinary load; saving writes the converted times back. */
-	if (iVersion < EVENT_FILE_VERSION)
-		m_Status += "  [converted from v" + std::to_string(iVersion) +
-			" frames to ms - check multi-hit clips before saving]";
-
 	return true;
+}
+
+void Client::CAnimation_Tool::Render_ReloadConfirmation(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (m_bReloadConfirmationRequested)
+	{
+		ImGui::OpenPopup("Discard unsaved Animation Events?");
+		m_bReloadConfirmationRequested = false;
+	}
+
+	if (!ImGui::BeginPopupModal(
+		"Discard unsaved Animation Events?",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		return;
+	}
+
+	ImGui::TextUnformatted(
+		"Reload will replace the current unsaved Animation document.");
+	if (ImGui::Button("Discard and Reload"))
+	{
+		if (Load_Events(pModel))
+			ImGui::CloseCurrentPopup();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel"))
+		ImGui::CloseCurrentPopup();
+	ImGui::EndPopup();
 }
 
 bool_t Client::CAnimation_Tool::Load_ClipMap()
@@ -1486,6 +2182,9 @@ int32_t Client::CAnimation_Tool::Import_Notifies(const char_t* pClipName, f32_t 
 		ANIM_EVENT evt{};
 		evt.clipName = pClipName;
 		evt.eKind = row.eKind;
+		if (EVENT_KIND::EFFECT == evt.eKind)
+			evt.eEffectReferenceKind =
+				EFFECT_REFERENCE_KIND::SOURCE_REFERENCE;
 		evt.bImported = true;
 		evt.iStartMs = static_cast<int32_t>(row.fTime * 1000.f + 0.5f);
 		evt.iEndMs = Is_Window(row.eKind)

@@ -4,12 +4,17 @@
 
 | 데이터 | 정본 | 소비자 |
 |---|---|---|
-| 맵/에셋 정의 | `Data/Maps/MapCatalog.json`, runtime `.mapassets`/`.mapset` | Loader, MapTool |
+| Area 목록과 source/runtime 경로 | `Data/Maps/MapCatalog.json` | audit, toolchain |
+| 추출 맵/에셋 정의와 shard 기준 | `Data/Maps/Imported/<AreaId>/` | publish tool |
 | visual placement 작성본 | `Data/Maps/Authoring/<AreaId>/<AreaId>.mapplacements` | publish tool |
-| visual placement runtime | `Client/Bin/DataFiles/Map/*.mapplacements`, `*.mapset` | Loader, `CMapPlacementRuntime` |
+| visual map runtime | `Client/Bin/DataFiles/Map/*` | Loader, MapTool, `CMapPlacementRuntime` |
 | gameplay placement | `Data/Worlds/<AreaId>/Gameplay.world.json` | world publisher, Server |
 
-MapTool의 visual `Save`는 authoring 파일만 교체한다. 제품 runtime 파일을 직접 덮어쓰지 않는다. gameplay `Save Gameplay`은 stable `placementId`, `archetypeId`, transform을 JSON에 저장하며 현재 kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 계약은 없다.
+`Data`가 유일한 편집·추출 정본이다. `Imported`는 재추출 결과와 shard 분배 기준,
+`Authoring`은 MapTool이 수정하는 현재 placement를 소유한다. `Client/Bin/DataFiles`는
+publisher가 원자적으로 교체하는 실행 산출물이며 직접 편집하지 않는다. gameplay
+`Save Gameplay`은 stable `placementId`, `archetypeId`, transform을 JSON에 저장하며 현재
+kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 계약은 없다.
 
 ## visual publish
 
@@ -18,7 +23,13 @@ powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.
   -AreaId <AreaId>
 ```
 
-single catalog는 하나의 placement 문서를, shard-set은 기존 placement ID의 shard 소속을 보존하면서 신규 항목을 해당 asset을 가진 shard에 결정적으로 배치한다. 모든 shard placement와 `.mapset`은 staging 후 한 번에 승격되며 중간 실패 시 기존 파일 전부를 rollback한다. 잘못된 row, non-finite transform, ID domain 위반, 중복 ID, root 밖 경로는 commit 전에 거부한다.
+single catalog는 `Imported/<AreaId>/<AreaId>.mapassets`와 authoring placement를 함께
+publish한다. shard-set은 `Imported`의 `.mapset`, shard별 `.mapassets`와 baseline
+`.mapplacements`를 읽어 기존 placement ID의 shard 소속을 보존하고 신규 항목을 해당
+asset을 가진 shard에 결정적으로 배치한다. 모든 catalog, placement, `.mapset`, optional
+deploy pair는 staging 후 한 번에 승격되며 중간 실패 시 기존 파일 전부를 rollback한다.
+잘못된 row, non-finite transform, ID domain 위반, 중복 ID, `Imported` 밖 shard 경로는
+commit 전에 거부한다.
 
 ## gameplay publish
 

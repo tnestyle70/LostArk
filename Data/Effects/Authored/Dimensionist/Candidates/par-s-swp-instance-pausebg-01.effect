@@ -1,0 +1,4 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-instance-pausebg-01" name="par_s_swp_instance_pausebg_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=19358 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1

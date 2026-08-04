@@ -68,12 +68,14 @@ private:
 		uint32_t iLevelIndex,
 		const std::string& areaId,
 		const MAP_LOAD_SCOPE& loadScope = {});
+	HRESULT Ready_MapAuthoringCore(uint32_t iLevelIndex);
 	HRESULT Ready_Camera_Prototype(uint32_t iLevelIndex);
 	HRESULT Ready_StaticMeshShader(uint32_t iLevelIndex);
 	HRESULT Ready_Character_Rendering(
 		uint32_t iLevelIndex,
 		std::span<const LostArk::Shared::CHARACTER_CLASS_ID> characterClasses);
 	HRESULT Ready_Character_Shared_Prototypes(uint32_t iLevelIndex);
+	HRESULT Ready_AnimationPreviewModels(uint32_t iLevelIndex);
 	HRESULT Ready_ValtanPresentation(uint32_t iLevelIndex);
 	void Set_Status(const tchar_t* pStatus);
 	void Copy_Status(tchar_t* pOutput, size_t outputCount) const;

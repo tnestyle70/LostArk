@@ -60,9 +60,11 @@ void CMapAssetPreview::Reset_LevelResources()
 }
 
 HRESULT CMapAssetPreview::Select_Asset(
+	const uint32_t prototypeLevelIndex,
 	const MAP_ASSET_ENTRY& asset)
 {
-	if (asset.id.empty() || asset.prototypeTag.empty())
+	if (prototypeLevelIndex >= ETOUI(LEVEL::END) ||
+		asset.id.empty() || asset.prototypeTag.empty())
 		return E_FAIL;
 
 	shared_ptr<CShader> stagedShader = m_pShader;
@@ -70,7 +72,7 @@ HRESULT CMapAssetPreview::Select_Asset(
 	{
 		stagedShader = dynamic_pointer_cast<CShader>(
 			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::DEVELOPMENT),
+				prototypeLevelIndex,
 				SHADER_PROTOTYPE_TAG));
 		if (nullptr == stagedShader)
 		{
@@ -82,7 +84,7 @@ HRESULT CMapAssetPreview::Select_Asset(
 	shared_ptr<CModel> stagedModel =
 		dynamic_pointer_cast<CModel>(
 			CGameInstance::Get().Clone_Prototype(
-				ETOUI(LEVEL::DEVELOPMENT),
+				prototypeLevelIndex,
 				asset.prototypeTag));
 	if (nullptr == stagedModel ||
 		!stagedModel->Has_LocalBounds())

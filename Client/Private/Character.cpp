@@ -513,6 +513,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		weaponDesc.strShaderTag = m_pSpec->pWeaponShaderTag;
 		weaponDesc.pSkeletonModel = m_pBodyModel;
 		weaponDesc.pSocketBoneName = m_pSpec->pWeapons[i].pSocketBone;
+		weaponDesc.fSocketYawDegrees = m_pSpec->pWeapons[i].fSocketYawDegrees;
 
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,

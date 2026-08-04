@@ -227,19 +227,13 @@ Landscape를 reconstruction overlay로 바꾸거나 LFS 문서에 6줄을 손으
 가리키면 정본을 쓰기 전에 실패한다. 통합 전 개수는 receipt에 기록하고 최종 개수만
 gate로 둔다.
 
+현재 경로 계약에서는 extractor/병합기의 최종 catalog를
+`Data/Maps/Imported/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapassets`, placement를
+`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapplacements`에 반영한다.
+`Client/Bin/DataFiles/Map`을 extractor 출력으로 직접 지정하지 않는다. 반영 후 아래 publisher가
+catalog, placement와 deploy pair를 한 트랜잭션으로 실행 폴더에 배포한다.
+
 ```powershell
-python Tools\LevelPlacementExtractor\merge_maptool_landscape.py `
-  --area-id LV_LUT_HEARTRB_ED `
-  --base-catalog Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapassets `
-  --base-placements Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapplacements `
-  --landscape-catalog Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED_LANDSCAPE.mapassets `
-  --landscape-placements Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED_LANDSCAPE.mapplacements `
-  --runtime-root Client\Bin\Resources\LostArk `
-  --catalog-output Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapassets `
-  --placement-output Client\Bin\DataFiles\Map\LV_LUT_HEARTRB_ED.mapplacements `
-  --receipt-output .md\GB\08-02\2026-08-02_VALTAN_LANDSCAPE_CANONICAL_INTEGRATION_RECEIPT.json `
-  --expect-landscape-assets 6 `
-  --expect-landscape-placements 6 `
-  --expect-output-assets 275 `
-  --expect-output-placements 13109
+powershell -ExecutionPolicy Bypass -File Tools\MapPipeline\Publish-MapAuthoring.ps1 `
+  -AreaId LV_LUT_HEARTRB_ED
 ```

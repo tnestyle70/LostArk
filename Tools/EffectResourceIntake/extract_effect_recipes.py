@@ -28,7 +28,7 @@ sys.path.insert(0, str(_UE3_TOOL_DIR))
 
 import extract_ue3_placements as ue  # noqa: E402
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Property values whose struct type is not understood by the map tool decoder
 # come back as a 32-byte hex preview, which loses data.  Keep the whole payload
@@ -287,6 +287,7 @@ def read_lod_level(reader: PackageReader, ref: int, index: int) -> dict[str, Any
         level["peak_active_particles"] = level["peak_active_particles"].get("value")
 
     modules: list[dict[str, Any]] = []
+    unresolved_module_refs: list[dict[str, Any]] = []
     seen: set[int] = set()
     for key in ("RequiredModule", "SpawnModule", "TypeDataModule", "Modules"):
         item = ue.property_value(raw, key, None)
@@ -299,7 +300,18 @@ def read_lod_level(reader: PackageReader, ref: int, index: int) -> dict[str, Any
             if module is not None:
                 module["slot"] = key
                 modules.append(module)
+            else:
+                unresolved_module_refs.append({
+                    "slot": key,
+                    "ref": ref_value,
+                    "path": reader.ref_path(ref_value),
+                    "reason": (
+                        "external_import_not_materialized"
+                        if ref_value < 0 else "missing_local_export"
+                    ),
+                })
     level["modules"] = modules
+    level["unresolved_module_refs"] = unresolved_module_refs
     return level
 
 
@@ -310,11 +322,22 @@ def read_emitter(reader: PackageReader, ref: int, index: int) -> dict[str, Any] 
     raw = reader.properties_of(entry)
     item = ue.property_value(raw, "LODLevels", None)
     source = item.get("value") if isinstance(item, dict) and "value" in item else item
-    levels = [
-        level
-        for i, lod_ref in enumerate(refs_of(source))
-        if (level := read_lod_level(reader, lod_ref, i)) is not None
-    ]
+    levels = []
+    unresolved_lod_refs = []
+    for i, lod_ref in enumerate(refs_of(source)):
+        level = read_lod_level(reader, lod_ref, i)
+        if level is not None:
+            levels.append(level)
+        else:
+            unresolved_lod_refs.append({
+                "index": i,
+                "ref": lod_ref,
+                "path": reader.ref_path(lod_ref),
+                "reason": (
+                    "external_import_not_materialized"
+                    if lod_ref < 0 else "missing_local_export"
+                ),
+            })
     name_item = ue.property_value(raw, "EmitterName", None)
     if isinstance(name_item, dict):
         name_item = name_item.get("value")
@@ -325,6 +348,7 @@ def read_emitter(reader: PackageReader, ref: int, index: int) -> dict[str, Any] 
         "object_name": entry.object_name,
         "emitter_name": name_item,
         "lod_levels": levels,
+        "unresolved_lod_refs": unresolved_lod_refs,
     }
 
 
@@ -352,9 +376,9 @@ def logical_name(path: Path) -> str:
     return stem.split("__")[0].lower() if "__" in stem else stem.lower()
 
 
-def extract(path: Path) -> dict[str, Any]:
+def extract(path: Path, package_override: str | None = None) -> dict[str, Any]:
     reader = PackageReader(path)
-    package = logical_name(path)
+    package = (package_override or logical_name(path)).lower()
     assets = []
     for entry in reader.exports:
         if reader.class_of(entry) != "particlesystem" or entry.serial_size <= 0:
@@ -383,8 +407,20 @@ def extract(path: Path) -> dict[str, Any]:
         stats["particle_systems"] += 1
         for emitter in asset["emitters"]:
             stats["emitters"] += 1
+            for unresolved in emitter.get("unresolved_lod_refs", []):
+                stats["unresolved_lod_refs"] += 1
+                if unresolved.get("ref", 0) < 0:
+                    stats["external_import_lod_refs"] += 1
+                else:
+                    stats["missing_local_lod_refs"] += 1
             for level in emitter["lod_levels"]:
                 stats["lod_levels"] += 1
+                for unresolved in level.get("unresolved_module_refs", []):
+                    stats["unresolved_module_refs"] += 1
+                    if unresolved.get("ref", 0) < 0:
+                        stats["external_import_module_refs"] += 1
+                    else:
+                        stats["missing_local_module_refs"] += 1
                 for module in level["modules"]:
                     stats["modules"] += 1
                     module_classes[module["class"]] += 1
@@ -393,7 +429,7 @@ def extract(path: Path) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),
-        "provenance": "reconstructed",
+        "provenance": "reconstructed_local_exports",
         "source": {
             "file": path.name,
             "logical_package": package,
@@ -413,6 +449,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("packages", nargs="*", type=Path)
     parser.add_argument("--glob", default=None, help="glob relative to the repository root")
     parser.add_argument("--out", type=Path, required=True, help="output directory")
+    parser.add_argument(
+        "--source-pack-manifest", type=Path, default=None,
+        help="source_pack_manifest.json used to restore logical package names",
+    )
     parser.add_argument("--summary-only", action="store_true", help="print stats, write nothing")
     return parser.parse_args(argv)
 
@@ -427,10 +467,23 @@ def main(argv=None) -> int:
         return 2
 
     args.out.mkdir(parents=True, exist_ok=True)
+    logical_by_physical: dict[str, str] = {}
+    if args.source_pack_manifest is not None:
+        source_pack = json.loads(
+            args.source_pack_manifest.read_text(encoding="utf-8")
+        )
+        logical_by_physical = {
+            str(row.get("physicalPackage") or "").casefold():
+                str(row.get("logicalPackage") or "")
+            for row in source_pack.get("packages", [])
+            if row.get("resolved")
+        }
     failures = 0
     for path in paths:
         try:
-            document = extract(path)
+            document = extract(
+                path, logical_by_physical.get(path.name.casefold()) or None
+            )
         except Exception as error:
             failures += 1
             print(f"FAIL {path.name}: {type(error).__name__}: {error}", file=sys.stderr)
@@ -446,6 +499,7 @@ def main(argv=None) -> int:
             f"{stats.get('distribution_baked', 0)}/"
             f"{stats.get('distribution_empty', 0)} "
             f"unparsed={stats.get('unparsed_values', 0)} "
+            f"external_refs={stats.get('external_import_module_refs', 0)} "
             f"errors={len(document['parse_errors'])}"
         )
         if args.summary_only:

@@ -76,6 +76,8 @@ public:
 
 public:
 	void Render();
+	bool_t Select_Class(const string& classId);
+	void Render_RuntimePreview(const string& classId);
 
 private:
 	void Render_ClassBar();

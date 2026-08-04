@@ -34,6 +34,7 @@ private:
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+	bool_t m_isMapEditorWorkspace = false;
 	weak_ptr<CCamera_Free> m_pCamera;
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;

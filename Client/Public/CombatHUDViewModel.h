@@ -29,6 +29,7 @@ namespace Client
 	struct HUD_PLAYER_STATE
 	{
 		bool isValid = false;
+		bool isPreview = false;
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
 			LostArk::Shared::CHARACTER_CLASS_ID::END;
 		std::uint32_t iServerTick = 0;
@@ -60,6 +61,8 @@ namespace Client
 		static CCombatHUDViewModel& Get();
 
 		bool Initialize_Definitions();
+		bool Apply_CharacterPreview(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 		void Apply_LocalPlayer(
 			std::uint32_t serverTick,
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
@@ -74,8 +77,21 @@ namespace Client
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
+		struct PLAYER_PROFILE_DEFINITION
+		{
+			std::uint32_t iMaximumHp = 0;
+			std::uint32_t iMaximumResource = 0;
+		};
+
+		void Build_PlayerSkills(
+			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
+			std::uint32_t serverTick,
+			const std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT>* pCooldowns);
+
 		/* Skill definitions live in CPlayerSkillCatalog because the input
 		controller reads the same rows; only the boss names are HUD-only. */
+		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
+			PLAYER_PROFILE_DEFINITION> m_PlayerProfiles;
 		std::unordered_map<std::string, std::string> m_BossDisplayNames;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;

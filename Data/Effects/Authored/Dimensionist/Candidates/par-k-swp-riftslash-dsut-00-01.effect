@@ -1,0 +1,14 @@
+LOSTARK_EFFECT 5
+ASSET id="par-k-swp-riftslash-dsut-00-01" name="par_k_swp_riftslash_dsut_00_01" provenance=DERIVED_CONVERSION duration=0.3 warmup=0
+
+EMITTER id=34453 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.15 loops=1
+  MODULE id=34454 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=34455 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,1,1.1,0.7 min=1,1,1.1,0.7 max=1,1,1.1,0.7
+  MODULE id=34456 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,1:1 g=0:2,1:1 b=0:5,1:1 a=0:1,0.1:0.866822,0.2:0.729793,0.3:0.593122,0.4:0.461017,0.5:0.337689,0.6:0.227345,0.7:0.134195,0.8:0.062448,0.9:0.016314,1:0
+  MODULE id=34457 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=213.333 start=0 end=31 loop=1 reltime=1
+
+EMITTER id=34458 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.3 loops=1
+  MODULE id=34459 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=34460 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=1,1,1.1,1 min=1,1,1.1,1 max=1,1,1.1,1
+  MODULE id=34461 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:3,1:1 g=0:2,1:1 b=0:5,1:1 a=0:1,0.1:0.866822,0.2:0.729793,0.3:0.593122,0.4:0.461017,0.5:0.337689,0.6:0.227345,0.7:0.134195,0.8:0.062448,0.9:0.016314,1:0
+  MODULE id=34462 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=106.667 start=0 end=31 loop=1 reltime=1

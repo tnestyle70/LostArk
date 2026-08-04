@@ -18,7 +18,9 @@ namespace
 	{
 		const tchar_t* pBody = nullptr;
 		std::array<const tchar_t*, 5> Equipment{};
-		const tchar_t* pWeapon = nullptr;
+		size_t iEquipmentCount = 0;
+		std::array<const tchar_t*, 4> Weapons{};
+		size_t iWeaponCount = 0;
 	};
 
 	std::mutex g_CharacterAssetMutex;
@@ -38,7 +40,9 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Shoulder"),
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet")
 			},
-			TEXT("Prototype_Component_Model_LanceMaster_Weapon")
+			5u,
+			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon") },
+			1u
 		};
 		static const CHARACTER_PROTOTYPE_TAGS GUNSLINGER
 		{
@@ -50,7 +54,9 @@ namespace
 				TEXT("Prototype_Component_Model_GunSlinger_Shoulder"),
 				TEXT("Prototype_Component_Model_GunSlinger_Helmet")
 			},
-			TEXT("Prototype_Component_Model_GunSlinger_Weapon")
+			5u,
+			{ TEXT("Prototype_Component_Model_GunSlinger_Weapon") },
+			1u
 		};
 		static const CHARACTER_PROTOTYPE_TAGS SLAYER
 		{
@@ -62,7 +68,9 @@ namespace
 				TEXT("Prototype_Component_Model_Slayer_Shoulder"),
 				TEXT("Prototype_Component_Model_Slayer_Helmet")
 			},
-			TEXT("Prototype_Component_Model_Slayer_Weapon")
+			5u,
+			{ TEXT("Prototype_Component_Model_Slayer_Weapon") },
+			1u
 		};
 		static const CHARACTER_PROTOTYPE_TAGS ARTIST
 		{
@@ -74,7 +82,22 @@ namespace
 				TEXT("Prototype_Component_Model_Artist_Shoulder"),
 				TEXT("Prototype_Component_Model_Artist_Helmet")
 			},
-			TEXT("Prototype_Component_Model_Artist_Weapon")
+			5u,
+			{ TEXT("Prototype_Component_Model_Artist_Weapon") },
+			1u
+		};
+		static const CHARACTER_PROTOTYPE_TAGS DIMENSIONIST
+		{
+			TEXT("Prototype_Component_Model_Dimensionist"),
+			{},
+			0u,
+			{
+				TEXT("Prototype_Component_Model_Dimensionist_Weapon_L"),
+				TEXT("Prototype_Component_Model_Dimensionist_Weapon_S"),
+				TEXT("Prototype_Component_Model_Dimensionist_Weapon_P"),
+				TEXT("Prototype_Component_Model_Dimensionist_Weapon_E")
+			},
+			4u
 		};
 
 		switch (characterClass)
@@ -87,6 +110,8 @@ namespace
 			return &SLAYER;
 		case LostArk::Shared::CHARACTER_CLASS_ID::ARTIST:
 			return &ARTIST;
+		case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST:
+			return &DIMENSIONIST;
 		default:
 			return nullptr;
 		}
@@ -111,7 +136,8 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 	ComPtr<ID3D11DeviceContext> pContext,
 	const uint32_t iLevelIndex,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const std::atomic_bool* pCancellationRequested)
+	const std::atomic_bool* pCancellationRequested,
+	const PROGRESS_CALLBACK& progress)
 {
 	if (nullptr == pDevice || nullptr == pContext ||
 		iLevelIndex >= ETOUI(LEVEL::END) ||
@@ -133,24 +159,46 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		CActorCatalog::Find_Character(characterClass);
 	const CHARACTER_PROTOTYPE_TAGS* pTags = Find_Tags(characterClass);
 	if (nullptr == pActor || nullptr == pTags ||
-		pActor->runtimeStatus != "supported" ||
-		pActor->equipmentModels.size() != pTags->Equipment.size())
+		pActor->runtimeStatus != "supported")
+	{
+		return E_FAIL;
+	}
+	if (pActor->equipmentModels.size() != pTags->iEquipmentCount ||
+		pActor->weaponModels.size() != pTags->iWeaponCount)
 	{
 		return E_FAIL;
 	}
 
+	// The Dimensionist body was cooked from the ActorX Blender intake at roughly
+	// centimeter scale (about 111 units tall). The older UModel character pack
+	// keeps its existing 0.0001 admission transform.
+	const f32_t characterScale =
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONIST == characterClass ?
+		0.01f : 0.0001f;
 	const matrix_t characterTransform =
-		XMMatrixScaling(0.0001f, 0.0001f, 0.0001f) *
+		XMMatrixScaling(
+			characterScale,
+			characterScale,
+			characterScale) *
 		XMMatrixRotationY(XMConvertToRadians(-90.f));
 
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
-	staged.reserve(2u + pTags->Equipment.size());
-	const auto StageModel = [&staged, &pDevice, &pContext](
+	const size_t totalModelCount =
+		1u + pTags->iEquipmentCount + pTags->iWeaponCount;
+	staged.reserve(totalModelCount);
+	const auto StageModel = [
+		&staged,
+		&pDevice,
+		&pContext,
+		&progress,
+		totalModelCount](
 		const tchar_t* pTag,
 		const std::string& assetId,
 		const MODEL modelType,
 		const matrix_t& transform)
 	{
+		if (progress)
+			progress(staged.size(), totalModelCount, assetId);
 		const std::filesystem::path path =
 			CRuntimeAssetRoot::Resolve(assetId);
 		if (nullptr == pTag || path.empty())
@@ -164,6 +212,8 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		if (nullptr == pModel)
 			return false;
 		staged.emplace_back(pTag, std::move(pModel));
+		if (progress)
+			progress(staged.size(), totalModelCount, assetId);
 		return true;
 	};
 
@@ -176,7 +226,7 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		return E_FAIL;
 	}
 
-	for (size_t index = 0; index < pActor->equipmentModels.size(); ++index)
+	for (size_t index = 0; index < pTags->iEquipmentCount; ++index)
 	{
 		if (Is_Cancelled(pCancellationRequested))
 			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
@@ -190,15 +240,18 @@ HRESULT Client::CPlayableCharacterAssetService::Ensure_Prototypes(
 		}
 	}
 
-	if (Is_Cancelled(pCancellationRequested))
-		return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-	if (!StageModel(
-		pTags->pWeapon,
-		pActor->weaponModel,
-		MODEL::NONANIM,
-		XMMatrixIdentity()))
+	for (size_t index = 0; index < pTags->iWeaponCount; ++index)
 	{
-		return E_FAIL;
+		if (Is_Cancelled(pCancellationRequested))
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+		if (!StageModel(
+			pTags->Weapons[index],
+			pActor->weaponModels[index],
+			MODEL::NONANIM,
+			XMMatrixIdentity()))
+		{
+			return E_FAIL;
+		}
 	}
 
 	// All binary models are decoded before the first prototype is committed.

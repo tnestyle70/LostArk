@@ -1,0 +1,6 @@
+LOSTARK_EFFECT 5
+ASSET id="par-s-swp-chrono-rib-01" name="par_s_swp_chrono_rib_01" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=16848 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+
+EMITTER id=16849 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1

@@ -1,0 +1,5 @@
+LOSTARK_EFFECT 5
+ASSET id="par-m-swp-ts-shadowwp-02" name="par_m_swp_ts_shadowwp_02" provenance=DERIVED_CONVERSION duration=1 warmup=0
+
+EMITTER id=28842 name="emitter_0" type=MESH enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
+  MODULE id=28843 name="Required" type=REQUIRED enabled=1 tex="Effect/Dimensionist/Textures/WP_DBL_AV_172/wp_dbl_av_172l_e.dds" mesh="Effect/Dimensionist/Meshes/fx_m_wp_swp_01.wmodel" mat="fx_m_mi_m_00.fx_mi.fx_m_me_swp_shadowwp_01_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="Effect/Dimensionist/Textures/WP_DBL_AV_172/wp_dbl_av_172l_n.dds" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=0.8 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0

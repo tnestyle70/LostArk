@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "LobbyCommandService.h"
 
 NS_BEGIN(Engine)
 class CImGuiLayer;
@@ -42,7 +43,10 @@ public:
 private:
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();
-	HRESULT Start_Level(LEVEL eTargetLevel);
+	HRESULT Start_Level(
+		LEVEL eTargetLevel,
+		LOBBY_COMMAND_TOKEN lobbyCommandToken =
+			INVALID_LOBBY_COMMAND_TOKEN);
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
@@ -71,7 +75,7 @@ private:
 	bool_t m_bProfilerVisible = false;
 	DEBUG_TOOL m_eActiveDebugTool = DEBUG_TOOL::NONE;
 	string m_strToolStatus =
-		"Developer tools are available in the Test level.";
+		"Select a tool. Map authoring targets the current level Area.";
 	string m_strProfilerCaptureStatus;
 #endif
 

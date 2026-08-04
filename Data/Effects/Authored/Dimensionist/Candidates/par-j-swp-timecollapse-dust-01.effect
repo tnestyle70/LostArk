@@ -1,0 +1,10 @@
+LOSTARK_EFFECT 5
+ASSET id="par-j-swp-timecollapse-dust-01" name="par_j_swp_timecollapse_dust_01" provenance=DERIVED_CONVERSION duration=0.15 warmup=0
+
+EMITTER id=2642 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.15 loops=1
+  MODULE id=2643 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2644 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=213.333 start=0 end=31 loop=1 reltime=1
+
+EMITTER id=2645 name="emitter_1" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=0.15 loops=1
+  MODULE id=2646 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
+  MODULE id=2647 name="SubUV" type=SUB_UV enabled=1 cols=8 rows=4 fps=213.333 start=0 end=31 loop=1 reltime=1

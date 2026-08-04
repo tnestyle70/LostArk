@@ -5,6 +5,14 @@
 
 이 문서는 에셋이 카탈로그와 Hierarchy에는 생성됐지만 화면에 보이지 않았던 문제의 근본 원인과 재발 방지 규칙을 고정한다.
 
+## Runtime map 폴더를 rename하면 WModel도 재쿠킹해야 한다
+
+`Map/<AreaId>`를 `Map/CHARACTERSELECTMAP`처럼 바꾸면서 catalog와 폴더만 변경하면 안 된다.
+WModel material section에는 `Resource/Map/<AreaId>/...` texture path가 저장되어 있으므로,
+최종 runtime namespace로 material remap을 다시 주어 재쿠킹해야 한다. 완료 검증은 catalog
+경로뿐 아니라 모든 WModel 내부 texture reference가 같은 `runtimeAssetRoot` 아래 실제 파일로
+해석되는지까지 포함한다.
+
 ## 1. 런타임 경계: 반드시 CModel로 통합한다
 
 - `CCookedModel`과 이를 직접 소비하는 `CBinaryAssetObject`는 **레거시 검증 경로**다.

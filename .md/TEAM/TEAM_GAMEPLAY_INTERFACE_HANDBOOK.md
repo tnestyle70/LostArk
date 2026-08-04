@@ -125,6 +125,8 @@ CClientReplication::Apply_WorldSnapshot
 
 Character/Animation 담당자는 clip mapping, part, notify, blend와 재생 결과를 소유한다. damage, cooldown, resource, hit 여부, 위치 정답은 수정하지 않는다. `Logic_*`에서 DirectInput, socket, packet을 읽거나 `Play_Skill`을 직접 호출하지 않는다.
 
+현재 roster는 Lance Master, Gunslinger, Slayer, Artist, Dimensionist 다섯 class다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 승인과 presentation mapping을 사용한다. Dimensionist는 combined body, L/S/P/E 네 정적 기본 무기 파츠, spawn, HUD class identity, IDLE/RUN과 Animation Tool Scene Character 경로까지 닫혔다. `Data/Animation/Reference/Dimensionist`의 네 문서는 0-row 컨테이너이므로 실제 스킬 추출 데이터가 아니며, stable skill ID와 timing이 생기기 전에는 Q/W와 candidate-only effect를 연결하지 않는다.
+
 ## 6. UI와 밸런스 데이터
 
 UI가 바로 사용할 읽기 경계는 `CCombatHUDViewModel`이다.
@@ -253,10 +255,36 @@ CGameRoom::Tick
 
 정적 visual 배치와 gameplay 배치는 분리한다.
 
+- visual import definition: `Data/Maps/Imported/<AreaId>/`
 - visual authoring: `Data/Maps/Authoring/<AreaId>/`
 - gameplay authoring: `Data/Worlds/<AreaId>/Gameplay.world.json`
-- navigation authoring: `Data/Navigation/<AreaId>.navgrid.json`
+- navigation authoring: `Data/Navigation/<AreaId>.navsource/.navpaint/.navblockers` 또는 uniform `<AreaId>.navgrid.json`
+- Client map/navigation 생성물: `Client/Bin/DataFiles/Map`, `Client/Bin/DataFiles/Navigation`
 - Server world 생성물: `Server/Bin/DataFiles/World/*.worldbootstrap`
+
+`Data`만 사람이 편집하거나 재추출 결과를 반영하는 정본이다. Client/Server `Bin/DataFiles`는
+publisher 출력이며 source로 다시 읽어 authoring을 갱신하지 않는다. Visual Studio의
+`96.DataFiles` 필터도 `Data` 원본만 연결한다.
+
+Debug Map Editor 사용 절차는 다음과 같다.
+
+1. Debug Lobby에서 `Test`를 누르고 기존 Server 승인을 기다린다.
+2. `LEVEL::DEVELOPMENT`의 격리된 editor shell 로드가 끝날 때까지 기다린다.
+3. F1로 공통 Developer Tools를 열고 `Map Tool`을 선택한다.
+4. Area selector에서 Character Select, Bern, Valtan, Training Map 중 하나를 고른다.
+5. visual placement 또는 정책이 허용한 gameplay/navigation만 편집한다.
+6. Area 전환·reload·Lobby 복귀 전에 dirty gate에서 Save/Discard/Cancel을 결정한다.
+7. 저장 뒤 필요한 publisher를 별도로 Validate/Publish한다.
+
+제품 `CLevelRegistry`는 제품 Level의 `MAP_LOAD_SCOPE`만 소유한다. Map Editor의 대상과
+authoring policy는 별도 descriptor이며 제품 Level에서 MapTool authoring을 활성화하지 않는다.
+Debug Lobby Test의 승인 소비자가 editor intent를 세운다. F1/Map Tool은 전환 권한이 없고
+도구 표시와 선택만 담당한다. Release Test에는 Debug editor intent가 없으므로 기존 training
+map, 서버 승인 character, replication, controller 경로를 유지한다.
+
+Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Character Select와
+원본 Training Map은 gameplay 문서를 만들지 않고, Bern/Training Map은 navigation 문서를
+추측 생성하지 않는다. Valtan DeployProp 편집은 현재 제외되어 있다.
 
 gameplay kind는 `playerSpawn`, `npc`, `boss`만 지원한다. placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다. NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를 저장하지 않는다.
 
@@ -342,11 +370,11 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist 네 선택 slot, 네 class Loader/Server profile, class별 runtime HUD
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/Dimensionist 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. Dimensionist는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하는 로컬 payload이며 pack `.3` Hydrate 대상은 아니다.
 
 별도 수직 슬라이스:
 
-- Gunslinger/Slayer/Artist 고유 skill/action/damage balance와 animation mapping
+- Dimensionist 고유 skill/action/damage balance와 animation mapping
 - `Data/UI` layout에서 `CUIObject` image widget을 생성하는 runtime factory
 - 1280×720 reference 좌표 보정, draw-order 기반 2D UI picking과 input arbitration
 - stable UI command binding과 Lobby/Scene/Gameplay typed command service 연결
