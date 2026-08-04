@@ -26,7 +26,7 @@ public:
 	~CHUDRuntimeView();
 
 public:
-	/* strOwnerClass: HUD document class name ("LanceMaster", "WarLord", ...). Slots with no
+	/* strOwnerClass: HUD document class name ("LanceMaster", "Gunslinger", ...). Slots with no
 	owner (shared/common chrome) always draw; slots owned by a different class are skipped.
 	iStage: 0 = base only, 1 = base + stage-1 layers, 2 = base + stage-1 + stage-2 layers
 	(monotonic reveal -- a slot visible from stage N stays visible at every stage after N). */

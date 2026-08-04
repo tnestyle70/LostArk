@@ -2,6 +2,8 @@
 
 #include "Camera_Free.h"
 #include "Character.h"
+#include "CharacterSelectionState.h"
+#include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -23,7 +25,10 @@ CLevel_Development::~CLevel_Development()
 {
 #ifdef _DEBUG
 	if (m_isMapEditorWorkspace)
+	{
+		CCombatHUDViewModel::Get().Reset_RuntimeState();
 		CMapEditorWorkspaceService::Cancel();
+	}
 #endif
 }
 
@@ -37,9 +42,16 @@ HRESULT CLevel_Development::Initialize()
 		CMapEditorWorkspaceService::Is_Requested();
 	if (m_isMapEditorWorkspace)
 	{
+		auto previewClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER;
+		CCharacterSelectionState::Try_Get_SelectedClass(previewClass);
+
 		if (FAILED(Ready_Lights()) ||
-			FAILED(Ready_Camera(TEXT("Layer_Camera"))))
+			FAILED(Ready_Camera(TEXT("Layer_Camera"))) ||
+			!CCombatHUDViewModel::Get().Initialize_Definitions() ||
+			!CCombatHUDViewModel::Get().Apply_CharacterPreview(previewClass))
 		{
+			CCombatHUDViewModel::Get().Reset_RuntimeState();
 			CMapEditorWorkspaceService::Cancel();
 			return E_FAIL;
 		}
