@@ -84,7 +84,11 @@ request
 
 실패·취소 시 active descriptor, 현재 객체, dirty 상태를 유지한다. 새 객체는 전용
 generation layer 또는 exact pointer 목록으로 rollback한다. Prototype을 기존 tag로 재사용할
-때는 같은 normalized model path인지 검증해 tag 충돌을 성공으로 오인하지 않는다.
+때는 같은 normalized model path인지 검증해 tag 충돌을 성공으로 오인하지 않는다. 서로 다른
+Area가 같은 serialized prototype tag를 사용하더라도 같은 Development Level 안에서 다른
+모델을 가리킬 수 있으므로, `Load_Source`가 만든 editor runtime tag는
+`MapEditorArea:<AreaId>:` namespace로 격리한다. 저장 catalog의 tag와 제품 `Load_Area`
+경로는 변경하지 않는다.
 
 dirty 집합은 visual placement, gameplay, navigation paint, navigation blocker다. F1 창을
 숨기거나 다른 도구로 전환하는 것은 세션을 유지한다. Area switch/reload/editor exit만
