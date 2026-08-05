@@ -33,12 +33,26 @@ HRESULT CTexture::Initialize_Prototype(const tchar_t* pTextureFilePath, uint32_t
 
 		HRESULT		hr = {};
 
+		/* CTexture currently backs display-space UI sprites.  Preserve the authored
+		   bytes because these sprites render after scene gamma into an UNORM back buffer. */
 		if (false == lstrcmp(szEXT, TEXT(".dds")))
-			hr = CreateDDSTextureFromFile(m_pDevice.Get(), szTextureFilePath, nullptr, &pSRV);
+		{
+			hr = CreateDDSTextureFromFileEx(
+				m_pDevice.Get(), szTextureFilePath, 0,
+				D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+				0, 0, DDS_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+		}
 		else if (false == lstrcmp(szEXT, TEXT(".tga")))
+		{
 			hr = E_FAIL;
+		}
 		else
-			hr = CreateWICTextureFromFile(m_pDevice.Get(), szTextureFilePath, nullptr, &pSRV);
+		{
+			hr = CreateWICTextureFromFileEx(
+				m_pDevice.Get(), szTextureFilePath, 0,
+				D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+				0, 0, WIC_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+		}
 
 		m_Textures.push_back(move(pSRV));
 	}

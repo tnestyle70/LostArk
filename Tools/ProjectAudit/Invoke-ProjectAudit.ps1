@@ -780,11 +780,15 @@ try {
 		$lobbyCommandHeaderSource -match 'MAP_EDITOR_WORKSPACE' -and
 		$characterSelectSource -match 'character-select\.enter-bern' -and
 		$characterSelectSource -match 'character-select\.enter-valtan' -and
-		$characterSelectSource -match 'character-select\.enter-test' -and
+		$characterSelectSource -match 'character-select\.server-play' -and
+		$characterSelectSource -match 'character-select\.return-preview' -and
 		$characterSelectSource -match 'ImGui::RadioButton\("Preview"' -and
-		$characterSelectSource -match 'Server Arena \(Lobby-approved\)' -and
+		$characterSelectSource -match 'Server Play \(Lobby-approved\)' -and
+		$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::TEST\)' -and
+		$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::CHARACTER_SELECT\)' -and
+		$characterSelectSource -notmatch 'ImGui::BeginDisabled\(true\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Summon Valtan \(Lazy\)"\)' -and
-		$characterSelectSource -match 'ImGui::Button\("Enter Test"\)' -and
+		$characterSelectSource -notmatch 'ImGui::Button\("Enter Test"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Bern"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Valtan Map"\)' -and
 		$characterSelectSource -match 'CClientReplication' -and
@@ -803,6 +807,7 @@ try {
 		$lobbySource -match 'accepted\.iNetEntityId' -and
 		$frontendHarnessProject -match 'CharacterSelectionState\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectServerHandoff' -and
+		$frontendHarnessSource -match 'Test_CharacterSelectPreviewReturnCommand' -and
         $lobbySource -match '"Test"' -and
         $lobbySource -match '"Character Select"' -and
         $lobbySource -match '"Valtan"' -and

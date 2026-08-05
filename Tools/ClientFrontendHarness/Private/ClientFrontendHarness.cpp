@@ -191,6 +191,29 @@ namespace
 			"Changing Class Clears Stale Server Handoff");
 	}
 
+	void Test_CharacterSelectPreviewReturnCommand(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+		runner.Require(
+			CLobbyCommandService::Request(
+				LOBBY_STAGE::CHARACTER_SELECT,
+				token) &&
+			INVALID_LOBBY_COMMAND_TOKEN != token,
+			"Server Arena Preview Selection Stages Tokenized Return");
+
+		LOBBY_COMMAND command{};
+		runner.Require(
+			CLobbyCommandService::Try_Consume(command) &&
+			LOBBY_STAGE::CHARACTER_SELECT == command.eStage &&
+			LOBBY_COMMAND_PURPOSE::GAMEPLAY == command.ePurpose &&
+			token == command.iToken,
+			"Lobby Consumes Exact Character Select Preview Return");
+		Require_NoPendingCommand(
+			runner,
+			"Preview Return Leaves No Stale Lobby Command");
+	}
+
 	std::string Read_Text(const std::filesystem::path& path)
 	{
 		std::ifstream input(path, std::ios::binary);
@@ -396,6 +419,7 @@ int main()
 
 	Test_NormalHandoff(runner);
 	Test_CharacterSelectServerHandoff(runner);
+	Test_CharacterSelectPreviewReturnCommand(runner);
 	Test_EntryPurpose(runner);
 	Test_ExactCancellation(runner);
 	Test_StaleTokenCannotCancelNewCommand(runner);

@@ -6,7 +6,7 @@
 
 ## 1. 완료 결과
 
-Character Select 최초 진입은 socket 없는 Preview다. class를 고르고 `Enter Test`를 누르면 tokenized TEST가
+Character Select 최초 진입은 socket 없는 Preview다. class를 고르고 `Server Play`를 선택하면 tokenized TEST가
 Lobby로 전달되고, Lobby가 `S2C_ENTER_ACCEPTED`의 protocol/world/player/entity를 검증한 뒤 기존 socket과
 queued snapshot을 one-shot handoff한다. 같은 visual map으로 다시 열린 Server Arena는 직접 connect/send/
 approval을 반복하지 않고 local replicated character를 gameplay actor와 Animation Tool target으로 사용한다.
@@ -48,7 +48,7 @@ disabled boss template도 publish 시 navigation projection 검사를 받는다.
 1. Preview에서 class를 선택하고 F1 Animation Tool을 연다.
 2. `PlayerSkills.json`에서 나온 key/skill row에 원하는 clip을 지정하고 Save한다.
 3. 저장 정본 `Data/Animation/Authored/<Class>/<Class>.skillbindings.json`을 확인한다.
-4. `Enter Test` → Lobby 승인 → 같은 visual map Server Arena 재진입 뒤 실제 key를 눌러 snapshot 재생을 확인한다.
+4. `Server Play` → Lobby 승인 → 같은 visual map Server Arena 재진입 뒤 실제 key를 눌러 snapshot 재생을 확인한다.
 5. ACTIVE는 해당 row의 clip을, COMBO는 Server가 내려준 `iComboStage`의 BA row를 재생한다.
 6. animation만 수정할 때는 clip/순서만 바꾸고, key·skillId·combo 단계 수 변경은 Gameplay data와 Server
    계약을 먼저 갱신한다.
@@ -82,3 +82,17 @@ lock을 재생성하지 않았으므로 code build/harness 성공과 resource hy
 5. disconnect에서 replicated state가 정리되고 Lobby로 복귀하는지
 
 Resources lock이 다시 hydrate·verify되기 전에는 DeepAssetHash와 전체 visual smoke를 PASS로 기록하지 않는다.
+
+## 7. Preview / Server Play ImGui 교정
+
+상단 mode 라디오를 감싸던 상시 `BeginDisabled(true)`를 제거했다. 안정 상태에서는 두 radio가 정상
+표시되며 현재 mode 재선택은 no-op이다. Preview의 `Server Play (Lobby-approved)`는 tokenized TEST를,
+Server Arena의 `Preview`는 tokenized CHARACTER_SELECT를 기존 Lobby command 경계에 제출한다.
+CONNECTING, RETURNING, Level transition 중에는 양쪽을 잠그고 하단 중복 `Enter Test` 버튼은 제거했다.
+
+Frontend harness는 CHARACTER_SELECT Preview 복귀 token의 exact stage/purpose/token consume과 stale command
+부재를 검증한다. Debug/Release 정본 build에서 Engine/Shared/Server/Client compile/link,
+NetworkProtocolHarness, ClientFrontendHarness, Server contract가 모두 통과했다. ProjectAudit 신규 UI·handoff
+계약도 통과했으며 전체 종료 코드는 기존 `asset-lock.inventory`, 작업 중인
+`effect.g4-typed-resource-boundary` 두 항목 때문에 실패다. 최종 radio 클릭과 왕복 화면은 사용자의 최신 EXE
+수동 smoke 대상으로 남긴다.
