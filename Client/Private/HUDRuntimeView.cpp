@@ -196,10 +196,22 @@ ID3D11ShaderResourceView* Client::CHUDRuntimeView::Get_Or_Load_Texture(const str
 	ComPtr<ID3D11ShaderResourceView> pSRV = { nullptr };
 
 	HRESULT hr = {};
+	/* ImGui writes this HUD after scene gamma into an UNORM back buffer.  Keep the
+	   authored display values instead of letting the loaders decode them to linear. */
 	if (0 == _wcsicmp(ResolvedPath.extension().c_str(), L".dds"))
-		hr = CreateDDSTextureFromFile(m_pDevice.Get(), ResolvedPath.c_str(), nullptr, &pSRV);
+	{
+		hr = CreateDDSTextureFromFileEx(
+			m_pDevice.Get(), ResolvedPath.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+			0, 0, DDS_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+	}
 	else
-		hr = CreateWICTextureFromFile(m_pDevice.Get(), ResolvedPath.c_str(), nullptr, &pSRV);
+	{
+		hr = CreateWICTextureFromFileEx(
+			m_pDevice.Get(), ResolvedPath.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+			0, 0, WIC_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+	}
 
 	m_TextureCache[strPath] = pSRV;
 

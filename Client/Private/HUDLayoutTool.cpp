@@ -1487,12 +1487,22 @@ ID3D11ShaderResourceView* Client::CHUDLayoutTool::Get_Or_Load_Texture(const stri
 	ComPtr<ID3D11ShaderResourceView> pSRV = { nullptr };
 
 	HRESULT hr = {};
+	/* The authoring canvas and Debug runtime preview share the product HUD's
+	   display-space contract, so their cached SRVs must preserve authored bytes. */
 	if (0 == _wcsicmp(Ext.c_str(), L".dds"))
-		hr = CreateDDSTextureFromFile(
-			m_pDevice.Get(), resolvedPath.c_str(), nullptr, &pSRV);
+	{
+		hr = CreateDDSTextureFromFileEx(
+			m_pDevice.Get(), resolvedPath.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+			0, 0, DDS_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+	}
 	else
-		hr = CreateWICTextureFromFile(
-			m_pDevice.Get(), resolvedPath.c_str(), nullptr, &pSRV);
+	{
+		hr = CreateWICTextureFromFileEx(
+			m_pDevice.Get(), resolvedPath.c_str(), 0,
+			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE,
+			0, 0, WIC_LOADER_IGNORE_SRGB, nullptr, &pSRV);
+	}
 
 	m_TextureCache[strPath] = pSRV;
 
