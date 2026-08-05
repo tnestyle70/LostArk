@@ -40,7 +40,8 @@ namespace
 			left.minimumX == right.minimumX &&
 			left.minimumZ == right.minimumZ &&
 			left.maximumX == right.maximumX &&
-			left.maximumZ == right.maximumZ;
+			left.maximumZ == right.maximumZ &&
+			left.excludedAssetGroupId == right.excludedAssetGroupId;
 	}
 
 	bool_t IsFinite(const float3_t& value)
@@ -136,11 +137,17 @@ void CMapPlacementRuntime::Apply_LoadScope(
 			records.end(),
 			[&catalog, &loadScope](const MAP_PLACEMENT_RECORD& record)
 			{
+				const MAP_ASSET_ENTRY* pAsset =
+					catalog.Find(record.assetId);
+				if (nullptr != pAsset &&
+					!loadScope.excludedAssetGroupId.empty() &&
+					pAsset->groupId == loadScope.excludedAssetGroupId)
+				{
+					return true;
+				}
 				if (loadScope.Contains(record.position))
 					return false;
 
-				const MAP_ASSET_ENTRY* pAsset =
-					catalog.Find(record.assetId);
 				return nullptr == pAsset || !loadScope.includeBackground ||
 					MAP_ASSET_RENDER_MODE::BACKGROUND !=
 						pAsset->renderProfile.renderMode;

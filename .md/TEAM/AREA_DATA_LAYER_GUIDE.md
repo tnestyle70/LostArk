@@ -71,6 +71,12 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
 
+Navigation `Walkability` 브러시는 높이가 해석된 셀에 대해 `Block`, `Force Walkable`,
+`Reset` 세 명령을 제공한다. `Block`과 `Force Walkable`은 bake 결과보다 우선하는 수동
+override이며 `Reset`은 해당 셀을 bake 결과 상속으로 되돌린다. `.navpaint` version 2는
+각 행을 `x z BLOCKED|WALKABLE`로 저장하고, 기존 version 1의 `x z` 행은 `BLOCKED`로
+호환 로드한다. 높이가 없는 `NO_SURFACE` 셀은 강제로 이동 가능하게 만들 수 없다.
+
 MapTool은 Client `.navgrid`를 export하거나 제품 Navigation runtime blocker를 등록하지 않는다.
 Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
@@ -83,11 +89,16 @@ Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이
 
 `NpcCatalog.json`은 현재 비어 있고 `CClientReplication`의 world entity presentation은 Valtan boss만 완성되어 있다. 따라서 NPC 버튼과 저장 형식은 있어도 제품 NPC의 catalog → Loader → replication → `CNpc` 표현은 아직 닫히지 않았다.
 
-일반 몬스터, spawn wave, 증분 생산은 저장 schema와 Server consumer가 없다. triggerBox/destroyable은
-world formatVersion 2의 strict parse/save 구조만 있고 MapTool UI와 제품 publisher/Server consumer는
-아직 없다. 제품 publisher는 이 두 kind를 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나
-`npc`/`boss`로 위장하지 않는다. trigger runtime을 열 때는 Server OBB 판정, typed event, dynamic
-navigation, replication, Client deploy presentation과 rollback harness를 한 수직 슬라이스로 추가한다.
+일반 몬스터, spawn wave, 증분 생산은 저장 schema와 Server consumer가 없다. `triggerBox`는
+world formatVersion 2의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
+편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
+제품 publisher/runtime가 admission하는 action은 현재 정확히 하나의 `movePlayer`뿐이다. action은
+`targetPosition[3]`, `durationSeconds(0.05..10)`, `arcHeight(0..1000)`를 소유하며 Server가 yaw가 적용된
+OBB 진입과 포물선 이동을 판정하고 player snapshot으로 복제한다. `triggerOnce=true`는 room 전체에서
+첫 성공 진입 한 번, `false`는 player가 완전히 나간 뒤 다시 들어오는 edge마다 재실행한다. 저작용 wire
+box는 판정 권위가 아니다. `destroyable`, `setCondition`, `setDestroyableState`, 파티 대기, 컷신,
+몬스터 생성 event는 계속 publisher가 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나
+`npc`/`boss`로 위장하지 않는다.
 
 ## 5. Balance 소유권
 

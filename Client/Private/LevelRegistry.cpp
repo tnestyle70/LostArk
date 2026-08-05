@@ -9,11 +9,29 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 
 namespace
 {
 	using namespace Client;
 	using namespace Engine;
+
+	MAP_LOAD_SCOPE MakeFullMapScope(
+		const char_t* excludedAssetGroupId = nullptr)
+	{
+		MAP_LOAD_SCOPE scope
+		{
+			true,
+			true,
+			(std::numeric_limits<f32_t>::lowest)(),
+			(std::numeric_limits<f32_t>::lowest)(),
+			(std::numeric_limits<f32_t>::max)(),
+			(std::numeric_limits<f32_t>::max)()
+		};
+		if (nullptr != excludedAssetGroupId)
+			scope.excludedAssetGroupId = excludedAssetGroupId;
+		return scope;
+	}
 
 	unique_ptr<CLevel> CreateLobby(
 		ComPtr<ID3D11Device> pDevice,
@@ -80,7 +98,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.bern",
 			"LV_BER_BERNCASTLE",
-			{ true, true, -50.f, -50.f, 50.f, 50.f },
+			MakeFullMapScope("landscape"),
 			CreateBern,
 			&CLoader::Ready_For_Bern
 		},
@@ -89,7 +107,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"raid.valtan.arena",
 			"LV_LUT_HEARTRB_ED",
-			{ true, true, 120.5f, -157.5f, 191.5f, -86.f },
+			MakeFullMapScope(),
 			CreateValtanArena,
 			&CLoader::Ready_For_ValtanArena
 		},

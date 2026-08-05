@@ -124,3 +124,128 @@ status가 새 active Area로 바뀔 때까지 기다리고 중복 선택하지 �
 Character Select navigation의 floor 선택은
 `2026-08-04_CHARACTER_SELECT_NAVIGATION_AUTHORING_PLAN.md` 후속 계약을 따른다. 현재 generic
 baker의 visible static 전체 수집을 `Use for Navigation Bake` 완료로 간주하지 않는다.
+
+## 7. Bern 최초 카메라 프레이밍 교정
+
+### 원인
+
+Bern visual placement 50,017개의 전체 bounds에는 도시 본체와 멀리 떨어진 배경·이벤트
+오브젝트가 포함돼 있었다. 기존 `CMapTool::Switch_EditorArea`는 전체 min/max 중점과 span으로
+카메라를 배치했기 때문에 도시가 화면에서 매우 작게 보였다. Bern gameplay의 `playerSpawn`
+4개는 현재 원점 주변 placeholder라 최초 카메라 기준으로 사용할 수 없었다.
+
+### 구현
+
+- Bern Area commit 직후 finite placement의 X/Y/Z를 정렬한다.
+- 축별 중앙값을 최초 look-at center로 사용한다.
+- X/Z 5%~95% span 중 큰 값으로 radius를 계산해 먼 outlier를 제외한다.
+- 계산 실패 시 기존 full-bounds frame을 유지한다.
+- Valtan의 기존 playable-center override와 모든 저장 문서는 변경하지 않았다.
+
+현재 정본 50,017개에서 계산된 값은 다음과 같다.
+
+```text
+center = (145.568486, 41.5955225, -69.5091992)
+central span X = 196.4528422
+central span Z = 431.206426
+radius = 150.9222491
+```
+
+### 검증
+
+- `Client/Default/Client.vcxproj` x64 Debug build: 성공
+- Engine/Shared/Client 증분 링크: 성공
+- `Client/Bin/Debug/Client.exe` 생성: 성공
+- CP949, BOM 없음, CRLF 유지: 성공
+- placement, catalog, gameplay, navigation 데이터 변경: 없음
+- `git diff --check`: 성공
+- `ProjectAudit`: Map/navigation 검증과 gameplay balance validate/publish는 성공했으나 전체 결과는
+  기존 asset pack lock 불일치, Effect G1 문서 경계, DimensionMaster asset/runtime-animation
+  항목 4건으로 실패했다. 이번 카메라 변경 파일과 직접 관련된 실패는 없다.
+- Bern 수동 진입 육안 검증: 사용자 실행 확인 대기
+
+## 8. Map Editor와 제품 Bern/Valtan 표시 데이터 연결
+
+### 원인 확인
+
+- Map Editor는 `Data/Maps/Imported` catalog와 `Data/Maps/Authoring` placement를 읽는다.
+- 제품 Bern/Valtan은 publisher가 만든 `Client/Bin/DataFiles/Map`만 읽는다.
+- Bern source와 runtime의 mapset 및 13개 shard catalog/placement는 byte hash까지 일치했다.
+- Valtan은 catalog가 byte hash까지 일치했고 placement 13,192개도 줄바꿈만 정규화하면 내용이
+  일치했다.
+- 제품 화면이 잘려 보인 직접 원인은 데이터 불일치가 아니라 `CLevelRegistry`의 좁은
+  `MAP_LOAD_SCOPE`였다. Loader와 `CMapPlacementRuntime`이 범위 밖 placement를 제거하고 있었다.
+
+### 구현
+
+- `MAP_LOAD_SCOPE`에 optional `excludedAssetGroupId`를 추가했다.
+- scope cache 비교에도 제외 group ID를 포함해 서로 다른 scope의 staged record를 재사용하지 않는다.
+- Bern 제품 Level은 published map 전체를 읽되 `groupId == "landscape"`인 42개 placement만
+  제외한다. 이는 Map Editor의 기본 `Show Bern Landscape = false` 화면과 같은 정책이다.
+- Valtan 제품 Level은 published placement 13,192개 전체를 읽는다.
+- Character Select와 Development descriptor의 기존 scope는 변경하지 않았다.
+- Loader와 runtime placement가 동일한 descriptor scope를 계속 소비하며, 제품 Level이 Authoring
+  문서를 직접 읽는 우회 경로는 추가하지 않았다.
+
+### 기대 배치 수
+
+```text
+Bern source total       = 50,017
+Bern landscape excluded = 42
+Bern product visual     = 49,975
+Valtan product visual   = 13,192
+```
+
+### 검증
+
+- `Client/Default/Client.vcxproj` x64 Debug build: 경고 0, 오류 0
+- `Client/Bin/Debug/Client.exe` 링크: 성공
+- `maps.product-editor-visual-scope` ProjectAudit check: 성공
+- `git diff --check`: 성공
+- ProjectAudit 전체 결과: 기존 무관 항목 4건만 실패
+  (`asset-lock.inventory`, `effect.g1-document-boundary`, DimensionMaster asset/runtime-animation 2건)
+- Lobby에서 Bern/Valtan을 각각 진입해 Map Editor 화면과 육안 비교하는 수동 smoke: 사용자 실행 확인 대기
+
+이후 Map Editor에서 저장한 변경을 제품 Level에 반영할 때는 제품이 Authoring 문서를 직접 읽게
+바꾸지 않는다. 반드시 Area별 `Publish-MapAuthoring.ps1`을 거쳐 runtime 문서를 갱신한다.
+
+## 9. 제품 Bern 진입 위치 연결
+
+### 추가 원인 확인
+
+- Bern Authoring의 단일 placement 50,017개와 runtime 13개 shard를 합친 placement 50,017개는
+  행 단위 집합까지 일치했다. 따라서 제품 Bern이 Map Editor와 다르게 보인 원인은 시각 맵 데이터
+  누락이 아니었다.
+- `Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json`의 `playerSpawn` 4개가 모두 원점 부근
+  임시 좌표를 사용하고 있었다.
+- 제품 Bern 카메라는 Server가 승인·생성한 플레이어를 따라가므로, Map Editor처럼 배치 bounds의
+  중앙을 자동으로 바라보지 않는다. 이 차이 때문에 동일한 맵을 로드하고도 멀리 떨어진 화면으로
+  시작했다.
+
+### 구현
+
+- SL00의 실제 바닥 `bg_ber_berncastle_floor02d_sm_ksr` 배치가 존재하는
+  `(144.818887, 42.56, -70.3215674)` 부근을 제품 진입 기준점으로 선택했다.
+- Bern gameplay authoring revision을 2에서 3으로 올리고 네 spawn slot을 다음처럼 배치했다.
+
+```text
+entry   = (144.8, 42.7, -70.3)
+party02 = (145.8, 42.7, -70.3)
+party03 = (143.8, 42.7, -70.3)
+party04 = (144.8, 42.7, -71.3)
+```
+
+- Client의 카메라나 Bern Level에 좌표를 하드코딩하지 않았다. Server authority 정본인
+  `Gameplay.world.json`만 수정하고 `Publish-WorldGameplay.ps1`로
+  `Server/Bin/DataFiles/World/BERN.worldbootstrap`을 다시 생성했다.
+
+### 검증
+
+- `Publish-WorldGameplay.ps1 -Mode Validate`: 성공
+- `Publish-WorldGameplay.ps1 -Mode Publish`: 성공
+- 생성된 `BERN.worldbootstrap`: revision 3 및 네 spawn 좌표 일치
+- `Server.exe --contract-test`: failures 0
+- ProjectAudit의 world/map 관련 검사: 성공
+- ProjectAudit 전체 결과: 기존 무관 항목 4건만 실패
+  (`asset-lock.inventory`, `effect.g1-document-boundary`, DimensionMaster asset/runtime-animation 2건)
+- Server와 Client를 완전히 재시작한 뒤 Lobby의 Bern 명령으로 진입하는 수동 smoke: 사용자 실행 확인 대기

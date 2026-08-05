@@ -724,9 +724,11 @@ SET_DESTROYABLE_STATE(destroyablePlacementId, state)
 
 `CWorldGameplayDocument`는 formatVersion 2의 `triggerBox`와 `destroyable`을 strict parse/validate/atomic
 save할 수 있고 네 Area authoring 문서도 v2로 이관됐다. uint64 deploy identity는 JSON double 손실을
-막기 위해 decimal string으로 저장한다. 다만 현재 MapTool UI, publisher, Server trigger authority,
-dynamic navigation, Shared replication, Client deploy presentation이 한 수직 슬라이스로 닫히지 않았으므로
-제품 publisher는 두 kind를 fail-closed로 거부한다. actor-only 기존 문서는 정상 publish된다.
+막기 위해 decimal string으로 저장한다. Debug Development MapTool은 action이 없는 `triggerBox`를
+disabled draft로 배치·선택·크기 편집·저장/재로드하며 3D wire OBB로 표시한다. 다만 publisher,
+Server trigger authority, dynamic navigation, Shared replication, Client deploy presentation이 한 수직
+슬라이스로 닫히지 않았으므로 제품 publisher는 두 kind를 fail-closed로 거부한다. actor-only 기존
+문서는 정상 publish된다.
 
 ### 14.4 Monster와 wave 확장
 
@@ -1072,7 +1074,7 @@ promotion 실패와 기존 runtime 보존을 검증한다.
 | playerSpawn/Boss world kind | `CURRENT` |
 | NPC world kind/catalog | `PARTIAL`: schema/publisher만 있고 admitted actor와 Client presentation 없음 |
 | Character Select lazy Valtan | `CURRENT` |
-| triggerBox/destroyable authoring schema v2 | `PARTIAL`: document parse/save, runtime admission은 fail-closed |
+| triggerBox/destroyable authoring schema v2 | `PARTIAL`: document parse/save + Trigger Box disabled-draft MapTool UI, runtime admission은 fail-closed |
 | trigger runtime/dynamic blocker/replication | `TARGET PLAN` |
 | 일반 Monster/wave | `TARGET`, 첫 실제 actor 전에는 파일 없음 |
 | Balance Tool offline editor | `CURRENT`: Save/provenance/Validate/Publish, Server restart 방식 |

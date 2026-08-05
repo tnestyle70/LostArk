@@ -71,6 +71,11 @@ private:
 	HRESULT Ready_MapAuthoringCore(uint32_t iLevelIndex);
 	HRESULT Ready_Camera_Prototype(uint32_t iLevelIndex);
 	HRESULT Ready_StaticMeshShader(uint32_t iLevelIndex);
+	HRESULT Ready_AnimatedMeshShader(uint32_t iLevelIndex);
+	HRESULT Ready_DeployPropCore(uint32_t iLevelIndex);
+	HRESULT Ready_DeployPropArea(
+		uint32_t iLevelIndex,
+		const std::string& areaId);
 	HRESULT Ready_Character_Rendering(
 		uint32_t iLevelIndex,
 		std::span<const LostArk::Shared::CHARACTER_CLASS_ID> characterClasses);

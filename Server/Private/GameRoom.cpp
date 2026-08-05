@@ -90,6 +90,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_ServerNavigation.Get_Status();
 		return;
 	}
+	if (!m_ServerTriggerSystem.Initialize(
+		m_WorldBootstrap.Get_Placements(), m_strStatus))
+	{
+		return;
+	}
 	if (!Initialize_WorldEntities())
 		return;
 	if (nullptr == Find_AvailablePlayerSpawn())
@@ -161,6 +166,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 
 	m_TickDamageEvents.clear();
 	Update_Players(fixedDeltaSeconds);
+	const std::uint32_t updateTick =
+		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
+		1u : m_iServerTick + 1u;
+	m_ServerTriggerSystem.Evaluate_Entries(m_Players, updateTick);
 	Update_WorldEntities(fixedDeltaSeconds);
 	++m_iServerTick;
 	if (0u == m_iServerTick)
@@ -307,6 +316,7 @@ void LostArk::Server::CGameRoom::Leave(
 	}
 
 	const NET_ENTITY_ID netEntityId = playerIter->second.iNetEntityId;
+	m_ServerTriggerSystem.Remove_Player(playerId);
 	if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
 	m_PlayerIdByEntityId.erase(netEntityId);
@@ -632,7 +642,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.fPositionY = player.fPositionY;
 		snapshot.fPositionZ = player.fPositionZ;
 		snapshot.fYawDegrees = player.fYawDegrees;
-		snapshot.eLocomotionState = player.hasMoveGoal ?
+		snapshot.eLocomotionState =
+			(player.hasMoveGoal || player.TriggerMove.isActive) ?
 			PLAYER_LOCOMOTION_STATE::MOVING : PLAYER_LOCOMOTION_STATE::IDLE;
 		snapshot.eAction = player.eAction;
 		snapshot.iSkillId = player.iCurrentSkillId;
@@ -770,6 +781,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 {
 	if (LostArk::Shared::INVALID_NET_ENTITY_ID == netEntityId ||
 		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind ||
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::END == placement.eKind)
 	{
 		m_strStatus = "World entity placement is invalid";
@@ -838,7 +850,8 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 		m_WorldBootstrap.Get_Placements())
 	{
 		if (!placement.isEnabled ||
-			placement.eKind == WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN)
+			placement.eKind == WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN ||
+			placement.eKind == WORLD_BOOTSTRAP_KIND::TRIGGER_BOX)
 		{
 			continue;
 		}
@@ -864,6 +877,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+		if (m_ServerTriggerSystem.Update_PlayerMotion(
+			player, fixedDeltaSeconds))
+		{
+			continue;
+		}
 		m_PlayerSkillSystem.Update(
 			player,
 			m_WorldEntities,

@@ -1,18 +1,86 @@
 # Map Gameplay Trigger·Destroyable·NPC·동적 Navigation 데이터 확장 PLAN
 
-> 2026-08-05 부분 구현: world authoring formatVersion 2 migration과
-> `CWorldGameplayDocument` triggerBox/destroyable parse/validate/atomic save 구조까지 반영됐다.
-> publisher/Server/dynamic nav/replication/Client presentation/MapTool widget은 아직 이 PLAN의 TARGET이며
-> 제품 publisher가 신규 kind를 fail-closed로 거부한다. 실제 상태는
-> `2026-08-05_BALANCE_PROVENANCE_IMGUI_MAP_DATA_RESULT.md`를 따른다.
+> 2026-08-05 1차 수직 슬라이스 구현: world authoring formatVersion 2와
+> `CWorldGameplayDocument` triggerBox/destroyable parse/validate/atomic save 구조에 더해,
+> 단일 `movePlayer` action의 MapTool 저작, publisher/bootstrap v3, Server OBB 진입·이동,
+> Shared player snapshot, Client 표현까지 반영됐다. destroyable, setCondition,
+> setDestroyableState, 파티 대기, 컷신, 몬스터 생성은 여전히 TARGET이며 publisher가 fail-closed로 거부한다. 실제 상태는
+> `2026-08-05_BALANCE_PROVENANCE_IMGUI_MAP_DATA_RESULT.md`와
+> `2026-08-05_VALTAN_DEPLOYPROP_RUNTIME_RESTORE_RESULT.md`를 따른다.
+> 같은 날 Deploy 시각 생성 기반은 `CDeployPropRuntime` 단일 경로로 복구되어 MapTool Valtan Area와 `LEVEL::VALTAN_ARENA`가 9 asset/85 placement를 stage/commit한다. Server destroyable 상태와 dynamic navigation 연동은 여전히 TARGET이다.
 
 작성일: 2026-08-05
-상태: 구현 전 정본 (범위·계약 확정용 상위 계획. G별 구현 착수 시 이 문서를 기준으로 G별 전체 코드 PLAN을 분리 작성한다)
+상태: 1차 movePlayer 수직 슬라이스 구현 완료, 나머지 G는 계획 유지
+
+## 2026-08-05 G01A 완료 계약: movePlayer Trigger Box
+
+### Authoring JSON
+
+```json
+{
+  "placementId": "trigger.valtan.jump.01",
+  "kind": "triggerBox",
+  "position": [0.0, 0.0, 0.0],
+  "yawDegrees": 0.0,
+  "enabled": true,
+  "halfExtents": [2.0, 1.0, 2.0],
+  "triggerOnce": false,
+  "events": [
+    {
+      "type": "movePlayer",
+      "targetPosition": [10.0, 3.0, 0.0],
+      "durationSeconds": 0.8,
+      "arcHeight": 4.0
+    }
+  ]
+}
+```
+
+- enabled trigger는 `movePlayer` event를 정확히 하나 요구한다.
+- `durationSeconds`는 0.05..10, `arcHeight`는 0..1000, 각 half extent는 0 초과 1000 이하다.
+- `triggerOnce=true`는 room 전체 첫 성공 진입 한 번, false는 player별 exit 후 re-enter edge마다 실행한다.
+- 목적지 이동은 navigation 경로 요청이 아니라 authored traversal이다. Server가 시작점·목적지·시간·포물선 높이를 소유하고 30 Hz player snapshot으로 복제한다.
+
+### 변경 파일과 소유 이유
+
+| 경계 | 파일 | 구현 |
+|---|---|---|
+| Data/Client document | `Client/Public/WorldGameplayDocument.h`, `Client/Private/WorldGameplayDocument.cpp` | movePlayer strict parse/validate/atomic save |
+| MapTool | `Client/Public/MapTool.h`, `Client/Private/MapTool.cpp`, `Client/Public/Trigger_Box.h`, `Client/Private/Trigger_Box.cpp` | 박스 배치, wire OBB, 목적지 pick, duration/arc 편집 |
+| Publisher | `Tools/WorldPipeline/Publish-WorldGameplay.ps1` | movePlayer만 admission, bootstrap v3 생성 |
+| Shared | `Shared/Public/Network/PacketMessages.h`, `Shared/Public/Network/PacketType.h`, `Shared/Private/Network/PacketMessages.cpp` | protocol 10, `TRIGGER_MOVE` snapshot validation |
+| Server | `ServerTriggerSystem`, `WorldBootstrap`, `GameRoom`, `ServerPlayer` | yaw OBB enter edge, once/rearm, 직선·포물선 이동 |
+| Client presentation | `Client/Private/Character.cpp` | authoritative action edge 수용·중복 억제; 전용 jump clip 전에는 RUN 표현 |
+| Harness | `ServerGameplayContractTests.cpp`, `NetworkProtocolHarness.cpp` | 진입·중간 포물선·정확한 도착·재진입·잘못된 snapshot 거부 |
+
+### 명시적 미지원
+
+파티 전원 대기/타이머, 컷신 전환, 몬스터 spawn, destroyable 상태, dynamic navigation condition은 이번 action에 포함하지 않는다. 이 기능들은 각자 Server state·replication·실패 rollback이 필요한 후속 수직 슬라이스다.
 복원 대상 이전 작업:
 - `.md/GB/07-31/2026-07-31_LOSTARK_RAID_AUTHORING_CAMERA_NAVIGATION_TRIGGER_PLAN.md` (condition 3층 소유권, `Set_Condition` public endpoint, `CNavigationConditionRuntime` 설계)
 - `.md/GB/07-30/2026-07-30_LOSTARK_VALTAN_DYNAMIC_ENVIRONMENT_DEPLOY_RUNTIME_PLAN.md` / `_RESULT.md` (DeployProp catalog/placement, INTACT/FRACTURED/DESPAWNED, ANIM on/off)
 - `.md/GB/07-30/2026-07-30_LOSTARK_VALTAN_DESTRUCTIBLE_ENVIRONMENT_SKY_AUDIT_RESULT.md` (필수 저장 계약, 모델 없는 상태 레코드 보존)
 - `.md/GB/08-04/2026-08-04_DEVELOPMENT_MAP_EDITOR_WORKSPACE_PLAN.md` / `_RESULT.md` (editor workspace 경계, DeployProp authoring 유예, trigger 유예)
+
+## 2026-08-05 단계 착수: MapTool Trigger Box 저작 기반
+
+이번 착수는 사용자가 직접 위치를 배치하기 전에 필요한 G05의 Trigger Box 저작 기반만 구현한다.
+요청하지 않은 점프·등반·파티 대기·컷신·몬스터 생성 event와 Server authority는 이 변경에
+추측해서 넣지 않는다.
+
+완료 조건은 다음과 같다.
+
+1. 사용자가 만든 `Client/Public/Trigger_Box.h`, `Client/Private/Trigger_Box.cpp`를 실제
+   `CGameObject` 파생 editor presentation으로 구현하고 Development Map Editor에서만 prototype을 등록한다.
+2. MapTool World Gameplay에서 `Trigger Box`를 선택해 표면에 배치하고 position, yaw,
+   half extents, once 정책을 편집할 수 있다.
+3. 아직 typed event가 없는 박스는 `enabled: false`, `events: []`인 disabled draft로만 저장한다.
+   event가 없는 박스를 enabled 상태로 바꾸는 것은 validation이 거부한다.
+4. Area load/reload는 trigger presentation을 먼저 stage하고 전부 성공했을 때만 기존 presentation과
+   문서를 교체한다. 실패하면 기존 Area와 박스를 유지한다.
+5. editor에서는 enabled/disabled/selected 상태를 구분하는 3D wire OBB로 보인다.
+6. `Publish-WorldGameplay.ps1`의 triggerBox fail-closed 정책은 유지한다. 이 단계 완료는 제품에서
+   박스를 밟았을 때 동작한다는 뜻이 아니다.
 
 ## G00. 실측 결론과 범위
 
@@ -24,7 +92,7 @@
 | Valtan(boss) spawn 위치 지정 | 완료. 같은 탭의 `boss` kind + `BOSS_VALTAN`/`ENCOUNTER_VALTAN` (Data/Worlds/LV_LUT_HEARTRB_ED) | 변경 없음 |
 | NPC 설치 | 절반. schema/publisher/Server spawn은 지원하나 `NpcCatalog.json`이 비어 있고 `CClientReplication::Apply_WorldEntitySpawn`이 BOSS 외 kind를 거부 (ClientReplication.cpp:326-330). `CNpc`는 인스턴스화 경로 없음 | G04 |
 | 트리거 박스 설치 (ID 기반) | 없음. 세 층(publisher/Server/Client) kind가 `playerSpawn\|npc\|boss`로 닫힘 | G01+G03+G05 |
-| destroyable placement id | 시각 계층만 존재. `.deployplacements`가 stable `runtimePlacementId(uint64)` 85건 소유, `CDeployPropObject` 상태 전환 실존. gameplay/Server 계약 없음, 현재 로드 호출자 0곳 | G01+G03+G04 |
+| destroyable placement id | `.deployplacements`가 stable `runtimePlacementId(uint64)` 85건 소유하고 `CDeployPropRuntime`이 MapTool/Valtan 제품 Level에서 이를 생성한다. gameplay/Server 상태 계약은 아직 없음 | G01+G03+G04 |
 | 트리거 발동 → 애니메이션 재생 | 조각만 존재. `CDeployPropObject::Set_State`가 ANIM kind의 "on"/"off" non-loop clip 재생을 이미 구현. 트리거·복제 경로 없음 | G03+G04 |
 | 유동적 walkable cell 변화 | Client 조각만 존재. `.navblockers`(region id+condition id+cells) 편집과 `CNavGrid::Register_RuntimeBlocker/Set_RuntimeBlockerActive`는 실존하나 publisher가 `.navblockers`를 읽지 않고 Server `CServerNavigation`에는 동적 API가 전혀 없음 | G02+G03 |
 

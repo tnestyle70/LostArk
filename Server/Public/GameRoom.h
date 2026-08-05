@@ -7,6 +7,7 @@
 #include "GameplayCatalog.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "ServerTriggerSystem.h"
 #include "ValtanBrain.h"
 
 #include <cstddef>
@@ -116,6 +117,7 @@ namespace LostArk::Server
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalog m_GameplayCatalog;
 		CServerNavigation m_ServerNavigation;
+		CServerTriggerSystem m_ServerTriggerSystem;
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CValtanBrain m_ValtanBrain;
 		std::vector<SERVER_WORLD_ENTITY> m_WorldEntities;

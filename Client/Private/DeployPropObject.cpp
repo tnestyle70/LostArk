@@ -80,7 +80,8 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 	if (nullptr == pArg)
 		return E_FAIL;
 	const DEPLOY_PROP_DESC desc = *static_cast<DEPLOY_PROP_DESC*>(pArg);
-	if (0 == desc.placement.runtimePlacementId ||
+	if (desc.prototypeLevelIndex >= ETOUI(LEVEL::END) ||
+		0 == desc.placement.runtimePlacementId ||
 		desc.placement.assetId.empty() || desc.intactPrototypeTag.empty() ||
 		!std::isfinite(desc.placement.uniformScale) ||
 		desc.placement.uniformScale <= 0.000001f ||
@@ -130,19 +131,29 @@ HRESULT CDeployPropObject::Render()
 		m_pFracturedModelCom : m_pIntactModelCom);
 }
 
-void CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
+bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
 {
+	if (state != DEPLOY_PROP_STATE::INTACT &&
+		state != DEPLOY_PROP_STATE::FRACTURED &&
+		state != DEPLOY_PROP_STATE::DESPAWNED)
+	{
+		return false;
+	}
+	if (m_State == state)
+		return true;
+
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0)
 	{
 		if (state == DEPLOY_PROP_STATE::INTACT &&
 			!Apply_LogicalAnimation(m_pIntactModelCom, "on"))
-			return;
+			return false;
 		if (state == DEPLOY_PROP_STATE::FRACTURED &&
 			!Apply_LogicalAnimation(m_pIntactModelCom, "off"))
-			return;
+			return false;
 	}
 	m_State = state;
+	return true;
 }
 
 bool_t CDeployPropObject::Is_AnimBindPoseOnly() const
@@ -158,16 +169,16 @@ HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary") :
 		TEXT("Prototype_Component_Shader_VtxMeshBinary");
 	if (FAILED(__super::Add_Component(
-		ETOUI(LEVEL::DEVELOPMENT), shaderTag,
+		desc.prototypeLevelIndex, shaderTag,
 		TEXT("Com_Shader"), m_pShaderCom)) ||
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::DEVELOPMENT), desc.intactPrototypeTag,
+			desc.prototypeLevelIndex, desc.intactPrototypeTag,
 			TEXT("Com_Model_Intact"), m_pIntactModelCom)))
 		return E_FAIL;
 
 	if (desc.modelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
 		FAILED(__super::Add_Component(
-			ETOUI(LEVEL::DEVELOPMENT), desc.fracturedPrototypeTag,
+			desc.prototypeLevelIndex, desc.fracturedPrototypeTag,
 			TEXT("Com_Model_Fractured"), m_pFracturedModelCom)))
 		return E_FAIL;
 	return S_OK;

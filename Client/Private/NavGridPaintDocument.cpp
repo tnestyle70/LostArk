@@ -11,7 +11,8 @@ namespace
 	constexpr const char* PAINT_MAGIC = "LOSTARK_NAVGRID_PAINT";
 	constexpr uint32_t LEGACY_SOURCE_VERSION = 1;
 	constexpr uint32_t SOURCE_VERSION = 2;
-	constexpr uint32_t PAINT_VERSION = 1;
+	constexpr uint32_t LEGACY_PAINT_VERSION = 1;
+	constexpr uint32_t PAINT_VERSION = 2;
 
 	bool_t IsSameFloat(f32_t left, f32_t right)
 	{
@@ -255,7 +256,9 @@ bool_t Client::CNavGridPaintDocument::Load(
 		return false;
 	}
 
-	std::vector<uint8_t> stagedBlockedCells(cellCount, 0);
+	std::vector<NAVGRID_PAINT_OVERRIDE> stagedCellOverrides(
+		cellCount,
+		NAVGRID_PAINT_OVERRIDE::INHERIT);
 	std::error_code existsError;
 	const bool_t paintExists =
 		std::filesystem::exists(paintPath, existsError);
@@ -276,7 +279,7 @@ bool_t Client::CNavGridPaintDocument::Load(
 		f32_t paintCellSize = {};
 		f32_t paintOriginX = {};
 		f32_t paintOriginZ = {};
-		uint64_t blockedCount = {};
+		uint64_t overrideCount = {};
 		if (!paint ||
 			!(paint >>
 				paintMagic >>
@@ -287,26 +290,30 @@ bool_t Client::CNavGridPaintDocument::Load(
 				paintCellSize >>
 				paintOriginX >>
 				paintOriginZ >>
-				blockedCount) ||
+				overrideCount) ||
 			paintMagic != PAINT_MAGIC ||
-			paintVersion != PAINT_VERSION ||
+			(paintVersion != LEGACY_PAINT_VERSION &&
+				paintVersion != PAINT_VERSION) ||
 			paintAreaId != stagedDesc.areaId ||
 			paintWidth != stagedDesc.width ||
 			paintHeight != stagedDesc.height ||
 			!IsSameFloat(paintCellSize, stagedDesc.cellSize) ||
 			!IsSameFloat(paintOriginX, stagedDesc.originX) ||
 			!IsSameFloat(paintOriginZ, stagedDesc.originZ) ||
-			blockedCount > cellCount)
+			overrideCount > cellCount)
 		{
 			outStatus = "NavGrid paint header does not match source";
 			return false;
 		}
 
-		for (uint64_t row = 0; row < blockedCount; ++row)
+		for (uint64_t row = 0; row < overrideCount; ++row)
 		{
 			int32_t cellX = {};
 			int32_t cellZ = {};
+			std::string overrideName;
 			if (!(paint >> cellX >> cellZ) ||
+				(PAINT_VERSION == paintVersion &&
+					!(paint >> overrideName)) ||
 				cellX < 0 ||
 				cellZ < 0 ||
 				cellX >= static_cast<int32_t>(stagedDesc.width) ||
@@ -319,12 +326,40 @@ bool_t Client::CNavGridPaintDocument::Load(
 			const uint32_t index =
 				static_cast<uint32_t>(cellZ) * stagedDesc.width +
 				static_cast<uint32_t>(cellX);
-			if (0 != stagedBlockedCells[index])
+			if (NAVGRID_PAINT_OVERRIDE::INHERIT !=
+				stagedCellOverrides[index])
 			{
 				outStatus = "NavGrid paint has duplicate cells";
 				return false;
 			}
-			stagedBlockedCells[index] = 1;
+
+			NAVGRID_PAINT_OVERRIDE overrideState =
+				NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED;
+			if (PAINT_VERSION == paintVersion)
+			{
+				if ("BLOCKED" == overrideName)
+				{
+					overrideState =
+						NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED;
+				}
+				else if ("WALKABLE" == overrideName)
+				{
+					overrideState =
+						NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE;
+				}
+				else
+				{
+					outStatus = "NavGrid paint override is invalid";
+					return false;
+				}
+			}
+
+			if (!stagedSourceCells[index].surfaceResolved)
+			{
+				outStatus = "NavGrid paint targets an unresolved cell";
+				return false;
+			}
+			stagedCellOverrides[index] = overrideState;
 		}
 
 		paint >> std::ws;
@@ -333,12 +368,6 @@ bool_t Client::CNavGridPaintDocument::Load(
 			outStatus = "NavGrid paint has trailing data";
 			return false;
 		}
-	}
-
-	for (uint32_t index = 0; index < cellCount; ++index)
-	{
-		if (!stagedSourceCells[index].surfaceResolved)
-			stagedBlockedCells[index] = 0;
 	}
 
 	const bool_t hasResolvedHeight = std::any_of(
@@ -356,12 +385,12 @@ bool_t Client::CNavGridPaintDocument::Load(
 
 	m_Desc = std::move(stagedDesc);
 	m_SourceCells = std::move(stagedSourceCells);
-	m_BlockedCells = std::move(stagedBlockedCells);
+	m_CellOverrides = std::move(stagedCellOverrides);
 	m_isReady = true;
 	m_isDirty = false;
 	outStatus = paintExists
 		? "Loaded navigation"
-		: "Loaded navigation; surface cells start walkable";
+		: "Loaded navigation; using baked walkability";
 	return true;
 }
 
@@ -369,11 +398,14 @@ bool_t Client::CNavGridPaintDocument::Paint(
 	int32_t cellX,
 	int32_t cellZ,
 	uint32_t brushRadius,
-	bool_t walkable)
+	NAVGRID_PAINT_OVERRIDE overrideState)
 {
 	if (!m_isReady ||
 		brushRadius > MAX_BRUSH_RADIUS ||
-		!Is_ValidCell(cellX, cellZ))
+		!Is_ValidCell(cellX, cellZ) ||
+		(overrideState != NAVGRID_PAINT_OVERRIDE::INHERIT &&
+			overrideState != NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED &&
+			overrideState != NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE))
 	{
 		return false;
 	}
@@ -397,11 +429,10 @@ bool_t Client::CNavGridPaintDocument::Paint(
 			if (!Has_ResolvedHeight(index))
 				continue;
 
-			const uint8_t newValue = walkable ? 0 : 1;
-			if (m_BlockedCells[index] == newValue)
+			if (m_CellOverrides[index] == overrideState)
 				continue;
 
-			m_BlockedCells[index] = newValue;
+			m_CellOverrides[index] = overrideState;
 			changed = true;
 		}
 	}
@@ -443,6 +474,8 @@ bool_t Client::CNavGridPaintDocument::Save_Paint(
 	}
 
 	const uint32_t blockedCount = Get_BlockedCount();
+	const uint32_t forcedWalkableCount = Get_ForcedWalkableCount();
+	const uint32_t overrideCount = blockedCount + forcedWalkableCount;
 	output <<
 		PAINT_MAGIC << ' ' <<
 		PAINT_VERSION << ' ' <<
@@ -453,15 +486,23 @@ bool_t Client::CNavGridPaintDocument::Save_Paint(
 		m_Desc.cellSize << ' ' <<
 		m_Desc.originX << ' ' <<
 		m_Desc.originZ << ' ' <<
-		blockedCount << '\n';
+		overrideCount << '\n';
 
 	for (uint32_t cellZ = 0; cellZ < m_Desc.height; ++cellZ)
 	{
 		for (uint32_t cellX = 0; cellX < m_Desc.width; ++cellX)
 		{
 			const uint32_t index = cellZ * m_Desc.width + cellX;
-			if (0 != m_BlockedCells[index])
-				output << cellX << ' ' << cellZ << '\n';
+			if (NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED ==
+				m_CellOverrides[index])
+			{
+				output << cellX << ' ' << cellZ << " BLOCKED\n";
+			}
+			else if (NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE ==
+				m_CellOverrides[index])
+			{
+				output << cellX << ' ' << cellZ << " WALKABLE\n";
+			}
 		}
 	}
 
@@ -480,7 +521,9 @@ bool_t Client::CNavGridPaintDocument::Save_Paint(
 	outStatus =
 		"Saved NavGrid paint: " +
 		std::to_string(blockedCount) +
-		" blocked cells";
+		" blocked, " +
+		std::to_string(forcedWalkableCount) +
+		" forced walkable cells";
 	return true;
 }
 
@@ -512,10 +555,23 @@ bool_t Client::CNavGridPaintDocument::Export_Runtime(
 	{
 		const bool_t hasSurface =
 			m_SourceCells[index].surfaceResolved;
-		const bool_t isWalkable =
-			hasSurface &&
-			m_SourceCells[index].baseWalkable &&
-			0 == m_BlockedCells[index];
+		bool_t isWalkable = false;
+		if (hasSurface)
+		{
+			switch (m_CellOverrides[index])
+			{
+			case NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED:
+				isWalkable = false;
+				break;
+			case NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE:
+				isWalkable = true;
+				break;
+			case NAVGRID_PAINT_OVERRIDE::INHERIT:
+			default:
+				isWalkable = m_SourceCells[index].baseWalkable;
+				break;
+			}
+		}
 		walkable[index] = isWalkable ? 1 : 0;
 		heights[index] =
 			hasSurface ? m_SourceCells[index].height : 0.f;
@@ -627,8 +683,14 @@ Client::CNavGridPaintDocument::Get_CellState(uint32_t index) const
 {
 	if (!Has_ResolvedHeight(index))
 		return NAVGRID_AUTHORING_CELL_STATE::NO_SURFACE;
-	if (!m_SourceCells[index].baseWalkable ||
-		0 != m_BlockedCells[index])
+	if (NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE ==
+		m_CellOverrides[index])
+	{
+		return NAVGRID_AUTHORING_CELL_STATE::WALKABLE;
+	}
+	if (NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED ==
+		m_CellOverrides[index] ||
+		!m_SourceCells[index].baseWalkable)
 		return NAVGRID_AUTHORING_CELL_STATE::BLOCKED;
 	return NAVGRID_AUTHORING_CELL_STATE::WALKABLE;
 }
@@ -660,7 +722,23 @@ uint32_t Client::CNavGridPaintDocument::Get_BlockedCount() const
 	for (uint32_t index = 0; index < m_SourceCells.size(); ++index)
 	{
 		if (m_SourceCells[index].surfaceResolved &&
-			0 != m_BlockedCells[index])
+			NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED ==
+			m_CellOverrides[index])
+		{
+			++count;
+		}
+	}
+	return count;
+}
+
+uint32_t Client::CNavGridPaintDocument::Get_ForcedWalkableCount() const
+{
+	uint32_t count = {};
+	for (uint32_t index = 0; index < m_SourceCells.size(); ++index)
+	{
+		if (m_SourceCells[index].surfaceResolved &&
+			NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE ==
+			m_CellOverrides[index])
 		{
 			++count;
 		}

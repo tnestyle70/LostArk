@@ -2,14 +2,14 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 2,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 2,
+  "revision": 3,
   "placements": [
     {
       "placementId": "player.spawn.bern.entry",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [0.0, 0.0, 0.0],
+      "position": [144.8, 42.7, -70.3],
       "yawDegrees": 180.0,
       "enabled": true
     },
@@ -18,7 +18,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [2.0, 0.0, 0.0],
+      "position": [145.8, 42.7, -70.3],
       "yawDegrees": 180.0,
       "enabled": true
     },
@@ -27,7 +27,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [-2.0, 0.0, 0.0],
+      "position": [143.8, 42.7, -70.3],
       "yawDegrees": 180.0,
       "enabled": true
     },
@@ -36,7 +36,7 @@
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
-      "position": [0.0, 0.0, 2.0],
+      "position": [144.8, 42.7, -71.3],
       "yawDegrees": 180.0,
       "enabled": true
     }

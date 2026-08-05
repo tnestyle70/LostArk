@@ -382,8 +382,8 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
 - quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
-- 현재 World Gameplay kind는 `playerSpawn`, `npc`, `boss`뿐이다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
-- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. 현재 일반 Monster, wave/증분 spawn, trigger, Area별 balance override, 제품 NPC presentation은 구현되지 않았다.
+- 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 그리고 단일 `movePlayer` action을 가진 `triggerBox`다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
+- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`를 배치하고 목적지·이동시간·포물선 높이를 저장하면 publisher가 bootstrap v3으로 변환하고 Server가 OBB 진입과 이동을 판정한다. `destroyable`, 파티 대기, 컷신, spawn wave/증분 spawn, Area별 balance override, 제품 NPC presentation은 아직 지원하지 않는다.
 
 ## 작업 방식 지침
 
