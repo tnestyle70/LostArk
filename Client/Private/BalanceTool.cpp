@@ -226,14 +226,16 @@ bool Client::CBalanceTool::Reload()
 	{
 		PLAYER_EDIT row{};
 		if (!IsExactObject(value, { "characterClass", "maximumHp", "maximumResource",
-			"resourceRegenPerSecond", "attackPower", "defense", "moveSpeed" }) ||
+			"resourceRegenPerSecond", "attackPower", "defense", "moveSpeed",
+			"defaultStance" }) ||
 			!ReadString(value, "characterClass", row.characterClass) ||
 			!ReadU32(value, "maximumHp", row.maximumHp) ||
 			!ReadU32(value, "maximumResource", row.maximumResource) ||
 			!ReadU32(value, "resourceRegenPerSecond", row.resourceRegenPerSecond) ||
 			!ReadU32(value, "attackPower", row.attackPower) ||
 			!ReadU32(value, "defense", row.defense) ||
-			!ReadFloat(value, "moveSpeed", row.moveSpeed))
+			!ReadFloat(value, "moveSpeed", row.moveSpeed) ||
+			!ReadString(value, "defaultStance", row.defaultStance))
 		{
 			m_status = "Reload failed: invalid player profile.";
 			return false;
@@ -247,7 +249,7 @@ bool Client::CBalanceTool::Reload()
 		if (!IsExactObject(value, { "skillId", "characterClass", "inputSlot", "displayName",
 			"actionId", "skillKind", "cooldownMs", "actionDurationMs", "hitTimeMs",
 			"resourceCost", "movementDistance", "maximumRange", "serverDamageProfileId",
-			"effectId", "comboStages" }) ||
+			"effectId", "requiredStance", "setsStance", "comboStages" }) ||
 			!ReadU32(value, "skillId", row.skillId) ||
 			!ReadString(value, "characterClass", row.characterClass) ||
 			!ReadString(value, "inputSlot", row.inputSlot) ||
@@ -261,7 +263,10 @@ bool Client::CBalanceTool::Reload()
 			!ReadFloat(value, "movementDistance", row.movementDistance) ||
 			!ReadFloat(value, "maximumRange", row.maximumRange) ||
 			!ReadString(value, "serverDamageProfileId", row.damageProfileId) ||
-			!ReadString(value, "effectId", row.effectId) || nullptr == stagesValue)
+			!ReadString(value, "effectId", row.effectId) ||
+			!ReadString(value, "requiredStance", row.requiredStance) ||
+			!ReadString(value, "setsStance", row.setsStance) ||
+			nullptr == stagesValue)
 		{
 			m_status = "Reload failed: invalid skill definition.";
 			return false;
@@ -576,18 +581,24 @@ void Client::CBalanceTool::RenderLiveVerification() const
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	if (m_players.size() != 5u || m_skills.size() != 53u ||
-		m_damageProfiles.size() != 54u || m_bosses.empty() || m_patterns.empty())
+	if (m_players.size() != 5u || m_skills.size() != 66u ||
+		m_damageProfiles.size() != 63u || m_bosses.empty() || m_patterns.empty())
 	{
 		status = "Draft object counts are incomplete.";
 		return false;
 	}
+	const auto isKnownStance = [](const std::string& value)
+	{
+		return value == "NONE" || value == "LANCE_MASTER_LONG_SPEAR" ||
+			value == "LANCE_MASTER_SHORT_SPEAR";
+	};
 	for (const PLAYER_EDIT& player : m_players)
 	{
 		if (0u == player.maximumHp || 0u == player.maximumResource ||
 			0u == player.resourceRegenPerSecond || 0u == player.attackPower ||
 			0u == player.defense || player.resourceRegenPerSecond > player.maximumResource ||
-			!std::isfinite(player.moveSpeed) || player.moveSpeed <= 0.f)
+			!std::isfinite(player.moveSpeed) || player.moveSpeed <= 0.f ||
+			!isKnownStance(player.defaultStance))
 		{
 			status = "Player draft is invalid: " + player.characterClass;
 			return false;
@@ -595,16 +606,20 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	}
 	for (const SKILL_EDIT& skill : m_skills)
 	{
+		const bool dealsDamage = !skill.damageProfileId.empty();
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
 			skill.hitTimeMs > skill.actionDurationMs ||
-			nullptr == FindDamageRate(skill.damageProfileId) ||
-			!std::isfinite(skill.maximumRange) || skill.maximumRange <= 0.f ||
+			!std::isfinite(skill.maximumRange) ||
 			!std::isfinite(skill.movementDistance) || skill.movementDistance < 0.f ||
+			(dealsDamage && (nullptr == FindDamageRate(skill.damageProfileId) ||
+				skill.maximumRange <= 0.f)) ||
+			(!dealsDamage && (skill.maximumRange != 0.f || 0u != skill.hitTimeMs)) ||
 			(skill.skillKind == "ACTIVE" &&
 				(0u == skill.cooldownMs || !skill.comboStages.empty())) ||
 			(skill.skillKind == "COMBO" &&
 				(skill.comboStages.size() < 2u || skill.comboStages.size() > 8u)) ||
-			(skill.skillKind != "ACTIVE" && skill.skillKind != "COMBO"))
+			(skill.skillKind != "ACTIVE" && skill.skillKind != "COMBO") ||
+			!isKnownStance(skill.requiredStance) || !isKnownStance(skill.setsStance))
 		{
 			status = "Skill draft is invalid: " + std::to_string(skill.skillId);
 			return false;
@@ -725,7 +740,8 @@ bool Client::CBalanceTool::Save()
 			<< ",\n      \"resourceRegenPerSecond\": " << p.resourceRegenPerSecond
 			<< ",\n      \"attackPower\": " << p.attackPower
 			<< ",\n      \"defense\": " << p.defense
-			<< ",\n      \"moveSpeed\": " << std::setprecision(9) << p.moveSpeed << "\n    }"
+			<< ",\n      \"moveSpeed\": " << std::setprecision(9) << p.moveSpeed
+			<< ",\n      \"defaultStance\": " << Quote(p.defaultStance) << "\n    }"
 			<< (i + 1u == m_players.size() ? "\n" : ",\n");
 	}
 	players << "  ]\n}\n";
@@ -759,7 +775,10 @@ bool Client::CBalanceTool::Save()
 			<< ",\n      \"movementDistance\": " << std::setprecision(9) << s.movementDistance
 			<< ",\n      \"maximumRange\": " << s.maximumRange
 			<< ",\n      \"serverDamageProfileId\": " << Quote(s.damageProfileId)
-			<< ",\n      \"effectId\": " << Quote(s.effectId) << ",\n      \"comboStages\": [";
+			<< ",\n      \"effectId\": " << Quote(s.effectId)
+			<< ",\n      \"requiredStance\": " << Quote(s.requiredStance)
+			<< ",\n      \"setsStance\": " << Quote(s.setsStance)
+			<< ",\n      \"comboStages\": [";
 		if (!s.comboStages.empty()) skills << "\n";
 		for (std::size_t stageIndex = 0; stageIndex < s.comboStages.size(); ++stageIndex)
 		{

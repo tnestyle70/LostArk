@@ -52,7 +52,12 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
+public:
+	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
+	bool_t Is_Visible() const { return m_isVisible; }
+
 private:
+	bool_t m_isVisible = true;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };

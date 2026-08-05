@@ -15,7 +15,8 @@
         "Character/LanceMaster/LanceMaster_Helmet.wmodel"
       ],
       "weaponModels": [
-        "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel"
+        "Character/WP_WFLM_00L/WP_WFLM_00L.wmodel",
+        "Character/WP_WFLM_00S/WP_WFLM_00S.wmodel"
       ],
       "animationSetId": "ANIM_LANCE_MASTER",
       "runtimeStatus": "supported"

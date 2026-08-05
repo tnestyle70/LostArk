@@ -27,6 +27,7 @@ private:
 		std::uint32_t attackPower = 0;
 		std::uint32_t defense = 0;
 		float moveSpeed = 0.f;
+		std::string defaultStance;
 	};
 
 	struct COMBO_STAGE_EDIT
@@ -53,6 +54,8 @@ private:
 		float maximumRange = 0.f;
 		std::string damageProfileId;
 		std::string effectId;
+		std::string requiredStance;
+		std::string setsStance;
 		std::vector<COMBO_STAGE_EDIT> comboStages;
 	};
 

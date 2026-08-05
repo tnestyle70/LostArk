@@ -110,6 +110,22 @@ namespace
 			return false;
 		return true;
 	}
+
+	bool ParseStance(
+		const std::string_view value,
+		LostArk::Shared::PLAYER_STANCE_ID& output)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		if ("NONE" == value)
+			output = PLAYER_STANCE_ID::NONE;
+		else if ("LANCE_MASTER_LONG_SPEAR" == value)
+			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		else if ("LANCE_MASTER_SHORT_SPEAR" == value)
+			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else
+			return false;
+		return true;
+	}
 }
 
 bool LostArk::Server::CGameplayCatalog::Load()
@@ -171,7 +187,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "SKILL" == fields[0])
 		{
 			PLAYER_SKILL_DEFINITION skill{};
-			if (13u != fields.size() ||
+			if (15u != fields.size() ||
 				!ParseNumber(fields[1], skill.iSkillId) ||
 				LostArk::Shared::INVALID_SKILL_ID == skill.iSkillId ||
 				!ParseCharacterClass(fields[2], skill.eCharacterClass) ||
@@ -182,8 +198,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[8], skill.iResourceCost) ||
 				!ParseNumber(fields[9], skill.fMovementDistance) ||
 				!ParseNumber(fields[10], skill.fMaximumRange) ||
-				!IsStableId(fields[11]) ||
+				(!fields[11].empty() && !IsStableId(fields[11])) ||
 				!ParseSkillKind(fields[12], skill.eSkillKind) ||
+				!ParseStance(fields[13], skill.eRequiredStance) ||
+				!ParseStance(fields[14], skill.eSetsStance) ||
 				(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == skill.eSkillKind &&
 					0u == skill.iCooldownMs) ||
 				0u == skill.iActionDurationMs ||
@@ -194,7 +212,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 					read: a single row cannot know which pool applies. */
 				!std::isfinite(skill.fMovementDistance) ||
 				!std::isfinite(skill.fMaximumRange) ||
-				skill.fMovementDistance < 0.f || skill.fMaximumRange <= 0.f)
+				skill.fMovementDistance < 0.f ||
+				(fields[11].empty() ?
+					(skill.fMaximumRange != 0.f || 0u != skill.iHitTimeMs) :
+					skill.fMaximumRange <= 0.f))
 			{
 				m_strStatus = "Player skill row is invalid";
 				return false;
@@ -275,7 +296,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (8u != fields.size() ||
+			if (9u != fields.size() ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
@@ -283,6 +304,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[5], player.iAttackPower) ||
 				!ParseNumber(fields[6], player.iDefense) ||
 				!ParseNumber(fields[7], player.fMoveSpeed) ||
+				!ParseStance(fields[8], player.eDefaultStance) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
 				0u == player.iResourceRegenPerSecond ||
 				player.iResourceRegenPerSecond > player.iMaximumResource ||
@@ -320,7 +342,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	for (const auto& [skillId, skill] : m_Skills)
 	{
 		(void)skillId;
-		if (0u == Find_DamageRatePercent(skill.strDamageProfileId))
+		if (!skill.strDamageProfileId.empty() &&
+			0u == Find_DamageRatePercent(skill.strDamageProfileId))
 		{
 			m_strStatus = "Player skill references missing damage profile";
 			return false;

@@ -373,8 +373,8 @@ namespace
 				"Real Skill Binding Covers Current Class Catalog");
 			total += parsed.Bindings.size();
 		}
-		runner.Require(53u == total,
-			"Five Real Skill Binding Documents Cover 53 Skill Definitions");
+		runner.Require(CPlayerSkillCatalog::Get_Skills().size() == total,
+			"Five Real Skill Binding Documents Cover Every Skill Definition");
 	}
 
 	void Test_SkillBindingAtomicSave(TEST_RUNNER& runner)

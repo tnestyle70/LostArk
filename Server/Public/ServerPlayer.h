@@ -50,6 +50,8 @@ namespace LostArk::Server
 		std::uint32_t iResourceAccumulator = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		LostArk::Shared::PLAYER_STANCE_ID eStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;

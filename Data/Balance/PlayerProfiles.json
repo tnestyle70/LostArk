@@ -9,7 +9,8 @@
       "resourceRegenPerSecond": 25,
       "attackPower": 100,
       "defense": 105,
-      "moveSpeed": 2.95
+      "moveSpeed": 2.95,
+      "defaultStance": "LANCE_MASTER_LONG_SPEAR"
     },
     {
       "characterClass": "GUNSLINGER",
@@ -18,7 +19,8 @@
       "resourceRegenPerSecond": 25,
       "attackPower": 100,
       "defense": 95,
-      "moveSpeed": 2.95
+      "moveSpeed": 2.95,
+      "defaultStance": "NONE"
     },
     {
       "characterClass": "SLAYER",
@@ -27,7 +29,8 @@
       "resourceRegenPerSecond": 25,
       "attackPower": 100,
       "defense": 110,
-      "moveSpeed": 2.95
+      "moveSpeed": 2.95,
+      "defaultStance": "NONE"
     },
     {
       "characterClass": "ARTIST",
@@ -36,7 +39,8 @@
       "resourceRegenPerSecond": 25,
       "attackPower": 100,
       "defense": 90,
-      "moveSpeed": 2.95
+      "moveSpeed": 2.95,
+      "defaultStance": "NONE"
     },
     {
       "characterClass": "DIMENSIONMASTER",
@@ -45,7 +49,8 @@
       "resourceRegenPerSecond": 25,
       "attackPower": 100,
       "defense": 100,
-      "moveSpeed": 2.95
+      "moveSpeed": 2.95,
+      "defaultStance": "NONE"
     }
   ]
 }

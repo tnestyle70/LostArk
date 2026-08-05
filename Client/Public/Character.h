@@ -83,6 +83,7 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		std::uint32_t actionStartTick,
 		std::uint8_t comboStage = 0);
+	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
@@ -152,6 +153,8 @@ private:
 	bool_t m_hasNetworkState = { false };
 	LostArk::Shared::PLAYER_ACTION_STATE m_eNetworkAction =
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
 	//next goal pos that server notice
 	float3_t m_vNetworkTargetPosition = {};
@@ -167,6 +170,7 @@ private:
 	index, so a clip that already ran would resume at its end -- which chains
 	that repeat a clip do hit. */
 	bool_t Start_Clip(const char_t* pClipName);
+	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
 	/* Jumps the running chain to the server's stage. Fails when no chain runs or
 	the stage is past its end, so the caller keeps the pose it had. */
 	bool_t Advance_ComboStage(std::uint8_t comboStage);

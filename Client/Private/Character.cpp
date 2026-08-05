@@ -385,6 +385,27 @@ bool_t CCharacter::Apply_NetworkAction(
 	return true;
 }
 
+void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
+{
+	m_eStance = stance;
+	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
+	{
+		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
+		Set_PartVisible(
+			weapon.pPartTag,
+			LostArk::Shared::PLAYER_STANCE_ID::NONE == weapon.eRequiredStance ||
+				weapon.eRequiredStance == stance);
+	}
+}
+
+void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible)
+{
+	const auto pPart = dynamic_cast<CPart_Equipment*>(
+		__super::Find_PartObject(pPartTag));
+	if (nullptr != pPart)
+		pPart->Set_Visible(isVisible);
+}
+
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
