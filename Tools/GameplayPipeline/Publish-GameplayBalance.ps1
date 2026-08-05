@@ -70,6 +70,20 @@ function ConvertTo-ReceiptValue([object]$Value) {
     return ($Value | ConvertTo-Json -Compress -Depth 32)
 }
 
+function Get-CanonicalTextFileSha256([string]$Path) {
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $text = [IO.File]::ReadAllText($Path, $strictUtf8)
+    $canonicalText = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $canonicalBytes = [Text.UTF8Encoding]::new($false).GetBytes($canonicalText)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash($canonicalBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Assert-BalanceProvenance(
     [object]$PlayerDocument,
     [object]$SkillDocument,
@@ -87,7 +101,7 @@ function Assert-BalanceProvenance(
         throw 'Balance provenance receipt header is invalid.'
     }
     $extractorPath = Join-Path $repoRoot 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py'
-    $currentExtractorHash = (Get-FileHash -LiteralPath $extractorPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $currentExtractorHash = Get-CanonicalTextFileSha256 $extractorPath
     if ([string]$receipt.extractorSha256 -cne $currentExtractorHash) {
         throw 'Balance provenance receipt is stale for the current extractor.'
     }

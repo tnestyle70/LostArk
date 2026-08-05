@@ -30,3 +30,6 @@
 
 # Shared asset converter executable
 /Tools/ModelAssetConverter/Bin/*.exe filter=lfs diff=lfs merge=lfs -text
+
+# Provenance receipts identify Python source independently of Windows checkout line endings.
+/Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py text eol=lf
