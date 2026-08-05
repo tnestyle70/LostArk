@@ -727,13 +727,13 @@ DimensionMaster에는 `ALT_V`가 없다. Tool 화면은 위 목록을 하드코�
 
 ## 16. Character Select Server Arena 검증 흐름 (2026-08-05)
 
-Character Select ImGui 상단의 mode 표시는 읽기 전용이다. Animation 담당자는 socket 없는 Preview에서
-class와 clip mapping을 저작한 뒤 `Enter Test`를 누른다. tokenized TEST command는 Lobby가 Server 승인을
+Character Select ImGui 상단의 `Preview / Server Play`는 실제 mode 선택 UI다. Animation 담당자는 socket 없는 Preview에서
+class와 clip mapping을 저작한 뒤 `Server Play`를 선택한다. tokenized TEST command는 Lobby가 Server 승인을
 검증하고, 같은 visual map을 Server Arena로 다시 열 때 기존 socket과 queued snapshot을 one-shot handoff한다.
 Character Select Level 자체는 connect/send/approval을 반복하지 않는다.
 
 ```text
-Preview: class 선택 -> F1 Animation Tool -> key/skill row 편집 -> Save -> Enter Test
+Preview: class 선택 -> F1 Animation Tool -> key/skill row 편집 -> Save -> Server Play 선택
    -> Lobby Server approval -> 같은 map Server Arena 재진입
    -> Q/W/E/R/A/S/D/F/T/V 또는 LMB 입력
    -> Server approval/snapshot -> 저장한 ACTIVE/COMBO clip 재생 확인

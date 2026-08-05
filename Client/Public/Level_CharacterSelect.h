@@ -91,7 +91,7 @@ private:
 	std::chrono::steady_clock::time_point m_ValtanRequestDeadline{};
 	bool_t m_isValtanSpawnRequested = false;
 	string m_strStatus =
-		"Choose a class, then switch to Server Arena.";
+		"Choose a class, then select Server Play.";
 
 public:
 	static unique_ptr<CLevel_CharacterSelect> Create(

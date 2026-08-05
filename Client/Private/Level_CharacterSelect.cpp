@@ -51,7 +51,8 @@ namespace
 	{
 		switch (stage)
 		{
-		case LOBBY_STAGE::TEST: return "Test";
+		case LOBBY_STAGE::TEST: return "Character Select Server Play";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select Preview";
 		case LOBBY_STAGE::BERN: return "Bern";
 		case LOBBY_STAGE::VALTAN: return "Valtan";
 		default: return "Unknown";
@@ -62,7 +63,8 @@ namespace
 	{
 		switch (stage)
 		{
-		case LOBBY_STAGE::TEST: return "character-select.enter-test";
+		case LOBBY_STAGE::TEST: return "character-select.server-play";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.return-preview";
 		case LOBBY_STAGE::BERN: return "character-select.enter-bern";
 		case LOBBY_STAGE::VALTAN: return "character-select.enter-valtan";
 		default: return nullptr;
@@ -628,15 +630,28 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	const bool_t isPreview = MODE::PREVIEW == m_eMode;
 	const bool_t isConnecting = MODE::CONNECTING == m_eMode;
 	const bool_t isServerArena = MODE::SERVER_ARENA == m_eMode;
+	const bool_t isReturning = MODE::RETURNING_TO_LOBBY == m_eMode;
 	const bool_t transitionPending = CLevelTransitionService::Is_Pending();
-	ImGui::BeginDisabled(true);
-	ImGui::RadioButton("Preview", isPreview);
+	const bool_t isModeTransitioning =
+		isConnecting || isReturning || transitionPending;
+	const bool_t isServerSelected =
+		isConnecting || isServerArena || isReturning;
+
+	ImGui::BeginDisabled(isModeTransitioning);
+	if (ImGui::RadioButton("Preview", isPreview) && !isPreview)
+		Enter_Stage(LOBBY_STAGE::CHARACTER_SELECT);
 	ImGui::SameLine();
-	ImGui::RadioButton("Server Arena (Lobby-approved)",
-		isConnecting || isServerArena);
+	if (ImGui::RadioButton(
+		"Server Play (Lobby-approved)",
+		isServerSelected) && isPreview)
+	{
+		Enter_Stage(LOBBY_STAGE::TEST);
+	}
 	ImGui::EndDisabled();
 	if (isConnecting)
 		ImGui::TextDisabled("Connecting... existing preview is preserved");
+	else if (isReturning)
+		ImGui::TextDisabled("Returning to socket-free Preview...");
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Playable class");
@@ -671,10 +686,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	}
 
 	ImGui::Separator();
-	ImGui::BeginDisabled(isConnecting || transitionPending);
-	if (ImGui::Button("Enter Test"))
-		Enter_Stage(LOBBY_STAGE::TEST);
-	ImGui::SameLine();
+	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending);
 	if (ImGui::Button("Enter Bern"))
 		Enter_Stage(LOBBY_STAGE::BERN);
 	ImGui::SameLine();
@@ -697,7 +709,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	ImGui::EndDisabled();
 
 	ImGui::TextDisabled(
-		"F1: tools  |  F6: follow/free  |  Server Arena: skill input enabled");
+		"F1: tools  |  F6: follow/free  |  Server Play: skill input enabled");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
 }

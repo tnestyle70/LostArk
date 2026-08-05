@@ -13,14 +13,16 @@ Character Select preview는 socket 없는 저작/선택 화면이고 Server Aren
 Lobby가 승인한 뒤 같은 visual map을 다시 여는 gameplay 실행이다. 연결과 승인 권위는 Lobby 한 곳에 둔다.
 
 ```text
-PREVIEW -> Enter Test -> LOBBY WAITING_FOR_APPROVAL
+PREVIEW -> Server Play 선택 -> LOBBY WAITING_FOR_APPROVAL
   -> approved socket one-shot handoff -> CONNECTING_PRESENTATION
   -> SERVER_ARENA
   -> LOBBY (disconnect/failure/back)
 ```
 
-ImGui `Character Select` 창 최상단 mode 표시는 읽기 전용이다. Preview의 `Enter Test`가 class와 command를
-commit하며 Character Select가 직접 connect/send/approval을 반복하지 않는다.
+ImGui `Character Select` 창 최상단 `Preview / Server Play`는 실제 mode 선택 UI다. Preview의
+`Server Play`가 class와 tokenized TEST command를 commit하며 Character Select가 직접
+connect/send/approval을 반복하지 않는다. Server Arena의 `Preview`는 tokenized CHARACTER_SELECT로
+socket 없는 Preview를 다시 연다.
 
 `Summon Valtan`은 `SERVER_ARENA`에서만 노출한다. 버튼은 Client가 발탄을 로컬 생성하는 기능이 아니다.
 Client presentation prototype 준비가 성공한 뒤 stable placement ID를 Server에 요청하고, Server가 world template과
@@ -46,7 +48,7 @@ navigation을 검증해 entity를 commit하고 모든 Client에 spawn event를 b
 
 ### 완료 계약
 
-- Preview에서 `Enter Test`를 누르면 선택 class와 tokenized TEST가 Lobby로 전달된다.
+- Preview에서 `Server Play`를 선택하면 선택 class와 tokenized TEST가 Lobby로 전달된다.
 - Server 연결 실패, 승인 거부, 5초 timeout은 Lobby에 남는다.
 - 승인된 socket은 one-shot handoff로만 소비하고 local replicated character 생성 뒤 gameplay target을 commit한다.
 - 진입 후 disconnect/replication failure는 replicated state를 정리하고 Lobby로 복귀한다.
@@ -86,7 +88,7 @@ enum class CHARACTER_SELECT_MODE
 };
 ```
 
-Preview `Initialize()`는 map, light, preview, camera를 준비하지만 socket을 열지 않는다. `Enter Test`는
+Preview `Initialize()`는 map, light, preview, camera를 준비하지만 socket을 열지 않는다. `Server Play`는
 `CCharacterSelectionState`에 선택 class와 `SERVER_GAMEPLAY` handoff intent를 남기는 것이 아니라 먼저 tokenized
 TEST를 Lobby로 제출한다. Lobby가 승인 payload의 protocol/world/player/entity를 검증한 다음에만
 `Stage_TestEntryMode(SERVER_GAMEPLAY)`를 commit한다. gameplay `Initialize()`는 이를 원자적으로 한 번 소비한다.
@@ -94,7 +96,7 @@ TEST를 Lobby로 제출한다. Lobby가 승인 payload의 protocol/world/player/
 ### Preview -> Lobby -> Server Arena
 
 1. Preview에서 선택 class를 `CCharacterSelectionState`에 commit한다.
-2. `Enter Test`가 `CLobbyCommandService`의 tokenized TEST를 제출하고 Lobby 로드를 요청한다.
+2. `Server Play`가 `CLobbyCommandService`의 tokenized TEST를 제출하고 Lobby 로드를 요청한다.
 3. Lobby만 endpoint 연결과 `C2S_ENTER_WORLD(CHARACTER_SELECT_ARENA)` 전송을 소유한다.
 4. Lobby가 `S2C_ENTER_ACCEPTED` 전체 payload와 5초 deadline을 검증한다.
 5. 승인 socket과 queued spawn snapshot을 닫지 않고 `SERVER_GAMEPLAY` handoff를 stage한다.
@@ -113,13 +115,13 @@ Lobby로 복귀한다. 같은 Level preview 또는 local gameplay fallback으로
 
 ```text
 Character Select
-  Mode: [Preview] [Server Arena (Lobby-approved)]   // read-only
+  Mode: [Preview] [Server Play (Lobby-approved)]
   Status: Preview / Connecting 2.3s / Server Arena
   --------------------------------
   Character class list
   --------------------------------
   [Summon Valtan (Lazy)]    // Server Arena 전용
-  [Enter Test] [Enter Bern] [Enter Valtan] [Back to Lobby]
+  [Enter Bern] [Enter Valtan] [Back to Lobby]
 ```
 
 Server Arena에서는 session class가 Server authority이므로 class list를 read-only로 표시한다. class를 바꾸려면
@@ -334,7 +336,7 @@ Client 순서를 생략하지 않는다. 실행 중 Client가 출력물을 점�
 1. Server.exe 실행
 2. Client.exe -> Lobby -> Character Select
 3. F1 Animation Tool 열기, Preview class 변경 및 binding 확인
-4. Enter Test -> Lobby 승인 -> 같은 visual map Server Arena 재진입
+4. Server Play 선택 -> Lobby 승인 -> 같은 visual map Server Arena 재진입
 5. 승인 socket 재접속 없이 replicated actor와 tool target 연결 확인
 6. Q W E R A S D F T V와 LMB/ALT+V -> Server snapshot -> animation 확인
 7. F6 free에서 command 차단, follow 복귀 후 새 press만 제출되는지 확인
@@ -401,3 +403,244 @@ transaction으로 확장한다.
 
 계획 완료 증거는 대응 RESULT의 Debug/Release 정본 빌드, 세 harness, Server contract, 실제 TCP 중복
 spawn smoke, ProjectAudit 결과를 기준으로 한다. 코드와 데이터가 이 문서의 구현 정본이다.
+
+## G09. Preview / Server Play 선택 UI 교정
+
+### 목표와 종료 증거
+
+기존 `Mode` 라디오 버튼은 `ImGui::BeginDisabled(true)` 안에 있어 상태만 표시했고, 실제 Server 진입은
+하단 `Enter Test` 버튼에 숨겨져 있었다. 사용자가 요청한 계약은 Character Select 창 상단에서
+`Preview`와 `Server Play`를 직접 선택하는 것이다. UI는 선택 의도를 typed Lobby command로 제출할 뿐
+socket, packet, 승인 payload를 직접 다루지 않는다.
+
+종료 조건은 다음과 같다.
+
+- Preview에서 class를 고른 뒤 `Server Play (Lobby-approved)`를 선택하면 기존 tokenized `TEST`가 Lobby로 전달된다.
+- Lobby 승인 뒤 같은 visual map이 `CONNECTING -> SERVER_ARENA`로 재진입한다.
+- Server Arena에서 `Preview`를 선택하면 현재 socket/replication을 정리하고 tokenized `CHARACTER_SELECT`를 Lobby로 전달해 socket 없는 Preview로 재진입한다.
+- 연결·전환 중에는 양쪽 mode 입력을 막고 현재 선택 상태만 표시한다.
+- 중복 진입점인 하단 `Enter Test` 버튼은 제거한다.
+- Character Select Level은 `Connect_To_Server`, `Send_EnterWorld`, `Try_Consume_EnterAccepted`를 호출하지 않는다.
+- Debug/Release build, Frontend harness, Server contract, ProjectAudit의 UI source 계약과 `git diff --check`를 통과한다.
+
+### 변경 파일
+
+| 파일 | 이유 |
+|---|---|
+| `Client/Public/Level_CharacterSelect.h` | 초기 안내 문구를 실제 `Server Play` 선택 계약과 일치시킨다. |
+| `Client/Private/Level_CharacterSelect.cpp` | mode 라디오를 실제 command 제출 UI로 바꾸고 Preview 복귀 stage를 등록한다. |
+| `Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | 읽기 전용 mode와 숨은 `Enter Test` 회귀를 거부한다. |
+| `Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp` | tokenized CHARACTER_SELECT Preview 복귀 command의 exact consume과 stale command 부재를 검증한다. |
+| `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 사용하는 Character Select 진입 절차를 갱신한다. |
+| 대응 `RESULT` | 실제 빌드·하네스·수동 검증 상태를 분리 기록한다. |
+
+새 C++ 파일은 없으므로 project/filter 변경은 없다.
+
+### H 계약
+
+`CLevel_CharacterSelect`의 enum, 함수 선언, 네트워크 owner는 바꾸지 않는다. 기존 `Enter_Stage`가
+Preview/Server Play 양쪽 전환 명령을 제출한다. 변경되는 멤버 초기값은 다음 하나뿐이다.
+
+```cpp
+string m_strStatus =
+    "Choose a class, then select Server Play.";
+```
+
+### CPP 변경 함수 전체
+
+`Get_StageName`과 `Get_StageTransitionSource`는 `CHARACTER_SELECT` 복귀와 Server Play 진입의 진단 이름을
+확정한다. stable world/level ID는 바꾸지 않는다.
+
+```cpp
+const char_t* Get_StageName(const LOBBY_STAGE stage)
+{
+    switch (stage)
+    {
+    case LOBBY_STAGE::TEST: return "Character Select Server Play";
+    case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select Preview";
+    case LOBBY_STAGE::BERN: return "Bern";
+    case LOBBY_STAGE::VALTAN: return "Valtan";
+    default: return "Unknown";
+    }
+}
+
+const char_t* Get_StageTransitionSource(const LOBBY_STAGE stage)
+{
+    switch (stage)
+    {
+    case LOBBY_STAGE::TEST: return "character-select.server-play";
+    case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.return-preview";
+    case LOBBY_STAGE::BERN: return "character-select.enter-bern";
+    case LOBBY_STAGE::VALTAN: return "character-select.enter-valtan";
+    default: return nullptr;
+    }
+}
+```
+
+`Render_SelectionPanel`은 각 mode의 현재 상태와 전환 가능 여부를 분리한다. active radio를 다시 누르거나
+CONNECTING/RETURNING 상태에서 명령을 중복 제출할 수 없다. Server Play 선택은 `TEST`, Preview 선택은
+`CHARACTER_SELECT` typed command만 제출한다.
+
+```cpp
+void CLevel_CharacterSelect::Render_SelectionPanel()
+{
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    if (nullptr != viewport)
+    {
+        ImGui::SetNextWindowViewport(viewport->ID);
+        ImGui::SetNextWindowPos(
+            ImVec2(viewport->WorkPos.x + 24.f, viewport->WorkPos.y + 24.f),
+            ImGuiCond_Always);
+    }
+    if (!ImGui::Begin(
+        "Character Select",
+        nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextUnformatted("Mode");
+    const bool_t isPreview = MODE::PREVIEW == m_eMode;
+    const bool_t isConnecting = MODE::CONNECTING == m_eMode;
+    const bool_t isServerArena = MODE::SERVER_ARENA == m_eMode;
+    const bool_t isReturning = MODE::RETURNING_TO_LOBBY == m_eMode;
+    const bool_t transitionPending = CLevelTransitionService::Is_Pending();
+    const bool_t isModeTransitioning =
+        isConnecting || isReturning || transitionPending;
+    const bool_t isServerSelected =
+        isConnecting || isServerArena || isReturning;
+
+    ImGui::BeginDisabled(isModeTransitioning);
+    if (ImGui::RadioButton("Preview", isPreview) && !isPreview)
+        Enter_Stage(LOBBY_STAGE::CHARACTER_SELECT);
+    ImGui::SameLine();
+    if (ImGui::RadioButton(
+        "Server Play (Lobby-approved)",
+        isServerSelected) && isPreview)
+    {
+        Enter_Stage(LOBBY_STAGE::TEST);
+    }
+    ImGui::EndDisabled();
+    if (isConnecting)
+        ImGui::TextDisabled("Connecting... existing preview is preserved");
+    else if (isReturning)
+        ImGui::TextDisabled("Returning to socket-free Preview...");
+
+    ImGui::Separator();
+    ImGui::TextUnformatted("Playable class");
+    ImGui::BeginDisabled(!isPreview || transitionPending);
+    for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
+    {
+        if (ImGui::Selectable(
+            Get_CharacterClassName(SUPPORTED_CLASSES[index]),
+            index == m_iPreviewIndex))
+        {
+            Select_Preview(index);
+        }
+    }
+    ImGui::EndDisabled();
+    if (!isPreview)
+        ImGui::TextDisabled("Return to Preview to change the Server session class.");
+
+    if (isServerArena)
+    {
+        ImGui::Separator();
+        const bool_t valtanSpawned =
+            m_Replication.Has_WorldEntity("BOSS_VALTAN");
+        ImGui::BeginDisabled(
+            m_isValtanSpawnRequested || valtanSpawned);
+        if (ImGui::Button("Summon Valtan (Lazy)"))
+            Request_ValtanSpawn();
+        ImGui::EndDisabled();
+        if (valtanSpawned)
+            ImGui::SameLine(), ImGui::TextDisabled("Spawned");
+        else if (m_isValtanSpawnRequested)
+            ImGui::SameLine(), ImGui::TextDisabled("Requested");
+    }
+
+    ImGui::Separator();
+    ImGui::BeginDisabled(isConnecting || isReturning || transitionPending);
+    if (ImGui::Button("Enter Bern"))
+        Enter_Stage(LOBBY_STAGE::BERN);
+    ImGui::SameLine();
+    if (ImGui::Button("Enter Valtan Map"))
+        Enter_Stage(LOBBY_STAGE::VALTAN);
+    ImGui::SameLine();
+    if (ImGui::Button("Back"))
+    {
+        if (MODE::PREVIEW != m_eMode)
+        {
+            Fail_ServerArena("Leaving Server Arena.");
+        }
+        else if (!CLevelTransitionService::Request_Load(
+            LEVEL::LOBBY,
+            "character-select.back"))
+        {
+            m_strStatus = CLevelTransitionService::Get_Status();
+        }
+    }
+    ImGui::EndDisabled();
+
+    ImGui::TextDisabled(
+        "F1: tools  |  F6: follow/free  |  Server Play: skill input enabled");
+    ImGui::TextWrapped("%s", m_strStatus.c_str());
+    ImGui::End();
+}
+```
+
+### Audit 계약
+
+ProjectAudit의 Character Select check는 다음을 함께 요구한다.
+
+```powershell
+$characterSelectSource -match 'ImGui::RadioButton\("Preview"' -and
+$characterSelectSource -match 'Server Play \(Lobby-approved\)' -and
+$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::TEST\)' -and
+$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::CHARACTER_SELECT\)' -and
+$characterSelectSource -notmatch 'ImGui::BeginDisabled\(true\)' -and
+$characterSelectSource -notmatch 'ImGui::Button\("Enter Test"\)'
+```
+
+Frontend harness에 추가하는 함수와 호출은 다음과 같다.
+
+```cpp
+void Test_CharacterSelectPreviewReturnCommand(TEST_RUNNER& runner)
+{
+    using namespace Client;
+    LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
+    runner.Require(
+        CLobbyCommandService::Request(
+            LOBBY_STAGE::CHARACTER_SELECT,
+            token) &&
+        INVALID_LOBBY_COMMAND_TOKEN != token,
+        "Server Arena Preview Selection Stages Tokenized Return");
+
+    LOBBY_COMMAND command{};
+    runner.Require(
+        CLobbyCommandService::Try_Consume(command) &&
+        LOBBY_STAGE::CHARACTER_SELECT == command.eStage &&
+        LOBBY_COMMAND_PURPOSE::GAMEPLAY == command.ePurpose &&
+        token == command.iToken,
+        "Lobby Consumes Exact Character Select Preview Return");
+    Require_NoPendingCommand(
+        runner,
+        "Preview Return Leaves No Stale Lobby Command");
+}
+
+Test_CharacterSelectPreviewReturnCommand(runner);
+```
+
+### 검증
+
+```powershell
+Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug
+Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
+Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+git diff --check
+```
+
+수동 smoke는 Preview class 변경, Server Play 선택, Lobby 승인, Server skill 입력, Preview 복귀 순서로
+확인한다. 자동 검증과 사람이 누른 ImGui 결과는 RESULT에서 별도 상태로 기록한다.
