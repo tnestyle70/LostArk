@@ -60,7 +60,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const CGameplayCatalog& catalog,
 	const CServerNavigation& navigation,
 	const float fixedDeltaSeconds,
-	const std::uint32_t serverTick) const
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
 		return;
@@ -154,7 +155,14 @@ void LostArk::Server::CValtanBrain::Update(
 	case SERVER_ENTITY_ACTION::PATTERN_ACTIVE:
 		if (!boss.hasAppliedPatternDamage)
 		{
-			const std::uint32_t damage = catalog.Find_Damage(boss.strDamageProfileId);
+			/* Same resolution as player skills: the profile carries a rate and the
+			boss's own attack power turns it into a number, so the two damage paths
+			cannot drift apart. */
+			const BOSS_RUNTIME_PROFILE* bossProfile =
+				catalog.Find_Boss(boss.strArchetypeId);
+			const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
+				nullptr == bossProfile ? 0u : bossProfile->iAttackPower,
+				catalog.Find_DamageRatePercent(boss.strDamageProfileId));
 			const float hitRangeSquared =
 				boss.fPatternMaximumRange * boss.fPatternMaximumRange;
 			for (auto& [playerId, player] : players)
@@ -166,8 +174,27 @@ void LostArk::Server::CValtanBrain::Update(
 				const float deltaZ = player.fPositionZ - boss.fPositionZ;
 				if (deltaX * deltaX + deltaZ * deltaZ > hitRangeSquared)
 					continue;
+				const PLAYER_RUNTIME_PROFILE* playerProfile =
+					catalog.Find_Player(player.eCharacterClass);
+				const std::uint32_t damage = CGameplayCatalog::Apply_Defense(
+					rawDamage,
+					nullptr == playerProfile ? 0u : playerProfile->iDefense);
 				player.iCurrentHp = damage >= player.iCurrentHp ?
 					0u : player.iCurrentHp - damage;
+				/* A zero amount is not a hit and the snapshot writer rejects it;
+				the cap keeps one overfull tick from suppressing the snapshot. */
+				if (0u != damage &&
+					outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+				{
+					LostArk::Shared::DAMAGE_EVENT damageEvent{};
+					damageEvent.iTargetNetEntityId = player.iNetEntityId;
+					damageEvent.iAmount = damage;
+					damageEvent.fPositionX = player.fPositionX;
+					damageEvent.fPositionY = player.fPositionY;
+					damageEvent.fPositionZ = player.fPositionZ;
+					damageEvent.isOutgoing = false;
+					outDamageEvents.push_back(damageEvent);
+				}
 				if (0u == player.iCurrentHp)
 				{
 					player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;

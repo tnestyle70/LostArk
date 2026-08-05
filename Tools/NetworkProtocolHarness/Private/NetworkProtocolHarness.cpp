@@ -1176,8 +1176,21 @@ namespace
 			Build_WorldSnapshotPayload(source, payload),
 			"Writer World Snapshot");
 
+		constexpr std::size_t snapshotHeaderBytes =
+			4 + 2 + 2 + 2 + 1;
+		constexpr std::size_t playerFixedBytes =
+			4 + (4 * 4) + 1 + 1 + (4 * 6) + 1 + 1;
+		constexpr std::size_t cooldownBytes = 4 + 4;
+		constexpr std::size_t emptyActionEntityBytes =
+			4 + 1 + 2 + (4 * 4) + (4 * 3) + 1;
+		constexpr std::size_t expectedPayloadBytes =
+			snapshotHeaderBytes +
+			(playerFixedBytes * 2) +
+			cooldownBytes +
+			emptyActionEntityBytes;
+
 		testRunner.Require(
-			150 == payload.size(),
+			expectedPayloadBytes == payload.size(),
 			"World Snapshot Payload Size");
 
 		CPacketReader reader{ payload };
@@ -1275,6 +1288,66 @@ namespace
 			unchanged.Players.empty(),
 			"Failed Snapshot Does Not Mutate");
 	}
+
+	void Test_WorldEntitySpawnCommandRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_SPAWN_WORLD_ENTITY request{};
+		request.strPlacementId = "boss.valtan.character-select.lazy";
+		CPacketWriter requestWriter;
+		testRunner.Require(
+			Write_Message(requestWriter, request),
+			"Writer World Entity Spawn Request");
+		CPacketReader requestReader{ requestWriter.Get_Buffer() };
+		C2S_SPAWN_WORLD_ENTITY decodedRequest{};
+		testRunner.Require(
+			Read_Message(requestReader, decodedRequest) &&
+			decodedRequest.strPlacementId == request.strPlacementId &&
+			0u == requestReader.Get_RemainingSize(),
+			"World Entity Spawn Request Round Trip");
+
+		C2S_SPAWN_WORLD_ENTITY invalidRequest{};
+		CPacketWriter invalidRequestWriter;
+		testRunner.Require(
+			!Write_Message(invalidRequestWriter, invalidRequest),
+			"Reject Empty World Entity Spawn Placement");
+		invalidRequest.strPlacementId = "boss/valtan";
+		testRunner.Require(
+			!Write_Message(invalidRequestWriter, invalidRequest),
+			"Reject Invalid World Entity Spawn Placement");
+		invalidRequest.strPlacementId.assign(
+			MAX_STABLE_NETWORK_ID_BYTES + 1u,
+			'a');
+		testRunner.Require(
+			!Write_Message(invalidRequestWriter, invalidRequest),
+			"Reject Oversize World Entity Spawn Placement");
+
+		S2C_WORLD_ENTITY_SPAWN_RESULT result{};
+		result.strPlacementId = request.strPlacementId;
+		result.eResult = WORLD_ENTITY_SPAWN_RESULT::SPAWNED;
+		result.iNetEntityId = 900u;
+		CPacketWriter resultWriter;
+		testRunner.Require(
+			Write_Message(resultWriter, result),
+			"Writer World Entity Spawn Result");
+		CPacketReader resultReader{ resultWriter.Get_Buffer() };
+		S2C_WORLD_ENTITY_SPAWN_RESULT decodedResult{};
+		testRunner.Require(
+			Read_Message(resultReader, decodedResult) &&
+			decodedResult.eResult == WORLD_ENTITY_SPAWN_RESULT::SPAWNED &&
+			decodedResult.iNetEntityId == 900u &&
+			0u == resultReader.Get_RemainingSize(),
+			"World Entity Spawn Result Round Trip");
+
+		result.eResult = WORLD_ENTITY_SPAWN_RESULT::REJECTED;
+		testRunner.Require(
+			!Write_Message(resultWriter, result),
+			"Reject Spawn Rejection With Entity ID");
+		result.iNetEntityId = INVALID_NET_ENTITY_ID;
+		CPacketWriter rejectionWriter;
+		testRunner.Require(
+			Write_Message(rejectionWriter, result),
+			"Accept Explicit World Entity Spawn Rejection");
+	}
 }
 
 int main()
@@ -1296,6 +1369,7 @@ int main()
 	//Move, Snapshot roundtrip
 	Test_MoveRoundTrip(testRunner);
 	Test_UseSkillRoundTrip(testRunner);
+	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 
 	Test_StreamFraming(testRunner);

@@ -45,6 +45,20 @@ namespace
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		return CHARACTER_CLASS_ID::END;
 	}
+
+	/* A stale document must fail on its version, not on whichever field the new
+	schema happened to rename; a missing-field error would send the editor to the
+	wrong fix. */
+	bool HasFormatVersion(
+		const DATA_JSON_VALUE& document,
+		const double expected)
+	{
+		const DATA_JSON_VALUE* version =
+			document.Find("formatVersion");
+		return nullptr != version &&
+			version->Get_Type() == DATA_JSON_TYPE::NUMBER &&
+			version->Get_Number() == expected;
+	}
 }
 
 bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
@@ -55,6 +69,11 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		!ReadDocument(L"Balance/PlayerSkills.json", skillRoot))
 	{
 		outStatus = "Missing player skill balance document";
+		return false;
+	}
+	if (!HasFormatVersion(damageRoot, 2.0) || !HasFormatVersion(skillRoot, 2.0))
+	{
+		outStatus = "Player skill balance document is not formatVersion 2";
 		return false;
 	}
 
@@ -70,11 +89,12 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 	{
 		const DATA_JSON_VALUE* id = Required(
 			value, "damageProfileId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* amount = Required(
-			value, "amount", DATA_JSON_TYPE::NUMBER);
-		if (nullptr == id || nullptr == amount || amount->Get_Number() <= 0.0 ||
+		const DATA_JSON_VALUE* ratePercent = Required(
+			value, "damageRatePercent", DATA_JSON_TYPE::NUMBER);
+		if (nullptr == id || nullptr == ratePercent ||
+			ratePercent->Get_Number() <= 0.0 ||
 			!damages.emplace(id->Get_String(),
-				static_cast<std::uint32_t>(amount->Get_Number())).second)
+				static_cast<std::uint32_t>(ratePercent->Get_Number())).second)
 		{
 			outStatus = "DamageProfiles.json has an invalid or duplicate profile";
 			return false;
@@ -101,12 +121,18 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		const DATA_JSON_VALUE* name = Required(value, "displayName", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* action = Required(value, "actionId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* resourceCost = Required(
+			value, "resourceCost", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* damageId = Required(
 			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* kind = Required(value, "skillKind", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* comboStages = Required(
+			value, "comboStages", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
 			nullptr == name || nullptr == action ||
-			nullptr == cooldown || nullptr == damageId || nullptr == kind)
+			nullptr == cooldown || nullptr == resourceCost ||
+			resourceCost->Get_Number() < 0.0 ||
+			nullptr == damageId || nullptr == kind || nullptr == comboStages)
 		{
 			outStatus = "PlayerSkills.json is missing a required skill field";
 			return false;
@@ -119,13 +145,15 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		definition.strDisplayName = name->Get_String();
 		definition.strActionId = action->Get_String();
 		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
+		definition.iResourceCost =
+			static_cast<std::uint32_t>(resourceCost->Get_Number());
 		const auto damage = damages.find(damageId->Get_String());
 		if (damages.end() == damage)
 		{
 			outStatus = "PlayerSkills.json references an unknown damage profile";
 			return false;
 		}
-		definition.iDamage = damage->second;
+		definition.iDamageRatePercent = damage->second;
 
 		const std::string& kindText = kind->Get_String();
 		if ("ACTIVE" == kindText)
@@ -137,6 +165,7 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			outStatus = "PlayerSkills.json has an unknown skillKind";
 			return false;
 		}
+		definition.iComboStageCount = comboStages->Get_Array().size();
 
 		/* A combo runs off its stages and carries no cooldown, so only an ACTIVE
 		skill has to declare one. */
@@ -144,7 +173,10 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			LostArk::Shared::CHARACTER_CLASS_ID::END == definition.eCharacterClass ||
 			definition.strInputSlot.empty() ||
 			(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == definition.eSkillKind &&
-				0u == definition.iCooldownMs))
+				(0u == definition.iCooldownMs || 0u != definition.iComboStageCount)) ||
+			(LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind &&
+				(definition.iComboStageCount < 2u ||
+					definition.iComboStageCount > 8u)))
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;

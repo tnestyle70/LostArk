@@ -32,12 +32,14 @@ public:
 	virtual HRESULT Render() override;
 
 private:
-	bool_t Begin_StageRequest(LOBBY_STAGE eStage);
+	bool_t Begin_StageRequest(const LOBBY_COMMAND& command);
 	bool_t Begin_NetworkEntry(
 		LostArk::Shared::WORLD_ID eWorldId,
-		LEVEL eTargetLevel);
+		LEVEL eTargetLevel,
+		LOBBY_COMMAND_PURPOSE purpose);
 	bool_t Resolve_Stage(
 		LOBBY_STAGE eStage,
+		LOBBY_COMMAND_PURPOSE purpose,
 		LostArk::Shared::WORLD_ID& outWorldId,
 		LEVEL& outTargetLevel) const;
 	void Consume_EnterAccepted();
@@ -49,6 +51,8 @@ private:
 	LostArk::Shared::WORLD_ID m_ePendingWorldId =
 		LostArk::Shared::WORLD_ID::END;
 	LEVEL m_ePendingLevel = LEVEL::END;
+	LOBBY_COMMAND_PURPOSE m_ePendingPurpose =
+		LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
 	string m_strStatus =
 		"Choose a stage directly or open Character Select to change class.";

@@ -115,6 +115,20 @@ namespace
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
 			0 != snapshot.iPhase;
 	}
+
+	// A zero amount is not a hit, so it must not reach presentation as one; the
+	// server clamps every resolved hit to at least 1.
+	bool Is_Valid_DamageEvent(
+		const LostArk::Shared::DAMAGE_EVENT& damage)
+	{
+		return
+			damage.iTargetNetEntityId !=
+				LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			0 != damage.iAmount &&
+			std::isfinite(damage.fPositionX) &&
+			std::isfinite(damage.fPositionY) &&
+			std::isfinite(damage.fPositionZ);
+	}
 }
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
@@ -482,6 +496,91 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_SPAWN_WORLD_ENTITY& message)
+{
+	return Is_Valid_StableId(message.strPlacementId, false) &&
+		writer.Write_String(
+			message.strPlacementId,
+			MAX_STABLE_NETWORK_ID_BYTES);
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_SPAWN_WORLD_ENTITY& message)
+{
+	std::string placementId;
+	if (!reader.Read_String(placementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!Is_Valid_StableId(placementId, false))
+	{
+		return false;
+	}
+
+	C2S_SPAWN_WORLD_ENTITY decoded{};
+	decoded.strPlacementId = std::move(placementId);
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_WORLD_ENTITY_SPAWN_RESULT& message)
+{
+	const std::uint8_t rawResult =
+		static_cast<std::uint8_t>(message.eResult);
+	const bool hasEntity =
+		WORLD_ENTITY_SPAWN_RESULT::SPAWNED == message.eResult ||
+		WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS == message.eResult;
+	if (!Is_Valid_StableId(message.strPlacementId, false) ||
+		rawResult >= static_cast<std::uint8_t>(
+			WORLD_ENTITY_SPAWN_RESULT::END) ||
+		(hasEntity && INVALID_NET_ENTITY_ID == message.iNetEntityId) ||
+		(!hasEntity && INVALID_NET_ENTITY_ID != message.iNetEntityId))
+	{
+		return false;
+	}
+	if (!writer.Write_String(
+		message.strPlacementId,
+		MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_U8(rawResult);
+	writer.Write_U32(message.iNetEntityId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_WORLD_ENTITY_SPAWN_RESULT& message)
+{
+	S2C_WORLD_ENTITY_SPAWN_RESULT decoded{};
+	std::uint8_t rawResult = 0;
+	if (!reader.Read_String(
+		decoded.strPlacementId,
+		MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_U8(rawResult) ||
+		!reader.Read_U32(decoded.iNetEntityId))
+	{
+		return false;
+	}
+	decoded.eResult = static_cast<WORLD_ENTITY_SPAWN_RESULT>(rawResult);
+	const bool hasEntity =
+		WORLD_ENTITY_SPAWN_RESULT::SPAWNED == decoded.eResult ||
+		WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS == decoded.eResult;
+	if (!Is_Valid_StableId(decoded.strPlacementId, false) ||
+		rawResult >= static_cast<std::uint8_t>(
+			WORLD_ENTITY_SPAWN_RESULT::END) ||
+		(hasEntity && INVALID_NET_ENTITY_ID == decoded.iNetEntityId) ||
+		(!hasEntity && INVALID_NET_ENTITY_ID != decoded.iNetEntityId))
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_PLAYER_DESPAWNED& message)
 {
     //검증
@@ -626,7 +725,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
         message.Players.empty() ||
         message.Players.size() >
         MAX_WORLD_SNAPSHOT_PLAYERS ||
-		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES)
+		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES ||
+		message.DamageEvents.size() > MAX_DAMAGE_EVENTS)
     {
         return false;
     }
@@ -641,6 +741,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		if (!Is_Valid_WorldEntitySnapshot(entity))
 			return false;
 	}
+	for (const DAMAGE_EVENT& damage : message.DamageEvents)
+	{
+		if (!Is_Valid_DamageEvent(damage))
+			return false;
+	}
     //server tick과 player size 넣기
 	writer.Write_U32(message.iServerTick);
 	writer.Write_U16(
@@ -650,6 +755,9 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
             message.Players.size()));
 	writer.Write_U16(
 		static_cast<std::uint16_t>(message.Entities.size()));
+	// U8 is enough: MAX_DAMAGE_EVENTS bounds one tick, far under 255.
+	writer.Write_U8(
+		static_cast<std::uint8_t>(message.DamageEvents.size()));
 
     for (const PLAYER_SNAPSHOT& player : message.Players)
     {
@@ -694,6 +802,15 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
 	}
+	for (const DAMAGE_EVENT& damage : message.DamageEvents)
+	{
+		writer.Write_U32(damage.iTargetNetEntityId);
+		writer.Write_U32(damage.iAmount);
+		writer.Write_F32(damage.fPositionX);
+		writer.Write_F32(damage.fPositionY);
+		writer.Write_F32(damage.fPositionZ);
+		writer.Write_U8(damage.isOutgoing ? 1u : 0u);
+	}
 
     return true;
 }
@@ -704,11 +821,13 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	std::uint16_t rawWorldId = 0;
 	std::uint16_t playerCount = 0;
 	std::uint16_t entityCount = 0;
+	std::uint8_t damageEventCount = 0;
 
 	if (!reader.Read_U32(serverTick) ||
 		!reader.Read_U16(rawWorldId) ||
 		!reader.Read_U16(playerCount) ||
-		!reader.Read_U16(entityCount))
+		!reader.Read_U16(entityCount) ||
+		!reader.Read_U8(damageEventCount))
     {
         return false;
     }
@@ -717,7 +836,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		!Is_Known_World_Id(static_cast<WORLD_ID>(rawWorldId)) ||
         0 == playerCount ||
         playerCount > MAX_WORLD_SNAPSHOT_PLAYERS ||
-		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES)
+		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES ||
+		damageEventCount > MAX_DAMAGE_EVENTS)
     {
         return false;
     }
@@ -727,6 +847,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	decoded.eWorldId = static_cast<WORLD_ID>(rawWorldId);
     decoded.Players.reserve(playerCount);
 	decoded.Entities.reserve(entityCount);
+	decoded.DamageEvents.reserve(damageEventCount);
 
     for (std::uint16_t i = 0; i < playerCount; ++i)
     {
@@ -802,6 +923,25 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		if (!Is_Valid_WorldEntitySnapshot(entity))
 			return false;
 		decoded.Entities.push_back(std::move(entity));
+	}
+	for (std::uint8_t i = 0; i < damageEventCount; ++i)
+	{
+		DAMAGE_EVENT damage{};
+		std::uint8_t rawOutgoing = 0;
+		if (!reader.Read_U32(damage.iTargetNetEntityId) ||
+			!reader.Read_U32(damage.iAmount) ||
+			!reader.Read_F32(damage.fPositionX) ||
+			!reader.Read_F32(damage.fPositionY) ||
+			!reader.Read_F32(damage.fPositionZ) ||
+			!reader.Read_U8(rawOutgoing) ||
+			rawOutgoing > 1u)
+		{
+			return false;
+		}
+		damage.isOutgoing = 0u != rawOutgoing;
+		if (!Is_Valid_DamageEvent(damage))
+			return false;
+		decoded.DamageEvents.push_back(damage);
 	}
 
     message = std::move(decoded);

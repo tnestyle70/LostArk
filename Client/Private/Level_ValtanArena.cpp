@@ -95,9 +95,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
-	m_PlayerController.Set_GameplayInputEnabled(
-		nullptr == m_pCamera || m_pCamera->Is_FollowEnabled());
-	m_PlayerController.Update();
+	m_PlayerController.Update(
+		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
 }
 
 HRESULT CLevel_ValtanArena::Render()

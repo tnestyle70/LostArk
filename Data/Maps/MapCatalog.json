@@ -73,6 +73,7 @@
       "placements": "Client/Bin/DataFiles/Map/LV_LOBBY_CLASSSELECT_SL00.mapplacements",
       "navigationSource": "Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource",
       "navigationPaint": "Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint",
+      "gameplayDocument": "Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/Gameplay.world.json",
       "placementCount": 803,
       "assetCount": 55,
       "runtimeAssetRoot": "Map/CHARACTERSELECTMAP"

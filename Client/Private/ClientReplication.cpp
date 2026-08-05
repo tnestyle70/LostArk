@@ -9,6 +9,7 @@
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
 #include "Valtan.h"
+#include "ValtanPresentationAssetService.h"
 
 namespace
 {
@@ -146,6 +147,28 @@ bool Client::CClientReplication::Has_PendingConnectionLoss() const
 void Client::CClientReplication::Acknowledge_ConnectionLoss()
 {
 	m_hasPendingConnectionLoss = false;
+}
+
+void Client::CClientReplication::Reset()
+{
+	Reset_World();
+	m_wasConnected = false;
+	m_hasPendingConnectionLoss = false;
+}
+
+bool Client::CClientReplication::Has_WorldEntity(
+	const std::string_view archetypeId) const
+{
+	for (const auto& [entityId, presentation] : m_WorldEntities)
+	{
+		(void)entityId;
+		if (presentation.strArchetypeId == archetypeId &&
+			!presentation.pValtan.expired())
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
@@ -329,6 +352,13 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	{
 		return false;
 	}
+	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+		m_Desc.pDevice,
+		m_Desc.pContext,
+		m_Desc.iPrototypeLevelIndex)))
+	{
+		return false;
+	}
 
 	CValtan::VALTAN_DESC desc{};
 	desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
@@ -489,6 +519,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity);
 		}
 	}
+	CCombatHUDViewModel::Get().Apply_DamageEvents(
+		snapshot.iServerTick,
+		snapshot.DamageEvents);
 
 	m_iLastServerTick = snapshot.iServerTick;
 	return allSucceeded;

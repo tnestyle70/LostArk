@@ -39,6 +39,8 @@ public: /* For.Graphic_Device */
 public: /* For.Input_Device */
 	int8_t	Get_DIKeyState(uint8_t byKeyID);
 	bool_t Get_DIKeyPressed(uint8_t byKeyID);
+	int8_t Get_DIKeyStateRaw(uint8_t byKeyID) const;
+	bool_t Get_DIKeyPressedRaw(uint8_t byKeyID) const;
 	int8_t	Get_DIMouseState(DIM eMouse);
 	int32_t	Get_DIMouseMove(DIMM eMouseState);
 	void SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocked);
@@ -63,6 +65,9 @@ public: /* For.Level_Manager */
 
 public: /* For.Prototype_Manager */
 	HRESULT Add_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, unique_ptr<class CPrototype> pPrototype);
+	HRESULT Add_Prototypes(
+		uint32_t iLevelIndex,
+		vector<pair<wstring_t, unique_ptr<class CPrototype>>>&& prototypes);
 	shared_ptr<CPrototype> Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg = nullptr);
 
 public: /* For.Object_Manager */

@@ -7,11 +7,16 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string_view>
 #include <vector>
 
 namespace
 {
+	/* Mirror of the publisher's $maximumDamageRatePercent: a rate only one side
+	accepts would make Validate and Load disagree about the same document. */
+	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
+
 	std::filesystem::path Resolve_DataRoot()
 	{
 		wchar_t configured[32768]{};
@@ -112,7 +117,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_Players.clear();
-	m_DamageByProfileId.clear();
+	m_DamageRatePercentByProfileId.clear();
 
 	const std::filesystem::path dataRoot = Resolve_DataRoot();
 	const std::filesystem::path path = dataRoot / L"Gameplay" / L"Gameplay.bootstrap";
@@ -152,10 +157,12 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		if (!fields.empty() && "DAMAGE" == fields[0])
 		{
-			std::uint32_t amount = 0;
+			std::uint32_t ratePercent = 0;
 			if (3u != fields.size() || !IsStableId(fields[1]) ||
-				!ParseNumber(fields[2], amount) || 0u == amount ||
-				!m_DamageByProfileId.emplace(std::string(fields[1]), amount).second)
+				!ParseNumber(fields[2], ratePercent) || 0u == ratePercent ||
+				ratePercent > MAXIMUM_DAMAGE_RATE_PERCENT ||
+				!m_DamageRatePercentByProfileId.emplace(
+					std::string(fields[1]), ratePercent).second)
 			{
 				m_strStatus = "Damage profile row is invalid";
 				return false;
@@ -183,7 +190,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				/* iHitTimeMs may be 0: a skill can land as the cast starts, so only
 					the upper bound below is a real constraint. */
 				skill.iHitTimeMs > skill.iActionDurationMs ||
-				skill.iResourceCost > 100u ||
+				/* Cost is bounded against the largest class pool after every row is
+					read: a single row cannot know which pool applies. */
 				!std::isfinite(skill.fMovementDistance) ||
 				!std::isfinite(skill.fMaximumRange) ||
 				skill.fMovementDistance < 0.f || skill.fMaximumRange <= 0.f)
@@ -237,13 +245,18 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{
 			BOSS_RUNTIME_PROFILE boss{};
-			if (7u != fields.size() || !IsStableId(fields[1]) ||
+			if (9u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], boss.iMaximumHp) ||
-				!ParseNumber(fields[4], boss.fEngageDistance) ||
-				!ParseNumber(fields[5], boss.fMoveSpeed) ||
-				!ParseNumber(fields[6], boss.iPhaseTwoHpPercent) ||
-				0u == boss.iMaximumHp || !std::isfinite(boss.fEngageDistance) ||
+				!ParseNumber(fields[4], boss.iAttackPower) ||
+				!ParseNumber(fields[5], boss.fCollisionRadius) ||
+				!ParseNumber(fields[6], boss.fEngageDistance) ||
+				!ParseNumber(fields[7], boss.fMoveSpeed) ||
+				!ParseNumber(fields[8], boss.iPhaseTwoHpPercent) ||
+				0u == boss.iMaximumHp || 0u == boss.iAttackPower ||
+				!std::isfinite(boss.fCollisionRadius) ||
+				boss.fCollisionRadius <= 0.f ||
+				!std::isfinite(boss.fEngageDistance) ||
 				!std::isfinite(boss.fMoveSpeed) || boss.fEngageDistance <= 0.f ||
 				boss.fMoveSpeed <= 0.f || 0u == boss.iPhaseTwoHpPercent ||
 				boss.iPhaseTwoHpPercent >= 100u)
@@ -262,12 +275,18 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			if (5u != fields.size() ||
+			if (8u != fields.size() ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
 				!ParseNumber(fields[2], player.iMaximumHp) ||
 				!ParseNumber(fields[3], player.iMaximumResource) ||
-				!ParseNumber(fields[4], player.fMoveSpeed) ||
+				!ParseNumber(fields[4], player.iResourceRegenPerSecond) ||
+				!ParseNumber(fields[5], player.iAttackPower) ||
+				!ParseNumber(fields[6], player.iDefense) ||
+				!ParseNumber(fields[7], player.fMoveSpeed) ||
 				0u == player.iMaximumHp || 0u == player.iMaximumResource ||
+				0u == player.iResourceRegenPerSecond ||
+				player.iResourceRegenPerSecond > player.iMaximumResource ||
+				0u == player.iAttackPower || 0u == player.iDefense ||
 				!std::isfinite(player.fMoveSpeed) || player.fMoveSpeed <= 0.f ||
 				!m_Players.emplace(player.eCharacterClass, player).second)
 			{
@@ -283,17 +302,32 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	}
 
 	if (std::getline(input, line) || m_Skills.empty() || m_Players.empty() ||
-		m_Bosses.empty() || m_DamageByProfileId.empty())
+		m_Bosses.empty() || m_DamageRatePercentByProfileId.empty())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
 		return false;
 	}
+	/* Rows arrive sorted, so a skill's cost cannot be checked against a pool while
+	the skill row is being parsed. The largest pool any class has is the only bound
+	that makes a cost payable by somebody. */
+	std::uint32_t largestResourcePool = 0;
+	for (const auto& [characterClass, player] : m_Players)
+	{
+		(void)characterClass;
+		largestResourcePool =
+			(std::max)(largestResourcePool, player.iMaximumResource);
+	}
 	for (const auto& [skillId, skill] : m_Skills)
 	{
 		(void)skillId;
-		if (0u == Find_Damage(skill.strDamageProfileId))
+		if (0u == Find_DamageRatePercent(skill.strDamageProfileId))
 		{
 			m_strStatus = "Player skill references missing damage profile";
+			return false;
+		}
+		if (skill.iResourceCost > largestResourcePool)
+		{
+			m_strStatus = "Player skill costs more than any class can hold";
 			return false;
 		}
 	}
@@ -326,9 +360,37 @@ LostArk::Server::CGameplayCatalog::Find_Boss(
 	return m_Bosses.end() == iter ? nullptr : &iter->second;
 }
 
-std::uint32_t LostArk::Server::CGameplayCatalog::Find_Damage(
+std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(
 	const std::string& damageProfileId) const
 {
-	const auto iter = m_DamageByProfileId.find(damageProfileId);
-	return m_DamageByProfileId.end() == iter ? 0u : iter->second;
+	const auto iter = m_DamageRatePercentByProfileId.find(damageProfileId);
+	return m_DamageRatePercentByProfileId.end() == iter ? 0u : iter->second;
+}
+
+std::uint32_t LostArk::Server::CGameplayCatalog::Resolve_Damage(
+	const std::uint32_t attackPower,
+	const std::uint32_t damageRatePercent)
+{
+	if (0u == attackPower || 0u == damageRatePercent)
+		return 0u;
+	const std::uint64_t scaled =
+		(static_cast<std::uint64_t>(attackPower) *
+			static_cast<std::uint64_t>(damageRatePercent)) / 100ull;
+	return scaled < 1ull ? 1u :
+		static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			scaled, (std::numeric_limits<std::uint32_t>::max)()));
+}
+
+std::uint32_t LostArk::Server::CGameplayCatalog::Apply_Defense(
+	const std::uint32_t rawDamage,
+	const std::uint32_t defense)
+{
+	if (0u == rawDamage)
+		return 0u;
+	const std::uint64_t mitigated =
+		(static_cast<std::uint64_t>(rawDamage) * 100ull) /
+		(100ull + static_cast<std::uint64_t>(defense));
+	return mitigated < 1ull ? 1u :
+		static_cast<std::uint32_t>((std::min<std::uint64_t>)(
+			mitigated, (std::numeric_limits<std::uint32_t>::max)()));
 }

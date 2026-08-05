@@ -196,11 +196,7 @@ try {
             'navigationSource', 'navigationPaint', 'navigationBlockers',
             'navigationRuntime',
             'gameplayDocument')) {
-            $isCharacterSelectNavBootstrap =
-                $area.id -eq 'LV_LOBBY_CLASSSELECT_SL00' -and
-                $property -in @('navigationSource', 'navigationPaint')
             if ($area.PSObject.Properties.Name -contains $property -and
-                -not $isCharacterSelectNavBootstrap -and
                 -not (Test-Path -LiteralPath $area.$property)) {
                 $missingMapFiles.Add($area.$property)
             }
@@ -250,7 +246,7 @@ try {
 		$null -ne $characterSelectEditor -and
 		$characterSelectEditor.navigationSource -eq 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navsource' -and
 		$characterSelectEditor.navigationPaint -eq 'Data/Navigation/LV_LOBBY_CLASSSELECT_SL00.navpaint' -and
-		$characterSelectEditor.PSObject.Properties.Name -notcontains 'gameplayDocument' -and
+		$characterSelectEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
 		$null -ne $bernEditor -and
 		$bernEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
 		$bernEditor.PSObject.Properties.Name -notcontains 'navigationSource' -and
@@ -263,13 +259,15 @@ try {
 		$trainingEditor.PSObject.Properties.Name -notcontains 'navigationSource' -and
 		$trainingEditor.PSObject.Properties.Name -notcontains 'gameplayDocument' -and
 		$mapToolSource -match 'Load_Source\(' -and
+		$mapToolSource -match 'if \(descriptor\.areaId == "LV_LOBBY_CLASSSELECT_SL00" \|\|[\s\S]{0,160}descriptor\.areaId == "LV_BER_BERNCASTLE"' -and
+		$mapToolSource -notmatch 'allowNavigationBootstrap\s*=' -and
 		$mapToolSource -notmatch '\.Export_Runtime\(' -and
 		$mapToolSource -match 'MapEditorWorkspaceService::Is_Active' -and
 		$loaderSource -match 'Ready_MapAuthoringCore' -and
 		$loaderSource -match 'MapEditorWorkspaceService::Is_Requested' -and
 		$mainAppSource -notmatch 'debug\.map-editor' -and
 		$lobbySource -match 'MapEditorWorkspaceService::Request\(' -and
-		$lobbySource -match 'LEVEL::DEVELOPMENT == approvedLevel'
+		$lobbySource -match 'LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE'
 	Add-Check 'maps.editor-workspace-policy' $editorPoliciesValid 'Lobby Test owns editor entry; F1 only toggles tools; four exact editor Areas; Data-only save'
 	$singleAreaContractErrors = [Collections.Generic.List[string]]::new()
 	$exclusiveRuntimeAreaIds = @(
@@ -617,15 +615,58 @@ try {
 	Add-Check 'source.no-course-sample-root' (
 		-not (Test-Path -LiteralPath 'astar') -and
 		-not (Test-Path -LiteralPath '99.수업') -and
-		-not (Test-Path -LiteralPath '_work\resource-layout-backup\legacy-map-packs\dev-lol-annie') -and
-		-not (Test-Path -LiteralPath 'Data\Effects\Editor\IntakeTest')) 'course and legacy smoke samples are quarantined outside the repository'
+		-not (Test-Path -LiteralPath '_work\resource-layout-backup\legacy-map-packs\dev-lol-annie')) 'course and legacy smoke samples are quarantined outside the repository'
+
+	$effectDocumentHeader = Get-Content -LiteralPath 'Client\Public\Effect_AuthoringDocument.h' -Raw
+	$effectToolHeader = Get-Content -LiteralPath 'Client\Public\Effect_Tool.h' -Raw
+	$effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
+	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
+	$engineImGuiSource = Get-Content -LiteralPath 'Engine\Private\ImGuiLayer.cpp' -Raw
+	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$removedEffectPaths = @(
+		'Client\Public\Effect_Types.h',
+		'Client\Public\Effect_AssetIO.h',
+		'Client\Private\Effect_AssetIO.cpp',
+		'Client\Public\Effect_ParticleSimulator.h',
+		'Client\Private\Effect_ParticleSimulator.cpp',
+		'Client\Public\Effect_Runtime.h',
+		'Client\Private\Effect_Runtime.cpp',
+		'Client\Public\Effect_ResourceCatalog.h',
+		'Client\Private\Effect_ResourceCatalog.cpp')
+	$removedEffectPathHits = @($removedEffectPaths |
+		Where-Object { Test-Path -LiteralPath $_ })
+	$authoredEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectIntakeFiles = @(Get-ChildItem -LiteralPath 'Tools\EffectResourceIntake' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectShaderFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\ShaderFiles' -File -Filter 'Shader_Effect*' -ErrorAction SilentlyContinue)
+	$legacyEffectSymbolHits = @($clientSourceFiles | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC')
+	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|Shader_Effect|Data\\Effects\\Authored')
+	$legacyEffectEntry =
+		$clientEntrySource -match 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC|--effect-' -or
+		$engineImGuiSource -match '--effect-'
+	$effectG1DocumentShape =
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*1u' -and
+		$effectDocumentHeader -match 'enum class EFFECT_ELEMENT_KIND[\s\S]*MESH,[\s\S]*SPRITE,[\s\S]*PARTICLE,[\s\S]*DECAL,[\s\S]*TRAIL,[\s\S]*END' -and
+		$effectDocumentHeader -match 'struct EFFECT_DOCUMENT_DESC[\s\S]*strEffectAssetId[\s\S]*strDisplayName[\s\S]*Elements' -and
+		$effectToolHeader -match 'optional<EFFECT_DOCUMENT_DESC>\s+m_ActiveDocument' -and
+		$effectToolHeader -match 'm_eSelectedEffectType\s*=\s*EFFECT_ELEMENT_KIND::MESH' -and
+		$effectToolSource -match 'Is_StableEffectAssetId' -and
+		$effectToolSource -match 'Try_CreateDocument' -and
+		$effectToolSource -match 'Discard_ActiveDocument' -and
+		$effectToolSource -match '"Mesh",\s*"Sprite",\s*"Particle",\s*"Decal",\s*"Trail"' -and
+		$effectToolSource -match 'LostArk Effect Tool###LostArkEffectToolG1' -and
+		$effectToolSource -notmatch 'filesystem|ifstream|ofstream|GetOpenFileName|ID3D11'
+	Add-Check 'effect.g1-document-boundary' (
+		$removedEffectPathHits.Count -eq 0 -and
+		$authoredEffectFiles.Count -eq 0 -and
+		$effectIntakeFiles.Count -eq 0 -and
+		$effectShaderFiles.Count -eq 0 -and
+		$legacyEffectSymbolHits.Count -eq 0 -and
+		$legacyEffectProjectHits.Count -eq 0 -and
+		-not $legacyEffectEntry -and
+		$effectG1DocumentShape) "paths=$($removedEffectPathHits.Count) authored=$($authoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry document=$effectG1DocumentShape"
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"
-
-    $effectCookSource = Get-Content -LiteralPath 'Tools\EffectResourceIntake\Cook-SelectedEffectAsset.ps1' -Raw
-    $legacyEffectCookHits = @($effectCookSource | Select-String -Pattern 'WintersAssetConverter|\.wmesh|\.wmat|CCookedModel' -AllMatches)
-    Add-Check 'effect.no-legacy-mesh-cook' ($legacyEffectCookHits.Count -eq 0) "hits=$($legacyEffectCookHits.Count)"
 
     $legacyLaunchHits = @($clientSourceFiles | Select-String -Pattern 'CLIENT_SCENARIO|CLIENT_ENTRY_MODE|LOCAL_PREVIEW|CClientLaunchOptions|CLevelCatalog|COfflinePlayerPreview|--smoke|--scenario')
     Add-Check 'source.no-client-runtime-harness' (
@@ -647,10 +688,14 @@ try {
     $functionKeyHits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F([2-5]|[7-9]|1[0-2])\b')
     $f1Hits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F1\b')
     $f6Hits = @($clientSourceFiles | Select-String -Pattern '(VK|DIK)_F6\b')
+	$cameraGameplayGateHits = @($clientSourceFiles |
+		Select-String -Pattern 'Set_GameplayInputEnabled|m_isGameplayInputEnabled')
     Add-Check 'input.official-function-keys' (
 		$functionKeyHits.Count -eq 0 -and
 		$f1Hits.Count -eq 1 -and
 		$f6Hits.Count -eq 1) "forbidden=$($functionKeyHits.Count) f1=$($f1Hits.Count) f6=$($f6Hits.Count)"
+	Add-Check 'input.camera-mode-independent-gameplay' (
+		$cameraGameplayGateHits.Count -eq 0) "cameraGameplayGates=$($cameraGameplayGateHits.Count)"
 
 	$lanceLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_LanceMaster.cpp' -Raw
 	$characterSource = Get-Content -LiteralPath 'Client\Private\Character.cpp' -Raw
@@ -703,6 +748,7 @@ try {
 	$frontendHarnessSource = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Private\ClientFrontendHarness.cpp' -Raw
 	$frontendHarnessProject = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj' -Raw
 	$buildRegressionSource = Get-Content -LiteralPath 'Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
+	$characterSelectionStateSource = Get-Content -LiteralPath 'Client\Private\CharacterSelectionState.cpp' -Raw
     Add-Check 'levels.character-select-contract' (
         $levelRegistrySource -match 'LEVEL::CHARACTER_SELECT' -and
 		$levelRegistrySource -match 'LV_LOBBY_CLASSSELECT_SL00' -and
@@ -718,23 +764,49 @@ try {
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
 		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
 		$characterSelectSource -match 'CMapPlacementRuntime::Ensure_DefaultLight' -and
-        $characterSelectSource -match 'CCharacterSelectionState::Select' -and
-		$characterSelectSource -match 'CLobbyCommandService::Request\([\s\S]{0,120}eStage[\s\S]{0,120}commandToken' -and
-		$characterSelectSource -match 'character-select\.enter-test' -and
+		$characterSelectSource -match 'CCharacterSelectionState::Select' -and
+		$characterSelectSource -match 'MODE::CONNECTING' -and
+		$characterSelectSource -match 'Try_Consume_TestEntryMode' -and
+		$characterSelectSource -notmatch 'Request_ServerArena\(' -and
+		$characterSelectSource -notmatch 'Connect_To_Server\(' -and
+		$characterSelectSource -notmatch 'Send_EnterWorld\(' -and
+		$characterSelectSource -notmatch 'Try_Consume_EnterAccepted' -and
+		$characterSelectSource -match 'CONNECTION_TIMEOUT' -and
+		$characterSelectSource -notmatch 'Return_ToPreview\(' -and
+		$characterSelectSource -match 'character-select\.server-disconnect' -and
+		$characterSelectSource -match 'Stage_Preview\(' -and
+		$characterSelectionStateSource -match 'Try_Consume_TestEntryMode' -and
+		$lobbyCommandHeaderSource -match 'LOBBY_COMMAND_PURPOSE' -and
+		$lobbyCommandHeaderSource -match 'MAP_EDITOR_WORKSPACE' -and
 		$characterSelectSource -match 'character-select\.enter-bern' -and
 		$characterSelectSource -match 'character-select\.enter-valtan' -and
+		$characterSelectSource -match 'character-select\.enter-test' -and
+		$characterSelectSource -match 'ImGui::RadioButton\("Preview"' -and
+		$characterSelectSource -match 'Server Arena \(Lobby-approved\)' -and
+		$characterSelectSource -match 'ImGui::Button\("Summon Valtan \(Lazy\)"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Test"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Bern"\)' -and
-		$characterSelectSource -match 'ImGui::Button\("Enter Valtan"\)' -and
-		$characterSelectSource -match 'ImGuiKey_Enter' -and
-		$characterSelectSource -notmatch 'NetworkManager|Connect_To_Server|Send_EnterWorld' -and
+		$characterSelectSource -match 'ImGui::Button\("Enter Valtan Map"\)' -and
+		$characterSelectSource -match 'CClientReplication' -and
+		$characterSelectSource -match 'CNetworkPlayerCommandSink' -and
+		$characterSelectSource -match 'CNetworkWorldEntityCommandSink' -and
+		$characterSelectSource -match 'm_PlayerController\.Update\(' -and
+		$characterSelectSource -match 'm_pCamera->Is_FollowEnabled\(\)' -and
+		$characterSelectSource -notmatch 'Ready_ServerGameplayCamera\(\)' -and
+		$characterSelectSource -match 'Render_SelectionPanel\(\);' -and
 		$lobbySource -match 'DEFAULT_ENTRY_CLASS' -and
 		$lobbySource -match 'Resolve_EntryCharacterClass' -and
 		$lobbySource -match 'Send_EnterWorld\(' -and
+		$lobbySource -match 'Stage_TestEntryMode' -and
+		$lobbySource -match 'accepted\.iProtocolVersion' -and
+		$lobbySource -match 'accepted\.iPlayerId' -and
+		$lobbySource -match 'accepted\.iNetEntityId' -and
+		$frontendHarnessProject -match 'CharacterSelectionState\.cpp' -and
+		$frontendHarnessSource -match 'Test_CharacterSelectServerHandoff' -and
         $lobbySource -match '"Test"' -and
         $lobbySource -match '"Character Select"' -and
         $lobbySource -match '"Valtan"' -and
-		$lobbySource -match '"Bern"') 'Character Select loads one map path and reuses the Lobby server-authorized Test, Bern and Valtan paths for five playable classes'
+		$lobbySource -match '"Bern"') 'Character Select keeps one visual Level while Server approval swaps preview and replicated presentation; Valtan spawn uses a typed command sink'
 	Add-Check 'levels.loading-progress-overlay' (
 		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
 		$loadingSource -match '"Loading progress"' -and
@@ -789,24 +861,36 @@ try {
     $networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
     $serverMainSource = Get-Content -LiteralPath 'Server\Private\Main.cpp' -Raw
     $tcpListenerSource = Get-Content -LiteralPath 'Server\Private\TcpListener.cpp' -Raw
-    Add-Check 'network.server-authorized-entry' (
+	Add-Check 'network.server-authorized-entry' (
         $networkManagerSource -match 'Connect_To_Server\(' -and
         $networkManagerSource -match 'InetPtonA' -and
         $serverMainSource -match '--bind-address' -and
         $tcpListenerSource -match 'INADDR_ANY' -and
         $tcpListenerSource -match 'INADDR_LOOPBACK' -and
-        $lobbySource -match 'LOSTARK_SERVER_HOST' -and
-        $lobbySource -match 'Connect_To_Server\(serverHost, SERVER_PORT\)' -and
-        $lobbySource -notmatch '192\.168\.' -and
+		$networkManagerSource -match 'LOSTARK_SERVER_HOST' -and
+		$lobbySource -match 'CNetworkManager::Resolve_ServerHost' -and
+		$lobbySource -match 'CNetworkManager::DEFAULT_SERVER_PORT' -and
+		$lobbySource -notmatch '192\.168\.' -and
         $lobbySource -match 'Send_EnterWorld\(' -and
         $lobbySource -match 'Try_Consume_EnterAccepted' -and
         $lobbySource -match 'seconds\(5\)' -and
-        $bernLevelSource -match 'network\.connection-lost' -and
-        $valtanLevelSource -match 'network\.connection-lost' -and
-        $developmentLevelSource -match 'network\.connection-lost') 'Lobby waits for server approval and product levels recover to Lobby on disconnect'
+		$bernLevelSource -match 'network\.connection-lost' -and
+		$valtanLevelSource -match 'network\.connection-lost' -and
+		$developmentLevelSource -match 'network\.connection-lost' -and
+		$characterSelectSource -match 'character-select\.server-disconnect' -and
+		$characterSelectSource -match 'RETURNING_TO_LOBBY') 'Server approval is mandatory; Character Select consumes the Lobby-approved socket and every product world returns to Lobby on disconnect'
 
     $playerControllerSource = Get-Content -LiteralPath 'Client\Private\PlayerController.cpp' -Raw
     Add-Check 'player.command-sink-boundary' ($playerControllerSource -notmatch 'NetworkManager' -and $playerControllerSource -match 'IPlayerCommandSink') 'PlayerController depends on command sink'
+	Add-Check 'player.free-camera-command-gate' (
+		$playerControllerSource -match 'Update\(const bool_t gameplayCommandsEnabled\)' -and
+		$playerControllerSource -match 'gameplayCommandsEnabled && isRightMouseDown' -and
+		$playerControllerSource -match 'suppressKeyboard \|\| !gameplayCommandsEnabled' -and
+		$bernLevelSource -match 'm_pCamera->Is_FollowEnabled\(\)' -and
+		$valtanLevelSource -match 'm_pCamera->Is_FollowEnabled\(\)' -and
+		$developmentLevelSource -match 'camera->Is_FollowEnabled\(\)' -and
+		$characterSelectSource -match 'm_pCamera->Is_FollowEnabled\(\)') `
+		'free camera synchronizes physical edges but blocks move and skill command submission in every gameplay level'
 
     $characterLogicFiles = @(Get-ChildItem -LiteralPath 'Client\Private' -Filter 'Logic_*.cpp' -File)
     $characterLogicBoundaryHits = @($characterLogicFiles | Select-String -Pattern 'Get_DIKey|Get_DIMouse|NetworkManager|Play_Skill\(')
@@ -814,29 +898,6 @@ try {
     Add-Check 'character.presentation-boundary' (
         $characterLogicBoundaryHits.Count -eq 0 -and
         $characterSpecSource -match 'Update_Presentation') "forbiddenCalls=$($characterLogicBoundaryHits.Count)"
-
-    $effectRuntimeSource = Get-Content -LiteralPath 'Client\Private\Effect_Runtime.cpp' -Raw
-    $effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
-    Add-Check 'effect.resource-confinement' ($effectRuntimeSource -notmatch 'RequestedPath\.is_absolute\(\)\s*&&' -and $effectToolSource -notmatch 'Candidates\[\][\s\S]{0,120}RequestedPath') 'absolute path candidates rejected'
-	$dimensionmasterEffectAdmission = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_admission.json'
-	$dimensionmasterEffectCandidates = Read-Json 'Data\Effects\SourceCatalog\dimensionmaster_candidates.json'
-	$dimensionmasterEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored\DimensionMaster\Candidates' -File -Filter '*.effect')
-	$dimensionmasterEffectTextures = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.dds')
-	$dimensionmasterEffectModels = @(Get-ChildItem -LiteralPath 'Client\Bin\Resources\Effect\DimensionMaster' -Recurse -File -Filter '*.wmodel')
-	Add-Check 'effect.dimensionmaster-candidate-admission' (
-		$dimensionmasterEffectAdmission.schema -eq 'lostark.effect-authoring-admission' -and
-		$dimensionmasterEffectAdmission.status -eq 'candidate_only' -and
-		$dimensionmasterEffectAdmission.resourceRoot -eq 'Effect/DimensionMaster' -and
-		[int]$dimensionmasterEffectAdmission.summary.particleSystemCandidateCount -eq 459 -and
-		[int]$dimensionmasterEffectAdmission.summary.effectFileCount -eq 459 -and
-		[int]$dimensionmasterEffectAdmission.summary.runtimeTextureCount -eq 693 -and
-		[int]$dimensionmasterEffectAdmission.summary.runtimeMeshCount -eq 139 -and
-		[int]$dimensionmasterEffectCandidates.count -eq 459 -and
-		@($dimensionmasterEffectCandidates.rows).Count -eq 459 -and
-		$dimensionmasterEffectFiles.Count -eq 459 -and
-		$dimensionmasterEffectTextures.Count -eq 693 -and
-		$dimensionmasterEffectModels.Count -eq 139 -and
-		$effectToolSource -match 'recursive_directory_iterator') "effects=$($dimensionmasterEffectFiles.Count) textures=$($dimensionmasterEffectTextures.Count) models=$($dimensionmasterEffectModels.Count) status=$($dimensionmasterEffectAdmission.status)"
 
     $materialReaderSource = Get-Content -LiteralPath 'Engine\Private\BinaryAsset\Winters\WMaterialReader.cpp' -Raw
     $modelSource = Get-Content -LiteralPath 'Engine\Private\Model.cpp' -Raw
@@ -954,6 +1015,7 @@ try {
 		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\DimensionMaster\DimensionMaster_Character.wmodel' -PathType Leaf) -and
 		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and owner-matched Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
+	$valtanAssetServiceSource = Get-Content -LiteralPath 'Client\Private\ValtanPresentationAssetService.cpp' -Raw
 	$dimensionmasterLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_DimensionMaster.cpp' -Raw
 	Add-Check 'actors.dimensionmaster-four-part-weapon' (
 		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_L' -and
@@ -980,8 +1042,15 @@ try {
 		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD carries local class and Character Select preview while filtering skill definitions by class'
 	$playerSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
 	$missingQuickSlots = [Collections.Generic.List[string]]::new()
-	foreach ($className in @('LANCE_MASTER','GUNSLINGER','SLAYER','ARTIST')) {
-		foreach ($slotName in @('Q','W')) {
+	$classQuickSlotContracts = [ordered]@{
+		'LANCE_MASTER' = @('Q','W','E','R','A','S','T','V','ALT_V','LMB')
+		'GUNSLINGER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','LMB')
+		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
+		'ARTIST' = @('Q','W','E','R','A','S','V','ALT_V','LMB')
+		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','LMB')
+	}
+	foreach ($className in $classQuickSlotContracts.Keys) {
+		foreach ($slotName in $classQuickSlotContracts[$className]) {
 			$bindings = @($playerSkillDocument.skills | Where-Object {
 				$_.characterClass -eq $className -and $_.inputSlot -eq $slotName
 			})
@@ -994,40 +1063,83 @@ try {
 		Where-Object characterClass -eq 'DIMENSIONMASTER')
 	Add-Check 'gameplay.playable-qw-contract' (
 		$missingQuickSlots.Count -eq 0 -and
-		$dimensionmasterSkillRows.Count -eq 0) "missing=$($missingQuickSlots -join ',') dimensionmasterUnverified=$($dimensionmasterSkillRows.Count)"
+		$dimensionmasterSkillRows.Count -eq 11) "missing=$($missingQuickSlots -join ',') dimensionmasterRows=$($dimensionmasterSkillRows.Count)"
 
-	$quickSkillAnimationContracts = @(
-		[pscustomobject]@{ Class = 'LANCE_MASTER'; Asset = 'LanceMaster'; Skills = @(34120, 34080) },
-		[pscustomobject]@{ Class = 'GUNSLINGER'; Asset = 'GunSlinger'; Skills = @(38020, 38050) },
-		[pscustomobject]@{ Class = 'SLAYER'; Asset = 'Slayer'; Skills = @(45050, 45060) },
-		[pscustomobject]@{ Class = 'ARTIST'; Asset = 'Artist'; Skills = @(31210, 31230) }
-	)
+	$skillBindingOwners = [ordered]@{
+		'LANCE_MASTER' = 'LanceMaster'
+		'GUNSLINGER' = 'GunSlinger'
+		'SLAYER' = 'Slayer'
+		'ARTIST' = 'Artist'
+		'DIMENSIONMASTER' = 'DimensionMaster'
+	}
 	$quickSkillAnimationErrors = [Collections.Generic.List[string]]::new()
-	foreach ($contract in $quickSkillAnimationContracts) {
-		$sequencePath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipseq"
-		$clipMapPath = "Data\Animation\Reference\$($contract.Asset)\$($contract.Asset).clipmap"
-		if (-not (Test-Path -LiteralPath $sequencePath) -or
-			-not (Test-Path -LiteralPath $clipMapPath)) {
-			$quickSkillAnimationErrors.Add("$($contract.Class):missing animation document")
+	$totalAuthoredBindings = 0
+	foreach ($className in $skillBindingOwners.Keys) {
+		$assetName = $skillBindingOwners[$className]
+		$bindingPath = "Data\Animation\Authored\$assetName\$assetName.skillbindings.json"
+		if (-not (Test-Path -LiteralPath $bindingPath -PathType Leaf)) {
+			$quickSkillAnimationErrors.Add("${className}:missing authored binding document")
 			continue
 		}
-		$sequenceSource = Get-Content -LiteralPath $sequencePath -Raw
-		$clipMapSource = Get-Content -LiteralPath $clipMapPath -Raw
-		foreach ($skillId in $contract.Skills) {
-			if ($sequenceSource -notmatch "(?m)^$skillId\s") {
-				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipseq")
+		try {
+			$bindingDocument = Read-Json $bindingPath
+		}
+		catch {
+			$quickSkillAnimationErrors.Add("${className}:malformed authored binding document")
+			continue
+		}
+		if ($bindingDocument.schema -ne 'lostark.animation-skill-bindings' -or
+			[int]$bindingDocument.formatVersion -ne 1 -or
+			$bindingDocument.animationAssetId -ne $assetName -or
+			$bindingDocument.characterClass -ne $className) {
+			$quickSkillAnimationErrors.Add("${className}:owner/schema mismatch")
+			continue
+		}
+		$classSkills = @($playerSkillDocument.skills |
+			Where-Object characterClass -eq $className)
+		$bindings = @($bindingDocument.bindings)
+		$totalAuthoredBindings += $bindings.Count
+		if ($bindings.Count -ne $classSkills.Count) {
+			$quickSkillAnimationErrors.Add("${className}:binding count $($bindings.Count)/$($classSkills.Count)")
+		}
+		foreach ($binding in $bindings) {
+			if ($null -ne $binding.inputSlot -or $null -ne $binding.mode) {
+				$quickSkillAnimationErrors.Add("${className}:binding duplicates gameplay authority")
 			}
-			if ($clipMapSource -notmatch "skill=$skillId(?:\s|$)") {
-				$quickSkillAnimationErrors.Add("$($contract.Class):$skillId missing clipmap")
+			$skillRows = @($classSkills | Where-Object skillId -eq $binding.skillId)
+			$clips = @($binding.clips)
+			if ($skillRows.Count -ne 1 -or $clips.Count -lt 1 -or $clips.Count -gt 16 -or
+				@($clips | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) invalid row")
+				continue
+			}
+			if ($skillRows[0].skillKind -eq 'COMBO' -and
+				$clips.Count -ne @($skillRows[0].comboStages).Count) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo clip count")
+			}
+		}
+		foreach ($skill in $classSkills) {
+			if (@($bindings | Where-Object skillId -eq $skill.skillId).Count -ne 1) {
+				$quickSkillAnimationErrors.Add("${className}:$($skill.skillId) missing/duplicate")
 			}
 		}
 	}
 	$characterRuntimeSource = Get-Content -LiteralPath 'Client\Private\Character.cpp' -Raw
-	Add-Check 'gameplay.playable-qw-animation-contract' (
+	$animationToolSource = Get-Content -LiteralPath 'Client\Private\Animation_Tool.cpp' -Raw
+	$animationToolHeader = Get-Content -LiteralPath 'Client\Public\Animation_Tool.h' -Raw
+	Add-Check 'gameplay.playable-skill-animation-authoring-contract' (
 		$quickSkillAnimationErrors.Count -eq 0 -and
-		$characterRuntimeSource -match 'Load_ClipChains\(\)' -and
-		$characterRuntimeSource -match 'filesystem::path\(assetName \+ "\.clipseq"\)' -and
-		$characterRuntimeSource -match 'Play_Skill\(static_cast<int32_t>\(skillId\)\)') "errors=$($quickSkillAnimationErrors -join ',')"
+		$totalAuthoredBindings -eq @($playerSkillDocument.skills).Count -and
+		$characterRuntimeSource -match 'CAnimationSkillBindingDocument::Load' -and
+		$characterRuntimeSource -notmatch 'Animation/Reference|\.clipseq|\.clipmap' -and
+		$characterRuntimeSource -match 'm_PendingChains' -and
+		$characterRuntimeSource -match 'Commit_PendingClipChains' -and
+		$characterRuntimeSource -match 'Character skill presentation unavailable' -and
+		$animationToolSource -match 'Create_SkillBindingDraft' -and
+		$animationToolSource -match 'CPlayerSkillCatalog::Get_Skills' -and
+		$animationToolSource -match 'CAnimationSkillBindingDocument::Save_Atomic' -and
+		$animationToolHeader -match 'm_bSkillBindingDirty' -and
+		$animationToolHeader -match 'm_bDirty') "errors=$($quickSkillAnimationErrors -join ',') authored=$totalAuthoredBindings skills=$(@($playerSkillDocument.skills).Count)"
 	$actorCatalogSource = Get-Content -LiteralPath 'Client\Private\ActorCatalog.cpp' -Raw
 	$actorLoaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
@@ -1038,7 +1150,8 @@ try {
 		$actorCatalogSource -match 'Actors/CharacterCatalog\.json' -and
 		$actorCatalogSource -match 'Actors/BossCatalog\.json' -and
 		$playableAssetServiceSource -match 'CActorCatalog::Find_Character' -and
-		$actorLoaderSource -match 'CActorCatalog::Find_Boss' -and
+		$valtanAssetServiceSource -match 'CActorCatalog::Find_Boss' -and
+		$valtanAssetServiceSource -match 'Add_Prototypes' -and
 		$replicationSource -match 'CActorCatalog::Find_Boss\(spawned\.strArchetypeId\)' -and
 		$hardcodedActorModelHits.Count -eq 0) "hardcodedModelPaths=$($hardcodedActorModelHits.Count)"
 	Add-Check 'actors.selected-first-on-demand-load' (
@@ -1058,6 +1171,17 @@ try {
         $worldValidationDetail = $_.Exception.Message
     }
     Add-Check 'world.publish-contract' $worldValidationPassed $worldValidationDetail
+	$worldAuthoringDocuments = @(
+		'Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json',
+		'Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json',
+		'Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json',
+		'Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json')
+	$invalidWorldAuthoring = @($worldAuthoringDocuments | Where-Object {
+		$document = Read-Json $_
+		$document.schema -ne 'lostark.world-gameplay' -or [int]$document.formatVersion -ne 2
+	})
+	Add-Check 'world.authoring-format-v2' ($invalidWorldAuthoring.Count -eq 0) `
+		"invalid=$($invalidWorldAuthoring -join ',')"
 
 	$gameplayValidationPassed = $true
 	$gameplayValidationDetail = ''
@@ -1069,6 +1193,77 @@ try {
 		$gameplayValidationDetail = $_.Exception.Message
 	}
 	Add-Check 'gameplay.balance-publish-contract' $gameplayValidationPassed $gameplayValidationDetail
+	$runtimeSetRollbackPassed = $false
+	$runtimeSetRollbackDetail = ''
+	$runtimeSetFixtureRelative = ".codex_tmp/ProjectAuditBalanceRuntimeSet-$PID"
+	$runtimeSetFixturePath = Join-Path $repoRoot $runtimeSetFixtureRelative
+	try {
+		$runtimeSetFiles = @(
+			'Gameplay\Gameplay.bootstrap',
+			'World\BERN.worldbootstrap',
+			'World\VALTAN_ARENA.worldbootstrap',
+			'World\TRAINING_GROUND.worldbootstrap',
+			'World\CHARACTER_SELECT_ARENA.worldbootstrap')
+		$baselineText = @{}
+		foreach ($relative in $runtimeSetFiles) {
+			$path = Join-Path $runtimeSetFixturePath $relative
+			[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+			$sentinel = "old-$($relative.Replace('\', '-'))"
+			[IO.File]::WriteAllText($path, $sentinel)
+			$baselineText[$relative] = $sentinel
+		}
+		$runtimeSetRollbackPassed = $true
+		foreach ($failurePoint in @(3, 5)) {
+			try {
+				& .\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1 `
+					-Mode Publish -OutputRoot $runtimeSetFixtureRelative `
+					-FailureAfterPromote $failurePoint | Out-Null
+				throw 'Balance runtime set failure injection unexpectedly succeeded.'
+			}
+			catch {
+				if ($_.Exception.Message -eq 'Balance runtime set failure injection unexpectedly succeeded.') { throw }
+			}
+			foreach ($relative in $runtimeSetFiles) {
+				$path = Join-Path $runtimeSetFixturePath $relative
+				if ([IO.File]::ReadAllText($path) -cne $baselineText[$relative]) {
+					$runtimeSetRollbackPassed = $false
+				}
+			}
+		}
+		& .\Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1 `
+			-Mode Publish -OutputRoot $runtimeSetFixtureRelative | Out-Null
+		foreach ($relative in $runtimeSetFiles) {
+			$path = Join-Path $runtimeSetFixturePath $relative
+			if (-not [IO.File]::Exists($path) -or
+				[IO.File]::ReadAllText($path) -ceq $baselineText[$relative]) {
+				$runtimeSetRollbackPassed = $false
+			}
+		}
+		$runtimeSetLeftovers = @(Get-ChildItem -LiteralPath $runtimeSetFixturePath `
+			-Recurse -Force | Where-Object Name -Match 'balance-runtime-set|rollback')
+		$runtimeSetRollbackPassed = $runtimeSetRollbackPassed -and
+			$runtimeSetLeftovers.Count -eq 0
+		$runtimeSetRollbackDetail = "leftovers=$($runtimeSetLeftovers.Count)"
+	}
+	catch {
+		$runtimeSetRollbackDetail = $_.Exception.Message
+	}
+	finally {
+		if ([IO.Directory]::Exists($runtimeSetFixturePath)) {
+			Remove-Item -LiteralPath $runtimeSetFixturePath -Recurse -Force
+		}
+	}
+	Add-Check 'gameplay.balance-runtime-set-rollback' `
+		$runtimeSetRollbackPassed $runtimeSetRollbackDetail
+	$provenanceReceipt = Read-Json 'Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json'
+	Add-Check 'gameplay.balance-field-provenance' (
+		$provenanceReceipt.schema -eq 'lostark.balance-provenance-receipt' -and
+		[int]$provenanceReceipt.referenceSkillLevel -eq 10 -and
+		[int]$provenanceReceipt.coverage.skillDefinitionCount -eq 53 -and
+		[int]$provenanceReceipt.coverage.fieldEntryCount -eq @($provenanceReceipt.entries).Count -and
+		(Test-Path -LiteralPath 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py') -and
+		(Test-Path -LiteralPath 'Tools\GameplayPipeline\Update-BalanceProvenanceReceipt.ps1')) `
+		"skills=$($provenanceReceipt.coverage.skillDefinitionCount) fields=$(@($provenanceReceipt.entries).Count)"
 
 	$navigationValidationPassed = $true
 	$navigationValidationDetail = ''
@@ -1104,19 +1299,23 @@ try {
 		$bernFixture = Join-Path $worldFixturePath 'BERN.worldbootstrap'
 		$valtanFixture = Join-Path $worldFixturePath 'VALTAN_ARENA.worldbootstrap'
 		$trainingFixture = Join-Path $worldFixturePath 'TRAINING_GROUND.worldbootstrap'
+		$characterSelectFixture = Join-Path $worldFixturePath 'CHARACTER_SELECT_ARENA.worldbootstrap'
 		[IO.File]::WriteAllText($bernFixture, 'original-bern')
 		[IO.File]::WriteAllText($valtanFixture, 'original-valtan')
 		[IO.File]::WriteAllText($trainingFixture, 'original-training')
-		try {
-			& .\Tools\WorldPipeline\Publish-WorldGameplay.ps1 `
-				-Mode Publish `
-				-OutputRoot $worldFixtureRelative `
-				-FailureAfterPromote 1 | Out-Null
-			throw 'Failure injection unexpectedly succeeded.'
-		}
-		catch {
-			if ($_.Exception.Message -eq 'Failure injection unexpectedly succeeded.') {
-				throw
+		[IO.File]::WriteAllText($characterSelectFixture, 'original-character-select')
+		foreach ($failurePoint in @(1, 4)) {
+			try {
+				& .\Tools\WorldPipeline\Publish-WorldGameplay.ps1 `
+					-Mode Publish `
+					-OutputRoot $worldFixtureRelative `
+					-FailureAfterPromote $failurePoint | Out-Null
+				throw 'Failure injection unexpectedly succeeded.'
+			}
+			catch {
+				if ($_.Exception.Message -eq 'Failure injection unexpectedly succeeded.') {
+					throw
+				}
 			}
 		}
 		$staleTransactionFiles = @(Get-ChildItem -LiteralPath $worldFixturePath -Force |
@@ -1125,6 +1324,7 @@ try {
 			[IO.File]::ReadAllText($bernFixture) -eq 'original-bern' -and
 			[IO.File]::ReadAllText($valtanFixture) -eq 'original-valtan' -and
 			[IO.File]::ReadAllText($trainingFixture) -eq 'original-training' -and
+			[IO.File]::ReadAllText($characterSelectFixture) -eq 'original-character-select' -and
 			$staleTransactionFiles.Count -eq 0
 		$worldRollbackDetail = "stale=$($staleTransactionFiles.Count)"
 	}
@@ -1191,7 +1391,27 @@ try {
 		$skillCatalogSource -match 'Balance/DamageProfiles\.json' -and
 		$hudViewModelSource -match 'CPlayerSkillCatalog::Get_Skills' -and
 		$clientReplicationSource -match 'Apply_LocalPlayer' -and
-		$clientReplicationSource -match 'Apply_Boss') 'HUD consumes server snapshot plus validated balance definitions without packets'
+		$clientReplicationSource -match 'Apply_Boss' -and
+		$clientReplicationSource -match 'Apply_DamageEvents') 'HUD consumes server snapshot plus validated balance definitions without packets'
+	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$balanceToolSource = Get-Content -LiteralPath 'Client\Private\BalanceTool.cpp' -Raw
+	$balanceRuntimePublisherSource = Get-Content -LiteralPath 'Tools\GameplayPipeline\Publish-BalanceRuntimeSet.ps1' -Raw
+	$gameplayCatalogSource = Get-Content -LiteralPath 'Server\Private\GameplayCatalog.cpp' -Raw
+	$valtanBrainSource = Get-Content -LiteralPath 'Server\Private\ValtanBrain.cpp' -Raw
+	Add-Check 'debug.balance-tool-contract' (
+		$clientProjectSource -match 'BalanceTool\.cpp' -and
+		$balanceToolSource -match 'Publish-BalanceRuntimeSet\.ps1' -and
+		$balanceToolSource -match 'Update-BalanceProvenanceReceipt\.ps1' -and
+		$balanceRuntimePublisherSource -match 'Publish-GameplayBalance\.ps1' -and
+		$balanceRuntimePublisherSource -match 'Publish-WorldGameplay\.ps1' -and
+		$balanceRuntimePublisherSource -match 'FailureAfterPromote' -and
+		$balanceToolSource -match 'CREATE_NO_WINDOW' -and
+		$balanceToolSource -match 'TerminateProcess') `
+		'F1 Balance Tool saves authoring, synchronizes provenance, validates/publishes, and bounds its owned subprocess'
+	Add-Check 'gameplay.defense-consumer' (
+		$gameplayCatalogSource -match 'Apply_Defense' -and
+		$valtanBrainSource -match 'playerProfile->iDefense') `
+		'player defense is consumed by the centralized incoming damage curve'
 
     $report = [ordered]@{
         schema = 'lostark.project-audit-report'

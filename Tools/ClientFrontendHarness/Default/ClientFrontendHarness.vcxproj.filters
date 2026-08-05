@@ -12,8 +12,23 @@
     <ClCompile Include="..\Private\ClientFrontendHarness.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
     <ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
       <Filter>Client</Filter>
     </ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\PlayerSkillCatalog.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
   </ItemGroup>
 </Project>

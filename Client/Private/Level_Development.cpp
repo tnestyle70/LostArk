@@ -128,9 +128,8 @@ void CLevel_Development::Update(const f32_t fTimeDelta)
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
 	const shared_ptr<CCamera_Free> camera = m_pCamera.lock();
-	m_PlayerController.Set_GameplayInputEnabled(
-		nullptr == camera || camera->Is_FollowEnabled());
-	m_PlayerController.Update();
+	m_PlayerController.Update(
+		nullptr != camera && camera->Is_FollowEnabled());
 }
 
 HRESULT CLevel_Development::Render()

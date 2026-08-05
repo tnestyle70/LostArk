@@ -16,9 +16,17 @@ enum class LOBBY_STAGE
 	END
 };
 
+enum class LOBBY_COMMAND_PURPOSE
+{
+	GAMEPLAY,
+	MAP_EDITOR_WORKSPACE,
+	END
+};
+
 struct LOBBY_COMMAND final
 {
 	LOBBY_STAGE eStage = LOBBY_STAGE::END;
+	LOBBY_COMMAND_PURPOSE ePurpose = LOBBY_COMMAND_PURPOSE::GAMEPLAY;
 	std::uint64_t iToken = 0;
 };
 
@@ -31,6 +39,13 @@ public:
 	static bool_t Request(LOBBY_STAGE eStage);
 	static bool_t Request(
 		LOBBY_STAGE eStage,
+		LOBBY_COMMAND_PURPOSE purpose);
+	static bool_t Request(
+		LOBBY_STAGE eStage,
+		LOBBY_COMMAND_TOKEN& outToken);
+	static bool_t Request(
+		LOBBY_STAGE eStage,
+		LOBBY_COMMAND_PURPOSE purpose,
 		LOBBY_COMMAND_TOKEN& outToken);
 	static bool_t Cancel(
 		LOBBY_COMMAND_TOKEN token,

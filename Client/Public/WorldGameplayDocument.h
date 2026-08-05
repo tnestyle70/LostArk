@@ -14,7 +14,32 @@ enum class WORLD_PLACEMENT_KIND
 	PLAYER_SPAWN,
 	NPC,
 	BOSS,
+	TRIGGER_BOX,
+	DESTROYABLE,
 	END
+};
+
+enum class WORLD_TRIGGER_EVENT_KIND
+{
+	SET_CONDITION,
+	SET_DESTROYABLE_STATE,
+	END
+};
+
+enum class WORLD_DESTROYABLE_STATE
+{
+	INTACT,
+	FRACTURED,
+	DESPAWNED,
+	END
+};
+
+struct WORLD_TRIGGER_EVENT
+{
+	WORLD_TRIGGER_EVENT_KIND eKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
+	std::string targetId;
+	bool_t conditionValue = false;
+	WORLD_DESTROYABLE_STATE eDestroyableState = WORLD_DESTROYABLE_STATE::FRACTURED;
 };
 
 struct WORLD_GAMEPLAY_PLACEMENT
@@ -26,6 +51,11 @@ struct WORLD_GAMEPLAY_PLACEMENT
 	float3_t position = {};
 	f32_t yawDegrees = {};
 	bool_t isEnabled = true;
+	float3_t halfExtents = float3_t(1.f, 1.f, 1.f);
+	bool_t isTriggerOnce = true;
+	std::vector<WORLD_TRIGGER_EVENT> triggerEvents;
+	uint64_t deployRuntimePlacementId = 0;
+	WORLD_DESTROYABLE_STATE eInitialState = WORLD_DESTROYABLE_STATE::INTACT;
 };
 
 class CWorldGameplayDocument final
@@ -64,6 +94,12 @@ public:
 	static bool_t Try_ParseKind(
 		const std::string& value,
 		WORLD_PLACEMENT_KIND& outKind);
+	static const char_t* TriggerEventKind_ToString(WORLD_TRIGGER_EVENT_KIND kind);
+	static bool_t Try_ParseTriggerEventKind(const std::string& value,
+		WORLD_TRIGGER_EVENT_KIND& outKind);
+	static const char_t* DestroyableState_ToString(WORLD_DESTROYABLE_STATE state);
+	static bool_t Try_ParseDestroyableState(const std::string& value,
+		WORLD_DESTROYABLE_STATE& outState);
 
 private:
 	std::vector<WORLD_GAMEPLAY_PLACEMENT> m_Placements;

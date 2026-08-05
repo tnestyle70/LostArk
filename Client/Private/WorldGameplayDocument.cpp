@@ -3,6 +3,7 @@
 #include "DataJson.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <cmath>
 #include <fstream>
@@ -15,7 +16,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.world-gameplay";
-	constexpr uint32_t FORMAT_VERSION = 1;
+	constexpr uint32_t FORMAT_VERSION = 2;
 
 	bool_t Is_IntegerNumber(const DATA_JSON_VALUE* value)
 	{
@@ -58,6 +59,29 @@ namespace
 			static_cast<f32_t>(values[1].Get_Number()),
 			static_cast<f32_t>(values[2].Get_Number()));
 		return true;
+	}
+
+	bool_t Read_PositiveExtents(
+		const DATA_JSON_VALUE* value,
+		float3_t& outExtents)
+	{
+		if (!Read_Position(value, outExtents))
+			return false;
+		return std::isfinite(outExtents.x) && std::isfinite(outExtents.y) &&
+			std::isfinite(outExtents.z) && outExtents.x > 0.f &&
+			outExtents.y > 0.f && outExtents.z > 0.f &&
+			outExtents.x <= 1000.f && outExtents.y <= 1000.f &&
+			outExtents.z <= 1000.f;
+	}
+
+	bool_t Is_ValidStableId(const std::string& value, const size_t maximum = 128u)
+	{
+		return !value.empty() && value.size() <= maximum &&
+			std::all_of(value.begin(), value.end(), [](const unsigned char character)
+			{
+				return 0 != std::isalnum(character) || character == '_' ||
+					character == '-' || character == '.';
+			});
 	}
 
 	bool_t CommitTemporaryFile(
@@ -137,44 +161,137 @@ bool_t Client::CWorldGameplayDocument::Load(
 	staged.reserve(placements->Get_Array().size());
 	for (const DATA_JSON_VALUE& value : placements->Get_Array())
 	{
-		if (!Is_ExactObject(value,
-			{ "placementId", "kind", "archetypeId", "encounterId",
-			  "position", "yawDegrees", "enabled" }))
-		{
-			outStatus = "Gameplay placement object has missing or unknown fields";
-			return false;
-		}
-
 		const DATA_JSON_VALUE* placementId = value.Find("placementId");
 		const DATA_JSON_VALUE* kind = value.Find("kind");
-		const DATA_JSON_VALUE* archetypeId = value.Find("archetypeId");
-		const DATA_JSON_VALUE* encounterId = value.Find("encounterId");
-		const DATA_JSON_VALUE* yaw = value.Find("yawDegrees");
-		const DATA_JSON_VALUE* enabled = value.Find("enabled");
-
 		WORLD_GAMEPLAY_PLACEMENT record;
 		if (nullptr == placementId || !placementId->Is_String() ||
 			nullptr == kind || !kind->Is_String() ||
-			nullptr == archetypeId ||
-			(!archetypeId->Is_Null() && !archetypeId->Is_String()) ||
-			nullptr == encounterId ||
-			(!encounterId->Is_Null() && !encounterId->Is_String()) ||
-			nullptr == yaw || !yaw->Is_Number() ||
+			!Try_ParseKind(kind->Get_String(), record.eKind))
+		{
+			outStatus = "Gameplay placement identity or kind is invalid";
+			return false;
+		}
+		const bool_t actorPlacement =
+			WORLD_PLACEMENT_KIND::PLAYER_SPAWN == record.eKind ||
+			WORLD_PLACEMENT_KIND::NPC == record.eKind ||
+			WORLD_PLACEMENT_KIND::BOSS == record.eKind;
+		const bool_t triggerPlacement =
+			WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind;
+		const bool_t destroyablePlacement =
+			WORLD_PLACEMENT_KIND::DESTROYABLE == record.eKind;
+		if ((actorPlacement && !Is_ExactObject(value,
+			{ "placementId", "kind", "archetypeId", "encounterId",
+			  "position", "yawDegrees", "enabled" })) ||
+			(triggerPlacement && !Is_ExactObject(value,
+			{ "placementId", "kind", "position", "yawDegrees", "enabled",
+			  "halfExtents", "triggerOnce", "events" })) ||
+			(destroyablePlacement && !Is_ExactObject(value,
+			{ "placementId", "kind", "position", "yawDegrees", "enabled",
+			  "deployRuntimePlacementId", "initialState" })))
+		{
+			outStatus = "Gameplay placement has missing or unknown kind fields";
+			return false;
+		}
+		const DATA_JSON_VALUE* yaw = value.Find("yawDegrees");
+		const DATA_JSON_VALUE* enabled = value.Find("enabled");
+		if (nullptr == yaw || !yaw->Is_Number() ||
 			nullptr == enabled || !enabled->Is_Boolean() ||
-			!Try_ParseKind(kind->Get_String(), record.eKind) ||
 			!Read_Position(value.Find("position"), record.position))
 		{
 			outStatus = "Gameplay placement field type is invalid";
 			return false;
 		}
-
 		record.placementId = placementId->Get_String();
-		record.archetypeId = archetypeId->Is_String() ?
-			archetypeId->Get_String() : std::string{};
-		record.encounterId = encounterId->Is_String() ?
-			encounterId->Get_String() : std::string{};
 		record.yawDegrees = static_cast<f32_t>(yaw->Get_Number());
 		record.isEnabled = enabled->Get_Boolean();
+		if (actorPlacement)
+		{
+			const DATA_JSON_VALUE* archetypeId = value.Find("archetypeId");
+			const DATA_JSON_VALUE* encounterId = value.Find("encounterId");
+			if (nullptr == archetypeId ||
+				(!archetypeId->Is_Null() && !archetypeId->Is_String()) ||
+				nullptr == encounterId ||
+				(!encounterId->Is_Null() && !encounterId->Is_String()))
+			{
+				outStatus = "Gameplay actor reference has an invalid type";
+				return false;
+			}
+			record.archetypeId = archetypeId->Is_String() ?
+				archetypeId->Get_String() : std::string{};
+			record.encounterId = encounterId->Is_String() ?
+				encounterId->Get_String() : std::string{};
+		}
+		else if (triggerPlacement)
+		{
+			const DATA_JSON_VALUE* triggerOnce = value.Find("triggerOnce");
+			const DATA_JSON_VALUE* events = value.Find("events");
+			if (!Read_PositiveExtents(value.Find("halfExtents"), record.halfExtents) ||
+				nullptr == triggerOnce || !triggerOnce->Is_Boolean() ||
+				nullptr == events || !events->Is_Array() ||
+				events->Get_Array().empty() ||
+				events->Get_Array().size() > 32u)
+			{
+				outStatus = "Gameplay trigger shape or event list is invalid";
+				return false;
+			}
+			record.isTriggerOnce = triggerOnce->Get_Boolean();
+			for (const DATA_JSON_VALUE& eventValue : events->Get_Array())
+			{
+				if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
+				{
+					outStatus = "Gameplay trigger event has unknown fields";
+					return false;
+				}
+				const DATA_JSON_VALUE* eventType = eventValue.Find("type");
+				const DATA_JSON_VALUE* targetId = eventValue.Find("targetId");
+				const DATA_JSON_VALUE* eventValueField = eventValue.Find("value");
+				WORLD_TRIGGER_EVENT event;
+				if (nullptr == eventType || !eventType->Is_String() ||
+					nullptr == targetId || !targetId->Is_String() ||
+					!Try_ParseTriggerEventKind(eventType->Get_String(), event.eKind))
+				{
+					outStatus = "Gameplay trigger event identity is invalid";
+					return false;
+				}
+				event.targetId = targetId->Get_String();
+				if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
+				{
+					if (nullptr == eventValueField || !eventValueField->Is_Boolean())
+						return false;
+					event.conditionValue = eventValueField->Get_Boolean();
+				}
+				else
+				{
+					if (nullptr == eventValueField || !eventValueField->Is_String() ||
+						!Try_ParseDestroyableState(eventValueField->Get_String(),
+							event.eDestroyableState))
+						return false;
+				}
+				record.triggerEvents.push_back(std::move(event));
+			}
+		}
+		else
+		{
+			const DATA_JSON_VALUE* deployId = value.Find("deployRuntimePlacementId");
+			const DATA_JSON_VALUE* initialState = value.Find("initialState");
+			if (nullptr == deployId || !deployId->Is_String() ||
+				nullptr == initialState || !initialState->Is_String() ||
+				!Try_ParseDestroyableState(initialState->Get_String(), record.eInitialState))
+			{
+				outStatus = "Gameplay destroyable binding is invalid";
+				return false;
+			}
+			const std::string& deployText = deployId->Get_String();
+			const auto parsed = std::from_chars(deployText.data(),
+				deployText.data() + deployText.size(), record.deployRuntimePlacementId);
+			if (std::errc{} != parsed.ec ||
+				parsed.ptr != deployText.data() + deployText.size() ||
+				0u == record.deployRuntimePlacementId)
+			{
+				outStatus = "Gameplay destroyable runtime placement ID is invalid";
+				return false;
+			}
+		}
 		if (!Is_Valid(record) || !ids.insert(record.placementId).second)
 		{
 			outStatus = "Gameplay placement ID is duplicate or invalid: " +
@@ -182,6 +299,26 @@ bool_t Client::CWorldGameplayDocument::Load(
 			return false;
 		}
 		staged.push_back(std::move(record));
+	}
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : staged)
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
+			continue;
+		for (const WORLD_TRIGGER_EVENT& event : placement.triggerEvents)
+		{
+			if (WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE == event.eKind)
+			{
+				const auto target = std::find_if(staged.begin(), staged.end(),
+					[&](const WORLD_GAMEPLAY_PLACEMENT& value)
+					{ return value.placementId == event.targetId; });
+				if (staged.end() == target ||
+					WORLD_PLACEMENT_KIND::DESTROYABLE != target->eKind)
+				{
+					outStatus = "Trigger references an unknown destroyable: " + event.targetId;
+					return false;
+				}
+			}
+		}
 	}
 
 	m_Placements = std::move(staged);
@@ -218,6 +355,37 @@ bool_t Client::CWorldGameplayDocument::Save(
 			return false;
 		}
 	}
+	std::unordered_set<uint64_t> deployRuntimeIds;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement : sorted)
+	{
+		if (WORLD_PLACEMENT_KIND::DESTROYABLE == placement.eKind &&
+			!deployRuntimeIds.insert(placement.deployRuntimePlacementId).second)
+		{
+			outStatus = "Gameplay save rejected duplicate deploy runtime binding";
+			return false;
+		}
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
+			continue;
+		if (placement.triggerEvents.empty())
+		{
+			outStatus = "Gameplay trigger requires at least one event";
+			return false;
+		}
+		for (const WORLD_TRIGGER_EVENT& event : placement.triggerEvents)
+		{
+			if (WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE != event.eKind)
+				continue;
+			const auto target = std::find_if(sorted.begin(), sorted.end(),
+				[&](const WORLD_GAMEPLAY_PLACEMENT& value)
+				{ return value.placementId == event.targetId; });
+			if (sorted.end() == target ||
+				WORLD_PLACEMENT_KIND::DESTROYABLE != target->eKind)
+			{
+				outStatus = "Gameplay trigger target is not a destroyable: " + event.targetId;
+				return false;
+			}
+		}
+	}
 
 	std::error_code directoryError;
 	std::filesystem::create_directories(path.parent_path(), directoryError);
@@ -249,25 +417,56 @@ bool_t Client::CWorldGameplayDocument::Save(
 			<< "    {\n"
 			<< "      \"placementId\": \"" <<
 				CDataJson::Escape(record.placementId) << "\",\n"
-			<< "      \"kind\": \"" << Kind_ToString(record.eKind) << "\",\n"
-			<< "      \"archetypeId\": ";
-		if (record.archetypeId.empty())
-			output << "null";
-		else
-			output << '"' << CDataJson::Escape(record.archetypeId) << '"';
-		output << ",\n"
-			<< "      \"encounterId\": ";
-		if (record.encounterId.empty())
-			output << "null";
-		else
-			output << '"' << CDataJson::Escape(record.encounterId) << '"';
-		output << ",\n"
+			<< "      \"kind\": \"" << Kind_ToString(record.eKind) << "\",\n";
+		const bool_t actorPlacement =
+			WORLD_PLACEMENT_KIND::PLAYER_SPAWN == record.eKind ||
+			WORLD_PLACEMENT_KIND::NPC == record.eKind ||
+			WORLD_PLACEMENT_KIND::BOSS == record.eKind;
+		if (actorPlacement)
+		{
+			output << "      \"archetypeId\": ";
+			if (record.archetypeId.empty()) output << "null";
+			else output << '"' << CDataJson::Escape(record.archetypeId) << '"';
+			output << ",\n      \"encounterId\": ";
+			if (record.encounterId.empty()) output << "null";
+			else output << '"' << CDataJson::Escape(record.encounterId) << '"';
+			output << ",\n";
+		}
+		output
 			<< "      \"position\": [" << record.position.x << ", " <<
 				record.position.y << ", " << record.position.z << "],\n"
 			<< "      \"yawDegrees\": " << record.yawDegrees << ",\n"
 			<< "      \"enabled\": " <<
-				(record.isEnabled ? "true" : "false") << "\n"
-			<< "    }";
+				(record.isEnabled ? "true" : "false");
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind)
+		{
+			output << ",\n      \"halfExtents\": [" << record.halfExtents.x << ", "
+				<< record.halfExtents.y << ", " << record.halfExtents.z << "],\n"
+				<< "      \"triggerOnce\": " << (record.isTriggerOnce ? "true" : "false")
+				<< ",\n      \"events\": [";
+			for (size_t eventIndex = 0; eventIndex < record.triggerEvents.size(); ++eventIndex)
+			{
+				const WORLD_TRIGGER_EVENT& event = record.triggerEvents[eventIndex];
+				output << (0u == eventIndex ? "\n" : ",\n")
+					<< "        { \"type\": \"" << TriggerEventKind_ToString(event.eKind)
+					<< "\", \"targetId\": \"" << CDataJson::Escape(event.targetId)
+					<< "\", \"value\": ";
+				if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
+					output << (event.conditionValue ? "true" : "false");
+				else
+					output << '"' << DestroyableState_ToString(event.eDestroyableState) << '"';
+				output << " }";
+			}
+			output << (record.triggerEvents.empty() ? "]" : "\n      ]");
+		}
+		else if (WORLD_PLACEMENT_KIND::DESTROYABLE == record.eKind)
+		{
+			output << ",\n      \"deployRuntimePlacementId\": \""
+				<< record.deployRuntimePlacementId << "\",\n"
+				<< "      \"initialState\": \""
+				<< DestroyableState_ToString(record.eInitialState) << "\"";
+		}
+		output << "\n    }";
 	}
 	output << (sorted.empty() ? "]\n" : "\n  ]\n") << "}\n";
 	output.flush();
@@ -292,6 +491,12 @@ bool_t Client::CWorldGameplayDocument::Add(
 	WORLD_GAMEPLAY_PLACEMENT normalized = placement;
 	if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == normalized.eKind)
 		normalized.archetypeId.clear();
+	if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == normalized.eKind ||
+		WORLD_PLACEMENT_KIND::DESTROYABLE == normalized.eKind)
+	{
+		normalized.archetypeId.clear();
+		normalized.encounterId.clear();
+	}
 	if (m_Placements.size() >= MAX_PLACEMENT_COUNT ||
 		!Is_Valid(normalized) || nullptr != Find(normalized.placementId))
 	{
@@ -347,24 +552,39 @@ const WORLD_GAMEPLAY_PLACEMENT* Client::CWorldGameplayDocument::Find(
 bool_t Client::CWorldGameplayDocument::Is_Valid(
 	const WORLD_GAMEPLAY_PLACEMENT& placement)
 {
-	const auto validStableId = [](const std::string& value, const size_t maximum)
-	{
-		return !value.empty() && value.size() <= maximum &&
-			std::all_of(value.begin(), value.end(), [](const unsigned char character)
-			{
-				return 0 != std::isalnum(character) || character == '_' ||
-					character == '-' || character == '.';
-			});
-	};
-	const bool_t hasValidArchetype =
-		WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ?
-			placement.archetypeId.empty() :
-			validStableId(placement.archetypeId, 128u);
+	const bool_t actorPlacement =
+		WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ||
+		WORLD_PLACEMENT_KIND::NPC == placement.eKind ||
+		WORLD_PLACEMENT_KIND::BOSS == placement.eKind;
+	const bool_t hasValidActorReference = !actorPlacement ||
+		(WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ?
+			placement.archetypeId.empty() : Is_ValidStableId(placement.archetypeId));
+	const bool_t hasValidTrigger =
+		WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
+		(std::isfinite(placement.halfExtents.x) &&
+			std::isfinite(placement.halfExtents.y) &&
+			std::isfinite(placement.halfExtents.z) &&
+			placement.halfExtents.x > 0.f && placement.halfExtents.x <= 1000.f &&
+			placement.halfExtents.y > 0.f && placement.halfExtents.y <= 1000.f &&
+			placement.halfExtents.z > 0.f && placement.halfExtents.z <= 1000.f &&
+			!placement.triggerEvents.empty() && placement.triggerEvents.size() <= 32u &&
+			std::all_of(placement.triggerEvents.begin(), placement.triggerEvents.end(),
+				[](const WORLD_TRIGGER_EVENT& event)
+				{
+					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
+						Is_ValidStableId(event.targetId) &&
+						(WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind ||
+							WORLD_DESTROYABLE_STATE::END != event.eDestroyableState);
+				}));
+	const bool_t hasValidDestroyable =
+		WORLD_PLACEMENT_KIND::DESTROYABLE != placement.eKind ||
+		(0u != placement.deployRuntimePlacementId &&
+			WORLD_DESTROYABLE_STATE::END != placement.eInitialState);
 	return WORLD_PLACEMENT_KIND::END != placement.eKind &&
-		validStableId(placement.placementId, 128u) &&
-		hasValidArchetype &&
-		(placement.encounterId.empty() ||
-			validStableId(placement.encounterId, 128u)) &&
+		Is_ValidStableId(placement.placementId) &&
+		hasValidActorReference && hasValidTrigger && hasValidDestroyable &&
+		(!actorPlacement || placement.encounterId.empty() ||
+			Is_ValidStableId(placement.encounterId)) &&
 		std::isfinite(placement.position.x) &&
 		std::isfinite(placement.position.y) &&
 		std::isfinite(placement.position.z) &&
@@ -383,6 +603,8 @@ const char_t* Client::CWorldGameplayDocument::Kind_ToString(
 	case WORLD_PLACEMENT_KIND::PLAYER_SPAWN: return "playerSpawn";
 	case WORLD_PLACEMENT_KIND::NPC: return "npc";
 	case WORLD_PLACEMENT_KIND::BOSS: return "boss";
+	case WORLD_PLACEMENT_KIND::TRIGGER_BOX: return "triggerBox";
+	case WORLD_PLACEMENT_KIND::DESTROYABLE: return "destroyable";
 	default: return "invalid";
 	}
 }
@@ -397,6 +619,59 @@ bool_t Client::CWorldGameplayDocument::Try_ParseKind(
 		outKind = WORLD_PLACEMENT_KIND::NPC;
 	else if ("boss" == value)
 		outKind = WORLD_PLACEMENT_KIND::BOSS;
+	else if ("triggerBox" == value)
+		outKind = WORLD_PLACEMENT_KIND::TRIGGER_BOX;
+	else if ("destroyable" == value)
+		outKind = WORLD_PLACEMENT_KIND::DESTROYABLE;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
+	const WORLD_TRIGGER_EVENT_KIND kind)
+{
+	switch (kind)
+	{
+	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
+	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
+	const std::string& value, WORLD_TRIGGER_EVENT_KIND& outKind)
+{
+	if ("setCondition" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
+	else if ("setDestroyableState" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::DestroyableState_ToString(
+	const WORLD_DESTROYABLE_STATE state)
+{
+	switch (state)
+	{
+	case WORLD_DESTROYABLE_STATE::INTACT: return "INTACT";
+	case WORLD_DESTROYABLE_STATE::FRACTURED: return "FRACTURED";
+	case WORLD_DESTROYABLE_STATE::DESPAWNED: return "DESPAWNED";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseDestroyableState(
+	const std::string& value, WORLD_DESTROYABLE_STATE& outState)
+{
+	if ("INTACT" == value)
+		outState = WORLD_DESTROYABLE_STATE::INTACT;
+	else if ("FRACTURED" == value)
+		outState = WORLD_DESTROYABLE_STATE::FRACTURED;
+	else if ("DESPAWNED" == value)
+		outState = WORLD_DESTROYABLE_STATE::DESPAWNED;
 	else
 		return false;
 	return true;

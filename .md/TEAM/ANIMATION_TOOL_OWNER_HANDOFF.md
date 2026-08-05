@@ -5,9 +5,10 @@
 
 ## 1. 한 줄 계약
 
-Animation Tool은 `어떤 animation asset의 어떤 clip에서 언제 cue가 발생하는가`를 저작한다.
-Effect Tool은 `그 cue가 호출할 EffectAssetId의 모양과 부착 방식`을 저작한다. Character Preview Panel은
-두 Tool이 함께 보는 preview target과 매 frame anchor transform을 소유한다.
+Animation Tool은 `어떤 animation asset의 어떤 clip에서 언제 cue가 발생하고 어느 anchor에 어떻게
+붙는가`를 저작한다. Effect Tool은 `그 cue가 호출할 EffectAssetId 자체의 모양과 effect-local 수명`을
+저작한다. Character Preview Panel은 두 Tool이 함께 보는 preview target과 매 frame anchor transform을
+소유한다.
 
 ```text
 Character Preview Panel
@@ -17,10 +18,14 @@ Character Preview Panel
           │                      │
           │                      └─> effectAssetId binding
           │
-          └─> Effect Tool: emitter/module/trail/local transform/anchor policy
+          └─> Effect Tool: emitter/module/trail/effect-local transform/lifetime
                                  │
-                                 └─> same CEffect_Runtime preview
+                                 └─> future single Effect preview/runtime path
 ```
+
+Effect asset의 원점과 emitter local transform은 재사용 가능한 asset 내부 값이다. character root,
+weapon, bone, world point 중 무엇에 붙일지와 그 anchor 기준 offset, follow/detach, stop policy는 같은
+EffectAssetId를 clip마다 다르게 사용할 수 있어야 하므로 Animation cue/binding 값이다.
 
 ## 2. 현재 코드와 목표 상태를 구분한다
 
@@ -37,8 +42,9 @@ part 선택 UI, anchor slot 목록 열거다. 이 항목들을 채울 때도 pre
 vector에 읽은 뒤 교체하지만 owner/count와 malformed row를 엄격히 거부하지 않는다. 오늘 Animation 담당자의
 실제 수정 대상은 이 document safety와, 아직 닫힌 상태로 선언할 EffectAssetId binding 계약이다.
 
-현재 `Data/Effects/Authored/DimensionMaster/Candidates`는 `candidate_only`다. 이 후보는 admitted effect 선택
-목록이나 제품 runtime cue에 자동 연결하지 않는다.
+DimensionMaster로 rename된 `Data/Effects/Authored/.../Candidates`의 구형 authoring 문서 459개는 Effect Tool
+재구축과 함께 삭제했다. 원본 추출 증거인 SourceCatalog/SourceExtracted와 Resources payload는 보존하지만
+admitted effect 목록이나 제품 runtime cue에는 자동 연결하지 않는다.
 
 ## 3. Animation Tool이 소유하는 것
 
@@ -50,7 +56,8 @@ Animation 담당자는 다음을 계속 소유한다.
 - `.animevents`의 point/window marker 편집
 - Effect Tool typed request로 stable `effectAssetId` point marker 생성
 - `.animevents`의 parse → validate → stage → commit Save/Load/Reload
-- Dirty 상태, 선택 event, 실패 메시지와 기존 document 보존
+- `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clip/BA stage 연결
+- event document와 skill binding document의 독립 Dirty 상태, 실패 메시지와 기존 document 보존
 
 Animation Tool의 저장 row는 다음 의미를 가진다.
 
@@ -61,7 +68,15 @@ startMs           clip 시작 기준 cue 시작 시각이다.
 endMs             window cue의 종료 시각이다. point cue는 startMs와 같다.
 eventKind         HIT/CANCEL/SUPERARMOR/INVULN/MOVE/SOUND/EFFECT/SHAKE다.
 effectAssetId     authored EFFECT가 호출할 stable effect catalog ID다.
+anchorSlotId      character root/weapon/bone/world 중 검증된 stable anchor ID다.
+localTransform    anchor 기준 position/rotation/scale이다.
+followPolicy      spawn 뒤 anchor를 계속 따를지 world transform을 snapshot할지 정한다.
+stopPolicy        window 종료나 action 취소 때 emission/instance를 어떻게 끝낼지 정한다.
 ```
+
+현재 `.animevents` v4는 `effectAssetId` point binding까지만 준비되어 있고 anchor/local transform,
+follow/stop 직렬화는 아직 구현되지 않았다. 위 필드를 legacy payload 문자열에 임시로 넣지 않고 schema,
+publisher, preview/runtime consumer를 함께 추가하는 후속 수직 슬라이스로 연다.
 
 기존 EFFECT row의 `sPayload`는 원본 `.animnotify`에서 온 UE source cue 이름이거나 빈 문자열일 수 있다.
 실측상 LanceMaster에는 `src=orig`가 없는 빈 legacy row도 한 건 있으므로 `bImported`만으로 runtime admission을
@@ -79,7 +94,7 @@ Animation Tool에는 다음 기능을 넣지 않는다.
 
 - Character, `CPart_Body`, weapon, effect runtime object의 새 생성 경로
 - Effect emitter/module/material/texture/trail 수치 편집
-- Effect를 직접 spawn하거나 `CEffect_Runtime`을 직접 update/render하는 코드
+- Effect를 직접 spawn하거나 Effect preview/runtime을 직접 update/render하는 코드
 - socket, packet, Server damage, HP, cooldown 판정
 - Character layer/tag/index를 추측해 target을 찾는 코드
 - Effect Tool container 또는 파일을 직접 수정하는 코드
@@ -141,14 +156,18 @@ start/stop consumer를 먼저 추가해야 한다. trail lifetime을 임의의 E
 - emitter/module/effect-local timeline
 - texture/model/material과 Resources-relative asset ID
 - blend, color, velocity, lifetime, SubUV, ribbon/trail 수치
-- anchor policy와 anchor-relative local position/rotation/scale
+- effect root와 emitter의 effect-local position/rotation/scale
 - admitted effect catalog와 dependency/validation 상태
 - authoring Save/Load/Reload와 runtime cook
-- 동일 `CEffect_Runtime`을 통한 preview
+- 하나의 검증된 Effect preview/runtime 경로
 
-Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다. `Use Selected Effect`는 선택한
-`EffectAssetId`를 typed request로 제출할 뿐이다. Animation Tool에서 marker가 만들어지고 Save되기 전에는
-binding이 영구 저장됐다고 표시하지 않는다.
+2026-08-04 재구축 G0의 실제 구현 범위는 ImGui의 `Mesh / Texture / Particle / Decal / Trail` 중 하나를
+고르는 타입 selector뿐이다. 이 단계에는 EffectAssetId, 파일 format, Load/Save, catalog, preview/runtime
+계약이 없다. 위 asset 책임은 새 schema와 소비자를 함께 검증하는 후속 G에서 한 계약씩 다시 연다.
+
+Effect Tool은 Animation clip과 marker vector를 직접 편집하지 않는다. 후속 `Use Selected Effect`가 생겨도
+선택한 `EffectAssetId`를 typed request로 제출할 뿐이며, Animation Tool에서 marker가 만들어지고 Save되기
+전에는 binding이 영구 저장됐다고 표시하지 않는다.
 
 ## 8. Character Preview Panel이 소유하는 것
 
@@ -183,7 +202,8 @@ request가 가진 generation과 소비 시점의 current generation이 다르면
 
 ## 9. Anchor와 위치 저장 규칙
 
-Effect asset에는 실제 world coordinate나 현재 마우스 좌표를 저장하지 않고 다음 정책을 저장한다.
+Effect asset에는 실제 world coordinate, character/weapon anchor 또는 현재 마우스 좌표를 저장하지 않는다.
+Animation cue/binding이 다음 정책을 저장한다.
 
 | anchor kind | 저장 의미 | preview/runtime 입력 |
 |---|---|---|
@@ -193,8 +213,10 @@ Effect asset에는 실제 world coordinate나 현재 마우스 좌표를 저장�
 | `WORLD_POINT` | spawn 시점 world point에 남는다 | cue context world position |
 | `MOUSE_GROUND` | spawn 시 커서 ground point를 사용한다 | picking 결과의 current world point |
 
-Effect Tool은 `anchorKind + anchorSlotId + localPosition + localRotation + localScale`을 편집한다. Preview
-Panel은 그 anchor의 current world transform을 계산한다. Effect runtime은 둘을 합성한다.
+Animation Tool은 EFFECT cue의
+`anchorKind + anchorSlotId + localPosition + localRotation + localScale + followPolicy + stopPolicy`를
+편집한다. Preview Panel은 그 anchor의 current world transform을 계산한다. Effect runtime은 cue의
+attachment transform과 Effect asset의 effect-local transform을 합성한다.
 
 `MOUSE_GROUND`는 “마우스 커서 anchor를 사용한다”는 정책만 저장한다. 사용자가 preview 중 가리킨 실제
 좌표를 Effect asset에 저장하지 않는다. 제품 스킬에서는 입력 command와 Server 승인 계약이 허용한 ground
@@ -217,10 +239,10 @@ Preview Panel에서 class/target 선택
 -> Animation Tool에서 clip 선택, pause/scrub
 -> Effect Tool에서 admitted EffectAssetId 선택·preview
 -> Use Selected Effect typed request
--> Animation Tool이 EFFECT_ASSET_ID point marker 한 건 생성, Dirty
+-> Animation Tool이 anchor/offset/follow/stop을 가진 EFFECT_ASSET_ID point marker 한 건 생성, Dirty
 -> atomic Save
 -> staged Reload
--> 같은 asset/clip/ms/EffectAssetId 복원
+-> 같은 asset/clip/ms/EffectAssetId/attachment binding 복원
 ```
 
 ### 10.2 Weapon Trail 저작
@@ -228,9 +250,9 @@ Preview Panel에서 class/target 선택
 ```text
 Preview Panel이 weapon anchor를 매 frame 제공
 -> Animation Tool이 trail start/end window 저작
--> Effect Tool이 WEAPON_SOCKET + stable anchorSlotId 선택
--> ribbon/trail width/lifetime/sampling/material 편집
--> CEffect_Runtime preview가 매 frame anchor를 sample
+-> Animation Tool이 WEAPON_SOCKET + stable anchorSlotId와 offset 선택
+-> Effect Tool이 ribbon/trail width/lifetime/sampling/material 편집
+-> 단일 Effect preview/runtime이 매 frame anchor를 sample
 -> Animation window 종료 시 cue stop
 ```
 
@@ -291,17 +313,17 @@ Preview Panel이 weapon anchor를 매 frame 제공
 - 수동: 다섯 class target, scrub 시각, Dirty target 전환 보존과 Level 전환 cleanup.
 - 미완료로 남길 것: admitted Effect fixture/catalog resolver, 실제 Effect Tool `Use Selected Effect` 성공 경로,
   anchor-relative local transform 편집, Server collider/damage publisher, EFFECT window/trail start-stop,
-  beam dual anchor, candidate-only DimensionMaster effect admission.
+  beam dual anchor, 새 Effect schema와 admitted fixture/catalog.
 
 root/weapon anchor의 현재 world transform 조회는
-`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸고
-Effect Tool의 world preview가 이를 소비한다. 없는 bone은 false를 반환하므로 누락된 anchor가
-원점으로 보이지 않는다. 아직 없는 것은 anchor에 상대적인 local transform 저작이다.
+`CAnimationTargetService::Resolve_AnchorTransform` / `Resolve_RootTransform`으로 열렸다. 없는 bone은 false를
+반환하므로 누락된 anchor를 원점으로 위장하지 않는다. 아직 없는 것은 새 Effect runtime preview가 이 값을
+소비하는 경로와 anchor에 상대적인 local transform 저작이다.
 
-현재 admitted Effect는 0개이며 459개는 전부 DimensionMaster `candidate_only`다. 따라서 오늘 Animation 문서
+현재 admitted Effect는 0개이고 구형 candidate authoring 문서 459개도 삭제됐다. 따라서 오늘 Animation 문서
 안전성 작업을 EffectAssetId 성공 Save나 preview로 검증하지 않는다. `EFFECT_ASSET_ID` 입력은 admission
 resolver가 없거나 ID가 catalog에 없으면 실패하고 memory/destination을 유지해야 한다. 다음 Effect/Preview
-설계 단계에서 의존성 검증을 통과한 fixture 1개와 catalog resolver를 먼저 만든 뒤 실제
+설계 단계에서 새 schema와 의존성 검증을 통과한 fixture 1개, catalog resolver를 먼저 만든 뒤 실제
 `Use Selected Effect` 성공 흐름을 연다.
 
 이 경계가 닫히면 Animation 담당자는 Animation document에 집중하고, Effect 담당자는 Animation Tool 내부나
@@ -620,3 +642,109 @@ AnimSet을 실제로 살릴 때는 animated weapon part와 preview target을 함
 Animation Tool은 위 미완료 기능을 로컬 clip 재생이나 임의 part toggle로 우회하지 않는다. Server action이
 필요한 표현은 command -> Server approval -> replicated action -> Character presentation 계약이 생긴 뒤에만
 제품 runtime에 연결한다.
+
+## 15. Key/Skill Animation Binding 작업 절차
+
+### 15.1 기존 데이터 구조에서 확장된 경계
+
+이번 확장은 키, 스킬 수치, 애니메이션을 한 JSON에 합치지 않는다. 각 정본은 다음처럼 분리된다.
+
+| 정본 | 소유 정보 | 수정 담당 |
+|---|---|---|
+| `Data/Balance/PlayerSkills.json` | class, `inputSlot`, `skillId`, `skillKind`, Server timing, resource, range, `comboStages` | Gameplay/Server |
+| `Data/Balance/DamageProfiles.json` | Server damage rate와 판정 profile | Gameplay/Server |
+| `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json` | `animationAssetId`, `characterClass`, skillId별 ordered model clip | Animation |
+| `Data/Animation/Reference`와 `.skilltiming/.clipmap/.animnotify/.clipseq` | 원작 추출·비교·초기 유도 자료 | read-only |
+| Server snapshot | 승인된 `action`, `skillId`, `actionStartTick`, `iComboStage` | Server runtime |
+
+`skillbindings.json`의 저장 schema는 다음 형태다.
+
+```json
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "DimensionMaster",
+  "characterClass": "DIMENSIONMASTER",
+  "bindings": [
+    { "skillId": 2050110, "clips": ["pc_sp_m_00_sk_..."] },
+    { "skillId": 2050010, "clips": ["ba_01", "ba_02", "ba_03", "ba_04"] }
+  ]
+}
+```
+
+문서는 현재 class의 `PlayerSkills.json` 정의를 정확히 한 번씩 전부 포함해야 한다. 알 수 없는/중복/누락
+skillId, 다른 owner class, 현재 model에 없는 clip, COMBO의 `comboStages`와 다른 clip 수는 Save 전에
+거부한다. `inputSlot`, `skillKind`, timing을 중복 저장하지 않으므로 두 정본이 갈라지지 않는다.
+
+### 15.2 Animation 담당자의 실제 작업
+
+1. Server와 Client를 실행해 Lobby에서 `Character Select`로 이동한다.
+2. 작업할 class를 ImGui에서 선택하고 F1 → Animation Tool → `Scene Character`를 선택한다.
+3. 기존 전체 clip 목록에서 확인할 clip을 고르고 Play/Pause/Scrub으로 동작을 확인한다.
+4. `Key -> Skill Animation` 패널에서 원하는 key/skill row를 연다.
+5. ACTIVE 스킬은 `Assign Current Clip`으로 현재 clip을 step에 넣는다. 필요한 경우 step을 추가하고 순서를
+   바꾸거나 제거해 하나 이상의 ordered clip chain을 만든다.
+6. LMB COMBO는 BA1/BA2/BA3/BA4처럼 Server `comboStages` 수만큼 고정된 row에 현재 clip을 각각 지정한다.
+   BA 단계 수 자체는 Animation Tool에서 추가하거나 삭제하지 않는다.
+7. Save를 누른다. Tool은 sibling temporary file에 쓴 뒤 flush, strict reparse/validate, destination replace를
+   수행한다. 실패하면 기존 destination 문서를 유지한다.
+8. 저장 성공 후 실행 중 Character는 새 mapping을 받는다. action 도중 reload한 chain은 즉시 포인터를
+   바꾸지 않고 다음 action 경계에서 commit한다.
+9. Server 연결 Character Select gameplay에서 실제 key 또는 LMB를 입력해 command → approval → snapshot →
+   지정 clip 재생을 확인한다. Remote character도 같은 snapshot stage를 소비하는지 함께 확인한다.
+
+문서가 없거나 잘못됐을 때는 `Create Repair Draft from Current Clip`을 사용한다. 이 기능은 현재 class의 모든
+Server skill을 임시로 채운 완전한 draft를 만들고 Dirty 상태로 남긴다. 작업자는 각 row를 올바른 clip으로
+교체한 뒤 Save해야 한다. 잘못된 문서를 조용히 정상값처럼 채택하거나 spawn 실패로 승격하지 않는다.
+
+### 15.3 재수정과 안전 경계
+
+- 애니메이션만 바꿀 때는 해당 row의 clip/순서만 수정하고 Save한다. key나 skillId를 바꾸지 않는다.
+- key 편성, 새 스킬, combo 단계 수가 바뀌면 Gameplay 담당자가 먼저 `PlayerSkills.json`과 damage 계약을
+  갱신하고 publisher/Server contract를 통과시킨다. 그 다음 Tool의 repair draft로 신규 row를 포함시켜
+  animation을 배정한다.
+- ACTIVE의 마지막 clip은 Server가 `NONE`을 내릴 때까지 마지막 pose를 유지한다. COMBO는 Client가 시간을
+  세어 다음 BA로 넘어가지 않고 Server `iComboStage`가 바뀔 때 해당 단계로 직접 이동한다.
+- presentation 문서 누락/오류/clip miss는 해당 action 표현만 한 번 보고하고 transform, HUD, 다른 player
+  replication과 Character spawn은 계속 진행한다.
+- Dimension Core/Summon과 reference preview는 playable Scene Character가 아니므로 key/skill binding Save
+  대상이 아니다.
+- Effect cue, trail, collider authoring은 이 문서와 별도 정본이다. 특히 collider/damage timing은 계속
+  Server data/publisher 수직 슬라이스로만 변경한다.
+
+### 15.4 현재 class별 row
+
+```text
+Lance Master    Q W E R A S T V ALT_V + LMB(4단)
+Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
+Slayer          Q W E R A S D F V ALT_V + LMB(4단)
+Artist          Q W E R A S V ALT_V + LMB(4단)
+DimensionMaster Q W E R A S D F T V + LMB(4단)
+```
+
+DimensionMaster에는 `ALT_V`가 없다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
+그리므로 이후 합법적으로 추가되는 `Z`, `SPACE`, `RMB` 등의 slot도 숨기지 않는다.
+
+## 16. Character Select Server Arena 검증 흐름 (2026-08-05)
+
+Character Select ImGui 상단의 mode 표시는 읽기 전용이다. Animation 담당자는 socket 없는 Preview에서
+class와 clip mapping을 저작한 뒤 `Enter Test`를 누른다. tokenized TEST command는 Lobby가 Server 승인을
+검증하고, 같은 visual map을 Server Arena로 다시 열 때 기존 socket과 queued snapshot을 one-shot handoff한다.
+Character Select Level 자체는 connect/send/approval을 반복하지 않는다.
+
+```text
+Preview: class 선택 -> F1 Animation Tool -> key/skill row 편집 -> Save -> Enter Test
+   -> Lobby Server approval -> 같은 map Server Arena 재진입
+   -> Q/W/E/R/A/S/D/F/T/V 또는 LMB 입력
+   -> Server approval/snapshot -> 저장한 ACTIVE/COMBO clip 재생 확인
+```
+
+- 저장 정본은 `Data/Animation/Authored/<Class>/<Class>.skillbindings.json`이다.
+- ImGui가 일반 keyboard를 capture해도 gameplay key 검증은 가능하다. 단, InputText 편집 중에는 gameplay
+  command를 보내지 않으며 편집 종료 시 누르고 있던 key도 새 press로 오인하지 않는다.
+- F6는 follow/free camera를 전환한다. free camera에서는 gameplay command를 제출하지 않으며 follow로
+  돌아온 뒤 새 key press부터 다시 제출한다.
+- `Summon Valtan (Lazy)`는 animation 저작 기능이 아니라 Server-authoritative 검증 target 생성 명령이다.
+  첫 요청에서 presentation asset을 준비하며, 중복 요청은 기존 Server entity를 재사용한다.
+- Valtan collider, damage timing, effect cue를 조정할 때도 animation binding JSON에 판정 수치를 넣지 않는다.
+  각 정본 데이터와 publisher를 통해 별도 수직 슬라이스로 변경한다.

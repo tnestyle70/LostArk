@@ -1,0 +1,92 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "GunSlinger",
+  "characterClass": "GUNSLINGER",
+  "bindings": [
+    {
+      "skillId": 38020,
+      "clips": [
+        "gdh_sk_hallucination_01",
+        "gdh_sk_hallucination_02",
+        "gdh_sk_hallucination_custom_7"
+      ]
+    },
+    {
+      "skillId": 38050,
+      "clips": [
+        "gdh_sk_timeofjudgement"
+      ]
+    },
+    {
+      "skillId": 38120,
+      "clips": [
+        "gdh_sk_at02grenade"
+      ]
+    },
+    {
+      "skillId": 38200,
+      "clips": [
+        "gdh_sk_rapidfire",
+        "gdh_sk_rapidfire"
+      ]
+    },
+    {
+      "skillId": 38140,
+      "clips": [
+        "gdh_sk_plasmabullet"
+      ]
+    },
+    {
+      "skillId": 38180,
+      "clips": [
+        "gdh_sk_spiralchaser"
+      ]
+    },
+    {
+      "skillId": 38210,
+      "clips": [
+        "gdh_sk_somersaultshot"
+      ]
+    },
+    {
+      "skillId": 38260,
+      "clips": [
+        "gdh_sk_gunkata_01",
+        "gdh_sk_gunkata_02",
+        "gdh_sk_gunkata_03",
+        "gdh_sk_gunkata_custom_4"
+      ]
+    },
+    {
+      "skillId": 38290,
+      "clips": [
+        "gdh_sk_bulletprison_01",
+        "gdh_sk_bulletprison_02",
+        "gdh_sk_bulletprison_03",
+        "gdh_sk_bulletprison_04"
+      ]
+    },
+    {
+      "skillId": 38250,
+      "clips": [
+        "gdh_sk_eyeoftwilight"
+      ]
+    },
+    {
+      "skillId": 38320,
+      "clips": [
+        "gdh_sk_super_eyeoftwilight_01",
+        "gdh_sk_super_eyeoftwilight_02"
+      ]
+    },
+    {
+      "skillId": 38000,
+      "clips": [
+        "gdh_att_battle_1_01",
+        "gdh_att_battle_1_02",
+        "gdh_att_battle_1_03"
+      ]
+    }
+  ]
+}

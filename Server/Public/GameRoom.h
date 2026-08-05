@@ -55,6 +55,9 @@ namespace LostArk::Server
 		void Handle_UseSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_SKILL& useSkill);
+		void Handle_SpawnWorldEntity(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
@@ -65,6 +68,11 @@ namespace LostArk::Server
 		bool Send_WorldEntitySpawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_WORLD_ENTITY& entity);
+		bool Send_WorldEntitySpawnResult(
+			const std::shared_ptr<CClientSession>& session,
+			const std::string& placementId,
+			LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT result,
+			LostArk::Shared::NET_ENTITY_ID netEntityId);
 		bool Send_Despawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
@@ -75,12 +83,20 @@ namespace LostArk::Server
 		void Broadcast_Despawned(
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
+		void Broadcast_WorldEntitySpawned(
+			const SERVER_WORLD_ENTITY& entity);
 		void Broadcast_WorldSnapshot();
 
 		std::shared_ptr<CClientSession> Find_Session(
 			SESSION_ID sessionId) const;
 		void Rollback_Join(SESSION_ID sessionId);
 		const WORLD_BOOTSTRAP_PLACEMENT* Find_AvailablePlayerSpawn() const;
+		const WORLD_BOOTSTRAP_PLACEMENT* Find_Placement(
+			const std::string& placementId) const;
+		bool Build_WorldEntity(
+			const WORLD_BOOTSTRAP_PLACEMENT& placement,
+			LostArk::Shared::NET_ENTITY_ID netEntityId,
+			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
 		void Update_Players(float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
@@ -103,6 +119,10 @@ namespace LostArk::Server
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CValtanBrain m_ValtanBrain;
 		std::vector<SERVER_WORLD_ENTITY> m_WorldEntities;
+		/* One tick's resolved hits. Cleared at the top of every simulation phase
+		and consumed by Broadcast_WorldSnapshot, so an event can only ever ride
+		the snapshot of the tick that produced it. */
+		std::vector<LostArk::Shared::DAMAGE_EVENT> m_TickDamageEvents;
 		std::string m_strStatus;
 		bool m_isReady = false;
 

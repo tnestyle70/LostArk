@@ -30,6 +30,18 @@ public:
 			0 == (m_byPreviousKeyState[byKeyID] & 0x80);
 	}
 
+	int8_t Get_DIKeyStateRaw(uint8_t byKeyID) const
+	{
+		return m_byKeyState[byKeyID];
+	}
+
+	bool_t Get_DIKeyPressedRaw(uint8_t byKeyID) const
+	{
+		return
+			0 != (m_byKeyState[byKeyID] & 0x80) &&
+			0 == (m_byPreviousKeyState[byKeyID] & 0x80);
+	}
+
 	int8_t	Get_DIMouseState(DIM eMouse)
 	{
 		const uint32_t index = ETOUI(eMouse);

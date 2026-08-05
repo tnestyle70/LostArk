@@ -172,6 +172,18 @@ bool_t CGameInstance::Get_DIKeyPressed(uint8_t byKeyID)
 	return m_pInput_Device->Get_DIKeyPressed(byKeyID);
 }
 
+int8_t CGameInstance::Get_DIKeyStateRaw(uint8_t byKeyID) const
+{
+	return nullptr != m_pInput_Device ?
+		m_pInput_Device->Get_DIKeyStateRaw(byKeyID) : 0;
+}
+
+bool_t CGameInstance::Get_DIKeyPressedRaw(uint8_t byKeyID) const
+{
+	return nullptr != m_pInput_Device &&
+		m_pInput_Device->Get_DIKeyPressedRaw(byKeyID);
+}
+
 int8_t CGameInstance::Get_DIMouseState(DIM eMouse)
 {
 	return m_pInput_Device->Get_DIMouseState(eMouse);
@@ -239,6 +251,15 @@ uint32_t CGameInstance::Get_CurrentLevelID() const
 HRESULT CGameInstance::Add_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, unique_ptr<class CPrototype> pPrototype)
 {
 	return m_pPrototype_Manager->Add_Prototype(iLevelIndex, strPrototypeTag, move(pPrototype));
+}
+
+HRESULT CGameInstance::Add_Prototypes(
+	const uint32_t iLevelIndex,
+	vector<pair<wstring_t, unique_ptr<CPrototype>>>&& prototypes)
+{
+	return m_pPrototype_Manager->Add_Prototypes(
+		iLevelIndex,
+		std::move(prototypes));
 }
 
 shared_ptr<CPrototype> CGameInstance::Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg)

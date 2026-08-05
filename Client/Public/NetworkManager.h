@@ -32,6 +32,8 @@ private:
 
 public:
 	static CNetworkManager& Get();
+	static constexpr std::uint16_t DEFAULT_SERVER_PORT = 7777;
+	static std::string Resolve_ServerHost();
 
 	bool Initialize();
 	void Shutdown();
@@ -59,9 +61,12 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ);
+	bool Send_SpawnWorldEntity(std::string_view placementId);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
+	bool Try_Consume_WorldEntitySpawnResult(
+		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -99,6 +104,8 @@ private:
 
 	//Handle Frame과 소비자 모두 main thread이다.
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
+	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
+		m_WorldEntitySpawnResults;
 
 	bool m_hasPendingEnterAccepted = false;
 

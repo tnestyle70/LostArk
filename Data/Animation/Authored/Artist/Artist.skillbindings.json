@@ -1,0 +1,66 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 1,
+  "animationAssetId": "Artist",
+  "characterClass": "ARTIST",
+  "bindings": [
+    {
+      "skillId": 31210,
+      "clips": [
+        "sdm_sk_skykongkong_custom_8"
+      ]
+    },
+    {
+      "skillId": 31230,
+      "clips": [
+        "sdm_sk_pondofyin"
+      ]
+    },
+    {
+      "skillId": 31510,
+      "clips": [
+        "sdm_sk_moondrawing_01",
+        "sdm_sk_moondrawing_02"
+      ]
+    },
+    {
+      "skillId": 31470,
+      "clips": [
+        "sdm_sk_onestroke"
+      ]
+    },
+    {
+      "skillId": 31410,
+      "clips": [
+        "sdm_sk_congenitalenergy"
+      ]
+    },
+    {
+      "skillId": 31490,
+      "clips": [
+        "sdm_sk_cloudtiger"
+      ]
+    },
+    {
+      "skillId": 31900,
+      "clips": [
+        "sdm_sk_landscapepainting"
+      ]
+    },
+    {
+      "skillId": 31920,
+      "clips": [
+        "sdm_sk_super_landscapepainting"
+      ]
+    },
+    {
+      "skillId": 31000,
+      "clips": [
+        "sdm_att_battle_1_03",
+        "sdm_att_battle_1_02",
+        "sdm_att_battle_1_01",
+        "sdm_att_battle_1_04"
+      ]
+    }
+  ]
+}

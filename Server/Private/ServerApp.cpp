@@ -32,6 +32,9 @@ int LostArk::Server::CServerApp::Run(
 	m_GameRooms.emplace(
 		WORLD_ID::TRAINING_GROUND,
 		std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND));
+	m_GameRooms.emplace(
+		WORLD_ID::CHARACTER_SELECT_ARENA,
+		std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA));
 	for (const auto& [worldId, room] : m_GameRooms)
 	{
 		if (nullptr == room || !room->Is_Ready())
@@ -61,7 +64,8 @@ int LostArk::Server::CServerApp::Run(
 	m_RoomThread = std::thread(&CServerApp::Room_Loop, this);
 	m_AcceptThread = std::thread(&CServerApp::Accept_Loop, this);
 	std::cout << "Listening on " << bindAddress << ':' << SERVER_PORT
-		<< " with BERN, VALTAN_ARENA, and TRAINING_GROUND.";
+		<< " with BERN, VALTAN_ARENA, TRAINING_GROUND, and "
+		<< "CHARACTER_SELECT_ARENA.";
 	if (0u == automaticShutdownMilliseconds)
 	{
 		std::cout << " Press Enter to stop.\n";
@@ -225,6 +229,18 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		targetRoom = Find_AssignedRoom(sessionId);
 		command.eType = ROOM_COMMAND_TYPE::USE_SKILL;
 		command.UseSkill = useSkill;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY)
+	{
+		C2S_SPAWN_WORLD_ENTITY request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		targetRoom = Find_AssignedRoom(sessionId);
+		command.eType = ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY;
+		command.SpawnWorldEntity = std::move(request);
 	}
 	else
 	{

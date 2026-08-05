@@ -1,7 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-w-swp-dimensionprison-00-locdust" name="par_w_swp_dimensionprison_00_locdust" provenance=DERIVED_CONVERSION duration=2 warmup=0
-
-EMITTER id=5036 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=2 loops=1
-  MODULE id=5037 name="Required" type=REQUIRED enabled=1 tex="Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_environment_001.dds" mesh="" mat="bfx_m_mi_00.bfx_mi.bfx_d_pa_master_01_16_tr" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0.15
-  MODULE id=5038 name="Spawn" type=SPAWN enabled=1 rate=0 burst=0 max=16
-  MODULE id=5039 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=0.15,0.5,1,0.5 min=0.15,0.5,1,0.5 max=0.15,0.5,1,0.5

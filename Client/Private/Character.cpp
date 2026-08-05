@@ -1,10 +1,11 @@
 #include "Character.h"
 
+#include "AnimationSkillBindingDocument.h"
 #include "GameInstance.h"
 #include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
-#include "ProjectDataRoot.h"
+#include "PlayerSkillCatalog.h"
 
 #include <algorithm>
 #include <cmath>
@@ -75,6 +76,10 @@ HRESULT CCharacter::Initialize(void* pArg)
 		return E_FAIL;
 	}
 
+	/* A missing/corrupt presentation document must not prevent the Character,
+	IDLE/RUN, or the Animation Tool repair target from existing. Approved skill
+	actions remain valid network state even when their optional clip mapping is
+	unavailable. */
 	Load_ClipChains();
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
@@ -87,78 +92,71 @@ HRESULT CCharacter::Initialize(void* pArg)
 	return S_OK;
 }
 
-/* Reads <asset>.clipseq, the clip order the game plays each skill in. Extracted
-from the game's Action table; see the 07-31 RESULT doc. */
+/* Extraction references may seed authoring, but runtime consumes only the
+validated authored document. Animation Tool Save is therefore the single
+presentation path used by local and remote Characters. */
 bool_t CCharacter::Load_ClipChains()
 {
-	m_Chains.clear();
-
 	if (nullptr == m_pSpec->pAssetName)
 		return false;
-
-	const std::string assetName = m_pSpec->pAssetName;
-	const std::string path = CProjectDataRoot::Resolve(
-		filesystem::path(L"Animation/Reference") /
-		filesystem::path(assetName) /
-		filesystem::path(assetName + ".clipseq")).string();
-
-	FILE* pFile = nullptr;
-	if (0 != fopen_s(&pFile, path.c_str(), "r") || nullptr == pFile)
-		return false;
-
-	char_t szLine[2048]{};
-	/* header: LOSTARK_CLIP_SEQ <version> "<owner>" <count> */
-	if (nullptr == fgets(szLine, sizeof(szLine), pFile) ||
-		nullptr == strstr(szLine, "LOSTARK_CLIP_SEQ"))
+	std::vector<std::string> availableClips;
+	availableClips.reserve(m_pBodyModel->Get_NumAnimations());
+	for (uint32_t index = 0; index < m_pBodyModel->Get_NumAnimations(); ++index)
 	{
-		fclose(pFile);
+		const char_t* clipName = m_pBodyModel->Get_AnimationName(index);
+		if (nullptr != clipName)
+			availableClips.emplace_back(clipName);
+	}
+
+	ANIMATION_SKILL_BINDING_DOCUMENT document;
+	std::string status;
+	if (!CAnimationSkillBindingDocument::Load(
+		m_pSpec->pAssetName,
+		m_pSpec->eCharacterClass,
+		CPlayerSkillCatalog::Get_Skills(),
+		availableClips,
+		document,
+		status))
+	{
+		OutputDebugStringA(("Character skill animation load failed: " +
+			status + "\n").c_str());
 		return false;
 	}
 
-	while (nullptr != fgets(szLine, sizeof(szLine), pFile))
+	std::vector<CLIP_CHAIN> stagedChains;
+	stagedChains.reserve(document.Bindings.size());
+	for (const ANIMATION_SKILL_BINDING& binding : document.Bindings)
 	{
+		const PLAYER_SKILL_DEFINITION* definition =
+			CPlayerSkillCatalog::Find_ById(binding.iSkillId);
+		if (nullptr == definition)
+			return false;
 		CLIP_CHAIN chain{};
-		chain.iSkillId = atoi(szLine);
-
-		const char_t* pSeq = strstr(szLine, "seq=");
-		if (nullptr != pSeq)
-			chain.iSeqIndex = atoi(pSeq + 4);
-
-		const char_t* pMode = strstr(szLine, "mode=");
-		if (nullptr != pMode)
-		{
-			pMode += 5;
-			while ('\0' != *pMode && ' ' != *pMode && '\r' != *pMode && '\n' != *pMode)
-				chain.sMode.push_back(*pMode++);
-		}
-
-		/* clips="a,b,c" */
-		const char_t* pClips = strstr(szLine, "clips=\"");
-		if (nullptr == pClips || 0 == chain.iSkillId)
-			continue;
-
-		pClips += 7;
-		std::string one;
-		for (; '\0' != *pClips && '\"' != *pClips; ++pClips)
-		{
-			if (',' == *pClips)
-			{
-				if (!one.empty())
-					chain.clips.push_back(one);
-				one.clear();
-				continue;
-			}
-			one.push_back(*pClips);
-		}
-		if (!one.empty())
-			chain.clips.push_back(one);
-
-		if (!chain.clips.empty())
-			m_Chains.push_back(std::move(chain));
+		chain.iSkillId = static_cast<int32_t>(binding.iSkillId);
+		chain.isCombo =
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition->eSkillKind;
+		chain.clips = binding.Clips;
+		stagedChains.push_back(std::move(chain));
 	}
-
-	fclose(pFile);
+	if (stagedChains.empty())
+		return false;
+	if (nullptr != m_pChain)
+		m_PendingChains = std::move(stagedChains);
+	else
+		m_Chains = std::move(stagedChains);
 	return true;
+}
+
+bool_t CCharacter::Reload_SkillAnimationBindings()
+{
+	return Load_ClipChains();
+}
+
+void CCharacter::Commit_PendingClipChains()
+{
+	if (nullptr != m_pChain || m_PendingChains.empty())
+		return;
+	m_Chains = std::move(m_PendingChains);
 }
 
 bool_t CCharacter::Start_Clip(const char_t* pClipName)
@@ -186,26 +184,22 @@ bool_t CCharacter::Is_ClipFinished() const
 	return fDuration > 0.f && fPosition >= fDuration;
 }
 
-bool_t CCharacter::Play_Skill(int32_t iSkillId, int32_t iSeqIndex)
+bool_t CCharacter::Play_Skill(
+	int32_t iSkillId,
+	bool_t isCombo)
 {
 	if (nullptr != m_pChain)
 		return false;
 
-	/* Sequence indices come from the game's own grouping, which is neither
-	contiguous nor always zero-based, so an exact miss falls back to the skill's
-	lowest chain rather than refusing to play. */
+	/* The document has exactly one row per PlayerSkills definition, so a kind
+	mismatch is a stale/invalid presentation contract rather than a tripod fallback. */
 	const CLIP_CHAIN* pPick = nullptr;
 	for (const CLIP_CHAIN& chain : m_Chains)
 	{
-		if (chain.iSkillId != iSkillId)
+		if (chain.iSkillId != iSkillId || chain.isCombo != isCombo)
 			continue;
-		if (chain.iSeqIndex == iSeqIndex)
-		{
-			pPick = &chain;
-			break;
-		}
-		if (nullptr == pPick || chain.iSeqIndex < pPick->iSeqIndex)
-			pPick = &chain;
+		pPick = &chain;
+		break;
 	}
 
 	if (nullptr == pPick || !Start_Clip(pPick->clips[0].c_str()))
@@ -223,23 +217,16 @@ void CCharacter::Update_Chain()
 
 	/* A combo holds on its last clip until the server confirms the next stage.
 	Every other mode keeps running to the end by itself. */
-	if ("COMBO" == m_pChain->sMode)
+	if (m_pChain->isCombo)
+		return;
+
+	/* A user-authored presentation clip can be shorter than the Server action.
+	Hold its final pose until the replicated action becomes NONE; otherwise the
+	client would return to locomotion before the authoritative duration ends. */
+	if (m_iChainStep + 1 >= static_cast<int32_t>(m_pChain->clips.size()))
 		return;
 
 	++m_iChainStep;
-
-	if (m_iChainStep >= static_cast<int32_t>(m_pChain->clips.size()))
-	{
-		m_pChain = nullptr;
-		m_iChainStep = 0;
-		//judge animation, whether character is moving
-		Set_Animation(
-			m_isMoving ?
-			CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
-			true);
-		return;
-	}
-
 	Start_Clip(m_pChain->clips[m_iChainStep].c_str());
 }
 
@@ -350,16 +337,31 @@ bool_t CCharacter::Apply_NetworkAction(
 		{
 			return true;
 		}
-		/* Stage one starts the chain; later stages step the one already running,
-		because the chain does not advance itself in COMBO mode. */
-		if (comboStage > 1u)
+		/* A newer authoritative edge replaces an ACTIVE action even when the NONE
+		snapshot between them was dropped. Clearing before the pending document
+		commit also makes Animation Tool live reload pointer-safe. */
+		m_pChain = nullptr;
+		m_iChainStep = 0;
+		Commit_PendingClipChains();
+
+		bool_t presented = Play_Skill(
+			static_cast<int32_t>(skillId),
+			comboStage > 0u);
+		if (presented && comboStage > 1u)
+			presented = Advance_ComboStage(comboStage);
+		if (!presented)
 		{
-			if (!Advance_ComboStage(comboStage))
-				return false;
-		}
-		else if (!Play_Skill(static_cast<int32_t>(skillId)))
-		{
-			return false;
+			/* Presentation data is not network authority. Record this edge once and
+			keep transform/HUD/other entities consuming the snapshot. */
+			OutputDebugStringA((
+				"Character skill presentation unavailable for skill " +
+				std::to_string(skillId) + " at action tick " +
+				std::to_string(actionStartTick) + "\n").c_str());
+			m_pChain = nullptr;
+			m_iChainStep = 0;
+			Set_Animation(
+				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+				true);
 		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
@@ -367,13 +369,14 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		m_pChain = nullptr;
 		m_iChainStep = 0;
+		Commit_PendingClipChains();
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
 	}
-	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
-		nullptr != m_pChain)
+	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
 		m_iChainStep = 0;
+		Commit_PendingClipChains();
 		Set_Animation(
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 			true);

@@ -4,12 +4,13 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
 namespace Client
 {
-	/* One row of Data/Balance/PlayerSkills.json with its damage amount already
+	/* One row of Data/Balance/PlayerSkills.json with its damage rate already
 	resolved through Data/Balance/DamageProfiles.json.
 
 	Both the combat HUD and the input controller need this, so the parse lives
@@ -25,9 +26,17 @@ namespace Client
 		std::string strDisplayName;
 		std::string strActionId;
 		std::uint32_t iCooldownMs = 0;
-		std::uint32_t iDamage = 0;
+		/* Percent of the caster's attack power, as authored: display damage is
+		attackPower x rate / 100 and only the server resolves the real number. */
+		std::uint32_t iDamageRatePercent = 0;
+		/* Official CostMp so the HUD can show a skill the server would refuse
+		to pay for. The server keeps its own copy from the bootstrap. */
+		std::uint32_t iResourceCost = 0;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
 			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
+		/* Presentation authoring maps one COMBO clip to each Server-owned stage.
+		ACTIVE skills therefore carry zero and COMBO skills carry 2..8. */
+		std::size_t iComboStageCount = 0;
 	};
 
 	class CPlayerSkillCatalog final

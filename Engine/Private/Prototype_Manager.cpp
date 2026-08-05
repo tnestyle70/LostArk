@@ -30,7 +30,39 @@ HRESULT CPrototype_Manager::Add_Prototype(uint32_t iLevelIndex, const wstring_t&
 
     m_pPrototypes[iLevelIndex].emplace(strPrototypeTag, move(pPrototype));
 
-    return S_OK;
+	return S_OK;
+}
+
+HRESULT CPrototype_Manager::Add_Prototypes(
+	const uint32_t iLevelIndex,
+	vector<pair<wstring_t, unique_ptr<CPrototype>>>&& prototypes)
+{
+	if (nullptr == m_pPrototypes ||
+		iLevelIndex >= m_iNumLevels ||
+		prototypes.empty())
+	{
+		return E_INVALIDARG;
+	}
+
+	PROTOTYPES staged;
+	for (const auto& [tag, prototype] : prototypes)
+	{
+		if (tag.empty() || nullptr == prototype ||
+			nullptr != Find_Prototype(iLevelIndex, tag) ||
+			staged.contains(tag))
+		{
+			return E_FAIL;
+		}
+		staged.emplace(tag, nullptr);
+	}
+	staged.clear();
+	for (auto& [tag, prototype] : prototypes)
+		staged.emplace(std::move(tag), std::move(prototype));
+
+	// Nodes are fully allocated in the staging map. With all keys validated as
+	// absent, merge transfers them without an allocation or a partial insert.
+	m_pPrototypes[iLevelIndex].merge(staged);
+	return staged.empty() ? S_OK : E_FAIL;
 }
 
 shared_ptr<CPrototype> CPrototype_Manager::Clone_Prototype(uint32_t iLevelIndex, const wstring_t& strPrototypeTag, void* pArg)

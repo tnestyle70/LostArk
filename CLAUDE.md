@@ -178,7 +178,7 @@ CPrototype (추상, enable_shared_from_this)
     ├── CUIObject, CCamera
     └── [Client] CCharacter, CPart_Body, CPart_Equipment, CNpc,
                  CValtan, CDeployPropObject, CMapAssetObject,
-                 CMapStaticBatchObject, CEffect_Runtime, CCamera_Free
+                 CMapStaticBatchObject, CCamera_Free
 ```
 
 ### 프로토타입 패턴
@@ -214,7 +214,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Test 진입이다. map area는 `LV_DEV_TRAINING_GROUND`, world ID는 `TRAINING_GROUND`다. `LEVEL::CHARACTER_SELECT`만 socket 없이 다섯 class의 3D preview를 제공한다. Test/Bern/Valtan은 확정한 class와 함께 실제 Server의 port `7777`에 접속하고 승인을 받은 뒤에만 전환한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고, 진입 후 연결이 끊기면 replicated state를 제거한 뒤 Lobby로 복귀한다. Local Preview나 자동 우회 경로는 없다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00 -> Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT`를 사용한다. 최초 Character Select는 socket 없이 다섯 class의 3D preview를 제공한다. preview에서 class를 고르고 `Enter Test`를 누르면 tokenized TEST command가 Lobby로 넘어가며, Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤 기존 socket을 one-shot handoff한다. 재진입한 Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 Client local spawn이 아니라 Server의 disabled placement template 승인을 거치며 presentation asset은 Engine batch prototype commit으로 지연 준비한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
 같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다.
 
@@ -224,11 +224,11 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
 - automated contracts: `NetworkProtocolHarness`, `Server.exe --contract-test`, `ProjectAudit`을 실행
-- runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행하고 Lobby → Character Select → Lobby → Test/Bern/Valtan 진입과 disconnect 복귀를 확인
+- runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행해 Lobby → Character Select preview → Enter Test → Lobby 승인 → 같은 visual map Server gameplay 재진입, 우클릭 이동·스킬 snapshot, F6 follow/free와 free-camera command 차단, Valtan lazy summon, disconnect 시 Lobby 복귀, Bern/Valtan 진입을 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
-Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot이 보이며 다섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 앞의 네 class payload는 immutable resource pack `2026.08.03.3`에 있고, DimensionMaster payload는 사용자의 pack `.4` 폐기 결정에 따라 현재 로컬 `Client/Bin/Resources/Character`에만 있다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, 나머지 네 class는 body/equipment/weapon 형식이다. 기존 네 class의 Q/W는 각각 `34120/34080`, `38020/38050`, `45050/45060`, `31210/31230`으로 Server 계약이 있다. DimensionMaster의 Animation reference 4종에는 원작 `DIMENSIONMASTER.loa`와 balance DB에서 추출한 clip/notify/chain/timing 데이터가 있으나 Server 계약이 있는 skill ID가 아직 없으므로 Q/W와 candidate-only effect는 비활성이다. class별 스킬은 `PlayerSkills.json`에 실제 Server 계약이 있는 항목만 HUD와 입력에 노출하며, 누락 class를 Lance Master로 대체하지 않는다.
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot이 보이며 다섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 `Data/AssetPacks.lock.json`이 가리키는 정확한 immutable pack을 Hydrate/Verify해야 하며 다른 버전 payload를 fallback으로 섞지 않는다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, 나머지 네 class는 body/equipment/weapon 형식이다. 다섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V`이며, DimensionMaster에는 `ALT_V`가 없다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
 
 Area Loader는 다섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
@@ -254,7 +254,12 @@ Area Loader는 다섯 class binary를 전부 선로드하지 않는다. `CPlayab
 
 ### 디버그 툴 (ImGui / MapTool)
 
-`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환하며 free mode에서는 gameplay command를 보내지 않는다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막는다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+`_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+
+F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
+snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
+field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
+재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 

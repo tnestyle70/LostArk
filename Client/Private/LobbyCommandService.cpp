@@ -15,15 +15,40 @@ namespace
 bool_t Client::CLobbyCommandService::Request(const LOBBY_STAGE eStage)
 {
 	LOBBY_COMMAND_TOKEN ignoredToken = INVALID_LOBBY_COMMAND_TOKEN;
-	return Request(eStage, ignoredToken);
+	return Request(
+		eStage,
+		LOBBY_COMMAND_PURPOSE::GAMEPLAY,
+		ignoredToken);
+}
+
+bool_t Client::CLobbyCommandService::Request(
+	const LOBBY_STAGE eStage,
+	const LOBBY_COMMAND_PURPOSE purpose)
+{
+	LOBBY_COMMAND_TOKEN ignoredToken = INVALID_LOBBY_COMMAND_TOKEN;
+	return Request(eStage, purpose, ignoredToken);
 }
 
 bool_t Client::CLobbyCommandService::Request(
 	const LOBBY_STAGE eStage,
 	LOBBY_COMMAND_TOKEN& outToken)
 {
+	return Request(
+		eStage,
+		LOBBY_COMMAND_PURPOSE::GAMEPLAY,
+		outToken);
+}
+
+bool_t Client::CLobbyCommandService::Request(
+	const LOBBY_STAGE eStage,
+	const LOBBY_COMMAND_PURPOSE purpose,
+	LOBBY_COMMAND_TOKEN& outToken)
+{
 	outToken = INVALID_LOBBY_COMMAND_TOKEN;
-	if (LOBBY_STAGE::END == eStage)
+	if (LOBBY_STAGE::END == eStage ||
+		LOBBY_COMMAND_PURPOSE::END == purpose ||
+		(LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose &&
+			LOBBY_STAGE::TEST != eStage))
 	{
 		std::scoped_lock lock{ g_CommandMutex };
 		g_Status = "Rejected invalid lobby command.";
@@ -43,7 +68,7 @@ bool_t Client::CLobbyCommandService::Request(
 	}
 
 	outToken = g_iNextToken++;
-	g_PendingCommand = LOBBY_COMMAND{ eStage, outToken };
+	g_PendingCommand = LOBBY_COMMAND{ eStage, purpose, outToken };
 	g_Status = "Lobby command staged with token " +
 		std::to_string(outToken) + ".";
 	return true;

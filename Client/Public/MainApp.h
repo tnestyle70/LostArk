@@ -15,6 +15,7 @@ class CEffect_Tool;
 class CAnimation_Tool;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
+class CBalanceTool;
 
 class CMainApp final
 {
@@ -26,7 +27,8 @@ private:
 		MAP,
 		ANIMATION,
 		EFFECT,
-		UI
+		UI,
+		BALANCE
 	};
 #endif
 
@@ -74,6 +76,7 @@ private:
 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
+	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;
 	bool_t m_bProfilerVisible = false;

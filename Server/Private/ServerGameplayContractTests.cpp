@@ -6,8 +6,13 @@
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 
+#include <Windows.h>
+
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <map>
 
@@ -38,17 +43,118 @@ namespace
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34080, "W" },
 		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34070, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34150, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34110, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34090, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34640, "T" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34600, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34620, "ALT_V" },
+		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38020, "Q" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38050, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38120, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38200, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38140, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38180, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38210, "D" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38260, "F" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38290, "T" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38250, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38320, "ALT_V" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45050, "Q" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45060, "W" },
 		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45620, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45210, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45300, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45070, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45190, "D" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45600, "F" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45810, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45820, "ALT_V" },
+		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31210, "Q" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31230, "W" }
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31230, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31510, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31470, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31410, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31490, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31900, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31920, "ALT_V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050110, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050150, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050220, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050190, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050240, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050210, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050200, "D" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050500, "F" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050510, "T" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050540, "V" }
+	};
+
+	struct BASIC_ATTACK_CONTRACT final
+	{
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass;
+		LostArk::Shared::SKILL_ID skillId;
+		std::size_t stageCount;
+	};
+
+	constexpr std::array BASIC_ATTACKS
+	{
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34010, 4 },
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38000, 3 },
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45000, 4 },
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST, 31000, 4 },
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050010, 4 }
 	};
 }
 
@@ -66,14 +172,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != skill &&
 			skill->eCharacterClass == contract.characterClass &&
 			skill->strInputSlot == contract.inputSlot,
-			"Resolve playable Q/W skill binding");
+			"Resolve playable skill binding");
+		tests.Require(
+			nullptr != skill &&
+			0u != catalog.Find_DamageRatePercent(skill->strDamageProfileId),
+			"Resolve playable skill damage rate");
 
 		SERVER_PLAYER quickPlayer{};
 		quickPlayer.eCharacterClass = contract.characterClass;
 		quickPlayer.iCurrentHp = 1;
 		quickPlayer.iMaximumHp = 1;
-		quickPlayer.iCurrentResource = 100;
-		quickPlayer.iMaximumResource = 100;
+		/* Official CostMp runs 206..938 at the reference level, so the test pool
+		matches the published class pool rather than the old 100. */
+		quickPlayer.iCurrentResource = 1000;
+		quickPlayer.iMaximumResource = 1000;
 		C2S_USE_SKILL quickCommand{};
 		quickCommand.iClientSequence = 1;
 		quickCommand.iSkillId = contract.skillId;
@@ -86,7 +198,86 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				quickCommand,
 				catalog,
 				1),
-			"Approve playable Q/W skill command");
+			"Approve playable skill command");
+	}
+	for (const BASIC_ATTACK_CONTRACT& contract : BASIC_ATTACKS)
+	{
+		const PLAYER_SKILL_DEFINITION* combo = catalog.Find_Skill(contract.skillId);
+		tests.Require(
+			nullptr != combo &&
+			combo->eCharacterClass == contract.characterClass &&
+			combo->strInputSlot == "LMB" &&
+			PLAYER_SKILL_KIND::COMBO == combo->eSkillKind &&
+			combo->ComboStages.size() == contract.stageCount &&
+			0u == combo->ComboStages.back().iInputCloseMs,
+			"Resolve playable basic attack combo");
+		tests.Require(
+			nullptr != combo &&
+			0u != catalog.Find_DamageRatePercent(combo->strDamageProfileId),
+			"Resolve playable basic attack damage rate");
+		if (nullptr == combo || combo->ComboStages.size() < 2u)
+			continue;
+
+		SERVER_PLAYER comboPlayer{};
+		comboPlayer.eCharacterClass = contract.characterClass;
+		comboPlayer.iCurrentHp = 1000;
+		comboPlayer.iMaximumHp = 1000;
+		comboPlayer.iCurrentResource = 1000;
+		comboPlayer.iMaximumResource = 1000;
+		C2S_USE_SKILL press{};
+		press.iClientSequence = 1;
+		press.iSkillId = contract.skillId;
+		press.fAimX = 1.f;
+		press.fAimZ = 0.f;
+		CPlayerSkillSystem comboSystem;
+		tests.Require(
+			comboSystem.Try_Start(comboPlayer, press, catalog, 10) &&
+			1u == comboPlayer.iComboStage,
+			"Approve playable basic attack first stage");
+
+		const PLAYER_COMBO_STAGE& firstStage = combo->ComboStages.front();
+		comboPlayer.fActionElapsedSeconds =
+			static_cast<float>(firstStage.iInputOpenMs +
+				firstStage.iInputCloseMs) * 0.0005f;
+		press.iClientSequence = 2;
+		comboSystem.Try_Start(comboPlayer, press, catalog, 11);
+		tests.Require(
+			comboPlayer.hasBufferedComboInput,
+			"Buffer playable basic attack inside its input window");
+
+		std::vector<SERVER_WORLD_ENTITY> noTargets;
+		std::vector<DAMAGE_EVENT> noDamageEvents;
+		for (std::uint32_t tick = 12;
+			tick < 132 && comboPlayer.iComboStage < 2u;
+			++tick)
+		{
+			comboSystem.Update(
+				comboPlayer,
+				noTargets,
+				catalog,
+				nullptr,
+				1.f / 30.f,
+				tick,
+				noDamageEvents);
+		}
+		tests.Require(
+			2u == comboPlayer.iComboStage,
+			"Advance playable basic attack from Server-owned combo window");
+
+		SERVER_PLAYER wrongClassPlayer{};
+		wrongClassPlayer.eCharacterClass =
+			CHARACTER_CLASS_ID::LANCE_MASTER == contract.characterClass ?
+			CHARACTER_CLASS_ID::GUNSLINGER :
+			CHARACTER_CLASS_ID::LANCE_MASTER;
+		wrongClassPlayer.iCurrentHp = 1000;
+		wrongClassPlayer.iMaximumHp = 1000;
+		wrongClassPlayer.iCurrentResource = 1000;
+		wrongClassPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem wrongClassSystem;
+		tests.Require(
+			!wrongClassSystem.Try_Start(
+				wrongClassPlayer, press, catalog, 10),
+			"Reject another class's basic attack");
 	}
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER),
 		"Resolve LanceMaster player profile");
@@ -100,8 +291,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Resolve DimensionMaster player profile");
 	tests.Require(nullptr == catalog.Find_Player(CHARACTER_CLASS_ID::DESTROYER),
 		"Reject unsupported Destroyer player profile");
-	tests.Require(650u == catalog.Find_Damage("damage.player.34120"),
-		"Resolve player damage profile");
+	tests.Require(361u == catalog.Find_DamageRatePercent("damage.player.34120"),
+		"Resolve player damage rate");
+	tests.Require(361u == CGameplayCatalog::Resolve_Damage(100u, 361u),
+		"Resolve damage as attack power times rate");
+	tests.Require(100u == CGameplayCatalog::Resolve_Damage(100u, 100u),
+		"Resolve basic attack rate as exactly one attack power");
+	tests.Require(0u == CGameplayCatalog::Resolve_Damage(0u, 361u),
+		"Resolve zero attack power as no damage");
+	tests.Require(1u == CGameplayCatalog::Resolve_Damage(1u, 1u),
+		"Clamp a connected hit to at least one damage");
+	tests.Require(170u == CGameplayCatalog::Apply_Defense(350u, 105u),
+		"Apply the documented project defense curve");
+	tests.Require(1u == CGameplayCatalog::Apply_Defense(1u, 100000u),
+		"Clamp a mitigated connected hit to at least one damage");
 
 	CServerNavigation navigation;
 	CWorldBootstrap world;
@@ -138,10 +341,154 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	tests.Require(!trainingNavigation.Project_Point(16.01f, 0.f, trainingPoint),
 		"Reject training point beyond arena navigation bounds");
 
+	CWorldBootstrap characterSelectWorld;
+	CServerNavigation characterSelectNavigation;
+	const bool characterSelectWorldLoaded =
+		characterSelectWorld.Load(WORLD_ID::CHARACTER_SELECT_ARENA);
+	const auto& characterSelectSpawns =
+		characterSelectWorld.Get_Placements();
+	const auto lazyValtan = std::find_if(
+		characterSelectSpawns.begin(),
+		characterSelectSpawns.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId ==
+				"boss.valtan.character-select.lazy";
+		});
+	tests.Require(
+		characterSelectWorldLoaded &&
+		characterSelectWorld.Get_AreaId() ==
+			"LV_LOBBY_CLASSSELECT_SL00" &&
+		characterSelectSpawns.size() == 5 &&
+		4u == static_cast<size_t>(std::count_if(
+			characterSelectSpawns.begin(),
+			characterSelectSpawns.end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.strArchetypeId.empty() &&
+					placement.isEnabled;
+			})),
+		"Load class-neutral Character Select arena player spawns");
+	tests.Require(
+		characterSelectSpawns.end() != lazyValtan &&
+		!lazyValtan->isEnabled &&
+		lazyValtan->eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
+		lazyValtan->strArchetypeId == "BOSS_VALTAN" &&
+		lazyValtan->strEncounterId == "ENCOUNTER_VALTAN" &&
+		lazyValtan->strDamageProfileId == "damage.valtan.basic-swing",
+		"Load disabled Character Select Valtan lazy template");
+	tests.Require(
+		characterSelectNavigation.Load("LV_LOBBY_CLASSSELECT_SL00"),
+		"Load Character Select arena server navigation");
+	bool characterSelectSpawnsOnNavigation =
+		characterSelectWorldLoaded && characterSelectSpawns.size() == 5;
+	SERVER_NAV_POINT characterSelectPoint{};
+	for (const WORLD_BOOTSTRAP_PLACEMENT& spawn : characterSelectSpawns)
+	{
+		if (WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn.eKind)
+			continue;
+		SERVER_NAV_POINT projected{};
+		characterSelectSpawnsOnNavigation =
+			characterSelectSpawnsOnNavigation &&
+			characterSelectNavigation.Project_Point(
+				spawn.fPositionX,
+				spawn.fPositionZ,
+				projected) &&
+			std::abs(projected.y - spawn.fPositionY) <= 0.25f;
+	}
+	tests.Require(
+		characterSelectSpawnsOnNavigation,
+		"Project all Character Select spawns to baked navigation");
+	SERVER_NAV_POINT lazyValtanPoint{};
+	tests.Require(
+		characterSelectSpawns.end() != lazyValtan &&
+		characterSelectNavigation.Project_Point(
+			lazyValtan->fPositionX,
+			lazyValtan->fPositionZ,
+			lazyValtanPoint) &&
+		std::abs(lazyValtanPoint.y - lazyValtan->fPositionY) <= 0.25f,
+		"Project disabled Character Select Valtan template to navigation");
+	if (!characterSelectSpawns.empty())
+	{
+		characterSelectNavigation.Project_Point(
+			characterSelectSpawns.front().fPositionX,
+			characterSelectSpawns.front().fPositionZ,
+			characterSelectPoint);
+	}
+	std::vector<SERVER_NAV_POINT> characterSelectPath;
+	tests.Require(
+		characterSelectSpawns.size() >= 2 &&
+		characterSelectNavigation.Find_Path(
+			characterSelectSpawns.front().fPositionX,
+			characterSelectSpawns.front().fPositionZ,
+			characterSelectSpawns[1].fPositionX,
+			characterSelectSpawns[1].fPositionZ,
+			characterSelectPath) &&
+		characterSelectPath.size() >= 2 &&
+		std::adjacent_find(
+			characterSelectPath.begin(),
+			characterSelectPath.end(),
+			[](const SERVER_NAV_POINT& left, const SERVER_NAV_POINT& right)
+			{
+				return std::abs(left.y - right.y) > 0.6f;
+			}) == characterSelectPath.end(),
+		"Find Character Select arena navigation path");
+	SERVER_NAV_POINT characterSelectOutside{};
+	tests.Require(
+		!characterSelectNavigation.Project_Point(
+			-787.6f,
+			197.5f,
+			characterSelectOutside),
+		"Reject point beyond Character Select arena navigation bounds");
+
+	SERVER_PLAYER arenaSkillPlayer{};
+	arenaSkillPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+	arenaSkillPlayer.iCurrentHp = 1000;
+	arenaSkillPlayer.iMaximumHp = 1000;
+	arenaSkillPlayer.iCurrentResource = 1000;
+	arenaSkillPlayer.iMaximumResource = 1000;
+	arenaSkillPlayer.fPositionX = characterSelectPoint.x;
+	arenaSkillPlayer.fPositionY = characterSelectPoint.y;
+	arenaSkillPlayer.fPositionZ = characterSelectPoint.z;
+	C2S_USE_SKILL arenaSkillCommand{};
+	arenaSkillCommand.iClientSequence = 1;
+	arenaSkillCommand.iSkillId = 34120;
+	arenaSkillCommand.fAimX = characterSelectPoint.x + 3.f;
+	arenaSkillCommand.fAimZ = characterSelectPoint.z;
+	CPlayerSkillSystem arenaSkillSystem;
+	std::vector<SERVER_WORLD_ENTITY> arenaEntities;
+	tests.Require(
+		arenaSkillSystem.Try_Start(
+			arenaSkillPlayer,
+			arenaSkillCommand,
+			catalog,
+			10) &&
+		PLAYER_ACTION_STATE::SKILL == arenaSkillPlayer.eAction &&
+		34120u == arenaSkillPlayer.iCurrentSkillId &&
+		10u == arenaSkillPlayer.iActionStartTick,
+		"Start Character Select arena skill action");
+	std::vector<DAMAGE_EVENT> arenaDamageEvents;
+	arenaSkillSystem.Update(
+		arenaSkillPlayer,
+		arenaEntities,
+		catalog,
+		&characterSelectNavigation,
+		1.f / 30.f,
+		11,
+		arenaDamageEvents);
+	SERVER_NAV_POINT arenaSkillPoint{};
+	tests.Require(
+		characterSelectNavigation.Project_Point(
+			arenaSkillPlayer.fPositionX,
+			arenaSkillPlayer.fPositionZ,
+			arenaSkillPoint),
+		"Keep Character Select skill action position on baked navigation");
+
 	SERVER_PLAYER player{};
 	player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
-	player.iCurrentResource = 100;
-	player.iMaximumResource = 100;
+	player.iCurrentResource = 1000;
+	player.iMaximumResource = 1000;
 	player.fPositionX = 151.f;
 	player.fPositionY = 22.97f;
 	player.fPositionZ = -129.f;
@@ -164,10 +511,19 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Approve valid skill command");
 	tests.Require(!skills.Try_Start(player, useSkill, catalog, 10),
 		"Reject duplicate skill command while action is active");
+	std::vector<DAMAGE_EVENT> damageEvents;
 	for (std::uint32_t tick = 11; tick < 70; ++tick)
-		skills.Update(player, entities, catalog, &navigation, 1.f / 30.f, tick);
-	tests.Require(9350u == entities[0].iCurrentHp,
+		skills.Update(player, entities, catalog, &navigation, 1.f / 30.f, tick,
+			damageEvents);
+	/* 34120 is official rate 361 at attack power 100. */
+	tests.Require(9639u == entities[0].iCurrentHp,
 		"Apply server-authoritative player damage once");
+	tests.Require(
+		1u == damageEvents.size() &&
+		361u == damageEvents[0].iAmount &&
+		damageEvents[0].isOutgoing &&
+		entities[0].iNetEntityId == damageEvents[0].iTargetNetEntityId,
+		"Emit one outgoing damage event for the resolved hit");
 	C2S_USE_SKILL cooldownAttempt = useSkill;
 	cooldownAttempt.iClientSequence = 2;
 	tests.Require(!skills.Try_Start(player, cooldownAttempt, catalog, 70),
@@ -189,6 +545,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		comboPlayer.iCurrentResource = 100;
 		comboPlayer.iMaximumResource = 100;
 		std::vector<SERVER_WORLD_ENTITY> comboEntities;
+		std::vector<DAMAGE_EVENT> comboDamageEvents;
 		CPlayerSkillSystem comboSkills;
 
 		C2S_USE_SKILL press{};
@@ -233,7 +590,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		press has to cut in there rather than waiting out the clip. 20 ticks is
 		about 667 ms: past the hit, nowhere near the full duration. */
 		for (std::uint32_t tick = 17; tick < 37; ++tick)
-			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
+				1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			2u == comboPlayer.iComboStage &&
 			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
@@ -242,14 +600,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		/* Nothing is buffered now, so stage two has to run its whole 1367 ms
 		instead of cutting at its hit. */
 		for (std::uint32_t tick = 37; tick < 57; ++tick)
-			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
+				1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			2u == comboPlayer.iComboStage &&
 			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
 			"Hold the stage past its hit when no press was buffered");
 
 		for (std::uint32_t tick = 57; tick < 120; ++tick)
-			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr, 1.f / 30.f, tick);
+			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
+				1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			PLAYER_ACTION_STATE::NONE == comboPlayer.eAction &&
 			0u == comboPlayer.iComboStage,
@@ -260,6 +620,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	SERVER_PLAYER target{};
 	target.iPlayerId = 1;
 	target.iNetEntityId = 100;
+	target.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 	target.iCurrentHp = 1000;
 	target.iMaximumHp = 1000;
 	target.fPositionX = 151.f;
@@ -269,6 +630,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	SERVER_WORLD_ENTITY valtan{};
 	valtan.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
 	valtan.eAction = SERVER_ENTITY_ACTION::IDLE;
+	/* The brain resolves damage through the boss's own catalog profile, so the
+	test entity carries the archetype the room would have stamped on it. */
+	valtan.strArchetypeId = "BOSS_VALTAN";
 	valtan.strDamageProfileId = "damage.valtan.basic-swing";
 	valtan.iCurrentHp = 10000;
 	valtan.iMaximumHp = 10000;
@@ -284,13 +648,101 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	valtan.iPatternActiveMs = 300;
 	valtan.iPatternRecoveryMs = 1;
 	CValtanBrain brain;
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 100);
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 101);
-	tests.Require(650u == players.begin()->second.iCurrentHp,
+	std::vector<DAMAGE_EVENT> valtanDamageEvents;
+	brain.Update(valtan, players, catalog, navigation, 0.1f, 100,
+		valtanDamageEvents);
+	brain.Update(valtan, players, catalog, navigation, 0.1f, 101,
+		valtanDamageEvents);
+	tests.Require(830u == players.begin()->second.iCurrentHp,
 		"Apply server-authoritative Valtan damage once");
+	tests.Require(
+		1u == valtanDamageEvents.size() &&
+		170u == valtanDamageEvents[0].iAmount &&
+		!valtanDamageEvents[0].isOutgoing &&
+		players.begin()->second.iNetEntityId ==
+			valtanDamageEvents[0].iTargetNetEntityId,
+		"Emit one incoming damage event for the boss hit");
 	valtan.iCurrentHp = 5000;
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 102);
+	brain.Update(valtan, players, catalog, navigation, 0.1f, 102,
+		valtanDamageEvents);
 	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
+
+	{
+		SERVER_PLAYER meleePlayer{};
+		meleePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		meleePlayer.iCurrentHp = 1000;
+		meleePlayer.iMaximumHp = 1000;
+		meleePlayer.iCurrentResource = 1000;
+		meleePlayer.iMaximumResource = 1000;
+		meleePlayer.fPositionX = 0.f;
+		meleePlayer.fPositionZ = 0.f;
+		SERVER_WORLD_ENTITY meleeBoss{};
+		meleeBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		meleeBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		meleeBoss.strArchetypeId = "BOSS_VALTAN";
+		meleeBoss.iCurrentHp = 10000;
+		meleeBoss.iMaximumHp = 10000;
+		meleeBoss.fPositionX = 0.f;
+		/* 34080 reaches 1.2 on its own; 3.5 is inside reach only because the
+		boss's 3.0 collision radius extends the centre-to-centre test. */
+		meleeBoss.fPositionZ = 3.5f;
+		std::vector<SERVER_WORLD_ENTITY> meleeEntities{ meleeBoss };
+		C2S_USE_SKILL melee{};
+		melee.iClientSequence = 1;
+		melee.iSkillId = 34080;
+		melee.fAimX = 0.f;
+		melee.fAimZ = 3.5f;
+		CPlayerSkillSystem meleeSkills;
+		std::vector<DAMAGE_EVENT> meleeDamageEvents;
+		tests.Require(meleeSkills.Try_Start(meleePlayer, melee, catalog, 10),
+			"Approve melee skill command");
+		for (std::uint32_t tick = 11; tick < 60; ++tick)
+		{
+			meleeSkills.Update(
+				meleePlayer, meleeEntities, catalog, nullptr, 1.f / 30.f, tick,
+				meleeDamageEvents);
+		}
+		tests.Require(10000u - 261u == meleeEntities[0].iCurrentHp,
+			"Reach the boss through its collision radius");
+	}
+
+	{
+		/* A bootstrap whose skill cost exceeds every class pool must fail load:
+		the publisher enforces the same bound, so acceptance here would mean the
+		two sides disagree about the same document. */
+		namespace fs = std::filesystem;
+		const fs::path overCostRoot =
+			fs::temp_directory_path() / L"LostArkBalanceContractTest";
+		std::error_code prepareError;
+		fs::remove_all(overCostRoot, prepareError);
+		fs::create_directories(overCostRoot / L"Gameplay");
+		{
+			std::ofstream bootstrap(
+				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
+				std::ios::binary);
+			bootstrap <<
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t1\t4\n"
+				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t100\t3\t20\t2.6\t50\n"
+				"DAMAGE\tdamage.player.34120\t361\n"
+				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\n"
+				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
+				"\t1510\t2000\t0\t8\tdamage.player.34120\tACTIVE\n";
+		}
+		wchar_t previousRoot[32768]{};
+		const DWORD previousLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", previousRoot,
+			static_cast<DWORD>(std::size(previousRoot)));
+		SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", overCostRoot.c_str());
+		CGameplayCatalog overCostCatalog;
+		tests.Require(!overCostCatalog.Load(),
+			"Reject bootstrap skill cost above every class pool");
+		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+			0u == previousLength || previousLength >= std::size(previousRoot) ?
+				nullptr : previousRoot);
+		std::error_code cleanupError;
+		fs::remove_all(overCostRoot, cleanupError);
+	}
 
 	std::cout << "failures : " << tests.failures << '\n';
 	return 0 == tests.failures ? 0 : 1;

@@ -16,7 +16,8 @@
 
 - **Character Preview Panel**은 어떤 캐릭터와 무기를 보고 있는지 관리한다.
 - **Animation Tool**은 애니메이션의 몇 ms에 무엇이 발생하는지 관리한다.
-- **Effect Tool**은 이펙트의 모양, 수명, 재질, 파티클과 부착 위치를 관리한다.
+- **Effect Tool**은 이펙트의 모양, effect-local 수명, 재질과 파티클을 관리한다.
+- **Animation Tool**의 Effect cue는 부착 anchor, offset, follow/stop policy를 관리한다.
 - **Server**는 실제 충돌과 데미지를 판정한다.
 
 Animation Tool이 Effect를 직접 만들거나, Effect Tool이 Animation 파일을 직접 수정하지 않는다.
@@ -87,24 +88,20 @@ Animation Tool의 Target 목록에는 다음 항목이 있다.
 
 차원술사 Q/W 스킬과 실제 Effect binding은 아직 완료되지 않았다.
 
-### 2.4 기존 Effect Tool
+### 2.4 Effect Tool 재구축 G1
 
-기존 Effect Tool과 CEffect_Runtime은 삭제하지 않았다.
+기존 `Effect_Tool.h/.cpp`의 emitter/module 편집, CPU canvas, world preview, HDR readback,
+source catalog UI는 제거했다. UI만 소비하던 `Effect_ResourceCatalog.h/.cpp`도 삭제했다.
+이어 구형 `CEffect_Runtime`, `Effect_Types`, `Effect_AssetIO`, `Effect_ParticleSimulator`, Effect shader,
+resource intake pipeline과 `Data/Effects/Authored`의 459개 `.effect` 문서도 삭제했다.
 
-현재 .effect 파일은 다음과 같은 기존 텍스트 포맷을 사용한다.
+새 G1 Tool은 ImGui에서 `Mesh / Sprite / Particle / Decal / Trail` 중 하나를 고르고, stable ID와 표시 이름을
+검증해 메모리 `EffectDocument` 하나를 생성·폐기한다. 선택한 Element 종류는 session 상태일 뿐이며 G2의
+`Add Element` 전에는 Document를 변경하지 않는다. 파일 저장, GPU preview, Animation binding은 아직 없다.
 
-~~~text
-LOSTARK_EFFECT 5
-ASSET id="..." name="..." provenance=... duration=... warmup=...
-
-EMITTER id=... name="..." type=SPRITE enabled=1 ...
-  MODULE id=... name="Required" type=REQUIRED tex="Effect/..." ...
-  MODULE id=... name="Spawn" type=SPAWN ...
-  MODULE id=... name="Lifetime" type=LIFETIME ...
-~~~
-
-현재 DimensionMaster Effect 후보 459개는 모두 candidate_only다.
-즉, 추출은 됐지만 바로 제품 runtime에 연결해도 된다고 승인된 Effect는 아직 0개다.
+DimensionMaster로 rename된 구형 `.effect` 후보 459개도 재구축 삭제 의도에 따라 모두 제거했다. 원본 조사
+증거인 `SourceCatalog`/`SourceExtracted`와 `Client/Bin/Resources/Effect` payload는 보존하지만, 새 schema와
+dependency 검증을 통과한 admitted Effect는 아직 0개다.
 
 ---
 
@@ -113,18 +110,19 @@ EMITTER id=... name="..." type=SPRITE enabled=1 ...
 다음 항목은 문서로 경계만 정했으며 아직 실제 연결은 끝나지 않았다.
 
 - Animation Tool 밖의 공용 Character Preview Panel
-- 새 Effect Tool UI
+- Effect Tool의 Load/Edit/Save/Cook/Preview UI
 - admitted Effect catalog와 resolver
 - Use Selected Effect 버튼
 - Animation Tool과 Effect Tool 사이의 실제 binding request
 - root, weapon, bone, mouse-ground anchor 편집
 - weapon trail start/stop
-- animation EFFECT marker를 CEffect_Runtime으로 보내는 제품 runtime consumer
+- animation EFFECT marker를 단일 Effect runtime으로 보내는 제품 consumer
 - Animation HIT marker를 Server collision/damage로 publish하는 경로
 
 따라서 현재 상태를 “Animation과 Effect가 완전히 연결됐다”고 말하면 안 된다.
 
-현재 완료된 것은 Animation 쪽 저장 안전성과, Effect Tool이 나중에 읽을 수 있는 playhead 정보 경계다.
+현재 완료된 것은 Animation 쪽 저장 안전성, Effect Tool이 읽을 수 있는 playhead 정보 경계와
+Effect type selection-only G0다.
 
 ---
 
@@ -173,7 +171,7 @@ Animation Tool은 particle 개수, texture, material, trail 폭을 편집하지 
 
 ### 4.3 Effect Tool
 
-Effect Tool은 “무엇을, 어떤 모양으로, 어디에 붙여서 보여줄지”를 소유한다.
+Effect Tool은 “무엇을, 어떤 모양과 내부 수명으로 보여줄지”를 소유한다.
 
 - EffectAssetId
 - emitter
@@ -186,7 +184,7 @@ Effect Tool은 “무엇을, 어떤 모양으로, 어디에 붙여서 보여줄�
 - SubUV
 - ribbon/trail
 - local position, rotation, scale
-- root, weapon, bone, world, mouse-ground 부착 정책
+- effect root와 emitter의 effect-local transform
 
 Effect Tool은 animation clip 목록이나 .animevents vector를 직접 수정하지 않는다.
 
@@ -344,13 +342,10 @@ v3를 읽었다는 이유만으로 Dirty가 되지 않는다. 실제로 이벤�
 
 ### 7.1 현재 포맷
 
-현재 Effect Tool은 .effect v5 텍스트 파일을 사용한다.
+현재 G0에는 Effect authoring 파일 포맷이 없다. 아래 정보는 타입 selector 다음 단계에서 새 schema를
+정의할 때 함께 결정하고, 과거 `.effect v5`를 암묵적으로 복원하지 않는다.
 
-~~~text
-Data/Effects/Authored/<Domain>/<EffectAssetId>.effect
-~~~
-
-이 파일이 소유하는 정보는 다음과 같다.
+향후 Effect asset이 소유할 정보는 다음과 같다.
 
 - emitter 종류
 - emitter delay와 duration
@@ -368,9 +363,9 @@ Data/Effects/Authored/<Domain>/<EffectAssetId>.effect
 
 Animation timing은 .effect 파일에 넣지 않는다.
 
-### 7.2 다음 단계에서 추가할 부착 정보
+### 7.2 Animation cue에 다음 단계에서 추가할 부착 정보
 
-다음 Effect/Preview 단계에서는 Effect가 어디를 따라갈지 저장할 계약이 필요하다.
+다음 Animation/Preview 단계에서는 같은 EffectAssetId가 cue마다 어느 anchor를 따라갈지 저장할 계약이 필요하다.
 
 형태는 아래 의미를 가져야 한다.
 
@@ -560,9 +555,10 @@ Preview와 Effect 구현은 이 최소 Animation 경계 위에서 다음 단계�
 
 ### 3단계 — admitted Effect 하나 만들기
 
-- candidate 하나 선택
+- 보존한 원본 추출 증거에서 조사 대상 하나 선택
+- 새 authoring schema와 stable ID 규칙 정의
 - texture/material/model dependency 검사
-- runtime preview 검사
+- 새 단일 runtime preview 검사
 - stable EffectAssetId 부여
 - admitted catalog에 등록
 
@@ -573,9 +569,9 @@ Preview와 Effect 구현은 이 최소 Animation 경계 위에서 다음 단계�
 - 캐릭터와 animation playhead 표시
 - Effect 선택
 - emitter/module 편집
-- root/weapon/world/mouse anchor 선택
+- Animation cue의 root/weapon/world/mouse anchor 선택
 - local transform 편집
-- CEffect_Runtime preview
+- 새 단일 Effect runtime preview
 
 ### 5단계 — Use Selected Effect
 
@@ -612,7 +608,7 @@ Preview와 Effect 구현은 이 최소 Animation 경계 위에서 다음 단계�
 - Preview Panel에서 캐릭터와 weapon을 선택한다.
 - Animation Tool에서 clip과 시간을 고른다.
 - Effect Tool에서 admitted Effect를 preview한다.
-- root/weapon/mouse anchor를 고른다.
+- Animation cue에서 root/weapon/mouse anchor를 고른다.
 - Use Selected Effect로 marker를 만든다.
 - Save 후 Reload해도 같은 값이 복원된다.
 - runtime에서 같은 animation 시각과 anchor에서 Effect가 나온다.
@@ -654,9 +650,10 @@ actual bytes=5405091440
 
 ### Effect 담당자
 
-> 기존 .effect emitter/module 데이터를 편집하고 CEffect_Runtime으로 preview합니다. Animation clip이나
-> .animevents를 직접 수정하지 않습니다. admitted EffectAssetId와 anchor 설정을 완성한 뒤
-> Use Selected Effect 요청만 Animation 쪽으로 보냅니다.
+> G0에서는 Effect 타입 하나만 선택합니다. 다음 단계부터 새 schema로 emitter/module을 한 계약씩 열고,
+> 하나의 preview/runtime 경로를 함께 만듭니다. Animation clip이나 .animevents를 직접 수정하지 않으며,
+> 향후 admitted EffectAssetId 선택 요청만 Animation 쪽으로 보냅니다. anchor/offset/follow/stop 설정은
+> Animation cue가 소유합니다.
 
 ### Preview 담당자
 

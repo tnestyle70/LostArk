@@ -19,6 +19,7 @@
 
 #ifdef _DEBUG
 #include "Animation_Tool.h"
+#include "BalanceTool.h"
 #include "Effect_Tool.h"
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
@@ -267,6 +268,10 @@ HRESULT CMainApp::Render()
 			case DEBUG_TOOL::UI:
 				if (nullptr != m_pHUDLayoutTool)
 					m_pHUDLayoutTool->Render();
+				break;
+			case DEBUG_TOOL::BALANCE:
+				if (nullptr != m_pBalanceTool)
+					m_pBalanceTool->Render();
 				break;
 			default:
 				break;
@@ -622,12 +627,16 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::EFFECT:
 		if (nullptr == m_pEffectTool)
-			m_pEffectTool = make_unique<CEffect_Tool>(m_pDevice);
+			m_pEffectTool = make_unique<CEffect_Tool>();
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
 			m_pHUDLayoutTool =
 				make_unique<CHUDLayoutTool>(m_pDevice, m_pContext);
+		break;
+	case DEBUG_TOOL::BALANCE:
+		if (nullptr == m_pBalanceTool)
+			m_pBalanceTool = make_unique<CBalanceTool>();
 		break;
 	default:
 		return E_INVALIDARG;
@@ -682,6 +691,8 @@ void CMainApp::RenderDeveloperTools()
 	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
 	ImGui::SameLine();
 	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
+	ImGui::SameLine();
+	toolButton("Balance Tool", DEBUG_TOOL::BALANCE, true);
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 
 	ImGui::SeparatorText("Diagnostics");
@@ -818,6 +829,7 @@ void CMainApp::Free()
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
 	m_pHUDLayoutTool.reset();
+	m_pBalanceTool.reset();
 	m_pMapTool.reset();
 #endif
 

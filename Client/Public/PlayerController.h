@@ -25,12 +25,12 @@ namespace Client
 			const shared_ptr<CCharacter>& character);
 		void Set_CommandSink(
 			const shared_ptr<IPlayerCommandSink>& commandSink);
-		void Set_GameplayInputEnabled(bool_t isEnabled)
+		void Set_AllowCapturedKeyboardInput(bool_t allow)
 		{
-			m_isGameplayInputEnabled = isEnabled;
+			m_allowCapturedKeyboardInput = allow;
 		}
 
-		void Update();
+		void Update(bool_t gameplayCommandsEnabled);
 
 	private:
 		//실질적인 navigation picking을 통한 이동으로 교체
@@ -43,6 +43,7 @@ namespace Client
 		is still INVALID_SKILL_ID, so one frame submits at most one skill. */
 		void Poll_SkillSlots(
 			bool_t isKeyboardBlocked,
+			bool_t useRawKeyboard,
 			const shared_ptr<CCharacter>& character,
 			LostArk::Shared::SKILL_ID& outSkillId);
 
@@ -50,7 +51,8 @@ namespace Client
 		only fills a slot the keyboard left empty. */
 		void Poll_BasicAttack(
 			const CHARACTER_SPEC* pSpec,
-			LostArk::Shared::SKILL_ID& outSkillId);
+			LostArk::Shared::SKILL_ID& outSkillId,
+			bool_t commandSuppressed);
 
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
@@ -63,11 +65,11 @@ namespace Client
 		slot that is later re-pointed at another skill must not make a key that is
 		already held read as a fresh press. */
 		std::array<bool_t, 256> m_wasKeyDown{};
-		bool_t m_isGameplayInputEnabled = true;
 		/* A held basic attack has to keep asking: the combo buffer only takes a
 		press inside a window the server owns and the client is not told about, so
 		the press is repeated at a fixed rate instead of being predicted. */
 		bool_t m_wasLeftMouseDown = false;
 		std::chrono::steady_clock::time_point m_LastBasicAttackSentAt{};
+		bool_t m_allowCapturedKeyboardInput = false;
 	};
 }

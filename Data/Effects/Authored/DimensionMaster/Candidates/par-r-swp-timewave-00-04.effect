@@ -1,8 +1,0 @@
-LOSTARK_EFFECT 5
-ASSET id="par-r-swp-timewave-00-04" name="par_r_swp_timewave_00_04" provenance=DERIVED_CONVERSION duration=1 warmup=0
-
-EMITTER id=15126 name="emitter_0" type=SPRITE enabled=0 space=LOCAL blend=ALPHA sort=AGE_NEWEST_FIRST delay=0 duration=1 loops=1
-  MODULE id=15127 name="Required" type=REQUIRED enabled=1 tex="" mesh="" mat="enginematerials.defaultparticle" align=RECTANGLE opacitytex="" dissolvetex="" distortiontex="" uvtiling=1,1 uvoffset=0,0 uvpanner=0,0 emissive=1 opacitythreshold=0 dissolveamount=0 dissolveedgewidth=0.05 dissolveedgecolor=0,0,0,0 softdistance=0 distortionstrength=0
-  MODULE id=15128 name="Initial Color" type=INITIAL_COLOR enabled=1 dist=CONSTANT c=20,30,50,0.3 min=20,30,50,0.3 max=20,30,50,0.3
-  MODULE id=15129 name="Color Over Life" type=COLOR_OVER_LIFE enabled=1 r=0:1,1:1 g=0:1,1:1 b=0:1,1:1 a=0:1,0.05:1.112,0.1:1.416,0.15:1.864,0.2:2.408,0.25:3,0.3:3.592,0.35:4.136,0.4:4.584,0.45:4.888,0.5:5,0.55:4.86,0.6:4.48,0.65:3.92,0.7:3.24,0.75:2.5,0.8:1.76,0.85:1.08,0.9:0.52,0.95:0.14,1:0
-  MODULE id=15130 name="Size Over Life" type=SIZE_OVER_LIFE enabled=1 curve=0:0.6,0.0666667:0.665482,0.133333:0.740936,0.2:0.823808,0.266667:0.911546,0.333333:1.0016,0.4:1.09141,0.466667:1.17842,0.533333:1.2601,0.6:1.33387,0.666667:1.39719,0.733333:1.44751,0.8:1.48226,0.866667:1.49891,0.933333:1.5,1:0
