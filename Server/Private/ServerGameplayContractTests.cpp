@@ -41,15 +41,39 @@ namespace
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34120, "Q" },
 		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34540, "Q" },
+		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34080, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34550, "W" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34070, "E" },
 		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34560, "E" },
+		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34150, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34570, "R" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34110, "A" },
 		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34580, "A" },
+		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34090, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34590, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34050, "D" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34170, "F" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34000, "Z" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34500, "Z" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34020, "SPACE" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34520, "SPACE" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34640, "T" },
 		QUICK_SKILL_CONTRACT{
@@ -148,6 +172,8 @@ namespace
 		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34010, 4 },
 		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34510, 3 },
+		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38000, 3 },
 		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER, 45000, 4 },
@@ -180,6 +206,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		SERVER_PLAYER quickPlayer{};
 		quickPlayer.eCharacterClass = contract.characterClass;
+		quickPlayer.eStance = nullptr != skill ?
+			skill->eRequiredStance : PLAYER_STANCE_ID::NONE;
 		quickPlayer.iCurrentHp = 1;
 		quickPlayer.iMaximumHp = 1;
 		/* Official CostMp runs 206..938 at the reference level, so the test pool
@@ -220,6 +248,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		SERVER_PLAYER comboPlayer{};
 		comboPlayer.eCharacterClass = contract.characterClass;
+		comboPlayer.eStance = combo->eRequiredStance;
 		comboPlayer.iCurrentHp = 1000;
 		comboPlayer.iMaximumHp = 1000;
 		comboPlayer.iCurrentResource = 1000;
@@ -444,6 +473,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 	SERVER_PLAYER arenaSkillPlayer{};
 	arenaSkillPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+	arenaSkillPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 	arenaSkillPlayer.iCurrentHp = 1000;
 	arenaSkillPlayer.iMaximumHp = 1000;
 	arenaSkillPlayer.iCurrentResource = 1000;
@@ -487,6 +517,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 	SERVER_PLAYER player{};
 	player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+	player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 	player.iCurrentResource = 1000;
 	player.iMaximumResource = 1000;
 	player.fPositionX = 151.f;
@@ -540,6 +571,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		SERVER_PLAYER comboPlayer{};
 		comboPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		comboPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		comboPlayer.iCurrentHp = 1000;
 		comboPlayer.iMaximumHp = 1000;
 		comboPlayer.iCurrentResource = 100;
@@ -670,6 +702,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	{
 		SERVER_PLAYER meleePlayer{};
 		meleePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		meleePlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		meleePlayer.iCurrentHp = 1000;
 		meleePlayer.iMaximumHp = 1000;
 		meleePlayer.iCurrentResource = 1000;
@@ -724,9 +757,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				"LOSTARK_GAMEPLAY_BOOTSTRAP\t1\t4\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
-				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\n"
+				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
-				"\t1510\t2000\t0\t8\tdamage.player.34120\tACTIVE\n";
+				"\t1510\t2000\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
 		}
 		wchar_t previousRoot[32768]{};
 		const DWORD previousLength = GetEnvironmentVariableW(
@@ -742,6 +775,106 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				nullptr : previousRoot);
 		std::error_code cleanupError;
 		fs::remove_all(overCostRoot, cleanupError);
+	}
+
+	{
+		/* A skill with no damage profile never resolves a hit, so the hit time and
+		reach that only describe that hit must be zero. Accepting a reach here would
+		let a movement skill silently keep a damage window. */
+		namespace fs = std::filesystem;
+		const fs::path noDamageRoot =
+			fs::temp_directory_path() / L"LostArkNoDamageContractTest";
+		const auto loadWithMovementSkill =
+			[&noDamageRoot](const char* hitTimeMs, const char* maximumRange)
+		{
+			std::error_code prepareError;
+			fs::remove_all(noDamageRoot, prepareError);
+			fs::create_directories(noDamageRoot / L"Gameplay");
+			{
+				std::ofstream bootstrap(
+					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
+					std::ios::binary);
+				bootstrap <<
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t1\t4\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t100\t3\t20\t2.6\t50\n"
+					"DAMAGE\tdamage.player.34120\t361\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
+					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
+					"\t8000\t900\t" << hitTimeMs << "\t242\t6\t" << maximumRange <<
+					"\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
+			}
+			wchar_t previous[32768]{};
+			const DWORD previousLength = GetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				static_cast<DWORD>(std::size(previous)));
+			SetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", noDamageRoot.c_str());
+			CGameplayCatalog catalog;
+			const bool loaded = catalog.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+				0u == previousLength || previousLength >= std::size(previous) ?
+					nullptr : previous);
+			return loaded;
+		};
+		tests.Require(loadWithMovementSkill("0", "0"),
+			"Accept a skill that carries no damage profile");
+		tests.Require(!loadWithMovementSkill("0", "3"),
+			"Reject a damageless skill that still claims reach");
+		tests.Require(!loadWithMovementSkill("400", "0"),
+			"Reject a damageless skill that still claims a hit time");
+		std::error_code noDamageCleanupError;
+		fs::remove_all(noDamageRoot, noDamageCleanupError);
+	}
+
+	{
+		SERVER_PLAYER stancePlayer{};
+		stancePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		stancePlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		stancePlayer.iCurrentHp = 1000;
+		stancePlayer.iMaximumHp = 1000;
+		stancePlayer.iCurrentResource = 1000;
+		stancePlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem stanceSkills;
+
+		C2S_USE_SKILL shortOnlySkill{};
+		shortOnlySkill.iClientSequence = 1;
+		shortOnlySkill.iSkillId = 34540;
+		shortOnlySkill.fAimX = 1.f;
+		shortOnlySkill.fAimZ = 0.f;
+		tests.Require(!stanceSkills.Try_Start(stancePlayer, shortOnlySkill, catalog, 10),
+			"Reject a short spear skill while in the long spear stance");
+
+		C2S_USE_SKILL switchToShort{};
+		switchToShort.iClientSequence = 2;
+		switchToShort.iSkillId = 34000;
+		switchToShort.fAimX = 1.f;
+		switchToShort.fAimZ = 0.f;
+		tests.Require(stanceSkills.Try_Start(stancePlayer, switchToShort, catalog, 10),
+			"Approve the long to short spear stance transition");
+		std::vector<SERVER_WORLD_ENTITY> stanceEntities;
+		std::vector<DAMAGE_EVENT> stanceDamageEvents;
+		for (std::uint32_t tick = 11; tick < 40; ++tick)
+		{
+			stanceSkills.Update(stancePlayer, stanceEntities, catalog, nullptr,
+				1.f / 30.f, tick, stanceDamageEvents);
+		}
+		tests.Require(
+			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == stancePlayer.eStance &&
+			PLAYER_ACTION_STATE::NONE == stancePlayer.eAction,
+			"Flip to the short spear stance once the transition action completes");
+
+		C2S_USE_SKILL longOnlySkill{};
+		longOnlySkill.iClientSequence = 3;
+		longOnlySkill.iSkillId = 34120;
+		longOnlySkill.fAimX = 1.f;
+		longOnlySkill.fAimZ = 0.f;
+		tests.Require(!stanceSkills.Try_Start(stancePlayer, longOnlySkill, catalog, 40),
+			"Reject a long spear skill after switching to the short spear stance");
+
+		C2S_USE_SKILL shortSkillNow = shortOnlySkill;
+		shortSkillNow.iClientSequence = 4;
+		tests.Require(stanceSkills.Try_Start(stancePlayer, shortSkillNow, catalog, 40),
+			"Approve a short spear skill after switching to the short spear stance");
 	}
 
 	std::cout << "failures : " << tests.failures << '\n';

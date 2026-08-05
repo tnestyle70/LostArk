@@ -1136,6 +1136,7 @@ namespace
 		first.eLocomotionState =
 			PLAYER_LOCOMOTION_STATE::MOVING;
 		first.eAction = PLAYER_ACTION_STATE::SKILL;
+		first.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
 		first.iSkillId = 34060;
 		first.iActionStartTick = 25;
 		first.iCurrentHp = 875;
@@ -1179,7 +1180,7 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1;
 		constexpr std::size_t playerFixedBytes =
-			4 + (4 * 4) + 1 + 1 + (4 * 6) + 1 + 1;
+			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		constexpr std::size_t emptyActionEntityBytes =
 			4 + 1 + 2 + (4 * 4) + (4 * 3) + 1;
@@ -1214,6 +1215,8 @@ namespace
 			decoded.Players[0].eLocomotionState ==
 			PLAYER_LOCOMOTION_STATE::MOVING &&
 			decoded.Players[0].eAction == PLAYER_ACTION_STATE::SKILL &&
+			decoded.Players[0].eStance ==
+			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR &&
 			decoded.Players[0].iSkillId == 34060 &&
 			decoded.Players[0].iActionStartTick == 25 &&
 			decoded.Players[0].iCurrentHp == 875 &&

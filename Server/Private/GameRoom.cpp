@@ -216,6 +216,7 @@ bool LostArk::Server::CGameRoom::Join(
 		session->Request_Close();
 		return false;
 	}
+	player.eStance = playerProfile->eDefaultStance;
 	player.iCurrentHp = playerProfile->iMaximumHp;
 	player.iMaximumHp = playerProfile->iMaximumHp;
 	player.iCurrentResource = playerProfile->iMaximumResource;
@@ -635,6 +636,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eLocomotionState = player.hasMoveGoal ?
 			PLAYER_LOCOMOTION_STATE::MOVING : PLAYER_LOCOMOTION_STATE::IDLE;
 		snapshot.eAction = player.eAction;
+		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
 		snapshot.iCurrentHp = player.iCurrentHp;

@@ -1048,7 +1048,7 @@ try {
 	$playerSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
 	$missingQuickSlots = [Collections.Generic.List[string]]::new()
 	$classQuickSlotContracts = [ordered]@{
-		'LANCE_MASTER' = @('Q','W','E','R','A','S','T','V','ALT_V','LMB')
+		'LANCE_MASTER' = @('Q','W','E','R','A','S','D','F','Z','SPACE','T','V','ALT_V','LMB')
 		'GUNSLINGER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','LMB')
 		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
 		'ARTIST' = @('Q','W','E','R','A','S','V','ALT_V','LMB')
@@ -1059,7 +1059,8 @@ try {
 			$bindings = @($playerSkillDocument.skills | Where-Object {
 				$_.characterClass -eq $className -and $_.inputSlot -eq $slotName
 			})
-			if ($bindings.Count -ne 1) {
+			$distinctStances = @($bindings | Select-Object -ExpandProperty requiredStance -Unique)
+			if ($bindings.Count -eq 0 -or $bindings.Count -ne $distinctStances.Count) {
 				$missingQuickSlots.Add("${className}:$slotName")
 			}
 		}
@@ -1264,7 +1265,7 @@ try {
 	Add-Check 'gameplay.balance-field-provenance' (
 		$provenanceReceipt.schema -eq 'lostark.balance-provenance-receipt' -and
 		[int]$provenanceReceipt.referenceSkillLevel -eq 10 -and
-		[int]$provenanceReceipt.coverage.skillDefinitionCount -eq 53 -and
+		[int]$provenanceReceipt.coverage.skillDefinitionCount -eq @($playerSkillDocument.skills).Count -and
 		[int]$provenanceReceipt.coverage.fieldEntryCount -eq @($provenanceReceipt.entries).Count -and
 		(Test-Path -LiteralPath 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py') -and
 		(Test-Path -LiteralPath 'Tools\GameplayPipeline\Update-BalanceProvenanceReceipt.ps1')) `

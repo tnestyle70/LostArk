@@ -43,6 +43,8 @@ struct WEAPON_PART_SPEC
 	const tchar_t* pModelTag;
 	const char_t* pSocketBone;
 	f32_t fSocketYawDegrees = 0.f;
+	LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
 /* Everything that makes one class different, as data. Held as a constant next to

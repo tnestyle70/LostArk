@@ -48,6 +48,21 @@ namespace
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		return CHARACTER_CLASS_ID::END;
 	}
+
+	bool ParseStance(
+		const std::string& value,
+		LostArk::Shared::PLAYER_STANCE_ID& output)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		if (value == "NONE") output = PLAYER_STANCE_ID::NONE;
+		else if (value == "LANCE_MASTER_LONG_SPEAR")
+			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		else if (value == "LANCE_MASTER_SHORT_SPEAR")
+			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else
+			return false;
+		return true;
+	}
 }
 
 Client::CCombatHUDViewModel& Client::CCombatHUDViewModel::Get()
@@ -90,10 +105,16 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 			value, "maximumResource", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* attackPower = Required(
 			value, "attackPower", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* defaultStance = Required(
+			value, "defaultStance", DATA_JSON_TYPE::STRING);
+		LostArk::Shared::PLAYER_STANCE_ID parsedStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		if (nullptr == characterClass || nullptr == maximumHp ||
 			nullptr == maximumResource || maximumHp->Get_Number() <= 0.0 ||
 			maximumResource->Get_Number() <= 0.0 ||
-			nullptr == attackPower || attackPower->Get_Number() <= 0.0)
+			nullptr == attackPower || attackPower->Get_Number() <= 0.0 ||
+			nullptr == defaultStance ||
+			!ParseStance(defaultStance->Get_String(), parsedStance))
 		{
 			return false;
 		}
@@ -107,6 +128,7 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 			maximumResource->Get_Number());
 		profile.iAttackPower = static_cast<std::uint32_t>(
 			attackPower->Get_Number());
+		profile.eDefaultStance = parsedStance;
 		if (!LostArk::Shared::Is_Supported_Playable_Character_Class(
 			parsedClass) || !playerProfiles.emplace(parsedClass, profile).second)
 		{
@@ -151,6 +173,7 @@ bool Client::CCombatHUDViewModel::Apply_CharacterPreview(
 	m_Player.iMaximumHp = profile->second.iMaximumHp;
 	m_Player.iCurrentResource = profile->second.iMaximumResource;
 	m_Player.iMaximumResource = profile->second.iMaximumResource;
+	m_Player.eStance = profile->second.eDefaultStance;
 	Build_PlayerSkills(characterClass, 0u, nullptr);
 	m_Boss = {};
 	return true;
@@ -170,6 +193,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iCurrentResource = snapshot.iCurrentResource;
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
 	m_Player.eAction = snapshot.eAction;
+	m_Player.eStance = snapshot.eStance;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
 }
 
@@ -192,6 +216,11 @@ void Client::CCombatHUDViewModel::Build_PlayerSkills(
 		/* A combo has no cooldown to count down, so it takes no quick-slot tile. */
 		if (LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind)
 			continue;
+		if (LostArk::Shared::PLAYER_STANCE_ID::NONE != definition.eRequiredStance &&
+			definition.eRequiredStance != m_Player.eStance)
+		{
+			continue;
+		}
 
 		const LostArk::Shared::SKILL_ID skillId = definition.iSkillId;
 		HUD_SKILL_STATE state{};

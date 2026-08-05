@@ -3,6 +3,7 @@
 #include "PlayerController.h"
 
 #include "Character.h"
+#include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "PlayerCommandSink.h"
 #include "PlayerSkillCatalog.h"
@@ -170,6 +171,8 @@ void Client::CPlayerController::Poll_SkillSlots(
 
 	const CHARACTER_SPEC* pSpec =
 		nullptr != character ? character->Get_Spec() : nullptr;
+	const LostArk::Shared::PLAYER_STANCE_ID stance =
+		CCombatHUDViewModel::Get().Get_Player().eStance;
 
 	/* Two slots share one key (V and ALT_V), so every slot compares against the
 	state this frame started with and the new state is committed afterwards.
@@ -195,7 +198,7 @@ void Client::CPlayerController::Poll_SkillSlots(
 
 		/* An unbound slot is normal: a class simply has no skill there. */
 		const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-			pSpec->eCharacterClass, slot.pInputSlot);
+			pSpec->eCharacterClass, slot.pInputSlot, stance);
 		if (nullptr != pSkill)
 			outSkillId = pSkill->iSkillId;
 	}
@@ -205,11 +208,12 @@ void Client::CPlayerController::Poll_SkillSlots(
 	for (size_t index = 0; index < SlotKeyCount; ++index)
 		m_wasKeyDown[SlotKeys[index].byKeyCode] = isDown[index];
 
-	Poll_BasicAttack(pSpec, outSkillId, isKeyboardBlocked);
+	Poll_BasicAttack(pSpec, stance, outSkillId, isKeyboardBlocked);
 }
 
 void Client::CPlayerController::Poll_BasicAttack(
 	const CHARACTER_SPEC* pSpec,
+	const LostArk::Shared::PLAYER_STANCE_ID stance,
 	LostArk::Shared::SKILL_ID& outSkillId,
 	const bool_t commandSuppressed)
 {
@@ -238,7 +242,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		return;
 
 	const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-		pSpec->eCharacterClass, "LMB");
+		pSpec->eCharacterClass, "LMB", stance);
 	if (nullptr == pSkill)
 		return;
 

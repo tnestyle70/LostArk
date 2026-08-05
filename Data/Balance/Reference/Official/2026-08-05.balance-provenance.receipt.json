@@ -44,11 +44,11 @@
   ],
   "coverage": {
     "playerProfileCount": 5,
-    "skillDefinitionCount": 53,
-    "damageProfileCount": 54,
+    "skillDefinitionCount": 66,
+    "damageProfileCount": 63,
     "bossProfileCount": 1,
     "encounterPatternCount": 1,
-    "fieldEntryCount": 1058
+    "fieldEntryCount": 1420
   },
   "entries": [
     {
@@ -821,6 +821,34 @@
     },
     {
       "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34050",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "damage.player.34050",
+      "transform": "identity",
+      "resultValue": "damage.player.34050",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34050",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 380,
+      "transform": "identity",
+      "resultValue": 380,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
       "targetId": "damage:damage.player.34070",
       "targetField": "damageProfileId",
       "basis": "PROJECT_TUNED",
@@ -1004,6 +1032,216 @@
       "sourceValue": 3839,
       "transform": "identity",
       "resultValue": 3839
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34170",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "damage.player.34170",
+      "transform": "identity",
+      "resultValue": "damage.player.34170",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34170",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 700,
+      "transform": "identity",
+      "resultValue": 700,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34510",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34510",
+      "transform": "identity",
+      "resultValue": "damage.player.34510"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34510",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 100,
+      "transform": "identity",
+      "resultValue": 100
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34540",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34540",
+      "transform": "identity",
+      "resultValue": "damage.player.34540"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34540",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 396,
+      "transform": "identity",
+      "resultValue": 396
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34550",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34550",
+      "transform": "identity",
+      "resultValue": "damage.player.34550"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34550",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 298,
+      "transform": "identity",
+      "resultValue": 298
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34560",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34560",
+      "transform": "identity",
+      "resultValue": "damage.player.34560"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34560",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 873,
+      "transform": "identity",
+      "resultValue": 873
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34570",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34570",
+      "transform": "identity",
+      "resultValue": "damage.player.34570"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34570",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 3441,
+      "transform": "identity",
+      "resultValue": 3441
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34580",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34580",
+      "transform": "identity",
+      "resultValue": "damage.player.34580"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34580",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1882,
+      "transform": "identity",
+      "resultValue": 1882
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34590",
+      "targetField": "damageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34590",
+      "transform": "identity",
+      "resultValue": "damage.player.34590"
+    },
+    {
+      "targetDocument": "Data/Balance/DamageProfiles.json",
+      "targetId": "damage:damage.player.34590",
+      "targetField": "damageRatePercent",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 4274,
+      "transform": "identity",
+      "resultValue": 4274
     },
     {
       "targetDocument": "Data/Balance/DamageProfiles.json",
@@ -1872,6 +2110,19 @@
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:ARTIST",
+      "targetField": "defaultStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerProfiles.json",
+      "targetId": "player:ARTIST",
       "targetField": "defense",
       "basis": "OFFICIAL_SCALED",
       "source": {
@@ -1979,6 +2230,19 @@
       "sourceValue": 612,
       "transform": "class map 612 -> DIMENSIONMASTER",
       "resultValue": "DIMENSIONMASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerProfiles.json",
+      "targetId": "player:DIMENSIONMASTER",
+      "targetField": "defaultStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -2094,6 +2358,19 @@
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:GUNSLINGER",
+      "targetField": "defaultStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerProfiles.json",
+      "targetId": "player:GUNSLINGER",
       "targetField": "defense",
       "basis": "OFFICIAL_SCALED",
       "source": {
@@ -2205,6 +2482,19 @@
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
       "targetId": "player:LANCE_MASTER",
+      "targetField": "defaultStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerProfiles.json",
+      "targetId": "player:LANCE_MASTER",
       "targetField": "defense",
       "basis": "OFFICIAL_SCALED",
       "source": {
@@ -2312,6 +2602,19 @@
       "sourceValue": 112,
       "transform": "class map 112 -> SLAYER",
       "resultValue": "SLAYER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerProfiles.json",
+      "targetId": "player:SLAYER",
+      "targetField": "defaultStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerProfiles.json",
@@ -2757,6 +3060,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050010",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050010",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -2784,6 +3100,19 @@
       "sourceValue": "damage.player.2050010",
       "transform": "identity",
       "resultValue": "damage.player.2050010"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050010",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -2972,6 +3301,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050110",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050110",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -2999,6 +3341,19 @@
       "sourceValue": "damage.player.2050110",
       "transform": "identity",
       "resultValue": "damage.player.2050110"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050110",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -3187,6 +3542,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050150",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050150",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -3214,6 +3582,19 @@
       "sourceValue": "damage.player.2050150",
       "transform": "identity",
       "resultValue": "damage.player.2050150"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050150",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -3402,6 +3783,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050190",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050190",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -3429,6 +3823,19 @@
       "sourceValue": "damage.player.2050190",
       "transform": "identity",
       "resultValue": "damage.player.2050190"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050190",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -3617,6 +4024,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050200",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050200",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -3644,6 +4064,19 @@
       "sourceValue": "damage.player.2050200",
       "transform": "identity",
       "resultValue": "damage.player.2050200"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050200",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -3832,6 +4265,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050210",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050210",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -3859,6 +4305,19 @@
       "sourceValue": "damage.player.2050210",
       "transform": "identity",
       "resultValue": "damage.player.2050210"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050210",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -4047,6 +4506,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050220",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050220",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -4074,6 +4546,19 @@
       "sourceValue": "damage.player.2050220",
       "transform": "identity",
       "resultValue": "damage.player.2050220"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050220",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -4262,6 +4747,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050240",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050240",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -4289,6 +4787,19 @@
       "sourceValue": "damage.player.2050240",
       "transform": "identity",
       "resultValue": "damage.player.2050240"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050240",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -4477,6 +4988,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050500",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050500",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -4504,6 +5028,19 @@
       "sourceValue": "damage.player.2050500",
       "transform": "identity",
       "resultValue": "damage.player.2050500"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050500",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -4692,6 +5229,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050510",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050510",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -4719,6 +5269,19 @@
       "sourceValue": "damage.player.2050510",
       "transform": "identity",
       "resultValue": "damage.player.2050510"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050510",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -4907,6 +5470,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:2050540",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050540",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -4934,6 +5510,19 @@
       "sourceValue": "damage.player.2050540",
       "transform": "identity",
       "resultValue": "damage.player.2050540"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:2050540",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5330,6 +5919,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31000",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31000",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -5357,6 +5959,19 @@
       "sourceValue": "damage.player.31000",
       "transform": "identity",
       "resultValue": "damage.player.31000"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31000",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5545,6 +6160,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31210",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31210",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -5572,6 +6200,19 @@
       "sourceValue": "damage.player.31210",
       "transform": "identity",
       "resultValue": "damage.player.31210"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31210",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5760,6 +6401,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31230",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31230",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -5787,6 +6441,19 @@
       "sourceValue": "damage.player.31230",
       "transform": "identity",
       "resultValue": "damage.player.31230"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31230",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -5975,6 +6642,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31410",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31410",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -6002,6 +6682,19 @@
       "sourceValue": "damage.player.31410",
       "transform": "identity",
       "resultValue": "damage.player.31410"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31410",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6190,6 +6883,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31470",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31470",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -6217,6 +6923,19 @@
       "sourceValue": "damage.player.31470",
       "transform": "identity",
       "resultValue": "damage.player.31470"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31470",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6405,6 +7124,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31490",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31490",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -6432,6 +7164,19 @@
       "sourceValue": "damage.player.31490",
       "transform": "identity",
       "resultValue": "damage.player.31490"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31490",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6620,6 +7365,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31510",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31510",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -6647,6 +7405,19 @@
       "sourceValue": "damage.player.31510",
       "transform": "identity",
       "resultValue": "damage.player.31510"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31510",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -6835,6 +7606,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31900",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31900",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -6862,6 +7646,19 @@
       "sourceValue": "damage.player.31900",
       "transform": "identity",
       "resultValue": "damage.player.31900"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31900",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7050,6 +7847,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31920",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31920",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7081,6 +7891,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:31920",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:31920",
       "targetField": "skillId",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7104,6 +7927,227 @@
       "source": {
         "type": "project-policy",
         "policyId": "project-skill-kind-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 600,
+      "transform": "identity",
+      "resultValue": 600
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "lancemaster.skill.34000",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34000"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 1000,
+      "transform": "identity",
+      "resultValue": 1000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "무기 변경(짧은 창)",
+      "transform": "identity",
+      "resultValue": "무기 변경(짧은 창)"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "Z",
+      "transform": "identity",
+      "resultValue": "Z"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 34000,
+      "transform": "identity",
+      "resultValue": 34000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34000",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
       },
       "sourceValue": "ACTIVE",
       "transform": "identity",
@@ -7473,6 +8517,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34010",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34010",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7504,6 +8561,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34010",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34010",
       "targetField": "skillId",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7531,6 +8601,478 @@
       "sourceValue": "COMBO",
       "transform": "identity",
       "resultValue": "COMBO"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 900,
+      "transform": "identity",
+      "resultValue": 900,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "lancemaster.skill.34020",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34020",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 8000,
+      "transform": "identity",
+      "resultValue": 8000,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "탄영",
+      "transform": "identity",
+      "resultValue": "탄영",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": "",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "SPACE",
+      "transform": "identity",
+      "resultValue": "SPACE",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 6.0,
+      "transform": "identity",
+      "resultValue": 6.0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 242,
+      "transform": "identity",
+      "resultValue": 242,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": "",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 34020,
+      "transform": "identity",
+      "resultValue": 34020,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34020",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 1300,
+      "transform": "identity",
+      "resultValue": 1300,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "lancemaster.skill.34050",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34050",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 12000,
+      "transform": "identity",
+      "resultValue": 12000,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "풍진격",
+      "transform": "identity",
+      "resultValue": "풍진격",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": "",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 900,
+      "transform": "identity",
+      "resultValue": 900,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "D",
+      "transform": "identity",
+      "resultValue": "D",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 3.0,
+      "transform": "identity",
+      "resultValue": 3.0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 305,
+      "transform": "identity",
+      "resultValue": 305,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "damage.player.34050",
+      "transform": "identity",
+      "resultValue": "damage.player.34050",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 34050,
+      "transform": "identity",
+      "resultValue": 34050,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34050",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7688,6 +9230,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34070",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34070",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7715,6 +9270,19 @@
       "sourceValue": "damage.player.34070",
       "transform": "identity",
       "resultValue": "damage.player.34070"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34070",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -7903,6 +9471,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34080",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34080",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -7930,6 +9511,19 @@
       "sourceValue": "damage.player.34080",
       "transform": "identity",
       "resultValue": "damage.player.34080"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34080",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8118,6 +9712,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34090",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34090",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -8145,6 +9752,19 @@
       "sourceValue": "damage.player.34090",
       "transform": "identity",
       "resultValue": "damage.player.34090"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34090",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8333,6 +9953,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34110",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34110",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -8360,6 +9993,19 @@
       "sourceValue": "damage.player.34110",
       "transform": "identity",
       "resultValue": "damage.player.34110"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34110",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8548,6 +10194,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34120",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34120",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -8575,6 +10234,19 @@
       "sourceValue": "damage.player.34120",
       "transform": "identity",
       "resultValue": "damage.player.34120"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34120",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -8763,6 +10435,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34150",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34150",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -8794,6 +10479,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34150",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34150",
       "targetField": "skillId",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -8817,6 +10515,2387 @@
       "source": {
         "type": "project-policy",
         "policyId": "project-skill-kind-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 2100,
+      "transform": "identity",
+      "resultValue": 2100,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "lancemaster.skill.34170",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34170",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 18000,
+      "transform": "identity",
+      "resultValue": 18000,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "청룡진",
+      "transform": "identity",
+      "resultValue": "청룡진",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": "",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 1400,
+      "transform": "identity",
+      "resultValue": 1400,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "F",
+      "transform": "identity",
+      "resultValue": "F",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 4.5,
+      "transform": "identity",
+      "resultValue": 4.5,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 386,
+      "transform": "identity",
+      "resultValue": 386,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "damage.player.34170",
+      "transform": "identity",
+      "resultValue": "damage.player.34170",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": 34170,
+      "transform": "identity",
+      "resultValue": 34170,
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34170",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-long-spear-df-space-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE",
+      "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 800,
+      "transform": "identity",
+      "resultValue": 800
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "lancemaster.skill.34500",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34500"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 1000,
+      "transform": "identity",
+      "resultValue": 1000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "무기 변경(긴 창)",
+      "transform": "identity",
+      "resultValue": "무기 변경(긴 창)"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "Z",
+      "transform": "identity",
+      "resultValue": "Z"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "LANCE_MASTER_LONG_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_LONG_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": 34500,
+      "transform": "identity",
+      "resultValue": 34500
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34500",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-transition-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 634,
+      "transform": "identity",
+      "resultValue": 634
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34510",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34510"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 3,
+      "transform": "identity",
+      "resultValue": 3
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[0].actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 634,
+      "transform": "identity",
+      "resultValue": 634
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[0].hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[0].inputCloseMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 320,
+      "transform": "identity",
+      "resultValue": 320
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[0].inputOpenMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 160,
+      "transform": "identity",
+      "resultValue": 160
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[1].actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 634,
+      "transform": "identity",
+      "resultValue": 634
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[1].hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[1].inputCloseMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 320,
+      "transform": "identity",
+      "resultValue": 320
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[1].inputOpenMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 160,
+      "transform": "identity",
+      "resultValue": 160
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[2].actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 634,
+      "transform": "identity",
+      "resultValue": 634
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[2].hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[2].inputCloseMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "comboStages[2].inputOpenMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "평타",
+      "transform": "identity",
+      "resultValue": "평타"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LMB",
+      "transform": "identity",
+      "resultValue": "LMB"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1.8,
+      "transform": "identity",
+      "resultValue": 1.8
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34510",
+      "transform": "identity",
+      "resultValue": "damage.player.34510"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34510,
+      "transform": "identity",
+      "resultValue": 34510
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34510",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "COMBO",
+      "transform": "identity",
+      "resultValue": "COMBO"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 700,
+      "transform": "identity",
+      "resultValue": 700
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34520",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34520"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 6000,
+      "transform": "identity",
+      "resultValue": 6000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "돌파",
+      "transform": "identity",
+      "resultValue": "돌파"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "SPACE",
+      "transform": "identity",
+      "resultValue": "SPACE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 6.0,
+      "transform": "identity",
+      "resultValue": 6.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34520,
+      "transform": "identity",
+      "resultValue": 34520
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34520",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1900,
+      "transform": "identity",
+      "resultValue": 1900
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34540",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34540"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 5000,
+      "transform": "identity",
+      "resultValue": 5000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "나선창",
+      "transform": "identity",
+      "resultValue": "나선창"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1445,
+      "transform": "identity",
+      "resultValue": 1445
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "Q",
+      "transform": "identity",
+      "resultValue": "Q"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 3.5,
+      "transform": "identity",
+      "resultValue": 3.5
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 36,
+      "transform": "identity",
+      "resultValue": 36
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34540",
+      "transform": "identity",
+      "resultValue": "damage.player.34540"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34540,
+      "transform": "identity",
+      "resultValue": 34540
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34540",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 2467,
+      "transform": "identity",
+      "resultValue": 2467
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34550",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34550"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 16000,
+      "transform": "identity",
+      "resultValue": 16000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "사두룡격",
+      "transform": "identity",
+      "resultValue": "사두룡격"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "W",
+      "transform": "identity",
+      "resultValue": "W"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 3.0,
+      "transform": "identity",
+      "resultValue": 3.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.8,
+      "transform": "identity",
+      "resultValue": 0.8
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 70,
+      "transform": "identity",
+      "resultValue": 70
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34550",
+      "transform": "identity",
+      "resultValue": "damage.player.34550"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34550,
+      "transform": "identity",
+      "resultValue": 34550
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34550",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 2250,
+      "transform": "identity",
+      "resultValue": 2250
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34560",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34560"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 24000,
+      "transform": "identity",
+      "resultValue": 24000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "굉열파",
+      "transform": "identity",
+      "resultValue": "굉열파"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1245,
+      "transform": "identity",
+      "resultValue": 1245
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "E",
+      "transform": "identity",
+      "resultValue": "E"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 3.5,
+      "transform": "identity",
+      "resultValue": 3.5
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 88,
+      "transform": "identity",
+      "resultValue": 88
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34560",
+      "transform": "identity",
+      "resultValue": "damage.player.34560"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34560,
+      "transform": "identity",
+      "resultValue": 34560
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34560",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 2667,
+      "transform": "identity",
+      "resultValue": 2667
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34570",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34570"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 24000,
+      "transform": "identity",
+      "resultValue": 24000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "유성강천",
+      "transform": "identity",
+      "resultValue": "유성강천"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1657,
+      "transform": "identity",
+      "resultValue": 1657
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "R",
+      "transform": "identity",
+      "resultValue": "R"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 5.0,
+      "transform": "identity",
+      "resultValue": 5.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 88,
+      "transform": "identity",
+      "resultValue": 88
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34570",
+      "transform": "identity",
+      "resultValue": "damage.player.34570"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34570,
+      "transform": "identity",
+      "resultValue": 34570
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34570",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1300,
+      "transform": "identity",
+      "resultValue": 1300
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34580",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34580"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 20000,
+      "transform": "identity",
+      "resultValue": 20000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "절룡세",
+      "transform": "identity",
+      "resultValue": "절룡세"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 650,
+      "transform": "identity",
+      "resultValue": 650
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "A",
+      "transform": "identity",
+      "resultValue": "A"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 2.0,
+      "transform": "identity",
+      "resultValue": 2.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 80,
+      "transform": "identity",
+      "resultValue": 80
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34580",
+      "transform": "identity",
+      "resultValue": "damage.player.34580"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34580,
+      "transform": "identity",
+      "resultValue": 34580
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34580",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "ACTIVE",
+      "transform": "identity",
+      "resultValue": "ACTIVE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "actionDurationMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 4100,
+      "transform": "identity",
+      "resultValue": 4100
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "actionId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "lancemaster.skill.34590",
+      "transform": "identity",
+      "resultValue": "lancemaster.skill.34590"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "characterClass",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "comboStages.length",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0,
+      "transform": "identity",
+      "resultValue": 0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "cooldownMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 24000,
+      "transform": "identity",
+      "resultValue": 24000
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "displayName",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "적룡포",
+      "transform": "identity",
+      "resultValue": "적룡포"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "effectId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "",
+      "transform": "identity",
+      "resultValue": ""
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "hitTimeMs",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 1595,
+      "transform": "identity",
+      "resultValue": 1595
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "inputSlot",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "S",
+      "transform": "identity",
+      "resultValue": "S"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "maximumRange",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 4.0,
+      "transform": "identity",
+      "resultValue": 4.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "movementDistance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 0.0,
+      "transform": "identity",
+      "resultValue": 0.0
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "LANCE_MASTER_SHORT_SPEAR",
+      "transform": "identity",
+      "resultValue": "LANCE_MASTER_SHORT_SPEAR"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "resourceCost",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 88,
+      "transform": "identity",
+      "resultValue": 88
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "serverDamageProfileId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "damage.player.34590",
+      "transform": "identity",
+      "resultValue": "damage.player.34590"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "skillId",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
+      },
+      "sourceValue": 34590,
+      "transform": "identity",
+      "resultValue": 34590
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34590",
+      "targetField": "skillKind",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-short-spear-binding-v1"
       },
       "sourceValue": "ACTIVE",
       "transform": "identity",
@@ -8978,6 +13057,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34600",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34600",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -9005,6 +13097,19 @@
       "sourceValue": "damage.player.34600",
       "transform": "identity",
       "resultValue": "damage.player.34600"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34600",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9193,6 +13298,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34620",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34620",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -9220,6 +13338,19 @@
       "sourceValue": "damage.player.34620",
       "transform": "identity",
       "resultValue": "damage.player.34620"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34620",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9408,6 +13539,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:34640",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34640",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -9435,6 +13579,19 @@
       "sourceValue": "damage.player.34640",
       "transform": "identity",
       "resultValue": "damage.player.34640"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:34640",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9779,6 +13936,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38000",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38000",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -9806,6 +13976,19 @@
       "sourceValue": "damage.player.38000",
       "transform": "identity",
       "resultValue": "damage.player.38000"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38000",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -9994,6 +14177,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38020",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38020",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -10021,6 +14217,19 @@
       "sourceValue": "damage.player.38020",
       "transform": "identity",
       "resultValue": "damage.player.38020"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38020",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10209,6 +14418,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38050",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38050",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -10236,6 +14458,19 @@
       "sourceValue": "damage.player.38050",
       "transform": "identity",
       "resultValue": "damage.player.38050"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38050",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10424,6 +14659,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38120",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38120",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -10451,6 +14699,19 @@
       "sourceValue": "damage.player.38120",
       "transform": "identity",
       "resultValue": "damage.player.38120"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38120",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10639,6 +14900,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38140",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38140",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -10666,6 +14940,19 @@
       "sourceValue": "damage.player.38140",
       "transform": "identity",
       "resultValue": "damage.player.38140"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38140",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -10854,6 +15141,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38180",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38180",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -10881,6 +15181,19 @@
       "sourceValue": "damage.player.38180",
       "transform": "identity",
       "resultValue": "damage.player.38180"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38180",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11069,6 +15382,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38200",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38200",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -11096,6 +15422,19 @@
       "sourceValue": "damage.player.38200",
       "transform": "identity",
       "resultValue": "damage.player.38200"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38200",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11284,6 +15623,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38210",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38210",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -11311,6 +15663,19 @@
       "sourceValue": "damage.player.38210",
       "transform": "identity",
       "resultValue": "damage.player.38210"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38210",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11499,6 +15864,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38250",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38250",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -11526,6 +15904,19 @@
       "sourceValue": "damage.player.38250",
       "transform": "identity",
       "resultValue": "damage.player.38250"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38250",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11714,6 +16105,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38260",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38260",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -11741,6 +16145,19 @@
       "sourceValue": "damage.player.38260",
       "transform": "identity",
       "resultValue": "damage.player.38260"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38260",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11929,6 +16346,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38290",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38290",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -11956,6 +16386,19 @@
       "sourceValue": "damage.player.38290",
       "transform": "identity",
       "resultValue": "damage.player.38290"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38290",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12144,6 +16587,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:38320",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38320",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -12171,6 +16627,19 @@
       "sourceValue": "damage.player.38320",
       "transform": "identity",
       "resultValue": "damage.player.38320"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:38320",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12567,6 +17036,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45000",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45000",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -12594,6 +17076,19 @@
       "sourceValue": "damage.player.45000",
       "transform": "identity",
       "resultValue": "damage.player.45000"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45000",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12782,6 +17277,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45050",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45050",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -12809,6 +17317,19 @@
       "sourceValue": "damage.player.45050",
       "transform": "identity",
       "resultValue": "damage.player.45050"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45050",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -12997,6 +17518,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45060",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45060",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -13024,6 +17558,19 @@
       "sourceValue": "damage.player.45060",
       "transform": "identity",
       "resultValue": "damage.player.45060"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45060",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13212,6 +17759,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45070",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45070",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -13239,6 +17799,19 @@
       "sourceValue": "damage.player.45070",
       "transform": "identity",
       "resultValue": "damage.player.45070"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45070",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13427,6 +18000,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45190",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45190",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -13454,6 +18040,19 @@
       "sourceValue": "damage.player.45190",
       "transform": "identity",
       "resultValue": "damage.player.45190"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45190",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13642,6 +18241,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45210",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45210",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -13669,6 +18281,19 @@
       "sourceValue": "damage.player.45210",
       "transform": "identity",
       "resultValue": "damage.player.45210"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45210",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -13857,6 +18482,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45300",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45300",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -13884,6 +18522,19 @@
       "sourceValue": "damage.player.45300",
       "transform": "identity",
       "resultValue": "damage.player.45300"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45300",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14072,6 +18723,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45600",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45600",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -14099,6 +18763,19 @@
       "sourceValue": "damage.player.45600",
       "transform": "identity",
       "resultValue": "damage.player.45600"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45600",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14287,6 +18964,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45620",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45620",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -14314,6 +19004,19 @@
       "sourceValue": "damage.player.45620",
       "transform": "identity",
       "resultValue": "damage.player.45620"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45620",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14502,6 +19205,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45810",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45810",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -14529,6 +19245,19 @@
       "sourceValue": "damage.player.45810",
       "transform": "identity",
       "resultValue": "damage.player.45810"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45810",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -14717,6 +19446,19 @@
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",
       "targetId": "skill:45820",
+      "targetField": "requiredStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45820",
       "targetField": "resourceCost",
       "basis": "OFFICIAL_EXTRACTED",
       "source": {
@@ -14744,6 +19486,19 @@
       "sourceValue": "damage.player.45820",
       "transform": "identity",
       "resultValue": "damage.player.45820"
+    },
+    {
+      "targetDocument": "Data/Balance/PlayerSkills.json",
+      "targetId": "skill:45820",
+      "targetField": "setsStance",
+      "basis": "PROJECT_TUNED",
+      "source": {
+        "type": "project-policy",
+        "policyId": "lancemaster-stance-gate-v1"
+      },
+      "sourceValue": "NONE",
+      "transform": "identity",
+      "resultValue": "NONE"
     },
     {
       "targetDocument": "Data/Balance/PlayerSkills.json",

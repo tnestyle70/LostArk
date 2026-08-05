@@ -51,7 +51,9 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	if (!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
 		nullptr == skill || skill->eCharacterClass != player.eCharacterClass ||
 		0u == player.iCurrentHp ||
-		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ))
+		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ) ||
+		(PLAYER_STANCE_ID::NONE != skill->eRequiredStance &&
+			skill->eRequiredStance != player.eStance))
 	{
 		return false;
 	}
@@ -219,7 +221,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	const float hitSeconds =
 		static_cast<float>(hitMs) * MILLISECONDS_TO_SECONDS;
-	if (!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
+	if (!skill->strDamageProfileId.empty() &&
+		!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
 		float closestDistanceSquared = 0.f;
@@ -304,6 +307,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		}
 		else
 		{
+			if (PLAYER_STANCE_ID::NONE != skill->eSetsStance)
+				player.eStance = skill->eSetsStance;
 			player.eAction = PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = INVALID_SKILL_ID;
 			player.iActionStartTick = 0;

@@ -34,6 +34,10 @@ namespace Client
 		std::uint32_t iResourceCost = 0;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
 			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
+		LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
+		LostArk::Shared::PLAYER_STANCE_ID eSetsStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		/* Presentation authoring maps one COMBO clip to each Server-owned stage.
 		ACTIVE skills therefore carry zero and COMBO skills carry 2..8. */
 		std::size_t iComboStageCount = 0;
@@ -54,7 +58,9 @@ namespace Client
 		document, so a caller matches on "Q" or "ALT_V" rather than a key code. */
 		static const PLAYER_SKILL_DEFINITION* Find_BySlot(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-			const std::string& inputSlot);
+			const std::string& inputSlot,
+			LostArk::Shared::PLAYER_STANCE_ID stance =
+				LostArk::Shared::PLAYER_STANCE_ID::NONE);
 
 		static const PLAYER_SKILL_DEFINITION* Find_ById(
 			LostArk::Shared::SKILL_ID skillId);
