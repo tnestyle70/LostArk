@@ -15,6 +15,7 @@
 #include "Profiler.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "SkillWindowView.h"
 #include "UI_Sprite.h"
 
 #ifdef _DEBUG
@@ -32,7 +33,8 @@
 
 namespace
 {
-#ifdef _DEBUG
+	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
+	the _DEBUG-only map tool focus check further down. */
 	bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
 	{
 		if (nullptr == hWnd)
@@ -42,6 +44,8 @@ namespace
 		return 0 != GetWindowThreadProcessId(hWnd, &processId) &&
 			GetCurrentProcessId() == processId;
 	}
+
+#ifdef _DEBUG
 
 	const char_t* GetHUDLayoutClassId(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -158,6 +162,7 @@ HRESULT CMainApp::Initialize()
 	}
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
+	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
 		return E_FAIL;
@@ -170,6 +175,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 	UpdateDebugToolShortcut();
 #endif
+
+	/* Not _DEBUG-gated: K is a normal gameplay keybind (the skill window), not one of the
+	F1/F6 tool-switch keys AGENTS.md reserves. Skip it while ImGui already owns text input,
+	so typing in the rune search box (once that becomes real) cannot also toggle the window. */
+	if (nullptr != m_pSkillWindowView && !ImGui::GetIO().WantTextInput)
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t kDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x4B /* VK_K */) & 0x8000);
+		if (kDown && !m_bKDown)
+			m_pSkillWindowView->Toggle();
+		m_bKDown = kDown;
+	}
 
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->BeginFrame();
@@ -266,6 +285,12 @@ HRESULT CMainApp::Render()
 					m_pEffectTool->Render();
 				break;
 			case DEBUG_TOOL::UI:
+				/* Skill Window's slots (tripod plate, node glows, ...) are placed and dragged
+				right in this same canvas, exactly like Combat HUD/Screen UI/Loading Screen --
+				CHUDLayoutTool::Render_Canvas already draws and hit-tests m_Slots generically
+				regardless of which document tab is active, so no separate preview window is
+				needed (an earlier version of this code opened one; it only ended up floating
+				over this window and blocking it instead of helping). */
 				if (nullptr != m_pHUDLayoutTool)
 					m_pHUDLayoutTool->Render();
 				break;
@@ -369,6 +394,9 @@ void CMainApp::RenderCombatHUD()
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 	}
+
+	if (nullptr != m_pSkillWindowView)
+		m_pSkillWindowView->Render(player.eCharacterClass);
 }
 
 HRESULT CMainApp::Ready_Fonts()

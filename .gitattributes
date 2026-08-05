@@ -30,3 +30,8 @@
 
 # Shared asset converter executable
 /Tools/ModelAssetConverter/Bin/*.exe filter=lfs diff=lfs merge=lfs -text
+
+# Python extractor scripts must stay LF regardless of local core.autocrlf: their SHA-256 is
+# pinned inside Data/Balance/Reference/Official/*.receipt.json, and a CRLF checkout changes
+# the hash and fails Publish-GameplayBalance.ps1's staleness check.
+*.py text eol=lf

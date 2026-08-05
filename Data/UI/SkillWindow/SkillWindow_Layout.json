@@ -1,0 +1,138 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "TripodPanel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 346.609741, "y": 30.0159016, "width": 260, "height": 358 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodPanel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T1_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 380.355774, "y": 73.0999603, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T1_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 458.009613, "y": 73.0999603, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T1_3",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 536.11377, "y": 73.6915588, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T2_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 400.056702, "y": 186.175537, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T2_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 515.962769, "y": 186.175568, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T3_1",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 399.448242, "y": 300.062805, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "TripodNode_T3_2",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 515.804443, "y": 299.296448, "width": 35, "height": 35 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/TripodNodeGlow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "SkillListRow_Sample",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 20, "y": 60, "width": 380, "height": 64 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/SkillPanel.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "SkillListRow_SelectedSample",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 20, "y": 130, "width": 380, "height": 64 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/SkillWindow/PanelSelected.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
+}

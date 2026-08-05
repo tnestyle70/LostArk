@@ -39,6 +39,8 @@
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
+    <ClInclude Include="..\Public\SkillWindowView.h" />
+    <ClInclude Include="..\Public\UITextureCache.h" />
     <ClInclude Include="..\Public\UI_Sprite.h" />
     <ClInclude Include="..\Public\Level_Bern.h" />
     <ClInclude Include="..\Public\Level_Development.h" />
@@ -114,6 +116,8 @@
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
+    <ClCompile Include="..\Private\SkillWindowView.cpp" />
+    <ClCompile Include="..\Private\UITextureCache.cpp" />
     <ClCompile Include="..\Private\UI_Sprite.cpp" />
     <ClCompile Include="..\Private\Level_Bern.cpp" />
     <ClCompile Include="..\Private\Level_Development.cpp" />
