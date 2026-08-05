@@ -5,7 +5,7 @@
 #include "MapAssetPreview.h"
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
-#include "DeployPropCatalog.h"
+#include "DeployPropRuntime.h"
 #include "NavGridBaker.h"
 #include "NavGridPaintDocument.h"
 #include "NavRuntimeBlockerDocument.h"
@@ -22,7 +22,7 @@ NS_BEGIN(Client)
 
 class CMapAssetObject;
 class CMapStaticBatchObject;
-class CDeployPropObject;
+class CTrigger_Box;
 class CCamera_Free;
 class CMapTool final
 {
@@ -54,6 +54,8 @@ private:
 		std::string label;
 		std::filesystem::path sourceCatalog;
 		std::filesystem::path sourcePlacements;
+		std::filesystem::path sourceDeployCatalog;
+		std::filesystem::path sourceDeployPlacements;
 		std::filesystem::path navigationSource;
 		std::filesystem::path navigationPaint;
 		std::filesystem::path navigationBlockers;
@@ -75,6 +77,7 @@ private:
 	enum class NAVIGATION_EDIT_ACTION
 	{
 		APPLY,
+		FORCE_WALKABLE,
 		ERASE,
 	};
 	//bake 가이드 메시
@@ -102,10 +105,10 @@ private:
 		CHAOS_GATE,
 	};
 
-	struct DEPLOY_ENTRY
+	struct TRIGGER_BOX_ENTRY
 	{
-		DEPLOY_PROP_PLACEMENT record;
-		shared_ptr<CDeployPropObject> object;
+		std::string placementId;
+		shared_ptr<CTrigger_Box> object;
 	};
 
 public:
@@ -180,6 +183,8 @@ private:
 	/* Map Asset Document and Runtime */
 	bool_t Ensure_AuthoringPrototypes();
 	bool_t Ensure_AuthoringPrototypes(const CMapAssetCatalog& catalog);
+	bool_t Ensure_DeployAuthoringPrototypes(
+		const CDeployPropCatalog& catalog);
 	bool_t Load_EditorAreaRegistry();
 	bool_t Switch_EditorArea(size_t descriptorIndex);
 	bool_t Save_AllAuthoring();
@@ -203,6 +208,9 @@ private:
 	bool_t Save_Placements();
 	bool_t Load_Placements();
 	bool_t Load_DeployProps();
+	bool_t Stage_DeployProps(
+		const EDITOR_AREA_DESCRIPTOR& descriptor,
+		CDeployPropRuntime& outRuntime);
 	void Remove_DeployProps();
 	void Set_DeployPhase(DEPLOY_PROP_STATE state);
 	void Set_EnvironmentPhase(ENVIRONMENT_PHASE phase);
@@ -215,6 +223,12 @@ private:
 	bool_t Load_WorldGameplay();
 	bool_t Save_WorldGameplay();
 	bool_t Try_PlaceWorldGameplay();
+	bool_t Try_PickWorldTriggerTarget();
+	bool_t Stage_WorldTriggerBoxes(
+		const CWorldGameplayDocument& document,
+		vector<TRIGGER_BOX_ENTRY>& outEntries);
+	void Remove_WorldTriggerBoxes(vector<TRIGGER_BOX_ENTRY>& entries);
+	void Update_WorldTriggerBoxPresentation(bool_t isVisible);
 	std::filesystem::path Get_WorldGameplayPath() const;
 
 	/* Queries */
@@ -244,7 +258,7 @@ private:
 	PLACEMENT_STATE m_ePlacementState = PLACEMENT_STATE::IDLE;
 
 	CMapAssetCatalog m_Catalog;
-	CDeployPropCatalog m_DeployCatalog;
+	CDeployPropRuntime m_DeployRuntime;
 	std::unique_ptr<CMapAssetPreview> m_pAssetPreview;
 	std::string m_SelectedAssetId;
 	std::string m_Status = "Enter AssetTest with F2";
@@ -253,16 +267,18 @@ private:
 
 	vector<PLACED_ENTRY> m_Placements;
 	vector<STATIC_BATCH_ENTRY> m_StaticBatches;
-	vector<DEPLOY_ENTRY> m_DeployProps;
 	DEPLOY_PROP_STATE m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
 	ENVIRONMENT_PHASE m_EnvironmentPhase = ENVIRONMENT_PHASE::BASELINE;
+	bool_t m_bShowBernLandscape = false;
 	uint64_t m_iSelectedPlacementId = {};
 	uint64_t m_iNextPlacementId = 1;
 
 	/* World Gameplay State */
 	CWorldGameplayDocument m_WorldGameplayDocument;
+	vector<TRIGGER_BOX_ENTRY> m_WorldTriggerBoxes;
 	bool_t m_bWorldGameplayDirty = false;
 	bool_t m_bWorldGameplayPlacementArmed = false;
+	bool_t m_bWorldTriggerTargetPickArmed = false;
 	WORLD_PLACEMENT_KIND m_eWorldPlacementKind =
 		WORLD_PLACEMENT_KIND::BOSS;
 	std::string m_SelectedWorldPlacementId;
@@ -271,6 +287,8 @@ private:
 	char m_WorldPlacementId[128] = "boss.valtan.center";
 	char m_WorldArchetypeId[128] = "BOSS_VALTAN";
 	char m_WorldEncounterId[128] = "ENCOUNTER_VALTAN";
+	float3_t m_WorldTriggerHalfExtents = float3_t(2.f, 1.f, 2.f);
+	bool_t m_bWorldTriggerOnce = true;
 
 	/* Navigation State */
 	bool_t m_bNavigationStrokeActive = false;

@@ -16,6 +16,7 @@ class CDeployPropObject final : public CGameObject
 public:
 	struct DEPLOY_PROP_DESC : public CGameObject::GAMEOBJECT_DESC
 	{
+		uint32_t prototypeLevelIndex = ETOUI(LEVEL::END);
 		DEPLOY_PROP_PLACEMENT placement;
 		DEPLOY_PROP_MODEL_KIND modelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 		std::wstring intactPrototypeTag;
@@ -34,7 +35,7 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
-	void Set_State(DEPLOY_PROP_STATE state);
+	bool_t Set_State(DEPLOY_PROP_STATE state);
 	DEPLOY_PROP_STATE Get_State() const { return m_State; }
 	uint64_t Get_RuntimePlacementId() const { return m_Placement.runtimePlacementId; }
 	uint32_t Get_DeployActorId() const { return m_Placement.deployActorId; }

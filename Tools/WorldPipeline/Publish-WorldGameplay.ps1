@@ -191,41 +191,18 @@ function Convert-WorldDocument {
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $rows = [Collections.Generic.List[string]]::new()
     foreach ($placement in @($document.placements)) {
-        Assert-ExactProperties $placement @(
-            'placementId','kind','archetypeId','encounterId',
-            'position','yawDegrees','enabled') "$relativePath placement"
 		Assert-JsonString $placement.placementId "$relativePath placementId"
 		Assert-JsonString $placement.kind "$relativePath kind"
-		Assert-JsonString $placement.archetypeId "$relativePath archetypeId" -AllowNull
-		Assert-JsonString $placement.encounterId "$relativePath encounterId" -AllowNull
 		if ($placement.enabled -isnot [bool]) {
 			throw "$relativePath enabled must be a JSON Boolean: $($placement.placementId)"
 		}
         Assert-StableId $placement.placementId "$relativePath placementId"
-        if ($placement.kind -eq 'playerSpawn') {
-            if ($null -ne $placement.archetypeId -and
-                -not [string]::IsNullOrEmpty([string]$placement.archetypeId)) {
-                throw "Player spawn must not own a character archetype: $($placement.placementId)"
-            }
-        }
-        else {
-            Assert-StableId $placement.archetypeId "$relativePath archetypeId"
-        }
-        Assert-StableId $placement.encounterId "$relativePath encounterId" -AllowEmpty
         if (-not $ids.Add([string]$placement.placementId)) {
             throw "Duplicate world placement ID: $($placement.placementId)"
         }
-        if ($placement.kind -notin @('playerSpawn','npc','boss')) {
-            throw "Unknown world placement kind: $($placement.kind)"
-        }
-        if ($placement.kind -ne 'playerSpawn' -and
-            $placement.archetypeId -notin @($ActorIds[$placement.kind])) {
-            throw "Archetype '$($placement.archetypeId)' is not available for kind '$($placement.kind)'."
-        }
-        $encounterId = if ($null -eq $placement.encounterId) { '' } else { [string]$placement.encounterId }
-        if ($encounterId -and -not $EncounterProfiles.ContainsKey($encounterId)) {
-            throw "Placement references an unknown encounter: $encounterId"
-        }
+		if ($placement.kind -notin @('playerSpawn','npc','boss','triggerBox')) {
+			throw "Unknown world placement kind: $($placement.kind)"
+		}
         if (@($placement.position).Count -ne 3) {
             throw "Placement position must contain exactly three numbers: $($placement.placementId)"
         }
@@ -234,8 +211,96 @@ function Convert-WorldDocument {
 				"$relativePath position[$coordinateIndex]"
 		}
 		Assert-JsonNumber $placement.yawDegrees "$relativePath yawDegrees"
-
         $enabled = if ($placement.enabled) { 1 } else { 0 }
+		$commonFields = @(
+			$placement.placementId,
+			$placement.kind,
+			'-',
+			'-',
+			(Format-InvariantFloat $placement.position[0]),
+			(Format-InvariantFloat $placement.position[1]),
+			(Format-InvariantFloat $placement.position[2]),
+			(Format-InvariantFloat $placement.yawDegrees),
+			$enabled)
+		if ($placement.kind -eq 'triggerBox') {
+			Assert-ExactProperties $placement @(
+				'placementId','kind','position','yawDegrees','enabled',
+				'halfExtents','triggerOnce','events') "$relativePath triggerBox"
+			if (@($placement.halfExtents).Count -ne 3) {
+				throw "Trigger halfExtents must contain exactly three numbers: $($placement.placementId)"
+			}
+			for ($extentIndex = 0; $extentIndex -lt 3; $extentIndex++) {
+				Assert-JsonNumber $placement.halfExtents[$extentIndex] "$relativePath halfExtents[$extentIndex]"
+				$extent = [double]$placement.halfExtents[$extentIndex]
+				if ($extent -le 0.0 -or $extent -gt 1000.0) {
+					throw "Trigger half extent is out of range: $($placement.placementId)"
+				}
+			}
+			if ($placement.triggerOnce -isnot [bool]) {
+				throw "Trigger triggerOnce must be a JSON Boolean: $($placement.placementId)"
+			}
+			$events = @($placement.events)
+			if ($events.Count -gt 1 -or ($placement.enabled -and $events.Count -ne 1)) {
+				throw "movePlayer trigger requires exactly one event when enabled: $($placement.placementId)"
+			}
+			$triggerFields = @(
+				(Format-InvariantFloat $placement.halfExtents[0]),
+				(Format-InvariantFloat $placement.halfExtents[1]),
+				(Format-InvariantFloat $placement.halfExtents[2]),
+				$(if ($placement.triggerOnce) { '1' } else { '0' }),
+				[string]$events.Count)
+			foreach ($event in $events) {
+				Assert-ExactProperties $event @(
+					'type','targetPosition','durationSeconds','arcHeight') "$relativePath movePlayer event"
+				if ($event.type -ne 'movePlayer' -or @($event.targetPosition).Count -ne 3) {
+					throw "Only movePlayer trigger events are admitted: $($placement.placementId)"
+				}
+				for ($targetIndex = 0; $targetIndex -lt 3; $targetIndex++) {
+					Assert-JsonNumber $event.targetPosition[$targetIndex] "$relativePath targetPosition[$targetIndex]"
+				}
+				Assert-JsonNumber $event.durationSeconds "$relativePath durationSeconds"
+				Assert-JsonNumber $event.arcHeight "$relativePath arcHeight"
+				$duration = [double]$event.durationSeconds
+				$arcHeight = [double]$event.arcHeight
+				if ($duration -lt 0.05 -or $duration -gt 10.0 -or
+					$arcHeight -lt 0.0 -or $arcHeight -gt 1000.0) {
+					throw "movePlayer timing or arc is out of range: $($placement.placementId)"
+				}
+				$triggerFields += @(
+					'movePlayer',
+					(Format-InvariantFloat $event.targetPosition[0]),
+					(Format-InvariantFloat $event.targetPosition[1]),
+					(Format-InvariantFloat $event.targetPosition[2]),
+					(Format-InvariantFloat $duration),
+					(Format-InvariantFloat $arcHeight))
+			}
+			$rows.Add((($commonFields + $triggerFields) -join "`t"))
+			continue
+		}
+
+		Assert-ExactProperties $placement @(
+			'placementId','kind','archetypeId','encounterId',
+			'position','yawDegrees','enabled') "$relativePath placement"
+		Assert-JsonString $placement.archetypeId "$relativePath archetypeId" -AllowNull
+		Assert-JsonString $placement.encounterId "$relativePath encounterId" -AllowNull
+		if ($placement.kind -eq 'playerSpawn') {
+			if ($null -ne $placement.archetypeId -and
+				-not [string]::IsNullOrEmpty([string]$placement.archetypeId)) {
+				throw "Player spawn must not own a character archetype: $($placement.placementId)"
+			}
+		}
+		else {
+			Assert-StableId $placement.archetypeId "$relativePath archetypeId"
+		}
+		Assert-StableId $placement.encounterId "$relativePath encounterId" -AllowEmpty
+		if ($placement.kind -ne 'playerSpawn' -and
+			$placement.archetypeId -notin @($ActorIds[$placement.kind])) {
+			throw "Archetype '$($placement.archetypeId)' is not available for kind '$($placement.kind)'."
+		}
+		$encounterId = if ($null -eq $placement.encounterId) { '' } else { [string]$placement.encounterId }
+		if ($encounterId -and -not $EncounterProfiles.ContainsKey($encounterId)) {
+			throw "Placement references an unknown encounter: $encounterId"
+		}
         $serializedEncounterId = if ($encounterId) { $encounterId } else { '-' }
         $patternFields = @('-', '-', '0', '0', '0', '0', '0', '-')
         if ($placement.kind -eq 'boss') {
@@ -258,22 +323,15 @@ function Convert-WorldDocument {
                 [string]$pattern.serverDamageProfileId)
         }
         $serializedArchetypeId = if ($placement.kind -eq 'playerSpawn') { '-' } else { [string]$placement.archetypeId }
-        $rowFields = @(
-            $placement.placementId,
-            $placement.kind,
-            $serializedArchetypeId,
-            $serializedEncounterId,
-            (Format-InvariantFloat $placement.position[0]),
-            (Format-InvariantFloat $placement.position[1]),
-            (Format-InvariantFloat $placement.position[2]),
-            (Format-InvariantFloat $placement.yawDegrees),
-            $enabled) + $patternFields
+		$commonFields[2] = $serializedArchetypeId
+		$commonFields[3] = $serializedEncounterId
+		$rowFields = $commonFields + $patternFields
         $rows.Add(($rowFields -join "`t"))
     }
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("LOSTARK_WORLD_BOOTSTRAP`t2`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }

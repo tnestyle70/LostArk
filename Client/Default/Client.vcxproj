@@ -31,6 +31,8 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
+    <ClInclude Include="..\Public\DeployPropRuntime.h" />
+    <ClInclude Include="..\Public\Trigger_Box.h" />
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
@@ -109,6 +111,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Level_CharacterSelect.cpp" />
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp" />
+    <ClCompile Include="..\Private\Trigger_Box.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
@@ -153,6 +156,7 @@
     <ClCompile Include="..\Private\MapAssetObject.cpp" />
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
     <ClCompile Include="..\Private\DeployPropObject.cpp" />
+    <ClCompile Include="..\Private\DeployPropRuntime.cpp" />
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />

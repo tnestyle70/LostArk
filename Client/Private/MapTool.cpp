@@ -16,6 +16,7 @@
 #include "Model.h"
 #include "Navigation.h"
 #include "ProjectDataRoot.h"
+#include "Trigger_Box.h"
 
 #include <algorithm>
 #include <array>
@@ -36,6 +37,67 @@ namespace
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
+	}
+
+	bool_t TryBuildCentralEditorFrame(
+		const vector<float3_t>& positions,
+		float3_t& outCenter,
+		f32_t& outRadius)
+	{
+		vector<f32_t> xValues;
+		vector<f32_t> yValues;
+		vector<f32_t> zValues;
+		xValues.reserve(positions.size());
+		yValues.reserve(positions.size());
+		zValues.reserve(positions.size());
+		for (const float3_t& position : positions)
+		{
+			if (!IsFinite(position))
+				continue;
+			xValues.push_back(position.x);
+			yValues.push_back(position.y);
+			zValues.push_back(position.z);
+		}
+		if (xValues.empty())
+			return false;
+
+		std::sort(xValues.begin(), xValues.end());
+		std::sort(yValues.begin(), yValues.end());
+		std::sort(zValues.begin(), zValues.end());
+		const auto sampleQuantile = [](const vector<f32_t>& values, f32_t quantile)
+		{
+			const size_t index = static_cast<size_t>(
+				(values.size() - 1) * quantile + 0.5f);
+			return values[index];
+		};
+
+		const float3_t center(
+			sampleQuantile(xValues, 0.50f),
+			sampleQuantile(yValues, 0.50f),
+			sampleQuantile(zValues, 0.50f));
+		const f32_t centralSpanX =
+			sampleQuantile(xValues, 0.95f) - sampleQuantile(xValues, 0.05f);
+		const f32_t centralSpanZ =
+			sampleQuantile(zValues, 0.95f) - sampleQuantile(zValues, 0.05f);
+		const f32_t radius = (std::max)(75.f,
+			(std::max)(centralSpanX, centralSpanZ) * 0.35f);
+		if (!IsFinite(center) || !std::isfinite(radius) || radius <= 0.f)
+			return false;
+
+		outCenter = center;
+		outRadius = radius;
+		return true;
+	}
+
+	bool_t IsBernLandscapePlacement(
+		const CMapAssetCatalog& catalog,
+		const MAP_PLACEMENT_RECORD& record)
+	{
+		if ("LV_BER_BERNCASTLE" != catalog.Get_AreaId())
+			return false;
+
+		const MAP_ASSET_ENTRY* asset = catalog.Find(record.assetId);
+		return nullptr != asset && asset->groupId == "landscape";
 	}
 
 	bool_t IsBatchEligible(const MAP_ASSET_ENTRY& asset)
@@ -215,6 +277,9 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 	const bool_t mouseDown = 0 != (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 	const bool_t mousePressed = mouseDown && !m_bPreviousMouseDown;
 	m_bPreviousMouseDown = mouseDown;
+	Update_WorldTriggerBoxPresentation(
+		m_bOpen && isAssetTest &&
+		TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode);
 
 	if (!m_bOpen || !isAssetTest)
 	{
@@ -226,6 +291,7 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 	{
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
 		m_bWorldGameplayPlacementArmed = false;
+		m_bWorldTriggerTargetPickArmed = false;
 		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 		m_Status = "Placement cancelled";
 		if (TOOL_MODE::NAVIGATION == m_eToolMode)
@@ -269,7 +335,9 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 		return;
 	if (TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode)
 	{
-		if (m_bWorldGameplayPlacementArmed && mousePressed)
+		if (m_bWorldTriggerTargetPickArmed && mousePressed)
+			Try_PickWorldTriggerTarget();
+		else if (m_bWorldGameplayPlacementArmed && mousePressed)
 			Try_PlaceWorldGameplay();
 		return;
 	}
@@ -353,6 +421,19 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 				ImGui::SetItemDefaultFocus();
 		}
 		ImGui::EndCombo();
+	}
+	if ("LV_BER_BERNCASTLE" == m_Catalog.Get_AreaId())
+	{
+		ImGui::SameLine();
+		if (ImGui::Checkbox(
+			"Show Bern Landscape",
+			&m_bShowBernLandscape))
+		{
+			Set_EnvironmentPhase(m_EnvironmentPhase);
+			m_Status = m_bShowBernLandscape ?
+				"Bern Landscape preview enabled" :
+				"Bern Landscape hidden; authoring data preserved";
+		}
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Exit to Lobby"))
@@ -494,7 +575,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 {
 	ImGui::TextUnformatted("World Gameplay Authoring");
 	ImGui::TextDisabled(
-		"Player/NPC/Boss definitions only. Runtime state stays server-authoritative.");
+		"Trigger Box entry and movePlayer execution are server-authoritative.");
 	ImGui::TextWrapped("%s", m_WorldGameplayStatus.c_str());
 	ImGui::Separator();
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
@@ -530,18 +611,43 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 	if (ImGui::RadioButton("Boss",
 		WORLD_PLACEMENT_KIND::BOSS == m_eWorldPlacementKind))
 		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::BOSS;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Trigger Box",
+		WORLD_PLACEMENT_KIND::TRIGGER_BOX == m_eWorldPlacementKind))
+		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::TRIGGER_BOX;
 
 	ImGui::InputText("Placement ID", m_WorldPlacementId,
 		std::size(m_WorldPlacementId));
-	ImGui::InputText("Archetype ID", m_WorldArchetypeId,
-		std::size(m_WorldArchetypeId));
-	ImGui::InputText("Encounter ID (optional)", m_WorldEncounterId,
-		std::size(m_WorldEncounterId));
+	const bool_t isTriggerPlacement =
+		WORLD_PLACEMENT_KIND::TRIGGER_BOX == m_eWorldPlacementKind;
+	if (isTriggerPlacement)
+	{
+		ImGui::DragFloat3(
+			"Default Half Extents",
+			&m_WorldTriggerHalfExtents.x,
+			0.1f,
+			0.1f,
+			1000.f,
+			"%.2f",
+			ImGuiSliderFlags_AlwaysClamp);
+		ImGui::Checkbox("Trigger Once", &m_bWorldTriggerOnce);
+		ImGui::TextDisabled(
+			"Place the box first, then select it and author its move target below.");
+	}
+	else
+	{
+		ImGui::InputText("Archetype ID", m_WorldArchetypeId,
+			std::size(m_WorldArchetypeId));
+		ImGui::InputText("Encounter ID (optional)", m_WorldEncounterId,
+			std::size(m_WorldEncounterId));
+	}
 	if (ImGui::Button(m_bWorldGameplayPlacementArmed ?
 		"Cancel World Placement" : "Arm World Placement"))
 	{
 		m_bWorldGameplayPlacementArmed =
 			!m_bWorldGameplayPlacementArmed;
+		if (m_bWorldGameplayPlacementArmed)
+			m_bWorldTriggerTargetPickArmed = false;
 		m_WorldGameplayStatus = m_bWorldGameplayPlacementArmed ?
 			"World placement armed: click a picked map surface; Esc cancels" :
 			"World placement cancelled";
@@ -549,7 +655,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 	if (m_bWorldGameplayPlacementArmed)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.85f, 0.2f, 1.f),
-			"PICKING: click the map surface to store the spawn position");
+			"PICKING: click the map surface to store the placement position");
 	}
 
 	ImGui::Separator();
@@ -600,35 +706,140 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			0.1f, -100000.f, 100000.f, "%.3f");
 		edited |= ImGui::DragFloat("Yaw Degrees", &staged.yawDegrees,
 			0.5f, -360.f, 360.f, "%.2f");
-		edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == staged.eKind)
+		{
+			edited |= ImGui::DragFloat3(
+				"Half Extents",
+				&staged.halfExtents.x,
+				0.1f,
+				0.1f,
+				1000.f,
+				"%.2f",
+				ImGuiSliderFlags_AlwaysClamp);
+			edited |= ImGui::Checkbox("Trigger Once", &staged.isTriggerOnce);
+
+			bool_t hasMoveAction = 1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == staged.triggerEvents.front().eKind;
+			if (!hasMoveAction)
+			{
+				if (ImGui::Button(staged.triggerEvents.empty() ?
+					"Add Move Player Action" : "Replace With Move Player Action"))
+				{
+					WORLD_TRIGGER_EVENT action{};
+					action.eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+					action.targetPosition = staged.position;
+					action.durationSeconds = 0.8f;
+					action.arcHeight = 0.f;
+					staged.triggerEvents.assign(1u, action);
+					hasMoveAction = true;
+					edited = true;
+				}
+			}
+			if (hasMoveAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Move Player Action");
+				edited |= ImGui::DragFloat3(
+					"Target Position", &action.targetPosition.x,
+					0.1f, -100000.f, 100000.f, "%.3f");
+				edited |= ImGui::DragFloat(
+					"Duration Seconds", &action.durationSeconds,
+					0.05f, 0.05f, 10.f, "%.2f",
+					ImGuiSliderFlags_AlwaysClamp);
+				edited |= ImGui::DragFloat(
+					"Arc Height", &action.arcHeight,
+					0.1f, 0.f, 1000.f, "%.2f",
+					ImGuiSliderFlags_AlwaysClamp);
+				if (ImGui::Button(m_bWorldTriggerTargetPickArmed ?
+					"Cancel Move Target Pick" : "Pick Move Target On Map"))
+				{
+					m_bWorldTriggerTargetPickArmed =
+						!m_bWorldTriggerTargetPickArmed;
+					m_bWorldGameplayPlacementArmed = false;
+					m_WorldGameplayStatus = m_bWorldTriggerTargetPickArmed ?
+						"Move target armed: click the destination surface; Esc cancels" :
+						"Move target pick cancelled";
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Remove Move Action"))
+				{
+					staged.triggerEvents.clear();
+					staged.isEnabled = false;
+					m_bWorldTriggerTargetPickArmed = false;
+					hasMoveAction = false;
+					edited = true;
+				}
+			}
+
+			ImGui::BeginDisabled(!hasMoveAction);
+			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
+			ImGui::EndDisabled();
+			if (!hasMoveAction)
+			{
+				staged.isEnabled = false;
+				ImGui::TextDisabled(
+					"A Trigger Box needs one movePlayer action before it can be enabled.");
+			}
+		}
+		else
+		{
+			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
+		}
 		if (edited)
 		{
 			if (CWorldGameplayDocument::Is_Valid(staged))
 			{
+				CWorldGameplayDocument previous = m_WorldGameplayDocument;
 				*selected = staged;
 				m_WorldGameplayDocument.Mark_Edited();
-				m_bWorldGameplayDirty = true;
-				m_WorldGameplayStatus = "Gameplay placement edited";
+				vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+				if (Stage_WorldTriggerBoxes(
+					m_WorldGameplayDocument, stagedBoxes))
+				{
+					Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
+					m_WorldTriggerBoxes = std::move(stagedBoxes);
+					m_bWorldGameplayDirty = true;
+					m_WorldGameplayStatus = "Gameplay placement edited";
+				}
+				else
+				{
+					m_WorldGameplayDocument = std::move(previous);
+				}
 			}
 			else
 			{
 				m_WorldGameplayStatus = "Gameplay edit rejected by validation";
 			}
+			selected = m_WorldGameplayDocument.Find(
+				m_SelectedWorldPlacementId);
 		}
-		if (ImGui::Button("Delete Gameplay Placement"))
+		if (nullptr != selected &&
+			ImGui::Button("Delete Gameplay Placement"))
 		{
 			const std::string deletedId = selected->placementId;
+			CWorldGameplayDocument previous = m_WorldGameplayDocument;
 			if (m_WorldGameplayDocument.Remove(deletedId))
 			{
-				m_SelectedWorldPlacementId.clear();
-				m_bWorldGameplayDirty = true;
-				m_WorldGameplayStatus = "Deleted gameplay placement: " + deletedId;
+				vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+				if (Stage_WorldTriggerBoxes(
+					m_WorldGameplayDocument, stagedBoxes))
+				{
+					Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
+					m_WorldTriggerBoxes = std::move(stagedBoxes);
+					m_SelectedWorldPlacementId.clear();
+					m_bWorldGameplayDirty = true;
+					m_WorldGameplayStatus =
+						"Deleted gameplay placement: " + deletedId;
+				}
+				else
+				{
+					m_WorldGameplayDocument = std::move(previous);
+				}
 			}
 		}
 	}
 	ImGui::EndDisabled();
 }
-
 std::filesystem::path Client::CMapTool::Get_WorldGameplayPath() const
 {
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
@@ -645,13 +856,23 @@ bool_t Client::CMapTool::Load_WorldGameplay()
 		m_WorldGameplayStatus = "Gameplay load requires a ready map catalog";
 		return false;
 	}
-	if (!m_WorldGameplayDocument.Load(
+
+	CWorldGameplayDocument stagedDocument;
+	if (!stagedDocument.Load(
 		path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
 	{
 		return false;
 	}
+	vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+	if (!Stage_WorldTriggerBoxes(stagedDocument, stagedBoxes))
+		return false;
+
+	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
+	m_WorldGameplayDocument = std::move(stagedDocument);
+	m_WorldTriggerBoxes = std::move(stagedBoxes);
 	m_SelectedWorldPlacementId.clear();
 	m_bWorldGameplayPlacementArmed = false;
+	m_bWorldTriggerTargetPickArmed = false;
 	m_bWorldGameplayDirty = false;
 	return true;
 }
@@ -685,20 +906,165 @@ bool_t Client::CMapTool::Try_PlaceWorldGameplay()
 	WORLD_GAMEPLAY_PLACEMENT placement;
 	placement.placementId = m_WorldPlacementId;
 	placement.eKind = m_eWorldPlacementKind;
-	placement.archetypeId = m_WorldArchetypeId;
-	placement.encounterId = m_WorldEncounterId;
 	placement.position = position;
 	placement.yawDegrees = 0.f;
-	placement.isEnabled = true;
+	if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == placement.eKind)
+	{
+		placement.isEnabled = false;
+		placement.halfExtents = m_WorldTriggerHalfExtents;
+		placement.isTriggerOnce = m_bWorldTriggerOnce;
+	}
+	else
+	{
+		placement.archetypeId = m_WorldArchetypeId;
+		placement.encounterId = m_WorldEncounterId;
+		placement.isEnabled = true;
+	}
+
+	CWorldGameplayDocument previous = m_WorldGameplayDocument;
 	if (!m_WorldGameplayDocument.Add(placement, m_WorldGameplayStatus))
 		return false;
+	vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+	if (!Stage_WorldTriggerBoxes(m_WorldGameplayDocument, stagedBoxes))
+	{
+		m_WorldGameplayDocument = std::move(previous);
+		return false;
+	}
 
+	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
+	m_WorldTriggerBoxes = std::move(stagedBoxes);
 	m_SelectedWorldPlacementId = placement.placementId;
 	m_bWorldGameplayPlacementArmed = false;
 	m_bWorldGameplayDirty = true;
 	return true;
 }
 
+bool_t Client::CMapTool::Try_PickWorldTriggerTarget()
+{
+	WORLD_GAMEPLAY_PLACEMENT* placement =
+		m_WorldGameplayDocument.Find(m_SelectedWorldPlacementId);
+	if (nullptr == placement ||
+		WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement->eKind)
+	{
+		m_bWorldTriggerTargetPickArmed = false;
+		m_WorldGameplayStatus = "Move target pick requires a selected Trigger Box";
+		return false;
+	}
+
+	float3_t target{};
+	if (!Try_PickPlacementPosition(target))
+	{
+		m_WorldGameplayStatus = "Move target pick failed: map surface was not hit";
+		return false;
+	}
+
+	WORLD_GAMEPLAY_PLACEMENT staged = *placement;
+	if (1u != staged.triggerEvents.size() ||
+		WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER != staged.triggerEvents.front().eKind)
+	{
+		WORLD_TRIGGER_EVENT action{};
+		action.eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+		action.durationSeconds = 0.8f;
+		staged.triggerEvents.assign(1u, action);
+	}
+	staged.triggerEvents.front().targetPosition = target;
+	if (!CWorldGameplayDocument::Is_Valid(staged))
+	{
+		m_WorldGameplayStatus = "Move target pick produced an invalid trigger action";
+		return false;
+	}
+
+	*placement = std::move(staged);
+	m_WorldGameplayDocument.Mark_Edited();
+	m_bWorldGameplayDirty = true;
+	m_bWorldTriggerTargetPickArmed = false;
+	m_WorldGameplayStatus = "Move target stored. Enable the Trigger Box and save gameplay.";
+	return true;
+}
+
+bool_t Client::CMapTool::Stage_WorldTriggerBoxes(
+	const CWorldGameplayDocument& document,
+	vector<TRIGGER_BOX_ENTRY>& outEntries)
+{
+	outEntries.clear();
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		document.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
+			continue;
+
+		CTrigger_Box::TRIGGER_BOX_DESC desc{};
+		desc.placementId = placement.placementId;
+		desc.position = placement.position;
+		desc.halfExtents = placement.halfExtents;
+		desc.yawDegrees = placement.yawDegrees;
+		desc.isEnabled = placement.isEnabled;
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_iAuthoringLevelIndex,
+			TEXT("Prototype_GameObject_TriggerBox"),
+			m_iAuthoringLevelIndex,
+			TEXT("Layer_TriggerBoxes"),
+			&desc,
+			&gameObject)))
+		{
+			Remove_WorldTriggerBoxes(outEntries);
+			m_WorldGameplayStatus =
+				"Trigger Box presentation stage failed: " + placement.placementId;
+			return false;
+		}
+
+		shared_ptr<CTrigger_Box> triggerBox =
+			dynamic_pointer_cast<CTrigger_Box>(gameObject);
+		if (nullptr == triggerBox)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_TriggerBoxes"),
+				gameObject);
+			Remove_WorldTriggerBoxes(outEntries);
+			m_WorldGameplayStatus =
+				"Trigger Box clone type mismatch: " + placement.placementId;
+			return false;
+		}
+		triggerBox->Set_Selected(
+			m_SelectedWorldPlacementId == placement.placementId);
+		triggerBox->Set_AuthoringVisible(
+			m_bOpen && TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode);
+		outEntries.push_back({ placement.placementId, std::move(triggerBox) });
+	}
+	return true;
+}
+
+void Client::CMapTool::Remove_WorldTriggerBoxes(
+	vector<TRIGGER_BOX_ENTRY>& entries)
+{
+	for (const TRIGGER_BOX_ENTRY& entry : entries)
+	{
+		if (nullptr != entry.object &&
+			m_iAuthoringLevelIndex < ETOUI(LEVEL::END))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_TriggerBoxes"),
+				static_pointer_cast<CGameObject>(entry.object));
+		}
+	}
+	entries.clear();
+}
+
+void Client::CMapTool::Update_WorldTriggerBoxPresentation(
+	const bool_t isVisible)
+{
+	for (TRIGGER_BOX_ENTRY& entry : m_WorldTriggerBoxes)
+	{
+		if (nullptr == entry.object)
+			continue;
+		entry.object->Set_AuthoringVisible(isVisible);
+		entry.object->Set_Selected(
+			entry.placementId == m_SelectedWorldPlacementId);
+	}
+}
 bool Client::CMapTool::IsOpen() const
 {
 	return m_bOpen;
@@ -788,6 +1154,81 @@ bool_t Client::CMapTool::Ensure_AuthoringPrototypes(
 	return admittedCount == catalog.Get_Entries().size();
 }
 
+bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
+	const CDeployPropCatalog& catalog)
+{
+	if (!catalog.Is_Ready() ||
+		m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
+		nullptr == m_pDevice || nullptr == m_pContext)
+	{
+		m_Status = "DeployProp authoring prototype admission is unavailable";
+		return false;
+	}
+
+	const matrix_t modelTransform =
+		XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	const auto admitModel = [this, &modelTransform](
+		const std::wstring& prototypeTag,
+		const std::filesystem::path& modelPath,
+		const MODEL modelKind,
+		const std::string& assetId)
+	{
+		const shared_ptr<CModel> existing = dynamic_pointer_cast<CModel>(
+			CGameInstance::Get().Clone_Prototype(
+				m_iAuthoringLevelIndex, prototypeTag));
+		if (nullptr != existing)
+		{
+			const auto fingerprint = m_PrototypeModelPaths.find(prototypeTag);
+			return fingerprint != m_PrototypeModelPaths.end() &&
+				fingerprint->second.lexically_normal() ==
+					modelPath.lexically_normal();
+		}
+
+		auto model = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			modelKind,
+			modelPath.string().c_str(),
+			modelTransform);
+		if (nullptr == model || FAILED(CGameInstance::Get().Add_Prototype(
+			m_iAuthoringLevelIndex,
+			prototypeTag,
+			std::move(model))))
+		{
+			m_Status = "DeployProp model admission failed: " + assetId;
+			return false;
+		}
+		m_PrototypeModelPaths.emplace(
+			prototypeTag, modelPath.lexically_normal());
+		return true;
+	};
+
+	for (const DEPLOY_PROP_ASSET_ENTRY& asset : catalog.Get_Assets())
+	{
+		const MODEL modelKind =
+			DEPLOY_PROP_MODEL_KIND::ANIM == asset.kind ?
+			MODEL::ANIM : MODEL::NONANIM;
+		if (!admitModel(
+			asset.intactPrototypeTag,
+			asset.intactResolvedPath,
+			modelKind,
+			asset.id))
+		{
+			return false;
+		}
+		if (DEPLOY_PROP_MODEL_KIND::STATIC == asset.kind &&
+			!admitModel(
+				asset.fracturedPrototypeTag,
+				asset.fracturedResolvedPath,
+				MODEL::NONANIM,
+				asset.id))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 bool_t Client::CMapTool::Load_EditorAreaRegistry()
 {
 	const std::filesystem::path path =
@@ -864,6 +1305,36 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		descriptor.sourceCatalog = ResolveDataCatalogPath(sourceCatalog);
 		descriptor.sourcePlacements =
 			ResolveDataCatalogPath(sourcePlacements);
+		const DATA_JSON_VALUE* sourceDeployCatalog =
+			selected->Find("sourceDeployCatalog");
+		const DATA_JSON_VALUE* sourceDeployPlacements =
+			selected->Find("sourceDeployPlacements");
+		if ((nullptr == sourceDeployCatalog) !=
+			(nullptr == sourceDeployPlacements) ||
+			(nullptr != sourceDeployCatalog &&
+				(!sourceDeployCatalog->Is_String() ||
+					sourceDeployCatalog->Get_String().empty() ||
+					!sourceDeployPlacements->Is_String() ||
+					sourceDeployPlacements->Get_String().empty())))
+		{
+			m_Status = "MapCatalog deploy authoring pair is invalid: " +
+				descriptor.areaId;
+			return false;
+		}
+		if (nullptr != sourceDeployCatalog)
+		{
+			descriptor.sourceDeployCatalog = ResolveDataCatalogPath(
+				sourceDeployCatalog->Get_String());
+			descriptor.sourceDeployPlacements = ResolveDataCatalogPath(
+				sourceDeployPlacements->Get_String());
+			if (descriptor.sourceDeployCatalog.empty() ||
+				descriptor.sourceDeployPlacements.empty())
+			{
+				m_Status = "MapCatalog deploy path escapes Data root: " +
+					descriptor.areaId;
+				return false;
+			}
+		}
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
 			descriptor.areaId == "LV_LUT_HEARTRB_ED")
@@ -913,6 +1384,10 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 
 		if (descriptor.sourceCatalog.empty() ||
 			descriptor.sourcePlacements.empty() ||
+			((!descriptor.sourceDeployCatalog.empty() ||
+				!descriptor.sourceDeployPlacements.empty()) &&
+				(descriptor.sourceDeployCatalog.empty() ||
+					descriptor.sourceDeployPlacements.empty())) ||
 			(EDITOR_NAVIGATION_POLICY::NONE != descriptor.navigationPolicy &&
 				(descriptor.navigationSource.empty() ||
 					descriptor.navigationPaint.empty())) ||
@@ -1053,12 +1528,29 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Status = "Map Area runtime stage rolled back: " + descriptor.areaId;
 		return false;
 	}
+	CDeployPropRuntime stagedDeployRuntime;
+	if (!Stage_DeployProps(descriptor, stagedDeployRuntime))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		m_Catalog = std::move(previousCatalog);
+		return false;
+	}
+	vector<TRIGGER_BOX_ENTRY> stagedTriggerBoxes;
+	if (!Stage_WorldTriggerBoxes(stagedWorld, stagedTriggerBoxes))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		stagedDeployRuntime.Clear();
+		m_Catalog = std::move(previousCatalog);
+		return false;
+	}
 
 	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
-	Remove_DeployProps();
+	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
+	m_DeployRuntime = std::move(stagedDeployRuntime);
 	m_WorldGameplayDocument = std::move(stagedWorld);
+	m_WorldTriggerBoxes = std::move(stagedTriggerBoxes);
 	m_NavigationDocument = std::move(stagedNavigation);
 	m_RuntimeBlockerDocument = std::move(stagedBlockers);
 	m_NavigationSourcePath = descriptor.navigationSource;
@@ -1119,6 +1611,17 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 			(minimum.z + maximum.z) * 0.5f);
 		f32_t radius = (std::max)(50.f,
 			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
+		/* Bern has distant backdrop and event placements, while its authored
+		   player spawns are still placeholders around the origin. Use the dense
+		   placement centre and central 90 percent span for the editor camera. */
+		if ("LV_BER_BERNCASTLE" == descriptor.areaId)
+		{
+			vector<float3_t> positions;
+			positions.reserve(m_Placements.size());
+			for (const PLACED_ENTRY& entry : m_Placements)
+				positions.push_back(entry.record.position);
+			TryBuildCentralEditorFrame(positions, center, radius);
+		}
 		/* Valtan authoring keeps distant backdrop meshes whose positions reach
 		   X 1026 and Z -1367, so the bounds centre lands about 600 m away from
 		   the playable map. Frame the playable centre instead. Replace this with
@@ -1154,12 +1657,12 @@ void Client::CMapTool::Handle_LevelTransition(
 
 	m_Placements.clear();
 	m_StaticBatches.clear();
-	m_DeployProps.clear();
+	m_DeployRuntime.Reset_ClearedLevelTracking();
+	m_WorldTriggerBoxes.clear();
 	m_iNextPlacementId = 1;
 	m_bDirty = false;
 	m_bWorldGameplayDirty = false;
 	m_Catalog = CMapAssetCatalog{};
-	m_DeployCatalog = CDeployPropCatalog{};
 	m_EditorAreas.clear();
 	m_iActiveEditorArea = SIZE_MAX;
 	m_iPendingEditorArea = SIZE_MAX;
@@ -1609,13 +2112,12 @@ bool_t Client::CMapTool::Try_PaintNavigation()
 	if (!Try_PickNavigationCell(cellX, cellZ))
 		return false;
 
-	const bool_t erase =
-		NAVIGATION_EDIT_ACTION::ERASE ==
-		m_eNavigationEditAction;
-
 	bool_t changed = false;
 	if (NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode)
 	{
+		const bool_t erase =
+			NAVIGATION_EDIT_ACTION::ERASE ==
+			m_eNavigationEditAction;
 		changed = m_RuntimeBlockerDocument.Paint(
 			m_iSelectedRuntimeRegion,
 			cellX,
@@ -1625,11 +2127,29 @@ bool_t Client::CMapTool::Try_PaintNavigation()
 	}
 	else
 	{
+		NAVGRID_PAINT_OVERRIDE overrideState =
+			NAVGRID_PAINT_OVERRIDE::INHERIT;
+		switch (m_eNavigationEditAction)
+		{
+		case NAVIGATION_EDIT_ACTION::APPLY:
+			overrideState =
+				NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED;
+			break;
+		case NAVIGATION_EDIT_ACTION::FORCE_WALKABLE:
+			overrideState =
+				NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE;
+			break;
+		case NAVIGATION_EDIT_ACTION::ERASE:
+		default:
+			overrideState = NAVGRID_PAINT_OVERRIDE::INHERIT;
+			break;
+		}
+
 		changed = m_NavigationDocument.Paint(
 			cellX,
 			cellZ,
 			m_iBrushRadius,
-			erase);
+			overrideState);
 	}
 
 	if (changed)
@@ -1930,138 +2450,87 @@ bool_t Client::CMapTool::Load_Placements()
 
 bool_t Client::CMapTool::Load_DeployProps()
 {
-	const std::filesystem::path root = CMapAssetCatalog::Get_MapDataRoot();
-	if (root.empty())
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor)
 	{
-		m_Status = "DeployProp data root is unavailable";
+		m_Status = "DeployProp reload requires an active editor Area";
 		return false;
 	}
 
-	const std::filesystem::path areaPath(m_Catalog.Get_AreaId());
-	const std::filesystem::path catalogPath =
-		root / (areaPath.wstring() + L".deployassets");
-	const std::filesystem::path placementPath =
-		root / (areaPath.wstring() + L".deployplacements");
-	std::error_code catalogError;
-	std::error_code placementError;
-	const bool_t catalogExists =
-		std::filesystem::exists(catalogPath, catalogError);
-	const bool_t placementExists =
-		std::filesystem::exists(placementPath, placementError);
-	if (catalogError)
-	{
-		m_Status = "DeployProp catalog inspection failed: " +
-			catalogPath.string() + " (" + catalogError.message() + ")";
+	CDeployPropRuntime stagedRuntime;
+	if (!Stage_DeployProps(*descriptor, stagedRuntime))
 		return false;
-	}
-	if (placementError)
+	m_DeployRuntime = std::move(stagedRuntime);
+	m_DeployPhase = DEPLOY_PROP_STATE::INTACT;
+	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
+		" map placements + " +
+		std::to_string(m_DeployRuntime.Get_Entries().size()) +
+		" gameplay DeployProps";
+	return true;
+}
+
+bool_t Client::CMapTool::Stage_DeployProps(
+	const EDITOR_AREA_DESCRIPTOR& descriptor,
+	CDeployPropRuntime& outRuntime)
+{
+	if (descriptor.sourceDeployCatalog.empty() &&
+		descriptor.sourceDeployPlacements.empty())
 	{
-		m_Status = "DeployProp placement inspection failed: " +
-			placementPath.string() + " (" + placementError.message() + ")";
-		return false;
-	}
-	if (!catalogExists && !placementExists)
-	{
-		Remove_DeployProps();
 		return true;
 	}
-	if (catalogExists != placementExists)
+	if (descriptor.sourceDeployCatalog.empty() ||
+		descriptor.sourceDeployPlacements.empty())
 	{
-		const std::filesystem::path& missingPath =
-			catalogExists ? placementPath : catalogPath;
-		m_Status = "DeployProp file pair is incomplete; missing: " +
-			missingPath.string();
+		m_Status = "DeployProp authoring file pair is incomplete: " +
+			descriptor.areaId;
 		return false;
 	}
 
-	if (!m_DeployCatalog.Load_Default(m_Catalog.Get_AreaId()))
+	std::error_code catalogError;
+	std::error_code placementError;
+	const bool_t catalogExists = std::filesystem::is_regular_file(
+		descriptor.sourceDeployCatalog, catalogError);
+	const bool_t placementExists = std::filesystem::is_regular_file(
+		descriptor.sourceDeployPlacements, placementError);
+	if (catalogError || placementError || !catalogExists || !placementExists)
 	{
-		m_Status = m_DeployCatalog.Get_Status();
+		m_Status = "DeployProp authoring source pair is unavailable: " +
+			descriptor.areaId;
 		return false;
 	}
 
-	vector<DEPLOY_ENTRY> staged;
-	staged.reserve(m_DeployCatalog.Get_Placements().size());
-	for (const DEPLOY_PROP_PLACEMENT& record :
-		m_DeployCatalog.Get_Placements())
+	CDeployPropCatalog catalog;
+	if (!catalog.Load(
+		descriptor.sourceDeployCatalog,
+		descriptor.sourceDeployPlacements,
+		descriptor.areaId))
 	{
-		const DEPLOY_PROP_ASSET_ENTRY* asset =
-			m_DeployCatalog.Find(record.assetId);
-		if (nullptr == asset)
-		{
-			for (const DEPLOY_ENTRY& rollback : staged)
-				CGameInstance::Get().Remove_GameObject_from_Layer(
-					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
-					static_pointer_cast<CGameObject>(rollback.object));
-			m_Status = "DeployProp staging lost asset " + record.assetId;
-			return false;
-		}
-		CDeployPropObject::DEPLOY_PROP_DESC desc{};
-		desc.placement = record;
-		desc.modelKind = asset->kind;
-		desc.intactPrototypeTag = asset->intactPrototypeTag;
-		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
-		shared_ptr<CGameObject> gameObject;
-		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			m_iAuthoringLevelIndex,
-			TEXT("Prototype_GameObject_DeployProp"),
-			m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
-			&desc, &gameObject)))
-		{
-			for (const DEPLOY_ENTRY& rollback : staged)
-				CGameInstance::Get().Remove_GameObject_from_Layer(
-					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
-					static_pointer_cast<CGameObject>(rollback.object));
-			m_Status = "DeployProp stage rolled back at " +
-				record.sourcePlacementId;
-			return false;
-		}
-		shared_ptr<CDeployPropObject> object =
-			dynamic_pointer_cast<CDeployPropObject>(gameObject);
-		if (nullptr == object)
-		{
-			CGameInstance::Get().Remove_GameObject_from_Layer(
-				m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"), gameObject);
-			for (const DEPLOY_ENTRY& rollback : staged)
-				CGameInstance::Get().Remove_GameObject_from_Layer(
-					m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
-					static_pointer_cast<CGameObject>(rollback.object));
-			m_Status = "DeployProp clone type mismatch";
-			return false;
-		}
-		staged.push_back({ record, std::move(object) });
+		m_Status = catalog.Get_Status();
+		return false;
 	}
-
-	Remove_DeployProps();
-	m_DeployProps = std::move(staged);
-	Set_DeployPhase(DEPLOY_PROP_STATE::INTACT);
-	const size_t bindPoseOnly = static_cast<size_t>(std::count_if(
-		m_DeployProps.begin(), m_DeployProps.end(),
-		[](const DEPLOY_ENTRY& entry)
-		{
-			return entry.object->Is_AnimBindPoseOnly();
-		}));
-	m_Status = "Loaded " + std::to_string(m_Placements.size()) +
-		" map placements + " + std::to_string(m_DeployProps.size()) +
-		" gameplay DeployProps (ITR_02326 bind-pose-only: " +
-		std::to_string(bindPoseOnly) + ")";
+	if (!Ensure_DeployAuthoringPrototypes(catalog))
+		return false;
+	if (!outRuntime.Load(m_iAuthoringLevelIndex, std::move(catalog)))
+	{
+		m_Status = outRuntime.Get_Status();
+		return false;
+	}
 	return true;
 }
 
 void Client::CMapTool::Remove_DeployProps()
 {
-	for (const DEPLOY_ENTRY& entry : m_DeployProps)
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			m_iAuthoringLevelIndex, TEXT("Layer_DeployProps"),
-			static_pointer_cast<CGameObject>(entry.object));
-	m_DeployProps.clear();
+	m_DeployRuntime.Clear();
 }
 
 void Client::CMapTool::Set_DeployPhase(DEPLOY_PROP_STATE state)
 {
+	if (!m_DeployRuntime.Set_State_All(state))
+	{
+		m_Status = m_DeployRuntime.Get_Status();
+		return;
+	}
 	m_DeployPhase = state;
-	for (DEPLOY_ENTRY& entry : m_DeployProps)
-		entry.object->Set_State(state);
 
 	const bool_t arenaDestroyed =
 		DEPLOY_PROP_STATE::INTACT != state;
@@ -2085,6 +2554,11 @@ void Client::CMapTool::Set_EnvironmentPhase(ENVIRONMENT_PHASE phase)
 			visible = phase != ENVIRONMENT_PHASE::BASELINE;
 		else if (entry.record.sourceLevel == "VALTAN_PHASE_CHAOSGATE")
 			visible = phase == ENVIRONMENT_PHASE::CHAOS_GATE;
+		if (!m_bShowBernLandscape &&
+			IsBernLandscapePlacement(m_Catalog, entry.record))
+		{
+			visible = false;
+		}
 		Set_RuntimeVisible(entry, visible);
 	}
 }
@@ -2266,31 +2740,56 @@ void Client::CMapTool::Render_NavigationPanel()
 	if (NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode)
 		Render_DestructionAreaControls();
 
-	const char* applyLabel =
-		NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode ?
-		"Add Cells" :
-		"Block";
-	const char* eraseLabel =
-		NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode ?
-		"Remove Cells" :
-		"Erase";
-
-	if (ImGui::RadioButton(
-		applyLabel,
-		NAVIGATION_EDIT_ACTION::APPLY ==
-		m_eNavigationEditAction))
+	if (NAVIGATION_MODE::DESTRUCTION_AREA == m_eNavigationMode)
 	{
-		m_eNavigationEditAction =
-			NAVIGATION_EDIT_ACTION::APPLY;
+		if (ImGui::RadioButton(
+			"Add Cells",
+			NAVIGATION_EDIT_ACTION::APPLY ==
+			m_eNavigationEditAction))
+		{
+			m_eNavigationEditAction =
+				NAVIGATION_EDIT_ACTION::APPLY;
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton(
+			"Remove Cells",
+			NAVIGATION_EDIT_ACTION::ERASE ==
+			m_eNavigationEditAction))
+		{
+			m_eNavigationEditAction =
+				NAVIGATION_EDIT_ACTION::ERASE;
+		}
 	}
-	ImGui::SameLine();
-	if (ImGui::RadioButton(
-		eraseLabel,
-		NAVIGATION_EDIT_ACTION::ERASE ==
-		m_eNavigationEditAction))
+	else
 	{
-		m_eNavigationEditAction =
-			NAVIGATION_EDIT_ACTION::ERASE;
+		if (ImGui::RadioButton(
+			"Block",
+			NAVIGATION_EDIT_ACTION::APPLY ==
+			m_eNavigationEditAction))
+		{
+			m_eNavigationEditAction =
+				NAVIGATION_EDIT_ACTION::APPLY;
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton(
+			"Force Walkable",
+			NAVIGATION_EDIT_ACTION::FORCE_WALKABLE ==
+			m_eNavigationEditAction))
+		{
+			m_eNavigationEditAction =
+				NAVIGATION_EDIT_ACTION::FORCE_WALKABLE;
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton(
+			"Reset",
+			NAVIGATION_EDIT_ACTION::ERASE ==
+			m_eNavigationEditAction))
+		{
+			m_eNavigationEditAction =
+				NAVIGATION_EDIT_ACTION::ERASE;
+		}
+		ImGui::TextDisabled(
+			"Force Walkable overrides baked blocked cells. Reset restores the baked state.");
 	}
 
 	int32_t brushRadius =
@@ -2463,10 +2962,11 @@ void Client::CMapTool::Render_NavigationDiagnostics()
 	const uint32_t surfaceCells =
 		m_NavigationDocument.Get_ResolvedHeightCount();
 	ImGui::Text(
-		"Surface: %u | Excluded: %u | Blocked: %u",
+		"Surface: %u | Excluded: %u | Blocked overrides: %u | Walkable overrides: %u",
 		surfaceCells,
 		m_NavigationDocument.Get_CellCount() - surfaceCells,
-		m_NavigationDocument.Get_BlockedCount());
+		m_NavigationDocument.Get_BlockedCount(),
+		m_NavigationDocument.Get_ForcedWalkableCount());
 	ImGui::TextWrapped(
 		"Source: %s",
 		m_NavigationSourcePath.string().c_str());
@@ -2622,7 +3122,10 @@ void Client::CMapTool::Render_Toolbar()
 	ImGui::TextDisabled("Data/Maps authoring; publish required");
 	ImGui::SameLine();
 	if (ImGui::Button("Reload"))
-		Load_Placements();
+	{
+		if (Load_Placements())
+			Load_DeployProps();
+	}
 	ImGui::SameLine();
 	if (ImGui::Button("Clear"))
 		ImGui::OpenPopup("Clear all placements?");

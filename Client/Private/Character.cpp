@@ -365,6 +365,24 @@ bool_t CCharacter::Apply_NetworkAction(
 		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+	else if (PLAYER_ACTION_STATE::TRIGGER_MOVE == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
+		{
+			m_pChain = nullptr;
+			m_iChainStep = 0;
+			Commit_PendingClipChains();
+			Set_Animation(CHARACTER_ANIM::RUN, true);
+		}
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
 	{
 		m_pChain = nullptr;

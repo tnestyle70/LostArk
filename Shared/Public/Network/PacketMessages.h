@@ -243,6 +243,7 @@ namespace LostArk::Shared
 	{
 		NONE,
 		SKILL,
+		TRIGGER_MOVE,
 		DEAD,
 		END
 	};

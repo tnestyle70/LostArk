@@ -303,17 +303,24 @@ Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Ch
 원본 Training Map은 gameplay 문서를 만들지 않고, Bern/Training Map은 navigation 문서를
 추측 생성하지 않는다. Valtan DeployProp 편집은 현재 제외되어 있다.
 
-gameplay authoring은 formatVersion 2다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`만
-admission한다. placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다.
+gameplay authoring은 formatVersion 2다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`와
+단일 `movePlayer` action을 가진 `triggerBox`를 admission한다. placement에는 stable placement ID, kind,
+encounter ID, position, yaw, enabled를 저장한다.
 NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는
 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를
 저장하지 않는다.
 
-v2 `CWorldGameplayDocument`에는 `triggerBox`와 `destroyable`의 strict parse/save 구조가 추가됐다.
-`triggerBox`는 half extents, once 정책, typed event를, `destroyable`은 decimal-string
-`deployRuntimePlacementId`와 initial state를 소유한다. 그러나 두 kind는 Server trigger/dynamic nav/
-replication/Client presentation이 아직 없으므로 publisher가 fail-closed로 거부한다. 문서 parser가
-있다는 이유로 제품 runtime 지원 완료라고 판단하지 않는다.
+v2 `CWorldGameplayDocument`에서 `triggerBox`는 half extents, once 정책, typed event를 소유한다.
+현재 제품 event는 `movePlayer` 하나이며 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다.
+Server는 yaw OBB enter edge를 판정하고 일반 이동/스킬을 중단한 뒤 30 Hz 직선·포물선 이동을 확정한다.
+Shared `TRIGGER_MOVE` action과 player transform snapshot이 Client 표현의 유일한 입력이다. Client는 별도
+jump clip 계약이 생기기 전까지 RUN locomotion으로 이동을 표현한다. `destroyable`과 나머지 trigger event는
+여전히 publisher가 fail-closed로 거부하며, parser 존재만으로 제품 runtime 지원 완료라고 판단하지 않는다.
+
+Debug Development MapTool은 action이 아직 없는 `triggerBox`를 disabled draft로 배치하고 position,
+yaw, half extents, once 정책을 편집한다. 선택한 box에 `movePlayer`를 추가하고 목적지를 맵에서 pick한 뒤
+duration/arc를 정해야 enabled로 저장할 수 있다. wire box는 저작용 presentation이며 overlap/action 권위는
+Server에만 있다. Save 뒤 publisher와 Server 재시작 전에는 제품 월드에 적용된 것이 아니다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 

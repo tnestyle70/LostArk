@@ -97,3 +97,35 @@ Debug Server와 Client는 실행했다. 실제 Lobby에서 Bern 진입 후 화�
   `Snapshot -> Verify -> Publish -> Hydrate`로 새 immutable pack을 발급한다.
 - Decal, foliage, water, 조명과 별도 StaticMesh 바닥은 Landscape 전용 복구 범위가
   아니며 각 Area layer 정본에서 별도로 복원한다.
+
+## 6. 2026-08-05 수동 smoke 정정과 임시 격리
+
+사용자 화면에서 초록색 수직 늘어짐이 계속 재현됐다. 따라서 2026-08-04 Cook과 자동
+검증만으로 시각 복구가 완료됐다고 판단할 수 없으며, Landscape 수동 smoke는 FAIL로
+정정한다.
+
+마을 제작을 계속할 수 있도록 Map Editor에만 가역적인 표시 격리를 추가했다.
+
+- Bern catalog의 `groupId == "landscape"` asset: 42개
+- 기본 비표시되는 Landscape placement: 42개
+- 그대로 표시되는 나머지 placement: 49,975개
+- 원본 전체 authoring placement: 50,017개 유지
+- 상단 `Show Bern Landscape` 체크로 세션 중 재표시 가능
+- `record.visible`, dirty 상태, Imported/Authoring 문서, Resources payload 변경 없음
+- 제품 Bern Level과 공용 `CMapPlacementRuntime` 변경 없음
+
+검증 결과는 다음과 같다.
+
+```text
+Client x64 Debug build/link: PASS
+Landscape asset ID/placement exact match: 42 / 42
+Preserved non-Landscape placement: 49,975
+git diff --check: PASS
+MapTool.cpp / MapTool.h: CP949, BOM 없음, CRLF 유지
+ProjectAudit: Map/navigation와 balance validate/publish PASS, 전체는 기존 asset lock,
+Effect G1 문서 경계, DimensionMaster asset/runtime-animation 4건으로 FAIL
+사용자 화면 확인: 대기
+```
+
+이 격리는 Landscape 복구가 아니다. 후속 원인 교정이 끝날 때까지 잘못된 42개 지형을
+Map Editor 화면에서만 숨기는 안전장치다.

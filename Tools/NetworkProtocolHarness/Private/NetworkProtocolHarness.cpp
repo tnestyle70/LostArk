@@ -1153,7 +1153,9 @@ namespace
 		second.fPositionZ = 4.f;
 		second.fYawDegrees = 180.f;
 		second.eLocomotionState =
-			PLAYER_LOCOMOTION_STATE::IDLE;
+			PLAYER_LOCOMOTION_STATE::MOVING;
+		second.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
+		second.iActionStartTick = 29;
 
 		source.Players.push_back(first);
 		source.Players.push_back(second);
@@ -1228,7 +1230,10 @@ namespace
 			decoded.Players[1].fPositionX == 3.f &&
 			decoded.Players[1].fPositionZ == 4.f &&
 			decoded.Players[1].eLocomotionState ==
-			PLAYER_LOCOMOTION_STATE::IDLE,
+			PLAYER_LOCOMOTION_STATE::MOVING &&
+			decoded.Players[1].eAction ==
+			PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+			decoded.Players[1].iActionStartTick == 29,
 			"World Snapshot Players Round Trip");
 
 		testRunner.Require(
@@ -1275,6 +1280,13 @@ namespace
 			testRunner.Require(
 				!Write_Message(idleComboWriter, idleCombo),
 				"Reject Combo Stage Without Skill Action");
+
+			S2C_WORLD_SNAPSHOT triggerWithoutTick = source;
+			triggerWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter triggerWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(triggerWithoutTickWriter, triggerWithoutTick),
+				"Reject Trigger Move Without Action Tick");
 		}
 
 		payload.pop_back();

@@ -144,6 +144,29 @@ BLOCKED ProjectAudit 전체 exit: local Resources inventory mismatch + 별도 �
 실제 F1 시각/편집 smoke와 최신 Lobby 승인 Character Select round-trip은 이 세션에서 사람이 실행하지
 않았으므로 자동 PASS와 분리한다. `git diff --check`와 PR 결과는 최종 commit 직전에 확인한다.
 
+### 6.1 Windows CRLF provenance 검증 복구
+
+Windows checkout에서 `Export-OfficialBalanceReceipt.py`가 CRLF 391개를 가진 상태였고, receipt는 같은
+소스의 LF 바이트 SHA-256을 저장하고 있었다. 기존 publisher가 working file의 raw 바이트를 비교해
+`Balance provenance receipt is stale for the current extractor.`로 Server pre-build를 중단했다.
+
+`Publish-GameplayBalance.ps1`은 이제 UTF-8 extractor 텍스트의 `CRLF`와 단독 `CR`을 `LF`로
+정규화한 뒤 SHA-256을 비교한다. `.gitattributes`는 신규 checkout의 해당 extractor 한 파일을 LF로
+고정한다. Balance JSON, 공식 receipt, 원본 source hash와 생성된 행 계약은 변경하지 않았다.
+
+```text
+PASS  working raw hash 13a4c153... / canonical hash 17a4bd65... = receipt hash
+PASS  python -m py_compile Export-OfficialBalanceReceipt.py
+PASS  Publish-GameplayBalance.ps1 -Mode Validate (5 players, 72 skills, 54 damage, 1 boss)
+PASS  Publish-GameplayBalance.ps1 -Mode Publish
+PASS  Server Debug pre-build + compile/link, warnings 0, errors 0
+PASS  Server.exe --contract-test, failures : 0
+BLOCKED ProjectAudit 전체 exit: 기존 asset-lock inventory, Effect Tool G1, 누락 DimensionMaster resource 관련 4건
+```
+
+ProjectAudit의 네 실패는 이 줄바꿈 수정 파일과 무관하며, audit 안에서 실행된 gameplay balance
+Validate/Publish는 모두 통과했다.
+
 ## 7. 담당자 인계
 
 처음 작업하는 담당자는 다음 순서로 읽는다.

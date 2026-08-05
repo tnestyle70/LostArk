@@ -3,6 +3,7 @@
 #include "GameplayCatalog.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "ServerTriggerSystem.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 
@@ -737,6 +738,118 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		}
 		tests.Require(10000u - 261u == meleeEntities[0].iCurrentHp,
 			"Reach the boss through its collision radius");
+	}
+
+	{
+		namespace fs = std::filesystem;
+		const fs::path triggerRoot =
+			fs::temp_directory_path() / L"LostArkWorldTriggerContractTest";
+		std::error_code prepareError;
+		fs::remove_all(triggerRoot, prepareError);
+		fs::create_directories(triggerRoot / L"World");
+		const fs::path bootstrapPath =
+			triggerRoot / L"World" / L"VALTAN_ARENA.worldbootstrap";
+		const auto writeTriggerBootstrap =
+			[&bootstrapPath](const float durationSeconds)
+			{
+				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
+				bootstrap <<
+					"LOSTARK_WORLD_BOOTSTRAP\t3\tVALTAN_ARENA"
+					"\tLV_LUT_HEARTRB_ED\t3\t2\n"
+					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1"
+					"\t-\t-\t0\t0\t0\t0\t0\t-\n"
+					"trigger.contract.jump\ttriggerBox\t-\t-\t0\t0\t0\t0\t1"
+					"\t2\t2\t2\t0\t1\tmovePlayer\t10\t0\t0\t"
+					<< durationSeconds << "\t4\n";
+			};
+		writeTriggerBootstrap(1.f);
+
+		wchar_t previousRoot[32768]{};
+		const DWORD previousLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", previousRoot,
+			static_cast<DWORD>(std::size(previousRoot)));
+		SetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", triggerRoot.c_str());
+		CWorldBootstrap triggerBootstrap;
+		const bool loadedTriggerBootstrap = triggerBootstrap.Load(
+			WORLD_ID::VALTAN_ARENA);
+		tests.Require(
+			loadedTriggerBootstrap &&
+			2u == triggerBootstrap.Get_Placements().size() &&
+			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ==
+				triggerBootstrap.Get_Placements()[1].eKind &&
+			1u == triggerBootstrap.Get_Placements()[1].TriggerActions.size(),
+			"Parse movePlayer trigger from world bootstrap v3");
+
+		writeTriggerBootstrap(-1.f);
+		tests.Require(
+			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			2u == triggerBootstrap.Get_Placements().size(),
+			"Reject invalid trigger bootstrap without replacing committed world");
+		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+			0u == previousLength || previousLength >= std::size(previousRoot) ?
+				nullptr : previousRoot);
+		std::error_code cleanupError;
+		fs::remove_all(triggerRoot, cleanupError);
+	}
+
+	{
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.jump";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = false;
+		WORLD_TRIGGER_ACTION move{};
+		move.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+		move.fTargetX = 10.f;
+		move.fTargetY = 0.f;
+		move.fTargetZ = 0.f;
+		move.fDurationSeconds = 1.f;
+		move.fArcHeight = 4.f;
+		trigger.TriggerActions.push_back(move);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus) &&
+			1u == triggerSystem.Get_TriggerCount(),
+			"Initialize enabled movePlayer trigger");
+		std::map<PLAYER_ID, SERVER_PLAYER> triggerPlayers;
+		SERVER_PLAYER triggerPlayer{};
+		triggerPlayer.iPlayerId = 1;
+		triggerPlayer.iCurrentHp = 100;
+		triggerPlayer.iMaximumHp = 100;
+		triggerPlayers.emplace(1, triggerPlayer);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 10);
+		tests.Require(
+			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
+				triggerPlayers.begin()->second.eAction &&
+			triggerPlayers.begin()->second.TriggerMove.isActive &&
+			10u == triggerPlayers.begin()->second.iActionStartTick,
+			"Fire trigger on OBB entry");
+		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
+		tests.Require(
+			std::abs(triggerPlayers.begin()->second.fPositionX - 5.f) < 0.001f &&
+			std::abs(triggerPlayers.begin()->second.fPositionY - 4.f) < 0.001f,
+			"Advance movePlayer with authored parabolic arc");
+		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
+		tests.Require(
+			std::abs(triggerPlayers.begin()->second.fPositionX - 10.f) < 0.001f &&
+			std::abs(triggerPlayers.begin()->second.fPositionY) < 0.001f &&
+			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
+			!triggerPlayers.begin()->second.TriggerMove.isActive,
+			"Complete movePlayer at exact authored destination");
+		triggerSystem.Evaluate_Entries(triggerPlayers, 11);
+		triggerPlayers.begin()->second.fPositionX = 0.f;
+		triggerSystem.Evaluate_Entries(triggerPlayers, 12);
+		tests.Require(
+			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
+				triggerPlayers.begin()->second.eAction &&
+			12u == triggerPlayers.begin()->second.iActionStartTick,
+			"Rearm non-once trigger after player exits");
 	}
 
 	{

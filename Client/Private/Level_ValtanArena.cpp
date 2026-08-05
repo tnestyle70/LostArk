@@ -38,10 +38,20 @@ HRESULT CLevel_ValtanArena::Initialize()
 			m_MapRuntime.Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
+	if (!m_DeployRuntime.Load_Area(
+		ETOUI(LEVEL::VALTAN_ARENA),
+		pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(("[Level_ValtanArena][DeployProp] " +
+			m_DeployRuntime.Get_Status() + "\n").c_str());
+		m_MapRuntime.Clear();
+		return E_FAIL;
+	}
 
 	if (FAILED(CMapPlacementRuntime::Ensure_DefaultLight()) ||
 		FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 	{
+		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
 		return E_FAIL;
 	}
@@ -59,6 +69,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		TEXT("Layer_WorldEntity");
 	if (!m_Replication.Initialize(replicationDesc))
 	{
+		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();
 		return E_FAIL;
 	}

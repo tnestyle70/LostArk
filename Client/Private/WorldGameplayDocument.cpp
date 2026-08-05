@@ -228,7 +228,7 @@ bool_t Client::CWorldGameplayDocument::Load(
 			if (!Read_PositiveExtents(value.Find("halfExtents"), record.halfExtents) ||
 				nullptr == triggerOnce || !triggerOnce->Is_Boolean() ||
 				nullptr == events || !events->Is_Array() ||
-				events->Get_Array().empty() ||
+				(record.isEnabled && events->Get_Array().empty()) ||
 				events->Get_Array().size() > 32u)
 			{
 				outStatus = "Gameplay trigger shape or event list is invalid";
@@ -237,35 +237,58 @@ bool_t Client::CWorldGameplayDocument::Load(
 			record.isTriggerOnce = triggerOnce->Get_Boolean();
 			for (const DATA_JSON_VALUE& eventValue : events->Get_Array())
 			{
-				if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
-				{
-					outStatus = "Gameplay trigger event has unknown fields";
-					return false;
-				}
 				const DATA_JSON_VALUE* eventType = eventValue.Find("type");
-				const DATA_JSON_VALUE* targetId = eventValue.Find("targetId");
-				const DATA_JSON_VALUE* eventValueField = eventValue.Find("value");
 				WORLD_TRIGGER_EVENT event;
 				if (nullptr == eventType || !eventType->Is_String() ||
-					nullptr == targetId || !targetId->Is_String() ||
 					!Try_ParseTriggerEventKind(eventType->Get_String(), event.eKind))
 				{
 					outStatus = "Gameplay trigger event identity is invalid";
 					return false;
 				}
-				event.targetId = targetId->Get_String();
-				if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
+				if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
 				{
-					if (nullptr == eventValueField || !eventValueField->Is_Boolean())
+					if (!Is_ExactObject(eventValue,
+						{ "type", "targetPosition", "durationSeconds", "arcHeight" }) ||
+						!Read_Position(eventValue.Find("targetPosition"), event.targetPosition))
+					{
+						outStatus = "Gameplay movePlayer event has invalid fields";
 						return false;
-					event.conditionValue = eventValueField->Get_Boolean();
+					}
+					const DATA_JSON_VALUE* duration = eventValue.Find("durationSeconds");
+					const DATA_JSON_VALUE* arcHeight = eventValue.Find("arcHeight");
+					if (nullptr == duration || !duration->Is_Number() ||
+						nullptr == arcHeight || !arcHeight->Is_Number())
+					{
+						outStatus = "Gameplay movePlayer timing is invalid";
+						return false;
+					}
+					event.durationSeconds = static_cast<f32_t>(duration->Get_Number());
+					event.arcHeight = static_cast<f32_t>(arcHeight->Get_Number());
 				}
 				else
 				{
-					if (nullptr == eventValueField || !eventValueField->Is_String() ||
+					if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
+					{
+						outStatus = "Gameplay trigger event has unknown fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* targetId = eventValue.Find("targetId");
+					const DATA_JSON_VALUE* eventValueField = eventValue.Find("value");
+					if (nullptr == targetId || !targetId->Is_String())
+						return false;
+					event.targetId = targetId->Get_String();
+					if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
+					{
+						if (nullptr == eventValueField || !eventValueField->Is_Boolean())
+							return false;
+						event.conditionValue = eventValueField->Get_Boolean();
+					}
+					else if (nullptr == eventValueField || !eventValueField->Is_String() ||
 						!Try_ParseDestroyableState(eventValueField->Get_String(),
 							event.eDestroyableState))
+					{
 						return false;
+					}
 				}
 				record.triggerEvents.push_back(std::move(event));
 			}
@@ -366,9 +389,9 @@ bool_t Client::CWorldGameplayDocument::Save(
 		}
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
 			continue;
-		if (placement.triggerEvents.empty())
+		if (placement.isEnabled && placement.triggerEvents.empty())
 		{
-			outStatus = "Gameplay trigger requires at least one event";
+			outStatus = "Enabled gameplay trigger requires at least one event";
 			return false;
 		}
 		for (const WORLD_TRIGGER_EVENT& event : placement.triggerEvents)
@@ -448,13 +471,23 @@ bool_t Client::CWorldGameplayDocument::Save(
 			{
 				const WORLD_TRIGGER_EVENT& event = record.triggerEvents[eventIndex];
 				output << (0u == eventIndex ? "\n" : ",\n")
-					<< "        { \"type\": \"" << TriggerEventKind_ToString(event.eKind)
-					<< "\", \"targetId\": \"" << CDataJson::Escape(event.targetId)
-					<< "\", \"value\": ";
-				if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
-					output << (event.conditionValue ? "true" : "false");
+					<< "        { \"type\": \"" << TriggerEventKind_ToString(event.eKind) << "\"";
+				if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
+				{
+					output << ", \"targetPosition\": [" << event.targetPosition.x << ", "
+						<< event.targetPosition.y << ", " << event.targetPosition.z << "], "
+						<< "\"durationSeconds\": " << event.durationSeconds << ", "
+						<< "\"arcHeight\": " << event.arcHeight;
+				}
 				else
-					output << '"' << DestroyableState_ToString(event.eDestroyableState) << '"';
+				{
+					output << ", \"targetId\": \"" << CDataJson::Escape(event.targetId)
+						<< "\", \"value\": ";
+					if (WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind)
+						output << (event.conditionValue ? "true" : "false");
+					else
+						output << '"' << DestroyableState_ToString(event.eDestroyableState) << '"';
+				}
 				output << " }";
 			}
 			output << (record.triggerEvents.empty() ? "]" : "\n      ]");
@@ -559,6 +592,31 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 	const bool_t hasValidActorReference = !actorPlacement ||
 		(WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ?
 			placement.archetypeId.empty() : Is_ValidStableId(placement.archetypeId));
+	const bool_t hasValidTriggerEvents =
+		(!placement.isEnabled && placement.triggerEvents.empty()) ||
+		(!placement.triggerEvents.empty() &&
+			placement.triggerEvents.size() <= 32u &&
+			std::all_of(placement.triggerEvents.begin(), placement.triggerEvents.end(),
+				[](const WORLD_TRIGGER_EVENT& event)
+				{
+					if (WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == event.eKind)
+					{
+						return std::isfinite(event.targetPosition.x) &&
+							std::isfinite(event.targetPosition.y) &&
+							std::isfinite(event.targetPosition.z) &&
+							std::abs(event.targetPosition.x) <= 100000.f &&
+							std::abs(event.targetPosition.y) <= 100000.f &&
+							std::abs(event.targetPosition.z) <= 100000.f &&
+							std::isfinite(event.durationSeconds) &&
+							event.durationSeconds >= 0.05f && event.durationSeconds <= 10.f &&
+							std::isfinite(event.arcHeight) &&
+							event.arcHeight >= 0.f && event.arcHeight <= 1000.f;
+					}
+					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
+						Is_ValidStableId(event.targetId) &&
+						(WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind ||
+							WORLD_DESTROYABLE_STATE::END != event.eDestroyableState);
+				}));
 	const bool_t hasValidTrigger =
 		WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind ||
 		(std::isfinite(placement.halfExtents.x) &&
@@ -567,15 +625,7 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 			placement.halfExtents.x > 0.f && placement.halfExtents.x <= 1000.f &&
 			placement.halfExtents.y > 0.f && placement.halfExtents.y <= 1000.f &&
 			placement.halfExtents.z > 0.f && placement.halfExtents.z <= 1000.f &&
-			!placement.triggerEvents.empty() && placement.triggerEvents.size() <= 32u &&
-			std::all_of(placement.triggerEvents.begin(), placement.triggerEvents.end(),
-				[](const WORLD_TRIGGER_EVENT& event)
-				{
-					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
-						Is_ValidStableId(event.targetId) &&
-						(WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind ||
-							WORLD_DESTROYABLE_STATE::END != event.eDestroyableState);
-				}));
+			hasValidTriggerEvents);
 	const bool_t hasValidDestroyable =
 		WORLD_PLACEMENT_KIND::DESTROYABLE != placement.eKind ||
 		(0u != placement.deployRuntimePlacementId &&
@@ -633,6 +683,7 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 {
 	switch (kind)
 	{
+	case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER: return "movePlayer";
 	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
 	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
 	default: return "invalid";
@@ -642,7 +693,9 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
 	const std::string& value, WORLD_TRIGGER_EVENT_KIND& outKind)
 {
-	if ("setCondition" == value)
+	if ("movePlayer" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+	else if ("setCondition" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
 	else if ("setDestroyableState" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE;

@@ -2,6 +2,8 @@
 
 #include "Client_Defines.h"
 
+#include <string>
+
 NS_BEGIN(Client)
 
 struct MAP_LOAD_SCOPE final
@@ -12,6 +14,7 @@ struct MAP_LOAD_SCOPE final
 	f32_t minimumZ = {};
 	f32_t maximumX = {};
 	f32_t maximumZ = {};
+	std::string excludedAssetGroupId;
 
 	bool_t Contains(const float3_t& position) const
 	{
