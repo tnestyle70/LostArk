@@ -211,7 +211,16 @@ bool_t CMapAssetCatalog::Load_Source(
 
 	m_SourceCatalogOverride = normalizedCatalog;
 	m_SourcePlacementOverride = normalizedPlacements;
-	return Load_Area(expectedAreaId);
+	if (!Load_Area(expectedAreaId))
+		return false;
+
+	const std::wstring authoringNamespace =
+		L"MapEditorArea:" +
+		std::wstring(expectedAreaId.begin(), expectedAreaId.end()) + L":";
+	for (MAP_ASSET_ENTRY& entry : m_Entries)
+		entry.prototypeTag = authoringNamespace + entry.prototypeTag;
+
+	return true;
 }
 
 bool_t CMapAssetCatalog::Load_Area(const std::string& areaId)

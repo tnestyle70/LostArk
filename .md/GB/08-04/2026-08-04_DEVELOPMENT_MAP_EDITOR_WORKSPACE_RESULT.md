@@ -18,7 +18,7 @@ MapTool selector에는 다음 네 Area만 노출한다.
 |---|---|---|---|---|
 | Character Select | `LV_LOBBY_CLASSSELECT_SL00` | 803 placements | source/paint bootstrap | disabled |
 | Bern | `LV_BER_BERNCASTLE` | 50,017 placements | disabled | required |
-| Valtan | `LV_LUT_HEARTRB_ED` | 13,115 placements | source/paint/blockers | required |
+| Valtan | `LV_LUT_HEARTRB_ED` | 13,192 placements | source/paint/blockers | required |
 | Training Map | `LV_SHS_RCARENA_D` | 7,856 placements | disabled | disabled |
 
 Training Map은 제품 Test용 `LV_DEV_TRAINING_GROUND`가 아니라 원본 302 assets
@@ -31,6 +31,9 @@ Training Map은 제품 Test용 `LV_DEV_TRAINING_GROUND`가 아니라 원본 302 
   `sourcePlacements`만 읽는다.
 - `CMapAssetCatalog::Load_Source`가 single catalog와 Bern shard-set을 같은 catalog
   validation 경로로 읽는다.
+- `Load_Source`가 editor runtime prototype tag에 Area namespace를 붙인다. Character Select와
+  Valtan처럼 serialized tag는 같지만 area별 `.wmodel`이 다른 경우에도 한 Development Level의
+  prototype fingerprint가 충돌하지 않는다. 제품 `Load_Area`와 저장 문서는 그대로 유지한다.
 - published `Client/Bin/DataFiles/Map` fallback을 제거했다.
 - staged catalog/placement/world/navigation이 모두 성공한 뒤 기존 editor-owned runtime
   object를 exact pointer 목록으로 제거하고 새 상태를 commit한다.
@@ -67,6 +70,8 @@ status가 새 active Area로 바뀔 때까지 기다리고 중복 선택하지 �
 
 - JSON/XML parse: `MapCatalog.json`, `Client.vcxproj`, `.filters`
 - 네 authoring source catalog와 placement 실재 확인
+- Valtan authoring placement header와 `MapCatalog.json` count 13,192 일치
+- `Load_Source` editor runtime prototype의 Area namespace 격리 정적 계약 확인
 - scoped `git diff --check`: whitespace error 없음
 - direct Client x64 Debug build: 오류 0, 링크 성공
 - canonical Release:
@@ -80,10 +85,16 @@ status가 새 active Area로 바뀔 때까지 기다리고 중복 선택하지 �
 
 ### 전체 PASS가 아닌 기존 외부 상태
 
-- ProjectAudit 최종 결과는 `asset-lock.inventory` 한 건만 실패했다.
-  현재 Resources는 10,179 files / 5,405,091,440 bytes이며, 사용자가 폐기하기로 한 이전
+- 이번 회귀 확인의 ProjectAudit 최종 결과는 다음 두 건만 실패했다.
+  `asset-lock.inventory`와 `gameplay.balance-publish-contract`는 이 Map Tool 수정 범위 밖의
+  기존 외부 상태다. Map catalog와 Server navigation validation은 통과했다.
+- `asset-lock.inventory`:
+  현재 Resources는 10,256 files / 5,507,131,395 bytes이며, 사용자가 폐기하기로 한 이전
   immutable resource pack lock과 불일치한다. 이번 Map Editor 변경에서 lock/payload를
   다시 만들지 않았다.
+- `gameplay.balance-publish-contract`: 현재 extractor 기준 balance provenance receipt가
+  stale 상태다. 맵 editor runtime prototype 및 navigation 데이터와 무관하므로 이 PR에서
+  receipt를 재생성하지 않았다.
 - canonical Debug 첫 실행은 동시에 수정 중이던 `Animation_Tool`/
   `AnimationAuthoringBridge`의 중간 상태 때문에 Client compile에서 실패했다. 그 뒤 Release는
   같은 파일까지 포함해 전체 Client 링크에 성공했다.
