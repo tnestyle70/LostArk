@@ -7,7 +7,9 @@
     {
       "skillId": 34120,
       "clips": [
-        "flm_sk_threetalonstrike_01"
+        "flm_sk_threetalonstrike_01",
+        "flm_sk_threetalonstrike_02",
+        "flm_sk_threetalonstrike_03"
       ]
     },
     {
@@ -31,8 +33,7 @@
     {
       "skillId": 34110,
       "clips": [
-        "flm_sk_crescentsweep",
-        "flm_sk_crescentsweep_custom_5"
+        "flm_sk_crescentsweep"
       ]
     },
     {
@@ -157,7 +158,6 @@
       "clips": [
         "flm_sk_lastwhisper_start",
         "flm_sk_lastwhisper_loop",
-        "flm_sk_lastwhisper_end",
         "flm_sk_lastwhisper_end"
       ]
     }
