@@ -1,0 +1,179 @@
+#include "MonsterBrain.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
+	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
+
+	void Transition(LostArk::Server::SERVER_WORLD_ENTITY& monster,
+		const LostArk::Server::SERVER_ENTITY_ACTION action,
+		const std::uint32_t serverTick)
+	{
+		monster.eAction = action;
+		monster.fActionElapsedSeconds = 0.f;
+		monster.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+		monster.hasAppliedPatternDamage = false;
+		if (LostArk::Server::SERVER_ENTITY_ACTION::PATTERN_WINDUP == action)
+			monster.strActionId = "monster.basic.attack";
+		else if (LostArk::Server::SERVER_ENTITY_ACTION::IDLE == action ||
+			LostArk::Server::SERVER_ENTITY_ACTION::CHASE == action)
+			monster.strActionId.clear();
+	}
+}
+
+void LostArk::Server::CMonsterBrain::Update(
+	SERVER_WORLD_ENTITY& monster,
+	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
+	const CGameplayCatalog& catalog,
+	const CServerNavigation& navigation,
+	const float fixedDeltaSeconds,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
+{
+	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
+		return;
+	if (0u == monster.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == monster.eAction)
+	{
+		monster.iCurrentHp = 0u;
+		if (SERVER_ENTITY_ACTION::DEAD != monster.eAction)
+			Transition(monster, SERVER_ENTITY_ACTION::DEAD, serverTick);
+		else
+			monster.fActionElapsedSeconds += fixedDeltaSeconds;
+		return;
+	}
+
+	SERVER_PLAYER* target = nullptr;
+	float targetDistanceSquared = 0.f;
+	for (auto& [playerId, player] : players)
+	{
+		(void)playerId;
+		if (0u == player.iCurrentHp)
+			continue;
+		const float deltaX = player.fPositionX - monster.fPositionX;
+		const float deltaZ = player.fPositionZ - monster.fPositionZ;
+		const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+		if (nullptr == target || distanceSquared < targetDistanceSquared)
+		{
+			target = &player;
+			targetDistanceSquared = distanceSquared;
+		}
+	}
+	monster.fActionElapsedSeconds += fixedDeltaSeconds;
+	if (nullptr == target ||
+		targetDistanceSquared > monster.fEngageDistance * monster.fEngageDistance)
+	{
+		monster.iTargetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
+		monster.MovePath.clear();
+		if (SERVER_ENTITY_ACTION::IDLE != monster.eAction)
+			Transition(monster, SERVER_ENTITY_ACTION::IDLE, serverTick);
+		return;
+	}
+	monster.iTargetEntityId = target->iNetEntityId;
+	const float distance = std::sqrt(targetDistanceSquared);
+	if (SERVER_ENTITY_ACTION::IDLE == monster.eAction ||
+		SERVER_ENTITY_ACTION::CHASE == monster.eAction)
+	{
+		if (distance <= monster.fAttackRange + monster.fCollisionRadius)
+		{
+			monster.MovePath.clear();
+			Transition(monster, SERVER_ENTITY_ACTION::PATTERN_WINDUP, serverTick);
+			return;
+		}
+		if (SERVER_ENTITY_ACTION::CHASE != monster.eAction)
+			Transition(monster, SERVER_ENTITY_ACTION::CHASE, serverTick);
+		if (monster.MovePath.empty() ||
+			static_cast<std::int32_t>(serverTick - monster.iNextPathReplanTick) >= 0)
+		{
+			monster.MovePath.clear();
+			monster.iMovePathIndex = 0;
+			navigation.Find_Path(monster.fPositionX, monster.fPositionZ,
+				target->fPositionX, target->fPositionZ, monster.MovePath);
+			monster.iNextPathReplanTick = serverTick + 15u +
+				static_cast<std::uint32_t>(monster.iNetEntityId % 10u);
+		}
+		if (!monster.MovePath.empty() && monster.iMovePathIndex < monster.MovePath.size())
+		{
+			const SERVER_NAV_POINT& point = monster.MovePath[monster.iMovePathIndex];
+			const float deltaX = point.x - monster.fPositionX;
+			const float deltaZ = point.z - monster.fPositionZ;
+			const float stepDistance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+			if (stepDistance <= 0.08f)
+			{
+				++monster.iMovePathIndex;
+				if (monster.iMovePathIndex >= monster.MovePath.size())
+					monster.MovePath.clear();
+			}
+			else
+			{
+				const float moveDistance = (std::min)(
+					monster.fMoveSpeed * fixedDeltaSeconds, stepDistance);
+				const float ratio = moveDistance / stepDistance;
+				monster.fPositionX += deltaX * ratio;
+				monster.fPositionY += (point.y - monster.fPositionY) * ratio;
+				monster.fPositionZ += deltaZ * ratio;
+				monster.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+			}
+		}
+		return;
+	}
+
+	if (SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction &&
+		monster.fActionElapsedSeconds >=
+			static_cast<float>(monster.iPatternTelegraphMs) * MILLISECONDS_TO_SECONDS)
+	{
+		Transition(monster, SERVER_ENTITY_ACTION::PATTERN_ACTIVE, serverTick);
+		return;
+	}
+	if (SERVER_ENTITY_ACTION::PATTERN_ACTIVE == monster.eAction)
+	{
+		if (!monster.hasAppliedPatternDamage)
+		{
+			const float deltaX = target->fPositionX - monster.fPositionX;
+			const float deltaZ = target->fPositionZ - monster.fPositionZ;
+			const float hitRange = monster.fAttackRange + monster.fCollisionRadius;
+			if (deltaX * deltaX + deltaZ * deltaZ <= hitRange * hitRange)
+			{
+				const PLAYER_RUNTIME_PROFILE* playerProfile =
+					catalog.Find_Player(target->eCharacterClass);
+				const std::uint32_t damage = CGameplayCatalog::Apply_Defense(
+					monster.iAttackPower,
+					nullptr == playerProfile ? 0u : playerProfile->iDefense);
+				target->iCurrentHp = damage >= target->iCurrentHp ?
+					0u : target->iCurrentHp - damage;
+				if (0u != damage &&
+					outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+				{
+					LostArk::Shared::DAMAGE_EVENT event{};
+					event.iTargetNetEntityId = target->iNetEntityId;
+					event.iAmount = damage;
+					event.fPositionX = target->fPositionX;
+					event.fPositionY = target->fPositionY;
+					event.fPositionZ = target->fPositionZ;
+					event.isOutgoing = false;
+					outDamageEvents.push_back(event);
+				}
+				if (0u == target->iCurrentHp)
+				{
+					target->eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
+					target->iActionStartTick = 0u == serverTick ? 1u : serverTick;
+					target->hasMoveGoal = false;
+					target->MovePath.clear();
+				}
+			}
+			monster.hasAppliedPatternDamage = true;
+		}
+		if (monster.fActionElapsedSeconds >=
+			static_cast<float>(monster.iPatternActiveMs) * MILLISECONDS_TO_SECONDS)
+			Transition(monster, SERVER_ENTITY_ACTION::PATTERN_RECOVERY, serverTick);
+		return;
+	}
+	if (SERVER_ENTITY_ACTION::PATTERN_RECOVERY == monster.eAction &&
+		monster.fActionElapsedSeconds >=
+			static_cast<float>(monster.iPatternRecoveryMs) * MILLISECONDS_TO_SECONDS)
+	{
+		Transition(monster, SERVER_ENTITY_ACTION::IDLE, serverTick);
+	}
+}

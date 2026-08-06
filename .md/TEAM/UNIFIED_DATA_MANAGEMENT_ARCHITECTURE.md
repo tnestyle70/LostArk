@@ -690,7 +690,7 @@ flowchart TD
 ### 14.2 현재 gameplay kind
 
 현재 `lostark.world-gameplay` authoring은 formatVersion 4다. 제품 publisher/runtime admission은
-`playerSpawn`, `npc`, `boss`, 단일 typed action의 `triggerBox`, 정적 `collisionBox`를 지원한다.
+`playerSpawn`, `npc`, `boss`, 단일 typed action의 `triggerBox`, 정적 `collisionBox`를 지원하며 Valtan은 별도 `SpawnGroups.world.json`을 함께 소비한다.
 
 - `playerSpawn`: class-neutral transform, `archetypeId: null`, `encounterId: null`
 - `npc`: NpcCatalog archetype 참조. 현재 `NPC_BEDA` 한 presentation 지원
@@ -712,10 +712,12 @@ flowchart TD
 ```text
 MOVE_PLAYER(targetPosition, durationSeconds, arcHeight)
 CHANGE_LEVEL(targetWorldId)
+ACTIVATE_SPAWN_GROUP(spawnGroupId)
+ACTIVATE_ENCOUNTER(targetPlacementId)
 ```
 
 `CHANGE_LEVEL` target은 Bern과 Valtan Arena만 허용하며 Server room transfer와 새
-`S2C_ENTER_ACCEPTED` 뒤 Client typed transition으로 실행한다. 일반 Monster spawn event는 아직 추가하지 않는다.
+`S2C_ENTER_ACCEPTED` 뒤 Client typed transition으로 실행한다. Spawn group activation은 같은 Area group ID만, encounter activation은 disabled boss placement ID만 허용한다.
 
 함수명이나 animation clip 문자열을 저장하지 않는다. destroyable 시각 transform은 deploy placement가
 소유하고 gameplay row는 stable `deployRuntimePlacementId`를 참조한다. publisher는 두 anchor 위치의 오차를
@@ -735,8 +737,7 @@ presentation이 한 수직 슬라이스로 닫히지 않았으므로 계속 fail
 
 ### 14.4 Monster와 wave 확장
 
-현재 일반 Monster runtime/catalog/schema는 없다. 첫 실제 Monster가 들어올 때 다음 수직 슬라이스를 함께
-구현한다.
+Valtan 일반 Monster 수직 슬라이스는 다음 경로로 구현되어 있다.
 
 ```text
 real MonsterCatalog row + model/presentation
@@ -749,7 +750,7 @@ real MonsterCatalog row + model/presentation
 -> protocol/server/client harness
 ```
 
-`Gameplay.world.json`에는 monster를 여러 번 복제한 wave 수치를 넣지 않는다. 목표 optional
+`Gameplay.world.json`에는 monster를 여러 번 복제한 wave 수치를 넣지 않는다. optional
 `SpawnGroups.world.json`은 다음을 소유한다.
 
 ```text
@@ -760,7 +761,7 @@ activation/repeat/completion policy
 ```
 
 MapTool은 한 Area workspace에서 world placement와 spawn group을 함께 편집하지만 각각의 Dirty/Save 상태를
-분리한다. 첫 Monster가 없을 때 빈 file이나 `MONSTER` enum을 미리 추가하지 않는다.
+분리한다. publisher는 unknown archetype/anchor/prerequisite cycle을 거부하고 Server는 maxAlive, wave clear, prerequisite를 권위 있게 처리한다.
 
 ### 14.5 NPC
 
@@ -1074,11 +1075,11 @@ promotion 실패와 기존 runtime 보존을 검증한다.
 | Player defense 감산 | `CURRENT`: `raw*100/(100+defense)`, `PROJECT_TUNED` |
 | 원작 Valtan pattern timeline | `REFERENCE 추출 선행 필요` |
 | playerSpawn/Boss world kind | `CURRENT` |
-| NPC world kind/catalog | `PARTIAL`: schema/publisher만 있고 admitted actor와 Client presentation 없음 |
+| NPC world kind/catalog | `CURRENT`: `NPC_BEDA` Server world entity + Client presentation |
 | Character Select lazy Valtan | `CURRENT` |
-| triggerBox/destroyable authoring schema v2 | `PARTIAL`: document parse/save + Trigger Box disabled-draft MapTool UI, runtime admission은 fail-closed |
-| trigger runtime/dynamic blocker/replication | `TARGET PLAN` |
-| 일반 Monster/wave | `TARGET`, 첫 실제 actor 전에는 파일 없음 |
+| triggerBox/destroyable authoring schema v4 | `CURRENT` triggerBox 4 actions + collisionBox, `PARTIAL` destroyable |
+| trigger runtime/dynamic blocker/replication | `CURRENT` OBB trigger + static collisionBox; dynamic blocker는 `TARGET` |
+| 일반 Monster/wave | `CURRENT`: Valtan 4 actor, 3 groups, Server AI/combat/despawn, Client presentation |
 | Balance Tool offline editor | `CURRENT`: Save/provenance/Validate/Publish, Server restart 방식 |
 | Server Hot Reload | `TARGET`, 마지막 단계 |
 

@@ -28,6 +28,10 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 			(WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER !=
 				placement.TriggerActions.front().eKind &&
 			WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL !=
+				placement.TriggerActions.front().eKind &&
+			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP !=
+				placement.TriggerActions.front().eKind &&
+			WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER !=
 				placement.TriggerActions.front().eKind))
 		{
 			outStatus = "Enabled trigger requires one supported action: " +
@@ -93,7 +97,9 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 	const std::uint32_t actionStartTick,
-	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers)
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+	const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+		const std::string&)>& activateTarget)
 {
 	outTransfers.clear();
 	for (RUNTIME_TRIGGER& trigger : m_Triggers)
@@ -122,6 +128,12 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 				fired = Build_WorldTransfer(player, action, transfer);
 				if (fired)
 					outTransfers.push_back(std::move(transfer));
+			}
+			else if ((WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == action.eKind ||
+				WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == action.eKind) &&
+				activateTarget)
+			{
+				fired = activateTarget(action.eKind, action.strTargetId);
 			}
 			if (fired && trigger.Definition.isTriggerOnce)
 			{

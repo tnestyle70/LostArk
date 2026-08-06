@@ -9,6 +9,9 @@
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
+#include "SpawnGroupBootstrap.h"
+#include "SpawnGroupRuntime.h"
+#include "MonsterBrain.h"
 #include "ValtanBrain.h"
 
 #include <cstddef>
@@ -72,6 +75,9 @@ namespace LostArk::Server
 		bool Send_WorldEntitySpawned(
 			const std::shared_ptr<CClientSession>& session,
 			const SERVER_WORLD_ENTITY& entity);
+		bool Send_WorldEntityDespawned(
+			const std::shared_ptr<CClientSession>& session,
+			LostArk::Shared::NET_ENTITY_ID netEntityId);
 		bool Send_WorldEntitySpawnResult(
 			const std::shared_ptr<CClientSession>& session,
 			const std::string& placementId,
@@ -89,6 +95,8 @@ namespace LostArk::Server
 			LostArk::Shared::PLAYER_DESPAWN_REASON reason);
 		void Broadcast_WorldEntitySpawned(
 			const SERVER_WORLD_ENTITY& entity);
+		void Broadcast_WorldEntityDespawned(
+			LostArk::Shared::NET_ENTITY_ID netEntityId);
 		void Broadcast_WorldSnapshot();
 
 		std::shared_ptr<CClientSession> Find_Session(
@@ -102,6 +110,15 @@ namespace LostArk::Server
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
 			SERVER_WORLD_ENTITY& outEntity);
 		bool Initialize_WorldEntities();
+		bool Activate_Encounter(const std::string& placementId);
+		bool Spawn_Monster(
+			const std::string& spawnGroupId,
+			const SPAWN_GROUP_ENTRY& entry,
+			const SPAWN_GROUP_ANCHOR& anchor,
+			const MONSTER_RUNTIME_PROFILE& profile,
+			std::uint32_t ordinal);
+		std::uint32_t Count_SpawnGroupEntities(
+			const std::string& spawnGroupId) const;
 		void Update_Players(float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
@@ -123,7 +140,10 @@ namespace LostArk::Server
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
+		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
+		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		CPlayerSkillSystem m_PlayerSkillSystem;
+		CMonsterBrain m_MonsterBrain;
 		CValtanBrain m_ValtanBrain;
 		std::vector<SERVER_WORLD_ENTITY> m_WorldEntities;
 		/* One tick's resolved hits. Cleared at the top of every simulation phase

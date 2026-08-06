@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 10;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 11;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -74,7 +74,8 @@ namespace LostArk::Shared
 		C2S_CHAT,
 		S2C_CHAT,
 
-		S2C_PLAYER_DESPAWNED
+		S2C_PLAYER_DESPAWNED,
+		S2C_WORLD_ENTITY_DESPAWNED
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -106,6 +107,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_CHAT:
 		case PACKET_TYPE::S2C_CHAT:
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
+		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 			return true;
 		default:
 			return  false;

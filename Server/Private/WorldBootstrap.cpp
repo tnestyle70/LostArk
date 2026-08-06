@@ -298,6 +298,30 @@ bool LostArk::Server::CWorldBootstrap::Load(
 					}
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
 				}
+				else if ("activateSpawnGroup" == fields[actionCursor])
+				{
+					if (1u != payloadCount ||
+						!IsStableId(fields[actionCursor + 2u]))
+					{
+						m_strStatus = "World activateSpawnGroup action is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					action.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+					action.strTargetId = fields[actionCursor + 2u];
+				}
+				else if ("activateEncounter" == fields[actionCursor])
+				{
+					if (1u != payloadCount ||
+						!IsStableId(fields[actionCursor + 2u]))
+					{
+						m_strStatus = "World activateEncounter action is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					action.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER;
+					action.strTargetId = fields[actionCursor + 2u];
+				}
 				else
 				{
 					m_strStatus = "Unknown world trigger action at row " +

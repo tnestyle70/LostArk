@@ -4,6 +4,7 @@
 #include "ProjectDataRoot.h"
 
 #include <fstream>
+#include <cmath>
 #include <set>
 
 namespace
@@ -13,6 +14,7 @@ namespace
 	std::vector<CHARACTER_ACTOR_ENTRY> g_Characters;
 	std::vector<BOSS_ACTOR_ENTRY> g_Bosses;
 	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
+	std::vector<MONSTER_ACTOR_ENTRY> g_Monsters;
 	std::string g_Status = "Actor catalog is not initialized.";
 	bool_t g_isInitialized = false;
 
@@ -51,6 +53,21 @@ namespace
 			return false;
 		}
 		outValue = pValue->Get_String();
+		return true;
+	}
+
+	bool_t ReadRequiredNumber(
+		const DATA_JSON_VALUE& object,
+		const char_t* pName,
+		f32_t& outValue)
+	{
+		const DATA_JSON_VALUE* pValue = object.Find(pName);
+		if (nullptr == pValue || !pValue->Is_Number() ||
+			!std::isfinite(pValue->Get_Number()))
+		{
+			return false;
+		}
+		outValue = static_cast<f32_t>(pValue->Get_Number());
 		return true;
 	}
 
@@ -247,6 +264,62 @@ namespace
 		g_Npcs = std::move(staged);
 		return !g_Npcs.empty();
 	}
+
+	bool_t ParseMonsters(const DATA_JSON_VALUE& root)
+	{
+		const DATA_JSON_VALUE* pSchema = root.Find("schema");
+		const DATA_JSON_VALUE* pVersion = root.Find("formatVersion");
+		const DATA_JSON_VALUE* pEntries = root.Find("monsters");
+		if (nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != "lostark.monster-catalog" ||
+			nullptr == pVersion || !pVersion->Is_Number() ||
+			pVersion->Get_Number() != 1.0 ||
+			nullptr == pEntries || !pEntries->Is_Array())
+		{
+			return false;
+		}
+
+		std::set<std::string> archetypes;
+		std::set<std::string> presentations;
+		std::vector<MONSTER_ACTOR_ENTRY> staged;
+		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
+		{
+			if (!value.Is_Object() || 7u != value.Get_Object().size())
+				return false;
+			MONSTER_ACTOR_ENTRY entry;
+			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
+			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
+				!ReadRequiredString(value, "clientPresentationId",
+					entry.clientPresentationId) ||
+				!ReadRequiredString(value, "modelAssetId", entry.modelAssetId) ||
+				!ReadRequiredNumber(value, "modelScale", entry.modelScale) ||
+				!ReadRequiredNumber(value, "modelYawDegrees",
+					entry.modelYawDegrees) ||
+				nullptr == pClips || !pClips->Is_Object() ||
+				4u != pClips->Get_Object().size() ||
+				!ReadRequiredString(*pClips, "idle",
+					entry.presentationClips.idle) ||
+				!ReadRequiredString(*pClips, "chase",
+					entry.presentationClips.chase) ||
+				!ReadRequiredString(*pClips, "attack",
+					entry.presentationClips.attack) ||
+				!ReadRequiredString(*pClips, "dead",
+					entry.presentationClips.dead) ||
+				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
+				!IsResourceId(entry.modelAssetId) ||
+				entry.modelScale <= 0.f || entry.modelScale > 100.f ||
+				std::abs(entry.modelYawDegrees) > 360.f ||
+				entry.runtimeStatus != "supported" ||
+				!archetypes.insert(entry.archetypeId).second ||
+				!presentations.insert(entry.clientPresentationId).second)
+			{
+				return false;
+			}
+			staged.push_back(std::move(entry));
+		}
+		g_Monsters = std::move(staged);
+		return !g_Monsters.empty();
+	}
 }
 
 bool_t Client::CActorCatalog::Initialize()
@@ -256,15 +329,18 @@ bool_t Client::CActorCatalog::Initialize()
 	DATA_JSON_VALUE characters;
 	DATA_JSON_VALUE bosses;
 	DATA_JSON_VALUE npcs;
+	DATA_JSON_VALUE monsters;
 	if (!ReadDocument(L"Actors/CharacterCatalog.json", characters) ||
 		!ReadDocument(L"Actors/BossCatalog.json", bosses) ||
 		!ReadDocument(L"Actors/NpcCatalog.json", npcs) ||
+		!ReadDocument(L"Actors/MonsterCatalog.json", monsters) ||
 		!ParseCharacters(characters) || !ParseBosses(bosses) ||
-		!ParseNpcs(npcs))
+		!ParseNpcs(npcs) || !ParseMonsters(monsters))
 	{
 		g_Characters.clear();
 		g_Bosses.clear();
 		g_Npcs.clear();
+		g_Monsters.clear();
 		g_Status = "Actor catalog contract mismatch.";
 		return false;
 	}
@@ -279,6 +355,17 @@ const Client::NPC_ACTOR_ENTRY* Client::CActorCatalog::Find_Npc(
 	if (!Initialize())
 		return nullptr;
 	for (const NPC_ACTOR_ENTRY& entry : g_Npcs)
+		if (entry.archetypeId == archetypeId)
+			return &entry;
+	return nullptr;
+}
+
+const Client::MONSTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Monster(
+	const std::string_view archetypeId)
+{
+	if (!Initialize())
+		return nullptr;
+	for (const MONSTER_ACTOR_ENTRY& entry : g_Monsters)
 		if (entry.archetypeId == archetypeId)
 			return &entry;
 	return nullptr;

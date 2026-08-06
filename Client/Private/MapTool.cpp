@@ -324,6 +324,7 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
 		m_bWorldGameplayPlacementArmed = false;
 		m_bWorldTriggerTargetPickArmed = false;
+		m_bSpawnAnchorPlacementArmed = false;
 		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 		m_Status = "Placement cancelled";
 		if (TOOL_MODE::NAVIGATION == m_eToolMode)
@@ -369,6 +370,8 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 	{
 		if (m_bWorldTriggerTargetPickArmed && mousePressed)
 			Try_PickWorldTriggerTarget();
+		else if (m_bSpawnAnchorPlacementArmed && mousePressed)
+			Try_PlaceSpawnAnchor();
 		else if (m_bWorldGameplayPlacementArmed && mousePressed)
 			Try_PlaceWorldGameplay();
 		return;
@@ -437,9 +440,14 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 			const bool_t selected = index == m_iActiveEditorArea;
 			const std::string label = m_EditorAreas[index].label + "  [" +
 				m_EditorAreas[index].areaId + "]";
-			if (ImGui::Selectable(label.c_str(), selected) && !selected)
+			if (ImGui::Selectable(label.c_str(), selected))
 			{
-				if (Has_UnsavedAuthoring())
+				if (selected)
+				{
+					if (!Focus_ActiveEditorAreaCamera())
+						m_Status = m_CameraStatus;
+				}
+				else if (Has_UnsavedAuthoring())
 				{
 					m_iPendingEditorArea = index;
 					m_isEditorAreaSwitchPending = true;
@@ -454,6 +462,11 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 		}
 		ImGui::EndCombo();
 	}
+	ImGui::SameLine();
+	ImGui::BeginDisabled(nullptr == active);
+	if (ImGui::Button("Focus Area") && !Focus_ActiveEditorAreaCamera())
+		m_Status = m_CameraStatus;
+	ImGui::EndDisabled();
 	if ("LV_BER_BERNCASTLE" == m_Catalog.Get_AreaId())
 	{
 		ImGui::SameLine();
@@ -527,6 +540,8 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 bool_t Client::CMapTool::Save_AllAuthoring()
 {
 	if (m_bDirty && !Save_Placements())
+		return false;
+	if (m_bSpawnGroupsDirty && !Save_SpawnGroups())
 		return false;
 	if (m_bWorldGameplayDirty && !Save_WorldGameplay())
 		return false;
@@ -711,7 +726,10 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 		m_bWorldGameplayPlacementArmed =
 			!m_bWorldGameplayPlacementArmed;
 		if (m_bWorldGameplayPlacementArmed)
+		{
 			m_bWorldTriggerTargetPickArmed = false;
+			m_bSpawnAnchorPlacementArmed = false;
+		}
 		m_WorldGameplayStatus = m_bWorldGameplayPlacementArmed ?
 			"World placement armed: click a picked map surface; Esc cancels" :
 			"World placement cancelled";
@@ -815,13 +833,20 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL:
 					actionOption = 2;
 					break;
+				case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP:
+					actionOption = 3;
+					break;
+				case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER:
+					actionOption = 4;
+					break;
 				default:
 					break;
 				}
 			}
 			const char_t* actionOptions[] =
 			{
-				"None", "Move Player", "Change Level"
+				"None", "Move Player", "Change Level",
+				"Activate Spawn Group", "Activate Encounter"
 			};
 			if (ImGui::Combo("Action", &actionOption,
 				actionOptions, static_cast<int>(std::size(actionOptions))))
@@ -840,11 +865,35 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 						action.eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
 						action.targetPosition = staged.position;
 					}
-					else
+					else if (2 == actionOption)
 					{
 						action.eKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
 						action.eTargetWorldId =
 							LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+					}
+					else
+					{
+						action.eKind = 3 == actionOption ?
+							WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP :
+							WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER;
+						if (3 == actionOption &&
+							!m_SpawnGroupDocument.Get_Groups().empty())
+						{
+							action.targetId =
+								m_SpawnGroupDocument.Get_Groups().front().spawnGroupId;
+						}
+						else if (4 == actionOption)
+						{
+							const auto boss = std::find_if(
+								m_WorldGameplayDocument.Get_Placements().begin(),
+								m_WorldGameplayDocument.Get_Placements().end(),
+								[](const WORLD_GAMEPLAY_PLACEMENT& value)
+								{
+									return WORLD_PLACEMENT_KIND::BOSS == value.eKind;
+								});
+							if (m_WorldGameplayDocument.Get_Placements().end() != boss)
+								action.targetId = boss->placementId;
+						}
 					}
 					staged.triggerEvents.assign(1u, action);
 				}
@@ -902,9 +951,64 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				ImGui::TextDisabled(
 					"The Server changes rooms first; Client consumes S2C_ENTER_ACCEPTED.");
 			}
+			const bool_t hasSpawnGroupAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP ==
+					staged.triggerEvents.front().eKind;
+			if (hasSpawnGroupAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Activate Spawn Group Action");
+				const char_t* preview = action.targetId.empty() ?
+					"<select spawn group>" : action.targetId.c_str();
+				if (ImGui::BeginCombo("Spawn Group", preview))
+				{
+					for (const SPAWN_GROUP_RECORD& group :
+						m_SpawnGroupDocument.Get_Groups())
+					{
+						const bool_t isSelected = action.targetId == group.spawnGroupId;
+						if (ImGui::Selectable(group.spawnGroupId.c_str(), isSelected))
+						{
+							action.targetId = group.spawnGroupId;
+							edited = true;
+						}
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::TextDisabled(
+					"Server activates this stable group; prerequisite and once rules stay authoritative.");
+			}
+			const bool_t hasEncounterAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER ==
+					staged.triggerEvents.front().eKind;
+			if (hasEncounterAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Activate Encounter Action");
+				const char_t* preview = action.targetId.empty() ?
+					"<select disabled boss placement>" : action.targetId.c_str();
+				if (ImGui::BeginCombo("Boss Placement", preview))
+				{
+					for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+						m_WorldGameplayDocument.Get_Placements())
+					{
+						if (WORLD_PLACEMENT_KIND::BOSS != placement.eKind)
+							continue;
+						const bool_t isSelected = action.targetId == placement.placementId;
+						if (ImGui::Selectable(placement.placementId.c_str(), isSelected))
+						{
+							action.targetId = placement.placementId;
+							edited = true;
+						}
+					}
+					ImGui::EndCombo();
+				}
+			}
 
 			const bool_t hasSupportedAction =
-				hasMoveAction || hasChangeLevelAction;
+				hasMoveAction || hasChangeLevelAction ||
+				hasSpawnGroupAction || hasEncounterAction;
 			ImGui::BeginDisabled(!hasSupportedAction);
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 			ImGui::EndDisabled();
@@ -984,14 +1088,327 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			}
 		}
 	}
+	Render_SpawnGroupsPanel();
 	ImGui::EndDisabled();
 }
+
+void Client::CMapTool::Render_SpawnGroupsPanel()
+{
+	ImGui::SeparatorText("Server Spawn Groups");
+	ImGui::TextDisabled(
+		"Anchors and waves stay in SpawnGroups.world.json; Trigger Boxes only reference a stable group ID.");
+	if (ImGui::Button("Save Spawn Groups"))
+		Save_SpawnGroups();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Spawn Groups"))
+		Load_SpawnGroups();
+	ImGui::SameLine();
+	ImGui::Text("Revision: %u | Anchors: %zu | Groups: %zu%s",
+		m_SpawnGroupDocument.Get_Revision(),
+		m_SpawnGroupDocument.Get_Anchors().size(),
+		m_SpawnGroupDocument.Get_Groups().size(),
+		m_bSpawnGroupsDirty ? "  *unsaved" : "");
+
+	ImGui::InputText("Anchor ID", m_SpawnAnchorId, std::size(m_SpawnAnchorId));
+	if (ImGui::Button(m_bSpawnAnchorPlacementArmed ?
+		"Cancel Spawn Anchor Pick" : "Place Spawn Anchor On Map"))
+	{
+		m_bSpawnAnchorPlacementArmed = !m_bSpawnAnchorPlacementArmed;
+		m_bWorldGameplayPlacementArmed = false;
+		m_bWorldTriggerTargetPickArmed = false;
+		m_WorldGameplayStatus = m_bSpawnAnchorPlacementArmed ?
+			"Spawn anchor armed: click a map surface" : "Spawn anchor pick cancelled";
+	}
+	if (m_bSpawnAnchorPlacementArmed)
+		ImGui::TextColored(ImVec4(1.f, 0.85f, 0.2f, 1.f),
+			"PICKING: click the exact monster spawn position");
+
+	if (ImGui::BeginTable("SpawnAnchors", 2,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg,
+		ImVec2(0.f, 130.f)))
+	{
+		ImGui::TableSetupColumn("Anchor ID");
+		ImGui::TableSetupColumn("Position");
+		ImGui::TableHeadersRow();
+		for (const SPAWN_ANCHOR_RECORD& anchor :
+			m_SpawnGroupDocument.Get_Anchors())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t selected = m_SelectedSpawnAnchorId == anchor.anchorId;
+			if (ImGui::Selectable(anchor.anchorId.c_str(), selected,
+				ImGuiSelectableFlags_SpanAllColumns))
+				m_SelectedSpawnAnchorId = anchor.anchorId;
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.2f, %.2f, %.2f", anchor.position.x,
+				anchor.position.y, anchor.position.z);
+		}
+		ImGui::EndTable();
+	}
+	SPAWN_ANCHOR_RECORD* selectedAnchor =
+		m_SpawnGroupDocument.Find_Anchor(m_SelectedSpawnAnchorId);
+	if (nullptr != selectedAnchor)
+	{
+		bool_t edited = false;
+		edited |= ImGui::DragFloat3("Selected Anchor Position",
+			&selectedAnchor->position.x, 0.1f, -100000.f, 100000.f, "%.3f");
+		edited |= ImGui::DragFloat("Selected Anchor Yaw",
+			&selectedAnchor->yawDegrees, 0.5f, -360.f, 360.f, "%.2f");
+		if (edited)
+		{
+			m_SpawnGroupDocument.Mark_Edited();
+			m_bSpawnGroupsDirty = true;
+			vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+			if (Stage_SpawnAnchorBoxes(m_SpawnGroupDocument, stagedBoxes))
+			{
+				Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
+				m_SpawnAnchorBoxes = std::move(stagedBoxes);
+			}
+		}
+		if (ImGui::Button("Delete Selected Spawn Anchor"))
+		{
+			if (m_SpawnGroupDocument.Remove_Anchor(
+				m_SelectedSpawnAnchorId, m_WorldGameplayStatus))
+			{
+				m_SelectedSpawnAnchorId.clear();
+				m_bSpawnGroupsDirty = true;
+				vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+				if (Stage_SpawnAnchorBoxes(m_SpawnGroupDocument, stagedBoxes))
+				{
+					Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
+					m_SpawnAnchorBoxes = std::move(stagedBoxes);
+				}
+			}
+		}
+	}
+
+	ImGui::SeparatorText("Spawn Group Definition");
+	ImGui::InputText("New Spawn Group ID", m_SpawnGroupId,
+		std::size(m_SpawnGroupId));
+	int maxAlive = static_cast<int>(m_iSpawnGroupMaxAlive);
+	if (ImGui::InputInt("New Group Max Alive", &maxAlive))
+		m_iSpawnGroupMaxAlive = static_cast<uint32_t>((std::max)(1, (std::min)(64, maxAlive)));
+	if (ImGui::Button("Add Spawn Group"))
+	{
+		SPAWN_GROUP_RECORD group;
+		group.spawnGroupId = m_SpawnGroupId;
+		group.maxAlive = m_iSpawnGroupMaxAlive;
+		if (m_SpawnGroupDocument.Add_Group(group, m_WorldGameplayStatus))
+		{
+			m_SelectedSpawnGroupId = group.spawnGroupId;
+			m_bSpawnGroupsDirty = true;
+		}
+	}
+	ImGui::SameLine();
+	ImGui::TextDisabled("Add at least one wave before Save.");
+
+	if (ImGui::BeginTable("SpawnGroups", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg,
+		ImVec2(0.f, 150.f)))
+	{
+		ImGui::TableSetupColumn("Group ID");
+		ImGui::TableSetupColumn("Prerequisite");
+		ImGui::TableSetupColumn("Max Alive");
+		ImGui::TableSetupColumn("Waves");
+		ImGui::TableHeadersRow();
+		for (const SPAWN_GROUP_RECORD& group :
+			m_SpawnGroupDocument.Get_Groups())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t selected = m_SelectedSpawnGroupId == group.spawnGroupId;
+			if (ImGui::Selectable(group.spawnGroupId.c_str(), selected,
+				ImGuiSelectableFlags_SpanAllColumns))
+			{
+				m_SelectedSpawnGroupId = group.spawnGroupId;
+				m_SelectedSpawnWaveId.clear();
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(group.requiredCompletedGroupId.empty() ?
+				"<none>" : group.requiredCompletedGroupId.c_str());
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%u", group.maxAlive);
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%zu", group.waves.size());
+		}
+		ImGui::EndTable();
+	}
+
+	SPAWN_GROUP_RECORD* selectedGroup =
+		m_SpawnGroupDocument.Find_Group(m_SelectedSpawnGroupId);
+	if (nullptr == selectedGroup)
+		return;
+
+	bool_t groupEdited = false;
+	int selectedMaxAlive = static_cast<int>(selectedGroup->maxAlive);
+	if (ImGui::InputInt("Selected Group Max Alive", &selectedMaxAlive))
+	{
+		selectedGroup->maxAlive = static_cast<uint32_t>(
+			(std::max)(1, (std::min)(64, selectedMaxAlive)));
+		groupEdited = true;
+	}
+	const char_t* prerequisitePreview = selectedGroup->requiredCompletedGroupId.empty() ?
+		"<none>" : selectedGroup->requiredCompletedGroupId.c_str();
+	if (ImGui::BeginCombo("Required Completed Group", prerequisitePreview))
+	{
+		if (ImGui::Selectable("<none>", selectedGroup->requiredCompletedGroupId.empty()))
+		{
+			selectedGroup->requiredCompletedGroupId.clear();
+			groupEdited = true;
+		}
+		for (const SPAWN_GROUP_RECORD& group : m_SpawnGroupDocument.Get_Groups())
+		{
+			if (group.spawnGroupId == selectedGroup->spawnGroupId)
+				continue;
+			if (ImGui::Selectable(group.spawnGroupId.c_str(),
+				selectedGroup->requiredCompletedGroupId == group.spawnGroupId))
+			{
+				selectedGroup->requiredCompletedGroupId = group.spawnGroupId;
+				groupEdited = true;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	if (groupEdited)
+	{
+		m_SpawnGroupDocument.Mark_Edited();
+		m_bSpawnGroupsDirty = true;
+	}
+
+	ImGui::InputText("New Wave ID", m_SpawnWaveId, std::size(m_SpawnWaveId));
+	int startDelay = static_cast<int>(m_iSpawnWaveStartDelayMs);
+	if (ImGui::InputInt("Wave Start Delay Ms", &startDelay))
+		m_iSpawnWaveStartDelayMs = static_cast<uint32_t>((std::max)(0, startDelay));
+	if (ImGui::Button("Add Wave"))
+	{
+		if (selectedGroup->waves.size() < CSpawnGroupDocument::MAX_WAVE_COUNT &&
+			CSpawnGroupDocument::Is_ValidStableId(m_SpawnWaveId) &&
+			std::none_of(selectedGroup->waves.begin(), selectedGroup->waves.end(),
+				[&](const SPAWN_WAVE_RECORD& value) { return value.waveId == m_SpawnWaveId; }))
+		{
+			SPAWN_WAVE_RECORD wave;
+			wave.waveId = m_SpawnWaveId;
+			wave.startDelayMs = m_iSpawnWaveStartDelayMs;
+			selectedGroup->waves.push_back(std::move(wave));
+			m_SelectedSpawnWaveId = m_SpawnWaveId;
+			m_SpawnGroupDocument.Mark_Edited();
+			m_bSpawnGroupsDirty = true;
+		}
+		else
+			m_WorldGameplayStatus = "Wave ID is invalid, duplicate, or over limit";
+	}
+
+	for (const SPAWN_WAVE_RECORD& wave : selectedGroup->waves)
+	{
+		ImGui::SameLine();
+		if (ImGui::RadioButton(wave.waveId.c_str(), m_SelectedSpawnWaveId == wave.waveId))
+			m_SelectedSpawnWaveId = wave.waveId;
+	}
+	const auto waveIter = std::find_if(selectedGroup->waves.begin(), selectedGroup->waves.end(),
+		[&](const SPAWN_WAVE_RECORD& value) { return value.waveId == m_SelectedSpawnWaveId; });
+	if (selectedGroup->waves.end() == waveIter)
+		return;
+	SPAWN_WAVE_RECORD& selectedWave = *waveIter;
+
+	static constexpr const char_t* ARCHETYPES[] =
+	{
+		"MONSTER_VALTAN_PADD_01",
+		"MONSTER_VALTAN_SJFC_00_4",
+		"MONSTER_VALTAN_0019_05",
+		"MINIBOSS_LUGARU"
+	};
+	int archetypeOption = static_cast<int>(m_iSpawnArchetypeOption);
+	if (ImGui::Combo("Entry Archetype", &archetypeOption, ARCHETYPES,
+		static_cast<int>(std::size(ARCHETYPES))))
+		m_iSpawnArchetypeOption = static_cast<uint32_t>(archetypeOption);
+	const char_t* anchorPreview = m_SelectedSpawnAnchorId.empty() ?
+		"<select anchor>" : m_SelectedSpawnAnchorId.c_str();
+	if (ImGui::BeginCombo("Entry Anchor", anchorPreview))
+	{
+		for (const SPAWN_ANCHOR_RECORD& anchor : m_SpawnGroupDocument.Get_Anchors())
+			if (ImGui::Selectable(anchor.anchorId.c_str(),
+				m_SelectedSpawnAnchorId == anchor.anchorId))
+				m_SelectedSpawnAnchorId = anchor.anchorId;
+		ImGui::EndCombo();
+	}
+	int entryCount = static_cast<int>(m_iSpawnEntryCount);
+	int initialDelay = static_cast<int>(m_iSpawnInitialDelayMs);
+	int interval = static_cast<int>(m_iSpawnIntervalMs);
+	if (ImGui::InputInt("Entry Count", &entryCount))
+		m_iSpawnEntryCount = static_cast<uint32_t>((std::max)(1, entryCount));
+	if (ImGui::InputInt("Entry Initial Delay Ms", &initialDelay))
+		m_iSpawnInitialDelayMs = static_cast<uint32_t>((std::max)(0, initialDelay));
+	if (ImGui::InputInt("Entry Spawn Interval Ms", &interval))
+		m_iSpawnIntervalMs = static_cast<uint32_t>((std::max)(0, interval));
+	if (ImGui::Button("Add Entry To Selected Wave"))
+	{
+		if (selectedWave.entries.size() < CSpawnGroupDocument::MAX_ENTRY_COUNT &&
+			nullptr != m_SpawnGroupDocument.Find_Anchor(m_SelectedSpawnAnchorId))
+		{
+			SPAWN_WAVE_ENTRY_RECORD entry;
+			entry.archetypeId = ARCHETYPES[m_iSpawnArchetypeOption];
+			entry.count = m_iSpawnEntryCount;
+			entry.anchorId = m_SelectedSpawnAnchorId;
+			entry.initialDelayMs = m_iSpawnInitialDelayMs;
+			entry.spawnIntervalMs = m_iSpawnIntervalMs;
+			selectedWave.entries.push_back(std::move(entry));
+			m_SpawnGroupDocument.Mark_Edited();
+			m_bSpawnGroupsDirty = true;
+		}
+		else
+			m_WorldGameplayStatus = "Select a valid anchor or remove an entry first";
+	}
+	for (size_t index = 0; index < selectedWave.entries.size(); ++index)
+	{
+		const auto& entry = selectedWave.entries[index];
+		ImGui::PushID(static_cast<int>(index));
+		ImGui::Text("%zu. %s x%u @ %s (+%ums, every %ums)", index + 1u,
+			entry.archetypeId.c_str(), entry.count, entry.anchorId.c_str(),
+			entry.initialDelayMs, entry.spawnIntervalMs);
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Remove"))
+		{
+			selectedWave.entries.erase(selectedWave.entries.begin() + index);
+			m_SpawnGroupDocument.Mark_Edited();
+			m_bSpawnGroupsDirty = true;
+			ImGui::PopID();
+			break;
+		}
+		ImGui::PopID();
+	}
+	if (ImGui::Button("Delete Selected Wave"))
+	{
+		selectedGroup->waves.erase(waveIter);
+		m_SelectedSpawnWaveId.clear();
+		m_SpawnGroupDocument.Mark_Edited();
+		m_bSpawnGroupsDirty = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Delete Selected Spawn Group"))
+	{
+		if (m_SpawnGroupDocument.Remove_Group(
+			m_SelectedSpawnGroupId, m_WorldGameplayStatus))
+		{
+			m_SelectedSpawnGroupId.clear();
+			m_SelectedSpawnWaveId.clear();
+			m_bSpawnGroupsDirty = true;
+		}
+	}
+}
+
 std::filesystem::path Client::CMapTool::Get_WorldGameplayPath() const
 {
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
 	return nullptr != active &&
 		EDITOR_GAMEPLAY_POLICY::REQUIRED == active->gameplayPolicy ?
 		active->gameplayDocument : std::filesystem::path{};
+}
+
+std::filesystem::path Client::CMapTool::Get_SpawnGroupsPath() const
+{
+	const std::filesystem::path gameplayPath = Get_WorldGameplayPath();
+	return gameplayPath.empty() ? std::filesystem::path{} :
+		gameplayPath.parent_path() / L"SpawnGroups.world.json";
 }
 
 bool_t Client::CMapTool::Load_WorldGameplay()
@@ -1031,12 +1448,156 @@ bool_t Client::CMapTool::Save_WorldGameplay()
 		m_WorldGameplayStatus = "Gameplay save requires a ready map catalog";
 		return false;
 	}
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		m_WorldGameplayDocument.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
+			continue;
+		for (const WORLD_TRIGGER_EVENT& event : placement.triggerEvents)
+		{
+			if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP == event.eKind &&
+				nullptr == m_SpawnGroupDocument.Find_Group(event.targetId))
+			{
+				m_WorldGameplayStatus =
+					"Trigger references an unknown spawn group: " + event.targetId;
+				return false;
+			}
+			if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER == event.eKind)
+			{
+				const WORLD_GAMEPLAY_PLACEMENT* target =
+					m_WorldGameplayDocument.Find(event.targetId);
+				if (nullptr == target || WORLD_PLACEMENT_KIND::BOSS != target->eKind ||
+					target->isEnabled)
+				{
+					m_WorldGameplayStatus =
+						"Encounter target must be a disabled boss placement: " + event.targetId;
+					return false;
+				}
+			}
+		}
+	}
 	if (!m_WorldGameplayDocument.Save(
 		path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
 	{
 		return false;
 	}
 	m_bWorldGameplayDirty = false;
+	return true;
+}
+
+bool_t Client::CMapTool::Load_SpawnGroups()
+{
+	const std::filesystem::path path = Get_SpawnGroupsPath();
+	if (path.empty())
+	{
+		m_WorldGameplayStatus = "Spawn group load requires a gameplay Area";
+		return false;
+	}
+	CSpawnGroupDocument stagedDocument;
+	if (!stagedDocument.Load(path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
+		return false;
+	vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+	if (!Stage_SpawnAnchorBoxes(stagedDocument, stagedBoxes))
+		return false;
+	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
+	m_SpawnGroupDocument = std::move(stagedDocument);
+	m_SpawnAnchorBoxes = std::move(stagedBoxes);
+	m_SelectedSpawnAnchorId.clear();
+	m_SelectedSpawnGroupId.clear();
+	m_SelectedSpawnWaveId.clear();
+	m_bSpawnAnchorPlacementArmed = false;
+	m_bSpawnGroupsDirty = false;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_SpawnGroups()
+{
+	const std::filesystem::path path = Get_SpawnGroupsPath();
+	if (path.empty())
+	{
+		m_WorldGameplayStatus = "Spawn group save requires a gameplay Area";
+		return false;
+	}
+	if (!m_SpawnGroupDocument.Save(
+		path, m_Catalog.Get_AreaId(), m_WorldGameplayStatus))
+		return false;
+	m_bSpawnGroupsDirty = false;
+	return true;
+}
+
+bool_t Client::CMapTool::Try_PlaceSpawnAnchor()
+{
+	float3_t position{};
+	if (!Try_PickPlacementPosition(position))
+	{
+		m_WorldGameplayStatus = "Spawn anchor placement failed: map pick missed";
+		return false;
+	}
+	SPAWN_ANCHOR_RECORD anchor;
+	anchor.anchorId = m_SpawnAnchorId;
+	anchor.position = position;
+	if (!m_SpawnGroupDocument.Add_Anchor(anchor, m_WorldGameplayStatus))
+		return false;
+	vector<TRIGGER_BOX_ENTRY> stagedBoxes;
+	if (!Stage_SpawnAnchorBoxes(m_SpawnGroupDocument, stagedBoxes))
+	{
+		std::string removeStatus;
+		m_SpawnGroupDocument.Remove_Anchor(anchor.anchorId, removeStatus);
+		return false;
+	}
+	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
+	m_SpawnAnchorBoxes = std::move(stagedBoxes);
+	m_SelectedSpawnAnchorId = anchor.anchorId;
+	m_bSpawnAnchorPlacementArmed = false;
+	m_bSpawnGroupsDirty = true;
+	return true;
+}
+
+bool_t Client::CMapTool::Stage_SpawnAnchorBoxes(
+	const CSpawnGroupDocument& document,
+	vector<TRIGGER_BOX_ENTRY>& outEntries)
+{
+	outEntries.clear();
+	for (const SPAWN_ANCHOR_RECORD& anchor : document.Get_Anchors())
+	{
+		CTrigger_Box::TRIGGER_BOX_DESC desc{};
+		desc.placementId = anchor.anchorId;
+		desc.position = anchor.position;
+		desc.halfExtents = float3_t(0.35f, 0.35f, 0.35f);
+		desc.yawDegrees = anchor.yawDegrees;
+		desc.isEnabled = true;
+		desc.isCollisionBox = false;
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_iAuthoringLevelIndex,
+			TEXT("Prototype_GameObject_TriggerBox"),
+			m_iAuthoringLevelIndex,
+			TEXT("Layer_SpawnAnchors"),
+			&desc,
+			&gameObject)))
+		{
+			for (const TRIGGER_BOX_ENTRY& entry : outEntries)
+				if (nullptr != entry.object)
+					CGameInstance::Get().Remove_GameObject_from_Layer(
+						m_iAuthoringLevelIndex, TEXT("Layer_SpawnAnchors"),
+						static_pointer_cast<CGameObject>(entry.object));
+			outEntries.clear();
+			m_WorldGameplayStatus = "Spawn anchor presentation failed: " + anchor.anchorId;
+			return false;
+		}
+		shared_ptr<CTrigger_Box> triggerBox =
+			dynamic_pointer_cast<CTrigger_Box>(gameObject);
+		if (nullptr == triggerBox)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex, TEXT("Layer_SpawnAnchors"), gameObject);
+			return false;
+		}
+		triggerBox->Set_Selected(anchor.anchorId == m_SelectedSpawnAnchorId);
+		triggerBox->Set_AuthoringVisible(
+			m_bOpen && TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode);
+		outEntries.push_back({ anchor.anchorId, std::move(triggerBox) });
+	}
 	return true;
 }
 
@@ -1202,6 +1763,10 @@ void Client::CMapTool::Remove_WorldTriggerBoxes(
 				m_iAuthoringLevelIndex,
 				TEXT("Layer_TriggerBoxes"),
 				static_pointer_cast<CGameObject>(entry.object));
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_SpawnAnchors"),
+				static_pointer_cast<CGameObject>(entry.object));
 		}
 	}
 	entries.clear();
@@ -1217,6 +1782,13 @@ void Client::CMapTool::Update_WorldTriggerBoxPresentation(
 		entry.object->Set_AuthoringVisible(isVisible);
 		entry.object->Set_Selected(
 			entry.placementId == m_SelectedWorldPlacementId);
+	}
+	for (TRIGGER_BOX_ENTRY& entry : m_SpawnAnchorBoxes)
+	{
+		if (nullptr == entry.object)
+			continue;
+		entry.object->Set_AuthoringVisible(isVisible);
+		entry.object->Set_Selected(entry.placementId == m_SelectedSpawnAnchorId);
 	}
 }
 bool Client::CMapTool::IsOpen() const
@@ -1236,7 +1808,8 @@ bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 	return TOOL_MODE::NAVIGATION == m_eToolMode ||
 		(TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode &&
 			(m_bWorldGameplayPlacementArmed ||
-				m_bWorldTriggerTargetPickArmed)) ||
+				m_bWorldTriggerTargetPickArmed ||
+				m_bSpawnAnchorPlacementArmed)) ||
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
@@ -1492,6 +2065,7 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 		}
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
+			descriptor.areaId == "LV_BER_BERNCASTLE" ||
 			descriptor.areaId == "LV_LUT_HEARTRB_ED")
 		{
 			std::string source;
@@ -1507,6 +2081,8 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 			descriptor.navigationPaint = ResolveDataCatalogPath(paint);
 			descriptor.navigationPolicy =
 				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT;
+			descriptor.allowNavigationBootstrap =
+				descriptor.areaId == "LV_BER_BERNCASTLE";
 		}
 		if (descriptor.areaId == "LV_LUT_HEARTRB_ED")
 		{
@@ -1569,7 +2145,7 @@ Client::CMapTool::Get_ActiveEditorArea() const
 
 bool_t Client::CMapTool::Has_UnsavedAuthoring() const
 {
-	return m_bDirty || m_bWorldGameplayDirty ||
+	return m_bDirty || m_bWorldGameplayDirty || m_bSpawnGroupsDirty ||
 		m_NavigationDocument.Is_Dirty() ||
 		m_RuntimeBlockerDocument.Is_Dirty();
 }
@@ -1620,6 +2196,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	}
 
 	CWorldGameplayDocument stagedWorld;
+	CSpawnGroupDocument stagedSpawnGroups;
 	if (EDITOR_GAMEPLAY_POLICY::REQUIRED == descriptor.gameplayPolicy)
 	{
 		error.clear();
@@ -1632,6 +2209,14 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		{
 			m_Status = error ?
 				"Could not inspect required gameplay document" : stagedStatus;
+			return false;
+		}
+		const std::filesystem::path spawnGroupsPath =
+			descriptor.gameplayDocument.parent_path() / L"SpawnGroups.world.json";
+		if (!stagedSpawnGroups.Load(
+			spawnGroupsPath, descriptor.areaId, stagedStatus))
+		{
+			m_Status = stagedStatus;
 			return false;
 		}
 	}
@@ -1698,14 +2283,26 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_Catalog = std::move(previousCatalog);
 		return false;
 	}
+	vector<TRIGGER_BOX_ENTRY> stagedSpawnAnchorBoxes;
+	if (!Stage_SpawnAnchorBoxes(stagedSpawnGroups, stagedSpawnAnchorBoxes))
+	{
+		Remove_PlacementRuntime(stagedPlacements, stagedBatches);
+		stagedDeployRuntime.Clear();
+		Remove_WorldTriggerBoxes(stagedTriggerBoxes);
+		m_Catalog = std::move(previousCatalog);
+		return false;
+	}
 
 	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
+	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
 	m_DeployRuntime = std::move(stagedDeployRuntime);
 	m_WorldGameplayDocument = std::move(stagedWorld);
 	m_WorldTriggerBoxes = std::move(stagedTriggerBoxes);
+	m_SpawnGroupDocument = std::move(stagedSpawnGroups);
+	m_SpawnAnchorBoxes = std::move(stagedSpawnAnchorBoxes);
 	m_NavigationDocument = std::move(stagedNavigation);
 	m_RuntimeBlockerDocument = std::move(stagedBlockers);
 	m_NavigationSourcePath = descriptor.navigationSource;
@@ -1719,6 +2316,9 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_isEditorAreaSwitchPending = false;
 	m_iSelectedPlacementId = 0;
 	m_SelectedWorldPlacementId.clear();
+	m_SelectedSpawnAnchorId.clear();
+	m_SelectedSpawnGroupId.clear();
+	m_SelectedSpawnWaveId.clear();
 	m_SelectedAssetId.clear();
 	m_iNextPlacementId = 1;
 	for (const PLACED_ENTRY& entry : m_Placements)
@@ -1734,6 +2334,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	}
 	m_bDirty = false;
 	m_bWorldGameplayDirty = false;
+	m_bSpawnGroupsDirty = false;
 	m_WorldGameplayStatus =
 		EDITOR_GAMEPLAY_POLICY::REQUIRED == descriptor.gameplayPolicy ?
 		"Gameplay authoring ready" : "Gameplay authoring disabled for this Area";
@@ -1747,46 +2348,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		" placements. Runtime publish is separate.";
 	Set_EnvironmentPhase(ENVIRONMENT_PHASE::BASELINE);
 
-	if (!m_Placements.empty())
-	{
-		float3_t minimum = m_Placements.front().record.position;
-		float3_t maximum = minimum;
-		for (const PLACED_ENTRY& entry : m_Placements)
-		{
-			minimum.x = (std::min)(minimum.x, entry.record.position.x);
-			minimum.y = (std::min)(minimum.y, entry.record.position.y);
-			minimum.z = (std::min)(minimum.z, entry.record.position.z);
-			maximum.x = (std::max)(maximum.x, entry.record.position.x);
-			maximum.y = (std::max)(maximum.y, entry.record.position.y);
-			maximum.z = (std::max)(maximum.z, entry.record.position.z);
-		}
-		float3_t center(
-			(minimum.x + maximum.x) * 0.5f,
-			(minimum.y + maximum.y) * 0.5f,
-			(minimum.z + maximum.z) * 0.5f);
-		f32_t radius = (std::max)(50.f,
-			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
-		/* Product spawn data is the most useful authoring focus. Distant backdrop
-		   meshes must not pull the editor camera away from the playable entry. */
-		if ("LV_BER_BERNCASTLE" == descriptor.areaId)
-		{
-			TryBuildGameplaySpawnFrame(
-				m_WorldGameplayDocument,
-				"player.spawn.bern.entry",
-				center,
-				radius);
-		}
-		if ("LV_LUT_HEARTRB_ED" == descriptor.areaId)
-		{
-			TryBuildGameplaySpawnFrame(
-				m_WorldGameplayDocument,
-				"player.spawn.valtan.entry",
-				center,
-				radius);
-		}
-		if (const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock())
-			camera->Frame_Area(center, radius);
-	}
+	if (!Focus_ActiveEditorAreaCamera())
+		m_Status += " Camera focus unavailable: " + m_CameraStatus;
 	return true;
 }
 
@@ -1801,7 +2364,12 @@ void Client::CMapTool::Handle_LevelTransition(
 
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	m_bWorldGameplayPlacementArmed = false;
+	m_bWorldTriggerTargetPickArmed = false;
+	m_bSpawnAnchorPlacementArmed = false;
 	m_SelectedWorldPlacementId.clear();
+	m_SelectedSpawnAnchorId.clear();
+	m_SelectedSpawnGroupId.clear();
+	m_SelectedSpawnWaveId.clear();
 	m_iSelectedPlacementId = 0;
 	m_SelectedAssetId.clear();
 	m_pAssetTestCamera.reset();
@@ -1812,9 +2380,12 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_StaticBatches.clear();
 	m_DeployRuntime.Reset_ClearedLevelTracking();
 	m_WorldTriggerBoxes.clear();
+	m_SpawnAnchorBoxes.clear();
 	m_iNextPlacementId = 1;
 	m_bDirty = false;
 	m_bWorldGameplayDirty = false;
+	m_bSpawnGroupsDirty = false;
+	m_SpawnGroupDocument.Reset();
 	m_Catalog = CMapAssetCatalog{};
 	m_EditorAreas.clear();
 	m_iActiveEditorArea = SIZE_MAX;
@@ -1856,6 +2427,82 @@ bool_t Client::CMapTool::Find_AssetTestCamera()
 
 	m_pAssetTestCamera = camera;
 	m_CameraStatus = "Camera ready";
+	return true;
+}
+
+bool_t Client::CMapTool::Focus_ActiveEditorAreaCamera()
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor)
+	{
+		m_CameraStatus = "Select an Area before focusing the camera";
+		return false;
+	}
+
+	float3_t center{};
+	f32_t radius = 0.f;
+	bool_t hasFrame = false;
+	/* Product spawn data is the stable authoring focus. Distant backdrop
+	   meshes must not pull the editor camera away from the playable entry. */
+	if ("LV_BER_BERNCASTLE" == descriptor->areaId)
+	{
+		hasFrame = TryBuildGameplaySpawnFrame(
+			m_WorldGameplayDocument,
+			"player.spawn.bern.entry",
+			center,
+			radius);
+	}
+	else if ("LV_LUT_HEARTRB_ED" == descriptor->areaId)
+	{
+		hasFrame = TryBuildGameplaySpawnFrame(
+			m_WorldGameplayDocument,
+			"player.spawn.valtan.entry",
+			center,
+			radius);
+	}
+
+	if (!hasFrame && !m_Placements.empty())
+	{
+		float3_t minimum = m_Placements.front().record.position;
+		float3_t maximum = minimum;
+		for (const PLACED_ENTRY& entry : m_Placements)
+		{
+			minimum.x = (std::min)(minimum.x, entry.record.position.x);
+			minimum.y = (std::min)(minimum.y, entry.record.position.y);
+			minimum.z = (std::min)(minimum.z, entry.record.position.z);
+			maximum.x = (std::max)(maximum.x, entry.record.position.x);
+			maximum.y = (std::max)(maximum.y, entry.record.position.y);
+			maximum.z = (std::max)(maximum.z, entry.record.position.z);
+		}
+		center = float3_t(
+			(minimum.x + maximum.x) * 0.5f,
+			(minimum.y + maximum.y) * 0.5f,
+			(minimum.z + maximum.z) * 0.5f);
+		radius = (std::max)(50.f,
+			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
+		hasFrame = true;
+	}
+	if (!hasFrame)
+	{
+		m_CameraStatus = "Active Area has no valid camera focus target";
+		return false;
+	}
+
+	shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock();
+	if (nullptr == camera)
+	{
+		if (!Find_AssetTestCamera())
+			return false;
+		camera = m_pAssetTestCamera.lock();
+	}
+	if (nullptr == camera)
+	{
+		m_CameraStatus = "ASSET_TEST camera reacquisition failed";
+		return false;
+	}
+
+	camera->Frame_Area(center, radius);
+	m_CameraStatus = "Camera focused on " + descriptor->label;
 	return true;
 }
 
@@ -3909,6 +4556,8 @@ bool_t Client::CMapTool::Bake_Navigation()
 		bool_t restored = true;
 		for (const FILE_BACKUP& file : backups)
 		{
+			if (file.path.empty())
+				continue;
 			std::error_code error;
 			if (file.existed)
 			{
@@ -3929,6 +4578,8 @@ bool_t Client::CMapTool::Bake_Navigation()
 
 	for (FILE_BACKUP& file : backups)
 	{
+		if (file.path.empty())
+			continue;
 		file.backup = file.path;
 		file.backup += L".bakebak";
 		std::error_code error;
@@ -3973,13 +4624,19 @@ bool_t Client::CMapTool::Bake_Navigation()
 	if (layoutChanged)
 	{
 		std::error_code paintError;
-		std::filesystem::remove(
-			m_NavigationPaintPath,
-			paintError);
+		if (!m_NavigationPaintPath.empty())
+		{
+			std::filesystem::remove(
+				m_NavigationPaintPath,
+				paintError);
+		}
 		std::error_code blockerError;
-		std::filesystem::remove(
-			m_RuntimeBlockerPath,
-			blockerError);
+		if (!m_RuntimeBlockerPath.empty())
+		{
+			std::filesystem::remove(
+				m_RuntimeBlockerPath,
+				blockerError);
+		}
 		if (paintError || blockerError)
 		{
 			const bool_t restored = restoreBackups();
@@ -4010,7 +4667,7 @@ bool_t Client::CMapTool::Bake_Navigation()
 	m_bNavigationBakeResetPending = false;
 	m_NavigationBakeStatus = status;
 	m_NavigationStatus =
-		"Baked source; Save Navigation to export runtime";
+		"Baked source; Save Navigation to persist authoring paint";
 	return true;
 }
 
@@ -4032,20 +4689,60 @@ void Client::CMapTool::Render_NavigationBakeControls()
 
 	ImGui::SeparatorText("Nav Bounds");
 	bool_t changed = false;
-	changed =
-		ImGui::DragFloat3(
-			"Position",
-			&m_NavigationBakeDesc.position.x,
-			0.1f) ||
-		changed;
-	changed =
-		ImGui::DragFloat3(
-			"Size",
-			&m_NavigationBakeDesc.size.x,
-			0.1f,
-			0.1f,
-			10000.f) ||
-		changed;
+	f32_t positionXZ[2] =
+	{
+		m_NavigationBakeDesc.position.x,
+		m_NavigationBakeDesc.position.z,
+	};
+	if (ImGui::DragFloat2("Position XZ", positionXZ, 0.1f))
+	{
+		m_NavigationBakeDesc.position.x = positionXZ[0];
+		m_NavigationBakeDesc.position.z = positionXZ[1];
+		changed = true;
+	}
+
+	f32_t bottomY =
+		m_NavigationBakeDesc.position.y -
+		m_NavigationBakeDesc.size.y * 0.5f;
+	if (ImGui::DragFloat("Bottom Y", &bottomY, 0.1f))
+	{
+		m_NavigationBakeDesc.position.y =
+			bottomY + m_NavigationBakeDesc.size.y * 0.5f;
+		changed = true;
+	}
+
+	f32_t sizeXZ[2] =
+	{
+		m_NavigationBakeDesc.size.x,
+		m_NavigationBakeDesc.size.z,
+	};
+	if (ImGui::DragFloat2(
+		"Size XZ",
+		sizeXZ,
+		0.1f,
+		0.1f,
+		10000.f))
+	{
+		m_NavigationBakeDesc.size.x = sizeXZ[0];
+		m_NavigationBakeDesc.size.z = sizeXZ[1];
+		changed = true;
+	}
+
+	f32_t height = m_NavigationBakeDesc.size.y;
+	if (ImGui::DragFloat(
+		"Height from Bottom",
+		&height,
+		0.1f,
+		0.1f,
+		10000.f))
+	{
+		m_NavigationBakeDesc.size.y = height;
+		m_NavigationBakeDesc.position.y = bottomY + height * 0.5f;
+		changed = true;
+	}
+	ImGui::Text(
+		"Top Y: %.3f",
+		bottomY + m_NavigationBakeDesc.size.y);
 	changed =
 		ImGui::DragFloat(
 			"Yaw",

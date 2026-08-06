@@ -511,6 +511,32 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const S2C_WORLD_ENTITY_DESPAWNED& despawned)
+{
+	if (INVALID_NET_ENTITY_ID == despawned.iNetEntityId)
+		return false;
+
+	writer.Write_U32(despawned.iNetEntityId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_WORLD_ENTITY_DESPAWNED& despawned)
+{
+	S2C_WORLD_ENTITY_DESPAWNED decoded{};
+	if (!reader.Read_U32(decoded.iNetEntityId) ||
+		INVALID_NET_ENTITY_ID == decoded.iNetEntityId)
+	{
+		return false;
+	}
+
+	despawned = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_SPAWN_WORLD_ENTITY& message)
 {
 	return Is_Valid_StableId(message.strPlacementId, false) &&

@@ -29,6 +29,9 @@
     <ClInclude Include="..\Public\WinSockContext.h" />
     <ClInclude Include="..\Public\ServerWorldEntity.h" />
     <ClInclude Include="..\Public\WorldBootstrap.h" />
+    <ClInclude Include="..\Public\SpawnGroupBootstrap.h" />
+    <ClInclude Include="..\Public\SpawnGroupRuntime.h" />
+    <ClInclude Include="..\Public\MonsterBrain.h" />
 	<ClInclude Include="..\Public\GameplayCatalog.h" />
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerNavigation.h" />
@@ -45,6 +48,9 @@
     <ClCompile Include="..\Private\WinSockContext.cpp" />
     <ClCompile Include="..\Private\TcpListener.cpp" />
     <ClCompile Include="..\Private\WorldBootstrap.cpp" />
+    <ClCompile Include="..\Private\SpawnGroupBootstrap.cpp" />
+    <ClCompile Include="..\Private\SpawnGroupRuntime.cpp" />
+    <ClCompile Include="..\Private\MonsterBrain.cpp" />
 	<ClCompile Include="..\Private\GameplayCatalog.cpp" />
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
