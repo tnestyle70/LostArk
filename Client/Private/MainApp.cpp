@@ -29,6 +29,7 @@
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
+#include "NetworkPlayerCommandSink.h"
 #include "ProfilerCaptureIO.h"
 #endif
 
@@ -37,6 +38,25 @@
 
 namespace
 {
+	wstring Utf8ToWide(const string& value)
+	{
+		if (value.empty())
+			return {};
+		const int length = MultiByteToWideChar(
+			CP_UTF8, MB_ERR_INVALID_CHARS, value.c_str(),
+			static_cast<int>(value.size()), nullptr, 0);
+		if (length <= 0)
+			return {};
+		wstring result(static_cast<size_t>(length), L'\0');
+		if (length != MultiByteToWideChar(
+			CP_UTF8, MB_ERR_INVALID_CHARS, value.c_str(),
+			static_cast<int>(value.size()), result.data(), length))
+		{
+			return {};
+		}
+		return result;
+	}
+
 	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
 	the _DEBUG-only map tool focus check further down. */
 	bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
@@ -75,31 +95,7 @@ namespace
 	}
 #endif
 
-	const char_t* GetCharacterClassDisplayName(
-		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
-	{
-		using LostArk::Shared::CHARACTER_CLASS_ID;
-		switch (characterClass)
-		{
-		case CHARACTER_CLASS_ID::LANCE_MASTER:
-			return "Lance Master";
-		case CHARACTER_CLASS_ID::GUNSLINGER:
-			return "Gunslinger";
-		case CHARACTER_CLASS_ID::SLAYER:
-			return "Slayer";
-		case CHARACTER_CLASS_ID::ARTIST:
-			return "Artist";
-		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
-			return "Dimension Master";
-		case CHARACTER_CLASS_ID::WARLORD:
-			return "Warlord";
-		default:
-			return "Unknown";
-		}
-	}
-
-	/* HUD_Layout.json's "ownerClass" strings (no spaces) -- separate from the display name
-	above since the JSON schema/tool already used these exact names. */
+	/* HUD_Layout.json's "ownerClass" strings (no spaces) must match the schema/tool names. */
 	const string GetHUDOwnerClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
 	{
@@ -342,6 +338,7 @@ HRESULT CMainApp::Render()
 #endif
 		m_pImGuiLayer->EndFrame();
 	}
+	RenderCombatHUDText();
 
 	return CGameInstance::Get().Render_End();
 }
@@ -365,60 +362,6 @@ void CMainApp::RenderCombatHUD()
 		return;
 	}
 
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowViewport(viewport->ID);
-	ImGui::SetNextWindowPos(
-		ImVec2(
-			viewport->WorkPos.x + 20.f,
-			viewport->WorkPos.y + viewport->WorkSize.y - 20.f),
-		ImGuiCond_Always,
-		ImVec2(0.f, 1.f));
-	ImGui::SetNextWindowBgAlpha(0.78f);
-	constexpr ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoNav |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoInputs;
-
-	if (ImGui::Begin("##RuntimeCombatHUD", nullptr, flags))
-	{
-		ImGui::Text("%s", GetCharacterClassDisplayName(
-			player.eCharacterClass));
-		if (player.isPreview)
-			ImGui::TextDisabled("Character Select preview");
-		ImGui::Text("HP  %u / %u", player.iCurrentHp, player.iMaximumHp);
-		ImGui::ProgressBar(
-			static_cast<float>(player.iCurrentHp) /
-			static_cast<float>(player.iMaximumHp),
-			ImVec2(280.f, 0.f));
-		ImGui::Text(
-			"Resource  %u / %u",
-			player.iCurrentResource,
-			player.iMaximumResource);
-		ImGui::ProgressBar(
-			static_cast<float>(player.iCurrentResource) /
-			static_cast<float>(player.iMaximumResource),
-			ImVec2(280.f, 0.f));
-		for (const HUD_SKILL_STATE& skill : player.Skills)
-		{
-			const std::uint32_t remainingTicks =
-				skill.iCooldownEndTick > player.iServerTick ?
-				skill.iCooldownEndTick - player.iServerTick : 0u;
-			ImGui::Text(
-				"[%s] %s  %.1fs  DMG %u",
-				skill.strInputSlot.c_str(),
-				skill.strDisplayName.c_str(),
-				static_cast<float>(remainingTicks) / 30.f,
-				skill.iDamage);
-		}
-		if (player.Skills.empty())
-			ImGui::TextDisabled("No server-approved skills for this class");
-	}
-	ImGui::End();
-
 	/* The Combat HUD draws to the always-on-top foreground layer, so it would otherwise show
 	through around/behind the Skill Window (which does not necessarily cover every pixel of the
 	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. */
@@ -434,6 +377,61 @@ void CMainApp::RenderCombatHUD()
 
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
+}
+
+void CMainApp::RenderCombatHUDText()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
+		return;
+	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float scaleX = viewportSize.x / 1280.f;
+	const float scaleY = viewportSize.y / 720.f;
+	const float textScale = (std::min)(scaleX, scaleY);
+	const auto position = [scaleX, scaleY](const float x, const float y)
+	{
+		return float2_t(x * scaleX, y * scaleY);
+	};
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u)
+	{
+		const wstring hp = L"HP  " + std::to_wstring(player.iCurrentHp) +
+			L" / " + std::to_wstring(player.iMaximumHp);
+		const wstring mana = L"MANA  " + std::to_wstring(player.iCurrentResource) +
+			L" / " + std::to_wstring(player.iMaximumResource);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
+			position(448.f, 614.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), mana.c_str(),
+			position(889.f, 614.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
+	}
+	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	if (!boss.isValid || 0u == boss.iMaximumHp ||
+		0u == boss.iMaximumHealthBars)
+	{
+		return;
+	}
+	const std::uint32_t currentHealthBar = 0u == boss.iCurrentHp ? 0u :
+		static_cast<std::uint32_t>((
+			static_cast<std::uint64_t>(boss.iCurrentHp) * boss.iMaximumHealthBars +
+			boss.iMaximumHp - 1u) / boss.iMaximumHp);
+	const wstring name = Utf8ToWide(boss.strDisplayName);
+	const wstring bars = std::to_wstring(currentHealthBar) + L" / " +
+		std::to_wstring(boss.iMaximumHealthBars) + L" \xC904";
+	const wstring hp = L"HP  " + std::to_wstring(boss.iCurrentHp) + L" / " +
+		std::to_wstring(boss.iMaximumHp);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), name.c_str(),
+		position(640.f, 32.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.55f * textScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), bars.c_str(),
+		position(640.f, 57.f), Colors::Yellow, 0.f, float2_t(0.5f, 0.5f), 0.46f * textScale);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
+		position(640.f, 77.f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.42f * textScale);
 }
 
 HRESULT CMainApp::Ready_Fonts()
@@ -725,7 +723,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		break;
 	case DEBUG_TOOL::BALANCE:
 		if (nullptr == m_pBalanceTool)
-			m_pBalanceTool = make_unique<CBalanceTool>();
+			m_pBalanceTool = make_unique<CBalanceTool>(
+				make_shared<CNetworkPlayerCommandSink>());
 		break;
 	default:
 		return E_INVALIDARG;

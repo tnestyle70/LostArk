@@ -5,16 +5,19 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 NS_BEGIN(Client)
 
+class IPlayerCommandSink;
+
 class CBalanceTool final
 {
 public:
-	CBalanceTool();
+	explicit CBalanceTool(std::shared_ptr<IPlayerCommandSink> commandSink);
 	void Render();
 
 private:
@@ -71,6 +74,7 @@ private:
 		std::string encounterId;
 		std::string displayName;
 		std::uint32_t maximumHp = 0;
+		std::uint32_t maximumHealthBars = 0;
 		std::uint32_t attackPower = 0;
 		float collisionRadius = 0.f;
 		float engageDistance = 0.f;
@@ -78,16 +82,39 @@ private:
 		std::uint32_t phaseTwoHpPercent = 0;
 	};
 
+	struct PATTERN_STAGE_EDIT
+	{
+		std::string stageId;
+		std::string actionId;
+		std::string stageKind;
+		std::uint32_t durationMs = 0;
+		std::string hitShape;
+		float hitOuterRadius = 0.f;
+		float hitInnerRadius = 0.f;
+		float hitAngleDegrees = 0.f;
+		float hitLength = 0.f;
+		float hitHalfWidth = 0.f;
+		std::uint32_t hitCount = 0;
+		std::uint32_t hitIntervalMs = 0;
+		std::string damageProfileId;
+	};
+
 	struct PATTERN_EDIT
 	{
 		std::string patternId;
+		std::string displayName;
 		std::string actionId;
+		std::vector<std::uint32_t> sourceActionIds;
+		std::string selectionMode;
+		std::uint32_t minimumHealthBar = 0;
+		std::uint32_t maximumHealthBar = 0;
+		std::uint32_t triggerHealthBar = 0;
+		std::uint32_t triggerOrder = 0;
+		std::uint32_t selectionWeight = 0;
+		std::uint32_t maximumConsecutiveUses = 0;
 		float minimumRange = 0.f;
 		float maximumRange = 0.f;
-		std::uint32_t telegraphMs = 0;
-		std::uint32_t activeMs = 0;
-		std::uint32_t recoveryMs = 0;
-		std::string damageProfileId;
+		std::vector<PATTERN_STAGE_EDIT> stages;
 	};
 
 	struct ENCOUNTER_STATE_EDIT
@@ -105,7 +132,7 @@ private:
 		std::string& status) const;
 	void RenderPlayerEditor();
 	void RenderBossEditor();
-	void RenderLiveVerification() const;
+	void RenderLiveVerification();
 	void RenderBasis(const std::string& document, const std::string& targetId,
 		const std::string& field) const;
 	std::uint32_t* FindDamageRate(const std::string& damageProfileId);
@@ -129,6 +156,8 @@ private:
 	bool m_dirty = false;
 	bool m_open = true;
 	std::string m_status;
+	std::shared_ptr<IPlayerCommandSink> m_commandSink;
+	std::uint32_t m_reviveSequence = 0u;
 };
 
 NS_END

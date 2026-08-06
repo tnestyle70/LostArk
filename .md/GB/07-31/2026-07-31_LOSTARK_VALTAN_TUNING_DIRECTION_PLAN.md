@@ -1,12 +1,87 @@
 # LostArk 발탄 실제 패턴·파괴 지형·공중 연출 통합 방향 계획서
 
 - 최초 작성일: 2026-07-31
-- 재검토일: 2026-08-05
+- 재검토일: 2026-08-06
 - 문서 유형: 구현 전 상위 방향 문서
 - 목표 프로필: `NORMAL_8P_2022` Gate 2
 - 현재 브랜치: `codex/effect-tool-reboot`
-- 구현 상태: 조사와 방향 확정. 이 문서의 G는 아직 구현 완료가 아니다.
+- 구현 상태: 2026-08-06 1차 수직 슬라이스 구현 완료. 자동 검증과 남은 원작 연출 경계는 `2026-08-06_VALTAN_PATTERN_BALANCE_HUD_IMPLEMENTATION_RESULT.md`에 분리했다.
 - 상세 코드 원칙: 각 G 착수 시 현재 H/CPP 전문을 다시 실측하고 별도 G 계획에 전체 반영 코드를 싣는다.
+
+## 0. 2026-08-06 구현 확정 범위
+
+이번 구현 단위는 사용자가 직접 관찰한 아래 10개 실행 항목을 발탄 encounter 정본에 등록하고,
+`Data -> publisher -> Server authority -> snapshot 기반 Client HUD -> Balance Tool -> harness`까지
+실제 소비자를 닫는 것이다.
+
+| 순서 | stable pattern ID | 표시 이름 | 선택 방식 | HP 줄 | 원본 Action 근거 |
+|---:|---|---|---|---:|---:|
+| 1 | `VALTAN_DASH_CHARGE` | 돌진 | 일반 pool | 1~160 | `43403` |
+| 2 | `VALTAN_FOUR_DIRECTION_WALLS` | 4방향 벽 생성 | 일반 pool | 1~160 | `420630` |
+| 3 | `VALTAN_JUMP_AXE_THROW` | 점프 후 도끼 투척 | 일반 pool | 1~160 | `420610` |
+| 4 | `VALTAN_CIRCULAR_SPIN` | 회전 원형 공격 | 일반 pool | 1~160 | `43401` |
+| 5 | `VALTAN_TRIPLE_ATTACK` | 3연속 공격 | 일반 pool | 1~160 | `43402` |
+| 6 | `VALTAN_SIX_DIRECTION_130` | 130줄 6방향 공격 | HP 줄 선점 | 130 | `420630` |
+| 7 | `VALTAN_OMNIDIRECTIONAL_WIPE_130` | 130줄 전방향 즉사 | HP 줄 후속 | 130 | `420630` |
+| 8 | `VALTAN_ARENA_DESTROY_80` | 80줄 지형 파괴 | HP 줄 | 80 | `420629` |
+| 9 | `VALTAN_STAGGER_76` | 76줄 무력화 | HP 줄 | 76 | 미확정 |
+| 10 | `VALTAN_ARENA_DESTROY_33` | 33줄 지형 파괴 | HP 줄 | 33 | `420629` |
+
+`420630` 내부의 4방향 벽 notify 시각은 확인됐지만 130줄 6방향/전방향의 개별 Stage 이름은 아직
+검증되지 않았다. `76줄 무력화`도 대응 원본 Action을 확정하지 못했다. 따라서 이번 데이터에는
+검증된 Action ID만 reference metadata로 저장하고, 미확정 Stage/Action을 실제 animation clip으로
+추측 연결하지 않는다. 제품 Client는 기존 상태별 안전 clip을 유지하며 semantic `actionId`를 보존한다.
+
+### 0.1 데이터 계약
+
+- `BossProfiles.json`은 `maximumHealthBars`를 소유한다. 초기값은 `160`이고 HP 1줄은
+  `maximumHp / maximumHealthBars`의 비율로 계산한다.
+- `ValtanEncounter.json` formatVersion 2의 각 pattern은 이름, semantic action, 원본 Action 근거,
+  `NORMAL`/`HEALTH_BAR` 선택 방식, 줄 범위 또는 trigger 줄/order, weight/repeat limit,
+  거리, telegraph/active/recovery, `NONE`/`CIRCLE` hit shape와 radius, 독립 damage profile을 소유한다.
+- HP 줄은 `ceil(currentHp * maximumHealthBars / maximumHp)`로 계산한다. `0 HP = 0줄`이며
+  한 tick에 여러 기준을 넘으면 높은 줄부터, 같은 줄은 `triggerOrder` 오름차순으로 queue한다.
+- 일반 pattern 후보는 현재 줄 범위와 target 거리로 먼저 가지치기하고 weight를 사용해 결정적으로
+  선택한다. HP 줄 pattern은 encounter당 한 번만 queue되어 일반 pool보다 우선한다.
+- `NONE`은 피해 판정이 없는 기믹 상태, `CIRCLE`은 Server XZ 평면 원 판정이다. Client effect나
+  무기 collider가 피해 정답을 만들지 않는다.
+
+### 0.2 런타임 호출 흐름
+
+```text
+Balance Tool save
+-> Data/Balance + Data/Encounters 원자적 교체
+-> provenance receipt 동기화
+-> Publish-GameplayBalance validate/publish
+-> Gameplay.bootstrap BOSS/PATTERN rows
+-> Server restart + CGameplayCatalog stage/validate/commit
+-> CGameRoom boss spawn
+-> CValtanBrain HP 줄 queue 또는 normal candidate 선택
+-> semantic action/timing/Server circle hit
+-> S2C_WORLD_SNAPSHOT
+-> CCombatHUDViewModel
+-> Font Manager player HP/Mana 숫자 + Valtan 상단 HP/줄 숫자
+```
+
+월드 bootstrap은 boss placement와 encounter ID만 소유한다. 기존처럼 encounter 첫 pattern을 월드
+row에 복제하지 않으며, pattern 정본은 Gameplay bootstrap 하나만 사용한다.
+
+### 0.3 파일별 구현 범위
+
+- 데이터: `BossProfiles.json`, `DamageProfiles.json`, `ValtanEncounter.json`, provenance receipt
+- publish: `Publish-GameplayBalance.ps1`, `Publish-WorldGameplay.ps1`
+- Server: `GameplayCatalog`, `WorldBootstrap`, `ServerWorldEntity`, `GameRoom`, `ValtanBrain`
+- Client authoring: `BalanceTool.h/.cpp`
+- Client HUD: `CombatHUDViewModel.h/.cpp`, `MainApp.cpp`
+- 검증: `ServerGameplayContractTests.cpp`, 관련 ProjectAudit 계약, JSON/XML parse,
+  gameplay/world publish, Debug/Release 정본 build/regression, Server contract test, `git diff --check`
+
+### 0.4 이번 단위의 완료 경계
+
+이번 단위에서 완료로 판정하는 것은 pattern 정의·줄 trigger queue·일반 선택·원형 Server 판정·독립
+수치 편집·상단/하단 HUD 숫자 연결이다. 실제 4방향 벽 actor 생성, 지형 mesh 제거/navigation 재구축,
+무력화 gauge, notify 기반 red effect zone과 패턴별 원본 clip sequence는 다음 수직 슬라이스다.
+이 항목들은 데이터 이름이 존재한다는 이유만으로 구현 완료 처리하지 않는다.
 
 이 문서는 다음 기존 문서의 현재 정본이다.
 

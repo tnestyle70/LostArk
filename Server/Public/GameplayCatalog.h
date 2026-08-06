@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace LostArk::Server
 {
@@ -52,6 +53,7 @@ namespace LostArk::Server
 		std::string strArchetypeId;
 		std::string strEncounterId;
 		std::uint32_t iMaximumHp = 0;
+		std::uint32_t iMaximumHealthBars = 0;
 		/* Multiplicand for every damage rate this boss casts. */
 		std::uint32_t iAttackPower = 0;
 		/* Added to a skill's reach because official ranges stop at the target's
@@ -60,6 +62,66 @@ namespace LostArk::Server
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
 		std::uint32_t iPhaseTwoHpPercent = 0;
+	};
+
+	enum class BOSS_PATTERN_SELECTION
+	{
+		NORMAL,
+		HEALTH_BAR
+	};
+
+	enum class BOSS_PATTERN_HIT_SHAPE
+	{
+		NONE,
+		CIRCLE,
+		RING,
+		CONE,
+		BOX,
+		CROSS
+	};
+
+	enum class BOSS_PATTERN_STAGE_KIND
+	{
+		WINDUP,
+		ACTIVE,
+		RECOVERY
+	};
+
+	struct BOSS_PATTERN_STAGE_DEFINITION
+	{
+		std::string strStageId;
+		std::string strActionId;
+		std::string strDamageProfileId;
+		BOSS_PATTERN_STAGE_KIND eStageKind =
+			BOSS_PATTERN_STAGE_KIND::WINDUP;
+		BOSS_PATTERN_HIT_SHAPE eHitShape =
+			BOSS_PATTERN_HIT_SHAPE::NONE;
+		std::uint32_t iDurationMs = 0;
+		float fHitOuterRadius = 0.f;
+		float fHitInnerRadius = 0.f;
+		float fHitAngleDegrees = 0.f;
+		float fHitLength = 0.f;
+		float fHitHalfWidth = 0.f;
+		std::uint32_t iHitCount = 0;
+		std::uint32_t iHitIntervalMs = 0;
+	};
+
+	struct BOSS_PATTERN_DEFINITION
+	{
+		std::string strEncounterId;
+		std::string strPatternId;
+		std::string strActionId;
+		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
+		std::uint32_t iMinimumHealthBar = 0;
+		std::uint32_t iMaximumHealthBar = 0;
+		std::uint32_t iTriggerHealthBar = 0;
+		std::uint32_t iTriggerOrder = 0;
+		std::uint32_t iSelectionWeight = 0;
+		std::uint32_t iMaximumConsecutiveUses = 0;
+		float fMinimumRange = 0.f;
+		float fMaximumRange = 0.f;
+		std::uint32_t iExpectedStageCount = 0;
+		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
 	};
 
 	struct PLAYER_RUNTIME_PROFILE
@@ -87,6 +149,8 @@ namespace LostArk::Server
 			LostArk::Shared::SKILL_ID skillId) const;
 		const BOSS_RUNTIME_PROFILE* Find_Boss(
 			const std::string& archetypeId) const;
+		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
+			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass) const;
 		/* Percent of the caster's attack power, straight from the official
@@ -111,6 +175,8 @@ namespace LostArk::Server
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;
+		std::unordered_map<std::string, std::vector<BOSS_PATTERN_DEFINITION>>
+			m_BossPatterns;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

@@ -530,8 +530,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		!lazyValtan->isEnabled &&
 		lazyValtan->eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
 		lazyValtan->strArchetypeId == "BOSS_VALTAN" &&
-		lazyValtan->strEncounterId == "ENCOUNTER_VALTAN" &&
-		lazyValtan->strDamageProfileId == "damage.valtan.basic-swing",
+		lazyValtan->strEncounterId == "ENCOUNTER_VALTAN",
 		"Load disabled Character Select Valtan lazy template");
 	tests.Require(
 		characterSelectNavigation.Load("LV_LOBBY_CLASSSELECT_SL00"),
@@ -784,6 +783,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	target.fPositionX = 151.f;
 	target.fPositionY = 22.97f;
 	target.fPositionZ = -128.f;
+	target.isCombatReady = false;
 	players.emplace(target.iPlayerId, target);
 	SERVER_WORLD_ENTITY valtan{};
 	valtan.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
@@ -791,37 +791,49 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	/* The brain resolves damage through the boss's own catalog profile, so the
 	test entity carries the archetype the room would have stamped on it. */
 	valtan.strArchetypeId = "BOSS_VALTAN";
-	valtan.strDamageProfileId = "damage.valtan.basic-swing";
-	valtan.iCurrentHp = 10000;
-	valtan.iMaximumHp = 10000;
+	valtan.strEncounterId = "ENCOUNTER_VALTAN";
+	valtan.iCurrentHp = 48750;
+	valtan.iMaximumHp = 60000;
+	valtan.iMaximumHealthBars = 160;
+	valtan.iLastEvaluatedHealthBar = 131;
 	valtan.iPhaseTwoHpPercent = 50;
 	valtan.iPhase = 1;
 	valtan.fPositionX = 151.f;
 	valtan.fPositionY = 22.97f;
 	valtan.fPositionZ = -122.f;
-	valtan.fPatternMaximumRange = 8.f;
 	valtan.fEngageDistance = 35.f;
 	valtan.fMoveSpeed = 3.f;
-	valtan.iPatternTelegraphMs = 1;
-	valtan.iPatternActiveMs = 300;
-	valtan.iPatternRecoveryMs = 1;
 	CValtanBrain brain;
 	std::vector<DAMAGE_EVENT> valtanDamageEvents;
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 100,
+	brain.Update(valtan, players, catalog, navigation, 0.1f, 99,
 		valtanDamageEvents);
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 101,
-		valtanDamageEvents);
-	tests.Require(830u == players.begin()->second.iCurrentHp,
-		"Apply server-authoritative Valtan damage once");
+	tests.Require(
+		SERVER_ENTITY_ACTION::IDLE == valtan.eAction &&
+		1000u == players.begin()->second.iCurrentHp &&
+		valtanDamageEvents.empty(),
+		"Protect Valtan entrant until first accepted gameplay intent");
+	players.begin()->second.isCombatReady = true;
+	for (std::uint32_t tick = 100; tick < 140 && valtanDamageEvents.empty(); ++tick)
+		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
+			valtanDamageEvents);
+	tests.Require(781u == players.begin()->second.iCurrentHp,
+		"Apply the queued 130-bar Valtan circle hit once");
 	tests.Require(
 		1u == valtanDamageEvents.size() &&
-		170u == valtanDamageEvents[0].iAmount &&
+		219u == valtanDamageEvents[0].iAmount &&
 		!valtanDamageEvents[0].isOutgoing &&
 		players.begin()->second.iNetEntityId ==
 			valtanDamageEvents[0].iTargetNetEntityId,
-		"Emit one incoming damage event for the boss hit");
-	valtan.iCurrentHp = 5000;
-	brain.Update(valtan, players, catalog, navigation, 0.1f, 102,
+		"Emit one incoming damage event for the 130-bar boss hit");
+	tests.Require(
+		"VALTAN_FLOOR_WIPE_130" == valtan.strPatternId &&
+		valtan.PendingPatternIds.empty() &&
+		1u == valtan.TriggeredPatternIds.size() &&
+		1u == valtan.iPatternSequence &&
+		1u == valtan.iPatternStageIndex,
+		"Queue and advance the staged 130-bar scripted mechanic");
+	valtan.iCurrentHp = 30000;
+	brain.Update(valtan, players, catalog, navigation, 0.1f, 141,
 		valtanDamageEvents);
 	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
 
@@ -879,10 +891,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			{
 				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
 				bootstrap <<
-					"LOSTARK_WORLD_BOOTSTRAP\t5\tVALTAN_ARENA"
+					"LOSTARK_WORLD_BOOTSTRAP\t6\tVALTAN_ARENA"
 					"\tLV_LUT_HEARTRB_ED\t3\t3\n"
-					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1"
-					"\t-\t-\t0\t0\t0\t0\t0\t-\n"
+					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1\n"
 					"trigger.contract.jump\ttriggerBox\t-\t-\t0\t0\t0\t0\t1"
 					"\t2\t2\t2\t0\t1\tmovePlayer\t5\t10\t0\t0\t"
 					<< durationSeconds << "\t4\n"
@@ -908,7 +919,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			WORLD_BOOTSTRAP_KIND::COLLISION_BOX ==
 				triggerBootstrap.Get_Placements()[2].eKind &&
 			1u == triggerBootstrap.Get_Placements()[1].TriggerActions.size(),
-			"Parse trigger and collision box from world bootstrap v5");
+			"Parse trigger and collision box from world bootstrap v6");
 
 		writeTriggerBootstrap(-1.f);
 		tests.Require(
@@ -1150,9 +1161,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t1\t4\n"
-				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t100\t3\t20\t2.6\t50\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
+				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
 				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
 				"\t1510\t2000\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
@@ -1161,11 +1174,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const DWORD previousLength = GetEnvironmentVariableW(
 			L"LOSTARK_SERVER_DATA_ROOT", previousRoot,
 			static_cast<DWORD>(std::size(previousRoot)));
+		CGameplayCatalog rollbackCatalog;
+		tests.Require(rollbackCatalog.Load(),
+			"Stage a valid gameplay catalog before rollback test");
 		SetEnvironmentVariableW(
 			L"LOSTARK_SERVER_DATA_ROOT", overCostRoot.c_str());
 		CGameplayCatalog overCostCatalog;
 		tests.Require(!overCostCatalog.Load(),
 			"Reject bootstrap skill cost above every class pool");
+		tests.Require(
+			!rollbackCatalog.Load() &&
+			nullptr != rollbackCatalog.Find_Skill(34010) &&
+			nullptr != rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN") &&
+			31u == rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN")->size(),
+			"Preserve the committed catalog after a corrupt replacement fails");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
 				nullptr : previousRoot);
@@ -1191,9 +1213,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t1\t4\n"
-					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t100\t3\t20\t2.6\t50\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
 					"\t8000\t900\t" << hitTimeMs << "\t242\t6\t" << maximumRange <<

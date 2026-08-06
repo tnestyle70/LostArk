@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 11;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 12;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -73,6 +73,7 @@ namespace LostArk::Shared
 		C2S_MOVE,
 		C2S_USE_SKILL,
 		C2S_RELEASE_SKILL,
+		C2S_REVIVE_PLAYER,
 		S2C_WORLD_SNAPSHOT,
 
 		C2S_CHAT,
@@ -108,6 +109,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_MOVE:
 		case PACKET_TYPE::C2S_USE_SKILL:
 		case PACKET_TYPE::C2S_RELEASE_SKILL:
+		case PACKET_TYPE::C2S_REVIVE_PLAYER:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
 		case PACKET_TYPE::C2S_CHAT:
 		case PACKET_TYPE::S2C_CHAT:

@@ -4,6 +4,7 @@
 
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
+#include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
 
 #include <Windows.h>
@@ -150,7 +151,10 @@ namespace
 	}
 }
 
-Client::CBalanceTool::CBalanceTool()
+
+Client::CBalanceTool::CBalanceTool(
+	std::shared_ptr<IPlayerCommandSink> commandSink)
+	: m_commandSink(std::move(commandSink))
 {
 	Reload();
 }
@@ -188,10 +192,10 @@ bool Client::CBalanceTool::Reload()
 		!IsExactObject(damageRoot, { "schema", "formatVersion", "profiles" }) ||
 		!HasSchemaVersion(damageRoot, "lostark.damage-profiles", 2u) ||
 		!IsExactObject(bossRoot, { "schema", "formatVersion", "bosses" }) ||
-		!HasSchemaVersion(bossRoot, "lostark.boss-profiles", 2u) ||
+		!HasSchemaVersion(bossRoot, "lostark.boss-profiles", 3u) ||
 		!IsExactObject(encounterRoot, { "schema", "formatVersion", "encounterId",
 			"bossArchetypeId", "authority", "fixedTickHz", "states", "patterns" }) ||
-		!HasSchemaVersion(encounterRoot, "lostark.encounter-profile", 1u) ||
+		!HasSchemaVersion(encounterRoot, "lostark.encounter-profile", 3u) ||
 		!IsExactObject(receiptRoot, { "schema", "formatVersion", "sourceBuildId",
 			"referenceSkillLevel", "extractorSha256", "sourceFiles", "coverage", "entries" }) ||
 		!HasSchemaVersion(receiptRoot, "lostark.balance-provenance-receipt", 1u))
@@ -300,13 +304,14 @@ bool Client::CBalanceTool::Reload()
 	for (const DATA_JSON_VALUE& value : bossArray->Get_Array())
 	{
 		BOSS_EDIT row{};
-		if (!IsExactObject(value, { "archetypeId", "encounterId", "displayName", "maximumHp",
+		if (!IsExactObject(value, { "archetypeId", "encounterId", "displayName", "maximumHp", "maximumHealthBars",
 			"attackPower", "collisionRadius", "engageDistance", "moveSpeed",
 			"phaseTwoHpPercent" }) ||
 			!ReadString(value, "archetypeId", row.archetypeId) ||
 			!ReadString(value, "encounterId", row.encounterId) ||
 			!ReadString(value, "displayName", row.displayName) ||
 			!ReadU32(value, "maximumHp", row.maximumHp) ||
+			!ReadU32(value, "maximumHealthBars", row.maximumHealthBars) ||
 			!ReadU32(value, "attackPower", row.attackPower) ||
 			!ReadFloat(value, "collisionRadius", row.collisionRadius) ||
 			!ReadFloat(value, "engageDistance", row.engageDistance) ||
@@ -318,17 +323,67 @@ bool Client::CBalanceTool::Reload()
 	for (const DATA_JSON_VALUE& value : patternArray->Get_Array())
 	{
 		PATTERN_EDIT row{};
-		if (!IsExactObject(value, { "patternId", "actionId", "minimumRange", "maximumRange",
-			"telegraphMs", "activeMs", "recoveryMs", "serverDamageProfileId" }) ||
+		const DATA_JSON_VALUE* sourceActions =
+			Field(value, "sourceActionIds", DATA_JSON_TYPE::ARRAY);
+		const DATA_JSON_VALUE* stages = Field(value, "stages", DATA_JSON_TYPE::ARRAY);
+		if (!IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
+			"selectionMode", "minimumHealthBar", "maximumHealthBar",
+			"triggerHealthBar", "triggerOrder", "selectionWeight", "maximumConsecutiveUses",
+			"minimumRange", "maximumRange", "stages" }) ||
+			nullptr == sourceActions || sourceActions->Get_Array().empty() ||
+			nullptr == stages || stages->Get_Array().empty() ||
 			!ReadString(value, "patternId", row.patternId) ||
+			!ReadString(value, "displayName", row.displayName) ||
 			!ReadString(value, "actionId", row.actionId) ||
+			!ReadString(value, "selectionMode", row.selectionMode) ||
+			!ReadU32(value, "minimumHealthBar", row.minimumHealthBar) ||
+			!ReadU32(value, "maximumHealthBar", row.maximumHealthBar) ||
+			!ReadU32(value, "triggerHealthBar", row.triggerHealthBar) ||
+			!ReadU32(value, "triggerOrder", row.triggerOrder) ||
+			!ReadU32(value, "selectionWeight", row.selectionWeight) ||
+			!ReadU32(value, "maximumConsecutiveUses", row.maximumConsecutiveUses) ||
 			!ReadFloat(value, "minimumRange", row.minimumRange) ||
-			!ReadFloat(value, "maximumRange", row.maximumRange) ||
-			!ReadU32(value, "telegraphMs", row.telegraphMs) ||
-			!ReadU32(value, "activeMs", row.activeMs) ||
-			!ReadU32(value, "recoveryMs", row.recoveryMs) ||
-			!ReadString(value, "serverDamageProfileId", row.damageProfileId))
+			!ReadFloat(value, "maximumRange", row.maximumRange))
 			return false;
+		for (const DATA_JSON_VALUE& sourceAction : sourceActions->Get_Array())
+		{
+			if (!sourceAction.Is_Number() ||
+				!std::isfinite(sourceAction.Get_Number()) ||
+				std::floor(sourceAction.Get_Number()) != sourceAction.Get_Number() ||
+				sourceAction.Get_Number() <= 0.0 ||
+				sourceAction.Get_Number() >
+					static_cast<double>((std::numeric_limits<std::uint32_t>::max)()))
+			{
+				return false;
+			}
+			row.sourceActionIds.push_back(
+				static_cast<std::uint32_t>(sourceAction.Get_Number()));
+		}
+		for (const DATA_JSON_VALUE& stageValue : stages->Get_Array())
+		{
+			PATTERN_STAGE_EDIT stage{};
+			if (!IsExactObject(stageValue, { "stageId", "actionId", "stageKind",
+				"durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
+				"hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
+				"hitIntervalMs", "serverDamageProfileId" }) ||
+				!ReadString(stageValue, "stageId", stage.stageId) ||
+				!ReadString(stageValue, "actionId", stage.actionId) ||
+				!ReadString(stageValue, "stageKind", stage.stageKind) ||
+				!ReadU32(stageValue, "durationMs", stage.durationMs) ||
+				!ReadString(stageValue, "hitShape", stage.hitShape) ||
+				!ReadFloat(stageValue, "hitOuterRadius", stage.hitOuterRadius) ||
+				!ReadFloat(stageValue, "hitInnerRadius", stage.hitInnerRadius) ||
+				!ReadFloat(stageValue, "hitAngleDegrees", stage.hitAngleDegrees) ||
+				!ReadFloat(stageValue, "hitLength", stage.hitLength) ||
+				!ReadFloat(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
+				!ReadU32(stageValue, "hitCount", stage.hitCount) ||
+				!ReadU32(stageValue, "hitIntervalMs", stage.hitIntervalMs) ||
+				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId))
+			{
+				return false;
+			}
+			row.stages.push_back(std::move(stage));
+		}
 		patterns.push_back(std::move(row));
 	}
 	for (const DATA_JSON_VALUE& value : stateArray->Get_Array())
@@ -384,7 +439,7 @@ bool Client::CBalanceTool::Reload()
 	m_selectedBoss = (std::min)(m_selectedBoss,
 		m_bosses.empty() ? 0u : m_bosses.size() - 1u);
 	m_dirty = false;
-	m_status = "Loaded authoring balance and 1,058 field provenance entries.";
+	m_status = "Loaded authoring balance and field provenance entries.";
 	return true;
 }
 
@@ -503,6 +558,8 @@ void Client::CBalanceTool::RenderBossEditor()
 	ImGui::SeparatorText("Base stats");
 	MarkDirty(EditU32("Maximum HP", boss.maximumHp, 1u, 4000000000u));
 	RenderBasis("Data/Balance/BossProfiles.json", target, "maximumHp");
+	MarkDirty(EditU32("Maximum health bars", boss.maximumHealthBars, 1u, 1000u));
+	RenderBasis("Data/Balance/BossProfiles.json", target, "maximumHealthBars");
 	MarkDirty(EditU32("Attack power", boss.attackPower, 1u, 1000000u));
 	RenderBasis("Data/Balance/BossProfiles.json", target, "attackPower");
 	MarkDirty(ImGui::DragFloat("Collision radius", &boss.collisionRadius, 0.1f, 0.1f, 100.f));
@@ -515,32 +572,159 @@ void Client::CBalanceTool::RenderBossEditor()
 	MarkDirty(EditU32("Phase 2 HP %", boss.phaseTwoHpPercent, 1u, 99u));
 	ImGui::TextDisabled("Current server behavior: phase byte changes; no separate phase pattern set yet.");
 	ImGui::SeparatorText("Patterns");
+	const HUD_BOSS_STATE& liveBoss = CCombatHUDViewModel::Get().Get_Boss();
+	std::uint32_t liveHealthBar = 0u;
+	if (liveBoss.isValid && liveBoss.iCurrentHp > 0u && liveBoss.iMaximumHp > 0u)
+	{
+		const std::uint64_t scaled = static_cast<std::uint64_t>(liveBoss.iCurrentHp) *
+			boss.maximumHealthBars;
+		liveHealthBar = static_cast<std::uint32_t>(
+			(scaled + liveBoss.iMaximumHp - 1u) / liveBoss.iMaximumHp);
+	}
 	for (std::size_t index = 0; index < m_patterns.size(); ++index)
 	{
 		PATTERN_EDIT& pattern = m_patterns[index];
 		ImGui::PushID(static_cast<int>(index));
-		if (ImGui::CollapsingHeader(pattern.patternId.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+		const std::string header = pattern.displayName + "##" + pattern.patternId;
+		if (ImGui::CollapsingHeader(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			ImGui::TextDisabled("Animation action: %s", pattern.actionId.c_str());
+			ImGui::TextDisabled("Pattern ID: %s", pattern.patternId.c_str());
+			ImGui::TextDisabled("Semantic action: %s", pattern.actionId.c_str());
+			std::ostringstream sourceActions;
+			for (std::size_t sourceIndex = 0;
+				sourceIndex < pattern.sourceActionIds.size(); ++sourceIndex)
+			{
+				if (sourceIndex > 0u)
+					sourceActions << ", ";
+				sourceActions << pattern.sourceActionIds[sourceIndex];
+			}
+			ImGui::TextWrapped("Original Actions: %s", sourceActions.str().c_str());
+			int selectionMode = pattern.selectionMode == "HEALTH_BAR" ? 1 : 0;
+			if (ImGui::Combo("Selection mode", &selectionMode,
+				"Normal pool\0Health bar trigger\0"))
+			{
+				pattern.selectionMode = 0 == selectionMode ? "NORMAL" : "HEALTH_BAR";
+				m_dirty = true;
+			}
+			if (pattern.selectionMode == "NORMAL")
+			{
+				MarkDirty(EditU32("Minimum health bar", pattern.minimumHealthBar, 1u,
+					boss.maximumHealthBars));
+				MarkDirty(EditU32("Maximum health bar", pattern.maximumHealthBar,
+					pattern.minimumHealthBar, boss.maximumHealthBars));
+				MarkDirty(EditU32("Selection weight", pattern.selectionWeight, 1u, 100000u));
+				MarkDirty(EditU32("Maximum consecutive uses",
+					pattern.maximumConsecutiveUses, 1u, 100u));
+				if (liveBoss.isValid)
+				{
+					std::uint64_t eligibleWeight = 0u;
+					for (const PATTERN_EDIT& candidate : m_patterns)
+					{
+						if (candidate.selectionMode == "NORMAL" &&
+							liveHealthBar >= candidate.minimumHealthBar &&
+							liveHealthBar <= candidate.maximumHealthBar)
+						{
+							eligibleWeight += candidate.selectionWeight;
+						}
+					}
+					const bool barEligible = liveHealthBar >= pattern.minimumHealthBar &&
+						liveHealthBar <= pattern.maximumHealthBar;
+					ImGui::TextDisabled("Live decision: bar gate %s | weight %.1f%% | target range checked on Server",
+						barEligible ? "PASS" : "BLOCK",
+						barEligible && eligibleWeight > 0u ?
+							100.0 * static_cast<double>(pattern.selectionWeight) /
+							static_cast<double>(eligibleWeight) : 0.0);
+				}
+			}
+			else
+			{
+				MarkDirty(EditU32("Trigger health bar", pattern.triggerHealthBar, 1u,
+					boss.maximumHealthBars));
+				MarkDirty(EditU32("Trigger order", pattern.triggerOrder, 1u, 100u));
+				if (liveBoss.isValid)
+					ImGui::TextDisabled("Live decision: threshold %s | once-only queue order %u",
+						liveHealthBar > pattern.triggerHealthBar ? "ARMED" : "REACHED",
+						pattern.triggerOrder);
+			}
 			MarkDirty(ImGui::DragFloat("Minimum range", &pattern.minimumRange, 0.1f, 0.f, 1000.f));
 			MarkDirty(ImGui::DragFloat("Maximum range", &pattern.maximumRange, 0.1f, 0.f, 1000.f));
-			MarkDirty(EditU32("Telegraph ms", pattern.telegraphMs, 1u, 600000u));
-			MarkDirty(EditU32("Active ms", pattern.activeMs, 1u, 600000u));
-			MarkDirty(EditU32("Recovery ms", pattern.recoveryMs, 1u, 600000u));
-			std::uint32_t* rate = FindDamageRate(pattern.damageProfileId);
-			if (nullptr != rate)
+			ImGui::SeparatorText("Server stages");
+			for (std::size_t stageIndex = 0;
+				stageIndex < pattern.stages.size(); ++stageIndex)
 			{
-				MarkDirty(EditU32("Damage rate %", *rate, 1u, 100000u));
-				RenderBasis("Data/Balance/DamageProfiles.json",
-					"damage:" + pattern.damageProfileId, "damageRatePercent");
+				PATTERN_STAGE_EDIT& stage = pattern.stages[stageIndex];
+				ImGui::PushID(static_cast<int>(stageIndex));
+				const std::string stageHeader = stage.stageId + " | " + stage.actionId;
+				if (ImGui::TreeNode(stageHeader.c_str()))
+				{
+					int stageKind = stage.stageKind == "ACTIVE" ? 1 :
+						(stage.stageKind == "RECOVERY" ? 2 : 0);
+					if (ImGui::Combo("Kind", &stageKind,
+						"Windup\0Active\0Recovery\0"))
+					{
+						stage.stageKind = 0 == stageKind ? "WINDUP" :
+							(1 == stageKind ? "ACTIVE" : "RECOVERY");
+						m_dirty = true;
+					}
+					MarkDirty(EditU32("Duration ms", stage.durationMs, 1u, 600000u));
+					int hitShape = 0;
+					if (stage.hitShape == "CIRCLE") hitShape = 1;
+					else if (stage.hitShape == "RING") hitShape = 2;
+					else if (stage.hitShape == "CONE") hitShape = 3;
+					else if (stage.hitShape == "BOX") hitShape = 4;
+					else if (stage.hitShape == "CROSS") hitShape = 5;
+					if (ImGui::Combo("Collider", &hitShape,
+						"None\0Circle\0Ring\0Cone\0Box\0Cross\0"))
+					{
+						static const char* shapes[] =
+							{ "NONE", "CIRCLE", "RING", "CONE", "BOX", "CROSS" };
+						stage.hitShape = shapes[hitShape];
+						m_dirty = true;
+					}
+					if (stage.hitShape == "CIRCLE" || stage.hitShape == "RING")
+						MarkDirty(ImGui::DragFloat("Outer radius", &stage.hitOuterRadius,
+							0.1f, 0.f, 1000.f));
+					if (stage.hitShape == "RING")
+						MarkDirty(ImGui::DragFloat("Inner radius", &stage.hitInnerRadius,
+							0.1f, 0.f, 1000.f));
+					if (stage.hitShape == "CONE")
+						MarkDirty(ImGui::DragFloat("Angle degrees", &stage.hitAngleDegrees,
+							1.f, 1.f, 360.f));
+					if (stage.hitShape == "CONE" || stage.hitShape == "BOX" ||
+						stage.hitShape == "CROSS")
+					{
+						MarkDirty(ImGui::DragFloat("Length", &stage.hitLength,
+							0.1f, 0.f, 1000.f));
+					}
+					if (stage.hitShape == "BOX" || stage.hitShape == "CROSS")
+						MarkDirty(ImGui::DragFloat("Half width", &stage.hitHalfWidth,
+							0.1f, 0.f, 1000.f));
+					if (stage.hitShape != "NONE")
+					{
+						MarkDirty(EditU32("Hit count", stage.hitCount, 1u, 100u));
+						MarkDirty(EditU32("Hit interval ms", stage.hitIntervalMs,
+							1u == stage.hitCount ? 0u : 1u, 600000u));
+						std::uint32_t* rate = FindDamageRate(stage.damageProfileId);
+						if (nullptr != rate)
+						{
+							MarkDirty(EditU32("Damage rate %", *rate, 1u, 100000u));
+							RenderBasis("Data/Balance/DamageProfiles.json",
+								"damage:" + stage.damageProfileId, "damageRatePercent");
+						}
+					}
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
 			}
-			ImGui::TextDisabled("Target: nearest alive player | hit: radial 2D/all players/once on active start");
+			ImGui::TextDisabled("Authority: Server 30 Hz | target: nearest alive player | geometry: XZ plane");
+			if (liveBoss.isValid && liveBoss.strPatternId == pattern.patternId)
+				ImGui::TextColored(ImVec4(0.4f, 1.f, 0.4f, 1.f), "LIVE: selected by Server snapshot");
 		}
 		ImGui::PopID();
 	}
 }
 
-void Client::CBalanceTool::RenderLiveVerification() const
+void Client::CBalanceTool::RenderLiveVerification()
 {
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
@@ -551,15 +735,49 @@ void Client::CBalanceTool::RenderLiveVerification() const
 		ImGui::Text("Player HP %u / %u", player.iCurrentHp, player.iMaximumHp);
 		ImGui::Text("Resource %u / %u", player.iCurrentResource, player.iMaximumResource);
 		ImGui::Text("Server tick %u", player.iServerTick);
+		ImGui::Text("Combat ready: %s", player.isCombatReady ? "YES" : "PROTECTED");
+		if (0u == player.iCurrentHp)
+		{
+			ImGui::BeginDisabled(nullptr == m_commandSink);
+			if (ImGui::Button("Revive at death position"))
+			{
+				m_reviveSequence = m_reviveSequence ==
+					(std::numeric_limits<std::uint32_t>::max)() ?
+					1u : m_reviveSequence + 1u;
+				m_status = m_commandSink->Request_RevivePlayer(m_reviveSequence) ?
+					"Revive requested. Waiting for Server snapshot." :
+					"Revive request failed: no active Server connection.";
+			}
+			ImGui::EndDisabled();
+		}
 	}
 	else
 		ImGui::TextDisabled("No replicated player snapshot");
 	if (boss.isValid)
 	{
 		ImGui::SeparatorText("Boss live state");
-		ImGui::Text("%s  HP %u / %u", boss.strDisplayName.c_str(),
-			boss.iCurrentHp, boss.iMaximumHp);
-		ImGui::Text("Phase %u | action %s", boss.iPhase, boss.strActionId.c_str());
+		std::uint32_t currentHealthBar = 0u;
+		if (!m_bosses.empty() && boss.iCurrentHp > 0u && boss.iMaximumHp > 0u)
+		{
+			const std::uint64_t scaled = static_cast<std::uint64_t>(boss.iCurrentHp) *
+				m_bosses[m_selectedBoss].maximumHealthBars;
+			currentHealthBar = static_cast<std::uint32_t>(
+				(scaled + boss.iMaximumHp - 1u) / boss.iMaximumHp);
+		}
+		ImGui::Text("%s  HP %u / %u | bars %u / %u", boss.strDisplayName.c_str(),
+			boss.iCurrentHp, boss.iMaximumHp, currentHealthBar,
+			m_bosses.empty() ? 0u : m_bosses[m_selectedBoss].maximumHealthBars);
+		ImGui::Text("Phase %u | pattern %s", boss.iPhase,
+			boss.strPatternId.empty() ? "IDLE" : boss.strPatternId.c_str());
+		ImGui::Text("Sequence %u | stage %u | action %s",
+			boss.iPatternSequence, boss.iPatternStageIndex,
+			boss.strActionId.empty() ? "-" : boss.strActionId.c_str());
+		const auto selected = std::find_if(m_patterns.begin(), m_patterns.end(),
+			[&boss](const PATTERN_EDIT& pattern)
+			{ return pattern.patternId == boss.strPatternId; });
+		if (m_patterns.end() != selected)
+			ImGui::Text("Selected pattern: %s (%s)", selected->displayName.c_str(),
+				selected->selectionMode.c_str());
 	}
 	else
 		ImGui::TextDisabled("No replicated boss snapshot");
@@ -581,8 +799,9 @@ void Client::CBalanceTool::RenderLiveVerification() const
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	if (m_players.size() != 5u || m_skills.size() != 66u ||
-		m_damageProfiles.size() != 63u || m_bosses.empty() || m_patterns.empty())
+	if (m_players.size() != 6u || m_skills.size() != 90u ||
+		m_damageProfiles.size() != 108u || m_bosses.empty() ||
+		m_patterns.size() != 31u)
 	{
 		status = "Draft object counts are incomplete.";
 		return false;
@@ -651,7 +870,8 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	for (const BOSS_EDIT& boss : m_bosses)
 	{
 		if (boss.archetypeId.empty() || boss.encounterId.empty() ||
-			0u == boss.maximumHp || 0u == boss.attackPower ||
+			0u == boss.maximumHp || 0u == boss.maximumHealthBars ||
+			boss.maximumHealthBars > 1000u || 0u == boss.attackPower ||
 			!std::isfinite(boss.collisionRadius) || boss.collisionRadius <= 0.f ||
 			!std::isfinite(boss.engageDistance) || boss.engageDistance <= 0.f ||
 			!std::isfinite(boss.moveSpeed) || boss.moveSpeed <= 0.f ||
@@ -663,15 +883,71 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	}
 	for (const PATTERN_EDIT& pattern : m_patterns)
 	{
-		if (pattern.patternId.empty() || pattern.actionId.empty() ||
+		const bool normal = pattern.selectionMode == "NORMAL";
+		const bool healthBar = pattern.selectionMode == "HEALTH_BAR";
+		const bool validSelection = normal ?
+			(pattern.minimumHealthBar >= 1u &&
+				pattern.maximumHealthBar >= pattern.minimumHealthBar &&
+				pattern.maximumHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				0u == pattern.triggerHealthBar && 0u == pattern.triggerOrder &&
+				pattern.selectionWeight > 0u && pattern.maximumConsecutiveUses > 0u) :
+			(healthBar && 0u == pattern.minimumHealthBar &&
+				0u == pattern.maximumHealthBar && pattern.triggerHealthBar >= 1u &&
+				pattern.triggerHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
+				pattern.triggerOrder > 0u && 0u == pattern.selectionWeight &&
+				0u == pattern.maximumConsecutiveUses);
+		if (pattern.patternId.empty() || pattern.displayName.empty() ||
+			pattern.actionId.empty() || pattern.sourceActionIds.empty() ||
+			pattern.stages.empty() || !validSelection ||
 			!std::isfinite(pattern.minimumRange) || pattern.minimumRange < 0.f ||
 			!std::isfinite(pattern.maximumRange) ||
-			pattern.maximumRange <= pattern.minimumRange ||
-			0u == pattern.telegraphMs || 0u == pattern.activeMs ||
-			0u == pattern.recoveryMs || nullptr == FindDamageRate(pattern.damageProfileId))
+			pattern.maximumRange <= pattern.minimumRange)
 		{
 			status = "Pattern draft is invalid: " + pattern.patternId;
 			return false;
+		}
+		for (const PATTERN_STAGE_EDIT& stage : pattern.stages)
+		{
+			const bool none = stage.hitShape == "NONE";
+			const bool circle = stage.hitShape == "CIRCLE";
+			const bool ring = stage.hitShape == "RING";
+			const bool cone = stage.hitShape == "CONE";
+			const bool box = stage.hitShape == "BOX";
+			const bool cross = stage.hitShape == "CROSS";
+			const bool validKind = stage.stageKind == "WINDUP" ||
+				stage.stageKind == "ACTIVE" || stage.stageKind == "RECOVERY";
+			const bool finiteGeometry = std::isfinite(stage.hitOuterRadius) &&
+				std::isfinite(stage.hitInnerRadius) &&
+				std::isfinite(stage.hitAngleDegrees) &&
+				std::isfinite(stage.hitLength) &&
+				std::isfinite(stage.hitHalfWidth);
+			const bool validGeometry = none ?
+				(0.f == stage.hitOuterRadius && 0.f == stage.hitInnerRadius &&
+					0.f == stage.hitAngleDegrees && 0.f == stage.hitLength &&
+					0.f == stage.hitHalfWidth) :
+				(circle ? stage.hitOuterRadius > 0.f :
+				(ring ? stage.hitInnerRadius > 0.f &&
+					stage.hitOuterRadius > stage.hitInnerRadius :
+				(cone ? stage.hitAngleDegrees > 0.f &&
+					stage.hitAngleDegrees <= 360.f && stage.hitLength > 0.f :
+				((box || cross) ? stage.hitLength > 0.f &&
+					stage.hitHalfWidth > 0.f : false))));
+			const bool validHit = none ?
+				(0u == stage.hitCount && 0u == stage.hitIntervalMs &&
+					stage.damageProfileId.empty()) :
+				(stage.hitCount > 0u &&
+					(1u == stage.hitCount ? 0u == stage.hitIntervalMs :
+						stage.hitIntervalMs > 0u) &&
+					static_cast<std::uint64_t>(stage.hitCount - 1u) *
+						stage.hitIntervalMs < stage.durationMs &&
+					nullptr != FindDamageRate(stage.damageProfileId));
+			if (stage.stageId.empty() || stage.actionId.empty() || !validKind ||
+				0u == stage.durationMs || !finiteGeometry || !validGeometry || !validHit)
+			{
+				status = "Pattern stage draft is invalid: " + pattern.patternId +
+					"/" + stage.stageId;
+				return false;
+			}
 		}
 	}
 	status = "Draft validation passed.";
@@ -795,7 +1071,7 @@ bool Client::CBalanceTool::Save()
 	skills << "  ]\n}\n";
 
 	std::ostringstream bosses;
-	bosses << "{\n  \"schema\": \"lostark.boss-profiles\",\n  \"formatVersion\": 2,\n  \"bosses\": [\n";
+	bosses << "{\n  \"schema\": \"lostark.boss-profiles\",\n  \"formatVersion\": 3,\n  \"bosses\": [\n";
 	for (std::size_t i = 0; i < m_bosses.size(); ++i)
 	{
 		const BOSS_EDIT& b = m_bosses[i];
@@ -803,6 +1079,7 @@ bool Client::CBalanceTool::Save()
 			<< ",\n      \"encounterId\": " << Quote(b.encounterId)
 			<< ",\n      \"displayName\": " << Quote(b.displayName)
 			<< ",\n      \"maximumHp\": " << b.maximumHp
+			<< ",\n      \"maximumHealthBars\": " << b.maximumHealthBars
 			<< ",\n      \"attackPower\": " << b.attackPower
 			<< ",\n      \"collisionRadius\": " << std::setprecision(9) << b.collisionRadius
 			<< ",\n      \"engageDistance\": " << b.engageDistance
@@ -813,7 +1090,7 @@ bool Client::CBalanceTool::Save()
 	bosses << "  ]\n}\n";
 
 	std::ostringstream encounter;
-	encounter << "{\n  \"schema\": \"lostark.encounter-profile\",\n  \"formatVersion\": 1,"
+	encounter << "{\n  \"schema\": \"lostark.encounter-profile\",\n  \"formatVersion\": 3,"
 		<< "\n  \"encounterId\": " << Quote(m_encounterId)
 		<< ",\n  \"bossArchetypeId\": " << Quote(m_encounterBossArchetypeId)
 		<< ",\n  \"authority\": " << Quote(m_encounterAuthority)
@@ -831,13 +1108,45 @@ bool Client::CBalanceTool::Save()
 	{
 		const PATTERN_EDIT& p = m_patterns[i];
 		encounter << "    {\n      \"patternId\": " << Quote(p.patternId)
+			<< ",\n      \"displayName\": " << Quote(p.displayName)
 			<< ",\n      \"actionId\": " << Quote(p.actionId)
+			<< ",\n      \"sourceActionIds\": [";
+		for (std::size_t sourceIndex = 0;
+			sourceIndex < p.sourceActionIds.size(); ++sourceIndex)
+		{
+			if (sourceIndex > 0u)
+				encounter << ", ";
+			encounter << p.sourceActionIds[sourceIndex];
+		}
+		encounter << "],\n      \"selectionMode\": " << Quote(p.selectionMode)
+			<< ",\n      \"minimumHealthBar\": " << p.minimumHealthBar
+			<< ",\n      \"maximumHealthBar\": " << p.maximumHealthBar
+			<< ",\n      \"triggerHealthBar\": " << p.triggerHealthBar
+			<< ",\n      \"triggerOrder\": " << p.triggerOrder
+			<< ",\n      \"selectionWeight\": " << p.selectionWeight
+			<< ",\n      \"maximumConsecutiveUses\": " << p.maximumConsecutiveUses
 			<< ",\n      \"minimumRange\": " << std::setprecision(9) << p.minimumRange
 			<< ",\n      \"maximumRange\": " << p.maximumRange
-			<< ",\n      \"telegraphMs\": " << p.telegraphMs
-			<< ",\n      \"activeMs\": " << p.activeMs
-			<< ",\n      \"recoveryMs\": " << p.recoveryMs
-			<< ",\n      \"serverDamageProfileId\": " << Quote(p.damageProfileId) << "\n    }"
+			<< ",\n      \"stages\": [\n";
+		for (std::size_t stageIndex = 0; stageIndex < p.stages.size(); ++stageIndex)
+		{
+			const PATTERN_STAGE_EDIT& stage = p.stages[stageIndex];
+			encounter << "        { \"stageId\": " << Quote(stage.stageId)
+				<< ", \"actionId\": " << Quote(stage.actionId)
+				<< ", \"stageKind\": " << Quote(stage.stageKind)
+				<< ", \"durationMs\": " << stage.durationMs
+				<< ", \"hitShape\": " << Quote(stage.hitShape)
+				<< ", \"hitOuterRadius\": " << std::setprecision(9) << stage.hitOuterRadius
+				<< ", \"hitInnerRadius\": " << stage.hitInnerRadius
+				<< ", \"hitAngleDegrees\": " << stage.hitAngleDegrees
+				<< ", \"hitLength\": " << stage.hitLength
+				<< ", \"hitHalfWidth\": " << stage.hitHalfWidth
+				<< ", \"hitCount\": " << stage.hitCount
+				<< ", \"hitIntervalMs\": " << stage.hitIntervalMs
+				<< ", \"serverDamageProfileId\": " << Quote(stage.damageProfileId)
+				<< " }" << (stageIndex + 1u == p.stages.size() ? "\n" : ",\n");
+		}
+		encounter << "      ]\n    }"
 			<< (i + 1u == m_patterns.size() ? "\n" : ",\n");
 	}
 	encounter << "  ]\n}\n";

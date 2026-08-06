@@ -64,6 +64,7 @@ public:
 	bool Send_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId);
+	bool Send_RevivePlayer(std::uint32_t clientSequence);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
 
 	bool Try_Consume_EnterAccepted(

@@ -530,20 +530,21 @@ foreach ($skill in @($skillDocument.skills)) {
 $bossDocument = Read-JsonDocument 'Data/Balance/BossProfiles.json'
 Assert-ExactProperties $bossDocument @('schema','formatVersion','bosses') 'boss document'
 Assert-JsonString $bossDocument.schema 'boss document schema'
-Assert-JsonInteger $bossDocument.formatVersion 'boss document formatVersion' 2 2
-if ($bossDocument.schema -ne 'lostark.boss-profiles' -or $bossDocument.formatVersion -ne 2) {
+Assert-JsonInteger $bossDocument.formatVersion 'boss document formatVersion' 3 3
+if ($bossDocument.schema -ne 'lostark.boss-profiles' -or $bossDocument.formatVersion -ne 3) {
     throw 'Boss profile header is invalid.'
 }
 $bossIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $bossRows = [Collections.Generic.List[string]]::new()
 foreach ($boss in @($bossDocument.bosses)) {
-    Assert-ExactProperties $boss @(
-		'archetypeId','encounterId','displayName','maximumHp','attackPower','collisionRadius',
+	Assert-ExactProperties $boss @(
+		'archetypeId','encounterId','displayName','maximumHp','maximumHealthBars','attackPower','collisionRadius',
 		'engageDistance','moveSpeed','phaseTwoHpPercent') 'boss profile'
 	foreach ($stringField in @('archetypeId','encounterId','displayName')) {
 		Assert-JsonString $boss.$stringField "boss $stringField"
 	}
 	Assert-JsonInteger $boss.maximumHp 'boss maximumHp' 1 ([uint32]::MaxValue)
+	Assert-JsonInteger $boss.maximumHealthBars 'boss maximumHealthBars' 1 1000
 	Assert-JsonInteger $boss.attackPower 'boss attackPower' 1 ([uint32]::MaxValue)
 	Assert-JsonInteger $boss.phaseTwoHpPercent 'boss phaseTwoHpPercent' 1 99
 	Assert-JsonNumber $boss.collisionRadius 'boss collisionRadius'
@@ -558,6 +559,7 @@ foreach ($boss in @($bossDocument.bosses)) {
 	# measured to the edge of the target, and this server's centre-to-centre reach
 	# test. A zero would put every melee skill out of range of its own boss.
     if (-not $bossIds.Add([string]$boss.archetypeId) -or [uint32]$boss.maximumHp -eq 0 -or
+		[uint32]$boss.maximumHealthBars -eq 0 -or
         [uint32]$boss.attackPower -eq 0 -or [double]$boss.collisionRadius -le 0.0 -or
 		[double]$boss.engageDistance -le 0.0 -or [double]$boss.moveSpeed -le 0.0 -or
         [uint32]$boss.phaseTwoHpPercent -eq 0 -or [uint32]$boss.phaseTwoHpPercent -ge 100) {
@@ -565,11 +567,180 @@ foreach ($boss in @($bossDocument.bosses)) {
     }
     $bossRows.Add((@(
         'BOSS', $boss.archetypeId, $boss.encounterId, [uint32]$boss.maximumHp,
+		[uint32]$boss.maximumHealthBars,
         [uint32]$boss.attackPower,
         (Format-InvariantFloat $boss.collisionRadius 'boss collisionRadius'),
         (Format-InvariantFloat $boss.engageDistance 'boss engageDistance'),
         (Format-InvariantFloat $boss.moveSpeed 'boss moveSpeed'),
         [uint32]$boss.phaseTwoHpPercent) -join "`t"))
+}
+
+$encounterDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
+Assert-ExactProperties $encounterDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','authority','fixedTickHz','states','patterns') 'encounter document'
+Assert-JsonString $encounterDocument.schema 'encounter schema'
+Assert-JsonInteger $encounterDocument.formatVersion 'encounter formatVersion' 3 3
+Assert-JsonString $encounterDocument.encounterId 'encounterId'
+Assert-JsonString $encounterDocument.bossArchetypeId 'encounter bossArchetypeId'
+Assert-JsonString $encounterDocument.authority 'encounter authority'
+Assert-JsonInteger $encounterDocument.fixedTickHz 'encounter fixedTickHz' 30 30
+Assert-StableId $encounterDocument.encounterId 'encounterId'
+Assert-StableId $encounterDocument.bossArchetypeId 'encounter bossArchetypeId'
+if ($encounterDocument.schema -ne 'lostark.encounter-profile' -or
+	$encounterDocument.formatVersion -ne 3 -or
+	$encounterDocument.authority -ne 'server' -or
+	[uint32]$encounterDocument.fixedTickHz -ne 30 -or
+	-not $bossIds.Contains([string]$encounterDocument.bossArchetypeId)) {
+	throw 'Valtan encounter header or boss reference is invalid.'
+}
+$encounterBoss = @($bossDocument.bosses | Where-Object {
+	$_.archetypeId -eq $encounterDocument.bossArchetypeId -and
+	$_.encounterId -eq $encounterDocument.encounterId })
+if ($encounterBoss.Count -ne 1) {
+	throw 'Valtan encounter does not match exactly one boss profile.'
+}
+$maximumHealthBars = [uint32]$encounterBoss[0].maximumHealthBars
+$patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$actionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$coveredSourceActionIds = [Collections.Generic.HashSet[uint32]]::new()
+$patternRows = [Collections.Generic.List[string]]::new()
+foreach ($pattern in @($encounterDocument.patterns)) {
+	Assert-ExactProperties $pattern @(
+		'patternId','displayName','actionId','sourceActionIds','selectionMode',
+		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
+		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
+		'stages') 'encounter pattern'
+	foreach ($field in @('patternId','displayName','actionId','selectionMode')) {
+		Assert-JsonString $pattern.$field "pattern $($pattern.patternId) $field"
+	}
+	foreach ($field in @('minimumHealthBar','maximumHealthBar','triggerHealthBar',
+		'triggerOrder','selectionWeight','maximumConsecutiveUses')) {
+		Assert-JsonInteger $pattern.$field "pattern $($pattern.patternId) $field" 0 ([uint32]::MaxValue)
+	}
+	Assert-JsonNumber $pattern.minimumRange "pattern $($pattern.patternId) minimumRange"
+	Assert-JsonNumber $pattern.maximumRange "pattern $($pattern.patternId) maximumRange"
+	Assert-StableId $pattern.patternId 'patternId'
+	Assert-StableId $pattern.actionId 'pattern actionId'
+	if ([string]::IsNullOrWhiteSpace([string]$pattern.displayName) -or
+		([string]$pattern.displayName).Length -gt 64 -or
+		-not $patternIds.Add([string]$pattern.patternId) -or
+		-not $actionIds.Add([string]$pattern.actionId) -or
+		[double]$pattern.minimumRange -lt 0.0 -or
+		[double]$pattern.maximumRange -le [double]$pattern.minimumRange -or
+		$pattern.sourceActionIds -isnot [Array] -or
+		@($pattern.sourceActionIds).Count -eq 0 -or
+		$pattern.stages -isnot [Array] -or @($pattern.stages).Count -eq 0 -or
+		@($pattern.stages).Count -gt 64) {
+		throw "Encounter pattern base fields are invalid: $($pattern.patternId)"
+	}
+	$patternSourceIds = [Collections.Generic.HashSet[uint32]]::new()
+	foreach ($sourceActionId in @($pattern.sourceActionIds)) {
+		Assert-JsonInteger $sourceActionId "pattern $($pattern.patternId) sourceActionId" 1 ([uint32]::MaxValue)
+		if (-not $patternSourceIds.Add([uint32]$sourceActionId)) {
+			throw "Pattern sourceActionIds contain a duplicate: $($pattern.patternId)"
+		}
+		$coveredSourceActionIds.Add([uint32]$sourceActionId) | Out-Null
+	}
+	$selectionMode = [string]$pattern.selectionMode
+	if ($selectionMode -eq 'NORMAL') {
+		if ([uint32]$pattern.minimumHealthBar -lt 1 -or
+			[uint32]$pattern.maximumHealthBar -lt [uint32]$pattern.minimumHealthBar -or
+			[uint32]$pattern.maximumHealthBar -gt $maximumHealthBars -or
+			[uint32]$pattern.triggerHealthBar -ne 0 -or [uint32]$pattern.triggerOrder -ne 0 -or
+			[uint32]$pattern.selectionWeight -eq 0 -or [uint32]$pattern.maximumConsecutiveUses -eq 0) {
+			throw "Normal pattern selection fields are invalid: $($pattern.patternId)"
+		}
+	}
+	elseif ($selectionMode -eq 'HEALTH_BAR') {
+		if ([uint32]$pattern.minimumHealthBar -ne 0 -or [uint32]$pattern.maximumHealthBar -ne 0 -or
+			[uint32]$pattern.triggerHealthBar -lt 1 -or
+			[uint32]$pattern.triggerHealthBar -gt $maximumHealthBars -or
+			[uint32]$pattern.triggerOrder -lt 1 -or [uint32]$pattern.selectionWeight -ne 0 -or
+			[uint32]$pattern.maximumConsecutiveUses -ne 0) {
+			throw "Health-bar pattern selection fields are invalid: $($pattern.patternId)"
+		}
+	}
+	else { throw "Unknown pattern selection mode: $($pattern.patternId)" }
+	$patternRows.Add((@(
+		'PATTERN', $encounterDocument.encounterId, $pattern.patternId, $pattern.actionId, $selectionMode,
+		[uint32]$pattern.minimumHealthBar, [uint32]$pattern.maximumHealthBar,
+		[uint32]$pattern.triggerHealthBar, [uint32]$pattern.triggerOrder,
+		[uint32]$pattern.selectionWeight, [uint32]$pattern.maximumConsecutiveUses,
+		(Format-InvariantFloat $pattern.minimumRange "pattern minimumRange"),
+		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
+		@($pattern.stages).Count) -join "`t"))
+	$stageIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	for ($stageIndex = 0; $stageIndex -lt @($pattern.stages).Count; $stageIndex++) {
+		$stage = $pattern.stages[$stageIndex]
+		Assert-ExactProperties $stage @(
+			'stageId','actionId','stageKind','durationMs','hitShape',
+			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
+			'hitCount','hitIntervalMs','serverDamageProfileId') 'encounter pattern stage'
+		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
+			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
+		}
+		foreach ($field in @('durationMs','hitCount','hitIntervalMs')) {
+			Assert-JsonInteger $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field" 0 ([uint32]::MaxValue)
+		}
+		foreach ($field in @('hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth')) {
+			Assert-JsonNumber $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
+		}
+		Assert-StableId $stage.stageId 'pattern stageId'
+		Assert-StableId $stage.actionId 'pattern stage actionId'
+		if (-not $stageIds.Add([string]$stage.stageId) -or [uint32]$stage.durationMs -eq 0 -or
+			[string]$stage.stageKind -notin @('WINDUP','ACTIVE','RECOVERY')) {
+			throw "Pattern stage identity is invalid: $($pattern.patternId) stage $stageIndex"
+		}
+		$shape = [string]$stage.hitShape
+		$outer = [double]$stage.hitOuterRadius
+		$inner = [double]$stage.hitInnerRadius
+		$angle = [double]$stage.hitAngleDegrees
+		$length = [double]$stage.hitLength
+		$halfWidth = [double]$stage.hitHalfWidth
+		$hitCount = [uint32]$stage.hitCount
+		$hitIntervalMs = [uint32]$stage.hitIntervalMs
+		$damageProfile = [string]$stage.serverDamageProfileId
+		$zeroShape = $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and
+			$length -eq 0.0 -and $halfWidth -eq 0.0
+		$validShape = $false
+		switch ($shape) {
+			'NONE' { $validShape = $zeroShape -and $hitCount -eq 0 -and $hitIntervalMs -eq 0 -and $damageProfile.Length -eq 0 }
+			'CIRCLE' { $validShape = $outer -gt 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
+			'RING' { $validShape = $outer -gt $inner -and $inner -gt 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
+			'CONE' { $validShape = $angle -gt 0.0 -and $angle -le 180.0 -and $length -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $halfWidth -eq 0.0 }
+			'BOX' { $validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 }
+			'CROSS' { $validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 }
+			default { throw "Unknown pattern stage hit shape: $($pattern.patternId) stage $stageIndex" }
+		}
+		if ($shape -ne 'NONE') {
+			if ($damageProfile.Length -gt 0) { Assert-StableId $damageProfile 'pattern stage damage profile' }
+			$validShape = $validShape -and $hitCount -gt 0 -and
+				(($hitCount -eq 1 -and $hitIntervalMs -eq 0) -or ($hitCount -gt 1 -and $hitIntervalMs -gt 0)) -and
+				([uint64]($hitCount - 1) * [uint64]$hitIntervalMs) -lt [uint64][uint32]$stage.durationMs -and
+				$damageIds.Contains($damageProfile)
+		}
+		if (-not $validShape) { throw "Pattern stage hit contract is invalid: $($pattern.patternId) stage $stageIndex" }
+		$patternRows.Add((@(
+			'PATTERNSTAGE', $encounterDocument.encounterId, $pattern.patternId, $stageIndex,
+			$stage.stageId, $stage.actionId, $stage.stageKind, [uint32]$stage.durationMs,
+			$shape,
+			(Format-InvariantFloat $outer 'stage hitOuterRadius'),
+			(Format-InvariantFloat $inner 'stage hitInnerRadius'),
+			(Format-InvariantFloat $angle 'stage hitAngleDegrees'),
+			(Format-InvariantFloat $length 'stage hitLength'),
+			(Format-InvariantFloat $halfWidth 'stage hitHalfWidth'),
+			$hitCount, $hitIntervalMs,
+			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile })) -join "`t"))
+	}
+}
+if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
+
+$expectedNormalActionIds = @((420601..420647) + (420651..420666)) |
+	Where-Object { $_ -notin @(420648,420649,420650) }
+foreach ($requiredActionId in $expectedNormalActionIds) {
+	if (-not $coveredSourceActionIds.Contains([uint32]$requiredActionId)) {
+		throw "Valtan Normal Action coverage is missing sourceActionId $requiredActionId"
+	}
 }
 
 Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument $bossDocument
@@ -620,8 +791,8 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t1`t$($rows.Count)") + $rows
+$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $patternRows | Sort-Object)
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t3`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
@@ -643,4 +814,7 @@ if ($Mode -eq 'Publish') {
     }
 }
 
-Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses."
+$patternCount = @($encounterDocument.patterns).Count
+$stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Count } |
+	Measure-Object -Sum).Sum
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $patternCount boss patterns, $stageCount pattern stages."

@@ -260,6 +260,13 @@ namespace LostArk::Shared
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 	};
 
+	// Development Balance Tool intent. The authenticated session identifies the
+	// player; no position or HP is trusted from the client.
+	struct C2S_REVIVE_PLAYER
+	{
+		std::uint32_t iClientSequence = 0;
+	};
+
 	bool Write_Message(
 		CPacketWriter& writer,
 		const C2S_RELEASE_SKILL& message);
@@ -267,6 +274,14 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		C2S_RELEASE_SKILL& message);
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_REVIVE_PLAYER& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_REVIVE_PLAYER& message);
 
 	enum class PLAYER_ACTION_STATE : std::uint8_t
 	{
@@ -315,6 +330,7 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
+		bool isCombatReady = true;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the
 		// client must not count stages itself.
@@ -326,7 +342,10 @@ namespace LostArk::Shared
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
 		WORLD_ENTITY_ACTION eAction = WORLD_ENTITY_ACTION::END;
+		std::string strPatternId;
 		std::string strActionId;
+		std::uint32_t iPatternSequence = 0;
+		std::uint32_t iPatternStageIndex = 0;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;

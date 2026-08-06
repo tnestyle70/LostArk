@@ -119,6 +119,7 @@ namespace
 	{
 		return snapshot.iNetEntityId != LostArk::Shared::INVALID_NET_ENTITY_ID &&
 			Is_Valid_WorldEntityAction(snapshot.eAction) &&
+			Is_Valid_StableId(snapshot.strPatternId, true) &&
 			Is_Valid_StableId(snapshot.strActionId, true) &&
 			std::isfinite(snapshot.fPositionX) &&
 			std::isfinite(snapshot.fPositionY) &&
@@ -771,6 +772,16 @@ bool LostArk::Shared::Write_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_REVIVE_PLAYER& message)
+{
+	if (0u == message.iClientSequence)
+		return false;
+	writer.Write_U32(message.iClientSequence);
+	return true;
+}
+
 bool LostArk::Shared::Read_Message(
 	CPacketReader& reader,
 	C2S_RELEASE_SKILL& message)
@@ -784,6 +795,20 @@ bool LostArk::Shared::Read_Message(
 		return false;
 	}
 
+	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_REVIVE_PLAYER& message)
+{
+	C2S_REVIVE_PLAYER decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		0u == decoded.iClientSequence)
+	{
+		return false;
+	}
 	message = decoded;
 	return true;
 }
@@ -848,6 +873,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(player.iMaximumHp);
 		writer.Write_U32(player.iCurrentResource);
 		writer.Write_U32(player.iMaximumResource);
+		writer.Write_U8(player.isCombatReady ? 1u : 0u);
 		writer.Write_U8(player.iComboStage);
 		writer.Write_U8(static_cast<std::uint8_t>(player.Cooldowns.size()));
 		for (const SKILL_COOLDOWN_SNAPSHOT& cooldown : player.Cooldowns)
@@ -861,6 +887,11 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iNetEntityId);
 		writer.Write_U8(static_cast<std::uint8_t>(entity.eAction));
 		if (!writer.Write_String(
+			entity.strPatternId, MAX_STABLE_NETWORK_ID_BYTES))
+		{
+			return false;
+		}
+		if (!writer.Write_String(
 			entity.strActionId, MAX_STABLE_NETWORK_ID_BYTES))
 		{
 			return false;
@@ -870,6 +901,8 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(entity.fPositionZ);
 		writer.Write_F32(entity.fYawDegrees);
 		writer.Write_U32(entity.iActionStartTick);
+		writer.Write_U32(entity.iPatternSequence);
+		writer.Write_U32(entity.iPatternStageIndex);
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
@@ -927,6 +960,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
 		std::uint8_t rawStance = 0;
+		std::uint8_t rawCombatReady = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -943,6 +977,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(player.iMaximumHp) ||
 			!reader.Read_U32(player.iCurrentResource) ||
 			!reader.Read_U32(player.iMaximumResource) ||
+			!reader.Read_U8(rawCombatReady) ||
+			rawCombatReady > 1u ||
 			!reader.Read_U8(player.iComboStage) ||
 			player.iComboStage > MAX_COMBO_STAGES ||
 			!reader.Read_U8(cooldownCount) ||
@@ -956,6 +992,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
                 rawLocomotion);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
+		player.isCombatReady = 0u != rawCombatReady;
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;
@@ -982,12 +1019,16 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		if (!reader.Read_U32(entity.iNetEntityId) ||
 			!reader.Read_U8(rawAction) ||
 			!reader.Read_String(
+				entity.strPatternId, MAX_STABLE_NETWORK_ID_BYTES) ||
+			!reader.Read_String(
 				entity.strActionId, MAX_STABLE_NETWORK_ID_BYTES) ||
 			!reader.Read_F32(entity.fPositionX) ||
 			!reader.Read_F32(entity.fPositionY) ||
 			!reader.Read_F32(entity.fPositionZ) ||
 			!reader.Read_F32(entity.fYawDegrees) ||
 			!reader.Read_U32(entity.iActionStartTick) ||
+			!reader.Read_U32(entity.iPatternSequence) ||
+			!reader.Read_U32(entity.iPatternStageIndex) ||
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
 			!reader.Read_U8(entity.iPhase))

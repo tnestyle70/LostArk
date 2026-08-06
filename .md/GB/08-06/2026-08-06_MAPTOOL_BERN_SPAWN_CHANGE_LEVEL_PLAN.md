@@ -113,3 +113,24 @@
 
 - 실제 완료, 자동 검증, 수동 검증, 후속 Monster/NPC 제품 presentation 경계를 RESULT에서 분리한다.
 - 현재 dirty worktree의 Effect Tool 등 무관 변경은 되돌리거나 stage하지 않는다.
+
+## G8. Debug Bern changeLevel Trigger Box 프리뷰
+
+### G8-1. 목표
+
+- Debug Client로 Bern에 진입하면 저장된 `enabled + triggerBox + changeLevel` placement를 월드 와이어 OBB로 렌더링한다.
+- 프리뷰 좌표와 크기는 별도 하드코딩하지 않고 `Data/Worlds/<AreaId>/Gameplay.world.json`의 position, yawDegrees, halfExtents를 그대로 소비한다.
+- Release Client에는 Trigger Box prototype 등록, authoring 문서 로드, Debug object 생성 경로를 포함하지 않는다.
+
+### G8-2. 변경 경계
+
+- `Client/Private/Loader.cpp`: `_DEBUG` Bern level에 기존 `CTrigger_Box` prototype을 등록한다.
+- `Client/Public/Level_Bern.h`, `Client/Private/Level_Bern.cpp`: gameplay 문서를 parse/validate한 뒤 changeLevel Trigger Box를 임시 vector에 전부 stage하고, 성공 시에만 Debug layer와 owner vector를 유지한다.
+- `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`: Bern 정본 데이터와 Debug-only prototype/staging 경로가 함께 존재하는지 검사한다.
+- 기존 `CTrigger_Box`, MapTool 저장 형식, Server bootstrap/TriggerSystem에는 새 런타임 경로를 추가하지 않는다.
+
+### G8-3. 실패와 검증
+
+- 문서가 없거나 잘못됐거나 clone/type cast가 실패하면 이번 stage에서 만든 object를 모두 layer에서 제거한다.
+- Debug 시각화 실패는 Server-authoritative Bern gameplay 진입을 막지 않고 Debug 출력으로 이유를 남긴다.
+- Debug/Release Client build, World publisher validate, ProjectAudit, `git diff --check`를 실행한다.

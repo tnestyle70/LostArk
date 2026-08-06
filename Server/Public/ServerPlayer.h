@@ -47,10 +47,14 @@ namespace LostArk::Server
 		float fYawDegrees = 0.f;
 
 		std::uint32_t iLastMoveSequence = 0;
+		std::uint32_t iLastReviveSequence = 0;
 		float fMoveGoalX = 0.f;
 		float fMoveGoalZ = 0.f;
 		float fMoveSpeed = 6.f;
 		bool hasMoveGoal = false;
+		// Valtan cannot acquire or damage this player until the server accepts the
+		// first valid move/skill intent after entry or revive.
+		bool isCombatReady = true;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
 

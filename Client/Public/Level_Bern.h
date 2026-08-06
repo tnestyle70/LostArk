@@ -11,6 +11,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CTrigger_Box;
 class IPlayerCommandSink;
 
 class CLevel_Bern final : public CLevel
@@ -34,6 +35,10 @@ private:
 
 	bool_t Bind_CameraToLocalCharacter();
 
+#ifdef _DEBUG
+	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
+#endif
+
 private:
 	/*베른성 맵 객체들의 생성과 제거는 기존 Map Runtime이 담당한다.
 	Network Player 수명과 섞지 않는다.*/
@@ -47,6 +52,10 @@ private:
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	//PlayerController 추가
 	CPlayerController m_PlayerController;
+
+#ifdef _DEBUG
+	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
+#endif
 
 public:
 	static unique_ptr<CLevel_Bern> Create(

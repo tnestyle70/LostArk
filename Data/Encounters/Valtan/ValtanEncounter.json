@@ -1,6 +1,6 @@
 {
   "schema": "lostark.encounter-profile",
-  "formatVersion": 1,
+  "formatVersion": 3,
   "encounterId": "ENCOUNTER_VALTAN",
   "bossArchetypeId": "BOSS_VALTAN",
   "authority": "server",
@@ -16,14 +16,522 @@
   ],
   "patterns": [
     {
-      "patternId": "VALTAN_BASIC_SWING",
-      "actionId": "valtan.attack.basic-swing",
-      "minimumRange": 0.0,
-      "maximumRange": 8.0,
-      "telegraphMs": 800,
-      "activeMs": 300,
-      "recoveryMs": 1200,
-      "serverDamageProfileId": "damage.valtan.basic-swing"
+      "patternId": "VALTAN_SWING",
+      "displayName": "휘두르기",
+      "actionId": "valtan.attack.swing",
+      "sourceActionIds": [420601, 420660],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 18, "maximumConsecutiveUses": 2,
+      "minimumRange": 0.0, "maximumRange": 9.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.swing.windup", "stageKind": "WINDUP", "durationMs": 450, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SWEEP", "actionId": "valtan.attack.swing.active", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 120.0, "hitLength": 8.0, "hitHalfWidth": 0.0, "hitCount": 2, "hitIntervalMs": 300, "serverDamageProfileId": "damage.valtan.swing" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.swing.recovery", "stageKind": "RECOVERY", "durationMs": 750, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_DOWN_SMASH",
+      "displayName": "내려찍기",
+      "actionId": "valtan.attack.down-smash",
+      "sourceActionIds": [420602, 420661],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 18, "maximumConsecutiveUses": 2,
+      "minimumRange": 0.0, "maximumRange": 10.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.down-smash.windup", "stageKind": "WINDUP", "durationMs": 650, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACT", "actionId": "valtan.attack.down-smash.active", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 10.0, "hitHalfWidth": 1.8, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.down-smash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.down-smash.recovery", "stageKind": "RECOVERY", "durationMs": 850, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_IMPRISON_ROAR",
+      "displayName": "감금 사자후",
+      "actionId": "valtan.attack.imprison-roar",
+      "sourceActionIds": [420603],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 6, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.imprison-roar.windup", "stageKind": "WINDUP", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "ROAR", "actionId": "valtan.attack.imprison-roar.active", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 16.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.imprison-roar" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.imprison-roar.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_DASH_CHARGE",
+      "displayName": "대쉬 돌진",
+      "actionId": "valtan.attack.dash-charge",
+      "sourceActionIds": [420604],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 30, "maximumConsecutiveUses": 2,
+      "minimumRange": 5.0, "maximumRange": 20.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.dash-charge.windup", "stageKind": "WINDUP", "durationMs": 600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "CHARGE", "actionId": "valtan.attack.dash-charge.active", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 10.0, "hitHalfWidth": 2.5, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.dash-charge" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.dash-charge.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_EARTHQUAKE_SMASH",
+      "displayName": "지진 찍기",
+      "actionId": "valtan.attack.earthquake-smash",
+      "sourceActionIds": [420605, 420662],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 16, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 14.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.earthquake-smash.windup", "stageKind": "WINDUP", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACT", "actionId": "valtan.attack.earthquake-smash.impact", "stageKind": "ACTIVE", "durationMs": 450, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.earthquake-smash" },
+        { "stageId": "DELAYED_QUAKE", "actionId": "valtan.attack.earthquake-smash.delayed", "stageKind": "ACTIVE", "durationMs": 1200, "hitShape": "RING", "hitOuterRadius": 14.0, "hitInnerRadius": 7.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.earthquake-smash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.earthquake-smash.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_PARRY",
+      "displayName": "큰 베기 반격",
+      "actionId": "valtan.reactive.parry",
+      "sourceActionIds": [420606, 420607],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 6, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 12.0,
+      "stages": [
+        { "stageId": "STANCE", "actionId": "valtan.reactive.parry.stance", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.parry" },
+        { "stageId": "RECOVERY", "actionId": "valtan.reactive.parry.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "displayName": "마력기운 양자택일",
+      "actionId": "valtan.attack.magic-choice",
+      "sourceActionIds": [420608],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 8, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.magic-choice.windup", "stageKind": "WINDUP", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "INNER", "actionId": "valtan.attack.magic-choice.inner", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.magic-choice" },
+        { "stageId": "OUTER", "actionId": "valtan.attack.magic-choice.outer", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "RING", "hitOuterRadius": 17.0, "hitInnerRadius": 7.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.magic-choice" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.magic-choice.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FOUR_SLASH",
+      "displayName": "4연속 베기",
+      "actionId": "valtan.attack.four-slash",
+      "sourceActionIds": [420609],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 12, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 10.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.four-slash.windup", "stageKind": "WINDUP", "durationMs": 500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SLASHES", "actionId": "valtan.attack.four-slash.active", "stageKind": "ACTIVE", "durationMs": 1500, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 110.0, "hitLength": 9.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.four-slash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.four-slash.recovery", "stageKind": "RECOVERY", "durationMs": 850, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_HIGH_JUMP",
+      "displayName": "고공 점프 찍기",
+      "actionId": "valtan.attack.high-jump",
+      "sourceActionIds": [420610],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 14, "maximumConsecutiveUses": 1,
+      "minimumRange": 2.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "TAKEOFF", "actionId": "valtan.attack.high-jump.takeoff", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "AIRBORNE", "actionId": "valtan.attack.high-jump.airborne", "stageKind": "WINDUP", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "LAND", "actionId": "valtan.attack.high-jump.land", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.high-jump" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.high-jump.recovery", "stageKind": "RECOVERY", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_STOMP",
+      "displayName": "발구르기",
+      "actionId": "valtan.attack.stomp",
+      "sourceActionIds": [420611],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 10, "maximumConsecutiveUses": 2,
+      "minimumRange": 0.0, "maximumRange": 9.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.stomp.windup", "stageKind": "WINDUP", "durationMs": 550, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACT", "actionId": "valtan.attack.stomp.active", "stageKind": "ACTIVE", "durationMs": 450, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.stomp" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.stomp.recovery", "stageKind": "RECOVERY", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_BIND_CHARGE_SMASH",
+      "displayName": "구속 돌진 잡기 후 내려찍기",
+      "actionId": "valtan.attack.bind-charge-smash",
+      "sourceActionIds": [420612, 420613, 420614],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 6, "maximumConsecutiveUses": 1,
+      "minimumRange": 3.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "LOCK", "actionId": "valtan.attack.bind-charge-smash.lock", "stageKind": "WINDUP", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "CHARGE", "actionId": "valtan.attack.bind-charge-smash.charge", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 14.0, "hitHalfWidth": 2.5, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.bind-charge-smash" },
+        { "stageId": "SMASH", "actionId": "valtan.attack.bind-charge-smash.smash", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "CIRCLE", "hitOuterRadius": 8.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.bind-charge-smash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.bind-charge-smash.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_GROUND_WAVE_SMASH",
+      "displayName": "지진파 내려찍기",
+      "actionId": "valtan.attack.ground-wave-smash",
+      "sourceActionIds": [420615],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 12, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 16.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.ground-wave-smash.windup", "stageKind": "WINDUP", "durationMs": 850, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "WAVE", "actionId": "valtan.attack.ground-wave-smash.active", "stageKind": "ACTIVE", "durationMs": 1000, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 75.0, "hitLength": 15.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 300, "serverDamageProfileId": "damage.valtan.ground-wave-smash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.ground-wave-smash.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SUPER_SMASH",
+      "displayName": "초강력 내려찍기 콤보",
+      "actionId": "valtan.attack.super-smash",
+      "sourceActionIds": [420619, 420620, 420656, 420657],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 5, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 15.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.super-smash.windup", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACTS", "actionId": "valtan.attack.super-smash.active", "stageKind": "ACTIVE", "durationMs": 1800, "hitShape": "CIRCLE", "hitOuterRadius": 13.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 550, "serverDamageProfileId": "damage.valtan.super-smash" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.super-smash.recovery", "stageKind": "RECOVERY", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_JUMP_SPIN",
+      "displayName": "점프 찍기 후 휠윈드",
+      "actionId": "valtan.attack.jump-spin",
+      "sourceActionIds": [420621, 420663],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 18, "maximumConsecutiveUses": 1,
+      "minimumRange": 2.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "JUMP", "actionId": "valtan.attack.jump-spin.jump", "stageKind": "WINDUP", "durationMs": 950, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "LAND", "actionId": "valtan.attack.jump-spin.land", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 9.0, "hitHalfWidth": 1.8, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.jump-spin" },
+        { "stageId": "SPIN", "actionId": "valtan.attack.jump-spin.spin", "stageKind": "ACTIVE", "durationMs": 1400, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 420, "serverDamageProfileId": "damage.valtan.jump-spin" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.jump-spin.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_PORTAL_RUSH",
+      "displayName": "워프 돌진 콤보",
+      "actionId": "valtan.attack.portal-rush",
+      "sourceActionIds": [420622],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 8, "maximumConsecutiveUses": 1,
+      "minimumRange": 4.0, "maximumRange": 22.0,
+      "stages": [
+        { "stageId": "PORTAL", "actionId": "valtan.attack.portal-rush.portal", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "RUSHES", "actionId": "valtan.attack.portal-rush.rushes", "stageKind": "ACTIVE", "durationMs": 2000, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 20.0, "hitHalfWidth": 2.5, "hitCount": 3, "hitIntervalMs": 600, "serverDamageProfileId": "damage.valtan.portal-rush" },
+        { "stageId": "FINISH", "actionId": "valtan.attack.portal-rush.finish", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.portal-rush" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.portal-rush.recovery", "stageKind": "RECOVERY", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_CHARGE_GRAB_ROAR",
+      "displayName": "돌진 잡기 후 사자후",
+      "actionId": "valtan.attack.charge-grab-roar",
+      "sourceActionIds": [420623, 420631, 420632],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 6, "maximumConsecutiveUses": 1,
+      "minimumRange": 3.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "COUNTER_WINDOW", "actionId": "valtan.attack.charge-grab-roar.counter", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "CHARGE", "actionId": "valtan.attack.charge-grab-roar.charge", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 16.0, "hitHalfWidth": 3.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.charge-grab-roar" },
+        { "stageId": "ROAR", "actionId": "valtan.attack.charge-grab-roar.roar", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 100.0, "hitLength": 14.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.charge-grab-roar" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.charge-grab-roar.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_WHIRLWIND",
+      "displayName": "휠윈드",
+      "actionId": "valtan.attack.whirlwind",
+      "sourceActionIds": [420633],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 20, "maximumConsecutiveUses": 2,
+      "minimumRange": 0.0, "maximumRange": 12.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.whirlwind.windup", "stageKind": "WINDUP", "durationMs": 800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active", "stageKind": "ACTIVE", "durationMs": 1500, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.circular-spin" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.whirlwind.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_BACKSTEP_ATTACK",
+      "displayName": "공격하면서 뒤로 빠지기",
+      "actionId": "valtan.attack.backstep",
+      "sourceActionIds": [420635, 420664],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 10, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 10.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.backstep.windup", "stageKind": "WINDUP", "durationMs": 450, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SWEEP", "actionId": "valtan.attack.backstep.active", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 120.0, "hitLength": 9.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.backstep" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.backstep.recovery", "stageKind": "RECOVERY", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_RED_BLADE_WAVE",
+      "displayName": "붉은 검기 날리기",
+      "actionId": "valtan.attack.red-blade-wave",
+      "sourceActionIds": [420636],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 9, "maximumConsecutiveUses": 1,
+      "minimumRange": 4.0, "maximumRange": 22.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.red-blade-wave.windup", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "PROJECTILE", "actionId": "valtan.attack.red-blade-wave.active", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 22.0, "hitHalfWidth": 2.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.red-blade-wave" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.red-blade-wave.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "displayName": "앞뒤앞 내려찍기",
+      "actionId": "valtan.attack.front-back-front",
+      "sourceActionIds": [420637, 420666],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 20, "maximumConsecutiveUses": 2,
+      "minimumRange": 0.0, "maximumRange": 10.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.front-back-front.windup", "stageKind": "WINDUP", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SMASHES", "actionId": "valtan.attack.front-back-front.active", "stageKind": "ACTIVE", "durationMs": 1200, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 9.0, "hitHalfWidth": 2.0, "hitCount": 3, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.triple-attack" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.front-back-front.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FIST_IN_OUT",
+      "displayName": "두 손 내려찍기 안밖 폭발",
+      "actionId": "valtan.attack.fist-in-out",
+      "sourceActionIds": [420638],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 160,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 14, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 16.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.fist-in-out.windup", "stageKind": "WINDUP", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "INNER", "actionId": "valtan.attack.fist-in-out.inner", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.fist-in-out" },
+        { "stageId": "OUTER", "actionId": "valtan.attack.fist-in-out.outer", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "RING", "hitOuterRadius": 16.0, "hitInnerRadius": 7.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.fist-in-out" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.fist-in-out.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_LEDGE_ROAR",
+      "displayName": "낙사 사자후",
+      "actionId": "valtan.attack.ledge-roar",
+      "sourceActionIds": [420639],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 1, "maximumHealthBar": 90,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 8, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.attack.ledge-roar.windup", "stageKind": "WINDUP", "durationMs": 1300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "ROAR", "actionId": "valtan.attack.ledge-roar.active", "stageKind": "ACTIVE", "durationMs": 750, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 120.0, "hitLength": 17.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.ledge-roar" },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.ledge-roar.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_TRIPLE_COUNTER",
+      "displayName": "연속 카운터 내려찍기",
+      "actionId": "valtan.reactive.triple-counter",
+      "sourceActionIds": [420640, 420641, 420642, 420643, 420644, 420645, 420646, 420647],
+      "selectionMode": "NORMAL",
+      "minimumHealthBar": 30, "maximumHealthBar": 90,
+      "triggerHealthBar": 0, "triggerOrder": 0,
+      "selectionWeight": 4, "maximumConsecutiveUses": 1,
+      "minimumRange": 0.0, "maximumRange": 18.0,
+      "stages": [
+        { "stageId": "COUNTER_1", "actionId": "valtan.reactive.triple-counter.first", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FAIL_1", "actionId": "valtan.reactive.triple-counter.first-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 18.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.triple-counter" },
+        { "stageId": "COUNTER_2", "actionId": "valtan.reactive.triple-counter.second", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FAIL_2", "actionId": "valtan.reactive.triple-counter.second-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 18.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.triple-counter" },
+        { "stageId": "COUNTER_3", "actionId": "valtan.reactive.triple-counter.third", "stageKind": "WINDUP", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FAIL_3", "actionId": "valtan.reactive.triple-counter.third-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 100.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130" },
+        { "stageId": "RECOVERY", "actionId": "valtan.reactive.triple-counter.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "displayName": "오프닝 외벽 충돌 부위 파괴",
+      "actionId": "valtan.mechanic.armor-break-opening",
+      "sourceActionIds": [420627, 420628, 420654, 420655],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 159, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "ACTIVE", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.armor-break-opening.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FLOOR_WIPE_130",
+      "displayName": "130줄 2연속 지면 강타 전멸기",
+      "actionId": "valtan.mechanic.floor-wipe-130",
+      "sourceActionIds": [420630],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 130, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.mechanic.floor-wipe-130.windup", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FIRST_SMASH", "actionId": "valtan.mechanic.floor-wipe-130.first-smash", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 14.0, "hitHalfWidth": 2.2, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.six-direction-130" },
+        { "stageId": "INTERVAL", "actionId": "valtan.mechanic.floor-wipe-130.interval", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "SECOND_SMASH", "actionId": "valtan.mechanic.floor-wipe-130.second-smash", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "CIRCLE", "hitOuterRadius": 100.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.floor-wipe-130.recovery", "stageKind": "RECOVERY", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FOUR_PILLARS_105",
+      "displayName": "105줄 4기둥 추적 원뿔",
+      "actionId": "valtan.mechanic.four-pillars-105",
+      "sourceActionIds": [420610],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 105, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "TAKEOFF", "actionId": "valtan.mechanic.four-pillars-105.takeoff", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "YELLOW_ZONE", "actionId": "valtan.mechanic.four-pillars-105.yellow-zone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "RING", "hitOuterRadius": 100.0, "hitInnerRadius": 4.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105" },
+        { "stageId": "TARGET_CONE", "actionId": "valtan.mechanic.four-pillars-105.target-cone", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 45.0, "hitLength": 30.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.four-pillars-105" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.four-pillars-105.recovery", "stageKind": "RECOVERY", "durationMs": 1300, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_80",
+      "displayName": "80줄 첫 지형 파괴",
+      "actionId": "valtan.mechanic.arena-break-80",
+      "sourceActionIds": [420629],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 80, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "CUTSCENE", "actionId": "valtan.mechanic.arena-break-80.cutscene", "stageKind": "WINDUP", "durationMs": 2500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "LANDING", "actionId": "valtan.mechanic.arena-break-80.landing", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-80" },
+        { "stageId": "SPIN", "actionId": "valtan.mechanic.arena-break-80.spin", "stageKind": "ACTIVE", "durationMs": 1200, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.arena-destroy-80" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-80.recovery", "stageKind": "RECOVERY", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
+      "displayName": "76줄 마력구 방어막 무력화",
+      "actionId": "valtan.mechanic.magic-orb-stagger-76",
+      "sourceActionIds": [420617, 420618],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 76, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "SHIELD", "actionId": "valtan.mechanic.magic-orb-stagger-76.shield", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "STAGGER_WINDOW", "actionId": "valtan.mechanic.magic-orb-stagger-76.window", "stageKind": "ACTIVE", "durationMs": 8000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.magic-orb-stagger-76.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
+      "displayName": "64줄 중앙 표적 폭발과 잡기 카운터",
+      "actionId": "valtan.mechanic.center-grab-counter-64",
+      "sourceActionIds": [420623, 420631],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 64, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "CENTER", "actionId": "valtan.mechanic.center-grab-counter-64.center", "stageKind": "WINDUP", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "TARGET_EXPLOSION", "actionId": "valtan.mechanic.center-grab-counter-64.explosion", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.center-grab-64" },
+        { "stageId": "COUNTER_WINDOW", "actionId": "valtan.mechanic.center-grab-counter-64.counter", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FAILED_CHARGE", "actionId": "valtan.mechanic.center-grab-counter-64.failed-charge", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 18.0, "hitHalfWidth": 3.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.center-grab-64" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.center-grab-counter-64.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_33",
+      "displayName": "33줄 두 번째 지형 파괴",
+      "actionId": "valtan.mechanic.arena-break-33",
+      "sourceActionIds": [420629],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 33, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "CUTSCENE", "actionId": "valtan.mechanic.arena-break-33.cutscene", "stageKind": "WINDUP", "durationMs": 2500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "LANDING", "actionId": "valtan.mechanic.arena-break-33.landing", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.arena-destroy-33" },
+        { "stageId": "SPIN", "actionId": "valtan.mechanic.arena-break-33.spin", "stageKind": "ACTIVE", "durationMs": 1200, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 3, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.arena-destroy-33" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-break-33.recovery", "stageKind": "RECOVERY", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
+      "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "displayName": "15줄 최종 지면파괴와 망령화",
+      "actionId": "valtan.mechanic.ghost-transition-15",
+      "sourceActionIds": [420616, 420624, 420625, 420626, 420634, 420651, 420652, 420653, 420658, 420659, 420665],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 15, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "PORTAL", "actionId": "valtan.mechanic.ghost-transition-15.portal", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "FOUR_DIRECTIONS", "actionId": "valtan.mechanic.ghost-transition-15.four-directions", "stageKind": "ACTIVE", "durationMs": 1800, "hitShape": "CROSS", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 20.0, "hitHalfWidth": 3.0, "hitCount": 4, "hitIntervalMs": 400, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
+        { "stageId": "TRACKING_EXPLOSIONS", "actionId": "valtan.mechanic.ghost-transition-15.tracking", "stageKind": "ACTIVE", "durationMs": 2000, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 450, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
+        { "stageId": "INNER", "actionId": "valtan.mechanic.ghost-transition-15.inner", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 7.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
+        { "stageId": "OUTER", "actionId": "valtan.mechanic.ghost-transition-15.outer", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "RING", "hitOuterRadius": 18.0, "hitInnerRadius": 7.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.ghost-transition-15" },
+        { "stageId": "GHOST", "actionId": "valtan.mechanic.ghost-transition-15.ghost", "stageKind": "RECOVERY", "durationMs": 2500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
     }
   ]
 }

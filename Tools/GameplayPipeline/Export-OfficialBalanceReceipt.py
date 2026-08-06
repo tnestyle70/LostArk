@@ -295,7 +295,7 @@ def main() -> int:
                     source, source_value, "project override")
         else:
             add(damage_path, target_id, "damageRatePercent", rate, "PROJECT_TUNED",
-                project_source("valtan-basic-swing-rate-v1"), rate, "identity",
+                project_source("valtan-pattern-rate-v2"), rate, "identity",
                 "No official server pattern damage coefficient is present in the client payload.")
 
     boss_path = "Data/Balance/BossProfiles.json"
@@ -314,6 +314,7 @@ def main() -> int:
             ("archetypeId", "project-boss-archetype-id-v1"),
             ("encounterId", "project-encounter-id-v1"),
             ("displayName", "project-localized-boss-label-v1"),
+            ("maximumHealthBars", "project-valtan-health-bars-v1"),
             ("attackPower", "project-boss-attack-baseline-v1"),
             ("collisionRadius", "project-boss-collision-radius-v1"),
             ("phaseTwoHpPercent", "project-valtan-phase-threshold-v1"),
@@ -347,7 +348,7 @@ def main() -> int:
     for index, pattern in enumerate(encounter["patterns"]):
         for field, value in pattern.items():
             add(encounter_path, f"pattern:{pattern['patternId']}", f"patterns[{index}].{field}", value,
-                "PROJECT_TUNED", project_source("server-valtan-basic-swing-v1"), value, "identity",
+                "PROJECT_TUNED", project_source("server-valtan-pattern-v2"), value, "identity",
                 "Client action payload is reference evidence only; it does not prove server timing/damage.")
 
     keys = [f"{entry['targetDocument']}#{entry['targetId']}.{entry['targetField']}" for entry in entries]

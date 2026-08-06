@@ -141,7 +141,7 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 		}
 	}
 
-	std::unordered_map<std::string, std::string> bossNames;
+	std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> bossProfiles;
 	const DATA_JSON_VALUE* bossValues =
 		Required(bossRoot, "bosses", DATA_JSON_TYPE::ARRAY);
 	if (nullptr == bossValues)
@@ -150,15 +150,23 @@ bool Client::CCombatHUDViewModel::Initialize_Definitions()
 	{
 		const DATA_JSON_VALUE* id = Required(value, "archetypeId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* name = Required(value, "displayName", DATA_JSON_TYPE::STRING);
-		if (nullptr == id || nullptr == name ||
-			!bossNames.emplace(id->Get_String(), name->Get_String()).second)
+		const DATA_JSON_VALUE* maximumHealthBars = Required(
+			value, "maximumHealthBars", DATA_JSON_TYPE::NUMBER);
+		if (nullptr == id || nullptr == name || nullptr == maximumHealthBars ||
+			maximumHealthBars->Get_Number() < 1.0)
 		{
 			return false;
 		}
+		BOSS_PROFILE_DEFINITION profile{};
+		profile.strDisplayName = name->Get_String();
+		profile.iMaximumHealthBars = static_cast<std::uint32_t>(
+			maximumHealthBars->Get_Number());
+		if (!bossProfiles.emplace(id->Get_String(), std::move(profile)).second)
+			return false;
 	}
 
 	m_PlayerProfiles = std::move(playerProfiles);
-	m_BossDisplayNames = std::move(bossNames);
+	m_BossProfiles = std::move(bossProfiles);
 	m_strStatus = "Loaded combat HUD definitions. " + skillStatus;
 	return true;
 }
@@ -197,6 +205,7 @@ void Client::CCombatHUDViewModel::Apply_LocalPlayer(
 	m_Player.iMaximumHp = snapshot.iMaximumHp;
 	m_Player.iCurrentResource = snapshot.iCurrentResource;
 	m_Player.iMaximumResource = snapshot.iMaximumResource;
+	m_Player.isCombatReady = snapshot.isCombatReady;
 	m_Player.eAction = snapshot.eAction;
 	m_Player.eStance = snapshot.eStance;
 	Build_PlayerSkills(characterClass, serverTick, &snapshot.Cooldowns);
@@ -262,14 +271,19 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 {
 	m_Boss.isValid = true;
 	m_Boss.strArchetypeId = archetypeId;
-	const auto name = m_BossDisplayNames.find(archetypeId);
-	m_Boss.strDisplayName = m_BossDisplayNames.end() == name ?
-		archetypeId : name->second;
+	const auto profile = m_BossProfiles.find(archetypeId);
+	m_Boss.strDisplayName = m_BossProfiles.end() == profile ?
+		archetypeId : profile->second.strDisplayName;
+	m_Boss.iMaximumHealthBars = m_BossProfiles.end() == profile ?
+		0u : profile->second.iMaximumHealthBars;
 	m_Boss.iCurrentHp = snapshot.iCurrentHp;
 	m_Boss.iMaximumHp = snapshot.iMaximumHp;
 	m_Boss.iPhase = snapshot.iPhase;
 	m_Boss.eAction = snapshot.eAction;
 	m_Boss.strActionId = snapshot.strActionId;
+	m_Boss.strPatternId = snapshot.strPatternId;
+	m_Boss.iPatternSequence = snapshot.iPatternSequence;
+	m_Boss.iPatternStageIndex = snapshot.iPatternStageIndex;
 }
 
 void Client::CCombatHUDViewModel::Apply_DamageEvents(

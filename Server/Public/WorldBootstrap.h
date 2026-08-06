@@ -48,18 +48,10 @@ namespace LostArk::Server
 		WORLD_BOOTSTRAP_KIND eKind = WORLD_BOOTSTRAP_KIND::END;
 		std::string strArchetypeId;
 		std::string strEncounterId;
-		std::string strPatternId;
-		std::string strActionId;
-		std::string strDamageProfileId;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
-		float fPatternMinimumRange = 0.f;
-		float fPatternMaximumRange = 0.f;
-		std::uint32_t iPatternTelegraphMs = 0;
-		std::uint32_t iPatternActiveMs = 0;
-		std::uint32_t iPatternRecoveryMs = 0;
 		float fHalfExtentX = 0.f;
 		float fHalfExtentY = 0.f;
 		float fHalfExtentZ = 0.f;

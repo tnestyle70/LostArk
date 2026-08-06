@@ -51,3 +51,9 @@ bool Client::CNetworkPlayerCommandSink::Request_ReleaseSkill(
 {
 	return CNetworkManager::Get().Send_ReleaseSkill(clientSequence, skillId);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_RevivePlayer(
+	const std::uint32_t clientSequence)
+{
+	return CNetworkManager::Get().Send_RevivePlayer(clientSequence);
+}

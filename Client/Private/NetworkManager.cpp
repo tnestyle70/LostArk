@@ -357,6 +357,24 @@ bool CNetworkManager::Send_ReleaseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_RevivePlayer(
+	const std::uint32_t clientSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_REVIVE_PLAYER message{};
+	message.iClientSequence = clientSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_REVIVE_PLAYER,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_SpawnWorldEntity(
 	const std::string_view placementId)
 {
