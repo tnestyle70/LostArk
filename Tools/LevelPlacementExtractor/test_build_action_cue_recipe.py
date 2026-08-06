@@ -6,10 +6,58 @@ import base64
 import struct
 import unittest
 
-from build_action_cue_recipe import build_action_cue_recipe
+from build_action_cue_recipe import build_action_cue_recipe, decode_typed_payload
 
 
 class ActionCueRecipeTests(unittest.TestCase):
+    def test_decodes_standalone_skeletal_model_transform_once(self) -> None:
+        raw = bytearray(512)
+        signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
+        raw[: len(signature)] = signature
+        marker = b"CEFParticleData\x00"
+        marker_start = 160
+        raw[marker_start : marker_start + len(marker)] = marker
+        transform_start = marker_start + len(marker) + 72
+        struct.pack_into("<fff", raw, transform_start + 20, 0.0, 0.0, 45.0)
+        struct.pack_into("<fff", raw, transform_start + 32, 0.0, 0.0, 0.0)
+        struct.pack_into("<fff", raw, transform_start + 80, 1.2, 1.2, 1.2)
+        typed = decode_typed_payload(
+            "PlaySkeletalMesh",
+            {"data": base64.b64encode(bytes(raw)).decode("ascii")},
+            asset_references=[
+                {
+                    "className": "SkeletalMesh",
+                    "objectPath": "SK_TEST.Mesh.SK_TEST_SK",
+                },
+                {
+                    "className": "AnimSet",
+                    "objectPath": "SK_TEST.Ani.SK_TEST_Ani",
+                },
+                {
+                    "className": "MaterialInstanceConstant",
+                    "objectPath": "SK_TEST.Mat.SK_TEST_MI",
+                },
+            ],
+            serialized_labels=["FX", "SK_Test_Cue", "CEFParticleData"],
+        )
+        self.assertTrue(typed["transformDecoded"])
+        self.assertEqual(typed["sourceCueName"], "SK_Test_Cue")
+        self.assertEqual(
+            typed["sourceSkeletalMesh"], "SK_TEST.Mesh.SK_TEST_SK"
+        )
+        self.assertEqual(typed["localTransform"]["position"], [0.0, 0.0, 0.45])
+        for value in typed["localTransform"]["scale"]:
+            self.assertAlmostEqual(value, 1.2)
+
+    def test_model_material_payload_stays_explicitly_unsupported(self) -> None:
+        typed = decode_typed_payload(
+            "PlaySkeletalMeshMaterialParam",
+            {"data": base64.b64encode(b"opaque").decode("ascii")},
+            serialized_labels=["FX", "SK_DimensionPrison"],
+        )
+        self.assertEqual(typed["sourceCueName"], "SK_DimensionPrison")
+        self.assertFalse(typed["semanticDecoded"])
+
     def test_selects_lowest_base_stage_and_preserves_payload(self) -> None:
         payload = base64.b64encode(b"notify").decode("ascii")
         notify = {

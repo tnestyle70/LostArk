@@ -3,10 +3,10 @@
   "formatVersion": 2,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050500,
-  "inputSlot": "F",
+  "inputSlot": "T",
   "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
   "source": {
-    "actionSourceSha256": "388a13bcd6af4940860c97dc42cd65a18d2aa78476ad81e4cf4759bd18e05389",
+    "actionSourceSha256": "33d35fe6b97c6ea707da0e293e265a26afe0f97823155a25783d1cb5175cf73e",
     "loaSha256": "256e51c0d4f0bc537df904e7b58af559a9224807a58d37bcd19aa5e707366dc6"
   },
   "selectedStages": [
@@ -688,12 +688,46 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2gAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAAAAAAAAQAAAAEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAUAAABOb25lAAUAAABOb25lADIAAABTa2VsZXRhbE1lc2gnU0tfU1dQX0RNU18wMC5NZXNoLlNLX1NXUF9ETVNfMDBfU0snAC0AAABBbmltU2V0J1NLX1NXUF9ETVNfMDAuQW5pLlNLX1NXUF9ETVNfMDBfQW5pJwAEAAAARQAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19TV1BfRE1TXzAwLk1hdC5TS19TV1BfRE1TXzAwXzAxX01JX0RlYWQnAEUAAABNYXRlcmlhbEluc3RhbmNlQ29uc3RhbnQnU0tfU1dQX0RNU18wMC5NYXQuU0tfU1dQX0RNU18wMF8wMl9NSV9EZWFkJwBFAAAATWF0ZXJpYWxJbnN0YW5jZUNvbnN0YW50J1NLX1NXUF9ETVNfMDAuTWF0LlNLX1NXUF9ETVNfMDBfMDNfTUlfRGVhZCcARQAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19TV1BfRE1TXzAwLk1hdC5TS19TV1BfRE1TXzAwXzA0X01JX0RlYWQnAAAAAAABAAAAEwAAAFNLX0RpbWVuc2lvblByaXNvbgAAAIA/AQAAAA8AAABDRUZBTl9QYXJ0aWNsZQABAAAAAAAAAAAAAAAAAAAAAAAAADMzE0AQAAAAQ0VGUGFydGljbGVEYXRhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAADRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAmpmZP5qZmT+amZk/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAADEAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-play-skeletal-mesh",
+        "version": 1,
+        "enabled": true,
+        "sourceSkeletalMesh": "SK_SWP_DMS_00.Mesh.SK_SWP_DMS_00_SK",
+        "sourceAnimSet": "SK_SWP_DMS_00.Ani.SK_SWP_DMS_00_Ani",
+        "sourceMaterialInstances": [
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_01_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_02_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_03_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_04_MI_Dead"
+        ],
+        "sourceCueName": "SK_DimensionPrison",
+        "transformDecoded": true,
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            45.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.45
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.2000000476837158,
+            1.2000000476837158,
+            1.2000000476837158
+          ]
+        },
+        "sourceTransformByteOffset": 727
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_MODEL_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-010",
@@ -1937,12 +1971,15 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2hNYXRlcmlhbFBhcmFtAAAAAAAAAAAAAAAAAAEAAADmsDlA5rA5QAAAAAABAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAAAAAAAAAAAAAUAAABOb25lABMAAABTS19EaW1lbnNpb25Qcmlzb24AAQAAADEAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-play-skeletal-mesh-material-param",
+        "version": 1,
+        "enabled": true,
+        "sourceCueName": "SK_DimensionPrison",
+        "semanticDecoded": false
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNSUPPORTED_MODEL_MATERIAL_SEMANTICS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-039",
@@ -2105,7 +2142,9 @@
     "disabledPlayParticleEffectCount": 0,
     "byteLosslessPayloadComplete": true,
     "referenceJoinComplete": true,
-    "runtimeAnchorResolutionComplete": true
+    "runtimeAnchorResolutionComplete": true,
+    "runtimeModelCueTransformComplete": true,
+    "runtimeModelMaterialSemanticComplete": false
   },
   "sourceExtractionComplete": true,
   "runtimeExecutionComplete": false

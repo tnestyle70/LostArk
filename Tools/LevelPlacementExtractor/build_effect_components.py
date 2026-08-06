@@ -12,6 +12,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from build_dimensionmaster_base_effects import dimensionmaster_admitted_skills
 from build_imported_effect_documents import read_json, write_json_atomic
 
 
@@ -56,17 +57,26 @@ def renderer_kind(element: dict[str, Any]) -> str:
     return str(element.get("sourceRecipe", {}).get("rendererShape") or "sprite")
 
 
-def safe_slot(slot: str) -> str:
-    value = "ba" if slot.upper() in {"BA", "LMB"} else slot.casefold()
-    if not STABLE_ID.fullmatch(value):
-        raise ValueError(f"invalid slot identity: {slot}")
-    return value
+def effect_identity(effect_id: str, character_class: str) -> str:
+    prefix = f"effect.{character_class.casefold()}."
+    if not effect_id.startswith(prefix):
+        raise ValueError(
+            f"Effect is outside {character_class} identity: {effect_id}"
+        )
+    identity = effect_id[len(prefix):]
+    if not identity or not STABLE_ID.fullmatch(identity):
+        raise ValueError(f"invalid Effect identity: {effect_id}")
+    return identity
+
+
+def component_directory(effect_id: str, character_class: str) -> str:
+    return effect_identity(effect_id, character_class)
 
 
 def split_document(
     document: dict[str, Any],
     character_class: str,
-    input_slot: str,
+    input_slot: str | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, dict[str, Any]]]]:
     if document.get("schema") != "lostark.effect-authoring":
         raise ValueError("not an Effect authoring document")
@@ -89,7 +99,9 @@ def split_document(
             item[0],
         ),
     )
-    prefix = f"effect.component.{character_class.casefold()}.{safe_slot(input_slot)}"
+    identity = effect_identity(effect_id, character_class)
+    prefix = f"effect.component.{character_class.casefold()}.{identity}"
+    file_identity = identity.replace(".", "_")
     cue_rows = []
     outputs: list[tuple[str, dict[str, Any]]] = []
     for index, (group_id, indexed_elements) in enumerate(ordered):
@@ -121,23 +133,26 @@ def split_document(
             })
         kind = component_kind(localized)
         file_name = (
-            f"{character_class}_{input_slot.upper()}_{index:02d}."
+            f"{character_class}_{file_identity}_{index:02d}."
             f"{kind.casefold()}.wfx.json"
         )
+        source_metadata = {
+            "effectAssetId": effect_id,
+            "groupId": group_id,
+            "sourceNodes": sorted({
+                str(row.get("sourceNode") or "") for row in source_elements
+            }),
+            "sourceElementSha256": sha256_json(source_elements),
+        }
+        if input_slot:
+            source_metadata["inputSlot"] = input_slot
         component = {
             "schema": "lostark.effect-component",
             "version": 1,
             "componentAssetId": component_id,
             "displayName": file_name.removesuffix(".json"),
             "componentType": kind,
-            "source": {
-                "effectAssetId": effect_id,
-                "groupId": group_id,
-                "sourceNodes": sorted({
-                    str(row.get("sourceNode") or "") for row in source_elements
-                }),
-                "sourceElementSha256": sha256_json(source_elements),
-            },
+            "source": source_metadata,
             "emitters": emitters,
             "document": {
                 "schema": "lostark.effect-authoring",
@@ -179,6 +194,8 @@ def split_document(
         "componentCues": cue_rows,
         "sourceDocumentSha256": sha256_json(document),
     }
+    if input_slot:
+        assembly["inputSlot"] = input_slot
     return assembly, outputs
 
 
@@ -299,32 +316,136 @@ def remove_stale_generated_components(
     return sorted(removed)
 
 
+def remove_relocated_generated_components(
+    component_root: Path,
+    expected_root: Path,
+    source_effect_id: str,
+) -> list[str]:
+    """Remove source-owned components left in an obsolete slot directory."""
+    if not component_root.exists():
+        return []
+    resolved_root = component_root.resolve()
+    resolved_expected = expected_root.resolve()
+    removed = []
+    for path in component_root.rglob("*.wfx.json"):
+        resolved = path.resolve()
+        if resolved_expected in resolved.parents:
+            continue
+        if resolved_root not in resolved.parents:
+            raise ValueError(f"component path escaped component root: {path}")
+        try:
+            component = read_json(path)
+        except (OSError, ValueError):
+            continue
+        if (
+            component.get("schema") != "lostark.effect-component"
+            or component.get("version") != 1
+            or component.get("source", {}).get("effectAssetId")
+            != source_effect_id
+        ):
+            continue
+        path.unlink()
+        removed.append(str(path))
+    return sorted(removed)
+
+
+def remove_unadmitted_generated_artifacts(
+    component_root: Path,
+    assembly_root: Path,
+    expected_effect_ids: set[str],
+) -> tuple[list[str], list[str]]:
+    """Remove only generated DimensionMaster artifacts absent from the catalog."""
+    prefix = "effect.dimensionmaster.skill."
+    removed_components = []
+    if component_root.exists():
+        for path in component_root.rglob("*.wfx.json"):
+            try:
+                component = read_json(path)
+            except (OSError, ValueError):
+                continue
+            source_effect_id = str(
+                component.get("source", {}).get("effectAssetId") or ""
+            )
+            if (
+                component.get("schema") == "lostark.effect-component"
+                and component.get("version") == 1
+                and source_effect_id.startswith(prefix)
+                and source_effect_id not in expected_effect_ids
+            ):
+                path.unlink()
+                removed_components.append(str(path))
+
+    removed_assemblies = []
+    if assembly_root.exists():
+        for path in assembly_root.glob("*.assembly.json"):
+            try:
+                assembly = read_json(path)
+            except (OSError, ValueError):
+                continue
+            effect_id = str(assembly.get("effectAssetId") or "")
+            if (
+                assembly.get("schema") == "lostark.effect-assembly"
+                and assembly.get("version") == 1
+                and effect_id.startswith(prefix)
+                and effect_id not in expected_effect_ids
+            ):
+                path.unlink()
+                removed_assemblies.append(str(path))
+    return sorted(removed_components), sorted(removed_assemblies)
+
+
 def build_all(
     catalog_path: Path,
     data_root: Path,
     component_root: Path,
     assembly_root: Path,
+    skill_bindings_path: Path | None = None,
 ) -> dict[str, Any]:
     catalog = read_json(catalog_path)
-    skill_by_id = {}
-    skills = read_json(data_root / "Balance" / "PlayerSkills.json")
-    for row in skills.get("skills", []):
-        if str(row.get("characterClass", "")).casefold() == "dimensionmaster":
-            skill_by_id[str(row["effectId"])] = row
+    if skill_bindings_path is None:
+        skill_bindings_path = (
+            data_root / "Animation" / "Authored" / "DimensionMaster" /
+            "DimensionMaster.skillbindings.json"
+        )
+    admitted_skills = dimensionmaster_admitted_skills(
+        data_root / "Balance" / "PlayerSkills.json", skill_bindings_path
+    )
+    skill_by_effect = {
+        str(row["effectAssetId"]): row for row in admitted_skills
+    }
     receipts = []
     stale_component_files: list[str] = []
+    ignored_candidate_effects: list[str] = []
     action_recipe_by_skill: dict[int, dict[str, Any]] = {}
+    expected_effect_ids = {
+        str(entry["effectAssetId"])
+        for entry in catalog.get("effects", [])
+        if str(entry.get("effectAssetId") or "").startswith(
+            "effect.dimensionmaster.skill."
+        )
+    }
     for entry in catalog.get("effects", []):
         effect_id = str(entry["effectAssetId"])
         if not effect_id.startswith("effect.dimensionmaster.skill."):
             continue
         base_id = effect_id.split(".ba", 1)[0]
-        skill = skill_by_id.get(base_id)
+        skill = skill_by_effect.get(base_id)
         if skill is None:
-            raise ValueError(f"no DimensionMaster skill for {effect_id}")
-        slot = "BA" if str(skill["inputSlot"]).upper() == "LMB" else str(skill["inputSlot"])
+            ignored_candidate_effects.append(effect_id)
+            continue
+        slot = str(skill.get("inputSlot") or "") or None
+        combo_stage = None
         if effect_id != base_id:
-            slot += effect_id.rsplit(".ba", 1)[1]
+            match = re.fullmatch(
+                re.escape(base_id) + r"\.ba([1-9][0-9]*)", effect_id
+            )
+            if match is None:
+                raise ValueError(f"invalid combo stage Effect identity: {effect_id}")
+            combo_stage = int(match.group(1))
+            if str(skill.get("skillKind") or "").upper() != "COMBO":
+                raise ValueError(f"non-combo Effect has BA stage: {effect_id}")
+            if combo_stage > len(skill.get("comboStages", [])):
+                raise ValueError(f"combo stage is outside gameplay contract: {effect_id}")
         authoring_path = data_root / str(entry["authoringPath"])
         document = read_json(authoring_path)
         assembly, component_files = split_document(
@@ -333,9 +454,12 @@ def build_all(
         assembly["sourceDocumentFileSha256"] = sha256_file(authoring_path)
         skill_id = int(skill["skillId"])
         if skill_id not in action_recipe_by_skill:
-            action_recipe_by_skill[skill_id] = read_json(
+            action_path = (
                 data_root / "Effects" / "Imported" / "DimensionMaster" /
                 "Converted" / f"skill.{skill_id}.action-cue-recipe.json"
+            )
+            action_recipe_by_skill[skill_id] = (
+                read_json(action_path) if action_path.is_file() else {"cues": []}
             )
         source_action_cues = action_cues_for_effect(
             action_recipe_by_skill[skill_id], effect_id
@@ -353,7 +477,8 @@ def build_all(
                 for row in source_action_cues
             ),
         }
-        target_components = component_root / slot
+        directory = component_directory(effect_id, "DimensionMaster")
+        target_components = component_root / directory
         components_by_id = {}
         for file_name, component in component_files:
             write_json_atomic(target_components / file_name, component)
@@ -366,14 +491,19 @@ def build_all(
         stale_component_files.extend(
             str(target_components / file_name) for file_name in removed
         )
+        stale_component_files.extend(
+            remove_relocated_generated_components(
+                component_root, target_components, effect_id
+            )
+        )
         assembly_path = assembly_root / f"{effect_id}.assembly.json"
         write_json_atomic(assembly_path, assembly)
         compiled = compile_assembly(assembly, components_by_id)
         if canonical_json(compiled) != canonical_json(document):
             raise ValueError(f"WFX compile identity mismatch: {effect_id}")
-        receipts.append({
+        receipt_row = {
             "effectAssetId": effect_id,
-            "inputSlot": slot,
+            "componentDirectory": directory,
             "assembly": str(assembly_path),
             "componentCount": len(component_files),
             "emitterCount": sum(
@@ -383,7 +513,17 @@ def build_all(
             "sourceDocumentSha256": assembly["sourceDocumentSha256"],
             "compiledDocumentSha256": sha256_json(compiled),
             "compileIdentity": True,
-        })
+        }
+        if slot:
+            receipt_row["inputSlot"] = slot
+        if combo_stage is not None:
+            receipt_row["comboStage"] = combo_stage
+        receipts.append(receipt_row)
+    removed_unadmitted_components, removed_unadmitted_assemblies = (
+        remove_unadmitted_generated_artifacts(
+            component_root, assembly_root, expected_effect_ids
+        )
+    )
     return {
         "schema": "lostark.effect-component-build-receipt",
         "version": 1,
@@ -396,6 +536,16 @@ def build_all(
         ),
         "removedStaleComponentFileCount": len(stale_component_files),
         "removedStaleComponentFiles": stale_component_files,
+        "ignoredCandidateEffectCount": len(ignored_candidate_effects),
+        "ignoredCandidateEffects": sorted(ignored_candidate_effects),
+        "removedUnadmittedComponentFileCount": len(
+            removed_unadmitted_components
+        ),
+        "removedUnadmittedComponentFiles": removed_unadmitted_components,
+        "removedUnadmittedAssemblyFileCount": len(
+            removed_unadmitted_assemblies
+        ),
+        "removedUnadmittedAssemblyFiles": removed_unadmitted_assemblies,
         "compileIdentityComplete": all(row["compileIdentity"] for row in receipts),
         "effects": receipts,
     }
@@ -428,7 +578,12 @@ def verify_existing(
         assembly = read_json(assembly_path)
         if assembly.get("effectAssetId") != effect_id:
             raise ValueError(f"Effect assembly identity mismatch: {effect_id}")
-        slot_root = component_root / str(row["inputSlot"])
+        directory = str(
+            row.get("componentDirectory")
+            or row.get("inputSlot")
+            or component_directory(effect_id, "DimensionMaster")
+        )
+        slot_root = component_root / directory
         components: dict[str, dict[str, Any]] = {}
         for path in slot_root.glob("*.wfx.json"):
             component = read_json(path)
@@ -501,6 +656,13 @@ def main() -> int:
     )
     parser.add_argument("--data-root", type=Path, default=Path("Data"))
     parser.add_argument(
+        "--skill-bindings", type=Path,
+        default=Path(
+            "Data/Animation/Authored/DimensionMaster/"
+            "DimensionMaster.skillbindings.json"
+        )
+    )
+    parser.add_argument(
         "--component-root", type=Path,
         default=Path("Data/Effects/Components/DimensionMaster")
     )
@@ -525,7 +687,8 @@ def main() -> int:
         print(json.dumps(result, sort_keys=True))
         return 0
     receipt = build_all(
-        args.catalog, args.data_root, args.component_root, args.assembly_root
+        args.catalog, args.data_root, args.component_root,
+        args.assembly_root, args.skill_bindings
     )
     write_json_atomic(args.receipt, receipt)
     print(json.dumps({

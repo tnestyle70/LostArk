@@ -1,0 +1,3283 @@
+{
+  "schema": "lostark.skill-effect-resource-index",
+  "formatVersion": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "animationAssetId": "DimensionMaster",
+  "inputSlot": "T",
+  "skillId": 2050500,
+  "displayName": "업의 경계",
+  "actionId": "dimensionmaster.skill.2050500",
+  "effectId": "effect.dimensionmaster.skill.2050500",
+  "bindingStatus": "INDEX_READY",
+  "animationClips": [
+    "pc_sp_m_00_sk_sk_dimensionprison"
+  ],
+  "source": {
+    "playerSkills": "Data/Balance/PlayerSkills.json",
+    "skillBindings": "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json",
+    "authoredEffect": "Data/Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json"
+  },
+  "assets": [
+    {
+      "assetId": "Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel",
+      "kinds": [
+        "model"
+      ],
+      "slotIds": [
+        "modelCue"
+      ],
+      "elementIds": [],
+      "modelCueIds": [
+        "dimension_summon"
+      ],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_a_broken_013.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_72"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_b_cylinder_002.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_99"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_b_plane_001.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_11",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_13",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_29",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_31"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_c_square_001.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_crack_037.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_cylinder1000_01.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_cylinder_004.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_43",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_45",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_105",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_39"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 7,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_cylinder_004_1.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_helix_031.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_hemisphere_001_1.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_hemisphere_001_3.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_121"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_hemisphere_016.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_73"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_ring_008.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_97"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_ring_009.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_h_sphere_01_1.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_x_ring_01.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_043.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_45"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_048.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_80"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_048_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2",
+        "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2.event_source-event-016",
+        "fx_cm_02.light.par_mp_light_02.particlespriteemitter_2",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_21",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_29",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_50",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_40",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_56",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_65",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_73",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_93",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_119",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_0",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_7",
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_17",
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_33",
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_36",
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_87",
+        "fx_post.fx_par.par_c_zoomblur_02.particlespriteemitter_0",
+        "fx_post.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+        "fx_post.fx_par.par_m_filmnoise_zaxis_01.particlespriteemitter_1"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 23,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_005.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_2"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_021.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_16"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fire_018_cube.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_113"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fluid_003.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_007.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_111"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_43"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_27"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_hit_005.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_70"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_line_005.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_12"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_line_010_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_99"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_43"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_39"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_trail_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_trail_005_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_97",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_120",
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 9,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_42",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_72",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_5"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_91"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve",
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_9",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_47"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_112"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_031_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_42"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_032.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_9"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_035_1_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_39"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_042_1_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_043.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_26"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_049.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_43"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_055_2_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_055_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_121"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_057.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_43"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_069_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_112"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_073.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_076_2_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_091_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_096_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_114_1_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_132_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_cloud_035.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_121"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_decal_005.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_decal_045.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_018.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_035.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fluid_020.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_96"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_96"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_003.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_91"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_006.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_70"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive",
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_16",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_80"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 7,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014_1.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_42",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_030.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_43",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_122",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_locdust.particlespriteemitter_118"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_031.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_122"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_033.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_66",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_121"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_034.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_046_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_43"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_normal_010_5.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_normal_014.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_normal_084_1.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_shockwave_001_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_9",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_84"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_typical_033_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_decal_013.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_123"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_003.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_88"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_010_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_120"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_028.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_038.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_11"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_rectangle_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_31"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_ring_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_35"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_speedline_01_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_environment_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_locdust.particlespriteemitter_118"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_16"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flare_02_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_60"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_66"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_mirnoise_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_42",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_105",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_80",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_99"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 5,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_risingforce_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_smoke_01_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_locdust.particlespriteemitter_118"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_05_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_fluidtile_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_25",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_84"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_013_yclamp.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_26",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_47"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_flow_03_n.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_12",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_47"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_12"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_003.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_66"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_008.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_26"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_trail_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_91"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_trail_008.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_1"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_trail_010.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_wave_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_105"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_wave_001_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_66"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_8"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_tile_03.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_95"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_95"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_16"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_flownoise_tile_04.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_fluidsmoke_01_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_gradient_03.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_gradientmask_01_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_95"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_72",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_timeline_01_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_crosshairline_axis_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_11"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_gracylinder_03_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_line_005_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_normallinenoiseaxis_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_smoketile_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_113"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_n_cncs_magic_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_1"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_n_rimsymbol_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_017.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_31",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_37",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_45"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_018.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_environ_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_a_snow_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_120"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_c_glow_010.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_54"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_03.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_13"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_05.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_28"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_07.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base",
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_12",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/fx_linecircle_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_d_symbol_160_nomipmap_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_29"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_w_environ_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_37"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_x_hexagongradient_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_31"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/LV_WET/lv_common_wet_22_d.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    }
+  ],
+  "materials": [
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.glow.01.ad.0857e02620a0",
+      "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_0"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+      "profileId": "ue3.material.bfx.m.bfx.d.pa.circ.01.ad.e79446d13bb8",
+      "parentMaterialPath": "bfx_m.bfx_d_pa_circ_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.circle.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_21"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.flare.02.ad.7d386b4627a6",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_flare_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_36"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_master_01_16_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_locdust.particlespriteemitter_118"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_04_dt_tr",
+      "profileId": "ue3.material.bfx.m.bfx.d.pa.smokethin.unlit.01.tr.dff3f81e7de8",
+      "parentMaterialPath": "bfx_m.bfx_d_pa_smokethin_unlit_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_122"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "enginematerials.defaultmaterial",
+      "profileId": "ue3.material.enginematerials.defaultmaterial.6131d8dad51a",
+      "parentMaterialPath": "enginematerials.defaultmaterial",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_78"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2",
+        "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2.event_source-event-016",
+        "fx_cm_02.light.par_mp_light_02.particlespriteemitter_2"
+      ],
+      "occurrenceCount": 3
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_cd_01_3_tr",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.tr.6234c97db280",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_2"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_111"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_43"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_27"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_01_ad",
+      "profileId": "ue3.material.fx.m.fx.d.me.flow.02.ad.8c2bd304e01f",
+      "parentMaterialPath": "fx_m.fx_d_me_flow_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_39"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_05_ad",
+      "profileId": "ue3.material.fx.m.fx.d.me.flow.02.ad.8c2bd304e01f",
+      "parentMaterialPath": "fx_m.fx_d_me_flow_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_6"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_038_ts_tr",
+      "profileId": "ue3.material.fx.m.fx.d.pa.master.01.tr.3de0aac8e4b5",
+      "parentMaterialPath": "fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_121"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_118_fs_dt_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.master.01.ad.dcbcdac39623",
+      "parentMaterialPath": "fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_73"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_range_01_03_ad",
+      "profileId": "ue3.material.fx.m.fx.d.me.ui.01.ad.54abb4664f70",
+      "parentMaterialPath": "fx_m.fx_d_me_ui_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_97"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_35"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_09_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_70"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_dark_05_02_tr",
+      "profileId": "ue3.material.fx.m.fx.d.pa.dark.05.tr.60792fd82275",
+      "parentMaterialPath": "fx_m.fx_d_pa_dark_05_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_33"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_flare_02_02_dt_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.flare.02.ad.9c297969d4ea",
+      "parentMaterialPath": "fx_m.fx_d_pa_flare_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_17"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_master_01_047_dt_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.master.01.ad.dcbcdac39623",
+      "parentMaterialPath": "fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_54"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_ri_04_1_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_88"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_123"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_flare_01_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_60"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_rgbsplitfloor_1_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_post.fx_par.par_m_filmnoise_zaxis_01.particlespriteemitter_1"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_16_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_105"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_m_me_floorstrm_04_1_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_99"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_15_tr",
+      "profileId": "ue3.material.fx.m.mi.03.fx.mi.fx.m.pa.smoke.01.tr.f29f8f9b01e2",
+      "parentMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_smoke_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_91"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_circledisort_01_ad",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.j.pa.circledisort.01.ad.8852527671d6",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_circledisort_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_87"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.j.pa.dot.ad.01.3568dcff5c7c",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
+      "runtimeShaderProfileId": "effect.ue3.dot.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_40",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_7"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_pa_makeflow_01_01_tr",
+      "profileId": "ue3.material.fx.m.fx.k.pa.makeflow.01.tr.f703a4582be0",
+      "parentMaterialPath": "fx_m.fx_k_pa_makeflow_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_70"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_01_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.shine.02.ad.a8f6459fa75e",
+      "parentMaterialPath": "fx_m.fx_d_pa_shine_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_112"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_m.fx_c_pa_ring_04_ad",
+      "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.c.pa.ring.04.ad.907e437db965",
+      "parentMaterialPath": "fx_m_mi_03.fx_m.fx_c_pa_ring_04_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_119"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_me_ringmaster_01_12_ts_fs_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ringmaster.01.ad.f258735ec301",
+      "parentMaterialPath": "fx_m.fx_d_pa_ringmaster_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_14_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ring.07.ad.4122459d9211",
+      "parentMaterialPath": "fx_m.fx_d_pa_ring_07_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_43"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_38_tr",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ring.07.tr.40e7d079d32c",
+      "parentMaterialPath": "fx_m.fx_d_pa_ring_07_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_9"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_04_dt_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ringmaster.01.ad.f258735ec301",
+      "parentMaterialPath": "fx_m.fx_d_pa_ringmaster_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_25"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_13_ad",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ringmaster.01.ad.f258735ec301",
+      "parentMaterialPath": "fx_m.fx_d_pa_ringmaster_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_84"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+      "profileId": "ue3.material.fx.m.mi.05.fx.m.fx.b.pa.cd.02.tr.7f417381c98d",
+      "parentMaterialPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_65"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_master_01_101_ma",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.me.master.01.ma.3e356747fd11",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_master_01_ma",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_96"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_h_00.fx_mi.fx_h_pa_watertrail_02_1_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_47"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
+      "profileId": "ue3.material.fx.m.fx.j.me.localcrack.01.tr.41a9caa566a2",
+      "parentMaterialPath": "fx_m.fx_j_me_localcrack_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_72"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_edgehit_01_04_tr",
+      "profileId": "ue3.material.fx.m.fx.j.pa.edgehit.01.tr.21cd8172e05a",
+      "parentMaterialPath": "fx_m.fx_j_pa_edgehit_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_95"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
+      "profileId": "ue3.material.fx.m.fx.j.pa.highpixelring.01.ad.4ed63bb9adad",
+      "parentMaterialPath": "fx_m.fx_j_pa_highpixelring_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_93"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_linearwave_02_16_tr",
+      "profileId": "ue3.material.fx.m.fx.j.pa.linearwave.02.tr.b2afc91c5bf7",
+      "parentMaterialPath": "fx_m.fx_j_pa_linearwave_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_67"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_post.fx_par.par_j_rgbnoise_01.particlespriteemitter_11"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_pmshs_spritewave_01_48_tr",
+      "profileId": "ue3.material.fx.m.fx.m.pa.spritewave.01.tr.52cf6c9981b7",
+      "parentMaterialPath": "fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_26"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_linewave_02_tr",
+      "profileId": "ue3.material.fx.m.fx.m.baseringmaster.01.tr.c28d6300e4d5",
+      "parentMaterialPath": "fx_m.fx_m_baseringmaster_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_68"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ringmaster_01_51_dt_ad",
+      "profileId": "ue3.material.fx.m.mi.03.fx.mi.fx.d.pa.ringmaster.01.50.ad.38e84f37d710",
+      "parentMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_50_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_50",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_7"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_aura_02_ad",
+      "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.i.pa.aura.01.ad.d09759d61eee",
+      "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_aura_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_8"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ring_08_04_ad",
+      "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",
+      "parentMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_42"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ringmaster_14_02_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ringmaster.01.tr.5629c8a9bc12",
+      "parentMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_ringmaster_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_56"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.fx_w_pa_ring_02_ad",
+      "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.11.ad.43bcef3b2175",
+      "parentMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_11_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_80"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.fx_w_pa_spritewave_01_19_1_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_66"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_de_crack_077_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_60"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_de_crack_079_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_61"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_magicsymbol_00",
+      "profileId": "ue3.material.fx.m.mi.l.00.fx.m.fx.l.me.itr.symbol.01.tr.cec3ff5a86d8",
+      "parentMaterialPath": "fx_m_mi_l_00.fx_m.fx_l_me_itr_symbol_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_13"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_magicsymbol_01",
+      "profileId": "ue3.material.fx.m.mi.d.00.fx.mi.fx.d.me.master.01.274.tr.00588f58cbbe",
+      "parentMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_me_master_01_274_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_29"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_056_ts_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_30",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_27"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_111_ts_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_76"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_16_ts_dt_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_86"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_1_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_11"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_241_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_83",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_hand.particlespriteemitter_6"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_250_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_55",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_41"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_27_dt_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_43"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_341_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_50"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_3_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_31"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_ringrainbow_05_02_ts_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_22",
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_32"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_shine_01_02_ad",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.d.pa.shine.02.ad.29d7864aadba",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_45"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_spritewave_01_24_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_6"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_area_01_tr",
+      "profileId": "ue3.material.fx.m.fx.w.pa.area.01.tr.48163c5bf6ed",
+      "parentMaterialPath": "fx_m.fx_w_pa_area_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_37"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_magiccircle_04_3_ts_tr",
+      "profileId": "ue3.material.fx.m.mi.h.00.fx.m.fx.h.pa.spritewave.02.tr.6e910398492b",
+      "parentMaterialPath": "fx_m_mi_h_00.fx_m.fx_h_pa_spritewave_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_5"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_magiccircle_04_4_tr",
+      "profileId": "ue3.material.fx.m.mi.h.00.fx.m.fx.h.pa.magiccircle.01.1.tr.3e70b5e0782f",
+      "parentMaterialPath": "fx_m_mi_h_00.fx_m.fx_h_pa_magiccircle_01_1_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_12"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_16"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_ringaura_01_08_ad",
+      "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.ring.07.ad.82e9116584b2",
+      "parentMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_07_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp_local.particlespriteemitter_120"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_03_93_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_1"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_06_01_ad",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.ad.caabbddf8b55",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_cancelexp.particlespriteemitter_37"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_swpsymbol_01_tr",
+      "profileId": "ue3.material.fx.m.mi.05.fx.m.fx.c.pa.symbol.01.tr.801280e80c9a",
+      "parentMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_symbol_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00.particlespriteemitter_28"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_shine_02_15_ad",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.d.pa.shine.02.ad.29d7864aadba",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_dimensionprison_00_exp.particlespriteemitter_113"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_post.fx_par.par_c_zoomblur_02.particlespriteemitter_0"
+      ],
+      "occurrenceCount": 1
+    }
+  ],
+  "summary": {
+    "assetCount": 144,
+    "assetKindCounts": {
+      "mesh": 16,
+      "model": 1,
+      "texture": 127
+    },
+    "materialIdentityCount": 80,
+    "physicalStatusCounts": {
+      "PRESENT": 144
+    },
+    "effectElementCount": 89,
+    "modelCueCount": 1
+  }
+}

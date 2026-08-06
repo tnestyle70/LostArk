@@ -325,7 +325,22 @@ def build_contract(
         source_path = source_path_spelling[key]
         graph_row = graph_rows_by_path.get(key, {})
         candidates = material_candidates(material_map, source_path)
-        selected = candidates[0] if len(candidates) == 1 else graph_row
+        expected_package = folded(graph_row.get("sourcePhysicalPackage"))
+        exact_package_candidates = [
+            row for row in candidates
+            if expected_package
+            and folded(row.get("source_file")) == expected_package
+        ]
+        if len(candidates) == 1:
+            selected = candidates[0]
+        elif len(exact_package_candidates) == 1:
+            # Material object paths are not globally unique across cooked UE3
+            # packages.  The source receipt already records the package that
+            # owned this occurrence, so use that evidence to disambiguate the
+            # material map instead of selecting by path order.
+            selected = exact_package_candidates[0]
+        else:
+            selected = graph_row
         parent = str(selected.get("parent") or graph_row.get("parent") or source_path)
         parent_package = manifest_packages.get(folded(parent))
         source_package = str(
@@ -334,7 +349,7 @@ def build_contract(
             or manifest_packages.get(key)
             or ""
         )
-        if len(candidates) > 1:
+        if len(candidates) > 1 and len(exact_package_candidates) != 1:
             failures.append({
                 "sourceMaterialPath": source_path,
                 "status": "AMBIGUOUS_MATERIAL_CANDIDATE",

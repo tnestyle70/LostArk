@@ -2,8 +2,8 @@
   "schema": "lostark.effect-assembly",
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050540",
-  "displayName": "DIMENSIONMASTER V 2050540 Imported Cascade Draft",
-  "sourceAuthoringVersion": 10,
+  "displayName": "DIMENSIONMASTER ALT_V 2050540 Imported Cascade Draft",
+  "sourceAuthoringVersion": 11,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -14,7 +14,7 @@
   "componentCues": [
     {
       "cueId": "component-00",
-      "componentAssetId": "effect.component.dimensionmaster.v.00",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.00",
       "startDelaySeconds": 0.03,
       "visible": true,
       "anchor": "root",
@@ -38,7 +38,7 @@
     },
     {
       "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.v.01",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.01",
       "startDelaySeconds": 0.04,
       "visible": true,
       "anchor": "root",
@@ -62,7 +62,7 @@
     },
     {
       "cueId": "component-02",
-      "componentAssetId": "effect.component.dimensionmaster.v.02",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.02",
       "startDelaySeconds": 0.65,
       "visible": true,
       "anchor": "root",
@@ -86,7 +86,7 @@
     },
     {
       "cueId": "component-03",
-      "componentAssetId": "effect.component.dimensionmaster.v.03",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.03",
       "startDelaySeconds": 0.65,
       "visible": true,
       "anchor": "root",
@@ -110,7 +110,7 @@
     },
     {
       "cueId": "component-04",
-      "componentAssetId": "effect.component.dimensionmaster.v.04",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.04",
       "startDelaySeconds": 0.7,
       "visible": true,
       "anchor": "root",
@@ -134,7 +134,7 @@
     },
     {
       "cueId": "component-05",
-      "componentAssetId": "effect.component.dimensionmaster.v.05",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.05",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -158,7 +158,7 @@
     },
     {
       "cueId": "component-06",
-      "componentAssetId": "effect.component.dimensionmaster.v.06",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.06",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -182,7 +182,7 @@
     },
     {
       "cueId": "component-07",
-      "componentAssetId": "effect.component.dimensionmaster.v.07",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.07",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -206,7 +206,7 @@
     },
     {
       "cueId": "component-08",
-      "componentAssetId": "effect.component.dimensionmaster.v.08",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.08",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -230,7 +230,7 @@
     },
     {
       "cueId": "component-09",
-      "componentAssetId": "effect.component.dimensionmaster.v.09",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.09",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -254,7 +254,7 @@
     },
     {
       "cueId": "component-10",
-      "componentAssetId": "effect.component.dimensionmaster.v.10",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.10",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -278,7 +278,7 @@
     },
     {
       "cueId": "component-11",
-      "componentAssetId": "effect.component.dimensionmaster.v.11",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.11",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -302,7 +302,7 @@
     },
     {
       "cueId": "component-12",
-      "componentAssetId": "effect.component.dimensionmaster.v.12",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.12",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -326,7 +326,7 @@
     },
     {
       "cueId": "component-13",
-      "componentAssetId": "effect.component.dimensionmaster.v.13",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.13",
       "startDelaySeconds": 2.0,
       "visible": true,
       "anchor": "root",
@@ -350,7 +350,7 @@
     },
     {
       "cueId": "component-14",
-      "componentAssetId": "effect.component.dimensionmaster.v.14",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.14",
       "startDelaySeconds": 3.7,
       "visible": true,
       "anchor": "root",
@@ -374,7 +374,7 @@
     },
     {
       "cueId": "component-15",
-      "componentAssetId": "effect.component.dimensionmaster.v.15",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.15",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -398,7 +398,7 @@
     },
     {
       "cueId": "component-16",
-      "componentAssetId": "effect.component.dimensionmaster.v.16",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.16",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -422,7 +422,7 @@
     },
     {
       "cueId": "component-17",
-      "componentAssetId": "effect.component.dimensionmaster.v.17",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.17",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -446,7 +446,7 @@
     },
     {
       "cueId": "component-18",
-      "componentAssetId": "effect.component.dimensionmaster.v.18",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.18",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -470,7 +470,7 @@
     },
     {
       "cueId": "component-19",
-      "componentAssetId": "effect.component.dimensionmaster.v.19",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.19",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -494,7 +494,7 @@
     },
     {
       "cueId": "component-20",
-      "componentAssetId": "effect.component.dimensionmaster.v.20",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.20",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -518,7 +518,7 @@
     },
     {
       "cueId": "component-21",
-      "componentAssetId": "effect.component.dimensionmaster.v.21",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.21",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -542,7 +542,7 @@
     },
     {
       "cueId": "component-22",
-      "componentAssetId": "effect.component.dimensionmaster.v.22",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.22",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -566,7 +566,7 @@
     },
     {
       "cueId": "component-23",
-      "componentAssetId": "effect.component.dimensionmaster.v.23",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050540.23",
       "startDelaySeconds": 3.95,
       "visible": true,
       "anchor": "root",
@@ -589,8 +589,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "749b62e8a547f73377a9292043aa99904202bce999a7c21ea5d2bd573608fcaf",
-  "sourceDocumentFileSha256": "44ff5dccd4097edc4ac882f676b7dfce29e4134203daff4b807944838b103a3e",
+  "sourceDocumentSha256": "2577d4b7f7a793e88455b3faac7477a9411f11b865ac5f09badf62095d87afd9",
+  "inputSlot": "ALT_V",
+  "sourceDocumentFileSha256": "aaaf2d0ce20d586973599ed741f8755608266ef63a4759cccd3dad21244d6c04",
   "sourceActionCues": [
     {
       "cueId": "skill-2050540/clip-000/notify-001",
@@ -2530,12 +2531,20 @@
         "data": "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"
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-play-skeletal-mesh",
+        "version": 1,
+        "enabled": true,
+        "sourceSkeletalMesh": "SK_SWP_CUB_00.Mesh.SK_SWP_CUB_00_SK",
+        "sourceAnimSet": "SK_SWP_CUB_00.Ani.SK_SWP_CUB_00_Ani",
+        "sourceMaterialInstances": [
+          "FX_M_MI_M_00.FX_MI.FX_M_Me_SWP_Box_01"
+        ],
+        "sourceCueName": "SK_Super_TimeWave",
+        "transformDecoded": false
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNSUPPORTED_COMPOUND_MODEL_PAYLOAD"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-037",

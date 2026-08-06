@@ -14,7 +14,7 @@ import copy
 import json
 import math
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -937,6 +937,7 @@ def selected_lod_partitions(
             object_path=source.object_path,
             properties=source.properties,
             references=source.references,
+            reference_paths=source.reference_paths,
         )
 
     partitions = []
@@ -1164,18 +1165,38 @@ def flatten_source_properties(
     for property_name, property_value in module.properties.items():
         visit(property_value, folded(property_name))
 
-    seen_reference_paths: set[tuple[str, str]] = set()
+    unique_reference_paths: list[tuple[str, str]] = []
+    seen_reference_identities: set[tuple[str, str]] = set()
     for property_name, object_path in module.reference_paths:
-        reference_path = folded(property_name) + ".objectpath"
-        key = (reference_path, object_path.casefold())
-        if key in seen_reference_paths:
+        key = (folded(property_name), object_path.casefold())
+        if key in seen_reference_identities:
             continue
-        seen_reference_paths.add(key)
+        seen_reference_identities.add(key)
+        unique_reference_paths.append((property_name, object_path))
+    reference_property_counts = Counter(
+        folded(property_name)
+        for property_name, _object_path in unique_reference_paths
+    )
+    reference_property_indices: Counter[str] = Counter()
+    for property_name, object_path in unique_reference_paths:
+        property_key = folded(property_name)
+        property_index = reference_property_indices[property_key]
+        reference_property_indices[property_key] += 1
+        reference_path = (
+            f"{property_key}[{property_index}].objectpath"
+            if reference_property_counts[property_key] > 1
+            else property_key + ".objectpath"
+        )
         literals.append(
             {"propertyPath": reference_path, "kind": "string", "value": object_path}
         )
 
-    overlay = (semantic_overlay or {}).get(folded(module.object_path))
+    semantic_root = semantic_overlay or {}
+    module_overlays = semantic_root.get("modules")
+    if not isinstance(module_overlays, dict):
+        # Backward compatibility for callers that pass only the modules map.
+        module_overlays = semantic_root
+    overlay = module_overlays.get(folded(module.object_path))
     if isinstance(overlay, dict):
         random_seeds = overlay.get("randomSeeds")
         if isinstance(random_seeds, list):
@@ -1210,26 +1231,77 @@ def flatten_source_properties(
                         "value": bool(overlay.get(overlay_name, False)),
                     }
                 )
-        vector_field_asset_id = overlay.get("vectorFieldAssetId")
-        if isinstance(vector_field_asset_id, str) and vector_field_asset_id:
-            vector_field_object_path = str(
-                overlay.get("vectorFieldObjectPath") or ""
+    vector_field_object_paths = sorted({
+        str(object_path)
+        for property_name, object_path in module.reference_paths
+        if folded(property_name) == "vectorfield" and str(object_path)
+    }, key=str.casefold)
+    if len(vector_field_object_paths) > 1:
+        raise ValueError(
+            "local vector field has conflicting source references: "
+            f"{module.object_path}: {vector_field_object_paths}"
+        )
+    source_vector_field_path = (
+        vector_field_object_paths[0] if vector_field_object_paths else ""
+    )
+    overlay_vector_field_path = (
+        str(overlay.get("vectorFieldObjectPath") or "")
+        if isinstance(overlay, dict) else ""
+    )
+    if (
+        source_vector_field_path
+        and overlay_vector_field_path
+        and folded(source_vector_field_path) != folded(overlay_vector_field_path)
+    ):
+        raise ValueError(
+            "local vector field overlay/source identity mismatch: "
+            f"{module.object_path}: {overlay_vector_field_path} != "
+            f"{source_vector_field_path}"
+        )
+    vector_field_object_path = (
+        overlay_vector_field_path or source_vector_field_path
+    )
+    vector_field_asset_id = (
+        overlay.get("vectorFieldAssetId")
+        if isinstance(overlay, dict) else None
+    )
+    if (
+        folded(module.class_name) == "particlemodulelocalvectorfield"
+        and vector_field_object_path
+        and not vector_field_asset_id
+    ):
+        vector_field_rows = semantic_root.get("vectorFields", [])
+        matches = [
+            row for row in vector_field_rows
+            if isinstance(row, dict)
+            and folded(row.get("sourceObjectPath"))
+            == folded(vector_field_object_path)
+        ] if isinstance(vector_field_rows, list) else []
+        if len(matches) > 1:
+            raise ValueError(
+                "local vector field has duplicate semantic assets: "
+                f"{vector_field_object_path}"
             )
-            if vector_field_object_path:
-                literals.append(
-                    {
-                        "propertyPath": "vectorfield.objectpath",
-                        "kind": "string",
-                        "value": vector_field_object_path,
-                    }
-                )
-            literals.append(
-                {
-                    "propertyPath": "vectorfield.assetid",
-                    "kind": "string",
-                    "value": vector_field_asset_id,
-                }
-            )
+        if matches:
+            vector_field_asset_id = matches[0].get("assetId")
+    if isinstance(vector_field_asset_id, str) and vector_field_asset_id:
+        literals = [
+            row for row in literals
+            if row.get("propertyPath") not in {
+                "vectorfield.objectpath", "vectorfield.assetid"
+            }
+        ]
+        if vector_field_object_path:
+            literals.append({
+                "propertyPath": "vectorfield.objectpath",
+                "kind": "string",
+                "value": vector_field_object_path,
+            })
+        literals.append({
+            "propertyPath": "vectorfield.assetid",
+            "kind": "string",
+            "value": vector_field_asset_id,
+        })
     literals.sort(key=lambda row: row["propertyPath"])
     distributions.sort(key=lambda row: row["propertyPath"])
     return literals, distributions
@@ -1392,7 +1464,7 @@ def build_document(
 
         source_recipe = build_source_recipe(
             index, modules, renderer_shape, bursts,
-            (semantic_overlay or {}).get("modules", {}),
+            semantic_overlay,
         )
 
         element_ids = []

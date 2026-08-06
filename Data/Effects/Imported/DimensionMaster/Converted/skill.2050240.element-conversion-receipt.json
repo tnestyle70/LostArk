@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050240,
-  "inputSlot": "A",
+  "inputSlot": "D",
   "sourcePolicy": {
     "partition": "ParticleSystem/Emitter/FIRST_LOD",
     "coordinateScale": 0.01,
@@ -12432,6 +12432,27 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00",
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_07"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.skill.par_m_fbm_moving_waterswamo_01.particlemodulespawn_6",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_bs_07.gadget.par_g_ilene_fireswing_01.particlemodulelifetime_10",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -12641,6 +12662,15 @@
       "occurrences": 2,
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01"
       ]
     },
     {
@@ -13265,6 +13295,71 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01",
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_remain_00_1.particlemodulelocationprimitivesphere_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_normalatk_core_3_1.particlemoduleparameterdynamic_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_othertimeline_buff_01_2.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_othertimeline_buff_01_2.particlemodulesizemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
+        "FX_PC_SWP_01.Par_W_SWP_Jump_01_7"
+      ]
+    },
+    {
       "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
       "property": "pointlightcomponent",
       "reason": "local_reference_is_not_a_decoded_particle_graph_node",
@@ -13337,13 +13432,6 @@
       "reason": "unsupported_source_notify",
       "sourceSystems": [],
       "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-037",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
     }
   ],
   "manualTuningBoundaries": [
@@ -13366,8 +13454,8 @@
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 10,
     "particleBudget": 236,
-    "externalPackageCount": 65,
-    "externalRequestCount": 533,
+    "externalPackageCount": 68,
+    "externalRequestCount": 556,
     "externalUnresolvedRequestCount": 0
   }
 }

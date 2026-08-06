@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 11,
   "effectAssetId": "effect.dimensionmaster.skill.2050240",
-  "displayName": "DIMENSIONMASTER A 2050240 Imported Cascade Draft",
+  "displayName": "DIMENSIONMASTER D 2050240 Imported Cascade Draft",
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -343,6 +343,11 @@
             "objectPath": "FX_CM_00.dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "dust.par_mp_dust_-x_high_01.particlemodulelifetime_1.distributionfloatparticleparameter_4"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -386,6 +391,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "gadget.par_j_lightshafting_02.particlemodulesize_9.distributionvectorparticleparameter_2"
               }
             ],
             "distributions": [
@@ -426,6 +436,16 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startalpha.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "startcolor.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -591,6 +611,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "item.par_g_gadgetskill_001.particlemodulelocation_10.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -641,6 +666,11 @@
                 "propertyPath": "pointlightcomponent",
                 "kind": "number",
                 "value": 7055.0
+              },
+              {
+                "propertyPath": "pointlightcomponent.objectpath",
+                "kind": "string",
+                "value": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
               }
             ],
             "distributions": []
@@ -669,6 +699,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "rate.distribution.objectpath",
+                "kind": "string",
+                "value": "item.par_g_gadgetskill_001.particlemodulespawn_16.distributionfloatparticleparameter_33"
               }
             ],
             "distributions": [
@@ -1051,6 +1086,11 @@
             "objectPath": "FX_CM_02.light.par_mp_light_05_l.particlemodulelifetime_2",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mp_light_05_l.particlemodulelifetime_2.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -1094,6 +1134,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "gadget.par_j_lightshafting_02.particlemodulesize_9.distributionvectorparticleparameter_2"
               }
             ],
             "distributions": [
@@ -1134,6 +1179,16 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startalpha.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "startcolor.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -1299,6 +1354,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "item.par_g_gadgetskill_001.particlemodulelocation_10.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -1349,6 +1409,11 @@
                 "propertyPath": "pointlightcomponent",
                 "kind": "number",
                 "value": 7062.0
+              },
+              {
+                "propertyPath": "pointlightcomponent.objectpath",
+                "kind": "string",
+                "value": "light.par_mp_light_05_l.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
               }
             ],
             "distributions": []
@@ -1377,6 +1442,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "rate.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mp_light_05_l.particlemodulespawn_5.distributionfloatparticleparameter_33"
               }
             ],
             "distributions": [
@@ -2646,6 +2716,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startalpha.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_flickerthrust_01.particlemodulecolor_70.distributionfloatparticleparameter_0"
               }
             ],
             "distributions": [
@@ -3072,6 +3147,11 @@
             "className": "particlemodulelifetime",
             "objectPath": "FX_PC_SWP_01.par_w_swp_flickerthrust_01.particlemodulelifetime_71",
             "literals": [
+              {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_flickerthrust_01.particlemodulelifetime_71.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -6694,6 +6774,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_flickerthrust_01.particlemodulesize_12.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -6812,6 +6897,11 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_PC_SWP_01.par_w_swp_flickerthrust_01.particlemodulecolorscaleoverlife_15",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_flickerthrust_01.particlemodulecolorscaleoverlife_15.distributionfloatconstantcurve_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -9963,7 +10053,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3043@ref:6",
+            "stableId": "FX_PC_SWP_00:export:3044@ref:6",
             "className": "particlemodulesizemultiplylife",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_16",
             "literals": [
@@ -19361,6 +19451,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "prj.par_m_cnpt_battleitem_prj_center_01.particlemodulesize_11.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -20829,6 +20924,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "prj.par_m_cnpt_battleitem_prj_center_01.particlemodulesize_11.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -31474,6 +31574,11 @@
             "objectPath": "FX_PC_SWP_01.par_w_swp_dimensiongate_01.particlemodulecolorscaleoverlife_16",
             "literals": [
               {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_dimensiongate_01.particlemodulecolorscaleoverlife_16.distributionfloatconstantcurve_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -39253,7 +39358,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2160@ref:4",
+            "stableId": "FX_PC_SWP_00:export:2161@ref:4",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_normalatk_core_3_1.particlemoduleparameterdynamic_5",
             "literals": [
@@ -40444,6 +40549,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_dimensionmove_01.particlemodulesize_3.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -40556,7 +40666,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3105@ref:4",
+            "stableId": "FX_PC_SWP_00:export:3106@ref:4",
             "className": "particlemodulesizemultiplylife",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemodulesizemultiplylife_0",
             "literals": [
@@ -40707,7 +40817,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2168@ref:6",
+            "stableId": "FX_PC_SWP_00:export:2169@ref:6",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemoduleparameterdynamic_0",
             "literals": [
@@ -43039,7 +43149,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:1999@ref:7",
+            "stableId": "FX_PC_SWP_00:export:2000@ref:7",
             "className": "particlemodulelocationprimitivesphere_seeded",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_remain_00_1.particlemodulelocationprimitivesphere_seeded_0",
             "literals": [
@@ -43163,7 +43273,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3440@ref:8",
+            "stableId": "FX_PC_SWP_00:export:3441@ref:8",
             "className": "particlemodulevelocityoverlifetime",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
             "literals": [
@@ -45776,7 +45886,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2160@ref:4",
+            "stableId": "FX_PC_SWP_00:export:2161@ref:4",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_normalatk_core_3_1.particlemoduleparameterdynamic_5",
             "literals": [
@@ -46988,7 +47098,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2160@ref:4",
+            "stableId": "FX_PC_SWP_00:export:2161@ref:4",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_normalatk_core_3_1.particlemoduleparameterdynamic_5",
             "literals": [
@@ -48200,7 +48310,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2160@ref:4",
+            "stableId": "FX_PC_SWP_00:export:2161@ref:4",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_normalatk_core_3_1.particlemoduleparameterdynamic_5",
             "literals": [
@@ -49391,6 +49501,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_dimensionmove_01.particlemodulesize_3.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -49503,7 +49618,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3105@ref:4",
+            "stableId": "FX_PC_SWP_00:export:3106@ref:4",
             "className": "particlemodulesizemultiplylife",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemodulesizemultiplylife_0",
             "literals": [
@@ -49654,7 +49769,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2168@ref:6",
+            "stableId": "FX_PC_SWP_00:export:2169@ref:6",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemoduleparameterdynamic_0",
             "literals": [
@@ -50573,6 +50688,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_dimensionmove_01.particlemodulesize_3.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -50685,7 +50805,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3105@ref:4",
+            "stableId": "FX_PC_SWP_00:export:3106@ref:4",
             "className": "particlemodulesizemultiplylife",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemodulesizemultiplylife_0",
             "literals": [
@@ -50836,7 +50956,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2168@ref:6",
+            "stableId": "FX_PC_SWP_00:export:2169@ref:6",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemoduleparameterdynamic_0",
             "literals": [
@@ -51755,6 +51875,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_w_swp_dimensionmove_01.particlemodulesize_3.distributionvectoruniformrange_0"
               }
             ],
             "distributions": [
@@ -51867,7 +51992,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3105@ref:4",
+            "stableId": "FX_PC_SWP_00:export:3106@ref:4",
             "className": "particlemodulesizemultiplylife",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemodulesizemultiplylife_0",
             "literals": [
@@ -52018,7 +52143,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:2168@ref:6",
+            "stableId": "FX_PC_SWP_00:export:2169@ref:6",
             "className": "particlemoduleparameterdynamic",
             "objectPath": "FX_PC_SWP_00.par_j_swp_othertimeline_buff_01_2.particlemoduleparameterdynamic_0",
             "literals": [
@@ -56716,7 +56841,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:1999@ref:7",
+            "stableId": "FX_PC_SWP_00:export:2000@ref:7",
             "className": "particlemodulelocationprimitivesphere_seeded",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_remain_00_1.particlemodulelocationprimitivesphere_seeded_0",
             "literals": [
@@ -56840,7 +56965,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3440@ref:8",
+            "stableId": "FX_PC_SWP_00:export:3441@ref:8",
             "className": "particlemodulevelocityoverlifetime",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
             "literals": [
@@ -57788,7 +57913,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:1999@ref:7",
+            "stableId": "FX_PC_SWP_00:export:2000@ref:7",
             "className": "particlemodulelocationprimitivesphere_seeded",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_remain_00_1.particlemodulelocationprimitivesphere_seeded_0",
             "literals": [
@@ -57912,7 +58037,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3440@ref:8",
+            "stableId": "FX_PC_SWP_00:export:3441@ref:8",
             "className": "particlemodulevelocityoverlifetime",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
             "literals": [
@@ -58860,7 +58985,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:1999@ref:7",
+            "stableId": "FX_PC_SWP_00:export:2000@ref:7",
             "className": "particlemodulelocationprimitivesphere_seeded",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_remain_00_1.particlemodulelocationprimitivesphere_seeded_0",
             "literals": [
@@ -58984,7 +59109,7 @@
             ]
           },
           {
-            "stableId": "FX_PC_SWP_00:export:3440@ref:8",
+            "stableId": "FX_PC_SWP_00:export:3441@ref:8",
             "className": "particlemodulevelocityoverlifetime",
             "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
             "literals": [
@@ -59534,6 +59659,11 @@
             "className": "particlemodulelifetime",
             "objectPath": "FX_PC_GDH_08.par_x_gdh_superbusingflare_blur_00_00.particlemodulelifetime_0",
             "literals": [
+              {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "par_x_gdh_superbusingflare_blur_00_00.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -60485,6 +60615,11 @@
             "objectPath": "FX_CM_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -60528,6 +60663,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulesize_15.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -60667,6 +60807,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulelocation_16.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -60703,6 +60848,11 @@
             "className": "particlemodulecameraoffset",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3",
             "literals": [
+              {
+                "propertyPath": "cameraoffset.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -60743,6 +60893,16 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionvectorparticleparameter_3"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -61468,6 +61628,11 @@
             "objectPath": "FX_CM_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -61511,6 +61676,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulesize_15.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -61650,6 +61820,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulelocation_16.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -61686,6 +61861,11 @@
             "className": "particlemodulecameraoffset",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3",
             "literals": [
+              {
+                "propertyPath": "cameraoffset.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -61726,6 +61906,16 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionvectorparticleparameter_3"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",

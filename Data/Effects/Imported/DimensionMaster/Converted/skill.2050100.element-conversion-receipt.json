@@ -1,0 +1,3897 @@
+{
+  "schema": "lostark.imported-effect-element-conversion-receipt",
+  "schemaVersion": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "skillId": 2050100,
+  "inputSlot": "Q",
+  "sourcePolicy": {
+    "partition": "ParticleSystem/Emitter/FIRST_LOD",
+    "coordinateScale": 0.01,
+    "curvePolicy": "v9 preserves baked lookup tables and referenced curve keys; v8 Detail remains a compatibility preview",
+    "materialSlotPolicy": "Material Instance parameter binding first, parameter-name heuristic second"
+  },
+  "documentEffectAssetId": "effect.dimensionmaster.skill.2050100.imported",
+  "elementConversions": [
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlespriteemitter_8",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlespriteemitter_8.particlelodlevel_4",
+      "targetKind": "particle",
+      "rendererShape": "mesh",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-001",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_1.particlespriteemitter_8"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "meshModel",
+          "sourceObjectPath": "fx_sm_00.fm_h_swing_02",
+          "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_02.wmodel",
+          "status": "EXACT_RUNTIME_BINDING"
+        },
+        {
+          "slotId": "base",
+          "parameterName": "diffuse_tex",
+          "sourceObjectPath": "fx_tex_05.fx_l_environment_001",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "flow_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_02",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_02.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "mask",
+          "parameterName": "mask_a_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_line_01_xcl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_line_01_xcl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "emissive",
+          "parameterName": "mask_b_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_line_03_cl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_line_03_cl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_00.hit.par_u_msr_hit_ice_01.particlemodulelifetime_9.Lifetime",
+          "value": [
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulespawn_23.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulesize_8.StartSize",
+          "value": [
+            0.01,
+            0.012999999523162843
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_ESTHER_DPWI_00.par_n_dpwi_spawn_05.particlemodulesizemultiplylife_19.LifeMultiplier",
+          "value": [
+            0.01,
+            0.012999999523162843
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolor_5.StartColor/StartAlpha",
+          "value": [
+            4.5,
+            4.300000190734863,
+            3.0,
+            0.8999999761581421
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolorscaleoverlife_16",
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            0.10000000149011612
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulelocation_1.StartLocation",
+          "value": [
+            [
+              0.2,
+              0.0,
+              -0.1
+            ],
+            [
+              0.2,
+              0.0,
+              -0.1
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "maska_dypan_x",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "maska_dypan_y",
+          "value": 0.11999999731779099
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "mask_b_pan_x",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "mask_b_pan_y",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "maskb_dypan_y",
+          "value": 0.20000000298023224
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "diff_dypan_x",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "diff_dypan_y",
+          "value": 0.10000000149011612
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "flow01_pan_x",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "flow01_pan_y",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "flow02_pan_x",
+          "value": 0.20000000298023224
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "flow02_pan_y",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "dissolve_pan_x",
+          "value": -0.10000000149011612
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "dissolve_pan_y",
+          "value": 0.10000000149011612
+        },
+        {
+          "target": "color.emissiveIntensity",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "emissive_str",
+          "value": 1.0,
+          "note": "explicit emissive strength/intensity scalar"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulerequired_8"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "FX_BS_00.hit.par_u_msr_hit_ice_01.particlemodulelifetime_9"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulesize_8"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolor_5"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolorscaleoverlife_16"
+        },
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulemeshrotation_0"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_SDR_07.par_m_sdr_volcanicbomb_wavein_01.particlemodulemeshrotationrate_4"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulemeshrotationratemultiplylife_0"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemoduleparameterdynamic_1"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulelocation_1"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulecameraoffset_27"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_ESTHER_DPWI_00.par_n_dpwi_spawn_05.particlemodulesizemultiplylife_19"
+        },
+        {
+          "className": "particlemoduletypedatamesh",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemoduletypedatamesh_0"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulespawn_23"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulemeshrotation_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_SDR_07.par_m_sdr_volcanicbomb_wavein_01.particlemodulemeshrotationrate_4",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulemeshrotationratemultiplylife_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemoduleparameterdynamic_1",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulecameraoffset_27",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_07_tr",
+          "scalars": [
+            {
+              "name": "mask_a_offset_x",
+              "value": 0.0
+            },
+            {
+              "name": "mask_a_offset_y",
+              "value": -0.5
+            },
+            {
+              "name": "mask_a_pow",
+              "value": 1.0
+            },
+            {
+              "name": "mask_a_rot",
+              "value": -6.28000020980835
+            },
+            {
+              "name": "mask_a_str",
+              "value": 5.0
+            },
+            {
+              "name": "mask_a_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "mask_a_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "maska_dypan_x",
+              "value": 0.0
+            },
+            {
+              "name": "maska_dypan_y",
+              "value": 0.11999999731779099
+            },
+            {
+              "name": "maska_flow_strength",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "mask_b_offset_x",
+              "value": 0.05999999865889549
+            },
+            {
+              "name": "mask_b_offset_y",
+              "value": -0.5
+            },
+            {
+              "name": "mask_b_pan_x",
+              "value": 0.0
+            },
+            {
+              "name": "mask_b_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "mask_b_pow",
+              "value": 0.5
+            },
+            {
+              "name": "mask_b_rot",
+              "value": -6.28000020980835
+            },
+            {
+              "name": "mask_b_str",
+              "value": 50.0
+            },
+            {
+              "name": "mask_b_tile_x",
+              "value": 1.100000023841858
+            },
+            {
+              "name": "mask_b_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "maskb_dypan_y",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "maskb_flow_strength",
+              "value": 0.0
+            },
+            {
+              "name": "desaturation",
+              "value": 1.0
+            },
+            {
+              "name": "diff_dypan_x",
+              "value": 0.0
+            },
+            {
+              "name": "diff_dypan_y",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "diff_flow_str",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "diff_offset_y",
+              "value": 0.0
+            },
+            {
+              "name": "diff_pow",
+              "value": 3.0
+            },
+            {
+              "name": "diff_str",
+              "value": 5.0
+            },
+            {
+              "name": "diff_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "diff_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "flow01_pan_x",
+              "value": 0.0
+            },
+            {
+              "name": "flow01_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "flow01_str",
+              "value": -2.0
+            },
+            {
+              "name": "flow01_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "flow01_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "flow02_pan_x",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "flow02_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "flow02_str",
+              "value": 2.0
+            },
+            {
+              "name": "flow02_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "flow02_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_hardness",
+              "value": 20.0
+            },
+            {
+              "name": "dissolve_pan_x",
+              "value": -0.10000000149011612
+            },
+            {
+              "name": "dissolve_pan_y",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "dissolve_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_pow",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_str",
+              "value": 1.0
+            },
+            {
+              "name": "mask_density",
+              "value": 5.0
+            },
+            {
+              "name": "mask_radius",
+              "value": 2.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "diff_color",
+              "value": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2,
+                "a": 1.0
+              }
+            },
+            {
+              "name": "mask_color",
+              "value": {
+                "r": 2.0,
+                "g": 1.8,
+                "b": 1.5,
+                "a": 1.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_1",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlespriteemitter_10",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlespriteemitter_10.particlelodlevel_15",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-001",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_1.particlespriteemitter_10"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "emissive_tex",
+          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_00.hit.par_k_gst_defaultcri_01.particlemodulelifetime_17.Lifetime",
+          "value": [
+            0.30000001192092896,
+            0.30000001192092896
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulespawn_23.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulevelocity_0.StartVelocity",
+          "value": [
+            [
+              0.5,
+              -0.05,
+              0.0
+            ],
+            [
+              0.5,
+              -0.05,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_FBM_08.par_n_fbm_ark_4-4_01.particlemodulesize_4.StartSize",
+          "value": [
+            1.5,
+            1.5
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulesizemultiplylife_5.LifeMultiplier",
+          "value": [
+            1.4431856274604797,
+            6.6244189739227295
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolor_7.StartColor/StartAlpha",
+          "value": [
+            0.30000001192092896,
+            0.20000000298023224,
+            0.10000000149011612,
+            0.20000000298023224
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolorscaleoverlife_17",
+          "value": [
+            3.3476548194885254,
+            3.3476548194885254,
+            3.3476548194885254,
+            0.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulelocation_8.StartLocation",
+          "value": [
+            [
+              -1.0,
+              0.6,
+              0.0
+            ],
+            [
+              -1.0,
+              0.6,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulerequired_10"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "FX_BS_00.hit.par_k_gst_defaultcri_01.particlemodulelifetime_17"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_FBM_08.par_n_fbm_ark_4-4_01.particlemodulesize_4"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolor_7"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulesizemultiplylife_5"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulecolorscaleoverlife_17"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulerotation_10"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulevelocity_0"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_1.particlemodulelocation_8"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulespawn_23"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulerotation_10",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_01_2_ad",
+          "scalars": [
+            {
+              "name": "depth_alpha_bias",
+              "value": -30.0
+            },
+            {
+              "name": "emissive_desaturation",
+              "value": 0.0
+            },
+            {
+              "name": "emissive_power",
+              "value": 1.0
+            },
+            {
+              "name": "uv_scale",
+              "value": 1.0
+            }
+          ],
+          "vectors": []
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_31",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_31.particlelodlevel_22",
+      "targetKind": "particle",
+      "rendererShape": "mesh",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_31"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "meshModel",
+          "sourceObjectPath": "fx_sm_03.fm_j_cube_01",
+          "assetId": "Effect/DimensionMaster/Meshes/fm_j_cube_01.wmodel",
+          "status": "EXACT_RUNTIME_BINDING"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_16.water.par_g_itr_pot01.particlemodulelifetime_6.Lifetime",
+          "value": [
+            0.5,
+            0.6000000238418579
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_16.water.par_g_itr_pot01.particlemodulespawn_0.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 6,
+          "note": "source=6"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocity_14.StartVelocity",
+          "value": [
+            [
+              1.0,
+              -0.1,
+              -0.1
+            ],
+            [
+              1.0,
+              0.1,
+              0.1
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_28.StartSize",
+          "value": [
+            0.01,
+            0.01
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_51.LifeMultiplier",
+          "value": [
+            0.0,
+            0.0
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_BS_00.hit.par_c_darkbomb_h_01.particlemodulecolor_0.StartColor/StartAlpha",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            0.6000000238418579
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolorscaleoverlife_33",
+          "value": [
+            7.0,
+            6.0,
+            1.0,
+            1.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationprimitivecylinder_0.StartLocation",
+          "value": [
+            [
+              -0.1,
+              0.0,
+              0.0
+            ],
+            [
+              -0.1,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 4,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_31"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "BFX_LOW_16.water.par_g_itr_pot01.particlemodulelifetime_6"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_28"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_BS_00.hit.par_c_darkbomb_h_01.particlemodulecolor_0"
+        },
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationrate_11"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_51"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationratemultiplylife_11"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolorscaleoverlife_33"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocity_14"
+        },
+        {
+          "className": "particlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulevelocityoverlifetime_1"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_58"
+        },
+        {
+          "className": "particlemodulelocationprimitivecylinder",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationprimitivecylinder_0"
+        },
+        {
+          "className": "particlemoduletypedatamesh",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduletypedatamesh_21"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_LOW_16.water.par_g_itr_pot01.particlemodulespawn_0"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationrate_11",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationratemultiplylife_11",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulevelocityoverlifetime_1",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulelocationprimitivecylinder",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationprimitivecylinder_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_04_tr",
+          "scalars": [
+            {
+              "name": "edge_line",
+              "value": 30.0
+            },
+            {
+              "name": "edge_str",
+              "value": 2.0
+            },
+            {
+              "name": "spec_str",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "color",
+              "value": {
+                "r": 4.0,
+                "g": 3.8,
+                "b": 3.0,
+                "a": 1.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_10",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_10.particlelodlevel_20",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_10"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "alpha_tex",
+          "sourceObjectPath": "fx_tex_05.fx_m_fluid_005",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_fluid_005.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "uv_noise_tex",
+          "sourceObjectPath": "fx_tex_01.fx_c_noise_009",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_10.dust.par_l_dustbust_01.particlemodulelifetime_0.Lifetime",
+          "value": [
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 2.0
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_MN_CNBY_00_X.par_x_cnby_prj_expl_03_02.particlemodulevelocity_9.StartVelocity",
+          "value": [
+            [
+              0.3,
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_05.prj.par_h_lrru_prj_01_1.particlemodulesize_14.StartSize",
+          "value": [
+            0.3,
+            2.0
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_14.LifeMultiplier",
+          "value": [
+            0.030000000447034835,
+            2.774613857269287
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_MBD_04.par_w_mbd_rescue_ap_2.particlemodulecolor_42.StartColor/StartAlpha",
+          "value": [
+            3.0,
+            2.0,
+            1.2000000476837158,
+            5.0
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_BS_00.hit.par_l_cdkcn_hit_01.particlemodulecolorscaleoverlife_38",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            0.5
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_BS_00.hit.par_c_nethit_001.particlemodulelocation_2.StartLocation",
+          "value": [
+            [
+              -0.5,
+              0.0,
+              0.0
+            ],
+            [
+              -0.5,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "color.emissiveIntensity",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "emissive_tex_backvelue",
+          "value": 0.10000000149011612,
+          "note": "explicit emissive strength/intensity scalar"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_10"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "BFX_LOW_10.dust.par_l_dustbust_01.particlemodulelifetime_0"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_BS_05.prj.par_h_lrru_prj_01_1.particlemodulesize_14"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_9"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_MBD_04.par_w_mbd_rescue_ap_2.particlemodulecolor_42"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_BS_00.hit.par_c_nethit_001.particlemodulelocation_2"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_MN_CNBY_00_X.par_x_cnby_prj_expl_03_02.particlemodulevelocity_9"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_14"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_HIGH_01.light.par_j_lighthit_002.particlemodulecameraoffset_0"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_BS_00.hit.par_l_cdkcn_hit_01.particlemodulecolorscaleoverlife_38"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_9",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_HIGH_01.light.par_j_lighthit_002.particlemodulecameraoffset_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_8_tr",
+          "scalars": [
+            {
+              "name": "alpha_disslove_tex_coord_g",
+              "value": 7.0
+            },
+            {
+              "name": "alpha_disslove_tex_coord_r",
+              "value": 3.0
+            },
+            {
+              "name": "dissolve_hardness",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_r",
+              "value": 0.5
+            },
+            {
+              "name": "alpha_out_falloff",
+              "value": 10.0
+            },
+            {
+              "name": "alpha_tex_g_texcoord",
+              "value": 1.0
+            },
+            {
+              "name": "alpha_tex_positon_g",
+              "value": -0.30000001192092896
+            },
+            {
+              "name": "alpha_tex_positon_r",
+              "value": -0.10000000149011612
+            },
+            {
+              "name": "alpha_tex_r_texcoord",
+              "value": 1.0
+            },
+            {
+              "name": "alpha_tex_rotator",
+              "value": 0.0
+            },
+            {
+              "name": "alpha_tex_strength",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_tex_backvelue",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "emissive_tex_core_g",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_tex_core_g_02",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_tex_core_positon_g",
+              "value": -0.25
+            },
+            {
+              "name": "emissive_tex_core_positon_r",
+              "value": -0.10000000149011612
+            },
+            {
+              "name": "emissive_tex_core_r",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_tex_core_r_02",
+              "value": 1.5
+            },
+            {
+              "name": "emissive_tex_power",
+              "value": 1.600000023841858
+            },
+            {
+              "name": "emissive_tex_strength",
+              "value": 1200.0
+            },
+            {
+              "name": "uv_noise_head_velue",
+              "value": 0.05000000074505806
+            },
+            {
+              "name": "uvnoise_tex_01_g_texcoord",
+              "value": 1.0
+            },
+            {
+              "name": "uvnoise_tex_01_r_texcoord",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "uvnoise_tex_02_g_texcoord",
+              "value": 1.0
+            },
+            {
+              "name": "uvnoise_tex_02_r_texcoord",
+              "value": 0.5
+            }
+          ],
+          "vectors": []
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_3",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_3.particlelodlevel_6",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_MATERIAL_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": true,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_3"
+      ],
+      "resourceMappings": [],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_00.hit.par_b_mat_metal_001.particlemodulelifetime_9.Lifetime",
+          "value": [
+            0.4000000059604645,
+            0.4000000059604645
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_0.StartVelocity",
+          "value": [
+            [
+              2.0,
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_MN_BOGB_00.par_t_bogb_skl_25_02.particlemodulesize_27.StartSize",
+          "value": [
+            2.0,
+            6.0
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_5.LifeMultiplier",
+          "value": [
+            0.0,
+            6.0
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_2.StartColor/StartAlpha",
+          "value": [
+            4.0,
+            2.5999999046325684,
+            1.2000000476837158,
+            0.20000000298023224
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_BS_00.hit.par_l_cdkcn_hit_01_l.particlemodulecolorscaleoverlife_2",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_ITR_02612.par_w_dash.particlemodulelocation_5.StartLocation",
+          "value": [
+            [
+              -2.0,
+              0.0,
+              0.0
+            ],
+            [
+              -2.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_3"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "FX_BS_00.hit.par_b_mat_metal_001.particlemodulelifetime_9"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_MN_BOGB_00.par_t_bogb_skl_25_02.particlemodulesize_27"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_2"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_BS_00.hit.par_l_cdkcn_hit_01_l.particlemodulecolorscaleoverlife_2"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_5"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_0"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_ITR_02612.par_w_dash.particlemodulelocation_5"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
+          "scalars": [],
+          "vectors": []
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_6",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_6.particlelodlevel_10",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_6"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "01_diff_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_dustparticle_tile_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "mask",
+          "parameterName": "01_alphabase_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_cloud_01_cl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_01_cl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "01_alphaflow_tex",
+          "sourceObjectPath": "fx_tex_00.fx_a_atypical_012_cl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_012_cl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "emissive",
+          "parameterName": "02_alphaflow_noise_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_flownoise_tile_04.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "dissolve",
+          "parameterName": "02_diffnoise_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_02",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_02.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13.Lifetime",
+          "value": [
+            0.6000000238418579,
+            0.6000000238418579
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_5.StartVelocity",
+          "value": [
+            [
+              0.5,
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_3.StartSize",
+          "value": [
+            0.5,
+            2.9
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_7.LifeMultiplier",
+          "value": [
+            0.51994788646698,
+            2.821883887052536
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecoloroverlife_0",
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_PC_FLM_04.par_s_flm_ttstrike_siwng_01_1.particlemodulelocation_55.StartLocation",
+          "value": [
+            [
+              -2.1,
+              0.0,
+              0.0
+            ],
+            [
+              -2.1,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "02_diffnoise_pan_x",
+          "value": 0.30000001192092896
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "02_diffnoise_pan_y",
+          "value": 0.30000001192092896
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_6"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "FX_BS_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_3"
+        },
+        {
+          "className": "particlemodulecoloroverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecoloroverlife_0"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15"
+        },
+        {
+          "className": "particlemodulerotationrate",
+          "objectPath": "FX_BS_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_7"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_HIGH_01.light.par_j_lighthit_002.particlemodulecameraoffset_0"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_3"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_5"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolorscaleoverlife_17"
+        },
+        {
+          "className": "particlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocityoverlifetime_0"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_PC_FLM_04.par_s_flm_ttstrike_siwng_01_1.particlemodulelocation_55"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulerotationrate",
+          "objectPath": "FX_BS_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulecameraoffset",
+          "objectPath": "BFX_HIGH_01.light.par_j_lighthit_002.particlemodulecameraoffset_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_3",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocityoverlifetime_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_rotturbulance_01_06_ad",
+          "scalars": [
+            {
+              "name": "01_diff_offset_y",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "01_diff_pow",
+              "value": 1.0
+            },
+            {
+              "name": "01_diff_str",
+              "value": 300.0
+            },
+            {
+              "name": "01_diff_tile_u",
+              "value": 3.0
+            },
+            {
+              "name": "01_diff_tile_v",
+              "value": 3.0
+            },
+            {
+              "name": "02_diffnoise_pan_x",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "02_diffnoise_pan_y",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "02_diffnoise_str",
+              "value": 1.0
+            },
+            {
+              "name": "02_diffnoise_tile_u",
+              "value": 6.0
+            },
+            {
+              "name": "02_diffnoise_tile_v",
+              "value": 6.0
+            },
+            {
+              "name": "01_alphabase_offset_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "01_alphabase_offset_y",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "01_alphabase_tile_u",
+              "value": 1.0
+            },
+            {
+              "name": "01_alphabase_tile_v",
+              "value": 0.6000000238418579
+            },
+            {
+              "name": "alphabase_hardness",
+              "value": 1.5
+            },
+            {
+              "name": "alphabase_str",
+              "value": 1.0
+            },
+            {
+              "name": "01_alphaflow_hardness",
+              "value": 0.6000000238418579
+            },
+            {
+              "name": "01_alphaflow_str",
+              "value": 2.0
+            },
+            {
+              "name": "02_alphaflow_noise_str",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "02_alphaflow_offset_y",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "02_alphaflow_tile_u",
+              "value": 1.0
+            },
+            {
+              "name": "02_alphaflow_tile_v",
+              "value": 1.0
+            },
+            {
+              "name": "03_alphaflow_noise_str",
+              "value": 2.0
+            },
+            {
+              "name": "03_alphaflow_tile_u",
+              "value": 0.5
+            },
+            {
+              "name": "03_alphaflow_tile_v",
+              "value": 2.0
+            },
+            {
+              "name": "depth",
+              "value": 0.30000001192092896
+            }
+          ],
+          "vectors": []
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_7",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_7.particlelodlevel_12",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_7"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "emissive_tex",
+          "sourceObjectPath": "fx_tex_00.fx_a_fragment_002",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_002.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_00.hit.par_k_dbl_flashblink_hit_01.particlemodulelifetime_seeded_0.Lifetime",
+          "value": [
+            0.25,
+            0.25
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 1.399999976158142
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_MN_CNCT_00_M.par_m_cnct_buff_destroysoul_01_02.particlemodulesize_21.StartSize",
+          "value": [
+            0.5,
+            2.2
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_9.LifeMultiplier",
+          "value": [
+            0.25,
+            2.2
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_3.StartColor/StartAlpha",
+          "value": [
+            20.0,
+            25.0,
+            15.0,
+            0.20000000298023224
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_7"
+        },
+        {
+          "className": "particlemodulelifetime_seeded",
+          "objectPath": "FX_BS_00.hit.par_k_dbl_flashblink_hit_01.particlemodulelifetime_seeded_0"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_MN_CNCT_00_M.par_m_cnct_buff_destroysoul_01_02.particlemodulesize_21"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "FX_BS_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_3"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_9"
+        },
+        {
+          "className": "particlemodulelocationdirect",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationdirect_1"
+        },
+        {
+          "className": "particlemoduleorientationaxislock",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulelifetime_seeded",
+          "objectPath": "FX_BS_00.hit.par_k_dbl_flashblink_hit_01.particlemodulelifetime_seeded_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "FX_BS_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulelocationdirect",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationdirect_1",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemoduleorientationaxislock",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+          "scalars": [],
+          "vectors": []
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_2",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_2.particlelodlevel_4",
+      "targetKind": "particle",
+      "rendererShape": "mesh",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_2"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "meshModel",
+          "sourceObjectPath": "fx_sm_00.fm_d_crack_032",
+          "assetId": "Effect/DimensionMaster/Meshes/fm_d_crack_032.wmodel",
+          "status": "EXACT_RUNTIME_BINDING"
+        },
+        {
+          "slotId": "base",
+          "parameterName": "normal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_03.mark.par_d_ocnpicking_01.particlemodulelifetime_8.Lifetime",
+          "value": [
+            0.8999999761581421,
+            1.0
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulespawn_32.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 5,
+          "note": "source=5"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocity_2.StartVelocity",
+          "value": [
+            [
+              1.2,
+              -0.6,
+              0.0
+            ],
+            [
+              2.1,
+              0.6,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_GDH_03.par_t_gdh_spiral_prj01.particlemodulesize_21.StartSize",
+          "value": [
+            0.01,
+            0.01
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_04.state.par_g_gravityarea_02.particlemodulesizemultiplylife_1.LifeMultiplier",
+          "value": [
+            0.0,
+            0.0
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_MN_CMHM_00_X.par_x_cmhm_buff_03_01.particlemodulecolor_5.StartColor/StartAlpha",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolorscaleoverlife_4",
+          "value": [
+            600.0,
+            600.0,
+            600.0,
+            1.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 3,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_2"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "FX_BS_03.mark.par_d_ocnpicking_01.particlemodulelifetime_8"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_GDH_03.par_t_gdh_spiral_prj01.particlemodulesize_21"
+        },
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_MN_CMHM_00_X.par_x_cmhm_buff_03_01.particlemodulecolor_5"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_BS_04.state.par_g_gravityarea_02.particlemodulesizemultiplylife_1"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolorscaleoverlife_4"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_CONFRONT_00.par_j_swp_justguard_01.particlemodulemeshrotationrate_10"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationratemultiplylife_2"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_11"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_BS_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_32"
+        },
+        {
+          "className": "particlemodulelocationprimitivesphere",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationprimitivesphere_1"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_14"
+        },
+        {
+          "className": "particlemodulelocation_seeded",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocation_seeded_1"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulevelocity_2"
+        },
+        {
+          "className": "efparticlemoduleacceleration",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemoduleacceleration_1"
+        },
+        {
+          "className": "efparticlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemodulevelocityoverlifetime_2"
+        },
+        {
+          "className": "particlemoduletypedatamesh",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduletypedatamesh_2"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_LOW_05.snow.par_l_customize_snow_01.particlemodulespawn_32"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemodulemeshrotation",
+          "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationrate",
+          "objectPath": "FX_PC_CONFRONT_00.par_j_swp_justguard_01.particlemodulemeshrotationrate_10",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulemeshrotationratemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationratemultiplylife_2",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_11",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulelocationprimitivesphere",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulelocationprimitivesphere_1",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "efparticlemoduleacceleration",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemoduleacceleration_1",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "efparticlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemodulevelocityoverlifetime_2",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr",
+          "scalars": [
+            {
+              "name": "normal_tileu",
+              "value": 0.5
+            },
+            {
+              "name": "normal_tilev",
+              "value": 0.5
+            },
+            {
+              "name": "refle_desaturation",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "refle_offsetx",
+              "value": 0.5
+            },
+            {
+              "name": "refle_offsety",
+              "value": 0.5
+            },
+            {
+              "name": "refle_pow",
+              "value": 2.0
+            },
+            {
+              "name": "refle_tileu",
+              "value": 1.0
+            },
+            {
+              "name": "refle_tilev",
+              "value": 1.0
+            },
+            {
+              "name": "refle_vector_divide",
+              "value": 3.0
+            },
+            {
+              "name": "distortion",
+              "value": 10.0
+            },
+            {
+              "name": "fresnel_pow",
+              "value": 0.20000000298023224
+            }
+          ],
+          "vectors": [
+            {
+              "name": "refle_color",
+              "value": {
+                "r": 10.0,
+                "g": 10.0,
+                "b": 10.0,
+                "a": 1.0
+              }
+            },
+            {
+              "name": "in_color",
+              "value": {
+                "r": 1.0,
+                "g": 1.0,
+                "b": 1.0,
+                "a": 1.0
+              }
+            },
+            {
+              "name": "out_color",
+              "value": {
+                "r": 0.1,
+                "g": 0.1,
+                "b": 0.1,
+                "a": 1.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_13",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_13.particlelodlevel_2",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_13"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "aura_texture",
+          "sourceObjectPath": "fx_tex_06.fx_j_dustparticle_tile_02",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "in_hole_texture",
+          "sourceObjectPath": "fx_tex_06.fx_m_cybernoise_02",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "mask",
+          "parameterName": "cracknormal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6.Lifetime",
+          "value": [
+            0.30000001192092896,
+            0.30000001192092896
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_05.prj.par_u_trinity_prj_01.particlemodulevelocity_7.StartVelocity",
+          "value": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ],
+            [
+              1.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_10.StartSize",
+          "value": [
+            0.2,
+            1.3
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_16.LifeMultiplier",
+          "value": [
+            0.0,
+            2.6
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.color",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_7.StartColor/StartAlpha",
+          "value": [
+            3.0,
+            2.299999952316284,
+            1.2000000476837158,
+            1.0
+          ],
+          "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_GHE_01.par_k_ghe_smokearrow_atk_01_l.particlemodulecolorscaleoverlife_10",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_BS_05.prj.par_h_rhaw_prj_01_1.particlemodulelocation_2.StartLocation",
+          "value": [
+            [
+              -1.5,
+              0.0,
+              0.0
+            ],
+            [
+              -1.5,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "color.distortionIntensity",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "distortionpower",
+          "value": 10.0
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_13"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesize_10"
+        },
+        {
+          "className": "particlemodulecolor",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecolor_7"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_10"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_PC_GHE_01.par_k_ghe_smokearrow_atk_01_l.particlemodulecolorscaleoverlife_10"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_16"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_BS_05.prj.par_u_trinity_prj_01.particlemodulevelocity_7"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_BS_05.prj.par_h_rhaw_prj_01_1.particlemodulelocation_2"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_10",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr",
+          "scalars": [
+            {
+              "name": "alpha_tile_x",
+              "value": 0.4000000059604645
+            },
+            {
+              "name": "alpha_tile_y",
+              "value": 0.4000000059604645
+            },
+            {
+              "name": "aura_pow",
+              "value": 2.0
+            },
+            {
+              "name": "aura_str",
+              "value": 5.0
+            },
+            {
+              "name": "curve_power",
+              "value": 2.0
+            },
+            {
+              "name": "main_ucoord",
+              "value": 1.0
+            },
+            {
+              "name": "main_v_panner",
+              "value": -0.800000011920929
+            },
+            {
+              "name": "twist_str",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "uvnoise_pan",
+              "value": 0.0
+            },
+            {
+              "name": "uvnoise_utile",
+              "value": 1.0
+            },
+            {
+              "name": "uvnoise_vtile",
+              "value": 1.0
+            },
+            {
+              "name": "cracknormal_str",
+              "value": 15.0
+            },
+            {
+              "name": "cracknormal_tile_x",
+              "value": 0.0
+            },
+            {
+              "name": "cracknormal_tile_y",
+              "value": 6.0
+            },
+            {
+              "name": "edge_crack_desaturation",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "time",
+              "value": 0.0
+            },
+            {
+              "name": "distortionpower",
+              "value": 10.0
+            },
+            {
+              "name": "distortionscale",
+              "value": -15.0
+            },
+            {
+              "name": "in_hole_crackuv",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "in_hole_desaturation",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "in_hole_height",
+              "value": 0.0
+            },
+            {
+              "name": "in_hole_panx",
+              "value": 0.014999999664723873
+            },
+            {
+              "name": "in_hole_pany",
+              "value": 0.02500000037252903
+            },
+            {
+              "name": "in_hole_pow",
+              "value": 2.0
+            },
+            {
+              "name": "in_hole_str",
+              "value": 1.0
+            },
+            {
+              "name": "scale",
+              "value": 1.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "aura_color",
+              "value": {
+                "r": 2.0,
+                "g": 1.2,
+                "b": 0.8,
+                "a": 1.0
+              }
+            },
+            {
+              "name": "in_hole_color",
+              "value": {
+                "r": 1.0,
+                "g": 1.0,
+                "b": 1.0,
+                "a": 1.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_swp_00.par_j_swp_nailstrike_00_2",
+      "sourceEmitter": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_35",
+      "sourceLod": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlespriteemitter_35.particlelodlevel_31",
+      "targetKind": "particle",
+      "rendererShape": "sprite",
+      "status": "SOURCE_RECIPE_RUNTIME_PENDING",
+      "sourceMaterialRuntimePending": false,
+      "missingResources": [],
+      "eventTimeSeconds": 0.27,
+      "eventOccurrences": [
+        {
+          "eventId": "source-event-002",
+          "globalTimeSeconds": 0.27,
+          "durationSeconds": 0.0
+        }
+      ],
+      "elementIds": [
+        "fx_pc_swp_00.par_j_swp_nailstrike_00_2.particlespriteemitter_35"
+      ],
+      "resourceMappings": [
+        {
+          "slotId": "base",
+          "parameterName": "slice_flow_texture",
+          "sourceObjectPath": "fx_tex_06.fx_j_voronoi_tile_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        }
+      ],
+      "detailMappings": [
+        {
+          "target": "particle.localSpace",
+          "status": "EXACT",
+          "source": "Required.bUseLocalSpace",
+          "value": true
+        },
+        {
+          "target": "timing.startDelaySeconds",
+          "status": "EXACT",
+          "source": "animation event only; Required.EmitterDelay is sourceRecipe-local",
+          "value": 0.27
+        },
+        {
+          "target": "particle.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "BFX_LOW_14.portal.par_d_portal_local_001.particlemodulelifetime_10.Lifetime",
+          "value": [
+            0.8999999761581421,
+            0.8999999761581421
+          ]
+        },
+        {
+          "target": "timing.lifeTimeSeconds",
+          "status": "APPROXIMATION",
+          "source": "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail",
+          "value": 0.1
+        },
+        {
+          "target": "particle.spawnRatePerSecond",
+          "status": "APPROXIMATION",
+          "source": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11.Rate",
+          "value": 0.0
+        },
+        {
+          "target": "particle.maxParticles",
+          "status": "BUDGET_CLAMP",
+          "source": "LOD.PeakActiveParticles",
+          "value": 3,
+          "note": "source=3"
+        },
+        {
+          "target": "particle.initialVelocityMin/Max",
+          "status": "APPROXIMATION",
+          "source": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_0.StartVelocity",
+          "value": [
+            [
+              2.0,
+              0.0,
+              0.0
+            ],
+            [
+              2.0,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.startSize/decal.size",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_DBL_06.par_w_dbl_dimensioncut_startcast.particlemodulesize_11.StartSize",
+          "value": [
+            1.5,
+            2.3000000000000003
+          ],
+          "note": "XY only; UE source units scaled by 0.01"
+        },
+        {
+          "target": "particle.endSize",
+          "status": "APPROXIMATION",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_60.LifeMultiplier",
+          "value": [
+            1.5,
+            2.760000109672547
+          ],
+          "note": "full curve collapsed to final sample"
+        },
+        {
+          "target": "sourceRecipe.colorOverLife",
+          "status": "SOURCE_RECIPE_OWNS_BASELINE",
+          "source": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecoloroverlife_5",
+          "value": [
+            15.0,
+            11.0,
+            5.0,
+            1.0
+          ],
+          "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "particle.initialPositionMin/Max",
+          "status": "EXACT_RANGE",
+          "source": "FX_BS_05.prj.par_h_rhaw_prj_01_1.particlemodulelocation_2.StartLocation",
+          "value": [
+            [
+              -1.5,
+              0.0,
+              0.0
+            ],
+            [
+              -1.5,
+              0.0,
+              0.0
+            ]
+          ],
+          "note": "UE source units scaled by 0.01"
+        }
+      ],
+      "burstSource": [
+        {
+          "index": 0,
+          "timeSeconds": 0.0,
+          "count": 1,
+          "countLow": -1
+        }
+      ],
+      "moduleEvidence": [
+        {
+          "className": "particlemodulerequired",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulerequired_35"
+        },
+        {
+          "className": "particlemodulelifetime",
+          "objectPath": "BFX_LOW_14.portal.par_d_portal_local_001.particlemodulelifetime_10"
+        },
+        {
+          "className": "particlemodulesize",
+          "objectPath": "FX_PC_DBL_06.par_w_dbl_dimensioncut_startcast.particlemodulesize_11"
+        },
+        {
+          "className": "particlemodulecoloroverlife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulecoloroverlife_5"
+        },
+        {
+          "className": "particlemodulecolorscaleoverlife",
+          "objectPath": "FX_BS_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_10"
+        },
+        {
+          "className": "particlemodulesizemultiplylife",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemodulesizemultiplylife_60"
+        },
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_21"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulerotation_4"
+        },
+        {
+          "className": "particlemodulevelocity",
+          "objectPath": "FX_BS_04.state.par_g_madness_03.particlemodulevelocity_0"
+        },
+        {
+          "className": "particlemodulelocation",
+          "objectPath": "FX_BS_05.prj.par_h_rhaw_prj_01_1.particlemodulelocation_2"
+        },
+        {
+          "className": "efparticlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemodulevelocityoverlifetime_8"
+        },
+        {
+          "className": "particlemodulespawn",
+          "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11"
+        }
+      ],
+      "unrepresentedModules": [
+        {
+          "className": "particlemoduleparameterdynamic",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.particlemoduleparameterdynamic_21",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "particlemodulerotation",
+          "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulerotation_4",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        },
+        {
+          "className": "efparticlemodulevelocityoverlifetime",
+          "objectPath": "FX_PC_SWP_00.par_j_swp_nailstrike_00_2.efparticlemodulevelocityoverlifetime_8",
+          "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
+        }
+      ],
+      "materialParameterEvidence": [
+        {
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_slice_01_10_tr",
+          "scalars": [
+            {
+              "name": "flow_str",
+              "value": 0.05000000074505806
+            },
+            {
+              "name": "slice_flow_offsetx",
+              "value": 0.0
+            },
+            {
+              "name": "slice_flow_offsety",
+              "value": 0.0
+            },
+            {
+              "name": "slice_flow_rot",
+              "value": 0.0
+            },
+            {
+              "name": "slice_flow_tileu",
+              "value": 1.0
+            },
+            {
+              "name": "slice_flow_tilev",
+              "value": 1.0
+            },
+            {
+              "name": "distortion",
+              "value": 50.0
+            },
+            {
+              "name": "opacity_radius",
+              "value": 2.0
+            },
+            {
+              "name": "slice_rot",
+              "value": -3.140000104904175
+            }
+          ],
+          "vectors": []
+        }
+      ]
+    }
+  ],
+  "unsupportedEmitters": [],
+  "sourceUnsupportedOrUnresolved": [
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulecameraoffset_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulerotation_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulespawn_32",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_03.particlemodulespawn_26",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_h_cuttree_01.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_h_cuttree_02.particlemodulespawn_25",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_14.portal.par_d_portal_local_001.particlemodulelifetime_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_g_itr_pot01.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_g_itr_pot01.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishing_f_01.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_backattackhit_01.particlemodulespawn_6",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_prjdead_ice_01.particlemodulelifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitfire_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_swp_defaultback_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulesizemultiplylife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_cri_01.particlemodulerotation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_dbl_flashblink_hit_01.particlemodulelifetime_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelifetime_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01.particlemodulecolorscaleoverlife_38",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulecolorscaleoverlife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_u_kzcg_skhit_nightlea_fluid_01.particlemodulespawn_31",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_u_msr_hit_ice_01.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_bi_holyamul_01.particlemodulecolor_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_carve_01.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_03.mark.par_d_ocnpicking_01.particlemodulelifetime_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_gravityarea_02.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_madness_03.particlemodulevelocity_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_madness_03.particlemodulevelocity_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_h_damup_s_01_01_l_loc_int.particlemodulecameraoffset_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_hole_e_01.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_h_lrru_prj_01_1.particlemodulesize_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_h_rhaw_prj_01_1.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_steelbomb_prj_01.particlemodulecolor_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_01_fire_02.particlemodulesizemultiplylife_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_u_trinity_prj_01.particlemodulevelocity_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_10.hit.par_s_skhit_ag_destiny_01.particlemodulesizemultiplylife_32",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_dpwi_00.par_n_dpwi_spawn_05.particlemodulesizemultiplylife_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_fs_av_05.springfestival.par_w_springfestival_01_footstep_01.particlemodulesizemultiplylife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02612.par_w_dash.particlemodulelocation_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_bogb_00.par_t_bogb_skl_25_02.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cmhm_00_x.par_x_cmhm_buff_03_01.particlemodulecolor_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnby_00_x.par_x_cnby_prj_expl_03_02.particlemodulevelocity_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnct_00_m.par_m_cnct_buff_destroysoul_01_02.particlemodulesize_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cush_00.par_z_cush_cube_01_loc_int.particlemodulevelocity_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_justavoid_00.par_j_holdingguard_01.particlemodulecolorscaleoverlife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_sddk_00_z.par_z_sddk_cast_03_02.particlemoduleorientationaxislock_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemodulemeshrotationrate_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2",
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemoduleparameterdynamic_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemodulesize_23",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_06.par_w_dbl_dimensioncut_startcast.particlemodulesize_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dse_08.par_m_dse_soulcut_finish_02.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_06_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_08.par_n_fbm_ark_4-4_01.particlemodulesize_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_flm_04.par_s_flm_ttstrike_siwng_01_1.particlemodulelocation_55",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gdh_03.par_t_gdh_spiral_prj01.particlemodulesize_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ghe_01.par_k_ghe_smokearrow_atk_01_l.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_mbd_04.par_w_mbd_rescue_ap_2.particlemodulecolor_42",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_2"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_sdr_07.par_m_sdr_volcanicbomb_wavein_01.particlemodulemeshrotationrate_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NailStrike_00_1"
+      ]
+    }
+  ],
+  "manualTuningBoundaries": [
+    "Mesh particle emitters use the thin particle+meshModel path; per-particle mesh rotation, orbit and full 3D size curves still require tuning or later expansion.",
+    "Cascade curves are collapsed to the current Detail panel's start/end or min/max fields.",
+    "Simple StartLocation ranges map to particle spawn position min/max; sphere/cylinder volumes, orbit, camera offset, seeded distributions and dynamic parameters remain source evidence.",
+    "Material texture slots use original parameter bindings, but Base/Noise/Mask/Emissive/Dissolve semantic assignment needs thumbnail review.",
+    "Procedural source materials preserve sourceMaterialPath and use effect.source_material; expression-graph execution remains fail-closed in coverage until implemented.",
+    "UE source position, velocity, acceleration and size use a 0.01 project-scale assumption and require visual scale verification.",
+    "Light renderer, screen-space post process, source camera shake and assetless Effect notifies stay outside this Effect Document.",
+    "Dimension Summon model animation spawn/synchronization is a presentation cue concern and is not encoded as a particle Element."
+  ],
+  "summary": {
+    "sourceEmitterPartitionCount": 10,
+    "graphEmitterPartitionCount": 16,
+    "inactiveSourceSystemEmitterPartitionCount": 6,
+    "emittedElementCount": 10,
+    "convertedEmitterCount": 10,
+    "unsupportedEmitterCount": 0,
+    "missingResourceEmitterCount": 0,
+    "sourceMaterialPendingEmitterCount": 1,
+    "particleBudget": 35,
+    "externalPackageCount": 33,
+    "externalRequestCount": 98,
+    "externalUnresolvedRequestCount": 0
+  }
+}

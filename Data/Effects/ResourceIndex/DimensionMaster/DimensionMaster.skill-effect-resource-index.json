@@ -1,0 +1,110 @@
+{
+  "schema": "lostark.class-skill-effect-resource-index",
+  "formatVersion": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "animationAssetId": "DimensionMaster",
+  "requestedSlots": [
+    "Q",
+    "W",
+    "E",
+    "R",
+    "A",
+    "S",
+    "D",
+    "F",
+    "T",
+    "V",
+    "ALT_V"
+  ],
+  "source": {
+    "playerSkills": "Data/Balance/PlayerSkills.json",
+    "skillBindings": "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json"
+  },
+  "slots": [
+    {
+      "inputSlot": "Q",
+      "skillId": 2050100,
+      "effectId": "effect.dimensionmaster.skill.2050100",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/Q/DimensionMaster.Q.effect-resources.json"
+    },
+    {
+      "inputSlot": "W",
+      "skillId": 2050120,
+      "effectId": "effect.dimensionmaster.skill.2050120",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/W/DimensionMaster.W.effect-resources.json"
+    },
+    {
+      "inputSlot": "E",
+      "skillId": 2050160,
+      "effectId": "effect.dimensionmaster.skill.2050160",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/E/DimensionMaster.E.effect-resources.json"
+    },
+    {
+      "inputSlot": "R",
+      "skillId": 2050180,
+      "effectId": "effect.dimensionmaster.skill.2050180",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/R/DimensionMaster.R.effect-resources.json"
+    },
+    {
+      "inputSlot": "A",
+      "skillId": 2050210,
+      "effectId": "effect.dimensionmaster.skill.2050210",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/A/DimensionMaster.A.effect-resources.json"
+    },
+    {
+      "inputSlot": "S",
+      "skillId": 2050220,
+      "effectId": "effect.dimensionmaster.skill.2050220",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/S/DimensionMaster.S.effect-resources.json"
+    },
+    {
+      "inputSlot": "D",
+      "skillId": 2050240,
+      "effectId": "effect.dimensionmaster.skill.2050240",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/D/DimensionMaster.D.effect-resources.json"
+    },
+    {
+      "inputSlot": "F",
+      "skillId": 2050230,
+      "effectId": "effect.dimensionmaster.skill.2050230",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/F/DimensionMaster.F.effect-resources.json"
+    },
+    {
+      "inputSlot": "T",
+      "skillId": 2050500,
+      "effectId": "effect.dimensionmaster.skill.2050500",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/T/DimensionMaster.T.effect-resources.json"
+    },
+    {
+      "inputSlot": "V",
+      "skillId": 2050520,
+      "effectId": "effect.dimensionmaster.skill.2050520",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/V/DimensionMaster.V.effect-resources.json"
+    },
+    {
+      "inputSlot": "ALT_V",
+      "skillId": 2050540,
+      "effectId": "effect.dimensionmaster.skill.2050540",
+      "bindingStatus": "INDEX_READY",
+      "manifest": "Data/Effects/ResourceIndex/DimensionMaster/ALT_V/DimensionMaster.ALT_V.effect-resources.json"
+    }
+  ],
+  "summary": {
+    "slotCount": 11,
+    "statusCounts": {
+      "INDEX_READY": 11
+    },
+    "uniqueAssetCount": 384,
+    "uniqueMaterialIdentityCount": 300
+  }
+}

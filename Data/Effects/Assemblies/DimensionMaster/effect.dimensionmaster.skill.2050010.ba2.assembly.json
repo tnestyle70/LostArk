@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
   "displayName": "기본 공격 BA2",
-  "sourceAuthoringVersion": 10,
+  "sourceAuthoringVersion": 11,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -14,7 +14,7 @@
   "componentCues": [
     {
       "cueId": "component-00",
-      "componentAssetId": "effect.component.dimensionmaster.ba2.00",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba2.00",
       "startDelaySeconds": 0.09999999999999964,
       "visible": true,
       "anchor": "root",
@@ -38,7 +38,7 @@
     },
     {
       "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.ba2.01",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba2.01",
       "startDelaySeconds": 0.09999999999999964,
       "visible": true,
       "anchor": "root",
@@ -62,7 +62,7 @@
     },
     {
       "cueId": "component-02",
-      "componentAssetId": "effect.component.dimensionmaster.ba2.02",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba2.02",
       "startDelaySeconds": 0.7000000000000002,
       "visible": true,
       "anchor": "root",
@@ -85,8 +85,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "ad83e14d75f94217870b4afbe518df9f6bc1d08fe641d1432ed72c40daca0d3c",
-  "sourceDocumentFileSha256": "c34f0047aed2311ba8cb268d3434f39d6ae2765f1bdc7ab8f41408b692cc3150",
+  "sourceDocumentSha256": "52ead631054a438db43bc2b8b929a9a717bfb17106b7a656b5e5b1851ff15ff6",
+  "inputSlot": "BA",
+  "sourceDocumentFileSha256": "0f465c89889bfa536b18cf6e19e8053205f7f21fc7554ef9ee5b78ffd4cd9dcd",
   "sourceActionCues": [
     {
       "cueId": "skill-2050010/clip-001/notify-005",

@@ -2,7 +2,7 @@
   "schema": "lostark.effect-source-receipt",
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
-  "inputSlot": "S",
+  "inputSlot": "A",
   "skillId": 2050210,
   "animationAssetId": "DimensionMaster",
   "animationVisualContract": {
@@ -20,6 +20,9 @@
   },
   "timeline": {
     "durationSeconds": 2.7667,
+    "bindingClips": [
+      "pc_sp_m_00_sk_sk_willowrend"
+    ],
     "clips": [
       {
         "sequenceIndex": 0,
@@ -108,7 +111,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 1901,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-007",
@@ -383,7 +386,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 1926,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-027",
@@ -589,7 +592,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 1943,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-042",
@@ -934,7 +937,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 1973,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-067",
@@ -1021,42 +1024,6 @@
   },
   "sourcePackages": [
     {
-      "logicalPackage": "FX_BS_06",
-      "physicalPackage": "XFH2R5G2R06F0Z4E906X0TSQ.upk",
-      "graphSha256": "8ae504d8c0691684b05353a94801391766d46d46388dead4753c95204f3966bb",
-      "graphSummary": {
-        "graphObjectCount": 2686,
-        "particleSystemCount": 112,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 381,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2079,
-        "decodedInterpCurveCount": 1,
-        "decodedInterpCurvePointCount": 2,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 113467,
-      "sourcePackageSha256": "649bb8734a118342c682112d1846df86f791dc870c2b4914c2da4de222f37865"
-    },
-    {
-      "logicalPackage": "FX_CM_01",
-      "physicalPackage": "XFH2RCA2R07F0CYE90DX0CMQ.upk",
-      "graphSha256": "052ca991225f6543a31204e9ee18dff4e5edc1c36c260b9f108831678f3cbe13",
-      "graphSummary": {
-        "graphObjectCount": 25035,
-        "particleSystemCount": 417,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 2841,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 23856,
-        "decodedInterpCurveCount": 85,
-        "decodedInterpCurvePointCount": 237,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 923880,
-      "sourcePackageSha256": "b11ab557cc8f3c87d1525c0ff9d237aed62f3d49e3394a810d9204066a7bca5b"
-    },
-    {
       "logicalPackage": "FX_CM_02",
       "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
       "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
@@ -1075,42 +1042,6 @@
       "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
     },
     {
-      "logicalPackage": "FX_O_W_01",
-      "physicalPackage": "YGI3SP3O93I18GHMPSMJ8L5CB.upk",
-      "graphSha256": "37a6c0860076ab8782b76983603e6fa975f915804c8cf288b49f0b5fe8f0be8e",
-      "graphSummary": {
-        "graphObjectCount": 25123,
-        "particleSystemCount": 256,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 3764,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 25025,
-        "decodedInterpCurveCount": 56,
-        "decodedInterpCurvePointCount": 171,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 3625798,
-      "sourcePackageSha256": "e57bd76ac26e2fd7d59ed4eb1fd1d7e7860bc64201c293261c0f474c339e67c9"
-    },
-    {
-      "logicalPackage": "FX_PC_SMW_14",
-      "physicalPackage": "YGI3SWD3SHB93D8TG9KMHC6SM.upk",
-      "graphSha256": "0c154040b1d42b4a196ffef152bbd3202cd9827288b9dd280abf9ed8a9d695c0",
-      "graphSummary": {
-        "graphObjectCount": 2673,
-        "particleSystemCount": 33,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 420,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2205,
-        "decodedInterpCurveCount": 5,
-        "decodedInterpCurvePointCount": 11,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 140444,
-      "sourcePackageSha256": "d7307215f72467a685e21218f67b29c951f3ae51f105ad38a47cc3d1354c4715"
-    },
-    {
       "logicalPackage": "FX_PC_SWP_00",
       "physicalPackage": "YGI3SWD3SH9W3D11G9KMHCS9M.upk",
       "graphSha256": "57f7252a31bc78a495bf5f68c24349597e5b118bc53899e73a7c226056f38982",
@@ -1125,116 +1056,8 @@
         "decodedInterpCurvePointCount": 31,
         "opaqueSupportedDistributionStructCount": 0
       },
-      "sourcePackageBytes": 202080,
-      "sourcePackageSha256": "e67bc564aceb055e09d51f2f2c334dacedc16c10888a47c7bad938df2936e4f8"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_01",
-      "physicalPackage": "YGI3SWD3SH9W3D18G9KMHCS9M.upk",
-      "graphSha256": "b1a2c31318ad5c367101de553b0f50da97b19822e939b4fa5e70e8e4b3c7bc0d",
-      "graphSummary": {
-        "graphObjectCount": 5074,
-        "particleSystemCount": 65,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 781,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 3950,
-        "decodedInterpCurveCount": 13,
-        "decodedInterpCurvePointCount": 39,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 231279,
-      "sourcePackageSha256": "289f186f8b712ad2879dea8050c0b214f81cc1043fb74591868cae142906b1ff"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_02",
-      "physicalPackage": "YGI3SWD3SH9W3D1FG9KMHCS9M.upk",
-      "graphSha256": "4262dc395c3066eb939a8657e1ac8342c0bfee9dfbec2c1a58932452c6837112",
-      "graphSummary": {
-        "graphObjectCount": 6971,
-        "particleSystemCount": 68,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 1070,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 6297,
-        "decodedInterpCurveCount": 6,
-        "decodedInterpCurvePointCount": 24,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 234103,
-      "sourcePackageSha256": "bcfa8285e8067ed3408fd07f9cad54246e09abb0286ffe9faf353b9df32c9a5f"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_04",
-      "physicalPackage": "YGI3SWD3SH9W3D1TG9KMHCS9M.upk",
-      "graphSha256": "d55da96439a9cd043aaeba17520e8de919096e586e3f4d492c431ea823631870",
-      "graphSummary": {
-        "graphObjectCount": 13195,
-        "particleSystemCount": 129,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 2143,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 10336,
-        "decodedInterpCurveCount": 42,
-        "decodedInterpCurvePointCount": 141,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 582705,
-      "sourcePackageSha256": "2a2f94b21fc2502fff66694f4ee8badb3ef3be256d0b02dabbf043aa46aa7274"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_05",
-      "physicalPackage": "YGI3SWD3SH9W3D10G9KMHCS9M.upk",
-      "graphSha256": "f8d45cbb63fb8c6388f10cc3a3bdf1ae31d7fe431726e318432dedf80b8a342e",
-      "graphSummary": {
-        "graphObjectCount": 3483,
-        "particleSystemCount": 55,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 566,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2919,
-        "decodedInterpCurveCount": 8,
-        "decodedInterpCurvePointCount": 26,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 193498,
-      "sourcePackageSha256": "5fd9f4b7ea2d4c08b6f68082d7b7759ed6a14b5f1386c0cff2ad98882c6e725a"
-    },
-    {
-      "logicalPackage": "FX_PC_WGL_07",
-      "physicalPackage": "YGI3SWD3S9543D1EG9KMHS0TM.upk",
-      "graphSha256": "b6b053dc7b6ab7ebdc26505d9ac98ffc68217d83c1887bc499925b1b64fb4342",
-      "graphSummary": {
-        "graphObjectCount": 2138,
-        "particleSystemCount": 36,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 405,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 1423,
-        "decodedInterpCurveCount": 1,
-        "decodedInterpCurvePointCount": 2,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 114987,
-      "sourcePackageSha256": "5add81554b3b10b976523fb185b47c7216f90beac04a1868c1a96efdd01c7182"
-    },
-    {
-      "logicalPackage": "FX_PC_WHK_02",
-      "physicalPackage": "YGI3SWD3S9CX3D1FG9KMHSDGM.upk",
-      "graphSha256": "ab767fd00542b5abdf7f190175c874544fa9660b4926d936867e56839a1ab06f",
-      "graphSummary": {
-        "graphObjectCount": 2562,
-        "particleSystemCount": 58,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 491,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 1985,
-        "decodedInterpCurveCount": 15,
-        "decodedInterpCurvePointCount": 44,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 131872,
-      "sourcePackageSha256": "f5bae9fc807e2c4d12ffbfe81729f4083c3680242cfc52509de81533c0b561ef"
+      "sourcePackageBytes": 202130,
+      "sourcePackageSha256": "8e87af1a3782e479688f8c7d18c699e443ba52553f6059c37e78bcab0601a9de"
     },
     {
       "logicalPackage": "FX_POST",
@@ -1554,14 +1377,14 @@
       "objectPath": "par_j_swp_willowrend_swinghit_00_1",
       "rootNodeId": "FX_PC_SWP_00:export:4175",
       "summary": {
-        "nodeCount": 178,
-        "edgeCount": 293,
+        "nodeCount": 177,
+        "edgeCount": 291,
         "emitterCount": 19,
         "lodLevelCount": 38,
-        "moduleCount": 118,
+        "moduleCount": 117,
         "distributionCount": 2,
         "resourceBindingCount": 30,
-        "unresolvedExternalReferenceCount": 272,
+        "unresolvedExternalReferenceCount": 274,
         "featureClasses": [
           "particlemoduletypedatamesh"
         ]
@@ -1817,14 +1640,14 @@
       "objectPath": "fx_par.par_j_rgbnoise_01",
       "rootNodeId": "FX_POST:export:1574",
       "summary": {
-        "nodeCount": 7,
-        "edgeCount": 8,
+        "nodeCount": 5,
+        "edgeCount": 5,
         "emitterCount": 1,
         "lodLevelCount": 2,
-        "moduleCount": 2,
-        "distributionCount": 1,
+        "moduleCount": 1,
+        "distributionCount": 0,
         "resourceBindingCount": 1,
-        "unresolvedExternalReferenceCount": 14,
+        "unresolvedExternalReferenceCount": 16,
         "featureClasses": []
       },
       "resourceBindings": [
@@ -1880,8 +1703,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_me_ri_05_1_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_me_ri_05_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1893,11 +1716,13 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_00.fx_a_atypical_007"
+          "texture": "fx_tex_00.fx_a_atypical_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_007.dds"
         },
         {
           "name": "mask_tex",
-          "texture": "fx_tex_00.fx_a_fire_003"
+          "texture": "fx_tex_00.fx_a_fire_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fire_003.dds"
         }
       ],
       "scalars": [
@@ -1911,8 +1736,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1924,7 +1749,8 @@
       "textures": [
         {
           "name": "subuv_tex",
-          "texture": "fx_tex_00.fx_a_fragment_007"
+          "texture": "fx_tex_00.fx_a_fragment_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds"
         }
       ],
       "scalars": [],
@@ -1933,8 +1759,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_atta_05_07_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1946,7 +1772,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_04.fx_f_ring_001"
+          "texture": "fx_tex_04.fx_f_ring_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_f_ring_001.dds"
         }
       ],
       "scalars": [],
@@ -1955,8 +1782,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_11_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_atta_05_11_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1968,7 +1795,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_04.fx_i_atypical_02"
+          "texture": "fx_tex_04.fx_i_atypical_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_atypical_02.dds"
         }
       ],
       "scalars": [],
@@ -1977,8 +1805,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_circ_01_2_tr",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_circ_01_2_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1999,8 +1827,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_glow_01_05_dt15_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_glow_01_05_dt15_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2025,8 +1853,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_m.fx_h_me_swing_01_1_tr",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_h_me_swing_01_1_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2042,8 +1870,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_03_1_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_e_pa_gl_03_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2064,8 +1892,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_windwv_01_1_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_windwv_01_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2077,11 +1905,13 @@
       "textures": [
         {
           "name": "00.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_032"
+          "texture": "fx_tex_02.fx_d_atypical_032",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_032.dds"
         },
         {
           "name": "04.map_anew",
-          "texture": "fx_tex_02.fx_d_atypical_056"
+          "texture": "fx_tex_02.fx_d_atypical_056",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_056.dds"
         }
       ],
       "scalars": [
@@ -2119,8 +1949,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
       "sourceLogicalPackage": "fx_m_mi_05",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_c_pa_aura_02_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
@@ -2136,8 +1966,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_06_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_blacklineaura_01_06_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2149,19 +1979,23 @@
       "textures": [
         {
           "name": "mask_a_tex",
-          "texture": "fx_tex_06.fx_j_line_01_xcl"
+          "texture": "fx_tex_06.fx_j_line_01_xcl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_line_01_xcl.dds"
         },
         {
           "name": "mask_b_tex",
-          "texture": "fx_tex_06.fx_j_line_03_cl"
+          "texture": "fx_tex_06.fx_j_line_03_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_line_03_cl.dds"
         },
         {
           "name": "diffuse_tex",
-          "texture": "fx_tex_05.fx_l_environment_001"
+          "texture": "fx_tex_05.fx_l_environment_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_l_environment_001.dds"
         },
         {
           "name": "flow_tex",
-          "texture": "fx_tex_06.fx_j_normal_02"
+          "texture": "fx_tex_06.fx_j_normal_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_02.dds"
         }
       ],
       "scalars": [
@@ -2386,8 +2220,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_cubesample_01_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2426,8 +2260,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_02_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_cubesample_01_02_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2466,8 +2300,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_05_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_linearflow_02_05_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2479,23 +2313,28 @@
       "textures": [
         {
           "name": "diff_tex",
-          "texture": "fx_tex_04.fx_j_mirnoise_02"
+          "texture": "fx_tex_04.fx_j_mirnoise_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds"
         },
         {
           "name": "a_mask_tex",
-          "texture": "fx_tex_06.fx_j_auraline_19_ycl"
+          "texture": "fx_tex_06.fx_j_auraline_19_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_auraline_19_ycl.dds"
         },
         {
           "name": "a_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         },
         {
           "name": "b_mask_tex",
-          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp"
+          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds"
         },
         {
           "name": "b_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         }
       ],
       "scalars": [
@@ -2680,8 +2519,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_12_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_linearflow_02_12_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2693,23 +2532,28 @@
       "textures": [
         {
           "name": "diff_tex",
-          "texture": "fx_tex_04.fx_j_mirnoise_02"
+          "texture": "fx_tex_04.fx_j_mirnoise_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds"
         },
         {
           "name": "a_mask_tex",
-          "texture": "fx_tex_06.fx_j_auraline_19_ycl"
+          "texture": "fx_tex_06.fx_j_auraline_19_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_auraline_19_ycl.dds"
         },
         {
           "name": "a_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         },
         {
           "name": "b_mask_tex",
-          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp"
+          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds"
         },
         {
           "name": "b_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         }
       ],
       "scalars": [
@@ -2898,8 +2742,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_13_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_linearflow_02_13_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -2911,23 +2755,28 @@
       "textures": [
         {
           "name": "diff_tex",
-          "texture": "fx_tex_06.fx_j_cloud_tile_01"
+          "texture": "fx_tex_06.fx_j_cloud_tile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_cloud_tile_01.dds"
         },
         {
           "name": "a_mask_tex",
-          "texture": "fx_tex_06.fx_j_line_08_cl"
+          "texture": "fx_tex_06.fx_j_line_08_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_line_08_cl.dds"
         },
         {
           "name": "a_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         },
         {
           "name": "b_mask_tex",
-          "texture": "fx_tex_05.fx_k_auraline_04_ycl"
+          "texture": "fx_tex_05.fx_k_auraline_04_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_04_ycl.dds"
         },
         {
           "name": "b_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         }
       ],
       "scalars": [
@@ -3128,8 +2977,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_03_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_localcrack_01_03_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3182,8 +3031,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_localcrack_01_04_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3195,7 +3044,8 @@
       "textures": [
         {
           "name": "normal_tex",
-          "texture": "fx_tex_06.fx_j_normal_bc5_09"
+          "texture": "fx_tex_06.fx_j_normal_bc5_09",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
         }
       ],
       "scalars": [
@@ -3277,8 +3127,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_glasshole_02_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3290,15 +3140,18 @@
       "textures": [
         {
           "name": "aura_texture",
-          "texture": "fx_tex_06.fx_j_dustparticle_tile_02"
+          "texture": "fx_tex_06.fx_j_dustparticle_tile_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds"
         },
         {
           "name": "cracknormal_tex",
-          "texture": "fx_tex_06.fx_j_normal_bc5_09"
+          "texture": "fx_tex_06.fx_j_normal_bc5_09",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
         },
         {
           "name": "in_hole_texture",
-          "texture": "fx_tex_06.fx_m_cybernoise_02"
+          "texture": "fx_tex_06.fx_m_cybernoise_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_cybernoise_02.dds"
         }
       ],
       "scalars": [
@@ -3431,8 +3284,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_movedissolve_01_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_movedissolve_01_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3444,15 +3297,18 @@
       "textures": [
         {
           "name": "alpha_texture",
-          "texture": "fx_tex_06.fx_g_petds_cotton_01"
+          "texture": "fx_tex_06.fx_g_petds_cotton_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds"
         },
         {
           "name": "diff_texture",
-          "texture": "fx_tex_06.fx_j_noise_tile_09"
+          "texture": "fx_tex_06.fx_j_noise_tile_09",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_noise_tile_09.dds"
         },
         {
           "name": "dissolve_texture",
-          "texture": "fx_tex_06.fx_j_noise_tile_07"
+          "texture": "fx_tex_06.fx_j_noise_tile_07",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_noise_tile_07.dds"
         }
       ],
       "scalars": [
@@ -3537,8 +3393,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_slice_01_06_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_slice_01_06_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3550,7 +3406,8 @@
       "textures": [
         {
           "name": "slice_flow_texture",
-          "texture": "fx_tex_06.fx_j_voronoi_tile_01"
+          "texture": "fx_tex_06.fx_j_voronoi_tile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds"
         }
       ],
       "scalars": [
@@ -3592,8 +3449,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_spriteinvert_01_02_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3605,11 +3462,13 @@
       "textures": [
         {
           "name": "alpha_texture",
-          "texture": "fx_tex_00.fx_a_electric_008"
+          "texture": "fx_tex_00.fx_a_electric_008",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_electric_008.dds"
         },
         {
           "name": "flow_texture",
-          "texture": "fx_tex_06.fx_j_caustic_tile_05"
+          "texture": "fx_tex_06.fx_j_caustic_tile_05",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds"
         }
       ],
       "scalars": [
@@ -3663,8 +3522,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_trail_01_09_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_trail_01_09_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3676,15 +3535,18 @@
       "textures": [
         {
           "name": "tex_alpha_01",
-          "texture": "fx_tex_04.fx_h_trail_01_1"
+          "texture": "fx_tex_04.fx_h_trail_01_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_h_trail_01_1.dds"
         },
         {
           "name": "tex_alpha_02",
-          "texture": "fx_tex_02.fx_d_atypical_011"
+          "texture": "fx_tex_02.fx_d_atypical_011",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_011.dds"
         },
         {
           "name": "tex_uvnoise_01",
-          "texture": "fx_tex_02.fx_d_noise_014_1"
+          "texture": "fx_tex_02.fx_d_noise_014_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014_1.dds"
         }
       ],
       "scalars": [
@@ -3754,8 +3616,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_po_rgbnoise_01_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3800,8 +3662,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_ribbonwave_02_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_ribbonwave_02_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3813,15 +3675,18 @@
       "textures": [
         {
           "name": "colormap",
-          "texture": "fx_tex_06.fx_j_noise_tile_04"
+          "texture": "fx_tex_06.fx_j_noise_tile_04",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_noise_tile_04.dds"
         },
         {
           "name": "flowtex",
-          "texture": "fx_tex_06.fx_j_normal_bc5_10"
+          "texture": "fx_tex_06.fx_j_normal_bc5_10",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds"
         },
         {
           "name": "tex_main",
-          "texture": "fx_tex_06.fx_j_auraline_17_ycl"
+          "texture": "fx_tex_06.fx_j_auraline_17_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_auraline_17_ycl.dds"
         }
       ],
       "scalars": [
@@ -3937,8 +3802,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_03_05_tr",
       "sourceLogicalPackage": "fx_m_mi_k_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_k_me_makeflow_03_05_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
@@ -3950,19 +3815,23 @@
       "textures": [
         {
           "name": "diff_tex1",
-          "texture": "fx_tex_05.fx_k_auraline_16"
+          "texture": "fx_tex_05.fx_k_auraline_16",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_16.dds"
         },
         {
           "name": "diff_tex2",
-          "texture": "fx_tex_05.fx_k_caustictile_01"
+          "texture": "fx_tex_05.fx_k_caustictile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_01.dds"
         },
         {
           "name": "flowtex",
-          "texture": "fx_tex_02.fx_d_noise_002"
+          "texture": "fx_tex_02.fx_d_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds"
         },
         {
           "name": "opacity_tex",
-          "texture": "fx_tex_05.fx_k_trail_up_01"
+          "texture": "fx_tex_05.fx_k_trail_up_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_trail_up_01.dds"
         }
       ],
       "scalars": [
@@ -4024,8 +3893,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_missiletrail_01_23_tr",
       "sourceLogicalPackage": "fx_m_mi_m_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_m_me_missiletrail_01_23_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
@@ -4037,11 +3906,13 @@
       "textures": [
         {
           "name": "alpha_tex",
-          "texture": "fx_tex_05.fx_m_atypical_007"
+          "texture": "fx_tex_05.fx_m_atypical_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_atypical_007.dds"
         },
         {
           "name": "uv_dissolve_tex",
-          "texture": "fx_tex_05.fx_m_noise_001"
+          "texture": "fx_tex_05.fx_m_noise_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_001.dds"
         }
       ],
       "scalars": [
@@ -4139,8 +4010,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr",
       "sourceLogicalPackage": "fx_m_mi_o_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_o_me_makeflow_03_10_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
@@ -4152,19 +4023,23 @@
       "textures": [
         {
           "name": "diff_tex1",
-          "texture": "fx_tex_05.fx_k_auraline_16"
+          "texture": "fx_tex_05.fx_k_auraline_16",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_16.dds"
         },
         {
           "name": "diff_tex2",
-          "texture": "fx_tex_05.fx_k_caustictile_01"
+          "texture": "fx_tex_05.fx_k_caustictile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_01.dds"
         },
         {
           "name": "flowtex",
-          "texture": "fx_tex_02.fx_d_noise_002"
+          "texture": "fx_tex_02.fx_d_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds"
         },
         {
           "name": "opacity_tex",
-          "texture": "fx_tex_01.fx_c_atypical_007_cl"
+          "texture": "fx_tex_01.fx_c_atypical_007_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds"
         }
       ],
       "scalars": [
@@ -4226,8 +4101,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr",
       "sourceLogicalPackage": "fx_m_mi_s_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_s_pa_ring_01_1_ts_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
@@ -4239,7 +4114,8 @@
       "textures": [
         {
           "name": "emit tex2",
-          "texture": "fx_tex_05.fx_m_trail_002"
+          "texture": "fx_tex_05.fx_m_trail_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_002.dds"
         }
       ],
       "scalars": [
@@ -4281,8 +4157,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_trail_03_01_tr",
       "sourceLogicalPackage": "fx_m_mi_s_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_s_pa_trail_03_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
@@ -4294,15 +4170,18 @@
       "textures": [
         {
           "name": "tex_alpha_01",
-          "texture": "fx_tex_00.fx_a_trail_007"
+          "texture": "fx_tex_00.fx_a_trail_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_trail_007.dds"
         },
         {
           "name": "tex_alpha_02",
-          "texture": "fx_tex_05.fx_m_noise_001"
+          "texture": "fx_tex_05.fx_m_noise_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_001.dds"
         },
         {
           "name": "tex_uvnoise_01",
-          "texture": "fx_tex_05.fx_m_noise_004"
+          "texture": "fx_tex_05.fx_m_noise_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_004.dds"
         }
       ],
       "scalars": [
@@ -4364,8 +4243,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_turbpa_01_3_tr",
       "sourceLogicalPackage": "fx_m_mi_s_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_s_pa_turbpa_01_3_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
@@ -4377,23 +4256,28 @@
       "textures": [
         {
           "name": "add_tex",
-          "texture": "fx_tex_05.fx_k_smoketile_01"
+          "texture": "fx_tex_05.fx_k_smoketile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_smoketile_01.dds"
         },
         {
           "name": "diff_tex",
-          "texture": "fx_tex_00.fx_bg_fogsheet_cloudtex_01"
+          "texture": "fx_tex_00.fx_bg_fogsheet_cloudtex_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_bg_fogsheet_cloudtex_01.dds"
         },
         {
           "name": "noise_tex",
-          "texture": "fx_tex_02.fx_d_noise_014"
+          "texture": "fx_tex_02.fx_d_noise_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014.dds"
         },
         {
           "name": "edge_tex",
-          "texture": "fx_tex_03.fx_e_noise_001"
+          "texture": "fx_tex_03.fx_e_noise_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_noise_001.dds"
         },
         {
           "name": "opacity_tex",
-          "texture": "fx_tex_00.fx_b_atypical_018"
+          "texture": "fx_tex_00.fx_b_atypical_018",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_018.dds"
         }
       ],
       "scalars": [
@@ -4463,8 +4347,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_missiletrail_01_34_01_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_missiletrail_01_34_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -4476,15 +4360,18 @@
       "textures": [
         {
           "name": "alpha_tex",
-          "texture": "fx_tex_nomipmap_00.fx_n_trail_001_cl"
+          "texture": "fx_tex_nomipmap_00.fx_n_trail_001_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds"
         },
         {
           "name": "uv_dissolve_tex",
-          "texture": "fx_tex_04.fx_h_atypical_01_1"
+          "texture": "fx_tex_04.fx_h_atypical_01_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -6054,6 +5941,24 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.explosion.par_k_pheromonebomb_atk_01.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_cm_03.tonado.par_e_sqdk_projloop_01_loc_int.particlemodulerotationrate_5",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -6687,13 +6592,6 @@
       "occurrences": 1
     },
     {
-      "sourceEventId": "source-event-006",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
       "sourceEventId": "source-event-010",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
@@ -6709,13 +6607,6 @@
     },
     {
       "sourceEventId": "source-event-025",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-026",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
       "sourceSystems": [],
@@ -6743,13 +6634,6 @@
       "occurrences": 1
     },
     {
-      "sourceEventId": "source-event-041",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
       "sourceEventId": "source-event-052",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
@@ -6765,13 +6649,6 @@
     },
     {
       "sourceEventId": "source-event-056",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-066",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
       "sourceSystems": [],
@@ -6809,10 +6686,10 @@
     "sourceSystemCount": 10,
     "effectEventCount": 70,
     "resolvedParticleEventCount": 51,
-    "unsupportedNotifyCount": 19,
+    "unsupportedNotifyCount": 15,
     "unresolvedSourceSystemCount": 0,
     "relatedViewShakeCount": 2,
-    "unsupportedUnresolvedUniqueCount": 199,
+    "unsupportedUnresolvedUniqueCount": 197,
     "uniqueMaterialBindingCount": 34,
     "resolvedMaterialBindingCount": 33,
     "runtimeResourceBindingCount": 58,

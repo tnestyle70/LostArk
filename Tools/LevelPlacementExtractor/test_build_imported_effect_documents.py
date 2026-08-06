@@ -7,9 +7,12 @@ import unittest
 
 from build_imported_effect_documents import (
     SourceIndex,
+    SourceObject,
     build_distribution_recipe,
     build_document,
+    flatten_source_properties,
     promote_document,
+    selected_lod_partitions,
     table_vector_samples,
 )
 from extract_ue3_particle_module_closure import obfuscate_package_name
@@ -48,6 +51,104 @@ def raw_vector(*samples: float):
 
 
 class ImportedEffectDocumentTests(unittest.TestCase):
+    def test_reference_array_object_paths_keep_distinct_indices(self) -> None:
+        index = SourceIndex({"nodes": [], "edges": []}, {"packages": []})
+        module = SourceObject(
+            key="test.meshmaterial",
+            source_id="module",
+            class_name="particlemodulemeshmaterial",
+            object_path="test.particlemodulemeshmaterial_0",
+            properties={"meshmaterials": value("arrayproperty", [-10, -20])},
+            reference_paths=[
+                ("meshmaterials", "fx_mi.first"),
+                ("meshmaterials", "fx_mi.second"),
+            ],
+        )
+
+        literals, _distributions = flatten_source_properties(index, module)
+        by_path = {row["propertyPath"]: row["value"] for row in literals}
+
+        self.assertEqual("fx_mi.first", by_path["meshmaterials[0].objectpath"])
+        self.assertEqual("fx_mi.second", by_path["meshmaterials[1].objectpath"])
+        self.assertEqual(len(literals), len(by_path))
+
+    def test_local_vector_field_occurrence_keeps_source_identity_and_asset(self) -> None:
+        graph = {
+            "sourceSystems": [{
+                "sourceSystemId": "test.vector.system",
+                "rootNodeId": "system",
+                "unresolvedExternalReferences": [{
+                    "sourceNodeId": "vector-module",
+                    "referenceIndex": 0,
+                    "property": "vectorfield",
+                    "packageIndex": -7,
+                    "objectPath": "FX_O_W_01.FX_O_VectorField_01",
+                }],
+            }],
+            "nodes": [
+                {
+                    "nodeId": "system", "package": "TEST", "exportIndex": 0,
+                    "className": "particlesystem", "objectPath": "system",
+                    "properties": {},
+                },
+                {
+                    "nodeId": "emitter", "package": "TEST", "exportIndex": 1,
+                    "className": "particlespriteemitter", "objectPath": "emitter",
+                    "properties": {},
+                },
+                {
+                    "nodeId": "lod", "package": "TEST", "exportIndex": 2,
+                    "className": "particlelodlevel", "objectPath": "lod",
+                    "properties": {},
+                },
+                {
+                    "nodeId": "vector-module", "package": "TEST", "exportIndex": 3,
+                    "className": "particlemodulelocalvectorfield",
+                    "objectPath": "emitter.particlemodulelocalvectorfield_0",
+                    "properties": {"vectorfield": value("objectproperty", -7)},
+                },
+            ],
+            "edges": [
+                {
+                    "sourceNodeId": "system", "targetNodeId": "emitter",
+                    "property": "emitters", "referenceIndex": 0,
+                },
+                {
+                    "sourceNodeId": "emitter", "targetNodeId": "lod",
+                    "property": "lodlevels", "referenceIndex": 0,
+                },
+                {
+                    "sourceNodeId": "lod", "targetNodeId": "vector-module",
+                    "property": "modules", "referenceIndex": 4,
+                },
+            ],
+        }
+        index = SourceIndex(graph, {"packages": []})
+        partitions = selected_lod_partitions(graph, index, {"packages": []})
+        self.assertEqual(1, len(partitions))
+        module = partitions[0][3][0]
+
+        literals, _distributions = flatten_source_properties(index, module, {
+            "modules": {},
+            "vectorFields": [{
+                "sourceObjectPath": "fx_o_w_01.fx_o_vectorfield_01",
+                "assetId": (
+                    "Effect/DimensionMaster/VectorFields/"
+                    "fx_o_w_01.2fdb8d454138eac6.wvectorfield"
+                ),
+            }],
+        })
+        by_path = {row["propertyPath"]: row for row in literals}
+        self.assertEqual(
+            "FX_O_W_01.FX_O_VectorField_01",
+            by_path["vectorfield.objectpath"]["value"],
+        )
+        self.assertEqual(
+            "Effect/DimensionMaster/VectorFields/"
+            "fx_o_w_01.2fdb8d454138eac6.wvectorfield",
+            by_path["vectorfield.assetid"]["value"],
+        )
+
     def test_cooked_vector_lookup_skips_range_cache_and_uses_three_float_stride(self) -> None:
         raw = {
             "lookuptable": value(

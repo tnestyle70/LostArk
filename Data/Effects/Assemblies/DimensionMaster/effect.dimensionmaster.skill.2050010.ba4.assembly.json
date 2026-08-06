@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
   "displayName": "기본 공격 BA4",
-  "sourceAuthoringVersion": 10,
+  "sourceAuthoringVersion": 11,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -14,7 +14,7 @@
   "componentCues": [
     {
       "cueId": "component-00",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.00",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.00",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -38,7 +38,7 @@
     },
     {
       "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.01",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.01",
       "startDelaySeconds": 0.09759999999999991,
       "visible": true,
       "anchor": "root",
@@ -62,7 +62,7 @@
     },
     {
       "cueId": "component-02",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.02",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.02",
       "startDelaySeconds": 0.09999999999999964,
       "visible": true,
       "anchor": "root",
@@ -86,7 +86,7 @@
     },
     {
       "cueId": "component-03",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.03",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.03",
       "startDelaySeconds": 0.09999999999999964,
       "visible": true,
       "anchor": "root",
@@ -110,7 +110,7 @@
     },
     {
       "cueId": "component-04",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.04",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.04",
       "startDelaySeconds": 0.09999999999999964,
       "visible": true,
       "anchor": "root",
@@ -134,7 +134,7 @@
     },
     {
       "cueId": "component-05",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.05",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.05",
       "startDelaySeconds": 0.1001000000000003,
       "visible": true,
       "anchor": "root",
@@ -158,7 +158,7 @@
     },
     {
       "cueId": "component-06",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.06",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.06",
       "startDelaySeconds": 0.1001000000000003,
       "visible": true,
       "anchor": "root",
@@ -182,7 +182,7 @@
     },
     {
       "cueId": "component-07",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.07",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.07",
       "startDelaySeconds": 0.13130000000000042,
       "visible": true,
       "anchor": "root",
@@ -206,7 +206,7 @@
     },
     {
       "cueId": "component-08",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.08",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.08",
       "startDelaySeconds": 0.3799999999999999,
       "visible": true,
       "anchor": "root",
@@ -230,7 +230,7 @@
     },
     {
       "cueId": "component-09",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.09",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.09",
       "startDelaySeconds": 0.3799999999999999,
       "visible": true,
       "anchor": "root",
@@ -254,7 +254,7 @@
     },
     {
       "cueId": "component-10",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.10",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.10",
       "startDelaySeconds": 0.40000000000000036,
       "visible": true,
       "anchor": "root",
@@ -278,7 +278,7 @@
     },
     {
       "cueId": "component-11",
-      "componentAssetId": "effect.component.dimensionmaster.ba4.11",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050010.ba4.11",
       "startDelaySeconds": 0.40000000000000036,
       "visible": true,
       "anchor": "root",
@@ -301,8 +301,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "129bfb7d9976bc6bc1817d5fe35e8a477f7a291fcb0b17ef15d58f4bd22ae6ce",
-  "sourceDocumentFileSha256": "1fb56fcce07023d7f4260b990d28807825317e84374889c56ced3e37fec0a5d4",
+  "sourceDocumentSha256": "b503d5b76b83a01b5e47f18c97712ae14f10771229a6b87026728b7b4090d36d",
+  "inputSlot": "BA",
+  "sourceDocumentFileSha256": "514ea7881187499c9697ae611c48bc0a8a282df040235f3f924ac859db9f11ea",
   "sourceActionCues": [
     {
       "cueId": "skill-2050010/clip-003/notify-000",

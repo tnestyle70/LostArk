@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050220,
-  "inputSlot": "E",
+  "inputSlot": "S",
   "sourcePolicy": {
     "partition": "ParticleSystem/Emitter/FIRST_LOD",
     "coordinateScale": 0.01,
@@ -8034,6 +8034,15 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_esther_ddk_00.par_l_ddk_default_02.particlemodulecolor_4",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -8688,55 +8697,6 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_01"
       ]
-    },
-    {
-      "sourceEventId": "source-event-039",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-040",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-041",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-042",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-043",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-044",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-045",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
     }
   ],
   "manualTuningBoundaries": [
@@ -8759,8 +8719,8 @@
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 0,
     "particleBudget": 251,
-    "externalPackageCount": 45,
-    "externalRequestCount": 387,
+    "externalPackageCount": 46,
+    "externalRequestCount": 388,
     "externalUnresolvedRequestCount": 0
   }
 }

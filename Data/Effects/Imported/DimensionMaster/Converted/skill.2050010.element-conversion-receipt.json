@@ -4030,6 +4030,20 @@
           "sourceObjectPath": "fx_sm_00.fm_h_swing_03",
           "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_03.wmodel",
           "status": "EXACT_RUNTIME_BINDING"
+        },
+        {
+          "slotId": "base",
+          "parameterName": "maintex",
+          "sourceObjectPath": "fx_tex_04.fx_h_wave_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_wave_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "uv_noise_tex",
+          "sourceObjectPath": "fx_tex_00.fx_a_noise_011",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_011.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -4116,6 +4130,30 @@
             0.0
           ],
           "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "main_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "main_panspeed_v",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noise_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noise_panspeed_v",
+          "value": 0.0
         }
       ],
       "burstSource": [
@@ -4210,7 +4248,104 @@
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
-          "scalars": [],
+          "scalars": [
+            {
+              "name": "dissolve_pan_v_time",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_texcoord_u",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_texcoord_v",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "disto_power",
+              "value": 2.0
+            },
+            {
+              "name": "camera_vector_fresnel_velue",
+              "value": 1.2000000476837158
+            },
+            {
+              "name": "main_panspeed_u",
+              "value": 0.0
+            },
+            {
+              "name": "main_panspeed_v",
+              "value": 0.0
+            },
+            {
+              "name": "main_tex_background_velue",
+              "value": 1.0
+            },
+            {
+              "name": "main_tex_power",
+              "value": 2.0
+            },
+            {
+              "name": "main_tex_power_multiply",
+              "value": 0.009999999776482582
+            },
+            {
+              "name": "maintex_move_u",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_move_v",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "maintex_pan_u_time",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_pan_v_time",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_rotator",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_texcoord_u",
+              "value": 0.4000000059604645
+            },
+            {
+              "name": "maintex_texcoord_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_pan_u",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_pan_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_panspeed_u",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_panspeed_v",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_texcoord_u",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_texcoord_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_velue",
+              "value": 0.0
+            }
+          ],
           "vectors": []
         }
       ]
@@ -6256,6 +6391,20 @@
           "sourceObjectPath": "fx_sm_00.fm_h_swing_03",
           "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_03.wmodel",
           "status": "EXACT_RUNTIME_BINDING"
+        },
+        {
+          "slotId": "base",
+          "parameterName": "maintex",
+          "sourceObjectPath": "fx_tex_04.fx_h_wave_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_wave_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "uv_noise_tex",
+          "sourceObjectPath": "fx_tex_00.fx_a_noise_011",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_011.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -6342,6 +6491,30 @@
             0.0
           ],
           "note": "Detail color lerp remains disabled for authored override"
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "main_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "main_panspeed_v",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noise_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noise_panspeed_v",
+          "value": 0.0
         }
       ],
       "burstSource": [
@@ -6440,7 +6613,104 @@
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
-          "scalars": [],
+          "scalars": [
+            {
+              "name": "dissolve_pan_v_time",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_texcoord_u",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_texcoord_v",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "disto_power",
+              "value": 2.0
+            },
+            {
+              "name": "camera_vector_fresnel_velue",
+              "value": 1.2000000476837158
+            },
+            {
+              "name": "main_panspeed_u",
+              "value": 0.0
+            },
+            {
+              "name": "main_panspeed_v",
+              "value": 0.0
+            },
+            {
+              "name": "main_tex_background_velue",
+              "value": 1.0
+            },
+            {
+              "name": "main_tex_power",
+              "value": 2.0
+            },
+            {
+              "name": "main_tex_power_multiply",
+              "value": 0.009999999776482582
+            },
+            {
+              "name": "maintex_move_u",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_move_v",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "maintex_pan_u_time",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_pan_v_time",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_rotator",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_texcoord_u",
+              "value": 0.4000000059604645
+            },
+            {
+              "name": "maintex_texcoord_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_pan_u",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_pan_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_panspeed_u",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_panspeed_v",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noise_texcoord_u",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_texcoord_v",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_velue",
+              "value": 0.0
+            }
+          ],
           "vectors": []
         }
       ]
@@ -12937,6 +13207,34 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_k_trap_moveelec_01_e.particlemodulevelocity_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.explosion.par_k_pheromonebomb_atk_01.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_cm_03.tonado.par_e_sqdk_projloop_01_loc_int.particlemodulerotationrate_5",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -13657,27 +13955,6 @@
       "occurrences": 1
     },
     {
-      "sourceEventId": "source-event-007",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-009",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-010",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
       "sourceEventId": "source-event-013",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
@@ -13685,21 +13962,7 @@
       "occurrences": 1
     },
     {
-      "sourceEventId": "source-event-015",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
       "sourceEventId": "source-event-018",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-022",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
       "sourceSystems": [],
@@ -13748,13 +14011,6 @@
       "occurrences": 1
     },
     {
-      "sourceEventId": "source-event-038",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
       "sourceEventId": "source-event-041",
       "sourceObjectPath": null,
       "reason": "unsupported_source_notify",
@@ -13782,8 +14038,8 @@
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 10,
     "particleBudget": 287,
-    "externalPackageCount": 72,
-    "externalRequestCount": 331,
+    "externalPackageCount": 73,
+    "externalRequestCount": 335,
     "externalUnresolvedRequestCount": 0
   }
 }

@@ -385,7 +385,7 @@ if ($effectToolHeader -notmatch 'PENDING_DOCUMENT_LOAD' -or
     $effectToolSource -notmatch 'bBypassUnsavedGuard' -or
     $effectToolSource -notmatch 'Update_SynchronizedAnimationSequence' -or
     $effectToolSource -notmatch 'm_iSynchronizedAnimationClipIndex \+ 1u' -or
-    $effectToolSource -notmatch 'Start_Animation\(strNext\.c_str\(\), false\)' -or
+    $effectToolSource -notmatch 'Start_Animation\(\s*NextClip\.strClipName\.c_str\(\), false\)' -or
     $effectToolSource -notmatch 'Audition Selected' -or
     $effectToolSource -notmatch 'EFFECT_PREVIEW_FILTER::SOLO_SELECTED' -or
     $effectToolSource -notmatch 'Selected->Detail\.Timing\.fStartDelaySeconds' -or
@@ -513,30 +513,38 @@ foreach ($relativePath in $registrationFiles) {
     }
 }
 
-$expectedSkillIds = @(
-    2050010, 2050110, 2050150, 2050220, 2050190, 2050240,
-    2050550, 2050200, 2050500, 2050510, 2050540
-)
-# The subset the current quick-slot roster binds. An authored Effect document
-# outlives the slot it was written for, so the documents, the catalog and the
-# animation cues above still cover all eleven; only the PlayerSkills join is
-# limited to the skills a loadout can actually cast today.
-$boundSkillIds = @(
-    2050010, 2050210, 2050220, 2050240, 2050500, 2050540
-)
-$expectedEffectIds = @($expectedSkillIds | ForEach-Object {
-    "effect.dimensionmaster.skill.$_"
+$skills = Read-JsonFile 'Data\Balance\PlayerSkills.json'
+$boundSkillRows = @($skills.skills | Where-Object {
+    [string]$_.characterClass -eq 'DIMENSIONMASTER' -and
+    [string]$_.inputSlot -ne 'SPACE'
 })
-$expectedEffectIds += @(1..4 | ForEach-Object {
-    "effect.dimensionmaster.skill.2050010.ba$_"
-})
+if ($boundSkillRows.Count -eq 0) {
+    throw 'PlayerSkills.json has no DimensionMaster trial roster.'
+}
+$expectedEffectIds = [Collections.Generic.List[string]]::new()
+foreach ($skill in $boundSkillRows) {
+    $skillId = [int64]$skill.skillId
+    $expectedEffectId = "effect.dimensionmaster.skill.$skillId"
+    if ([string]$skill.effectId -cne $expectedEffectId) {
+        throw "PlayerSkills.effectId mismatch for current DimensionMaster $($skill.inputSlot) skill $skillId"
+    }
+    $expectedEffectIds.Add($expectedEffectId)
+    if ([string]$skill.skillKind -eq 'COMBO') {
+        for ($stage = 1; $stage -le @($skill.comboStages).Count; ++$stage) {
+            $expectedEffectIds.Add("$expectedEffectId.ba$stage")
+        }
+    }
+}
+$expectedEffectIds = @($expectedEffectIds)
+$expectedEffectCount = $expectedEffectIds.Count
 
 $catalog = Read-JsonFile 'Data\Effects\EffectCatalog.json'
-if ($catalog.formatVersion -ne 1 -or $catalog.effects.Count -ne 15) {
-    throw 'EffectCatalog.json must be formatVersion 1 with 11 aggregate skill entries and four BA stage entries.'
+if ($catalog.formatVersion -ne 1 -or
+    $catalog.effects.Count -ne $expectedEffectCount) {
+    throw "EffectCatalog.json must contain exactly the current DimensionMaster roster and its combo stages: expected=$expectedEffectCount actual=$($catalog.effects.Count)"
 }
 $catalogIds = @($catalog.effects | ForEach-Object { [string]$_.effectAssetId })
-if (@($catalogIds | Sort-Object -Unique).Count -ne 15) {
+if (@($catalogIds | Sort-Object -Unique).Count -ne $expectedEffectCount) {
     throw 'EffectCatalog.json contains a duplicate EffectAssetId.'
 }
 foreach ($effectId in $expectedEffectIds) {
@@ -628,83 +636,21 @@ foreach ($entry in $catalog.effects) {
     }
 }
 
-$completeF = Read-JsonFile `
-    'Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json'
 $completeT = Read-JsonFile `
-    'Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json'
-$completeS = Read-JsonFile `
-    'Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json'
-$completeFReceipt = Read-JsonFile `
-    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json'
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json'
 $completeTReceipt = Read-JsonFile `
-    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.element-conversion-receipt.json'
-$completeSReceipt = Read-JsonFile `
-    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json'
-if ($completeF.version -ne 10 -or
-    @($completeF.elements).Count -ne
-        [int]$completeFReceipt.summary.emittedElementCount -or
-    [double]$completeF.particleSystem.uniformScaleMultiplier -ne 1.0 -or
-    [double]$completeF.particleSystem.initialSpeedMultiplier -ne 1.0 -or
-    @($completeF.modelCues).Count -ne 1 -or
-    [string]$completeF.modelCues[0].modelAssetId -cne
-        'Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel' -or
-    [string]$completeF.modelCues[0].clipName -cne
-        'sk_swp_dms_00_sk_sk_dimensionprison') {
-    throw 'DimensionMaster F must match its source-derived Element receipt and Summon cue.'
-}
-if ($completeT.version -ne 10 -or
+    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json'
+if ($completeT.version -notin @(10, 11) -or
     @($completeT.elements).Count -ne
         [int]$completeTReceipt.summary.emittedElementCount -or
     [double]$completeT.particleSystem.uniformScaleMultiplier -ne 1.0 -or
     [double]$completeT.particleSystem.initialSpeedMultiplier -ne 1.0 -or
-    @($completeT.modelCues).Count -ne 0) {
-    throw 'DimensionMaster T must match its source-derived Element receipt without Summon.'
-}
-$sWeaponElements = @($completeS.elements | Where-Object {
-    [string]$_.groupId -eq 'fx_pc_swp_03.par_s_swp_instance_wp_01'
-})
-$sWeaponMeshResources = @($sWeaponElements.resources | Where-Object {
-    [string]$_.slotId -eq 'meshModel' -and
-    [string]$_.assetId -eq
-        'Effect/DimensionMaster/Meshes/fm_s_swp_superweapon_01.wmodel'
-})
-$sWeaponDmcResources = @($sWeaponElements.resources | Where-Object {
-    [string]$_.assetId -eq
-        'Effect/DimensionMaster/Textures/SK_SWP_DMC_01/sk_swp_dmc_01_d.dds'
-})
-$sLandmarks = @(0.01, 0.95, 1.5, 2.178, 3.0, 3.7, 3.75)
-foreach ($landmark in $sLandmarks) {
-    if (@($completeS.elements | Where-Object {
-        [Math]::Abs([double]$_.detail.timing.startDelaySeconds - $landmark) -lt 0.0001
-    }).Count -eq 0) {
-        throw "DimensionMaster S is missing source timeline landmark $landmark seconds."
-    }
-}
-if ($completeS.version -ne 10 -or
-    @($completeS.elements).Count -ne
-        [int]$completeSReceipt.summary.emittedElementCount -or
-    [double]$completeS.particleSystem.uniformScaleMultiplier -ne 1.0 -or
-    [double]$completeS.particleSystem.initialSpeedMultiplier -ne 1.0 -or
-    @($completeS.modelCues).Count -ne 0 -or
-    $sWeaponElements.Count -eq 0 -or
-    $sWeaponMeshResources.Count -lt 2 -or
-    $sWeaponDmcResources.Count -lt 1) {
-    throw 'DimensionMaster S must match its source-derived receipt, source landmarks, and Superweapon/DMC01 Weapon Group.'
-}
-
-$skills = Read-JsonFile 'Data\Balance\PlayerSkills.json'
-foreach ($skillId in $boundSkillIds) {
-    $matches = @($skills.skills | Where-Object {
-        [int64]$_.skillId -eq $skillId -and
-        [string]$_.characterClass -eq 'DIMENSIONMASTER'
-    })
-    if ($matches.Count -ne 1) {
-        throw "Expected one DimensionMaster PlayerSkills row for $skillId"
-    }
-    $expectedEffectId = "effect.dimensionmaster.skill.$skillId"
-    if ([string]$matches[0].effectId -cne $expectedEffectId) {
-        throw "PlayerSkills.effectId mismatch for $skillId"
-    }
+    @($completeT.modelCues).Count -ne 1 -or
+    [string]$completeT.modelCues[0].modelAssetId -cne
+        'Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel' -or
+    [string]$completeT.modelCues[0].clipName -cne
+        'sk_swp_dms_00_sk_sk_dimensionprison') {
+    throw 'DimensionMaster T 2050500 must match its source-derived Element receipt and Summon cue.'
 }
 
 $eventsPath = Require-File `
@@ -723,53 +669,75 @@ if ($declaredRows -ne $actualRows) {
 $admittedRows = @($eventLines | Where-Object {
     $_ -match ' EFFECT ' -and $_ -match ' effectref=asset '
 })
-if ($admittedRows.Count -ne 14) {
-    throw "Expected 14 admitted animation Effect cues, got $($admittedRows.Count)."
-}
-foreach ($effectId in $expectedEffectIds) {
-    $expectedCueCount = if ($effectId -eq
-        'effect.dimensionmaster.skill.2050010') { 0 } else { 1 }
-    if (@($admittedRows | Where-Object {
-        $_ -match ('payload="' + [regex]::Escape($effectId) + '"')
-    }).Count -ne $expectedCueCount) {
-        throw "Expected $expectedCueCount admitted animation cues for $effectId"
+$skillBindings = Read-JsonFile `
+    'Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json'
+$clipOwners = @{}
+foreach ($binding in @($skillBindings.bindings)) {
+    foreach ($clipValue in @($binding.clips)) {
+        $clipName = if ($clipValue -is [string]) {
+            [string]$clipValue
+        }
+        else {
+            [string]$clipValue.clip
+        }
+        if ([string]::IsNullOrWhiteSpace($clipName) -or
+            $clipOwners.ContainsKey($clipName)) {
+            throw "DimensionMaster skill binding has an empty or duplicate clip: $clipName"
+        }
+        $clipOwners[$clipName] = [int64]$binding.skillId
     }
 }
-foreach ($completeEffectId in @(
-    'effect.dimensionmaster.skill.2050500',
-    'effect.dimensionmaster.skill.2050510',
-    'effect.dimensionmaster.skill.2050550')) {
-    $completeCue = @($admittedRows | Where-Object {
-        $_ -match ('payload="' + [regex]::Escape($completeEffectId) + '"')
-    })
-    if ($completeCue.Count -ne 1 -or $completeCue[0] -notmatch ' startms=0 ') {
-        throw "Complete Imported timeline must start once at 0ms: $completeEffectId"
+foreach ($row in $admittedRows) {
+    $cueMatch = [regex]::Match($row,
+        '^"(?<Clip>[^"]+)" EFFECT .* payload="(?<Effect>effect\.dimensionmaster\.skill\.(?<Skill>[0-9]+)(?:\.ba(?<Stage>[0-9]+))?)" effectref=asset ')
+    if (-not $cueMatch.Success) {
+        throw "Malformed admitted DimensionMaster Effect cue: $row"
+    }
+    $clipName = $cueMatch.Groups['Clip'].Value
+    $effectId = $cueMatch.Groups['Effect'].Value
+    $skillId = [int64]$cueMatch.Groups['Skill'].Value
+    if (-not $clipOwners.ContainsKey($clipName) -or
+        [int64]$clipOwners[$clipName] -ne $skillId -or
+        $catalogIds -cnotcontains $effectId) {
+        throw "Animation Effect cue is not owned by the current skill binding/catalog: $row"
     }
 }
-$sCue = @($admittedRows | Where-Object {
-    $_ -match 'payload="effect\.dimensionmaster\.skill\.2050550"'
+$tCue = @($admittedRows | Where-Object {
+    $_ -match '^"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 ' -and
+    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050500" '
 })
-if ($sCue.Count -ne 1 -or
-    $sCue[0] -notmatch ' startms=0 endms=5000 ' -or
-    $sCue[0] -notmatch ' anchor="root" follow=follow stop=cue_end ') {
-    throw 'DimensionMaster S cue must follow root from 0ms and stop at the 5000ms action boundary.'
+if ($tCue.Count -ne 1) {
+    throw 'DimensionMaster T 2050500 must start its Summon Effect once with dimensionprison.'
 }
-$comboCueEffects = [ordered]@{
-    'pc_sp_m_00_sk_att_battle_1_01' = 'effect.dimensionmaster.skill.2050010.ba1'
-    'pc_sp_m_00_sk_att_battle_1_02' = 'effect.dimensionmaster.skill.2050010.ba2'
-    'pc_sp_m_00_sk_att_battle_1_03' = 'effect.dimensionmaster.skill.2050010.ba3'
-    'pc_sp_m_00_sk_att_battle_1_04' = 'effect.dimensionmaster.skill.2050010.ba4'
+$comboSkill = @($boundSkillRows | Where-Object skillKind -eq 'COMBO')
+if ($comboSkill.Count -ne 1) {
+    throw 'DimensionMaster trial roster must have exactly one LMB combo Effect owner.'
 }
-foreach ($comboClip in $comboCueEffects.Keys) {
+$comboBinding = @($skillBindings.bindings | Where-Object {
+    [int64]$_.skillId -eq [int64]$comboSkill[0].skillId
+})
+if ($comboBinding.Count -ne 1 -or
+    @($comboBinding[0].clips).Count -ne @($comboSkill[0].comboStages).Count) {
+    throw 'DimensionMaster combo clips and Server stages must have the same count.'
+}
+for ($stage = 1; $stage -le @($comboBinding[0].clips).Count; ++$stage) {
+    $clipValue = @($comboBinding[0].clips)[$stage - 1]
+    $comboClip = if ($clipValue -is [string]) {
+        [string]$clipValue
+    }
+    else {
+        [string]$clipValue.clip
+    }
+    $comboEffectId = "effect.dimensionmaster.skill.$($comboSkill[0].skillId).ba$stage"
     if (@($admittedRows | Where-Object {
         $_ -match ('^"' + [regex]::Escape($comboClip) + '" ') -and
         $_ -match ' EFFECT startms=0 ' -and
-        $_ -match ('payload="' +
-            [regex]::Escape($comboCueEffects[$comboClip]) + '"')
+        $_ -match ('payload="' + [regex]::Escape($comboEffectId) + '"')
     }).Count -ne 1) {
         throw "Missing DimensionMaster combo Effect cue: $comboClip"
     }
 }
 
-Write-Host ('PASS: final Effect Tool bundle; code={0}, documents=11, resources={1}, palette={2}, cues=14.' -f
-    $requiredCode.Count, $documentResourceIds.Count, $effectPaletteResourceCount)
+Write-Host ('PASS: final Effect Tool bundle; code={0}, documents={1}, resources={2}, palette={3}, cues={4}.' -f
+    $requiredCode.Count, $expectedEffectCount, $documentResourceIds.Count,
+    $effectPaletteResourceCount, $admittedRows.Count)

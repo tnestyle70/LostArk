@@ -2,8 +2,8 @@
   "schema": "lostark.effect-assembly",
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050500",
-  "displayName": "DIMENSIONMASTER F 2050500 Imported Cascade Draft",
-  "sourceAuthoringVersion": 10,
+  "displayName": "DIMENSIONMASTER T 2050500 Imported Cascade Draft",
+  "sourceAuthoringVersion": 11,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -19,10 +19,15 @@
       "durationSeconds": 4.366666666666666,
       "visible": true,
       "localTransform": {
+        "sourcePositionUeUnits": [
+          0.0,
+          0.0,
+          45.0
+        ],
         "position": [
           0.0,
           0.0,
-          0.0
+          0.45
         ],
         "rotationDegrees": [
           0.0,
@@ -30,9 +35,9 @@
           0.0
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1.2000000476837158,
+          1.2000000476837158,
+          1.2000000476837158
         ]
       },
       "assetPreTransform": {
@@ -52,7 +57,7 @@
   "componentCues": [
     {
       "cueId": "component-00",
-      "componentAssetId": "effect.component.dimensionmaster.f.00",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.00",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -76,7 +81,7 @@
     },
     {
       "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.f.01",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.01",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -100,7 +105,7 @@
     },
     {
       "cueId": "component-02",
-      "componentAssetId": "effect.component.dimensionmaster.f.02",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.02",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -124,7 +129,7 @@
     },
     {
       "cueId": "component-03",
-      "componentAssetId": "effect.component.dimensionmaster.f.03",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.03",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -148,7 +153,7 @@
     },
     {
       "cueId": "component-04",
-      "componentAssetId": "effect.component.dimensionmaster.f.04",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.04",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -172,7 +177,7 @@
     },
     {
       "cueId": "component-05",
-      "componentAssetId": "effect.component.dimensionmaster.f.05",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.05",
       "startDelaySeconds": 0.0,
       "visible": true,
       "anchor": "root",
@@ -196,7 +201,7 @@
     },
     {
       "cueId": "component-06",
-      "componentAssetId": "effect.component.dimensionmaster.f.06",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.06",
       "startDelaySeconds": 0.2389,
       "visible": true,
       "anchor": "root",
@@ -220,7 +225,7 @@
     },
     {
       "cueId": "component-07",
-      "componentAssetId": "effect.component.dimensionmaster.f.07",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.07",
       "startDelaySeconds": 2.8575,
       "visible": true,
       "anchor": "root",
@@ -244,7 +249,7 @@
     },
     {
       "cueId": "component-08",
-      "componentAssetId": "effect.component.dimensionmaster.f.08",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.08",
       "startDelaySeconds": 2.8575,
       "visible": true,
       "anchor": "root",
@@ -268,7 +273,7 @@
     },
     {
       "cueId": "component-09",
-      "componentAssetId": "effect.component.dimensionmaster.f.09",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.09",
       "startDelaySeconds": 2.8725,
       "visible": true,
       "anchor": "root",
@@ -292,7 +297,7 @@
     },
     {
       "cueId": "component-10",
-      "componentAssetId": "effect.component.dimensionmaster.f.10",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.10",
       "startDelaySeconds": 2.8832,
       "visible": true,
       "anchor": "root",
@@ -316,7 +321,7 @@
     },
     {
       "cueId": "component-11",
-      "componentAssetId": "effect.component.dimensionmaster.f.11",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.11",
       "startDelaySeconds": 2.8832,
       "visible": true,
       "anchor": "root",
@@ -340,7 +345,7 @@
     },
     {
       "cueId": "component-12",
-      "componentAssetId": "effect.component.dimensionmaster.f.12",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050500.12",
       "startDelaySeconds": 2.9443,
       "visible": true,
       "anchor": "root",
@@ -363,8 +368,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "c56b2178a307dc76160d7b4b6574681ab0331d852741c7b43b8593dd2e23681d",
-  "sourceDocumentFileSha256": "7761d711b6459d440102df6f35e20affe4e3f8a273281c0c059a05f6844623ac",
+  "sourceDocumentSha256": "29cd25f3cd55792eddc468907e0f2457396c13822e69babb87aa7ab036403ac7",
+  "inputSlot": "T",
+  "sourceDocumentFileSha256": "890557d378a1a2219692f67eabaf7e65d891de065a93e4ff26871651d751d1e9",
   "sourceActionCues": [
     {
       "cueId": "skill-2050500/clip-000/notify-001",
@@ -1029,12 +1035,46 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2gAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAAAAAAAAAAAAQAAAAEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAUAAABOb25lAAUAAABOb25lADIAAABTa2VsZXRhbE1lc2gnU0tfU1dQX0RNU18wMC5NZXNoLlNLX1NXUF9ETVNfMDBfU0snAC0AAABBbmltU2V0J1NLX1NXUF9ETVNfMDAuQW5pLlNLX1NXUF9ETVNfMDBfQW5pJwAEAAAARQAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19TV1BfRE1TXzAwLk1hdC5TS19TV1BfRE1TXzAwXzAxX01JX0RlYWQnAEUAAABNYXRlcmlhbEluc3RhbmNlQ29uc3RhbnQnU0tfU1dQX0RNU18wMC5NYXQuU0tfU1dQX0RNU18wMF8wMl9NSV9EZWFkJwBFAAAATWF0ZXJpYWxJbnN0YW5jZUNvbnN0YW50J1NLX1NXUF9ETVNfMDAuTWF0LlNLX1NXUF9ETVNfMDBfMDNfTUlfRGVhZCcARQAAAE1hdGVyaWFsSW5zdGFuY2VDb25zdGFudCdTS19TV1BfRE1TXzAwLk1hdC5TS19TV1BfRE1TXzAwXzA0X01JX0RlYWQnAAAAAAABAAAAEwAAAFNLX0RpbWVuc2lvblByaXNvbgAAAIA/AQAAAA8AAABDRUZBTl9QYXJ0aWNsZQABAAAAAAAAAAAAAAAAAAAAAAAAADMzE0AQAAAAQ0VGUGFydGljbGVEYXRhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAADRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAmpmZP5qZmT+amZk/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAADEAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-play-skeletal-mesh",
+        "version": 1,
+        "enabled": true,
+        "sourceSkeletalMesh": "SK_SWP_DMS_00.Mesh.SK_SWP_DMS_00_SK",
+        "sourceAnimSet": "SK_SWP_DMS_00.Ani.SK_SWP_DMS_00_Ani",
+        "sourceMaterialInstances": [
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_01_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_02_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_03_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_04_MI_Dead"
+        ],
+        "sourceCueName": "SK_DimensionPrison",
+        "transformDecoded": true,
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            45.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.45
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.2000000476837158,
+            1.2000000476837158,
+            1.2000000476837158
+          ]
+        },
+        "sourceTransformByteOffset": 727
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_MODEL_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-010",
@@ -2278,12 +2318,15 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlTa2VsZXRhbE1lc2hNYXRlcmlhbFBhcmFtAAAAAAAAAAAAAAAAAAEAAADmsDlA5rA5QAAAAAABAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAAAAAAAAAAAAAUAAABOb25lABMAAABTS19EaW1lbnNpb25Qcmlzb24AAQAAADEAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-play-skeletal-mesh-material-param",
+        "version": 1,
+        "enabled": true,
+        "sourceCueName": "SK_DimensionPrison",
+        "semanticDecoded": false
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNSUPPORTED_MODEL_MATERIAL_SEMANTICS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-039",

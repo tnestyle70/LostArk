@@ -12,6 +12,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 10,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -19,6 +20,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -26,6 +28,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -33,6 +36,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
@@ -40,6 +44,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 10,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -47,6 +52,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2",
@@ -54,6 +60,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
@@ -61,6 +68,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 11,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -68,6 +76,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 13,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -75,6 +84,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 13,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -82,6 +92,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
@@ -89,6 +100,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 10,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -96,6 +108,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2",
@@ -103,6 +116,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
@@ -110,6 +124,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -117,6 +132,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
@@ -382,6 +398,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
@@ -389,6 +406,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -396,6 +414,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -403,6 +422,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -410,6 +430,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -417,6 +438,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
@@ -424,6 +446,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
@@ -431,6 +454,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -438,6 +462,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -445,6 +470,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -452,6 +478,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -459,6 +486,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
@@ -466,6 +494,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -473,6 +502,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -480,6 +510,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
@@ -577,6 +608,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2",
@@ -584,6 +616,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
@@ -591,6 +624,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
@@ -598,6 +632,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
@@ -605,6 +640,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
@@ -612,6 +648,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_2",
@@ -619,6 +656,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
@@ -626,6 +664,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
@@ -633,6 +672,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -640,6 +680,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -647,6 +688,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:499",
+          "referenceIndex": 7,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -654,6 +696,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 7,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -661,6 +704,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -668,6 +712,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 8,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -675,6 +720,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -682,6 +728,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 7,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -689,6 +736,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -696,6 +744,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 7,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -703,6 +752,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -710,6 +760,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 11,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -717,6 +768,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 13,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -724,6 +776,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 13,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -731,6 +784,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 10,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_23",
@@ -738,6 +792,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_3",
@@ -745,6 +800,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_3",
@@ -752,6 +808,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
@@ -1050,6 +1107,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulecolor_1",
@@ -1057,6 +1115,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulecolor_1",
@@ -1064,6 +1123,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulelifetime_14",
@@ -1071,6 +1131,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulesizemultiplylife_0",
@@ -1078,6 +1139,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulelifetime_14",
@@ -1085,6 +1147,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulesizemultiplylife_0",
@@ -1092,6 +1155,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_05.snow.par_l_customize_snow_01.particlemodulecameraoffset_27",
@@ -1320,6 +1384,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_21.etc.par_n_golddust_01.particlemodulesizemultiplylife_53",
@@ -1327,6 +1392,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_21.etc.par_n_golddust_01.particlemodulesizemultiplylife_53",
@@ -1334,6 +1400,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "bfx_low_21.etc.par_n_golddust_01.particlemodulesizemultiplylife_53",
@@ -1404,6 +1471,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_c_hit_ballista_002.particlemoduleorientationaxislock_0",
@@ -1411,6 +1479,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
@@ -1418,6 +1487,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5",
@@ -1425,6 +1495,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_hitfire_01.particlemodulelifetime_42",
@@ -1432,6 +1503,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelifetime_4",
@@ -1439,6 +1511,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_k_flms_hit_backcri_01.particlemodulesubuv_0",
@@ -1446,6 +1519,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulesizemultiplylife_9",
@@ -1453,6 +1527,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelifetime_4",
@@ -1460,6 +1535,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_k_flms_hit_backcri_01.particlemodulesubuv_0",
@@ -1467,6 +1543,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulesizemultiplylife_9",
@@ -1474,6 +1551,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_c_nethit_002.particlemodulelifetime_1",
@@ -1481,6 +1559,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_backattackcri_02.particlemodulesizemultiplylife_1",
@@ -1488,6 +1567,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 15,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1495,6 +1575,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_c_nethit_002.particlemodulelifetime_1",
@@ -1502,6 +1583,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_backattackcri_02.particlemodulesizemultiplylife_1",
@@ -1509,6 +1591,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 15,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1516,6 +1599,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
@@ -1523,6 +1607,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1530,6 +1615,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
@@ -1537,6 +1623,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1544,6 +1631,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
@@ -1551,6 +1639,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulesize_18",
@@ -1558,6 +1647,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemoduleparameterdynamic_3",
@@ -1565,6 +1655,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulesizemultiplylife_13",
@@ -1572,6 +1663,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_k_mbd_convictionhit_01.particlemodulesize_1",
@@ -1579,6 +1671,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_m_hitdefault_wand_01.particlemoduleparameterdynamic_20",
@@ -1586,6 +1679,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_00.hit.par_x_lpda_hit_01.particlemodulesizemultiplylife_19",
@@ -1593,6 +1687,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_c_hit_ballista_002.particlemoduleorientationaxislock_0",
@@ -1600,6 +1695,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
@@ -1607,6 +1703,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_5",
@@ -1614,6 +1711,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_d_hitfire_01.particlemodulelifetime_42",
@@ -1621,6 +1719,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelifetime_4",
@@ -1628,6 +1727,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_k_flms_hit_backcri_01.particlemodulesubuv_0",
@@ -1635,6 +1735,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulesizemultiplylife_9",
@@ -1642,6 +1743,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelifetime_4",
@@ -1649,6 +1751,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_k_flms_hit_backcri_01.particlemodulesubuv_0",
@@ -1656,6 +1759,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulesizemultiplylife_9",
@@ -1663,6 +1767,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
@@ -1670,6 +1775,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulesize_18",
@@ -1677,6 +1783,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemoduleparameterdynamic_3",
@@ -1684,6 +1791,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulesizemultiplylife_13",
@@ -1691,6 +1799,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_k_mbd_convictionhit_01.particlemodulesize_1",
@@ -1698,6 +1807,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_m_hitdefault_wand_01.particlemoduleparameterdynamic_20",
@@ -1705,6 +1815,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_x_lpda_hit_01.particlemodulesizemultiplylife_19",
@@ -1712,6 +1823,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
@@ -1719,6 +1831,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1726,6 +1839,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
@@ -1733,6 +1847,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
@@ -1740,6 +1855,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_00.hit.par_u_msr_hit_ice_01.particlemodulelifetime_9",
@@ -1747,6 +1863,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulesizemultiplylife_11",
@@ -1754,6 +1871,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulespawn_31",
@@ -1761,6 +1879,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulespawn_12",
@@ -1768,6 +1887,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_00.hit.par_u_msr_hit_ice_01.particlemodulelifetime_9",
@@ -1775,6 +1895,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulesizemultiplylife_11",
@@ -1782,6 +1903,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulespawn_31",
@@ -1789,6 +1911,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_00.hit.par_d_counterspear_hit_01.particlemodulespawn_12",
@@ -1796,6 +1919,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelifetime_11",
@@ -1803,6 +1927,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -1810,6 +1935,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -1817,6 +1943,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -1824,6 +1951,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -1831,6 +1959,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelifetime_17",
@@ -1838,6 +1967,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulerotation_18",
@@ -1845,6 +1975,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_h_hitfire_01_loc_int.particlemodulecameraoffset_3",
@@ -1852,6 +1983,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_h_hitfire_01_loc_int.particlemodulecameraoffset_3",
@@ -1859,6 +1991,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -1866,6 +1999,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_h_hitfire_01_loc_int.particlemodulecameraoffset_3",
@@ -1873,6 +2007,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_00.hit.par_k_gst_defaultcri_01.particlemodulelocation_8",
@@ -3912,6 +4047,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_CM_02:export:1516",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
           "objectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulecolorscaleoverlife_0",
@@ -3919,6 +4055,7 @@
         },
         {
           "sourceNodeId": "FX_CM_02:export:1516",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
           "objectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_10",
@@ -3926,6 +4063,7 @@
         },
         {
           "sourceNodeId": "FX_CM_02:export:1516",
+          "referenceIndex": 7,
           "property": "spawnmodule",
           "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
           "objectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulespawn_16",
@@ -3933,6 +4071,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_02.item.par_l_carvebook_01.particlemodulecameraoffset_4",
@@ -3940,6 +4079,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_02.item.par_k_item_massteleport_01.particlemodulecolor_25",
@@ -3947,6 +4087,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_02.item.par_l_carvebook_01.particlemodulecameraoffset_4",
@@ -3954,6 +4095,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_02.item.par_l_carve_01.particlemodulesize_10",
@@ -3961,6 +4103,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_02.item.par_k_item_massteleport_01.particlemodulecolor_25",
@@ -3968,6 +4111,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_003.particlemodulelifetime_3",
@@ -3975,6 +4119,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -3982,6 +4127,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -3989,6 +4135,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:499",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -3996,6 +4143,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_d_it_esther_004.particlemodulelifetime_4",
@@ -4003,6 +4151,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4010,6 +4159,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4017,6 +4167,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_t_it_lucky5_001.particlemodulerotation_12",
@@ -4024,6 +4175,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_003.particlemodulelocation_5",
@@ -4031,6 +4183,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_003.particlemodulelifetime_3",
@@ -4038,6 +4191,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4045,6 +4199,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4052,6 +4207,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_006.particlemodulecoloroverlife_0",
@@ -4059,6 +4215,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4066,6 +4223,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_003.particlemodulelifetime_3",
@@ -4073,6 +4231,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4080,6 +4239,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_d_it_esther_004.particlemodulelifetime_4",
@@ -4087,6 +4247,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4094,6 +4255,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemoduleorientationaxislock_1",
@@ -4101,6 +4263,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_t_it_lucky5_001.particlemodulerotation_12",
@@ -4108,6 +4271,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_003.particlemodulelocation_5",
@@ -4115,6 +4279,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_02.item.par_l_fireworks07_02.particlemodulecolorscaleoverlife_50",
@@ -4122,6 +4287,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_02.item.par_c_it_hero_004.particlemodulelocation_2",
@@ -4129,6 +4295,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_02.item.par_d_it_lucky2_001.particlemodulelifetime_6",
@@ -5055,6 +5222,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3",
@@ -5062,6 +5230,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3",
@@ -5069,6 +5238,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3",
@@ -5076,6 +5246,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_03.mark.par_i_talkevent_01.particlemodulesizemultiplylife_3",
@@ -5083,6 +5254,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5090,6 +5262,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5097,6 +5270,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:499",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5104,6 +5278,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5111,6 +5286,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5118,6 +5294,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5125,6 +5302,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5132,6 +5310,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5139,6 +5318,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_03.mark.par_d_backinfo_01.particlemodulelocation_0",
@@ -5146,6 +5326,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_03.mark.par_k_gst_airstrike_01.particlemodulerotation_3",
@@ -5153,6 +5334,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_03.mark.par_d_summontarget_01_loc_int.particlemodulesizemultiplylife_4",
@@ -5160,6 +5342,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 12,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_03.mark.par_d_summontarget_01_loc_int.particlemodulesizemultiplylife_4",
@@ -5376,6 +5559,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_g_gravityarea_01_off.particlemodulesize_28",
@@ -5383,6 +5567,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_d_hawkclaw_01.particlemodulecolorscaleoverlife_0",
@@ -5390,6 +5575,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_l_elitemn_fastmv_e_01.particlemodulerotation_2",
@@ -5397,6 +5583,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5404,6 +5591,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5411,6 +5599,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5418,6 +5607,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_g_death_rock_01.particlemodulelifetime_16",
@@ -5425,6 +5615,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_04.state.par_g_death_rock_01.particlemodulelifetime_16",
@@ -5432,6 +5623,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_g_gravityarea_01_off.particlemodulesize_28",
@@ -5439,6 +5631,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_d_hawkclaw_01.particlemodulecolorscaleoverlife_0",
@@ -5446,6 +5639,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_l_elitemn_fastmv_e_01.particlemodulerotation_2",
@@ -5453,6 +5647,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5460,6 +5655,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5467,6 +5663,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_53",
@@ -5474,6 +5671,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_g_death_rock_01.particlemodulelifetime_16",
@@ -5481,6 +5679,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_04.state.par_g_death_rock_01.particlemodulelifetime_16",
@@ -5488,6 +5687,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_04.state.par_d_burststack_new_01.particlemodulelocation_0",
@@ -5495,6 +5695,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 13,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_04.state.par_d_burststack_new_01.particlemodulelocation_0",
@@ -5502,6 +5703,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_04.state.par_c_dh_upweapon_01_loc_int.particlemodulecameraoffset_0",
@@ -5509,6 +5711,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_04.state.par_d_cardstack_03.particlemodulesizemultiplylife_9",
@@ -5516,6 +5719,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_bs_04.state.par_i_classup_02.particlemodulecoloroverlife_1",
@@ -5523,6 +5727,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "fx_bs_04.state.par_i_classup_02.particlemodulecoloroverlife_1",
@@ -5530,6 +5735,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "fx_bs_04.state.par_i_classup_02.particlemoduleparameterdynamic_4",
@@ -6443,6 +6649,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 11,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_05.prj.par_r_firetrail_exp_01.particlemodulespawn_6",
@@ -6450,6 +6657,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_05.prj.par_r_firetrail_exp_01.particlemodulespawn_6",
@@ -6553,6 +6761,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_CM_02:export:1516",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
           "objectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
@@ -6560,6 +6769,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_07.common.par_n_coreenhance_buff_01.particlemoduleparameterdynamic_17",
@@ -6567,6 +6777,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_07.common.par_n_coreenhance_buff_03.particlemodulecolorscaleoverlife_66",
@@ -6574,6 +6785,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_07.common.par_n_coreenhance_buff_03.particlemodulecolorscaleoverlife_66",
@@ -7169,6 +7381,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_08.buff.par_d_optcamo_01.particlemodulesizemultiplylife_0",
@@ -7176,6 +7389,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:474",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_08.buff.par_s_azakiel_01_e.particlemodulesizemultiplylife_13",
@@ -7183,6 +7397,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_08.buff.par_d_optcamo_01.particlemodulesizemultiplylife_0",
@@ -7190,6 +7405,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:490",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_08.buff.par_s_azakiel_01_e.particlemodulesizemultiplylife_13",
@@ -7197,6 +7413,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_d_gearupgrade_02.particlemodulesize_8",
@@ -7204,6 +7421,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:499",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_r_quest_brainwashingmark_02.particlemodulelifetime_1",
@@ -7211,6 +7429,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:495",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_d_gearupgrade_01.particlemodulerotationrate_2",
@@ -7218,6 +7437,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_g_lostsurvival_medal_01.particlemodulelifetime_13",
@@ -7225,6 +7445,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7232,6 +7453,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7239,6 +7461,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_bs_08.buff.par_r_quest_brainwashingmark_02.particlemodulecameraoffset_0",
@@ -7246,6 +7469,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_d_gearupgrade_02.particlemodulesize_8",
@@ -7253,6 +7477,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_r_quest_brainwashingmark_02.particlemodulelifetime_1",
@@ -7260,6 +7485,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1019",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_d_gearupgrade_01.particlemodulerotationrate_2",
@@ -7267,6 +7493,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_g_lostsurvival_medal_01.particlemodulelifetime_13",
@@ -7274,6 +7501,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7281,6 +7509,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7288,6 +7517,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_bs_08.buff.par_r_quest_brainwashingmark_02.particlemodulecameraoffset_0",
@@ -7295,6 +7525,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_d_restisland_b_01.particlemodulesizemultiplylife_3",
@@ -7302,6 +7533,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_g_lostsurvival_medal_01.particlemodulelifetime_13",
@@ -7309,6 +7541,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7316,6 +7549,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_g_buff_lostsurvival_destination_04.particlemodulesubuv_3",
@@ -7323,6 +7557,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_r_permission_end_02.particlemodulesizemultiplylife_15",
@@ -7330,6 +7565,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_z_quest_shining_01.particlemodulelifetime_20",
@@ -7337,6 +7573,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_08.buff.par_z_quest_shining_01.particlemodulelifetime_20",
@@ -7945,6 +8182,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_18.buff.par_m_dead_earth_03.efparticlemodulevelocityoverlifetime_0",
@@ -7952,6 +8190,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_bs_18.buff.par_m_dead_earth_03.efparticlemodulevelocityoverlifetime_0",
@@ -7959,6 +8198,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_18.buff.par_m_dead_earth_03.efparticlemodulevelocityoverlifetime_0",
@@ -7966,6 +8206,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_bs_18.buff.par_m_dead_earth_03.efparticlemodulevelocityoverlifetime_0",
@@ -7973,6 +8214,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_bs_18.buff.par_v_quest_concentrate_3_00_01.particlemodulerotation_5",
@@ -8099,6 +8341,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_CM_02:export:1516",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
           "objectPath": "fx_cm_00.dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
@@ -8203,12 +8446,119 @@
       }
     },
     {
+      "logicalPackage": "FX_CM_01",
+      "physicalPackage": "XFH2RCA2R07F0CYE90DX0CMQ.upk",
+      "resolutionSource": "SOURCE_PACKAGE",
+      "requestedReferences": [
+        {
+          "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 1,
+          "property": "modules",
+          "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
+          "objectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+          "relativeObjectPath": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0"
+        }
+      ],
+      "unresolvedRequestedReferences": [],
+      "objects": [
+        {
+          "objectId": "FX_CM_01:export:110",
+          "exportIndex": 110,
+          "className": "distributionfloatparticleparameter",
+          "objectName": "distributionfloatparticleparameter_0",
+          "objectPath": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0",
+          "properties": {
+            "parametername": {
+              "type": "nameproperty",
+              "structType": null,
+              "value": "lifetime"
+            },
+            "maxinput": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 10.0
+            },
+            "maxoutput": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 10.0
+            },
+            "constant": {
+              "type": "floatproperty",
+              "structType": null,
+              "value": 1.0
+            },
+            "bisdirty": {
+              "type": "boolproperty",
+              "structType": null,
+              "value": false
+            }
+          },
+          "references": [],
+          "requestedDirectly": false,
+          "propertyStreamEnd": 157
+        },
+        {
+          "objectId": "FX_CM_01:export:9615",
+          "exportIndex": 9615,
+          "className": "particlemodulelifetime",
+          "objectName": "particlemodulelifetime_0",
+          "objectPath": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+          "properties": {
+            "lifetime": {
+              "type": "structproperty",
+              "structType": "rawdistributionfloat",
+              "value": {
+                "size": 64,
+                "properties": {
+                  "distribution": {
+                    "type": "objectproperty",
+                    "structType": null,
+                    "value": 111
+                  },
+                  "lookuptable": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": []
+                  }
+                }
+              }
+            },
+            "lodvalidity": {
+              "type": "byteproperty",
+              "structType": null,
+              "value": 3
+            }
+          },
+          "references": [
+            {
+              "property": "lifetime.distribution",
+              "packageIndex": 111,
+              "objectName": "distributionfloatparticleparameter_0",
+              "objectPath": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+            }
+          ],
+          "requestedDirectly": true,
+          "propertyStreamEnd": 141
+        }
+      ],
+      "propertyErrors": [],
+      "summary": {
+        "requestCount": 1,
+        "resolvedRequestCount": 1,
+        "unresolvedRequestCount": 0,
+        "closureObjectCount": 2,
+        "propertyErrorCount": 0
+      }
+    },
+    {
       "logicalPackage": "FX_ESTHER_DDK_00",
       "physicalPackage": "YGI3SRHOCRA3SKKX3D11G9CPD.upk",
       "resolutionSource": "SOURCE_PACKAGE",
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_ddk_00.par_l_ddk_default_02.particlemodulecolor_4",
@@ -8293,6 +8643,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_dpwi_00.par_n_dpwi_handspear_atk_02.particlemodulesize_50",
@@ -8300,6 +8651,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_dpwi_00.par_n_dpwi_spawn_05.particlemodulesizemultiplylife_19",
@@ -8307,6 +8659,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_dpwi_00.par_n_dpwi_spawn_05.particlemodulesizemultiplylife_19",
@@ -8427,6 +8780,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_fbm_00.par_v_fbm_06_l.particlemoduleorientationaxislock_0",
@@ -8474,6 +8828,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_fbm_00_u.par_u_esther_fbm_ninave_00_l.particlemodulevelocity_2",
@@ -8481,6 +8836,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_fbm_00_u.par_u_esther_fbm_ninave_00_l.particlemodulevelocity_2",
@@ -8488,6 +8844,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_fbm_00_u.par_u_esther_fbm_ninave_00_l.particlemodulevelocity_2",
@@ -8495,6 +8852,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1028",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_fbm_00_u.par_u_esther_fbm_ninave_00_l.particlemodulevelocity_2",
@@ -8579,6 +8937,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_gbs_00.par_n_gbs_r_05.particlemodulesize_8",
@@ -8670,6 +9029,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_01.particlemodulesizemultiplylife_9",
@@ -8677,6 +9037,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_01.particlemodulesizemultiplylife_9",
@@ -8684,6 +9045,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_01.particlemodulesizemultiplylife_9",
@@ -8691,6 +9053,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_01.particlemodulesizemultiplylife_9",
@@ -8828,6 +9191,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_wdr_00.par_l_wdr_06_2.particlemodulesizemultiplylife_30",
@@ -8835,6 +9199,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_esther_wdr_00.par_l_wdr_06_2.particlemodulesizemultiplylife_30",
@@ -8905,6 +9270,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_boag_00_v.par_v_boag_stack_buff_e.particlemodulesizemultiplylife_10",
@@ -8912,6 +9278,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_boag_00_v.par_v_boag_stack_buff_e.particlemodulesizemultiplylife_10",
@@ -8919,6 +9286,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_boag_00_v.par_v_boag_stack_buff_e.particlemodulesizemultiplylife_10",
@@ -8926,6 +9294,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_boag_00_v.par_v_boag_stack_buff_e.particlemodulesizemultiplylife_10",
@@ -8996,6 +9365,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_mn_cdkcn_00_p.par_p_cdkcn_atk_26_slash_01.particlemodulesizemultiplylife_4",
@@ -9003,6 +9373,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_mn_cdkcn_00_p.par_p_cdkcn_atk_26_slash_01.particlemodulesizemultiplylife_4",
@@ -9078,6 +9449,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 9,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cdkcn_04_z.par_z_cdkcn_exp_02_02.particlemodulespawn_38",
@@ -9181,6 +9553,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:472",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9188,6 +9561,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9195,6 +9569,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9202,6 +9577,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9209,6 +9585,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:489",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9216,6 +9593,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9223,6 +9601,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9230,6 +9609,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_mn_cnbg_00_y.par_y_cnbg_sk28_prj02_1.particlemodulevelocity_13",
@@ -9314,6 +9694,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbz_00_n.par_n_cnbz_sk19_shield_02.particlemodulesize_7",
@@ -9321,6 +9702,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cnbz_00_n.par_n_cnbz_sk19_shield_02.particlemodulesize_7",
@@ -9417,6 +9799,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cncs_00_y.par_y_cncs_sk18_prj03_1.particlemodulesize_1",
@@ -9487,6 +9870,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 12,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cncu_00_r.par_r_cncu_00_sk_34_05.particlemodulespawn_103",
@@ -9494,6 +9878,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cncu_00_r.par_r_cncu_00_trophy.particlemodulevelocity_0",
@@ -9677,6 +10062,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cuas_01_t.par_t_cuas_01_avrilched_energyexp_skhit_01.particlemodulemeshrotationrate_0",
@@ -9684,6 +10070,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_mn_cuas_01_t.par_t_cuas_01_avrilched_energyexp_skhit_01.particlemodulemeshrotationrate_0",
@@ -9760,6 +10147,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1031",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cush_00.par_z_cush_plasma_03_loc_int.particlemodulesizemultiplylife_72",
@@ -9767,6 +10155,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_cush_00.par_z_cush_plasma_03_loc_int.particlemodulesizemultiplylife_72",
@@ -9904,6 +10293,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1032",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_mn_tslc_01_l.par_l_tslc_disease_bubble_04.particlemodulevelocity_1",
@@ -10009,6 +10399,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemoduleparameterdynamic_10",
@@ -10016,6 +10407,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:469",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_confront_00.par_j_swp_justguard_01.particlemoduleparameterdynamic_10",
@@ -10023,6 +10415,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_confront_00.par_j_guardholding_02.efparticlemodulevelocityoverlifetime_19",
@@ -10030,6 +10423,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_confront_00.par_j_guardholding_02.efparticlemodulevelocityoverlifetime_19",
@@ -10037,6 +10431,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_confront_00.par_j_guardholding_02.efparticlemodulevelocityoverlifetime_19",
@@ -10044,6 +10439,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_confront_00.par_j_guardholding_02.efparticlemodulevelocityoverlifetime_19",
@@ -10530,6 +10926,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_dbl_08.par_y_dbl_exmove_02.particlemodulesizemultiplylife_10",
@@ -10537,6 +10934,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_dbl_08.par_y_dbl_exmove_02.particlemodulesizemultiplylife_10",
@@ -10669,6 +11067,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_02_01.particlemodulesize_27",
@@ -10676,6 +11075,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_08.particlemoduleparameterdynamic_15",
@@ -10683,6 +11083,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:496",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_08.particlemodulecolorscaleoverlife_10",
@@ -10690,6 +11091,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_exmove_02.particlemodulevectorfieldscaleoverlife_25",
@@ -10697,6 +11099,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_02_01.particlemodulesize_27",
@@ -10704,6 +11107,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_08.particlemoduleparameterdynamic_15",
@@ -10711,6 +11115,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1020",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_brutalmarch_00_08.particlemodulecolorscaleoverlife_10",
@@ -10718,6 +11123,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_02_01.particlemodulesize_27",
@@ -10725,6 +11131,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_05_01.particlemodulecolor_3",
@@ -10732,6 +11139,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_exmove_02.particlemodulevectorfieldscaleoverlife_25",
@@ -10739,6 +11147,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_02_01.particlemodulelifetime_77",
@@ -10746,6 +11155,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_ddk_01.par_r_ddk_worddistort_02_01.particlemodulelifetime_77",
@@ -11421,6 +11831,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_ddk_03.par_s_ddk_notoscrash_flare_01.particlemodulesizemultiplylife_73",
@@ -11428,6 +11839,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:473",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_ddk_03.par_s_ddk_notoscrash_flare_01.particlemodulecolorscaleoverlife_37",
@@ -11435,6 +11847,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_ddk_03.par_s_ddk_notoscrash_flare_01.particlemodulesizemultiplylife_73",
@@ -11442,6 +11855,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:488",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_ddk_03.par_s_ddk_notoscrash_flare_01.particlemodulecolorscaleoverlife_37",
@@ -11659,6 +12073,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:468",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_ddk_04.par_m_ddk_etherdivide_ap2-1_pjt_01.particlemodulevelocity_28",
@@ -11764,6 +12179,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1030",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_ddm_08.par_r_ddm_thrustimpact_00_01.particlemodulesizemultiplylife_86",
@@ -11896,6 +12312,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_fbm_08.par_n_fbm_camerafire_01.particlemodulecolor_3",
@@ -11903,6 +12320,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:497",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_fbm_08.par_n_fbm_exmove_09.particlemodulespawn_16",
@@ -11910,6 +12328,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_fbm_08.par_n_fbm_camerafire_01.particlemodulecolor_3",
@@ -11917,6 +12336,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1021",
+          "referenceIndex": 14,
           "property": "spawnmodule",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_fbm_08.par_n_fbm_exmove_09.particlemodulespawn_16",
@@ -12079,6 +12499,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_POST:export:1076",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_zoomblur_01",
           "objectPath": "fx_pc_flm_01.par_m_flm_ribbon_02.particlemodulelifetime_0",
@@ -12184,6 +12605,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_pc_fsm_01.par_m_fsm_cs_rgbnoise_01.particlemodulesize_15",
@@ -12191,6 +12613,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_pc_fsm_01.par_m_fsm_cs_rgbnoise_01.particlemodulelocation_16",
@@ -12198,6 +12621,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_pc_fsm_01.par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3",
@@ -12205,6 +12629,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_pc_fsm_01.par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28",
@@ -12212,6 +12637,7 @@
         },
         {
           "sourceNodeId": "FX_POST:export:1067",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_post.fx_par.par_j_rgbnoise_01",
           "objectPath": "fx_pc_fsm_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1",
@@ -13027,6 +13453,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemodulesize_43",
@@ -13034,6 +13461,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:475",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemoduleorbit_2",
@@ -13041,6 +13469,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemodulesize_43",
@@ -13048,6 +13477,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemoduleorbit_2",
@@ -13055,6 +13485,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemodulesize_43",
@@ -13062,6 +13493,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:491",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemoduleorbit_2",
@@ -13069,6 +13501,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemodulesize_43",
@@ -13076,6 +13509,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 9,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_fsm_11.par_r_fsm_yinyangdivineart_06_02.particlemoduleorbit_2",
@@ -13246,6 +13680,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gbs_04.par_j_gbs_cutscene_01.particlemodulelifetime_25",
@@ -13253,6 +13688,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 1,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gbs_04.par_j_gbs_cutscene_01.particlemodulelifetime_25",
@@ -13336,6 +13772,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_ghe_02.par_m_ghe_chehucaststartfloor_02.particlemodulecolor_18",
@@ -13343,6 +13780,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_ghe_02.par_m_ghe_chehucaststartfloor_02.particlemodulecolor_18",
@@ -13427,6 +13865,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:470",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13434,6 +13873,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulecolorscaleoverlife_16",
@@ -13441,6 +13881,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:477",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13448,6 +13889,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulecolorscaleoverlife_16",
@@ -13455,6 +13897,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:471",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13462,6 +13905,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:486",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13469,6 +13913,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulecolorscaleoverlife_16",
@@ -13476,6 +13921,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:493",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13483,6 +13929,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulecolorscaleoverlife_16",
@@ -13490,6 +13937,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:487",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_39",
@@ -13497,6 +13945,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_21",
@@ -13504,6 +13953,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolorscaleoverlife_24",
@@ -13511,6 +13961,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:498",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesizemultiplylife_33",
@@ -13518,6 +13969,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:499",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_41",
@@ -13525,6 +13977,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_24",
@@ -13532,6 +13985,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:494",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolorscaleoverlife_15",
@@ -13539,6 +13993,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_44",
@@ -13546,6 +14001,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_32",
@@ -13553,6 +14009,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulecolorscaleoverlife_8",
@@ -13560,6 +14017,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulevelocity_seeded_0",
@@ -13567,6 +14025,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:500",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulelocationprimitivecylinder_0",
@@ -13574,6 +14033,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_45",
@@ -13581,6 +14041,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_32",
@@ -13588,6 +14049,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulecolorscaleoverlife_8",
@@ -13595,6 +14057,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulevelocity_seeded_0",
@@ -13602,6 +14065,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulesizemultiplylife_7",
@@ -13609,6 +14073,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:501",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_05",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulelocationprimitivecylinder_2",
@@ -13616,6 +14081,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_21",
@@ -13623,6 +14089,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolorscaleoverlife_24",
@@ -13630,6 +14097,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1022",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesizemultiplylife_33",
@@ -13637,6 +14105,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1023",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_41",
@@ -13644,6 +14113,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1017",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesizemultiplylife_33",
@@ -13651,6 +14121,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_24",
@@ -13658,6 +14129,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1018",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolorscaleoverlife_15",
@@ -13665,6 +14137,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_44",
@@ -13672,6 +14145,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_32",
@@ -13679,6 +14153,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulecolorscaleoverlife_8",
@@ -13686,6 +14161,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulevelocity_seeded_0",
@@ -13693,6 +14169,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1024",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulelocationprimitivecylinder_0",
@@ -13700,6 +14177,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulesize_45",
@@ -13707,6 +14185,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulecolor_32",
@@ -13714,6 +14193,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 4,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulecolorscaleoverlife_8",
@@ -13721,6 +14201,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulevelocity_seeded_0",
@@ -13728,6 +14209,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 7,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_02.particlemodulesizemultiplylife_7",
@@ -13735,6 +14217,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1025",
+          "referenceIndex": 8,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_03",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_04.particlemodulelocationprimitivecylinder_2",
@@ -13742,6 +14225,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1026",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_28",
@@ -13749,6 +14233,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesize_15",
@@ -13756,6 +14241,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 3,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulecolor_2",
@@ -13763,6 +14249,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 5,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_42",
@@ -13770,6 +14257,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1029",
+          "referenceIndex": 10,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulelocationprimitivecylinder_seeded_0",
@@ -13777,6 +14265,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1033",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_28",
@@ -13784,6 +14273,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 2,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesize_13",
@@ -13791,6 +14281,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:1027",
+          "referenceIndex": 11,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_47_04",
           "objectPath": "fx_pc_gst_08.par_r_gst_superlaserblade_00_01.particlemodulesizemultiplylife_28",
@@ -14708,7 +15199,15 @@
               "structType": "particlerandomseedinfo",
               "value": {
                 "size": 40,
-                "hex": "ca03000000000000190000000000000008000000000000000100000000000080"
+                "properties": {
+                  "randomseeds": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      -2147483648
+                    ]
+                  }
+                }
               }
             },
             "badjustforworldspace": {
@@ -15589,7 +16088,15 @@
               "structType": "particlerandomseedinfo",
               "value": {
                 "size": 40,
-                "hex": "ca03000000000000190000000000000008000000000000000100000004000000"
+                "properties": {
+                  "randomseeds": {
+                    "type": "arrayproperty",
+                    "structType": null,
+                    "value": [
+                      4
+                    ]
+                  }
+                }
               }
             },
             "startvelocity": {
@@ -15682,6 +16189,7 @@
       "requestedReferences": [
         {
           "sourceNodeId": "FX_PC_SWP_02:export:476",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_02",
           "objectPath": "fx_pc_gst_10.par_m_sr_beam_dustwave_01.particlemodulevelocity_16",
@@ -15689,6 +16197,7 @@
         },
         {
           "sourceNodeId": "FX_PC_SWP_02:export:492",
+          "referenceIndex": 6,
           "property": "modules",
           "sourceSystemId": "fx_pc_swp_02.par_r_swp_momentaryrift_00_04",
           "objectPath": "fx_pc_gst_10.par_m_sr_beam_dustwave_01.particlemodulevelocity_16",
@@ -15789,11 +16298,11 @@
     }
   ],
   "summary": {
-    "packageCount": 45,
-    "requestCount": 387,
-    "resolvedRequestCount": 387,
+    "packageCount": 46,
+    "requestCount": 388,
+    "resolvedRequestCount": 388,
     "unresolvedRequestCount": 0,
-    "closureObjectCount": 169,
+    "closureObjectCount": 171,
     "propertyErrorCount": 0
   }
 }

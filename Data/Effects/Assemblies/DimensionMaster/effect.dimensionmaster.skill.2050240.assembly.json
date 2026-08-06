@@ -2,7 +2,7 @@
   "schema": "lostark.effect-assembly",
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050240",
-  "displayName": "DIMENSIONMASTER A 2050240 Imported Cascade Draft",
+  "displayName": "DIMENSIONMASTER D 2050240 Imported Cascade Draft",
   "sourceAuthoringVersion": 11,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
@@ -14,7 +14,7 @@
   "componentCues": [
     {
       "cueId": "component-00",
-      "componentAssetId": "effect.component.dimensionmaster.a.00",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.00",
       "startDelaySeconds": 0.2723,
       "visible": true,
       "anchor": "root",
@@ -38,7 +38,7 @@
     },
     {
       "cueId": "component-01",
-      "componentAssetId": "effect.component.dimensionmaster.a.01",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.01",
       "startDelaySeconds": 0.4995,
       "visible": true,
       "anchor": "root",
@@ -62,7 +62,7 @@
     },
     {
       "cueId": "component-02",
-      "componentAssetId": "effect.component.dimensionmaster.a.02",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.02",
       "startDelaySeconds": 0.4995,
       "visible": true,
       "anchor": "root",
@@ -86,7 +86,7 @@
     },
     {
       "cueId": "component-03",
-      "componentAssetId": "effect.component.dimensionmaster.a.03",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.03",
       "startDelaySeconds": 0.5,
       "visible": true,
       "anchor": "root",
@@ -110,7 +110,7 @@
     },
     {
       "cueId": "component-04",
-      "componentAssetId": "effect.component.dimensionmaster.a.04",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.04",
       "startDelaySeconds": 0.5,
       "visible": true,
       "anchor": "root",
@@ -134,7 +134,7 @@
     },
     {
       "cueId": "component-05",
-      "componentAssetId": "effect.component.dimensionmaster.a.05",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.05",
       "startDelaySeconds": 0.5969,
       "visible": true,
       "anchor": "root",
@@ -158,7 +158,7 @@
     },
     {
       "cueId": "component-06",
-      "componentAssetId": "effect.component.dimensionmaster.a.06",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.06",
       "startDelaySeconds": 0.6947,
       "visible": true,
       "anchor": "root",
@@ -182,7 +182,7 @@
     },
     {
       "cueId": "component-07",
-      "componentAssetId": "effect.component.dimensionmaster.a.07",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.07",
       "startDelaySeconds": 0.6998,
       "visible": true,
       "anchor": "root",
@@ -206,7 +206,7 @@
     },
     {
       "cueId": "component-08",
-      "componentAssetId": "effect.component.dimensionmaster.a.08",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.08",
       "startDelaySeconds": 0.76,
       "visible": true,
       "anchor": "root",
@@ -230,7 +230,7 @@
     },
     {
       "cueId": "component-09",
-      "componentAssetId": "effect.component.dimensionmaster.a.09",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.09",
       "startDelaySeconds": 1.041,
       "visible": true,
       "anchor": "root",
@@ -254,7 +254,7 @@
     },
     {
       "cueId": "component-10",
-      "componentAssetId": "effect.component.dimensionmaster.a.10",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.10",
       "startDelaySeconds": 1.041,
       "visible": true,
       "anchor": "root",
@@ -278,7 +278,7 @@
     },
     {
       "cueId": "component-11",
-      "componentAssetId": "effect.component.dimensionmaster.a.11",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.11",
       "startDelaySeconds": 1.0436,
       "visible": true,
       "anchor": "root",
@@ -302,7 +302,7 @@
     },
     {
       "cueId": "component-12",
-      "componentAssetId": "effect.component.dimensionmaster.a.12",
+      "componentAssetId": "effect.component.dimensionmaster.skill.2050240.12",
       "startDelaySeconds": 1.0469,
       "visible": true,
       "anchor": "root",
@@ -325,8 +325,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "de5b2d8aa61ba44cc671e274dad3a02fe8d93c685a7c574a533c658e6f2e3c16",
-  "sourceDocumentFileSha256": "2a3925fe1f2c05d4a45cb996fe837bf6c5762215e8852fb3cae12524cadbe74e",
+  "sourceDocumentSha256": "8e5607e3be12d123e7fc7b0b0e6e3bab2bbeefdca4c5cd5e73110d9f61553ef6",
+  "inputSlot": "D",
+  "sourceDocumentFileSha256": "0257050083b486f4eb2e5bb9b62af3bea1ce254555163f37b85bd36f01dcb05d",
   "sourceActionCues": [
     {
       "cueId": "skill-2050240/clip-000/notify-001",

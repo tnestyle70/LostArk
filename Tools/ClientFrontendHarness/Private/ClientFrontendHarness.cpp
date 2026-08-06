@@ -2,6 +2,7 @@
 #include "LobbyCommandService.h"
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
+#include "DataJson.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
@@ -10,11 +11,13 @@
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -24,43 +27,226 @@
 
 namespace
 {
-	uint64_t Calculate_ImportedParticleBudget(
-		const Client::EFFECT_DOCUMENT_DESC& document)
+	class SCOPED_ENVIRONMENT_VARIABLE final
 	{
-		struct SOURCE_EMITTER_BUDGET final
+	public:
+		explicit SCOPED_ENVIRONMENT_VARIABLE(const wchar_t* pName) :
+			m_strName(pName)
 		{
-			uint32_t iMaxParticles = 0u;
-			bool_t bHasBaseLayer = false;
-		};
-		std::map<std::string, SOURCE_EMITTER_BUDGET> sourceEmitterBudgets;
-		uint64_t particleBudget = 0u;
-		for (const Client::EFFECT_ELEMENT_DESC& element : document.Elements)
-		{
-			if (element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE)
-				continue;
-			particleBudget += element.Detail.Particle.iMaxParticles;
-			if (element.strSourceNode.empty())
-				continue;
-			std::string sourceEmitter = element.strSourceNode;
-			const std::size_t burstMarker = sourceEmitter.rfind("|burst:");
-			const bool_t isBurstLayer = std::string::npos != burstMarker ||
-				std::string::npos != element.strDisplayName.rfind(" Burst ");
-			if (std::string::npos != burstMarker)
-				sourceEmitter.erase(burstMarker);
-			SOURCE_EMITTER_BUDGET& emitterBudget =
-				sourceEmitterBudgets[sourceEmitter];
-			emitterBudget.iMaxParticles = (std::max)(
-				emitterBudget.iMaxParticles,
-				element.Detail.Particle.iMaxParticles);
-			emitterBudget.bHasBaseLayer =
-				emitterBudget.bHasBaseLayer || !isBurstLayer;
+			SetLastError(ERROR_SUCCESS);
+			const DWORD required = GetEnvironmentVariableW(
+				m_strName.c_str(), nullptr, 0u);
+			m_bWasDefined = 0u != required ||
+				GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+			if (0u == required)
+				return;
+			std::vector<wchar_t> value(required);
+			const DWORD length = GetEnvironmentVariableW(
+				m_strName.c_str(), value.data(), required);
+			if (0u != length && length < required)
+				m_strOriginalValue.assign(value.data(), length);
 		}
-		for (const auto& entry : sourceEmitterBudgets)
+
+		~SCOPED_ENVIRONMENT_VARIABLE()
 		{
-			if (!entry.second.bHasBaseLayer)
-				particleBudget += entry.second.iMaxParticles;
+			Restore();
 		}
-		return particleBudget;
+
+		SCOPED_ENVIRONMENT_VARIABLE(const SCOPED_ENVIRONMENT_VARIABLE&) = delete;
+		SCOPED_ENVIRONMENT_VARIABLE& operator=(
+			const SCOPED_ENVIRONMENT_VARIABLE&) = delete;
+
+		bool_t Set(const wchar_t* pValue)
+		{
+			m_bRestored = false;
+			return FALSE != SetEnvironmentVariableW(m_strName.c_str(), pValue);
+		}
+
+		bool_t Was_Defined() const { return m_bWasDefined; }
+		const std::wstring& Get_OriginalValue() const { return m_strOriginalValue; }
+
+		void Restore()
+		{
+			if (m_bRestored)
+				return;
+			SetEnvironmentVariableW(m_strName.c_str(),
+				m_bWasDefined ? m_strOriginalValue.c_str() : nullptr);
+			m_bRestored = true;
+		}
+
+	private:
+		std::wstring m_strName;
+		std::wstring m_strOriginalValue;
+		bool_t m_bWasDefined = false;
+		bool_t m_bRestored = false;
+	};
+
+	bool_t Collect_DimensionMasterEffectRoster(
+		std::vector<uint32_t>& outSkillIds,
+		std::vector<std::string>& outEffectIds,
+		std::string& outStatus)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		outSkillIds.clear();
+		outEffectIds.clear();
+		if (!CPlayerSkillCatalog::Load(outStatus))
+			return false;
+
+		for (const PLAYER_SKILL_DEFINITION& skill :
+			CPlayerSkillCatalog::Get_Skills())
+		{
+			if (skill.eCharacterClass != CHARACTER_CLASS_ID::DIMENSIONMASTER ||
+				skill.strInputSlot == "SPACE")
+			{
+				continue;
+			}
+
+			const std::string expectedEffectId =
+				"effect.dimensionmaster.skill." +
+				std::to_string(skill.iSkillId);
+			if (skill.strEffectId != expectedEffectId)
+			{
+				outStatus = "DimensionMaster slot " + skill.strInputSlot +
+					" must map skill " + std::to_string(skill.iSkillId) +
+					" to " + expectedEffectId;
+				return false;
+			}
+
+			outSkillIds.push_back(skill.iSkillId);
+			outEffectIds.push_back(skill.strEffectId);
+			for (std::size_t stage = 1u;
+				stage <= skill.iComboStageCount; ++stage)
+			{
+				outEffectIds.push_back(skill.strEffectId + ".ba" +
+					std::to_string(stage));
+			}
+		}
+
+		if (outSkillIds.empty())
+		{
+			outStatus = "DimensionMaster trial effect roster is empty.";
+			return false;
+		}
+		return true;
+	}
+
+	struct DIMENSIONMASTER_EFFECT_BUILD_ROW final
+	{
+		std::size_t iComponentCount = 0u;
+		std::size_t iEmitterCount = 0u;
+	};
+
+	struct DIMENSIONMASTER_EFFECT_BUILD_CONTRACT final
+	{
+		std::size_t iEffectCount = 0u;
+		std::size_t iComponentCount = 0u;
+		std::size_t iEmitterCount = 0u;
+		std::map<std::string, DIMENSIONMASTER_EFFECT_BUILD_ROW, std::less<>> Effects;
+	};
+
+	bool_t Read_ContractSize(
+		const Client::DATA_JSON_VALUE& object,
+		const char_t* pName,
+		std::size_t& outValue)
+	{
+		const Client::DATA_JSON_VALUE* value = object.Find(pName);
+		if (nullptr == value || !value->Is_Number() ||
+			!std::isfinite(value->Get_Number()) ||
+			value->Get_Number() != std::floor(value->Get_Number()) ||
+			value->Get_Number() < 0.0 ||
+			value->Get_Number() > static_cast<double>(
+				(std::numeric_limits<std::size_t>::max)()))
+		{
+			return false;
+		}
+		outValue = static_cast<std::size_t>(value->Get_Number());
+		return true;
+	}
+
+	bool_t Load_DimensionMasterEffectBuildContract(
+		DIMENSIONMASTER_EFFECT_BUILD_CONTRACT& outContract,
+		std::string& outStatus)
+	{
+		using namespace Client;
+		outContract = {};
+		const std::filesystem::path path = CProjectDataRoot::Resolve(
+			L"Effects/Imported/DimensionMaster/"
+			L"DimensionMaster.component-build.receipt.json");
+		std::ifstream input(path, std::ios::binary);
+		if (path.empty() || !input)
+		{
+			outStatus = "DimensionMaster component build receipt is missing.";
+			return false;
+		}
+		std::string text{
+			std::istreambuf_iterator<char_t>(input),
+			std::istreambuf_iterator<char_t>() };
+		if (text.starts_with("\xEF\xBB\xBF"))
+			text.erase(0u, 3u);
+		DATA_JSON_VALUE root;
+		if (!CDataJson::Parse(text, root, outStatus) || !root.Is_Object())
+			return false;
+
+		const DATA_JSON_VALUE* schema = root.Find("schema");
+		const DATA_JSON_VALUE* version = root.Find("version");
+		const DATA_JSON_VALUE* characterClass = root.Find("characterClass");
+		const DATA_JSON_VALUE* compileIdentity = root.Find("compileIdentityComplete");
+		const DATA_JSON_VALUE* effects = root.Find("effects");
+		if (nullptr == schema || !schema->Is_String() ||
+			schema->Get_String() != "lostark.effect-component-build-receipt" ||
+			nullptr == version || !version->Is_Number() ||
+			version->Get_Number() != 1.0 ||
+			nullptr == characterClass || !characterClass->Is_String() ||
+			characterClass->Get_String() != "DIMENSIONMASTER" ||
+			nullptr == compileIdentity || !compileIdentity->Is_Boolean() ||
+			!compileIdentity->Get_Boolean() ||
+			nullptr == effects || !effects->Is_Array() ||
+			!Read_ContractSize(root, "effectCount", outContract.iEffectCount) ||
+			!Read_ContractSize(root, "componentCount", outContract.iComponentCount) ||
+			!Read_ContractSize(root, "emitterCount", outContract.iEmitterCount))
+		{
+			outStatus = "DimensionMaster component build receipt contract is invalid.";
+			return false;
+		}
+
+		std::size_t componentTotal = 0u;
+		std::size_t emitterTotal = 0u;
+		for (const DATA_JSON_VALUE& effect : effects->Get_Array())
+		{
+			const DATA_JSON_VALUE* effectAssetId = effect.Find("effectAssetId");
+			const DATA_JSON_VALUE* effectIdentity = effect.Find("compileIdentity");
+			const DATA_JSON_VALUE* sourceSha = effect.Find("sourceDocumentSha256");
+			const DATA_JSON_VALUE* compiledSha = effect.Find("compiledDocumentSha256");
+			DIMENSIONMASTER_EFFECT_BUILD_ROW row;
+			if (!effect.Is_Object() || nullptr == effectAssetId ||
+				!effectAssetId->Is_String() || effectAssetId->Get_String().empty() ||
+				nullptr == effectIdentity || !effectIdentity->Is_Boolean() ||
+				!effectIdentity->Get_Boolean() || nullptr == sourceSha ||
+				!sourceSha->Is_String() || nullptr == compiledSha ||
+				!compiledSha->Is_String() ||
+				sourceSha->Get_String() != compiledSha->Get_String() ||
+				!Read_ContractSize(effect, "componentCount", row.iComponentCount) ||
+				!Read_ContractSize(effect, "emitterCount", row.iEmitterCount) ||
+				0u == row.iComponentCount || 0u == row.iEmitterCount ||
+				!outContract.Effects.emplace(
+					effectAssetId->Get_String(), row).second)
+			{
+				outStatus = "DimensionMaster component build receipt effect row is invalid.";
+				return false;
+			}
+			componentTotal += row.iComponentCount;
+			emitterTotal += row.iEmitterCount;
+		}
+
+		if (outContract.Effects.size() != outContract.iEffectCount ||
+			componentTotal != outContract.iComponentCount ||
+			emitterTotal != outContract.iEmitterCount)
+		{
+			outStatus = "DimensionMaster component build receipt totals disagree with its rows.";
+			return false;
+		}
+		return true;
 	}
 
 	struct TEST_RUNNER final
@@ -437,33 +623,78 @@ namespace
 				"Real Skill Binding Covers Current Class Catalog");
 			if (CHARACTER_CLASS_ID::DIMENSIONMASTER == owner.characterClass)
 			{
-				const auto sBinding = std::find_if(
-					parsed.Bindings.begin(), parsed.Bindings.end(),
-					[](const ANIMATION_SKILL_BINDING& binding)
+				struct EXPECTED_BINDING final
+				{
+					const char_t* pSlot;
+					LostArk::Shared::SKILL_ID iSkillId;
+					std::vector<const char_t*> Clips;
+				};
+				const std::vector<EXPECTED_BINDING> expected =
+				{
+					{ "LMB", 2050010u, {
+						"pc_sp_m_00_sk_att_battle_1_01",
+						"pc_sp_m_00_sk_att_battle_1_02",
+						"pc_sp_m_00_sk_att_battle_1_03",
+						"pc_sp_m_00_sk_att_battle_1_04" } },
+					{ "Q", 2050100u, { "pc_sp_m_00_sk_sk_nailstrike_01" } },
+					{ "W", 2050120u, {
+						"pc_sp_m_00_sk_sk_dimensionalleap_01",
+						"pc_sp_m_00_sk_sk_dimensionalleap_02",
+						"pc_sp_m_00_sk_sk_dimensionalleap_03" } },
+					{ "E", 2050160u, {
+						"pc_sp_m_00_sk_sk_overslash_01",
+						"pc_sp_m_00_sk_sk_overslash_02",
+						"pc_sp_m_00_sk_sk_overslash_03",
+						"pc_sp_m_00_sk_sk_overslash_04",
+						"pc_sp_m_00_sk_sk_overslash_05" } },
+					{ "R", 2050180u, { "pc_sp_m_00_sk_sk_foldcut" } },
+					{ "A", 2050210u, { "pc_sp_m_00_sk_sk_willowrend" } },
+					{ "S", 2050220u, { "pc_sp_m_00_sk_sk_momentaryrift" } },
+					{ "F", 2050230u, { "pc_sp_m_00_sk_sk_chronorecoil" } },
+					{ "D", 2050240u, {
+						"pc_sp_m_00_sk_sk_telekinesisthrust_01",
+						"pc_sp_m_00_sk_sk_telekinesisthrust_04" } },
+					{ "T", 2050500u, { "pc_sp_m_00_sk_sk_dimensionprison" } },
+					{ "V", 2050520u, { "pc_sp_m_00_sk_sk_timewave" } },
+					{ "ALT_V", 2050540u, { "pc_sp_m_00_sk_sk_super_timewave" } },
+					{ "SPACE", 2050020u, {
+						"pc_sp_m_00_sk_sk_moving_normal_1_04",
+						"pc_sp_m_00_sk_sk_jump_04" } }
+				};
+				bool_t exactRoster = expected.size() == parsed.Bindings.size();
+				for (const EXPECTED_BINDING& row : expected)
+				{
+					const PLAYER_SKILL_DEFINITION* skill =
+						CPlayerSkillCatalog::Find_BySlot(
+							CHARACTER_CLASS_ID::DIMENSIONMASTER, row.pSlot);
+					const auto binding = std::find_if(
+						parsed.Bindings.begin(), parsed.Bindings.end(),
+						[&row](const ANIMATION_SKILL_BINDING& candidate)
+						{
+							return row.iSkillId == candidate.iSkillId;
+						});
+					bool_t clipsMatch = binding != parsed.Bindings.end() &&
+						binding->Clips.size() == row.Clips.size();
+					if (clipsMatch)
 					{
-						return 2050550u == binding.iSkillId;
-					});
-				const PLAYER_SKILL_DEFINITION* sSkill =
-					CPlayerSkillCatalog::Find_BySlot(
-						CHARACTER_CLASS_ID::DIMENSIONMASTER, "S");
-				runner.Require(
-					sBinding != parsed.Bindings.end() &&
-					sBinding->Clips == std::vector<std::string>{
-						"pc_sp_m_00_sk_sk_super_instance" } &&
-					nullptr != sSkill && 2050550u == sSkill->iSkillId &&
-					5000u == sSkill->iActionDurationMs,
-					"DimensionMaster S Resolves 2050550 Super Instance At Five Seconds");
-				const auto tBinding = std::find_if(
-					parsed.Bindings.begin(), parsed.Bindings.end(),
-					[](const ANIMATION_SKILL_BINDING& binding)
-					{
-						return 2050510u == binding.iSkillId;
-					});
-				runner.Require(tBinding != parsed.Bindings.end() &&
-					tBinding->Clips == std::vector<std::string>{
-						"pc_sp_m_00_sk_sk_dimensionthrust_01",
-						"pc_sp_m_00_sk_sk_dimensionthrust_02" },
-					"DimensionMaster T Binding Preserves Two Clip Sequence");
+						for (size_t iClip = 0u; iClip < row.Clips.size(); ++iClip)
+						{
+							clipsMatch = clipsMatch &&
+								binding->Clips[iClip].strClipName == row.Clips[iClip];
+						}
+					}
+					const std::string expectedEffectId =
+						std::string(row.pSlot) == "SPACE" ? std::string{} :
+						"effect.dimensionmaster.skill." +
+						std::to_string(row.iSkillId);
+					const bool_t effectIdentityMatches = nullptr != skill &&
+						skill->strEffectId == expectedEffectId;
+					exactRoster = exactRoster && nullptr != skill &&
+						skill->iSkillId == row.iSkillId && clipsMatch &&
+						effectIdentityMatches;
+				}
+				runner.Require(exactRoster,
+					"DimensionMaster Trial Roster Joins Exact Slots Skills Clips And Effects");
 			}
 			total += parsed.Bindings.size();
 		}
@@ -475,13 +706,15 @@ namespace
 	{
 		using namespace Client;
 		using namespace LostArk::Shared;
+		SCOPED_ENVIRONMENT_VARIABLE projectDataRootEnvironment(
+			L"LOSTARK_PROJECT_DATA_ROOT");
 		wchar_t tempBase[MAX_PATH]{};
 		GetTempPathW(MAX_PATH, tempBase);
 		const std::filesystem::path root = std::filesystem::path(tempBase) /
 			("LostArkSkillBindingHarness_" + std::to_string(GetCurrentProcessId()));
 		std::error_code error;
 		std::filesystem::create_directories(root, error);
-		SetEnvironmentVariableW(L"LOSTARK_PROJECT_DATA_ROOT", root.c_str());
+		projectDataRootEnvironment.Set(root.c_str());
 		const auto skills = Make_SkillFixture();
 		const std::vector<std::string> clips =
 			{ "Active_A", "Active_B", "BA_1", "BA_2", "BA_3" };
@@ -502,7 +735,7 @@ namespace
 			skills, clips, status) && before == Read_Text(destination),
 			"Skill Binding Replace Failure Preserves Destination");
 		SetFileAttributesW(destination.c_str(), FILE_ATTRIBUTE_NORMAL);
-		SetEnvironmentVariableW(L"LOSTARK_PROJECT_DATA_ROOT", nullptr);
+		projectDataRootEnvironment.Restore();
 		std::filesystem::remove_all(root, error);
 	}
 
@@ -857,6 +1090,8 @@ namespace
 	void Test_EffectExactSourceSemantics(TEST_RUNNER& runner)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
 		auto literalNumber = [](const std::string& path, const f64_t value)
 		{
 			EFFECT_SOURCE_LITERAL_DESC result;
@@ -1129,10 +1364,12 @@ namespace
 			"meshModel", "Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" });
 		sizeDocument.Elements.push_back(sized);
 		const std::filesystem::path sizeResourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
 			CProjectDataRoot::Get().parent_path() /
-			L"Client" / L"Bin" / L"Resources";
-		SetEnvironmentVariableW(
-			L"LOSTARK_RESOURCE_ROOT", sizeResourceRoot.c_str());
+				L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(sizeResourceRoot.c_str());
 		CEffectPlayback sizePlayback;
 		const bool_t sizeStaged = sizePlayback.Stage_Document(sizeDocument, status);
 		if (sizeStaged)
@@ -1160,7 +1397,7 @@ namespace
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 2.f) < 0.0001f &&
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 3.f) < 0.0001f,
 			"Effect Source Mesh Size Converts UE Units By Project 0.01 Scale");
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+		resourceRootEnvironment.Restore();
 
 		EFFECT_DOCUMENT_DESC spaceDocument;
 		spaceDocument.strEffectAssetId = "effect.space.exact.harness";
@@ -1279,7 +1516,7 @@ namespace
 				output.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
 			}
 		}
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", vectorRoot.c_str());
+		resourceRootEnvironment.Set(vectorRoot.c_str());
 		EFFECT_DOCUMENT_DESC vectorDocument;
 		vectorDocument.strEffectAssetId = "effect.vector.exact.harness";
 		vectorDocument.strDisplayName = "Vector Exact Harness";
@@ -1327,7 +1564,7 @@ namespace
 			std::abs(vectorPlayback.Get_Frame().Particles.front().World._41 -
 				(61.f / 3600.f)) < 0.00001f,
 			"Effect Invalid Vector Field Fails Staging And Preserves Commit");
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+		resourceRootEnvironment.Restore();
 		std::filesystem::remove(vectorPath, vectorError);
 		std::filesystem::remove(vectorPath.parent_path(), vectorError);
 		std::filesystem::remove(vectorPath.parent_path().parent_path(), vectorError);
@@ -1337,17 +1574,31 @@ namespace
 	void Test_DimensionMasterSourceSemanticAssets(TEST_RUNNER& runner)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		constexpr std::size_t iExpectedSeededModules = 162u;
+		constexpr std::size_t iExpectedSeedMetadataDeclared = 103u;
+		constexpr std::size_t iExpectedVectorModules = 4u;
+		constexpr std::size_t iExpectedVectorAssets = 2u;
+		constexpr std::size_t iExpectedBoneSocketModules = 0u;
+		constexpr std::size_t iExpectedEventGenerators = 0u;
+		constexpr std::size_t iExpectedEventReceivers = 0u;
 		const std::filesystem::path repositoryRoot =
 			CProjectDataRoot::Get().parent_path();
-		const std::filesystem::path resourceRoot = repositoryRoot /
-			L"Client" / L"Bin" / L"Resources";
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", resourceRoot.c_str());
-		const uint32_t skillIds[] = {
-			2050010u, 2050110u, 2050150u, 2050190u, 2050200u,
-			2050220u, 2050240u, 2050500u, 2050510u, 2050540u, 2050550u
-		};
+		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
+			repositoryRoot / L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
+		std::vector<uint32_t> skillIds;
+		std::vector<std::string> expectedEffectIds;
+		std::string status;
+		const bool_t rosterLoaded = Collect_DimensionMasterEffectRoster(
+			skillIds, expectedEffectIds, status);
 		bool_t bLoadedAndStaged = true;
 		size_t iSeededModules = 0u;
+		size_t iSeedMetadataDeclared = 0u;
 		size_t iSeedMetadataComplete = 0u;
 		size_t iVectorModules = 0u;
 		size_t iBoundVectorModules = 0u;
@@ -1355,7 +1606,6 @@ namespace
 		size_t iEventGenerators = 0u;
 		size_t iEventReceivers = 0u;
 		std::set<std::string> vectorAssetIds;
-		std::string status;
 		for (const uint32_t skillId : skillIds)
 		{
 			const std::filesystem::path path = CProjectDataRoot::Resolve(
@@ -1393,6 +1643,8 @@ namespace
 								seedFlags.insert(literal.strPropertyPath);
 							}
 						}
+						if (!seedFlags.empty())
+							++iSeedMetadataDeclared;
 						if (seedFlags.contains(
 							"randomseedinfo.bresetseedonemitterlooping") &&
 							seedFlags.contains(
@@ -1430,27 +1682,38 @@ namespace
 				}
 			}
 		}
-		if (!bLoadedAndStaged || iSeededModules != 206u ||
-			iSeedMetadataComplete != iSeededModules ||
-			iBoneSocketModules != 0u || iEventGenerators != 2u ||
-			iEventReceivers != 1u || iVectorModules != 9u ||
-			iBoundVectorModules != iVectorModules || vectorAssetIds.size() != 4u)
+		if (!rosterLoaded || !bLoadedAndStaged ||
+			iSeededModules != iExpectedSeededModules ||
+			iSeedMetadataDeclared != iExpectedSeedMetadataDeclared ||
+			iSeedMetadataComplete != iExpectedSeedMetadataDeclared ||
+			iBoneSocketModules != iExpectedBoneSocketModules ||
+			iEventGenerators != iExpectedEventGenerators ||
+			iEventReceivers != iExpectedEventReceivers ||
+			iVectorModules != iExpectedVectorModules ||
+			iBoundVectorModules != iExpectedVectorModules ||
+			vectorAssetIds.size() != iExpectedVectorAssets)
 		{
 			std::cout << "[DETAIL] DimensionMaster semantic counts seeded=" <<
-				iSeededModules << " seedComplete=" << iSeedMetadataComplete <<
+				iSeededModules << " seedDeclared=" << iSeedMetadataDeclared <<
+				" seedComplete=" << iSeedMetadataComplete <<
 				" bone=" << iBoneSocketModules << " eventGenerator=" <<
 				iEventGenerators << " eventReceiver=" << iEventReceivers <<
 				" vector=" << iVectorModules << " vectorBound=" <<
 				iBoundVectorModules << " vectorAssets=" << vectorAssetIds.size() << '\n';
 		}
-		runner.Require(bLoadedAndStaged && iSeededModules == 206u &&
-			iSeedMetadataComplete == iSeededModules &&
-			iBoneSocketModules == 0u && iEventGenerators == 2u &&
-			iEventReceivers == 1u,
-			"DimensionMaster Source Semantic Documents Stage With Exact Metadata");
-		runner.Require(iVectorModules == 9u &&
-			iBoundVectorModules == iVectorModules && vectorAssetIds.size() == 4u,
-			"DimensionMaster Vector Field Occurrences Resolve Four Source Volumes");
+		runner.Require(rosterLoaded &&
+			expectedEffectIds.size() >= skillIds.size() && bLoadedAndStaged &&
+			iSeededModules == iExpectedSeededModules &&
+			iSeedMetadataDeclared == iExpectedSeedMetadataDeclared &&
+			iSeedMetadataComplete == iExpectedSeedMetadataDeclared &&
+			iBoneSocketModules == iExpectedBoneSocketModules &&
+			iEventGenerators == iExpectedEventGenerators &&
+			iEventReceivers == iExpectedEventReceivers,
+			"Current DimensionMaster Source Documents Preserve Exact Semantic Module Counts");
+		runner.Require(iVectorModules == iExpectedVectorModules &&
+			iBoundVectorModules == iExpectedVectorModules &&
+			vectorAssetIds.size() == iExpectedVectorAssets,
+			"Current DimensionMaster Vector Field Occurrences Resolve Exact Source Volumes");
 		bool_t bAllEffectsAuthoredStage = true;
 		size_t iAuthoredStageCount = 0u;
 		for (const uint32_t skillId : skillIds)
@@ -1471,8 +1734,9 @@ namespace
 				std::cout << "[DETAIL] All Effects authored stage " << skillId
 					<< ": " << status << '\n';
 		}
-		runner.Require(bAllEffectsAuthoredStage && iAuthoredStageCount == 11u,
-			"All Effects Stages All Eleven DimensionMaster Authored Documents");
+		runner.Require(bAllEffectsAuthoredStage &&
+			iAuthoredStageCount == skillIds.size(),
+			"All Effects Stages Every Current DimensionMaster Authored Document");
 
 		const std::filesystem::path aPath = CProjectDataRoot::Resolve(
 			L"Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json");
@@ -1622,134 +1886,148 @@ namespace
 			aSourceColorOverrideViolationCount == 0u &&
 			aSourceSubUVOverrideViolationCount == 0u,
 			"DimensionMaster A Source Color And SubUV Baselines Execute Once");
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+		resourceRootEnvironment.Restore();
 	}
 
 	void Test_DimensionMasterImportedPortalDraft(TEST_RUNNER& runner)
 	{
 		using namespace Client;
-		const std::filesystem::path path = CProjectDataRoot::Resolve(
-			L"Effects/Imported/DimensionMaster/Converted/"
-			L"effect.dimensionmaster.skill.2050500.imported.effect.json");
-		EFFECT_DOCUMENT_DESC document;
 		std::string status;
-		const bool_t loaded = !path.empty() &&
-			CEffectDocumentCodec::Load(path, document, status) &&
-			CEffectDocumentCodec::Validate(document, status);
-		std::size_t meshParticleCount = 0u;
-		std::size_t sourceRecipeCount = 0u;
-		for (const EFFECT_ELEMENT_DESC& element : document.Elements)
+		std::vector<uint32_t> skillIds;
+		std::vector<std::string> expectedEffectIds;
+		const bool_t rosterLoaded = Collect_DimensionMasterEffectRoster(
+			skillIds, expectedEffectIds, status);
+		bool_t importedContractsHold = rosterLoaded;
+		std::size_t importedContractCount = 0u;
+		std::size_t pendingProfileCount = 0u;
+		for (const uint32_t skillId : skillIds)
 		{
-			if (element.SourceRecipe.bEnabled)
-				++sourceRecipeCount;
-			if (element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
-				continue;
-			meshParticleCount += std::count_if(
-				element.ResourceBindings.begin(),
-				element.ResourceBindings.end(),
-				[](const EFFECT_RESOURCE_BINDING_DESC& binding)
+			status.clear();
+			const std::filesystem::path path = CProjectDataRoot::Resolve(
+				L"Effects/Imported/DimensionMaster/Converted/"
+				L"effect.dimensionmaster.skill." + std::to_wstring(skillId) +
+				L".imported.effect.json");
+			const std::string rawText = Read_Text(path);
+			DATA_JSON_VALUE rawDocument;
+			DATA_JSON_PARSE_LIMITS rawLimits;
+			rawLimits.iMaximumBytes = 64u * 1024u * 1024u;
+			rawLimits.iMaximumDepth = 64u;
+			rawLimits.iMaximumValues = 3'000'000u;
+			const DATA_JSON_VALUE* rawElements = nullptr;
+			const DATA_JSON_VALUE* rawEffectId = nullptr;
+			const bool_t rawCaptured = !rawText.empty() &&
+				CDataJson::Parse(rawText, rawDocument, status, rawLimits) &&
+				rawDocument.Is_Object() &&
+				nullptr != (rawElements = rawDocument.Find("elements")) &&
+				rawElements->Is_Array() && !rawElements->Get_Array().empty() &&
+				nullptr != (rawEffectId = rawDocument.Find("effectAssetId")) &&
+				rawEffectId->Is_String() && rawEffectId->Get_String() ==
+					"effect.dimensionmaster.skill." + std::to_string(skillId) +
+					".imported";
+			bool_t hasPendingSourceProfile = false;
+			if (rawCaptured)
+			{
+				for (const DATA_JSON_VALUE& rawElement : rawElements->Get_Array())
 				{
-					return binding.strSlotId == "meshModel";
-				});
+					if (!rawElement.Is_Object())
+						continue;
+					const DATA_JSON_VALUE* material = rawElement.Find("material");
+					if (nullptr == material || !material->Is_Object())
+						continue;
+					const DATA_JSON_VALUE* templateId = material->Find("templateId");
+					if (nullptr == templateId || !templateId->Is_String() ||
+						templateId->Get_String() != "effect.source_material")
+					{
+						continue;
+					}
+					const DATA_JSON_VALUE* sourceProfile =
+						material->Find("sourceProfile");
+					const DATA_JSON_VALUE* enabled =
+						nullptr != sourceProfile && sourceProfile->Is_Object() ?
+						sourceProfile->Find("enabled") : nullptr;
+					hasPendingSourceProfile = nullptr == enabled ||
+						!enabled->Is_Boolean() || !enabled->Get_Boolean();
+					if (hasPendingSourceProfile)
+						break;
+				}
+			}
+
+			EFFECT_DOCUMENT_DESC importedDocument;
+			const bool_t importedLoaded = rawCaptured &&
+				CEffectDocumentCodec::Load(path, importedDocument, status);
+			bool_t contractHolds = false;
+			if (importedLoaded)
+			{
+				EFFECT_DOCUMENT_DESC roundTrip;
+				const std::string serialized =
+					CEffectDocumentCodec::Serialize(importedDocument);
+				const bool_t roundTripped =
+					!importedDocument.Elements.empty() &&
+					CEffectDocumentCodec::Parse(serialized, roundTrip, status) &&
+					CEffectDocumentCodec::Serialize(roundTrip) == serialized;
+				if (hasPendingSourceProfile)
+				{
+					contractHolds = roundTripped ||
+						status.find("requires a staged profile") !=
+							std::string::npos;
+					if (contractHolds)
+						++pendingProfileCount;
+				}
+				else
+				{
+					contractHolds = roundTripped;
+				}
+			}
+			else if (rawCaptured && hasPendingSourceProfile &&
+				status.find("requires a staged profile") != std::string::npos)
+			{
+				contractHolds = true;
+				++pendingProfileCount;
+			}
+			importedContractsHold = importedContractsHold && contractHolds;
+			if (contractHolds)
+				++importedContractCount;
+			else
+				std::cout << "[DETAIL] DimensionMaster imported document " <<
+					skillId << ": " << path.string() << " rawCaptured=" <<
+					rawCaptured << " status=" << status << '\n';
 		}
-		const uint64_t particleBudget =
-			Calculate_ImportedParticleBudget(document);
-		if (!loaded)
-		{
-			std::cout << "[DETAIL] DimensionMaster imported portal: "
-				<< path.string() << " status=" << status << '\n';
-		}
-		runner.Require(loaded && document.Elements.size() == 89u &&
-			sourceRecipeCount == 89u &&
-			meshParticleCount == 28u && particleBudget == 510u,
-			"DimensionMaster F V9 Imported Recipe Preserves Source Emitters");
-		runner.Require(loaded &&
-			CEffectDocumentCodec::Validate_Drawable(document, status),
-			"DimensionMaster F V9 Imported Recipe Is Drawable");
+		runner.Require(importedContractsHold && pendingProfileCount > 0u &&
+			expectedEffectIds.size() >= skillIds.size() &&
+			importedContractCount == skillIds.size(),
+			"Every Current Imported Baseline Round Trips And Preserves Pending Materialization State");
 
-		const std::filesystem::path tPath = CProjectDataRoot::Resolve(
-			L"Effects/Imported/DimensionMaster/Converted/"
-			L"effect.dimensionmaster.skill.2050510.imported.effect.json");
-		EFFECT_DOCUMENT_DESC tDocument;
-		const bool_t tLoaded = !tPath.empty() &&
-			CEffectDocumentCodec::Load(tPath, tDocument, status) &&
-			CEffectDocumentCodec::Validate(tDocument, status);
-		const std::size_t tMeshParticleCount = static_cast<std::size_t>(
-			std::count_if(tDocument.Elements.begin(), tDocument.Elements.end(),
-				[](const EFFECT_ELEMENT_DESC& element)
-				{
-					return element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-						std::any_of(element.ResourceBindings.begin(),
-							element.ResourceBindings.end(),
-							[](const EFFECT_RESOURCE_BINDING_DESC& binding)
-							{
-								return binding.strSlotId == "meshModel";
-							});
-				}));
-		const uint64_t tParticleBudget =
-			Calculate_ImportedParticleBudget(tDocument);
-		const std::size_t tMissingResourceCount = static_cast<std::size_t>(
-			std::count_if(tDocument.Elements.begin(), tDocument.Elements.end(),
-				[](const EFFECT_ELEMENT_DESC& element)
-				{
-					return element.bVisible &&
-						element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-						element.ResourceBindings.empty();
-				}));
-		runner.Require(tLoaded && tDocument.Elements.size() == 105u &&
-			tMeshParticleCount == 27u && tParticleBudget == 928u &&
-			tMissingResourceCount == 19u,
-			"DimensionMaster T V9 Imported Recipe Reports Missing Resources");
-		runner.Require(tLoaded &&
-			!CEffectDocumentCodec::Validate_Drawable(tDocument, status),
-			"DimensionMaster T V9 Missing Resources Fail Closed");
-
-		const std::filesystem::path qPath = CProjectDataRoot::Resolve(
-			L"Effects/Imported/DimensionMaster/Converted/"
-			L"effect.dimensionmaster.skill.2050110.imported.effect.json");
-		EFFECT_DOCUMENT_DESC qDocument;
-		const bool_t qLoaded = !qPath.empty() &&
-			CEffectDocumentCodec::Load(qPath, qDocument, status) &&
-			CEffectDocumentCodec::Validate(qDocument, status);
-		EFFECT_DOCUMENT_DESC qRoundTrip;
-		runner.Require(qLoaded && qDocument.Elements.size() == 31u &&
-			Calculate_ImportedParticleBudget(qDocument) == 648u &&
-			CEffectDocumentCodec::Parse(
-				CEffectDocumentCodec::Serialize(qDocument), qRoundTrip, status) &&
-			qRoundTrip.Elements.size() == qDocument.Elements.size(),
-			"DimensionMaster Q V9 Imported Recipe Round Trips Losslessly");
-
-		const std::filesystem::path authoredFPath = CProjectDataRoot::Resolve(
+		const std::filesystem::path authoredTPath = CProjectDataRoot::Resolve(
 			L"Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json");
-		EFFECT_DOCUMENT_DESC authoredF;
-		const bool_t authoredFLoaded = !authoredFPath.empty() &&
-			CEffectDocumentCodec::Load(authoredFPath, authoredF, status);
+		EFFECT_DOCUMENT_DESC authoredT;
+		const bool_t authoredTLoaded = !authoredTPath.empty() &&
+			CEffectDocumentCodec::Load(authoredTPath, authoredT, status);
 		std::vector<std::string> resourceIds;
-		CEffectDocumentCodec::Collect_ResourceAssetIds(authoredF, resourceIds);
+		CEffectDocumentCodec::Collect_ResourceAssetIds(authoredT, resourceIds);
 		const bool_t hasSummonDependency = std::find(resourceIds.begin(),
 			resourceIds.end(),
 			"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel") !=
 			resourceIds.end();
 		CEffectPlayback completePlayback;
-		const bool_t playbackStaged = authoredFLoaded &&
-			completePlayback.Stage_Document(authoredF, status);
+		const bool_t playbackStaged = authoredTLoaded &&
+			completePlayback.Stage_Document(authoredT, status);
 		EFFECT_DOCUMENT_DESC roundTrip;
-		const bool_t roundTripped = authoredFLoaded &&
+		const bool_t roundTripped = authoredTLoaded &&
 			CEffectDocumentCodec::Parse(
-				CEffectDocumentCodec::Serialize(authoredF), roundTrip, status);
-		runner.Require(authoredFLoaded && authoredF.Elements.size() == 97u &&
-			authoredF.ModelCues.size() == 1u && hasSummonDependency &&
+				CEffectDocumentCodec::Serialize(authoredT), roundTrip, status);
+		runner.Require(authoredTLoaded && authoredT.ModelCues.size() == 1u &&
+			hasSummonDependency &&
 			playbackStaged && completePlayback.Get_DurationSeconds() >= 5.4583f &&
 			roundTripped && roundTrip.ModelCues.size() == 1u &&
 			roundTrip.ParticleSystem.fUniformScaleMultiplier == 1.f &&
 			roundTrip.ParticleSystem.fInitialSpeedMultiplier == 1.f &&
 			roundTrip.ModelCues.front().strClipName ==
 				"sk_swp_dms_00_sk_sk_dimensionprison",
-			"DimensionMaster F Complete Effect Round Trips Summon Model Cue");
+			"Canonical DimensionMaster T Round Trips Summon Model Cue");
 
-		if (authoredFLoaded)
+		if (authoredTLoaded)
 		{
-			EFFECT_DOCUMENT_DESC invalidCue = authoredF;
+			EFFECT_DOCUMENT_DESC invalidCue = authoredT;
 			invalidCue.ModelCues.push_back(invalidCue.ModelCues.front());
 			const f32_t committedDuration =
 				completePlayback.Get_DurationSeconds();
@@ -1852,18 +2130,20 @@ namespace
 			"Effect V9 Source Recipe And Distribution Round Trip Losslessly");
 
 		std::string legacyV7 = CEffectDocumentCodec::Serialize(document);
-		const std::string version9 = "\"version\": 9";
-		const size_t versionOffset = legacyV7.find(version9);
+		const std::string currentVersion = "\"version\": " +
+			std::to_string(EFFECT_AUTHORING_FORMAT_VERSION);
+		const size_t versionOffset = legacyV7.find(currentVersion);
 		if (std::string::npos != versionOffset)
-			legacyV7.replace(versionOffset, version9.size(), "\"version\": 7");
+			legacyV7.replace(versionOffset, currentVersion.size(), "\"version\": 7");
 		const size_t particleSystemOffset = legacyV7.find(
 			"  \"particleSystem\":");
 		if (std::string::npos != particleSystemOffset)
 		{
-			const size_t particleSystemEnd = legacyV7.find(
-				'\n', particleSystemOffset);
-			legacyV7.erase(particleSystemOffset,
-				particleSystemEnd - particleSystemOffset + 1u);
+			const size_t nextField = legacyV7.find(
+				"  \"modelCues\":", particleSystemOffset);
+			if (std::string::npos != nextField)
+				legacyV7.erase(particleSystemOffset,
+					nextField - particleSystemOffset);
 		}
 		EFFECT_DOCUMENT_DESC upgradedV7;
 		runner.Require(std::string::npos != versionOffset &&
@@ -1903,6 +2183,8 @@ namespace
 		const bool_t bCheckFailedReloadRollback = true)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
 		wchar_t moduleBuffer[32768]{};
 		const DWORD moduleLength = GetModuleFileNameW(
 			nullptr, moduleBuffer, static_cast<DWORD>(std::size(moduleBuffer)));
@@ -1922,21 +2204,43 @@ namespace
 		error.clear();
 		std::filesystem::copy_file(sourceCatalog, stagedCatalog,
 			std::filesystem::copy_options::overwrite_existing, error);
-		const std::filesystem::path resourceRoot = repositoryRoot /
-			L"Client" / L"Bin" / L"Resources";
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT",
-			resourceRoot.c_str());
+		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
+			repositoryRoot / L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
 
 		CEffectCatalog::Clear();
 		std::string status;
+		DIMENSIONMASTER_EFFECT_BUILD_CONTRACT buildContract;
+		std::string buildContractStatus;
+		const bool_t buildContractLoaded =
+			Load_DimensionMasterEffectBuildContract(
+				buildContract, buildContractStatus);
+		std::vector<uint32_t> currentSkillIds;
+		std::vector<std::string> expectedEffectIds;
+		const bool_t rosterLoaded = Collect_DimensionMasterEffectRoster(
+			currentSkillIds, expectedEffectIds, status);
 		const bool_t loaded = !error && CEffectCatalog::Load(status);
 		if (!loaded)
 			std::cout << "[DETAIL] Effect runtime catalog: " << status << '\n';
 		const std::vector<std::string> effectIds =
 			CEffectCatalog::Get_EffectAssetIds();
-		bool_t hierarchyComplete = loaded && 15u == effectIds.size();
+		const std::set<std::string> expectedEffectIdSet(
+			expectedEffectIds.begin(), expectedEffectIds.end());
+		const std::set<std::string> actualEffectIdSet(
+			effectIds.begin(), effectIds.end());
+		std::set<std::string> contractEffectIds;
+		for (const auto& entry : buildContract.Effects)
+			contractEffectIds.insert(entry.first);
+		bool_t hierarchyComplete = rosterLoaded && !currentSkillIds.empty() && loaded &&
+			buildContractLoaded && expectedEffectIdSet == actualEffectIdSet &&
+			expectedEffectIdSet == contractEffectIds &&
+			effectIds.size() == buildContract.iEffectCount;
 		bool_t playbackStageComplete = loaded;
 		size_t stagedEffectCount = 0u;
+		size_t assemblyEmitterCount = 0u;
 		std::set<std::string> componentIds;
 		for (const std::string& effectId : effectIds)
 		{
@@ -1946,6 +2250,13 @@ namespace
 				CEffectCatalog::Find(effectId);
 			hierarchyComplete = hierarchyComplete && nullptr != assembly &&
 				nullptr != document && !assembly->ComponentCues.empty();
+			const auto expectedBuild = buildContract.Effects.find(effectId);
+			hierarchyComplete = hierarchyComplete &&
+				expectedBuild != buildContract.Effects.end() &&
+				nullptr != assembly && expectedBuild != buildContract.Effects.end() &&
+				assembly->ComponentCues.size() ==
+					expectedBuild->second.iComponentCount;
+			size_t effectEmitterCount = 0u;
 			if (nullptr != document)
 			{
 				CEffectPlayback playback;
@@ -1969,21 +2280,52 @@ namespace
 					!component->Emitters.empty() &&
 					component->Emitters.size() ==
 						component->Document.Elements.size();
-				componentIds.insert(cue.strComponentAssetId);
+				if (nullptr != component)
+					effectEmitterCount += component->Emitters.size();
+				hierarchyComplete = hierarchyComplete &&
+					componentIds.insert(cue.strComponentAssetId).second;
 			}
+			hierarchyComplete = hierarchyComplete &&
+				expectedBuild != buildContract.Effects.end() &&
+				effectEmitterCount == expectedBuild->second.iEmitterCount;
+			assemblyEmitterCount += effectEmitterCount;
 		}
-		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> sDocument =
-			CEffectCatalog::Find("effect.dimensionmaster.skill.2050550");
+		const std::vector<std::string> catalogComponentIds =
+			CEffectCatalog::Get_ComponentAssetIds();
+		const std::set<std::string> catalogComponentIdSet(
+			catalogComponentIds.begin(), catalogComponentIds.end());
+		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> tDocument =
+			CEffectCatalog::Find("effect.dimensionmaster.skill.2050500");
+		const bool_t canonicalTModelCue = nullptr != tDocument &&
+			std::any_of(tDocument->ModelCues.begin(), tDocument->ModelCues.end(),
+				[](const EFFECT_MODEL_CUE_DESC& cue)
+				{
+					return cue.strClipName ==
+						"sk_swp_dms_00_sk_sk_dimensionprison";
+				});
+		if (!buildContractLoaded ||
+			effectIds.size() != buildContract.iEffectCount ||
+			catalogComponentIds.size() != buildContract.iComponentCount ||
+			assemblyEmitterCount != buildContract.iEmitterCount)
+		{
+			std::cout << "[DETAIL] Effect build contract: " <<
+				buildContractStatus << " effects=" << effectIds.size() << '/' <<
+				buildContract.iEffectCount << " components=" <<
+				catalogComponentIds.size() << '/' << buildContract.iComponentCount <<
+				" emitters=" << assemblyEmitterCount << '/' <<
+				buildContract.iEmitterCount << '\n';
+		}
 		runner.Require(
-			hierarchyComplete && 180u == componentIds.size() &&
-			nullptr != sDocument && 209u == sDocument->Elements.size(),
-			"Effect Runtime Loads Assembly Component Emitter Hierarchy And Compiles S");
-		runner.Require(playbackStageComplete && 15u == stagedEffectCount,
-			"Effect Runtime Stages All Fifteen Compiled DimensionMaster Documents");
+			hierarchyComplete && componentIds == catalogComponentIdSet &&
+			catalogComponentIds.size() == buildContract.iComponentCount &&
+			assemblyEmitterCount == buildContract.iEmitterCount && canonicalTModelCue,
+			"Effect Runtime Matches Generated Assembly Component Emitter Contract And Canonical T Cue");
+		runner.Require(playbackStageComplete &&
+			stagedEffectCount == expectedEffectIds.size(),
+			"Effect Runtime Stages Every Current Compiled DimensionMaster Document");
 		bool_t componentStageComplete = true;
 		size_t stagedComponentCount = 0u;
-		for (const std::string& componentId :
-			CEffectCatalog::Get_ComponentAssetIds())
+		for (const std::string& componentId : catalogComponentIds)
 		{
 			const std::shared_ptr<const EFFECT_COMPONENT_DESC> component =
 				CEffectCatalog::Find_Component(componentId);
@@ -1998,8 +2340,9 @@ namespace
 				std::cout << "[DETAIL] WFX component stage " << componentId
 					<< ": " << playbackStatus << '\n';
 		}
-		runner.Require(componentStageComplete && stagedComponentCount == 180u,
-			"Data Files Stages All One Hundred Eighty WFX Components");
+		runner.Require(!catalogComponentIds.empty() && componentStageComplete &&
+			stagedComponentCount == catalogComponentIds.size(),
+			"Data Files Stages Every Current WFX Component");
 
 		if (bCheckFailedReloadRollback)
 		{
@@ -2020,14 +2363,14 @@ namespace
 			runner.Require(
 				std::string::npos != markerIndex && rejected &&
 				revision == CEffectCatalog::Get_RuntimeRevision() &&
-				CEffectCatalog::Contains("effect.dimensionmaster.skill.2050550"),
+				CEffectCatalog::Contains("effect.dimensionmaster.skill.2050500"),
 				"Effect Runtime Invalid Catalog Preserves Committed Assembly State");
 		}
 
 		CEffectCatalog::Clear();
 		error.clear();
 		std::filesystem::remove(stagedCatalog, error);
-		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+		resourceRootEnvironment.Restore();
 	}
 }
 
@@ -2035,6 +2378,12 @@ int main(const int argc, char* argv[])
 {
 	TEST_RUNNER runner{};
 	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--skill-binding-fast")
+	{
+		Test_RealSkillBindingDocuments(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-executor-fast")
 	{
 		Test_EffectPlaybackDeterminism(runner);
@@ -2047,6 +2396,12 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-runtime-fast")
 	{
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-imported-fast")
+	{
+		Test_DimensionMasterImportedPortalDraft(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

@@ -3,10 +3,10 @@
   "formatVersion": 2,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050240,
-  "inputSlot": "A",
+  "inputSlot": "D",
   "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
   "source": {
-    "actionSourceSha256": "388a13bcd6af4940860c97dc42cd65a18d2aa78476ad81e4cf4759bd18e05389",
+    "actionSourceSha256": "33d35fe6b97c6ea707da0e293e265a26afe0f97823155a25783d1cb5175cf73e",
     "loaSha256": "256e51c0d4f0bc537df904e7b58af559a9224807a58d37bcd19aa5e707366dc6"
   },
   "selectedStages": [
@@ -3789,7 +3789,9 @@
     "disabledPlayParticleEffectCount": 13,
     "byteLosslessPayloadComplete": true,
     "referenceJoinComplete": true,
-    "runtimeAnchorResolutionComplete": true
+    "runtimeAnchorResolutionComplete": true,
+    "runtimeModelCueTransformComplete": true,
+    "runtimeModelMaterialSemanticComplete": true
   },
   "sourceExtractionComplete": true,
   "runtimeExecutionComplete": false

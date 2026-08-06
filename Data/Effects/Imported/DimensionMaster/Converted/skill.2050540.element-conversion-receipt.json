@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050540,
-  "inputSlot": "V",
+  "inputSlot": "ALT_V",
   "sourcePolicy": {
     "partition": "ParticleSystem/Emitter/FIRST_LOD",
     "coordinateScale": 0.01,
@@ -37035,10 +37035,31 @@
       "resourceMappings": [
         {
           "slotId": "base",
-          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
-          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
-          "note": "Original material has no resolved texture parameter; replace after visual review."
+          "parameterName": "maintex",
+          "sourceObjectPath": "fx_tex_high_01.fx_r_symbol_swp_02_cl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_01/fx_r_symbol_swp_02_cl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "dissolve",
+          "parameterName": "dissolve_tex_01",
+          "sourceObjectPath": "fx_tex_02.fx_d_noise_012",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_012.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "emissive",
+          "parameterName": "emissivetex02",
+          "sourceObjectPath": "fx_tex_06.fx_m_circuitboard_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_circuitboard_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "uv_noise_tex",
+          "sourceObjectPath": "fx_tex_02.fx_d_normal_009",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_normal_009.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -37113,6 +37134,37 @@
             0.15000000596046448
           ],
           "note": "Detail color multiply remains identity for authored override"
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "maintex_dynamicpan_x_velue",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "maintex_dynamicpan_y_velue",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.x",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noisetex_pan_x",
+          "value": 0.0
+        },
+        {
+          "target": "uv.speed.y",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "uv_noisetex_pan_y",
+          "value": 0.0
+        },
+        {
+          "target": "color.emissiveIntensity",
+          "status": "PARAMETER_NAME_HEURISTIC",
+          "source": "emissive_core_strength",
+          "value": 100.0,
+          "note": "explicit emissive strength/intensity scalar; runtime safety clamp [0, 100]"
         }
       ],
       "burstSource": [
@@ -37181,8 +37233,143 @@
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_magiccircle_01_01_tr",
-          "scalars": [],
-          "vectors": []
+          "scalars": [
+            {
+              "name": "disslovetex_01_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_panspeed_y",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "disslovetex_01_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_hardness",
+              "value": 1.100000023841858
+            },
+            {
+              "name": "edge_thin",
+              "value": 1.2000000476837158
+            },
+            {
+              "name": "emissive_base",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_core_power",
+              "value": 2.0
+            },
+            {
+              "name": "emissive_core_strength",
+              "value": 120.0
+            },
+            {
+              "name": "emissivetex02_panspeed_y",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "emissivetex02_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "emissivetex02_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_alpha_strength",
+              "value": 3.0
+            },
+            {
+              "name": "maintex_dynamicpan_x_velue",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_dynamicpan_y_velue",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_move_x",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_move_y",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_panspeed_y",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_rotator",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_velue",
+              "value": -1.0
+            },
+            {
+              "name": "uv_noisetex_pan_x",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noisetex_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "uvnoise_move_x",
+              "value": 0.0
+            },
+            {
+              "name": "uvnoise_move_y",
+              "value": 0.0
+            },
+            {
+              "name": "spheremask_strength",
+              "value": 1.0
+            },
+            {
+              "name": "spheremask_strength_max",
+              "value": 2.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "edge_color",
+              "value": {
+                "r": 50.0,
+                "g": 50.0,
+                "b": 50.0,
+                "a": 1.0
+              }
+            }
+          ]
         }
       ]
     },
@@ -52008,6 +52195,24 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_knockdowngrass_002.particlemodulelifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_Local_BoxShockWave_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.footdown.par_r_footstepwhiteroom_01.particlemodulesizemultiplylife_23",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -52400,6 +52605,24 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_04",
         "FX_PC_SWP_04.Par_M_SWP_TW_Light_01_Loop"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_trap_meteor_exp_02.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01"
       ]
     },
     {
@@ -54051,6 +54274,51 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_cam_02.particlemodulecolorscaleoverlife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.efparticlemodulevelocityoverlifetime_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_01.par_w_swp_gate_trail_00.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_02.par_r_swp_momentaryrift_00_01-2.particlemodulesizemultiplylife_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_pc_swp_03.par_s_swp_instance_cam_04.particlemodulesizemultiplylife_47",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -54085,20 +54353,6 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_07"
       ]
-    },
-    {
-      "sourceEventId": "source-event-001",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-021",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
     },
     {
       "sourceObjectPath": "par_m_swp_tw_light_01_loop.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
@@ -54139,8 +54393,8 @@
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 0,
     "particleBudget": 1635,
-    "externalPackageCount": 121,
-    "externalRequestCount": 1400,
+    "externalPackageCount": 126,
+    "externalRequestCount": 1422,
     "externalUnresolvedRequestCount": 0
   }
 }

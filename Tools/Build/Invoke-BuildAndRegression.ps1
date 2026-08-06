@@ -2,7 +2,8 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$ResourceRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,12 @@ $reportRoot = [IO.Path]::GetFullPath(
     (Join-Path $reportParent $Configuration))
 $clientExe = Join-Path $repoRoot "Client\Bin\$Configuration\Client.exe"
 $serverExe = Join-Path $repoRoot "Server\Bin\$Configuration\Server.exe"
+$runtimeResourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
+    Join-Path $repoRoot 'Client\Bin\Resources'
+}
+else {
+    [IO.Path]::GetFullPath($ResourceRoot)
+}
 
 function Resolve-MSBuild {
     $command = Get-Command msbuild.exe -ErrorAction SilentlyContinue
@@ -47,7 +54,7 @@ function Assert-RuntimeLayout {
         $serverExe,
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_Deferred.hlsl'),
         (Join-Path $repoRoot 'Client\Bin\ShaderFiles\Shader_VtxTex.hlsl'),
-        (Join-Path $repoRoot 'Client\Bin\Resources\Fonts')
+        (Join-Path $runtimeResourceRoot 'Fonts')
     )
     $missing = @($required | Where-Object {
         -not (Test-Path -LiteralPath $_)
@@ -101,7 +108,7 @@ try {
     try {
         [Environment]::SetEnvironmentVariable(
             'LOSTARK_RESOURCE_ROOT',
-            (Join-Path $repoRoot 'Client\Bin\Resources'),
+            $runtimeResourceRoot,
             'Process')
         & $frontendHarness
         if ($LASTEXITCODE -ne 0) {
@@ -120,7 +127,8 @@ try {
 
     & (Join-Path $repoRoot `
         'Tools\ProjectAudit\Invoke-ProjectAudit.ps1') `
-        -ReportPath (Join-Path $reportRoot 'ProjectAudit.json')
+        -ReportPath (Join-Path $reportRoot 'ProjectAudit.json') `
+        -ResourceRoot $runtimeResourceRoot
     if ($LASTEXITCODE -ne 0) {
         throw 'Project audit failed.'
     }

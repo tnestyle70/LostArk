@@ -1,8 +1,8 @@
 {
   "schema": "lostark.effect-authoring",
-  "version": 10,
+  "version": 11,
   "effectAssetId": "effect.dimensionmaster.skill.2050220",
-  "displayName": "DIMENSIONMASTER E 2050220 Imported Cascade Draft",
+  "displayName": "DIMENSIONMASTER S 2050220 Imported Cascade Draft",
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -27,7 +27,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "enginematerials.defaultparticle",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -345,6 +348,11 @@
             "objectPath": "FX_CM_00.dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "dust.par_mp_dust_-x_high_01.particlemodulelifetime_1.distributionfloatparticleparameter_4"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -388,6 +396,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "gadget.par_j_lightshafting_02.particlemodulesize_9.distributionvectorparticleparameter_2"
               }
             ],
             "distributions": [
@@ -428,6 +441,16 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startalpha.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "startcolor.distribution.objectpath",
+                "kind": "string",
+                "value": "light.par_mar_streamofedge_light_01.particlemodulecolor_3.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -593,6 +616,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "item.par_g_gadgetskill_001.particlemodulelocation_10.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -643,6 +671,11 @@
                 "propertyPath": "pointlightcomponent",
                 "kind": "number",
                 "value": 7055.0
+              },
+              {
+                "propertyPath": "pointlightcomponent.objectpath",
+                "kind": "string",
+                "value": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
               }
             ],
             "distributions": []
@@ -671,6 +704,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "rate.distribution.objectpath",
+                "kind": "string",
+                "value": "item.par_g_gadgetskill_001.particlemodulespawn_16.distributionfloatparticleparameter_33"
               }
             ],
             "distributions": [
@@ -747,7 +785,33 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.bfx.m.bfx.d.pa.circ.01.ad.e79446d13bb8",
+          "runtimeShaderProfileId": "effect.ue3.circle.v1",
+          "parentMaterialPath": "bfx_m.bfx_d_pa_circ_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "depthbiasdalpha_bias",
+              "value": 30.0
+            },
+            {
+              "name": "03.spherepower",
+              "value": 4.0
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -1695,7 +1759,52 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_post3ch_02_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.d.post3ch.02.tr.7cbac6f4b280",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_d_post3ch_02_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "01.redoffset",
+              "value": [
+                0.001,
+                0.002,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "02.greenoffset",
+              "value": [
+                -0.002,
+                -0.002,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "03.blueoffset",
+              "value": [
+                0.005,
+                0.001,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -2864,7 +2973,99 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_e_pa_ht_18_4_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.f.pa.shine.01.0.tr.7bf5dfb918ef",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_f_pa_shine_01_0_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "00.noisepower",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "00.noisestr",
+              "value": 5.0
+            },
+            {
+              "name": "02.map_a_uvscale_r",
+              "value": 7.0
+            },
+            {
+              "name": "02.map_b_uvscale_r",
+              "value": 5.0
+            },
+            {
+              "name": "03.map_a_uvscale_g",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "03.map_b_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "04.map_a_panning_x",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "04.map_b_panning_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "05.map_a_panning_y",
+              "value": 0.5
+            },
+            {
+              "name": "05.map_b_panning_y",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "13.distortstr",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "15.map_d_uvscale_r",
+              "value": 4.0
+            },
+            {
+              "name": "16.map_d_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "power",
+              "value": 3.4000000953674316
+            },
+            {
+              "name": "str",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "biasvalue",
+              "value": 40.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "noisecolor",
+              "value": [
+                1.5,
+                1.5,
+                1.5,
+                5.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -3993,7 +4194,99 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_e_pa_ht_18_4_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.f.pa.shine.01.0.tr.7bf5dfb918ef",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_f_pa_shine_01_0_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "00.noisepower",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "00.noisestr",
+              "value": 5.0
+            },
+            {
+              "name": "02.map_a_uvscale_r",
+              "value": 7.0
+            },
+            {
+              "name": "02.map_b_uvscale_r",
+              "value": 5.0
+            },
+            {
+              "name": "03.map_a_uvscale_g",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "03.map_b_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "04.map_a_panning_x",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "04.map_b_panning_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "05.map_a_panning_y",
+              "value": 0.5
+            },
+            {
+              "name": "05.map_b_panning_y",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "13.distortstr",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "15.map_d_uvscale_r",
+              "value": 4.0
+            },
+            {
+              "name": "16.map_d_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "power",
+              "value": 3.4000000953674316
+            },
+            {
+              "name": "str",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "biasvalue",
+              "value": 40.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "noisecolor",
+              "value": [
+                1.5,
+                1.5,
+                1.5,
+                5.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -5122,7 +5415,97 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.j.me.localcrack.01.tr.41a9caa566a2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_j_me_localcrack_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "normal_tileu",
+              "value": 0.5
+            },
+            {
+              "name": "normal_tilev",
+              "value": 0.5
+            },
+            {
+              "name": "refle_desaturation",
+              "value": 0.6000000238418579
+            },
+            {
+              "name": "refle_offsetx",
+              "value": 0.5
+            },
+            {
+              "name": "refle_offsety",
+              "value": 0.5
+            },
+            {
+              "name": "refle_pow",
+              "value": 2.0
+            },
+            {
+              "name": "refle_tileu",
+              "value": 1.0
+            },
+            {
+              "name": "refle_tilev",
+              "value": 1.0
+            },
+            {
+              "name": "refle_vector_divide",
+              "value": 3.0
+            },
+            {
+              "name": "distortion",
+              "value": 10.0
+            },
+            {
+              "name": "fresnel_pow",
+              "value": 0.20000000298023224
+            }
+          ],
+          "vectors": [
+            {
+              "name": "refle_color",
+              "value": [
+                10.0,
+                10.0,
+                10.0,
+                1.0
+              ]
+            },
+            {
+              "name": "in_color",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "out_color",
+              "value": [
+                0.1,
+                0.1,
+                0.1,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "uv_pan",
+            "unbound",
+            "dissolve",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -6597,7 +6980,97 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.j.me.localcrack.01.tr.41a9caa566a2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_j_me_localcrack_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "normal_tileu",
+              "value": 0.5
+            },
+            {
+              "name": "normal_tilev",
+              "value": 0.5
+            },
+            {
+              "name": "refle_desaturation",
+              "value": 0.6000000238418579
+            },
+            {
+              "name": "refle_offsetx",
+              "value": 0.5
+            },
+            {
+              "name": "refle_offsety",
+              "value": 0.5
+            },
+            {
+              "name": "refle_pow",
+              "value": 2.0
+            },
+            {
+              "name": "refle_tileu",
+              "value": 1.0
+            },
+            {
+              "name": "refle_tilev",
+              "value": 1.0
+            },
+            {
+              "name": "refle_vector_divide",
+              "value": 3.0
+            },
+            {
+              "name": "distortion",
+              "value": 10.0
+            },
+            {
+              "name": "fresnel_pow",
+              "value": 0.20000000298023224
+            }
+          ],
+          "vectors": [
+            {
+              "name": "refle_color",
+              "value": [
+                10.0,
+                10.0,
+                10.0,
+                1.0
+              ]
+            },
+            {
+              "name": "in_color",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "name": "out_color",
+              "value": [
+                0.1,
+                0.1,
+                0.1,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "uv_pan",
+            "unbound",
+            "dissolve",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -8064,7 +8537,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -9155,6 +9645,11 @@
             "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
             "literals": [
               {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10.distributionvectorparticleparameter_2"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -9458,7 +9953,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -10549,6 +11061,11 @@
             "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
             "literals": [
               {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10.distributionvectorparticleparameter_2"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -10852,7 +11369,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_pa_flare_03_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.d.00.fx.m.fx.d.pa.flare.03.ad.4d380200a8e7",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_pa_flare_03_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -12062,7 +12596,29 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.j.rgbsplit.01.ad.96f5e63f1839",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_j_rgbsplit_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "desaturation",
+              "value": -1.5
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -13128,7 +13684,33 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.bfx.m.bfx.d.pa.circ.01.ad.e79446d13bb8",
+          "runtimeShaderProfileId": "effect.ue3.circle.v1",
+          "parentMaterialPath": "bfx_m.bfx_d_pa_circ_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "depthbiasdalpha_bias",
+              "value": 30.0
+            },
+            {
+              "name": "03.spherepower",
+              "value": 4.0
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -14116,7 +14698,52 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_post3ch_02_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.d.post3ch.02.tr.7cbac6f4b280",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_d_post3ch_02_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [
+            {
+              "name": "01.redoffset",
+              "value": [
+                0.001,
+                0.002,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "02.greenoffset",
+              "value": [
+                -0.002,
+                -0.002,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "name": "03.blueoffset",
+              "value": [
+                0.005,
+                0.001,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -15325,7 +15952,99 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_e_pa_ht_18_4_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.f.pa.shine.01.0.tr.7bf5dfb918ef",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_f_pa_shine_01_0_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "00.noisepower",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "00.noisestr",
+              "value": 5.0
+            },
+            {
+              "name": "02.map_a_uvscale_r",
+              "value": 7.0
+            },
+            {
+              "name": "02.map_b_uvscale_r",
+              "value": 5.0
+            },
+            {
+              "name": "03.map_a_uvscale_g",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "03.map_b_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "04.map_a_panning_x",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "04.map_b_panning_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "05.map_a_panning_y",
+              "value": 0.5
+            },
+            {
+              "name": "05.map_b_panning_y",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "13.distortstr",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "15.map_d_uvscale_r",
+              "value": 4.0
+            },
+            {
+              "name": "16.map_d_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "power",
+              "value": 3.4000000953674316
+            },
+            {
+              "name": "str",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "biasvalue",
+              "value": 40.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "noisecolor",
+              "value": [
+                1.5,
+                1.5,
+                1.5,
+                5.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -16499,7 +17218,99 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_e_pa_ht_18_4_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.f.pa.shine.01.0.tr.7bf5dfb918ef",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_f_pa_shine_01_0_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "00.noisepower",
+              "value": 0.699999988079071
+            },
+            {
+              "name": "00.noisestr",
+              "value": 5.0
+            },
+            {
+              "name": "02.map_a_uvscale_r",
+              "value": 7.0
+            },
+            {
+              "name": "02.map_b_uvscale_r",
+              "value": 5.0
+            },
+            {
+              "name": "03.map_a_uvscale_g",
+              "value": 0.20000000298023224
+            },
+            {
+              "name": "03.map_b_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "04.map_a_panning_x",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "04.map_b_panning_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "05.map_a_panning_y",
+              "value": 0.5
+            },
+            {
+              "name": "05.map_b_panning_y",
+              "value": -0.20000000298023224
+            },
+            {
+              "name": "13.distortstr",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "15.map_d_uvscale_r",
+              "value": 4.0
+            },
+            {
+              "name": "16.map_d_uvscale_g",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "power",
+              "value": 3.4000000953674316
+            },
+            {
+              "name": "str",
+              "value": 0.30000001192092896
+            },
+            {
+              "name": "biasvalue",
+              "value": 40.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "noisecolor",
+              "value": [
+                1.5,
+                1.5,
+                1.5,
+                5.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -17665,7 +18476,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_pa_flare_03_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.d.00.fx.m.fx.d.pa.flare.03.ad.4d380200a8e7",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_pa_flare_03_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -18875,7 +19703,29 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.fx.j.rgbsplit.01.ad.96f5e63f1839",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m.fx_j_rgbsplit_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "desaturation",
+              "value": -1.5
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -19946,7 +20796,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -21037,6 +21904,11 @@
             "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
             "literals": [
               {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10.distributionvectorparticleparameter_2"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -21340,7 +22212,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -22431,6 +23320,11 @@
             "objectPath": "FX_BS_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
             "literals": [
               {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10.distributionvectorparticleparameter_2"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -22734,7 +23628,47 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_10_1_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.maskcontrol.01.tr.30a3b56d23fe",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_maskcontrol_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "mask_hardness",
+              "value": 0.0
+            },
+            {
+              "name": "mask_intensity",
+              "value": 30.0
+            },
+            {
+              "name": "mask_power",
+              "value": 4.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "mask_color",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -23600,7 +24534,139 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_spritewave_24_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "disslovetex_01_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_panspeed_y",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "disslovetex_01_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_hardness",
+              "value": 2.0
+            },
+            {
+              "name": "edge_thin",
+              "value": 1.0099999904632568
+            },
+            {
+              "name": "emissive_base",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_core_power",
+              "value": 3.0
+            },
+            {
+              "name": "emissive_core_strength",
+              "value": 100.0
+            },
+            {
+              "name": "emissivetex02_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "emissivetex02_panspeed_y",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "emissivetex02_tile_x",
+              "value": 2.0
+            },
+            {
+              "name": "emissivetex02_tile_y",
+              "value": 2.0
+            },
+            {
+              "name": "maintex_alpha_strength",
+              "value": 25.0
+            },
+            {
+              "name": "maintex_move_x",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "maintex_move_y",
+              "value": -0.30000001192092896
+            },
+            {
+              "name": "maintex_rotator",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_tile_y",
+              "value": 1.5
+            },
+            {
+              "name": "uv_noise_velue",
+              "value": -1.0
+            },
+            {
+              "name": "uv_noisetex_pan_x",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_tile_x",
+              "value": 3.0
+            },
+            {
+              "name": "uv_noisetex_tile_y",
+              "value": 3.0
+            },
+            {
+              "name": "spheremask_strength",
+              "value": 2.0
+            },
+            {
+              "name": "spheremask_strength_max",
+              "value": 5.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "edge_color",
+              "value": [
+                5.0,
+                5.0,
+                5.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "uv_pan",
+            "dissolve",
+            "distortion",
+            "distortion"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -24720,7 +25786,139 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_spritewave_30_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "disslovetex_01_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_panspeed_y",
+              "value": 0.0
+            },
+            {
+              "name": "disslovetex_01_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "disslovetex_01_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "dissolve_hardness",
+              "value": 1.0
+            },
+            {
+              "name": "dissolvetex_move_x",
+              "value": 0.0
+            },
+            {
+              "name": "dissolvetex_move_y",
+              "value": 0.0
+            },
+            {
+              "name": "edge_thin",
+              "value": 1.2999999523162842
+            },
+            {
+              "name": "emissive_base",
+              "value": 1.0
+            },
+            {
+              "name": "emissive_core_power",
+              "value": 3.0
+            },
+            {
+              "name": "emissive_core_strength",
+              "value": 150.0
+            },
+            {
+              "name": "maintex_alpha_strength",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_move_x",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_move_y",
+              "value": -0.10000000149011612
+            },
+            {
+              "name": "maintex_panspeed_x",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_panspeed_y",
+              "value": 0.0
+            },
+            {
+              "name": "maintex_rotator",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_tile_x",
+              "value": 1.0
+            },
+            {
+              "name": "maintex_tile_y",
+              "value": 1.0
+            },
+            {
+              "name": "uv_noise_velue",
+              "value": -1.0
+            },
+            {
+              "name": "uv_noisetex_pan_x",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_pan_y",
+              "value": 0.0
+            },
+            {
+              "name": "uv_noisetex_tile_x",
+              "value": 2.0
+            },
+            {
+              "name": "uv_noisetex_tile_y",
+              "value": 2.0
+            },
+            {
+              "name": "uvnoise_move_x",
+              "value": 0.0
+            },
+            {
+              "name": "uvnoise_move_y",
+              "value": 0.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "edge_color",
+              "value": [
+                10.0,
+                15.0,
+                200.0,
+                1.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "uv_pan",
+            "dissolve",
+            "distortion",
+            "distortion"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -25635,7 +26833,33 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.bfx.m.bfx.d.pa.circ.01.ad.e79446d13bb8",
+          "runtimeShaderProfileId": "effect.ue3.circle.v1",
+          "parentMaterialPath": "bfx_m.bfx_d_pa_circ_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "depthbiasdalpha_bias",
+              "value": 30.0
+            },
+            {
+              "name": "03.spherepower",
+              "value": 4.0
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -26401,7 +27625,111 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_twirl_03_09_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.d.pa.twirl.05.ad.2b8e151c3da1",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_twirl_05_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "01.circle_radius",
+              "value": 0.5
+            },
+            {
+              "name": "02.circle_hardness",
+              "value": 0.5
+            },
+            {
+              "name": "11.centermask_str",
+              "value": 1.0
+            },
+            {
+              "name": "12.centermask_power",
+              "value": 1.0
+            },
+            {
+              "name": "21.noise_str",
+              "value": 3.0
+            },
+            {
+              "name": "22.noise_power",
+              "value": 3.0
+            },
+            {
+              "name": "02.map_e_uvscale_r",
+              "value": 0.5
+            },
+            {
+              "name": "03.map_e_uvscale_g",
+              "value": 0.5
+            },
+            {
+              "name": "04.map_e_panning_x",
+              "value": 0.0
+            },
+            {
+              "name": "05.map_e_panning_y",
+              "value": 0.0
+            },
+            {
+              "name": "07.map_f_uvscale_r",
+              "value": 0.5
+            },
+            {
+              "name": "08.map_f_uvscale_g",
+              "value": 1.0
+            },
+            {
+              "name": "09.map_f_panning_x",
+              "value": 0.0
+            },
+            {
+              "name": "10.map_f_panning_y",
+              "value": 0.0
+            },
+            {
+              "name": "12.desaturation",
+              "value": 1.0
+            },
+            {
+              "name": "15.emissiion_power",
+              "value": 0.800000011920929
+            },
+            {
+              "name": "01.depthbiasdalpha_bias",
+              "value": 100.0
+            },
+            {
+              "name": "01.amount",
+              "value": 1.0
+            },
+            {
+              "name": "11.curvature",
+              "value": 3.0
+            }
+          ],
+          "vectors": [
+            {
+              "name": "16.emissiion_str",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                5.0
+              ]
+            }
+          ],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "distortion",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -27683,7 +29011,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -28743,7 +30088,24 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_pa_splitline_02_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.fx.m.mi.o.00.fx.m.fx.o.pa.splitline.02.ad.84f529b72b79",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_pa_splitline_02_ad",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "psuvim_linear_blend"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -29798,7 +31160,29 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_circ_01_2_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": true,
+          "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.tr.f3e3bcf906f5",
+          "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+          "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_tr",
+          "semanticStatus": "reconstructed_profile",
+          "scalars": [
+            {
+              "name": "03.spherepower",
+              "value": 6.0
+            }
+          ],
+          "vectors": [],
+          "staticSwitches": [],
+          "dynamicParameterSemantics": [
+            "unbound",
+            "unbound",
+            "unbound",
+            "unbound"
+          ],
+          "subUVMode": "none"
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -31098,7 +32482,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -31416,6 +32803,11 @@
             "objectPath": "FX_CM_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -31459,6 +32851,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulesize_15.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -31598,6 +32995,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulelocation_16.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -31634,6 +33036,11 @@
             "className": "particlemodulecameraoffset",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3",
             "literals": [
+              {
+                "propertyPath": "cameraoffset.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -31674,6 +33081,16 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionvectorparticleparameter_3"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -32083,7 +33500,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -32401,6 +33821,11 @@
             "objectPath": "FX_CM_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "distortion.par_mp_concavedis_z_03.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -32444,6 +33869,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulesize_15.distributionvectorparticleparameter_0"
               }
             ],
             "distributions": [
@@ -32583,6 +34013,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startlocation.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulelocation_16.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -32619,6 +34054,11 @@
             "className": "particlemodulecameraoffset",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3",
             "literals": [
+              {
+                "propertyPath": "cameraoffset.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecameraoffset_3.distributionfloatparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -32659,6 +34099,16 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionfloatparticleparameter_0"
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_fsm_cs_rgbnoise_01.particlemodulecolorscaleoverlife_28.distributionvectorparticleparameter_3"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
@@ -33068,7 +34518,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -33381,6 +34834,11 @@
             "objectPath": "FX_PC_FLM_01.par_m_flm_ribbon_02.particlemodulelifetime_0",
             "literals": [
               {
+                "propertyPath": "lifetime.distribution.objectpath",
+                "kind": "string",
+                "value": "par_m_flm_ribbon_02.particlemodulelifetime_0.distributionfloatparticleparameter_0"
+              },
+              {
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
@@ -33424,6 +34882,11 @@
                 "propertyPath": "lodvalidity",
                 "kind": "number",
                 "value": 3.0
+              },
+              {
+                "propertyPath": "startsize.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_par.par_j_zoomblur_01.particlemodulesize_0.distributionvectorparticleparameter_1"
               }
             ],
             "distributions": [
@@ -33906,6 +35369,16 @@
             "className": "particlemodulecolorscaleoverlife",
             "objectPath": "FX_POST.fx_par.par_j_lineblur_01_zaxis.particlemodulecolorscaleoverlife_1",
             "literals": [
+              {
+                "propertyPath": "alphascaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_par.par_j_lineblur_01_zaxis.particlemodulecolorscaleoverlife_1.distributionfloatparticleparameter_2"
+              },
+              {
+                "propertyPath": "colorscaleoverlife.distribution.objectpath",
+                "kind": "string",
+                "value": "fx_par.par_j_lineblur_01_zaxis.particlemodulecolorscaleoverlife_1.distributionvectorparticleparameter_0"
+              },
               {
                 "propertyPath": "lodvalidity",
                 "kind": "number",

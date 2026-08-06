@@ -17,6 +17,53 @@ SPEC.loader.exec_module(MODULE)
 
 
 class BuildEffectSourceMaterialContractTests(unittest.TestCase):
+    def test_duplicate_material_path_uses_exact_source_package_evidence(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.shared",
+                },
+            }],
+        }
+        graph = {"materialParameterBindings": [{
+            "sourceMaterialPath": "fx_pkg.fx_mi.shared",
+            "sourcePhysicalPackage": "RIGHT.upk",
+            "parent": "fx_m.right",
+            "scalars": [{"name": "power", "value": 7.0}],
+        }]}
+        material_map = {"materials": {"fx_mi.shared": [
+            {
+                "source_file": "WRONG.upk",
+                "material_path": "fx_mi.shared",
+                "parent": "fx_m.wrong",
+            },
+            {
+                "source_file": "RIGHT.upk",
+                "material_path": "fx_mi.shared",
+                "parent": "fx_m.right",
+                "scalars": [{"name": "power", "value": 7.0}],
+            },
+        ]}}
+
+        contract, result = MODULE.build_contract(
+            effect, graph, {"elementConversions": []}, {"assets": []},
+            material_map,
+        )
+
+        self.assertEqual([], result["failures"])
+        identity = contract["materialIdentities"][0]
+        self.assertEqual("RIGHT.upk", identity["sourcePhysicalPackage"])
+        self.assertEqual("fx_m.right", identity["parentMaterialPath"])
+        self.assertEqual(
+            [{"name": "power", "value": 7.0}],
+            identity["sourceParameters"]["scalars"],
+        )
+
     def test_dynamic_parameter_names_become_typed_reconstruction_semantics(self):
         element = {
             "sourceRecipe": {

@@ -1720,7 +1720,7 @@
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.2050100",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050100",
       "comboStages": []
     },
     {
@@ -1739,7 +1739,7 @@
       "movementDistance": 0.0,
       "maximumRange": 5.0,
       "serverDamageProfileId": "damage.player.2050120",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050120",
       "comboStages": []
     },
     {
@@ -1758,7 +1758,7 @@
       "movementDistance": 0.0,
       "maximumRange": 6.0,
       "serverDamageProfileId": "damage.player.2050160",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050160",
       "comboStages": []
     },
     {
@@ -1777,7 +1777,7 @@
       "movementDistance": 0.0,
       "maximumRange": 10.0,
       "serverDamageProfileId": "damage.player.2050180",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050180",
       "comboStages": []
     },
     {
@@ -1834,7 +1834,7 @@
       "movementDistance": 0.0,
       "maximumRange": 7.0,
       "serverDamageProfileId": "damage.player.2050230",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050230",
       "comboStages": []
     },
     {
@@ -1891,7 +1891,7 @@
       "movementDistance": 0.0,
       "maximumRange": 12.0,
       "serverDamageProfileId": "damage.player.2050520",
-      "effectId": "",
+      "effectId": "effect.dimensionmaster.skill.2050520",
       "comboStages": []
     },
     {

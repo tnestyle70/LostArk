@@ -719,10 +719,11 @@ Lance Master    Q W E R A S T V ALT_V + LMB(4단)
 Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
 Slayer          Q W E R A S D F V ALT_V + LMB(4단)
 Artist          Q W E R A S V ALT_V + LMB(4단)
-DimensionMaster Q W E R A S D F T V + LMB(4단)
+DimensionMaster Q W E R A S D F T V ALT_V + LMB(4단)
 ```
 
-DimensionMaster에는 `ALT_V`가 없다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
+DimensionMaster의 `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding의
+`pc_sp_m_00_sk_sk_super_timewave`를 사용한다. Tool 화면은 위 목록을 하드코딩하지 않고 `PlayerSkills.json`을 정렬해
 그리므로 이후 합법적으로 추가되는 `Z`, `SPACE`, `RMB` 등의 slot도 숨기지 않는다.
 
 ## 16. Character Select Server Arena 검증 흐름 (2026-08-05)

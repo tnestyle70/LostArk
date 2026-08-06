@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
   "skillId": 2050500,
-  "inputSlot": "F",
+  "inputSlot": "T",
   "sourcePolicy": {
     "partition": "ParticleSystem/Emitter/FIRST_LOD",
     "coordinateScale": 0.01,
@@ -12944,10 +12944,24 @@
       "resourceMappings": [
         {
           "slotId": "base",
-          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
-          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
-          "note": "Original material has no resolved texture parameter; replace after visual review."
+          "parameterName": "diff_tex1",
+          "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_mirnoise_01.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "mask",
+          "parameterName": "alpha_tex",
+          "sourceObjectPath": "fx_tex_04.fx_j_smoke_01_cl",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_smoke_01_cl.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "noise",
+          "parameterName": "noisetex",
+          "sourceObjectPath": "fx_tex_02.fx_d_noise_006",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_006.dds",
+          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -13128,7 +13142,56 @@
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_pa_makeflow_01_01_tr",
-          "scalars": [],
+          "scalars": [
+            {
+              "name": "alpha_pow",
+              "value": 1.0
+            },
+            {
+              "name": "diff1_tile_u",
+              "value": 1.5
+            },
+            {
+              "name": "diff1_tile_v",
+              "value": 1.5
+            },
+            {
+              "name": "diff2_tile_u",
+              "value": 1.0
+            },
+            {
+              "name": "diff2_tile_v",
+              "value": 1.0
+            },
+            {
+              "name": "diff_des",
+              "value": 0.5
+            },
+            {
+              "name": "diff_pow",
+              "value": 1.2000000476837158
+            },
+            {
+              "name": "diff_str",
+              "value": 3.0
+            },
+            {
+              "name": "flow_speed",
+              "value": 1.0
+            },
+            {
+              "name": "noise_bias",
+              "value": 0.10000000149011612
+            },
+            {
+              "name": "noise_tile_u",
+              "value": 1.0
+            },
+            {
+              "name": "noise_tile_v",
+              "value": 1.0
+            }
+          ],
           "vectors": []
         }
       ]
@@ -27739,6 +27802,24 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_locdust"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.footdown.par_s_footstepuw_sand_01.particlemodulevelocity_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -28036,6 +28117,52 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_01",
         "FX_CM_02.Light.Par_MP_Light_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01",
+        "FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_04.particlemodulevelocity_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_04_1.efparticlemodulevelocityoverlifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_10.particlemodulecolorscaleoverlife_31",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_10.particlemodulesizemultiplylife_24",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
       ]
     },
     {
@@ -29465,6 +29592,87 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.efparticlemodulevelocityoverlifetime_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulecolorscaleoverlife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_ex_05_1.particlemodulecolorscaleoverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand"
+      ]
+    },
+    {
       "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
       "property": "pointlightcomponent",
       "reason": "local_reference_is_not_a_decoded_particle_graph_node",
@@ -29481,20 +29689,6 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_02"
       ]
-    },
-    {
-      "sourceEventId": "source-event-010",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-011",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
     }
   ],
   "manualTuningBoundaries": [
@@ -29517,8 +29711,8 @@
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 0,
     "particleBudget": 510,
-    "externalPackageCount": 100,
-    "externalRequestCount": 658,
+    "externalPackageCount": 103,
+    "externalRequestCount": 676,
     "externalUnresolvedRequestCount": 0
   }
 }

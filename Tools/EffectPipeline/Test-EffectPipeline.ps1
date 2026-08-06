@@ -137,7 +137,7 @@ try {
     [IO.File]::WriteAllBytes((Join-Path $modelCueResource 'cue.wmodel'),
         [byte[]](9,10,11,12))
     $referenceDocumentPath = Join-Path $PSScriptRoot `
-        '..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json'
+        '..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json'
     $referenceDocument = [IO.File]::ReadAllText(
         [IO.Path]::GetFullPath($referenceDocumentPath), [Text.Encoding]::UTF8) |
         ConvertFrom-Json

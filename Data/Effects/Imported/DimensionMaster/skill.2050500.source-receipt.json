@@ -2,7 +2,7 @@
   "schema": "lostark.effect-source-receipt",
   "schemaVersion": 1,
   "characterClass": "DIMENSIONMASTER",
-  "inputSlot": "F",
+  "inputSlot": "T",
   "skillId": 2050500,
   "animationAssetId": "DimensionMaster",
   "animationVisualContract": {
@@ -20,6 +20,9 @@
   },
   "timeline": {
     "durationSeconds": 4.3667,
+    "bindingClips": [
+      "pc_sp_m_00_sk_sk_dimensionprison"
+    ],
     "clips": [
       {
         "sequenceIndex": 0,
@@ -165,7 +168,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 459,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-011",
@@ -178,7 +181,7 @@
         "sourceType": "Effect",
         "sourceAsset": "",
         "sourceLine": 466,
-        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
       },
       {
         "eventId": "source-event-012",
@@ -281,42 +284,6 @@
   },
   "sourcePackages": [
     {
-      "logicalPackage": "FX_BS_06",
-      "physicalPackage": "XFH2R5G2R06F0Z4E906X0TSQ.upk",
-      "graphSha256": "8ae504d8c0691684b05353a94801391766d46d46388dead4753c95204f3966bb",
-      "graphSummary": {
-        "graphObjectCount": 2686,
-        "particleSystemCount": 112,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 381,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2079,
-        "decodedInterpCurveCount": 1,
-        "decodedInterpCurvePointCount": 2,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 113467,
-      "sourcePackageSha256": "649bb8734a118342c682112d1846df86f791dc870c2b4914c2da4de222f37865"
-    },
-    {
-      "logicalPackage": "FX_CM_01",
-      "physicalPackage": "XFH2RCA2R07F0CYE90DX0CMQ.upk",
-      "graphSha256": "052ca991225f6543a31204e9ee18dff4e5edc1c36c260b9f108831678f3cbe13",
-      "graphSummary": {
-        "graphObjectCount": 25035,
-        "particleSystemCount": 417,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 2841,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 23856,
-        "decodedInterpCurveCount": 85,
-        "decodedInterpCurvePointCount": 237,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 923880,
-      "sourcePackageSha256": "b11ab557cc8f3c87d1525c0ff9d237aed62f3d49e3394a810d9204066a7bca5b"
-    },
-    {
       "logicalPackage": "FX_CM_02",
       "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
       "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
@@ -335,60 +302,6 @@
       "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
     },
     {
-      "logicalPackage": "FX_O_W_01",
-      "physicalPackage": "YGI3SP3O93I18GHMPSMJ8L5CB.upk",
-      "graphSha256": "37a6c0860076ab8782b76983603e6fa975f915804c8cf288b49f0b5fe8f0be8e",
-      "graphSummary": {
-        "graphObjectCount": 25123,
-        "particleSystemCount": 256,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 3764,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 25025,
-        "decodedInterpCurveCount": 56,
-        "decodedInterpCurvePointCount": 171,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 3625798,
-      "sourcePackageSha256": "e57bd76ac26e2fd7d59ed4eb1fd1d7e7860bc64201c293261c0f474c339e67c9"
-    },
-    {
-      "logicalPackage": "FX_PC_SMW_14",
-      "physicalPackage": "YGI3SWD3SHB93D8TG9KMHC6SM.upk",
-      "graphSha256": "0c154040b1d42b4a196ffef152bbd3202cd9827288b9dd280abf9ed8a9d695c0",
-      "graphSummary": {
-        "graphObjectCount": 2673,
-        "particleSystemCount": 33,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 420,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2205,
-        "decodedInterpCurveCount": 5,
-        "decodedInterpCurvePointCount": 11,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 140444,
-      "sourcePackageSha256": "d7307215f72467a685e21218f67b29c951f3ae51f105ad38a47cc3d1354c4715"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_00",
-      "physicalPackage": "YGI3SWD3SH9W3D11G9KMHCS9M.upk",
-      "graphSha256": "57f7252a31bc78a495bf5f68c24349597e5b118bc53899e73a7c226056f38982",
-      "graphSummary": {
-        "graphObjectCount": 4143,
-        "particleSystemCount": 73,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 657,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 3282,
-        "decodedInterpCurveCount": 9,
-        "decodedInterpCurvePointCount": 31,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 202080,
-      "sourcePackageSha256": "e67bc564aceb055e09d51f2f2c334dacedc16c10888a47c7bad938df2936e4f8"
-    },
-    {
       "logicalPackage": "FX_PC_SWP_01",
       "physicalPackage": "YGI3SWD3SH9W3D18G9KMHCS9M.upk",
       "graphSha256": "b1a2c31318ad5c367101de553b0f50da97b19822e939b4fa5e70e8e4b3c7bc0d",
@@ -403,62 +316,8 @@
         "decodedInterpCurvePointCount": 39,
         "opaqueSupportedDistributionStructCount": 0
       },
-      "sourcePackageBytes": 231279,
-      "sourcePackageSha256": "289f186f8b712ad2879dea8050c0b214f81cc1043fb74591868cae142906b1ff"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_02",
-      "physicalPackage": "YGI3SWD3SH9W3D1FG9KMHCS9M.upk",
-      "graphSha256": "4262dc395c3066eb939a8657e1ac8342c0bfee9dfbec2c1a58932452c6837112",
-      "graphSummary": {
-        "graphObjectCount": 6971,
-        "particleSystemCount": 68,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 1070,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 6297,
-        "decodedInterpCurveCount": 6,
-        "decodedInterpCurvePointCount": 24,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 234103,
-      "sourcePackageSha256": "bcfa8285e8067ed3408fd07f9cad54246e09abb0286ffe9faf353b9df32c9a5f"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_04",
-      "physicalPackage": "YGI3SWD3SH9W3D1TG9KMHCS9M.upk",
-      "graphSha256": "d55da96439a9cd043aaeba17520e8de919096e586e3f4d492c431ea823631870",
-      "graphSummary": {
-        "graphObjectCount": 13195,
-        "particleSystemCount": 129,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 2143,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 10336,
-        "decodedInterpCurveCount": 42,
-        "decodedInterpCurvePointCount": 141,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 582705,
-      "sourcePackageSha256": "2a2f94b21fc2502fff66694f4ee8badb3ef3be256d0b02dabbf043aa46aa7274"
-    },
-    {
-      "logicalPackage": "FX_PC_SWP_05",
-      "physicalPackage": "YGI3SWD3SH9W3D10G9KMHCS9M.upk",
-      "graphSha256": "f8d45cbb63fb8c6388f10cc3a3bdf1ae31d7fe431726e318432dedf80b8a342e",
-      "graphSummary": {
-        "graphObjectCount": 3483,
-        "particleSystemCount": 55,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 566,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 2919,
-        "decodedInterpCurveCount": 8,
-        "decodedInterpCurvePointCount": 26,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 193498,
-      "sourcePackageSha256": "5fd9f4b7ea2d4c08b6f68082d7b7759ed6a14b5f1386c0cff2ad98882c6e725a"
+      "sourcePackageBytes": 230964,
+      "sourcePackageSha256": "fd0c0ebe826498ddc8db95b51fa3b730ae6864b988606210c0c8993478770dcc"
     },
     {
       "logicalPackage": "FX_PC_WGL_07",
@@ -475,26 +334,8 @@
         "decodedInterpCurvePointCount": 2,
         "opaqueSupportedDistributionStructCount": 0
       },
-      "sourcePackageBytes": 114987,
-      "sourcePackageSha256": "5add81554b3b10b976523fb185b47c7216f90beac04a1868c1a96efdd01c7182"
-    },
-    {
-      "logicalPackage": "FX_PC_WHK_02",
-      "physicalPackage": "YGI3SWD3S9CX3D1FG9KMHSDGM.upk",
-      "graphSha256": "ab767fd00542b5abdf7f190175c874544fa9660b4926d936867e56839a1ab06f",
-      "graphSummary": {
-        "graphObjectCount": 2562,
-        "particleSystemCount": 58,
-        "propertyErrorCount": 0,
-        "particleEmitterReferenceCount": 491,
-        "missingParticleEmitterTargetCount": 0,
-        "decodedRawDistributionCount": 1985,
-        "decodedInterpCurveCount": 15,
-        "decodedInterpCurvePointCount": 44,
-        "opaqueSupportedDistributionStructCount": 0
-      },
-      "sourcePackageBytes": 131872,
-      "sourcePackageSha256": "f5bae9fc807e2c4d12ffbfe81729f4083c3680242cfc52509de81533c0b561ef"
+      "sourcePackageBytes": 114998,
+      "sourcePackageSha256": "69a392a829acca0532cd8d37f0aae2bfba697df30b32bc2ce9e5b14984813bb3"
     },
     {
       "logicalPackage": "FX_POST",
@@ -586,14 +427,14 @@
       "objectPath": "par_w_swp_dimensionprison_00",
       "rootNodeId": "FX_PC_SWP_01:export:5049",
       "summary": {
-        "nodeCount": 188,
-        "edgeCount": 330,
+        "nodeCount": 187,
+        "edgeCount": 328,
         "emitterCount": 22,
         "lodLevelCount": 44,
-        "moduleCount": 119,
+        "moduleCount": 118,
         "distributionCount": 2,
         "resourceBindingCount": 33,
-        "unresolvedExternalReferenceCount": 334,
+        "unresolvedExternalReferenceCount": 336,
         "featureClasses": [
           "particlemoduletypedatamesh"
         ]
@@ -968,14 +809,14 @@
       "objectPath": "par_w_swp_dimensionprison_00_exp",
       "rootNodeId": "FX_PC_SWP_01:export:5051",
       "summary": {
-        "nodeCount": 231,
-        "edgeCount": 364,
+        "nodeCount": 221,
+        "edgeCount": 342,
         "emitterCount": 31,
         "lodLevelCount": 62,
-        "moduleCount": 133,
+        "moduleCount": 123,
         "distributionCount": 4,
         "resourceBindingCount": 44,
-        "unresolvedExternalReferenceCount": 499,
+        "unresolvedExternalReferenceCount": 521,
         "featureClasses": [
           "efparticlemoduletypedatadecal",
           "particlemoduletypedatamesh"
@@ -1415,14 +1256,14 @@
       "objectPath": "par_w_swp_dimensionprison_00_locdust",
       "rootNodeId": "FX_PC_SWP_01:export:5053",
       "summary": {
-        "nodeCount": 10,
-        "edgeCount": 13,
+        "nodeCount": 9,
+        "edgeCount": 11,
         "emitterCount": 1,
         "lodLevelCount": 2,
-        "moduleCount": 6,
+        "moduleCount": 5,
         "distributionCount": 0,
         "resourceBindingCount": 1,
-        "unresolvedExternalReferenceCount": 18,
+        "unresolvedExternalReferenceCount": 20,
         "featureClasses": []
       },
       "resourceBindings": [
@@ -1444,14 +1285,14 @@
       "objectPath": "par_w_swp_dimensionprison_hand",
       "rootNodeId": "FX_PC_SWP_01:export:5056",
       "summary": {
-        "nodeCount": 26,
-        "edgeCount": 25,
+        "nodeCount": 25,
+        "edgeCount": 24,
         "emitterCount": 4,
         "lodLevelCount": 4,
-        "moduleCount": 17,
+        "moduleCount": 16,
         "distributionCount": 0,
         "resourceBindingCount": 5,
-        "unresolvedExternalReferenceCount": 24,
+        "unresolvedExternalReferenceCount": 25,
         "featureClasses": [
           "particlemoduletypedatamesh"
         ]
@@ -1507,14 +1348,14 @@
       "objectPath": "par_s_superawake_exmove_01",
       "rootNodeId": "FX_PC_WGL_07:export:2103",
       "summary": {
-        "nodeCount": 44,
-        "edgeCount": 43,
+        "nodeCount": 42,
+        "edgeCount": 41,
         "emitterCount": 13,
         "lodLevelCount": 13,
-        "moduleCount": 17,
+        "moduleCount": 15,
         "distributionCount": 0,
         "resourceBindingCount": 15,
-        "unresolvedExternalReferenceCount": 101,
+        "unresolvedExternalReferenceCount": 103,
         "featureClasses": [
           "particlemoduletypedatamesh"
         ]
@@ -1679,14 +1520,14 @@
       "objectPath": "fx_par.par_j_rgbnoise_01",
       "rootNodeId": "FX_POST:export:1574",
       "summary": {
-        "nodeCount": 7,
-        "edgeCount": 8,
+        "nodeCount": 5,
+        "edgeCount": 5,
         "emitterCount": 1,
         "lodLevelCount": 2,
-        "moduleCount": 2,
-        "distributionCount": 1,
+        "moduleCount": 1,
+        "distributionCount": 0,
         "resourceBindingCount": 1,
-        "unresolvedExternalReferenceCount": 14,
+        "unresolvedExternalReferenceCount": 16,
         "featureClasses": []
       },
       "resourceBindings": [
@@ -1708,14 +1549,14 @@
       "objectPath": "fx_par.par_m_filmnoise_zaxis_01",
       "rootNodeId": "FX_POST:export:1586",
       "summary": {
-        "nodeCount": 11,
-        "edgeCount": 15,
+        "nodeCount": 9,
+        "edgeCount": 12,
         "emitterCount": 1,
         "lodLevelCount": 2,
-        "moduleCount": 5,
-        "distributionCount": 2,
+        "moduleCount": 4,
+        "distributionCount": 1,
         "resourceBindingCount": 1,
-        "unresolvedExternalReferenceCount": 8,
+        "unresolvedExternalReferenceCount": 10,
         "featureClasses": []
       },
       "resourceBindings": [
@@ -1734,8 +1575,8 @@
     {
       "sourceMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
       "sourceLogicalPackage": "bfx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "bfx_m.bfx_i_pa_glow_01_ad",
       "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -1751,8 +1592,8 @@
     {
       "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
       "sourceLogicalPackage": "bfx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
       "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -1777,8 +1618,8 @@
     {
       "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_flar_02_01_ad",
       "sourceLogicalPackage": "bfx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "bfx_mi.bfx_d_pa_flar_02_01_ad",
       "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -1799,8 +1640,8 @@
     {
       "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_master_01_16_tr",
       "sourceLogicalPackage": "bfx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "bfx_mi.bfx_d_pa_master_01_16_tr",
       "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -1812,15 +1653,18 @@
       "textures": [
         {
           "name": "11.map_b",
-          "texture": "fx_tex_04.fx_i_environment_001"
+          "texture": "fx_tex_04.fx_i_environment_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_environment_001.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_04.fx_j_smoke_01_cl"
+          "texture": "fx_tex_04.fx_j_smoke_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_smoke_01_cl.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_030"
+          "texture": "fx_tex_02.fx_d_noise_030",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_030.dds"
         }
       ],
       "scalars": [
@@ -1870,8 +1714,8 @@
     {
       "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_04_dt_tr",
       "sourceLogicalPackage": "bfx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "bfx_mi.bfx_d_pa_smoke_ulit_01_04_dt_tr",
       "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -1883,11 +1727,13 @@
       "textures": [
         {
           "name": "map_a",
-          "texture": "fx_tex_02.fx_d_noise_031"
+          "texture": "fx_tex_02.fx_d_noise_031",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_031.dds"
         },
         {
           "name": "map_b",
-          "texture": "fx_tex_02.fx_d_noise_030"
+          "texture": "fx_tex_02.fx_d_noise_030",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_030.dds"
         }
       ],
       "scalars": [
@@ -1929,8 +1775,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_cd_01_3_tr",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_pa_cd_01_3_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1942,7 +1788,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_00.fx_a_cloud_005"
+          "texture": "fx_tex_00.fx_a_cloud_005",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_cloud_005.dds"
         }
       ],
       "scalars": [],
@@ -1961,8 +1808,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1974,7 +1821,8 @@
       "textures": [
         {
           "name": "subuv_tex",
-          "texture": "fx_tex_00.fx_a_fragment_007"
+          "texture": "fx_tex_00.fx_a_fragment_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds"
         }
       ],
       "scalars": [],
@@ -1983,8 +1831,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_pa_gl_01_6_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1996,7 +1844,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_00.fx_a_glow_001"
+          "texture": "fx_tex_00.fx_a_glow_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_001.dds"
         }
       ],
       "scalars": [],
@@ -2015,8 +1864,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_a_pa_gl_01_9_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2028,7 +1877,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_00.fx_a_glow_004"
+          "texture": "fx_tex_00.fx_a_glow_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_glow_004.dds"
         }
       ],
       "scalars": [
@@ -2052,8 +1902,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_01_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_flow_02_01_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2065,11 +1915,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_atypical_035_1_cl"
+          "texture": "fx_tex_02.fx_d_atypical_035_1_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_035_1_cl.dds"
         },
         {
           "name": "01.map_e",
-          "texture": "fx_tex_00.fx_a_noise_017"
+          "texture": "fx_tex_00.fx_a_noise_017",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_017.dds"
         }
       ],
       "scalars": [
@@ -2109,8 +1961,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_05_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_flow_02_05_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2122,7 +1974,8 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_00.fx_a_trail_005_cl"
+          "texture": "fx_tex_00.fx_a_trail_005_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_trail_005_cl.dds"
         }
       ],
       "scalars": [
@@ -2158,8 +2011,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_ice_01_02_tr",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_ice_01_02_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2175,7 +2028,8 @@
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_02.fx_d_environ_035"
+          "texture": "fx_tex_02.fx_d_environ_035",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_environ_035.dds"
         }
       ],
       "scalars": [
@@ -2248,8 +2102,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_038_ts_tr",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_master_01_038_ts_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2261,19 +2115,23 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_atypical_055_ycl"
+          "texture": "fx_tex_02.fx_d_atypical_055_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_055_ycl.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_02.fx_d_noise_033"
+          "texture": "fx_tex_02.fx_d_noise_033",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_033.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_02.fx_d_noise_033"
+          "texture": "fx_tex_02.fx_d_noise_033",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_033.dds"
         },
         {
           "name": "12.map_f",
-          "texture": "fx_tex_02.fx_d_cloud_035"
+          "texture": "fx_tex_02.fx_d_cloud_035",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_cloud_035.dds"
         }
       ],
       "scalars": [
@@ -2414,8 +2272,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_118_fs_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_master_01_118_fs_dt_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2452,8 +2310,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_range_01_03_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_range_01_03_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2465,7 +2323,8 @@
       "textures": [
         {
           "name": "01.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         }
       ],
       "scalars": [
@@ -2519,8 +2378,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_atta_05_07_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2532,7 +2391,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_04.fx_f_ring_001"
+          "texture": "fx_tex_04.fx_f_ring_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_f_ring_001.dds"
         }
       ],
       "scalars": [],
@@ -2541,8 +2401,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_09_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_atta_05_09_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2554,7 +2414,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_00.fx_a_hit_005"
+          "texture": "fx_tex_00.fx_a_hit_005",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_hit_005.dds"
         }
       ],
       "scalars": [],
@@ -2563,8 +2424,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_dark_05_02_tr",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_dark_05_02_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2603,8 +2464,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_flare_02_02_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_flare_02_02_dt_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2633,8 +2494,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_master_01_047_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_master_01_047_dt_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2646,7 +2507,8 @@
       "textures": [
         {
           "name": "02.map_e",
-          "texture": "fx_tex_high_00.fx_c_glow_010"
+          "texture": "fx_tex_high_00.fx_c_glow_010",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_c_glow_010.dds"
         }
       ],
       "scalars": [
@@ -2678,8 +2540,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_ri_04_1_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_e_pa_ri_04_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2691,7 +2553,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_03.fx_e_ring_003"
+          "texture": "fx_tex_03.fx_e_ring_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_ring_003.dds"
         }
       ],
       "scalars": [
@@ -2717,8 +2580,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ht_02_2_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_f_pa_ht_02_2_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2730,7 +2593,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_03.fx_e_ring_001"
+          "texture": "fx_tex_03.fx_e_ring_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_ring_001.dds"
         }
       ],
       "scalars": [
@@ -2760,8 +2624,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_flare_01_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_flare_01_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2773,7 +2637,8 @@
       "textures": [
         {
           "name": "emissive_tex",
-          "texture": "fx_tex_04.fx_j_flare_02_cl"
+          "texture": "fx_tex_04.fx_j_flare_02_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_flare_02_cl.dds"
         }
       ],
       "scalars": [],
@@ -2782,8 +2647,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_rgbsplitfloor_1_tr",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_rgbsplitfloor_1_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2812,8 +2677,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_16_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_k_me_floorstrm_16_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2825,11 +2690,13 @@
       "textures": [
         {
           "name": "21.map_c",
-          "texture": "fx_tex_05.fx_m_wave_001"
+          "texture": "fx_tex_05.fx_m_wave_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_wave_001.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_04.fx_j_mirnoise_01"
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
         }
       ],
       "scalars": [
@@ -2913,8 +2780,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_m_me_floorstrm_04_1_ad",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_m_me_floorstrm_04_1_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2926,11 +2793,13 @@
       "textures": [
         {
           "name": "21.map_c",
-          "texture": "fx_tex_00.fx_a_line_010_ycl"
+          "texture": "fx_tex_00.fx_a_line_010_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_line_010_ycl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_04.fx_j_mirnoise_01"
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
         }
       ],
       "scalars": [
@@ -3022,8 +2891,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_15_tr",
       "sourceLogicalPackage": "fx_m_mi_01",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_m_pa_shorkwave_01_15_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -3035,15 +2904,18 @@
       "textures": [
         {
           "name": "tex_alpha_01",
-          "texture": "fx_tex_05.fx_m_trail_002"
+          "texture": "fx_tex_05.fx_m_trail_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_002.dds"
         },
         {
           "name": "tex_alpha_02",
-          "texture": "fx_tex_02.fx_d_noise_003"
+          "texture": "fx_tex_02.fx_d_noise_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_003.dds"
         },
         {
           "name": "tex_uv_flow",
-          "texture": "fx_tex_01.fx_c_noise_009"
+          "texture": "fx_tex_01.fx_c_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_01/fx_c_noise_009.dds"
         }
       ],
       "scalars": [
@@ -3093,8 +2965,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_circledisort_01_ad",
       "sourceLogicalPackage": "fx_m_mi_02",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_j_pa_circledisort_01_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
@@ -3110,8 +2982,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
       "sourceLogicalPackage": "fx_m_mi_02",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_j_pa_dot_ad_01",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
@@ -3127,29 +2999,95 @@
     {
       "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_pa_makeflow_01_01_tr",
       "sourceLogicalPackage": "fx_m_mi_02",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 2,
-      "candidates": [
+      "catalogKey": "fx_mi.fx_k_pa_makeflow_01_01_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_pa_makeflow_01_01_tr",
+      "objectName": "fx_k_pa_makeflow_01_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_pa_makeflow_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
         {
-          "catalogKey": "fx_mi.fx_k_pa_makeflow_01_01_tr",
-          "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
-          "className": "materialinstanceconstant",
-          "parent": "fx_m.fx_k_pa_makeflow_01_tr"
+          "name": "alpha_tex",
+          "texture": "fx_tex_04.fx_j_smoke_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_smoke_01_cl.dds"
         },
         {
-          "catalogKey": "fx_mi.fx_k_pa_makeflow_01_01_tr",
-          "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
-          "className": "materialinstanceconstant",
-          "parent": "fx_m.fx_k_pa_makeflow_01_tr"
+          "name": "diff_tex1",
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
+        },
+        {
+          "name": "noisetex",
+          "texture": "fx_tex_02.fx_d_noise_006",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_006.dds"
         }
-      ]
+      ],
+      "scalars": [
+        {
+          "name": "alpha_pow",
+          "value": 1.0
+        },
+        {
+          "name": "diff1_tile_u",
+          "value": 1.5
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 1.5
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff_des",
+          "value": 0.5
+        },
+        {
+          "name": "diff_pow",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "diff_str",
+          "value": 3.0
+        },
+        {
+          "name": "flow_speed",
+          "value": 1.0
+        },
+        {
+          "name": "noise_bias",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "noise_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "noise_tile_v",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
     },
     {
       "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_01_ad",
       "sourceLogicalPackage": "fx_m_mi_02",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_o_pa_shine_02_01_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
@@ -3161,11 +3099,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_atypical_069_ycl"
+          "texture": "fx_tex_02.fx_d_atypical_069_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_069_ycl.dds"
         },
         {
           "name": "06.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_028"
+          "texture": "fx_tex_02.fx_d_atypical_028",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_028.dds"
         }
       ],
       "scalars": [
@@ -3247,8 +3187,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_m.fx_c_pa_ring_04_ad",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_c_pa_ring_04_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3264,8 +3204,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_me_ringmaster_01_12_ts_fs_ad",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_me_ringmaster_01_12_ts_fs_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3281,7 +3221,8 @@
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         }
       ],
       "scalars": [
@@ -3361,8 +3302,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_14_ad",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_ring_07_14_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3374,15 +3315,18 @@
       "textures": [
         {
           "name": "00.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_057"
+          "texture": "fx_tex_02.fx_d_atypical_057",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_057.dds"
         },
         {
           "name": "04.map_anew",
-          "texture": "fx_tex_02.fx_d_atypical_049"
+          "texture": "fx_tex_02.fx_d_atypical_049",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_049.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_030"
+          "texture": "fx_tex_02.fx_d_noise_030",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_030.dds"
         }
       ],
       "scalars": [
@@ -3436,8 +3380,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_38_tr",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_ring_07_38_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3449,15 +3393,18 @@
       "textures": [
         {
           "name": "31.map_e",
-          "texture": "fx_tex_02.fx_d_atypical_009"
+          "texture": "fx_tex_02.fx_d_atypical_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_009.dds"
         },
         {
           "name": "00.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_032"
+          "texture": "fx_tex_02.fx_d_atypical_032",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_032.dds"
         },
         {
           "name": "06.map_anew",
-          "texture": "fx_tex_02.fx_d_shockwave_001_ycl"
+          "texture": "fx_tex_02.fx_d_shockwave_001_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_shockwave_001_ycl.dds"
         }
       ],
       "scalars": [
@@ -3513,8 +3460,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_04_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_ringmaster_01_04_dt_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3526,7 +3473,8 @@
       "textures": [
         {
           "name": "02.map_e",
-          "texture": "fx_tex_05.fx_k_fluidtile_01"
+          "texture": "fx_tex_05.fx_k_fluidtile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
         }
       ],
       "scalars": [
@@ -3594,8 +3542,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_13_ad",
       "sourceLogicalPackage": "fx_m_mi_03",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_ringmaster_01_13_ad",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3607,11 +3555,13 @@
       "textures": [
         {
           "name": "22.map_a",
-          "texture": "fx_tex_02.fx_d_shockwave_001_ycl"
+          "texture": "fx_tex_02.fx_d_shockwave_001_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_shockwave_001_ycl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_05.fx_k_fluidtile_01"
+          "texture": "fx_tex_05.fx_k_fluidtile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
         }
       ],
       "scalars": [
@@ -3703,8 +3653,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_b_pa_cd_02_tr",
       "sourceLogicalPackage": "fx_m_mi_05",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_m.fx_b_pa_cd_02_tr",
       "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
@@ -3720,8 +3670,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_master_01_101_ma",
       "sourceLogicalPackage": "fx_m_mi_d_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_d_pa_master_01_101_ma",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
@@ -3733,11 +3683,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_fragment_005"
+          "texture": "fx_tex_02.fx_d_fragment_005",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_fragment_005.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_fluid_020"
+          "texture": "fx_tex_02.fx_d_fluid_020",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_fluid_020.dds"
         }
       ],
       "scalars": [
@@ -3802,8 +3754,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_h_00.fx_mi.fx_h_pa_watertrail_02_1_tr",
       "sourceLogicalPackage": "fx_m_mi_h_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PD4J22HIXEYUXLU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_h_pa_watertrail_02_1_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PD4J22HIXEYUXLU.upk",
@@ -3815,15 +3767,18 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_02.fx_d_atypical_009"
+          "texture": "fx_tex_02.fx_d_atypical_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_009.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_05.fx_m_atypical_013_yclamp"
+          "texture": "fx_tex_05.fx_m_atypical_013_yclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_atypical_013_yclamp.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_05.fx_m_noise_001"
+          "texture": "fx_tex_05.fx_m_noise_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_001.dds"
         }
       ],
       "scalars": [
@@ -3963,8 +3918,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_me_localcrack_01_07_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -3976,11 +3931,13 @@
       "textures": [
         {
           "name": "normal_tex",
-          "texture": "fx_tex_06.fx_j_normal_bc5_09"
+          "texture": "fx_tex_06.fx_j_normal_bc5_09",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
         },
         {
           "name": "refle_tex",
-          "texture": "fx_tex_00.fx_b_atypical_004_cube"
+          "texture": "fx_tex_00.fx_b_atypical_004_cube",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds"
         }
       ],
       "scalars": [
@@ -4062,8 +4019,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_edgehit_01_04_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_edgehit_01_04_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4075,15 +4032,18 @@
       "textures": [
         {
           "name": "main_texture",
-          "texture": "fx_tex_06.fx_j_gradientmask_01_cl"
+          "texture": "fx_tex_06.fx_j_gradientmask_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_gradientmask_01_cl.dds"
         },
         {
           "name": "map01_dissolve",
-          "texture": "fx_tex_06.fx_j_dustparticle_tile_01"
+          "texture": "fx_tex_06.fx_j_dustparticle_tile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_dustparticle_tile_01.dds"
         },
         {
           "name": "map02_dissolve",
-          "texture": "fx_tex_06.fx_j_cloud_tile_03"
+          "texture": "fx_tex_06.fx_j_cloud_tile_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_cloud_tile_03.dds"
         }
       ],
       "scalars": [
@@ -4172,8 +4132,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_highpixelring_01_05_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4232,8 +4192,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_linearwave_02_16_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_pa_linearwave_02_16_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4245,31 +4205,38 @@
       "textures": [
         {
           "name": "diff_tex",
-          "texture": "fx_tex_06.fx_j_cloud_tile_03"
+          "texture": "fx_tex_06.fx_j_cloud_tile_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_cloud_tile_03.dds"
         },
         {
           "name": "a_mask_tex",
-          "texture": "fx_tex_06.fx_j_noise_tile_02"
+          "texture": "fx_tex_06.fx_j_noise_tile_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_noise_tile_02.dds"
         },
         {
           "name": "a_noise_01_tex",
-          "texture": "fx_tex_02.fx_d_noise_014_1"
+          "texture": "fx_tex_02.fx_d_noise_014_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014_1.dds"
         },
         {
           "name": "a_noise_02_tex",
-          "texture": "fx_tex_06.fx_j_normal_02"
+          "texture": "fx_tex_06.fx_j_normal_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_normal_02.dds"
         },
         {
           "name": "b_mask_tex",
-          "texture": "fx_tex_06.fx_j_fluidsmoke_01_cl"
+          "texture": "fx_tex_06.fx_j_fluidsmoke_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_fluidsmoke_01_cl.dds"
         },
         {
           "name": "b_noise_01_tex",
-          "texture": "fx_tex_00.fx_a_noise_011"
+          "texture": "fx_tex_00.fx_a_noise_011",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_011.dds"
         },
         {
           "name": "b_noise_02_tex",
-          "texture": "fx_tex_06.fx_j_fluidnoise_tile_01"
+          "texture": "fx_tex_06.fx_j_fluidnoise_tile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_fluidnoise_tile_01.dds"
         }
       ],
       "scalars": [
@@ -4457,8 +4424,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
       "sourceLogicalPackage": "fx_m_mi_j_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_j_po_rgbnoise_01_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4503,8 +4470,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_pmshs_spritewave_01_48_tr",
       "sourceLogicalPackage": "fx_m_mi_m_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_m_pa_pmshs_spritewave_01_48_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
@@ -4516,19 +4483,23 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_05.fx_m_noise_008"
+          "texture": "fx_tex_05.fx_m_noise_008",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_008.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_05.fx_m_atypical_013_yclamp"
+          "texture": "fx_tex_05.fx_m_atypical_013_yclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_atypical_013_yclamp.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_05.fx_m_noise_008"
+          "texture": "fx_tex_05.fx_m_noise_008",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_008.dds"
         },
         {
           "name": "uv_noise_tex_02",
-          "texture": "fx_tex_02.fx_d_atypical_043"
+          "texture": "fx_tex_02.fx_d_atypical_043",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_043.dds"
         }
       ],
       "scalars": [
@@ -4676,8 +4647,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_linewave_02_tr",
       "sourceLogicalPackage": "fx_m_mi_m_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_m_pa_swp_linewave_02_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
@@ -4689,27 +4660,33 @@
       "textures": [
         {
           "name": "01_color_tex",
-          "texture": "lv_wet.tex.lv_common_wet_22_d"
+          "texture": "lv_wet.tex.lv_common_wet_22_d",
+          "dds_path": "Effect/Dimensionist/Textures/LV_WET/lv_common_wet_22_d.dds"
         },
         {
           "name": "01_alpha01_tex",
-          "texture": "fx_tex_04.fx_j_risingforce_01"
+          "texture": "fx_tex_04.fx_j_risingforce_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_risingforce_01.dds"
         },
         {
           "name": "01_alpha02_tex",
-          "texture": "fx_tex_06.fx_m_gracylinder_03_ycl"
+          "texture": "fx_tex_06.fx_m_gracylinder_03_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_gracylinder_03_ycl.dds"
         },
         {
           "name": "01_alpha03_tex",
-          "texture": "fx_tex_02.fx_d_typical_033_cl"
+          "texture": "fx_tex_02.fx_d_typical_033_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_typical_033_cl.dds"
         },
         {
           "name": "01_distort01_tex",
-          "texture": "fx_tex_06.fx_m_normallinenoiseaxis_01"
+          "texture": "fx_tex_06.fx_m_normallinenoiseaxis_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_normallinenoiseaxis_01.dds"
         },
         {
           "name": "01_distort02_tex",
-          "texture": "fx_tex_06.fx_m_normalperlinnoise_01"
+          "texture": "fx_tex_06.fx_m_normalperlinnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_normalperlinnoise_01.dds"
         }
       ],
       "scalars": [
@@ -5015,8 +4992,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ringmaster_01_51_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_o_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_o_pa_ringmaster_01_51_dt_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
@@ -5045,8 +5022,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_aura_02_ad",
       "sourceLogicalPackage": "fx_m_mi_r_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_r_pa_aura_02_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
@@ -5058,7 +5035,8 @@
       "textures": [
         {
           "name": "main_tex",
-          "texture": "fx_tex_06.fx_j_caustic_tile_05"
+          "texture": "fx_tex_06.fx_j_caustic_tile_05",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds"
         }
       ],
       "scalars": [
@@ -5108,8 +5086,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ring_08_04_ad",
       "sourceLogicalPackage": "fx_m_mi_r_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_r_pa_ring_08_04_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
@@ -5121,19 +5099,23 @@
       "textures": [
         {
           "name": "31.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004_cube"
+          "texture": "fx_tex_00.fx_b_atypical_004_cube",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds"
         },
         {
           "name": "00.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_031_cl"
+          "texture": "fx_tex_02.fx_d_atypical_031_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_031_cl.dds"
         },
         {
           "name": "04.map_anew",
-          "texture": "fx_tex_04.fx_j_mirnoise_01"
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_014_1"
+          "texture": "fx_tex_02.fx_d_noise_014_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_014_1.dds"
         }
       ],
       "scalars": [
@@ -5225,8 +5207,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_ringmaster_14_02_dt_tr",
       "sourceLogicalPackage": "fx_m_mi_r_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_mi.fx_r_pa_ringmaster_14_02_dt_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
@@ -5269,8 +5251,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.fx_w_pa_ring_02_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_w_pa_ring_02_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5282,15 +5264,18 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_00.fx_a_atypical_048"
+          "texture": "fx_tex_00.fx_a_atypical_048",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_048.dds"
         },
         {
           "name": "13.map_b",
-          "texture": "fx_tex_04.fx_j_mirnoise_01"
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -5364,8 +5349,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.fx_w_pa_spritewave_01_19_1_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "fx_w_pa_spritewave_01_19_1_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5377,19 +5362,23 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_06.fx_j_caustic_tile_01"
+          "texture": "fx_tex_06.fx_j_caustic_tile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_caustic_tile_01.dds"
         },
         {
           "name": "noisedissolve_tex",
-          "texture": "fx_tex_05.fx_m_noise_003"
+          "texture": "fx_tex_05.fx_m_noise_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_003.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_04.fx_j_flowsmoke_01_cl"
+          "texture": "fx_tex_04.fx_j_flowsmoke_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_02.fx_d_noise_033"
+          "texture": "fx_tex_02.fx_d_noise_033",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_033.dds"
         }
       ],
       "scalars": [
@@ -5549,8 +5538,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_de_crack_077_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_de_crack_077_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5562,35 +5551,43 @@
       "textures": [
         {
           "name": "01.alphamaskmap",
-          "texture": "fx_tex_02.fx_d_normal_020_1"
+          "texture": "fx_tex_02.fx_d_normal_020_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_020_1.dds"
         },
         {
           "name": "01.diffmap_a",
-          "texture": "fx_tex_03.fx_e_decal_013"
+          "texture": "fx_tex_03.fx_e_decal_013",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_decal_013.dds"
         },
         {
           "name": "11.diffmap_b",
-          "texture": "fx_tex_03.fx_e_decal_012"
+          "texture": "fx_tex_03.fx_e_decal_012",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_decal_012.dds"
         },
         {
           "name": "21.maskmap",
-          "texture": "fx_tex_03.fx_e_noise_003"
+          "texture": "fx_tex_03.fx_e_noise_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_noise_003.dds"
         },
         {
           "name": "01.emismap",
-          "texture": "fx_tex_03.fx_e_ring_028"
+          "texture": "fx_tex_03.fx_e_ring_028",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_ring_028.dds"
         },
         {
           "name": "06.normalmap",
-          "texture": "fx_tex_02.fx_d_normal_014"
+          "texture": "fx_tex_02.fx_d_normal_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_014.dds"
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_02.fx_d_environ_001"
+          "texture": "fx_tex_02.fx_d_environ_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_environ_001.dds"
         },
         {
           "name": "01.heightmap",
-          "texture": "fx_tex_02.fx_d_normal_010_5"
+          "texture": "fx_tex_02.fx_d_normal_010_5",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_010_5.dds"
         }
       ],
       "scalars": [
@@ -5708,8 +5705,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_de_crack_079_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_de_crack_079_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5721,35 +5718,43 @@
       "textures": [
         {
           "name": "01.alphamaskmap",
-          "texture": "fx_tex_06.fx_w_normal_01"
+          "texture": "fx_tex_06.fx_w_normal_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_normal_01.dds"
         },
         {
           "name": "01.diffmap_a",
-          "texture": "fx_tex_02.fx_d_decal_045"
+          "texture": "fx_tex_02.fx_d_decal_045",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_decal_045.dds"
         },
         {
           "name": "11.diffmap_b",
-          "texture": "fx_tex_03.fx_e_noise_012"
+          "texture": "fx_tex_03.fx_e_noise_012",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_noise_012.dds"
         },
         {
           "name": "21.maskmap",
-          "texture": "fx_tex_03.fx_e_noise_003"
+          "texture": "fx_tex_03.fx_e_noise_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_noise_003.dds"
         },
         {
           "name": "01.emismap",
-          "texture": "fx_tex_02.fx_d_normal_084_1"
+          "texture": "fx_tex_02.fx_d_normal_084_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_084_1.dds"
         },
         {
           "name": "06.normalmap",
-          "texture": "fx_tex_02.fx_d_normal_014"
+          "texture": "fx_tex_02.fx_d_normal_014",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_014.dds"
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_02.fx_d_environ_001"
+          "texture": "fx_tex_02.fx_d_environ_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_environ_001.dds"
         },
         {
           "name": "01.heightmap",
-          "texture": "fx_tex_02.fx_d_normal_010_5"
+          "texture": "fx_tex_02.fx_d_normal_010_5",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_normal_010_5.dds"
         }
       ],
       "scalars": [
@@ -5859,8 +5864,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_magicsymbol_00",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_magicsymbol_00",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5872,7 +5877,8 @@
       "textures": [
         {
           "name": "alpha_tex",
-          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_03"
+          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_03.dds"
         }
       ],
       "scalars": [
@@ -5896,8 +5902,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_magicsymbol_01",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_magicsymbol_01",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5909,11 +5915,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_00.fx_a_blankwhite_01"
+          "texture": "fx_tex_00.fx_a_blankwhite_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_blankwhite_01.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_nomipmap_00.fx_d_symbol_160_nomipmap_cl"
+          "texture": "fx_tex_nomipmap_00.fx_d_symbol_160_nomipmap_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_NOMIPMAP_00/fx_d_symbol_160_nomipmap_cl.dds"
         }
       ],
       "scalars": [
@@ -5927,8 +5935,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_056_ts_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_056_ts_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -5940,19 +5948,23 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_atypical_076_2_cl"
+          "texture": "fx_tex_02.fx_d_atypical_076_2_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_076_2_cl.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_05.fx_m_wave_001_ycl"
+          "texture": "fx_tex_05.fx_m_wave_001_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_wave_001_ycl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         },
         {
           "name": "12.map_f",
-          "texture": "fx_tex_05.fx_m_wave_001"
+          "texture": "fx_tex_05.fx_m_wave_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_wave_001.dds"
         }
       ],
       "scalars": [
@@ -6032,8 +6044,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_111_ts_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_111_ts_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6049,19 +6061,23 @@
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_04.fx_h_speedline_01_01"
+          "texture": "fx_tex_04.fx_h_speedline_01_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_h_speedline_01_01.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_atypical_132_ycl"
+          "texture": "fx_tex_02.fx_d_atypical_132_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_132_ycl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_05.fx_m_flow_03_n"
+          "texture": "fx_tex_05.fx_m_flow_03_n",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_flow_03_n.dds"
         }
       ],
       "scalars": [
@@ -6181,8 +6197,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_16_ts_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_16_ts_dt_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6194,23 +6210,28 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_noise_034"
+          "texture": "fx_tex_02.fx_d_noise_034",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_034.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_073"
+          "texture": "fx_tex_02.fx_d_atypical_073",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_073.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_00.fx_a_atypical_048_cl"
+          "texture": "fx_tex_00.fx_a_atypical_048_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_048_cl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_02.fx_d_decal_005"
+          "texture": "fx_tex_02.fx_d_decal_005",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_decal_005.dds"
         }
       ],
       "scalars": [
@@ -6355,8 +6376,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_1_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_1_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6368,11 +6389,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_m_crosshairline_axis_01"
+          "texture": "fx_tex_06.fx_m_crosshairline_axis_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_crosshairline_axis_01.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_03.fx_e_ring_038"
+          "texture": "fx_tex_03.fx_e_ring_038",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_ring_038.dds"
         }
       ],
       "scalars": [
@@ -6420,8 +6443,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_241_dt_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_241_dt_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6433,23 +6456,28 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_02.fx_d_atypical_042_1_cl"
+          "texture": "fx_tex_02.fx_d_atypical_042_1_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_042_1_cl.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_05.fx_k_auraline_05_ycl"
+          "texture": "fx_tex_05.fx_k_auraline_05_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_05_ycl.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_atypical_114_1_cl"
+          "texture": "fx_tex_02.fx_d_atypical_114_1_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_114_1_cl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_05.fx_l_environment_001"
+          "texture": "fx_tex_05.fx_l_environment_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_l_environment_001.dds"
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_02.fx_d_environ_001"
+          "texture": "fx_tex_02.fx_d_environ_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_environ_001.dds"
         }
       ],
       "scalars": [
@@ -6586,8 +6614,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_250_dt_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_250_dt_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6599,27 +6627,33 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_n_rimsymbol_001"
+          "texture": "fx_tex_06.fx_n_rimsymbol_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_n_rimsymbol_001.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_06.fx_m_line_005_ycl"
+          "texture": "fx_tex_06.fx_m_line_005_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_line_005_ycl.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_atypical_039_1"
+          "texture": "fx_tex_02.fx_d_atypical_039_1",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_039_1.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_05.fx_l_environment_001"
+          "texture": "fx_tex_05.fx_l_environment_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_l_environment_001.dds"
         },
         {
           "name": "01.specmap",
-          "texture": "fx_tex_00.fx_a_fluid_003"
+          "texture": "fx_tex_00.fx_a_fluid_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fluid_003.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -6748,8 +6782,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_27_dt_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_27_dt_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6761,15 +6795,18 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_00.fx_a_noise_004"
+          "texture": "fx_tex_00.fx_a_noise_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_004.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_00.fx_a_noise_004"
+          "texture": "fx_tex_00.fx_a_noise_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_004.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_noise_046_ycl"
+          "texture": "fx_tex_02.fx_d_noise_046_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_046_ycl.dds"
         }
       ],
       "scalars": [
@@ -6862,8 +6899,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_341_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_341_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -6875,19 +6912,23 @@
       "textures": [
         {
           "name": "11.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_096_ycl"
+          "texture": "fx_tex_02.fx_d_atypical_096_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_096_ycl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_06.fx_m_smoketile_02"
+          "texture": "fx_tex_06.fx_m_smoketile_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_smoketile_02.dds"
         },
         {
           "name": "12.map_f",
-          "texture": "fx_tex_06.fx_w_environ_001"
+          "texture": "fx_tex_06.fx_w_environ_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_environ_001.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -6991,8 +7032,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_3_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_master_01_3_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7004,19 +7045,23 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_w_atypical_017"
+          "texture": "fx_tex_06.fx_w_atypical_017",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_atypical_017.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_nomipmap_00.fx_x_hexagongradient_01"
+          "texture": "fx_tex_nomipmap_00.fx_x_hexagongradient_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_NOMIPMAP_00/fx_x_hexagongradient_01.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_04.fx_f_rectangle_001"
+          "texture": "fx_tex_04.fx_f_rectangle_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_f_rectangle_001.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_nomipmap_00.fx_x_hexagongradient_01"
+          "texture": "fx_tex_nomipmap_00.fx_x_hexagongradient_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_NOMIPMAP_00/fx_x_hexagongradient_01.dds"
         }
       ],
       "scalars": [
@@ -7088,8 +7133,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_ringrainbow_05_02_ts_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_ringrainbow_05_02_ts_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7101,23 +7146,28 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_j_timeline_01_ycl"
+          "texture": "fx_tex_06.fx_j_timeline_01_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_timeline_01_ycl.dds"
         },
         {
           "name": "11.map_b",
-          "texture": "fx_tex_02.fx_d_atypical_091_cl"
+          "texture": "fx_tex_02.fx_d_atypical_091_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_091_cl.dds"
         },
         {
           "name": "21.map_c",
-          "texture": "fx_tex_02.fx_d_atypical_055_2_cl"
+          "texture": "fx_tex_02.fx_d_atypical_055_2_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_055_2_cl.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -7241,8 +7291,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_shine_01_02_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_shine_01_02_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7254,11 +7304,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_w_atypical_017"
+          "texture": "fx_tex_06.fx_w_atypical_017",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_atypical_017.dds"
         },
         {
           "name": "06.map_b",
-          "texture": "fx_tex_00.fx_a_atypical_043"
+          "texture": "fx_tex_00.fx_a_atypical_043",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_043.dds"
         }
       ],
       "scalars": [
@@ -7344,8 +7396,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_spritewave_01_24_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_me_spritewave_01_24_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7357,19 +7409,23 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_06.fx_w_atypical_018"
+          "texture": "fx_tex_06.fx_w_atypical_018",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_atypical_018.dds"
         },
         {
           "name": "emissivetex02",
-          "texture": "fx_tex_05.fx_m_trail_010"
+          "texture": "fx_tex_05.fx_m_trail_010",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_010.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_06.fx_j_gradient_03"
+          "texture": "fx_tex_06.fx_j_gradient_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_gradient_03.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_02.fx_d_noise_033"
+          "texture": "fx_tex_02.fx_d_noise_033",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_033.dds"
         }
       ],
       "scalars": [
@@ -7501,8 +7557,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_area_01_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_area_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7514,19 +7570,23 @@
       "textures": [
         {
           "name": "01.map_e",
-          "texture": "fx_tex_high_03.fx_linecircle_001"
+          "texture": "fx_tex_high_03.fx_linecircle_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_03/fx_linecircle_001.dds"
         },
         {
           "name": "06.map_f",
-          "texture": "fx_tex_02.fx_d_atypical_067"
+          "texture": "fx_tex_02.fx_d_atypical_067",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_067.dds"
         },
         {
           "name": "11.edge_map",
-          "texture": "fx_tex_06.fx_w_atypical_017"
+          "texture": "fx_tex_06.fx_w_atypical_017",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_w_atypical_017.dds"
         },
         {
           "name": "emissivemap",
-          "texture": "fx_tex_nomipmap_00.fx_w_environ_002"
+          "texture": "fx_tex_nomipmap_00.fx_w_environ_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_NOMIPMAP_00/fx_w_environ_002.dds"
         }
       ],
       "scalars": [
@@ -7656,8 +7716,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_magiccircle_04_3_ts_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_magiccircle_04_3_ts_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7669,15 +7729,18 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_00.fx_b_atypical_009"
+          "texture": "fx_tex_00.fx_b_atypical_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_009.dds"
         },
         {
           "name": "emissivetex02",
-          "texture": "fx_tex_05.fx_m_noise_003"
+          "texture": "fx_tex_05.fx_m_noise_003",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_003.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07"
+          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_07.dds"
         }
       ],
       "scalars": [
@@ -7777,8 +7840,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_magiccircle_04_4_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_magiccircle_04_4_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7790,19 +7853,23 @@
       "textures": [
         {
           "name": "maintex",
-          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07"
+          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_07.dds"
         },
         {
           "name": "emissive_tex_01",
-          "texture": "fx_tex_00.fx_a_line_005"
+          "texture": "fx_tex_00.fx_a_line_005",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_line_005.dds"
         },
         {
           "name": "emissive_tex_02",
-          "texture": "fx_tex_05.fx_m_noise_002"
+          "texture": "fx_tex_05.fx_m_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_002.dds"
         },
         {
           "name": "uvnoisetex_01",
-          "texture": "fx_tex_05.fx_m_noise_001"
+          "texture": "fx_tex_05.fx_m_noise_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_noise_001.dds"
         }
       ],
       "scalars": [
@@ -7904,8 +7971,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_master_01_05_dt_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7917,19 +7984,23 @@
       "textures": [
         {
           "name": "21.map_c",
-          "texture": "fx_tex_00.fx_a_cloud_021"
+          "texture": "fx_tex_00.fx_a_cloud_021",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_cloud_021.dds"
         },
         {
           "name": "02.map_e",
-          "texture": "fx_tex_04.fx_i_noise_03"
+          "texture": "fx_tex_04.fx_i_noise_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_noise_03.dds"
         },
         {
           "name": "12.map_f",
-          "texture": "fx_tex_06.fx_j_environment_tile_02"
+          "texture": "fx_tex_06.fx_j_environment_tile_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_environment_tile_02.dds"
         },
         {
           "name": "06.map",
-          "texture": "fx_tex_02.fx_d_noise_009"
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
         }
       ],
       "scalars": [
@@ -8029,8 +8100,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_ringaura_01_08_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_ringaura_01_08_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -8042,15 +8113,18 @@
       "textures": [
         {
           "name": "31.map_e",
-          "texture": "fx_tex_00.fx_b_atypical_004"
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
         },
         {
           "name": "00.map_b",
-          "texture": "fx_tex_03.fx_e_ring_010_cl"
+          "texture": "fx_tex_03.fx_e_ring_010_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_ring_010_cl.dds"
         },
         {
           "name": "04.map_anew",
-          "texture": "fx_tex_high_00.fx_a_snow_001"
+          "texture": "fx_tex_high_00.fx_a_snow_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_a_snow_001.dds"
         }
       ],
       "scalars": [
@@ -8138,8 +8212,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_03_93_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_spritewave_03_93_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -8151,15 +8225,18 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_06.fx_n_cncs_magic_02"
+          "texture": "fx_tex_06.fx_n_cncs_magic_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_n_cncs_magic_02.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_05.fx_m_trail_008"
+          "texture": "fx_tex_05.fx_m_trail_008",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_008.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_02.fx_d_atypical_028"
+          "texture": "fx_tex_02.fx_d_atypical_028",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_028.dds"
         }
       ],
       "scalars": [
@@ -8275,8 +8352,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_06_01_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_spritewave_06_01_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -8288,15 +8365,18 @@
       "textures": [
         {
           "name": "dissolve_tex_01",
-          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07"
+          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_07",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_07.dds"
         },
         {
           "name": "maintex",
-          "texture": "fx_tex_05.fx_m_trail_010"
+          "texture": "fx_tex_05.fx_m_trail_010",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_trail_010.dds"
         },
         {
           "name": "uv_noise_tex",
-          "texture": "fx_tex_06.fx_j_flownoise_tile_04"
+          "texture": "fx_tex_06.fx_j_flownoise_tile_04",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_j_flownoise_tile_04.dds"
         }
       ],
       "scalars": [
@@ -8432,8 +8512,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_swpsymbol_01_tr",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_pa_swpsymbol_01_tr",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -8445,7 +8525,8 @@
       "textures": [
         {
           "name": "texture_mark",
-          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_05"
+          "texture": "fx_tex_high_01.fx_w_swp_magiccircle_05",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_01/fx_w_swp_magiccircle_05.dds"
         }
       ],
       "scalars": [
@@ -8469,8 +8550,8 @@
     {
       "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_shine_02_15_ad",
       "sourceLogicalPackage": "fx_m_mi_w_00",
-      "expectedPhysicalPackage": null,
-      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
       "candidateCount": 1,
       "catalogKey": "mi.fx_w_shine_02_15_ad",
       "sourcePhysicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -8482,11 +8563,13 @@
       "textures": [
         {
           "name": "01.map_a",
-          "texture": "fx_tex_06.fx_m_tilelinenoise_01"
+          "texture": "fx_tex_06.fx_m_tilelinenoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds"
         },
         {
           "name": "06.map_b",
-          "texture": "fx_tex_00.fx_a_fire_018_cube"
+          "texture": "fx_tex_00.fx_a_fire_018_cube",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fire_018_cube.dds"
         }
       ],
       "scalars": [
@@ -9059,6 +9142,13 @@
       "sourceObjectPath": "fx_tex_02.fx_d_noise_003",
       "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
       "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_003.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_006",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_006.dds",
       "candidateCount": 1
     },
     {
@@ -11594,6 +11684,24 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_bs_06.footdown.par_d_dragsnow_001.particlemodulerotationrate_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_locdust"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.footdown.par_s_footstepuw_sand_01.particlemodulevelocity_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
       "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
       "property": "modules",
       "reason": "external_graph_package_not_loaded",
@@ -11891,6 +11999,52 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_01",
         "FX_CM_02.Light.Par_MP_Light_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_J_RGBNoise_01",
+        "FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_04.particlemodulevelocity_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_04_1.efparticlemodulevelocityoverlifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_10.particlemodulecolorscaleoverlife_31",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_10.particlemodulesizemultiplylife_24",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
       ]
     },
     {
@@ -13320,6 +13474,87 @@
       ]
     },
     {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.efparticlemodulevelocityoverlifetime_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulecolorscaleoverlife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulesizemultiplylife_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_ex_05_1.particlemodulecolorscaleoverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_swp_00.par_j_swp_nailstrike_ex_05_1.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand"
+      ]
+    },
+    {
       "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
       "property": "pointlightcomponent",
       "reason": "local_reference_is_not_a_decoded_particle_graph_node",
@@ -13336,39 +13571,25 @@
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_02"
       ]
-    },
-    {
-      "sourceEventId": "source-event-010",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
-    },
-    {
-      "sourceEventId": "source-event-011",
-      "sourceObjectPath": null,
-      "reason": "unsupported_source_notify",
-      "sourceSystems": [],
-      "occurrences": 1
     }
   ],
   "conversionState": {
     "normalizedSourceGraph": "EXTRACTED",
     "materialInstanceParameterBindings": "PARTIAL",
-    "runtimeElementMapping": "CONVERTED_WITH_UNSUPPORTED_RECEIPT",
-    "importedEffectDocument": "GENERATED"
+    "runtimeElementMapping": "PENDING",
+    "importedEffectDocument": "PENDING"
   },
   "summary": {
     "sourceSystemCount": 12,
     "effectEventCount": 15,
     "resolvedParticleEventCount": 13,
-    "unsupportedNotifyCount": 2,
+    "unsupportedNotifyCount": 0,
     "unresolvedSourceSystemCount": 0,
     "relatedViewShakeCount": 3,
-    "unsupportedUnresolvedUniqueCount": 403,
+    "unsupportedUnresolvedUniqueCount": 417,
     "uniqueMaterialBindingCount": 81,
-    "resolvedMaterialBindingCount": 78,
-    "runtimeResourceBindingCount": 151,
-    "resolvedRuntimeResourceBindingCount": 151
+    "resolvedMaterialBindingCount": 79,
+    "runtimeResourceBindingCount": 152,
+    "resolvedRuntimeResourceBindingCount": 152
   }
 }

@@ -170,12 +170,125 @@ def cue_channel(source_type: str, category: str) -> str:
     }.get(category, "PRESENTATION_OTHER")
 
 
+def source_execution_status(
+    runtime_channel: str, typed_payload: dict[str, Any]
+) -> str:
+    if runtime_channel == "MODEL_CUE":
+        return (
+            "RUNTIME_MODEL_BINDING_REQUIRED"
+            if typed_payload.get("transformDecoded", False)
+            else "UNSUPPORTED_COMPOUND_MODEL_PAYLOAD"
+        )
+    if runtime_channel == "MODEL_MATERIAL" and not typed_payload.get(
+        "semanticDecoded", False
+    ):
+        return "UNSUPPORTED_MODEL_MATERIAL_SEMANTICS"
+    return "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+
+
 def decode_typed_payload(
     source_type: str,
     payload: dict[str, Any],
     socket_contract: dict[str, Any] | None = None,
+    asset_references: list[dict[str, Any]] | None = None,
+    serialized_labels: list[str] | None = None,
 ) -> dict[str, Any]:
-    if source_type.casefold() != "playparticleeffect":
+    source_type_lower = source_type.casefold()
+    if source_type_lower == "playskeletalmesh":
+        raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
+        signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
+        if not raw.startswith(signature):
+            raise ValueError("PlaySkeletalMesh payload header is invalid")
+        references = asset_references or []
+        labels = serialized_labels or []
+        skeletal_meshes = [
+            str(row.get("objectPath") or "")
+            for row in references
+            if str(row.get("className") or "").casefold() == "skeletalmesh"
+        ]
+        animation_sets = [
+            str(row.get("objectPath") or "")
+            for row in references
+            if str(row.get("className") or "").casefold() == "animset"
+        ]
+        materials = [
+            str(row.get("objectPath") or "")
+            for row in references
+            if str(row.get("className") or "").casefold()
+            == "materialinstanceconstant"
+        ]
+        if len(skeletal_meshes) != 1 or len(animation_sets) != 1:
+            raise ValueError(
+                "PlaySkeletalMesh must reference one SkeletalMesh and AnimSet"
+            )
+        target_names = [
+            str(label)
+            for label in labels
+            if str(label).casefold().startswith("sk_")
+            and "'" not in str(label)
+        ]
+        result: dict[str, Any] = {
+            "schema": "lostark.cef-play-skeletal-mesh",
+            "version": 1,
+            "enabled": True,
+            "sourceSkeletalMesh": skeletal_meshes[0],
+            "sourceAnimSet": animation_sets[0],
+            "sourceMaterialInstances": materials,
+            "sourceCueName": target_names[0] if target_names else "",
+            "transformDecoded": False,
+        }
+        particle_data_markers = list(
+            re.finditer(re.escape(b"CEFParticleData\x00"), raw)
+        )
+        # A standalone skeletal cue owns one CEFParticleData block.  Compound
+        # cues may append particle attachments with additional blocks and stay
+        # fail-closed until their nested table is decoded independently.
+        if len(particle_data_markers) != 1:
+            return result
+        marker_end = particle_data_markers[0].end()
+        transform_start = marker_end + 72
+        if transform_start + 92 > len(raw):
+            raise ValueError("PlaySkeletalMesh transform payload is truncated")
+
+        def model_vector3(offset: int) -> list[float]:
+            values = list(struct.unpack_from("<fff", raw, transform_start + offset))
+            if not all(math.isfinite(value) for value in values):
+                raise ValueError(
+                    "PlaySkeletalMesh transform contains non-finite values"
+                )
+            return values
+
+        position_ue = model_vector3(20)
+        rotation_degrees = model_vector3(32)
+        scale = model_vector3(80)
+        if any(value <= 0.0 for value in scale):
+            raise ValueError("PlaySkeletalMesh transform scale must be positive")
+        result.update({
+            "transformDecoded": True,
+            "localTransform": {
+                "sourcePositionUeUnits": position_ue,
+                "position": [value * 0.01 for value in position_ue],
+                "rotationDegrees": rotation_degrees,
+                "scale": scale,
+            },
+            "sourceTransformByteOffset": transform_start,
+        })
+        return result
+    if source_type_lower == "playskeletalmeshmaterialparam":
+        labels = serialized_labels or []
+        target_names = [
+            str(label)
+            for label in labels
+            if str(label).casefold().startswith("sk_")
+        ]
+        return {
+            "schema": "lostark.cef-play-skeletal-mesh-material-param",
+            "version": 1,
+            "enabled": True,
+            "sourceCueName": target_names[0] if target_names else "",
+            "semanticDecoded": False,
+        }
+    if source_type_lower != "playparticleeffect":
         return {"schema": "lostark.action-cue-payload", "enabled": True}
     raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
     signature = b"CEFActionNotify_PlayParticleEffect\x00"
@@ -439,8 +552,11 @@ def build_action_cue_recipe(
             if reference_event_index is not None:
                 available_reference_indices.remove(reference_event_index)
             typed_payload = decode_typed_payload(
-                source_type, payload, socket_contract
+                source_type, payload, socket_contract,
+                list(notify.get("assetReferences", [])),
+                list(notify.get("serializedLabels", [])),
             )
+            runtime_channel = cue_channel(source_type, category)
             cues.append(
                 {
                     "cueId": (
@@ -456,14 +572,16 @@ def build_action_cue_recipe(
                     "durationSeconds": float(notify["durationSeconds"]),
                     "sourceType": source_type,
                     "category": category,
-                    "runtimeChannel": cue_channel(source_type, category),
+                    "runtimeChannel": runtime_channel,
                     "assetReferences": notify.get("assetReferences", []),
                     "serializedLabels": notify.get("serializedLabels", []),
                     "serializedPayload": payload,
                     "typedPayload": typed_payload,
                     "executionEnabled": bool(typed_payload["enabled"]),
                     "sourceReceiptEventIndex": reference_event_index,
-                    "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED",
+                    "sourceExecutionStatus": source_execution_status(
+                        runtime_channel, typed_payload
+                    ),
                 }
             )
 
@@ -524,6 +642,18 @@ def build_action_cue_recipe(
                         "runtimeResolutionStatus", ""
                     )
                 ).startswith("MISSING_")
+                for row in cues
+            ),
+            "runtimeModelCueTransformComplete": all(
+                row["runtimeChannel"] != "MODEL_CUE"
+                or not row["executionEnabled"]
+                or row["typedPayload"].get("transformDecoded", False)
+                for row in cues
+            ),
+            "runtimeModelMaterialSemanticComplete": all(
+                row["runtimeChannel"] != "MODEL_MATERIAL"
+                or not row["executionEnabled"]
+                or row["typedPayload"].get("semanticDecoded", False)
                 for row in cues
             ),
         },
