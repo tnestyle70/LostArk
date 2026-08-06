@@ -287,7 +287,10 @@ void Client::CSkillWindowView::Render(
 
 	ImGui::SameLine();
 
-	ImGui::BeginChild("##TripodPanel", ImVec2(260.f, -8.f), true, ImGuiWindowFlags_NoBackground);
+	/* Matches the tripod plate's own scaled width (260 native * uiScale) instead of staying at
+	the old fixed 260 -- this child was still sized for the pre-scale art after the tripod plate
+	and nodes shrank by uiScale, leaving it too big for what it now holds. */
+	ImGui::BeginChild("##TripodPanel", ImVec2(260.f * uiScale, -8.f), true, ImGuiWindowFlags_NoBackground);
 	/* No hardcoded tripod art here anymore -- the tripod plate and all 8 node glows are
 	slots in Data/UI/SkillWindow/SkillWindow_Layout.json, placed with CHUDLayoutTool's
 	"Skill Window" tab and drawn once for the whole window by m_pBackgroundView->Render()
