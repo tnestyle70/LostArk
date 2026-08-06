@@ -7952,9 +7952,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-stance-transition-v1"
                                    },
-                        "sourceValue":  600,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  600
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -8858,9 +8858,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-long-spear-df-space-v1"
                                    },
-                        "sourceValue":  1300,
+                        "sourceValue":  1083,
                         "transform":  "identity",
-                        "resultValue":  1300,
+                        "resultValue":  1083,
                         "note":  "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
                     },
                     {
@@ -9094,9 +9094,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  2000,
+                        "sourceValue":  1667,
                         "transform":  "identity",
-                        "resultValue":  2000
+                        "resultValue":  1667
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9335,9 +9335,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  1366,
+                        "sourceValue":  1052,
                         "transform":  "identity",
-                        "resultValue":  1366
+                        "resultValue":  1052
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9576,9 +9576,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  2100,
+                        "sourceValue":  1143,
                         "transform":  "identity",
-                        "resultValue":  2100
+                        "resultValue":  1143
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9672,9 +9672,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1730,
+                        "sourceValue":  350,
                         "transform":  "identity",
-                        "resultValue":  1730
+                        "resultValue":  350
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9817,9 +9817,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  3200,
+                        "sourceValue":  1250,
                         "transform":  "identity",
-                        "resultValue":  3200
+                        "resultValue":  1250
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -9913,9 +9913,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1857,
+                        "sourceValue":  200,
                         "transform":  "identity",
-                        "resultValue":  1857
+                        "resultValue":  200
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10058,9 +10058,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  2266,
+                        "sourceValue":  3029,
                         "transform":  "identity",
-                        "resultValue":  2266
+                        "resultValue":  3029
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10299,9 +10299,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  2266,
+                        "sourceValue":  2333,
                         "transform":  "identity",
-                        "resultValue":  2266
+                        "resultValue":  2333
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10776,9 +10776,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-stance-transition-v1"
                                    },
-                        "sourceValue":  800,
+                        "sourceValue":  667,
                         "transform":  "identity",
-                        "resultValue":  800
+                        "resultValue":  667
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11374,9 +11374,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  700,
+                        "sourceValue":  583,
                         "transform":  "identity",
-                        "resultValue":  700
+                        "resultValue":  583
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11595,9 +11595,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  1900,
+                        "sourceValue":  1192,
                         "transform":  "identity",
-                        "resultValue":  1900
+                        "resultValue":  1192
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11686,9 +11686,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  1445,
+                        "sourceValue":  304,
                         "transform":  "identity",
-                        "resultValue":  1445
+                        "resultValue":  304
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12037,9 +12037,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  2250,
+                        "sourceValue":  1777,
                         "transform":  "identity",
-                        "resultValue":  2250
+                        "resultValue":  1777
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12921,9 +12921,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  5600,
+                        "sourceValue":  3862,
                         "transform":  "identity",
-                        "resultValue":  5600
+                        "resultValue":  3862
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13162,9 +13162,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  6300,
+                        "sourceValue":  5073,
                         "transform":  "identity",
-                        "resultValue":  6300
+                        "resultValue":  5073
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -13403,9 +13403,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  3166,
+                        "sourceValue":  2709,
                         "transform":  "identity",
-                        "resultValue":  3166
+                        "resultValue":  2709
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

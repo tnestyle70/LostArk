@@ -4,6 +4,11 @@
 
 #include <cmath>
 
+namespace
+{
+	constexpr f32_t COOKED_TICK_RATE = 30.f;
+}
+
 CAnimation::CAnimation()
 {
 }
@@ -43,7 +48,7 @@ HRESULT CAnimation::Initialize(const MODEL_ANIMATION_DATA& animation,
 
 	strcpy_s(m_szName, animation.name.c_str());
 	m_fDuration = animation.durationTicks;
-	m_fTickPerSecond = animation.ticksPerSecond;
+	m_fTickPerSecond = COOKED_TICK_RATE;
 	m_iNumChannels = static_cast<uint32_t>(animation.channels.size());
 	m_iLeftKeyFrameIndices.resize(m_iNumChannels);
 

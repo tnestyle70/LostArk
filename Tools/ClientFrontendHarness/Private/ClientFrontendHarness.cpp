@@ -252,8 +252,9 @@ namespace
 		document.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		document.Bindings =
 		{
-			{ 101u, { "Active_A", "Active_B" } },
-			{ 102u, { "BA_1", "BA_2", "BA_3" } }
+			{ 101u, { { "Active_A", 0u, 1.f }, { "Active_B", 0u, 1.f } } },
+			{ 102u, { { "BA_1", 0u, 1.f }, { "BA_2", 0u, 1.f },
+				{ "BA_3", 0u, 1.f } } }
 		};
 		return document;
 	}
@@ -267,9 +268,10 @@ namespace
 			{ "Active_A", "Active_B", "BA_1", "BA_2", "BA_3" };
 		const std::string valid =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":1,\"animationAssetId\":\"LanceMaster\","
+			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
-			"{\"skillId\":101,\"clips\":[\"Active_A\",\"Active_B\"]},"
+			"{\"skillId\":101,\"clips\":[\"Active_A\","
+			"{\"clip\":\"Active_B\",\"playMs\":250,\"playRate\":1.25}]},"
 			"{\"skillId\":102,\"clips\":[\"BA_1\",\"BA_2\",\"BA_3\"]}]}";
 		ANIMATION_SKILL_BINDING_DOCUMENT output;
 		std::string status;
@@ -281,12 +283,18 @@ namespace
 
 		const std::string wrongVersion =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
+			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":[\"Active_A\"]}]}";
+		const std::string badPlayMs =
+			"{\"schema\":\"lostark.animation-skill-bindings\","
+			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
+			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
+			"{\"skillId\":101,\"clips\":["
+			"{\"clip\":\"Active_A\",\"playMs\":0}]}]}";
 		const std::string traversal =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":1,\"animationAssetId\":\"../Escape\","
+			"\"formatVersion\":2,\"animationAssetId\":\"../Escape\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":[\"Active_A\"]}]}";
 		const std::string extraField = valid.substr(0u, valid.size() - 1u) +
@@ -297,6 +305,8 @@ namespace
 			traversal, output, status), "Skill Binding Rejects Traversal Asset");
 		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
 			extraField, output, status), "Skill Binding Rejects Extra Field");
+		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
+			badPlayMs, output, status), "Skill Binding Rejects Zero Clip Play Length");
 
 		auto invalid = Make_BindingFixture();
 		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
@@ -318,7 +328,7 @@ namespace
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Rejects Unknown Skill");
 		invalid = Make_BindingFixture();
-		invalid.Bindings[0].Clips[0] = "Missing_Clip";
+		invalid.Bindings[0].Clips[0].strClipName = "Missing_Clip";
 		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Rejects Unknown Model Clip");
@@ -333,7 +343,7 @@ namespace
 			L"Z:/definitely/missing/skillbindings.json", "LanceMaster",
 			CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, preserved, status) &&
 			2u == preserved.Bindings.size() &&
-			"Active_A" == preserved.Bindings[0].Clips[0],
+			"Active_A" == preserved.Bindings[0].Clips[0].strClipName,
 			"Skill Binding Failed Staged Load Preserves Prior Output");
 	}
 
@@ -370,7 +380,10 @@ namespace
 			}
 			std::vector<std::string> available;
 			for (const ANIMATION_SKILL_BINDING& binding : parsed.Bindings)
-				available.insert(available.end(), binding.Clips.begin(), binding.Clips.end());
+			{
+				for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
+					available.push_back(clip.strClipName);
+			}
 			runner.Require(CAnimationSkillBindingDocument::Validate(parsed,
 				owner.asset, owner.characterClass, CPlayerSkillCatalog::Get_Skills(),
 				available, status),
@@ -406,7 +419,7 @@ namespace
 		const std::string before = Read_Text(destination);
 		SetFileAttributesW(destination.c_str(), FILE_ATTRIBUTE_READONLY);
 		auto changed = document;
-		changed.Bindings[0].Clips = { "Active_B" };
+		changed.Bindings[0].Clips = { { "Active_B", 0u, 1.f } };
 		runner.Require(!CAnimationSkillBindingDocument::Save_Atomic(changed,
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER,
 			skills, clips, status) && before == Read_Text(destination),

@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "animationAssetId": "DimensionMaster",
   "characterClass": "DIMENSIONMASTER",
   "bindings": [

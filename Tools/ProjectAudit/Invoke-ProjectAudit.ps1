@@ -1053,7 +1053,7 @@ try {
 			continue
 		}
 		if ($bindingDocument.schema -ne 'lostark.animation-skill-bindings' -or
-			[int]$bindingDocument.formatVersion -ne 1 -or
+			[int]$bindingDocument.formatVersion -ne 2 -or
 			$bindingDocument.animationAssetId -ne $assetName -or
 			$bindingDocument.characterClass -ne $className) {
 			$quickSkillAnimationErrors.Add("${className}:owner/schema mismatch")
@@ -1072,8 +1072,19 @@ try {
 			}
 			$skillRows = @($classSkills | Where-Object skillId -eq $binding.skillId)
 			$clips = @($binding.clips)
+			$clipNames = @($clips | ForEach-Object {
+				if ($_ -is [string]) { $_ } else { [string]$_.clip } })
+			$invalidClipRows = @($clips | Where-Object {
+				$_ -isnot [string] -and (
+					$null -eq $_.clip -or
+					($null -eq $_.playMs -and $null -eq $_.playRate) -or
+					($null -ne $_.playMs -and
+						([int]$_.playMs -lt 1 -or [int]$_.playMs -gt 60000)) -or
+					($null -ne $_.playRate -and
+						([double]$_.playRate -lt 0.05 -or [double]$_.playRate -gt 16))) })
 			if ($skillRows.Count -ne 1 -or $clips.Count -lt 1 -or $clips.Count -gt 16 -or
-				@($clips | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
+				$invalidClipRows.Count -ne 0 -or
+				@($clipNames | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) invalid row")
 				continue
 			}

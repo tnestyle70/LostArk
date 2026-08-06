@@ -52,7 +52,7 @@ void CPart_Body::Update(f32_t fTimeDelta)
 {
 	/* The body drives the clock every frame; the logic only picks the clip. Parts
 	that borrow this palette read it at render time, so they need no ordering. */
-	m_pModelCom->Play_Animation(fTimeDelta);
+	m_pModelCom->Update_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));

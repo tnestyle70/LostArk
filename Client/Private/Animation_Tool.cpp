@@ -880,7 +880,8 @@ bool_t Client::CAnimation_Tool::Create_SkillBindingDraft(
 		const std::size_t clipCount =
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
 			definition.eSkillKind ? definition.iComboStageCount : 1u;
-		binding.Clips.assign(clipCount, currentClip);
+		binding.Clips.assign(
+			clipCount, ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
 		staged.Bindings.push_back(std::move(binding));
 	}
 	if (staged.Bindings.empty())
@@ -1077,7 +1078,7 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 					sizeof(clipLabel),
 					isCombo ? "BA%d  %s" : "clip%d  %s",
 					clipIndex + 1,
-					binding->Clips[clipIndex].c_str());
+					binding->Clips[clipIndex].strClipName.c_str());
 				const bool_t selected =
 					m_iSelectedSkillBinding == bindingIndex &&
 					m_iSelectedSkillClip == clipIndex;
@@ -1085,7 +1086,7 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 				{
 					m_iSelectedSkillBinding = bindingIndex;
 					m_iSelectedSkillClip = clipIndex;
-					Select_Clip(pModel, binding->Clips[clipIndex]);
+					Select_Clip(pModel, binding->Clips[clipIndex].strClipName);
 				}
 				ImGui::PopID();
 			}
@@ -1103,7 +1104,7 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 				"Assign Current Clip to Selected BA Stage" :
 				"Assign Current Clip to Selected Step"))
 			{
-				binding->Clips[selectedClip] = currentClip;
+				binding->Clips[selectedClip].strClipName = currentClip;
 				m_iSelectedSkillBinding = bindingIndex;
 				m_iSelectedSkillClip = selectedClip;
 				m_bSkillBindingDirty = true;
@@ -1121,7 +1122,7 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 				{
 					binding->Clips.insert(
 						binding->Clips.begin() + selectedClip + 1,
-						currentClip);
+						ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
 					m_iSelectedSkillBinding = bindingIndex;
 					m_iSelectedSkillClip = selectedClip + 1;
 					m_bSkillBindingDirty = true;

@@ -21,9 +21,10 @@ namespace
 
 	constexpr std::string_view DOCUMENT_SCHEMA =
 		"lostark.animation-skill-bindings";
-	constexpr double DOCUMENT_VERSION = 1.0;
+	constexpr double DOCUMENT_VERSION = 2.0;
 	constexpr std::size_t MAX_BINDINGS = 64u;
 	constexpr std::size_t MAX_CLIPS_PER_BINDING = 16u;
+	constexpr std::uint32_t MAX_CLIP_PLAY_MS = 60000u;
 
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
@@ -103,13 +104,56 @@ namespace
 		return INVALID_SKILL_ID != outSkillId;
 	}
 
+	bool Has_OnlyKnownProperties(
+		const DATA_JSON_VALUE& object,
+		const std::initializer_list<std::string_view> names)
+	{
+		if (!object.Is_Object() || object.Get_Object().empty())
+			return false;
+		for (const auto& property : object.Get_Object())
+		{
+			if (names.end() == std::find(
+				names.begin(), names.end(), std::string_view(property.first)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Try_ParsePlayRate(const DATA_JSON_VALUE& value, f32_t& outPlayRate)
+	{
+		if (!value.Is_Number())
+			return false;
+		const double number = value.Get_Number();
+		if (!std::isfinite(number) || number < 0.05 || number > 16.0)
+			return false;
+		outPlayRate = static_cast<f32_t>(number);
+		return true;
+	}
+
+	bool Try_ParsePlayMs(const DATA_JSON_VALUE& value, std::uint32_t& outPlayMs)
+	{
+		if (!value.Is_Number())
+			return false;
+		const double number = value.Get_Number();
+		if (!std::isfinite(number) || number <= 0.0 ||
+			number > static_cast<double>(MAX_CLIP_PLAY_MS) ||
+			std::floor(number) != number)
+		{
+			return false;
+		}
+		outPlayMs = static_cast<std::uint32_t>(number);
+		return true;
+	}
+
 	std::string Serialize(
 		const ANIMATION_SKILL_BINDING_DOCUMENT& document)
 	{
 		std::ostringstream output;
 		output << "{\n"
 			<< "  \"schema\": \"" << DOCUMENT_SCHEMA << "\",\n"
-			<< "  \"formatVersion\": 1,\n"
+			<< "  \"formatVersion\": 2,\n"
 			<< "  \"animationAssetId\": \""
 			<< CDataJson::Escape(document.strAnimationAssetId) << "\",\n"
 			<< "  \"characterClass\": \""
@@ -131,7 +175,19 @@ namespace
 			{
 				if (clipIndex > 0u)
 					output << ", ";
-				output << '"' << CDataJson::Escape(binding.Clips[clipIndex]) << '"';
+				const ANIMATION_SKILL_CLIP& clip = binding.Clips[clipIndex];
+				if (0u == clip.iPlayMs && 1.f == clip.fPlayRate)
+				{
+					output << '"' << CDataJson::Escape(clip.strClipName) << '"';
+					continue;
+				}
+				output << "{ \"clip\": \""
+					<< CDataJson::Escape(clip.strClipName) << '"';
+				if (0u != clip.iPlayMs)
+					output << ", \"playMs\": " << clip.iPlayMs;
+				if (1.f != clip.fPlayRate)
+					output << ", \"playRate\": " << clip.fPlayRate;
+				output << " }";
 			}
 			output << "]\n    }"
 				<< (bindingIndex + 1u < document.Bindings.size() ? "," : "")
@@ -246,12 +302,41 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 		}
 		for (const DATA_JSON_VALUE& clip : clips->Get_Array())
 		{
-			if (!clip.Is_String() || !Is_StableToken(clip.Get_String()))
+			ANIMATION_SKILL_CLIP stagedClip;
+			if (clip.Is_String())
+			{
+				stagedClip.strClipName = clip.Get_String();
+			}
+			else if (Has_OnlyKnownProperties(
+				clip, { "clip", "playMs", "playRate" }))
+			{
+				const DATA_JSON_VALUE* clipName = Required(
+					clip, "clip", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* playMs = clip.Find("playMs");
+				const DATA_JSON_VALUE* playRate = clip.Find("playRate");
+				if (nullptr == clipName ||
+					(nullptr == playMs && nullptr == playRate) ||
+					(nullptr != playMs &&
+						!Try_ParsePlayMs(*playMs, stagedClip.iPlayMs)) ||
+					(nullptr != playRate &&
+						!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate)))
+				{
+					outStatus = "Skill binding clip play length is invalid.";
+					return false;
+				}
+				stagedClip.strClipName = clipName->Get_String();
+			}
+			else
+			{
+				outStatus = "Skill binding clip row has an unexpected field set.";
+				return false;
+			}
+			if (!Is_StableToken(stagedClip.strClipName))
 			{
 				outStatus = "Skill binding clip name is invalid.";
 				return false;
 			}
-			binding.Clips.push_back(clip.Get_String());
+			binding.Clips.push_back(std::move(stagedClip));
 		}
 		staged.Bindings.push_back(std::move(binding));
 	}
@@ -321,11 +406,15 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 				"COMBO clip count must match the Server-owned combo stage count.";
 			return false;
 		}
-		for (const std::string& clip : binding.Clips)
+		for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
 		{
-			if (!Is_StableToken(clip) ||
+			if (!Is_StableToken(clip.strClipName) ||
+				clip.iPlayMs > MAX_CLIP_PLAY_MS ||
+				!std::isfinite(clip.fPlayRate) ||
+				clip.fPlayRate < 0.05f || clip.fPlayRate > 16.f ||
 				availableClips.end() == std::find(
-					availableClips.begin(), availableClips.end(), clip))
+					availableClips.begin(), availableClips.end(),
+					clip.strClipName))
 			{
 				outStatus = "Skill binding references a clip missing from the target model.";
 				return false;

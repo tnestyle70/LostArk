@@ -3127,7 +3127,7 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             return Candidate.iSkillId == Skill->iSkillId;
         });
     if (Binding == Bindings.Bindings.end() || Binding->Clips.empty() ||
-        !pModel->Start_Animation(Binding->Clips.front().c_str(), true))
+        !pModel->Start_Animation(Binding->Clips.front().strClipName.c_str(), true))
     {
         m_strPreviewAnimationStatus =
             "Effect is playing; its first bound animation clip is unavailable.";
@@ -3136,7 +3136,7 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
     pModel->Set_AnimPaused(false);
     m_strPreviewAnimationStatus =
         "Skill animation synced: " + Skill->strInputSlot + " | " +
-        Skill->strDisplayName + " -> " + Binding->Clips.front();
+        Skill->strDisplayName + " -> " + Binding->Clips.front().strClipName;
 }
 
 void Client::CEffect_Tool::Release_WorldPreview(

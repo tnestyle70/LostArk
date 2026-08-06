@@ -140,7 +140,10 @@ bool_t CCharacter::Load_ClipChains()
 		chain.iSkillId = static_cast<int32_t>(binding.iSkillId);
 		chain.isCombo =
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition->eSkillKind;
-		chain.clips = binding.Clips;
+		chain.clips.reserve(binding.Clips.size());
+		for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
+			chain.clips.push_back(
+				{ clip.strClipName, clip.iPlayMs, clip.fPlayRate });
 		stagedChains.push_back(std::move(chain));
 	}
 	if (stagedChains.empty())
@@ -290,12 +293,13 @@ void CCharacter::Commit_PendingClipChains()
 	m_Chains = std::move(m_PendingChains);
 }
 
-bool_t CCharacter::Start_Clip(const char_t* pClipName)
+bool_t CCharacter::Start_Clip(const CLIP_STEP& Step)
 {
-	if (!Set_Animation(pClipName, false))
+	if (!Set_Animation(Step.clip.c_str(), false))
 		return false;
 
 	m_pBodyModel->Set_AnimTrackPosition(m_pBodyModel->Get_CurrentAnimIndex(), 0.f);
+	m_pBodyModel->Set_AnimationSpeed(Step.playRate);
 	return true;
 }
 
@@ -304,15 +308,33 @@ bool_t CCharacter::Is_ClipFinished() const
 	if (nullptr == m_pBodyModel)
 		return false;
 
+	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
 	f32_t fPosition = 0.f;
 	f32_t fDuration = 0.f;
 	if (!m_pBodyModel->Get_AnimationProgress(
-		m_pBodyModel->Get_CurrentAnimIndex(), fPosition, fDuration))
+		iAnimation, fPosition, fDuration))
 		return false;
+	if (fDuration <= 0.f)
+		return false;
+
+	f32_t fLimit = fDuration;
+	if (nullptr != m_pChain && m_iChainStep >= 0 &&
+		m_iChainStep < static_cast<int32_t>(m_pChain->clips.size()))
+	{
+		const uint32_t iPlayMs = m_pChain->clips[m_iChainStep].playMs;
+		const f32_t fTicksPerSecond =
+			m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+		if (0u != iPlayMs && std::isfinite(fTicksPerSecond) &&
+			fTicksPerSecond > 0.f)
+		{
+			fLimit = (std::min)(fDuration,
+				static_cast<f32_t>(iPlayMs) * 0.001f * fTicksPerSecond);
+		}
+	}
 
 	/* Same test CAnimation uses to report a non-looping clip as done; the track
 	is left past the end rather than clamped. */
-	return fDuration > 0.f && fPosition >= fDuration;
+	return fPosition >= fLimit;
 }
 
 bool_t CCharacter::Play_Skill(
@@ -333,7 +355,7 @@ bool_t CCharacter::Play_Skill(
 		break;
 	}
 
-	if (nullptr == pPick || !Start_Clip(pPick->clips[0].c_str()))
+	if (nullptr == pPick || !Start_Clip(pPick->clips[0]))
 		return false;
 
 	m_pChain = pPick;
@@ -358,7 +380,7 @@ void CCharacter::Update_Chain()
 		return;
 
 	++m_iChainStep;
-	Start_Clip(m_pChain->clips[m_iChainStep].c_str());
+	Start_Clip(m_pChain->clips[m_iChainStep]);
 }
 
 void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
@@ -444,7 +466,7 @@ bool_t CCharacter::Advance_ComboStage(const std::uint8_t comboStage)
 	if (step >= static_cast<int32_t>(m_pChain->clips.size()))
 		return false;
 	m_iChainStep = step;
-	return Start_Clip(m_pChain->clips[step].c_str());
+	return Start_Clip(m_pChain->clips[step]);
 }
 
 bool_t CCharacter::Apply_NetworkAction(
@@ -573,6 +595,7 @@ bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == m_pBodyModel || nullptr == pClipName)
 		return false;
+	m_pBodyModel->Set_AnimationSpeed(1.f);
 	return m_pBodyModel->Set_Animation(
 		pClipName,
 		isLoop,
