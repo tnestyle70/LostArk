@@ -8,7 +8,7 @@
       "id": "TripodPanel",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 346.609741, "y": 30.0159016, "width": 260, "height": 358 },
+      "rect": { "x": 346.61, "y": 30.02, "width": 208, "height": 286.4 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -21,7 +21,7 @@
       "id": "TripodNode_T1_1",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 380.355774, "y": 73.0999603, "width": 35, "height": 35 },
+      "rect": { "x": 373.61, "y": 64.48, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -34,7 +34,7 @@
       "id": "TripodNode_T1_2",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 458.009613, "y": 73.0999603, "width": 35, "height": 35 },
+      "rect": { "x": 435.73, "y": 64.48, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -47,7 +47,7 @@
       "id": "TripodNode_T1_3",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 536.11377, "y": 73.6915588, "width": 35, "height": 35 },
+      "rect": { "x": 498.21, "y": 64.96, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -60,7 +60,7 @@
       "id": "TripodNode_T2_1",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 400.056702, "y": 186.175537, "width": 35, "height": 35 },
+      "rect": { "x": 389.37, "y": 154.94, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -73,7 +73,7 @@
       "id": "TripodNode_T2_2",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 515.962769, "y": 186.175568, "width": 35, "height": 35 },
+      "rect": { "x": 482.09, "y": 154.94, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -86,7 +86,7 @@
       "id": "TripodNode_T3_1",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 399.448242, "y": 300.062805, "width": 35, "height": 35 },
+      "rect": { "x": 388.88, "y": 246.05, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -99,7 +99,7 @@
       "id": "TripodNode_T3_2",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 515.804443, "y": 299.296448, "width": 35, "height": 35 },
+      "rect": { "x": 481.97, "y": 245.44, "width": 28, "height": 28 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [

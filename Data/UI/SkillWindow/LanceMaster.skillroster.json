@@ -23,11 +23,11 @@
     { "skillId": 34570, "displayName": "유성강천", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
     { "skillId": 34580, "displayName": "절룡세", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
     { "skillId": 34590, "displayName": "적룡포", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
-    { "skillId": 34640, "displayName": "맹룡난무", "stance": "NONE", "iconPath": "" },
+    { "skillId": 34640, "displayName": "맹룡난무", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34640_FlurryRagingDragon.png" },
     { "skillId": 34600, "displayName": "연가창식: 은하유성탄", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34600_SpearMeteor.png" },
-    { "skillId": 34620, "displayName": "초각성기_연가창식: 은하비섬창", "stance": "NONE", "iconPath": "" },
-    { "skillId": 34610, "displayName": "연가창식: 적룡질풍격", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34610_DeadlyRedDragon.png" },
-    { "skillId": 34630, "displayName": "초각성기_연가창식: 마룡합일섬", "stance": "NONE", "iconPath": "" },
-    { "skillId": 34650, "displayName": "초각성스킬_적룡필살", "stance": "NONE", "iconPath": "" }
+    { "skillId": 34620, "displayName": "초각성기_연가창식: 은하비섬창", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34620_GalaxyFlyingSpear.png" },
+    { "skillId": 34610, "displayName": "연가창식: 적룡질풍격", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34610_StormingRedDragon.png" },
+    { "skillId": 34630, "displayName": "초각성기_연가창식: 마룡합일섬", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34630_DragonCavalryUnitySlash.png" },
+    { "skillId": 34650, "displayName": "초각성스킬_적룡필살", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34650_DeadlyRedDragon.png" }
   ]
 }

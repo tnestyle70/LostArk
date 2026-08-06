@@ -186,9 +186,17 @@ void Client::CSkillWindowView::Render(
 		return;
 	}
 
-	constexpr float iconSize = 64.f; // matches the skill icon PNGs' native 64x64 pixels
+	/* Single scale applied to every atlas-sourced piece in this window (icon, row background,
+	...) uniformly. These pieces are all cropped from the same shared atlas, so their sizes are
+	already proportioned to each other at native scale; scaling only one of them independently
+	is what warped the row background's circle into an ellipse earlier. Change this one number
+	to resize everything together instead of touching any single element's size. */
+	constexpr float uiScale = 0.8f;
+	constexpr float iconSize = 64.f * uiScale;
+	constexpr float rowBgWidth = 622.f * uiScale;
+	constexpr float rowBgHeight = 62.f * uiScale;
 
-	ImGui::BeginChild("##SkillList", ImVec2(650.f, -8.f), true);
+	ImGui::BeginChild("##SkillList", ImVec2(rowBgWidth + 30.f, -8.f), true);
 	ImGui::TextDisabled("Skill List (%d)", static_cast<int32_t>(pRoster->size()));
 	ImGui::Separator();
 	for (const char* stanceFilter : { "LONG", "SHORT", "NONE" })
@@ -225,7 +233,7 @@ void Client::CSkillWindowView::Render(
 				ID3D11ShaderResourceView* pRowBg =
 					m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
 				const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-				const ImVec2 rowMax(rowMin.x + 622.f, rowMin.y + 62.f);
+				const ImVec2 rowMax(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight);
 				if (nullptr != pRowBg)
 					ImGui::GetWindowDrawList()->AddImage(pRowBg, rowMin, rowMax);
 				if (isSelected)
@@ -248,6 +256,15 @@ void Client::CSkillWindowView::Render(
 			}
 			ImGui::SameLine();
 			ImGui::TextUnformatted(entry.strDisplayName.c_str());
+
+			/* Placeholder values -- this project has no skill-point investment system yet
+			(Data/Balance carries cooldown/damage/etc. but no point cost or level concept),
+			so these are display-only stand-ins, same as the tripod/rune panels, until that
+			system exists to source real numbers from. */
+			ImGui::SameLine(rowBgWidth - 90.f);
+			ImGui::TextDisabled("Req 1");
+			ImGui::SameLine(rowBgWidth - 40.f);
+			ImGui::TextDisabled("Lv 1");
 			ImGui::PopID();
 		}
 	}
