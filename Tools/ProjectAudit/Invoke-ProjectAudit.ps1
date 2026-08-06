@@ -241,10 +241,10 @@ try {
 			}
 		}
 
-		$runtimeDirectory = Join-Path 'Client\Bin\Resources' $runtimePrefix.Replace('/', '\')
+		$runtimeDirectory = Join-Path $resourceRoot $runtimePrefix.Replace('/', '\')
 		if (Test-Path -LiteralPath $runtimeDirectory -PathType Container) {
 			foreach ($modelPath in $modelPaths) {
-				$modelFile = Join-Path 'Client\Bin\Resources' $modelPath.Replace('/', '\')
+				$modelFile = Join-Path $resourceRoot $modelPath.Replace('/', '\')
 				if (-not (Test-Path -LiteralPath $modelFile -PathType Leaf)) {
 					$singleAreaContractErrors.Add("$($area.id): missing runtime model")
 					continue
@@ -340,7 +340,7 @@ try {
 	$characterSelectManifestPath = if ([string]::IsNullOrWhiteSpace($characterSelectRuntimeRoot)) {
 		''
 	} else {
-		Join-Path 'Client\Bin\Resources' `
+		Join-Path $resourceRoot `
 			(Join-Path $characterSelectRuntimeRoot 'map_asset_runtime_manifest.json')
 	}
 	$characterSelectManifest = if (-not [string]::IsNullOrWhiteSpace($characterSelectManifestPath) -and
@@ -360,7 +360,7 @@ try {
 		$characterSelectManifest.assetCount -eq 55 -and
 		@($characterSelectManifest.assets).Count -eq 55) "assets=$characterSelectAssetRows placements=$characterSelectPlacementRows manifest=$($characterSelectManifest.assetCount)"
 	Add-Check 'resource.no-lol-annie' (
-		-not (Test-Path -LiteralPath 'Client\Bin\Resources\Map\LoL\Annie')) 'legacy Annie resources are quarantined outside the repository'
+		-not (Test-Path -LiteralPath (Join-Path $resourceRoot 'Map\LoL\Annie'))) 'legacy Annie resources are quarantined outside the repository'
 
 	$mapPublishPassed = $false
 	$mapPublishDetail = ''
@@ -570,7 +570,9 @@ try {
 	$effectPassOrderPattern =
 		'pass\s+OpaqueBackDepthWrite[\s\S]*pass\s+AlphaTwoSidedDepthRead[\s\S]*pass\s+AdditiveTwoSidedDepthRead'
 	$effectG6DetailPreviewShape =
-		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*6u' -and
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*11u' -and
+		$effectDocumentHeader -match 'struct EFFECT_SOURCE_MATERIAL_DESC[\s\S]*DynamicParameterSemantics[\s\S]*strSubUVMode' -and
+		$effectDocumentHeader -match 'struct EFFECT_PARTICLE_SYSTEM_DESC[\s\S]*fUniformScaleMultiplier[\s\S]*fDirectionYawDegrees[\s\S]*fInitialSpeedMultiplier' -and
 		$effectDocumentHeader -match 'EFFECT_AUTHORING_MIN_SUPPORTED_VERSION\s*=\s*3u' -and
 		$effectDocumentHeader -match 'struct EFFECT_ELEMENT_DESC[\s\S]*ResourceBindings[\s\S]*Material[\s\S]*Detail' -and
 		$effectDocumentHeader -match 'struct EFFECT_DETAIL_DESC[\s\S]*Transform[\s\S]*Color[\s\S]*UV[\s\S]*Timing[\s\S]*Mesh[\s\S]*Sprite[\s\S]*Decal[\s\S]*LinearLerp[\s\S]*Particle[\s\S]*Trail[\s\S]*AfterImage' -and
@@ -580,7 +582,9 @@ try {
 		$effectToolHeader -match 'Render_ModelViewWindow' -and
 		$effectToolSource -match 'Try_CommitDocument' -and
 		$effectToolSource -match 'Stage_WorldPreview' -and
-		$effectToolSource -match 'Render_ResourceGrid'
+		$effectToolSource -match 'Render_ResourceGrid' -and
+		$effectToolSource -match 'Render_SourceRecipeDetail' -and
+		$effectToolSource -match 'duplicate classes execute in source order'
 	$effectG6DetailPreviewShape =
 		$effectG6DetailPreviewShape -and
 		$mainAppSource -match 'make_unique<CEffect_Tool>\(\s*m_pDevice,\s*m_pContext,\s*m_pCharacterPreviewPanel\s*\)' -and
@@ -616,6 +620,44 @@ try {
 		$effectFinalAuditDetail = $_.Exception.Message
 	}
 	Add-Check 'effect.g09-cross-document-contract' $effectFinalAuditPassed $effectFinalAuditDetail
+	$effectComponentAuditPassed = $false
+	$effectComponentAuditDetail = ''
+	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
+	$dimensionMasterEffectSkills = @($effectSkillDocument.skills | Where-Object {
+		$_.characterClass -eq 'DIMENSIONMASTER' -and
+		$_.inputSlot -ne 'SPACE'
+	})
+	$missingDimensionMasterEffectMappings = @($dimensionMasterEffectSkills |
+		Where-Object { [string]::IsNullOrWhiteSpace([string]$_.effectId) })
+	$expectedDimensionMasterEffectCount = $dimensionMasterEffectSkills.Count +
+		@($dimensionMasterEffectSkills | Where-Object skillKind -eq 'COMBO' |
+			ForEach-Object { @($_.comboStages).Count } |
+			Measure-Object -Sum).Sum
+	try {
+		$effectComponentAuditDetail = (& python `
+			'.\Tools\LevelPlacementExtractor\build_effect_components.py' `
+			'--verify-existing' 2>&1 | Out-String).Trim()
+		if ($LASTEXITCODE -ne 0) {
+			throw "WFX verifier exited with code $LASTEXITCODE`: $effectComponentAuditDetail"
+		}
+		$effectComponentAuditResult = $effectComponentAuditDetail |
+			ConvertFrom-Json
+		$effectComponentAuditPassed =
+			$missingDimensionMasterEffectMappings.Count -eq 0 -and
+			[bool]$effectComponentAuditResult.compileIdentityComplete -and
+			[int]$effectComponentAuditResult.effectCount -eq
+				[int]$expectedDimensionMasterEffectCount -and
+			[int]$effectComponentAuditResult.componentCount -gt 0 -and
+			[int]$effectComponentAuditResult.emitterCount -gt 0 -and
+			[int]$effectComponentAuditResult.sourceActionCueCount -gt 0
+	}
+	catch {
+		$effectComponentAuditDetail = $_.Exception.Message
+	}
+	$effectComponentAuditDetail =
+		"expectedEffects=$expectedDimensionMasterEffectCount missingMappings=$($missingDimensionMasterEffectMappings.Count) $effectComponentAuditDetail"
+	Add-Check 'effect.wfx-component-assembly' `
+		$effectComponentAuditPassed $effectComponentAuditDetail
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"
@@ -978,7 +1020,7 @@ try {
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06S.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06P.wmodel,' +
 			'Character/WP_WSWP_M_06/WP_WSWP_M_06E.wmodel') -and
-		(Test-Path -LiteralPath 'Client\Bin\Resources\Character\DimensionMaster\DimensionMaster_Character.wmodel' -PathType Leaf) -and
+		(Test-Path -LiteralPath (Join-Path $resourceRoot 'Character\DimensionMaster\DimensionMaster_Character.wmodel') -PathType Leaf) -and
 		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and owner-matched Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
 	$valtanAssetServiceSource = Get-Content -LiteralPath 'Client\Private\ValtanPresentationAssetService.cpp' -Raw

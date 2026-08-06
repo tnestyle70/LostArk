@@ -94,6 +94,12 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp">
 	  <Link>Client\Effect_DocumentCodec.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp">
+	  <Link>Client\Effect_Catalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp">
+	  <Link>Client\Effect_Distribution.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_Playback.cpp">
 	  <Link>Client\Effect_Playback.cpp</Link>
 	</ClCompile>

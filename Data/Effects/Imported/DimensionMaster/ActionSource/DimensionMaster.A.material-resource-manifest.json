@@ -1,0 +1,29 @@
+{
+  "schema": "lostark.effect-source-material-resource-manifest",
+  "formatVersion": 1,
+  "effectAssetId": "effect.dimensionmaster.skill.2050240",
+  "assets": [
+    {
+      "sourceAssetPath": "fx_tex_00.fx_a_glow_009",
+      "logicalPackage": "FX_TEX_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050240
+      ]
+    },
+    {
+      "sourceAssetPath": "fx_tex_high_00.fx_a_cloud_026",
+      "logicalPackage": "FX_TEX_HIGH_00",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T22H2DJURL.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050240
+      ]
+    }
+  ]
+}

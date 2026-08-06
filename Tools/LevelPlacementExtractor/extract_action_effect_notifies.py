@@ -11,6 +11,7 @@ authority; those rows remain reference evidence for a later combat timeline.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import math
@@ -39,12 +40,19 @@ PRESENTATION_CATEGORIES = {
     "TrailGhostEffect": "trail",
     "PlayStaticMesh": "mesh",
     "PlaySkeletalMesh": "mesh",
+    "PlaySkeletalMeshMaterialParam": "material",
     "PawnMaterialParam": "material",
     "PawnMaterialChange": "material",
+    "AnimEvent_MaterialParamterScalar": "material",
+    "AnimEvent_MaterialParamterLinearColor": "material",
     "PostProcessChain": "post_process",
     "ViewShake": "camera",
+    "UltimateSkillCameraControl": "camera",
+    "SceneCapture": "camera",
+    "DominantDirectionalLight_Control": "light",
+    "HidePawn": "visibility",
+    "ReAttachParts": "character_parts",
     "AKEvent": "sound",
-    "Effect": "unresolved_effect",
 }
 
 ANIMATION_NOTIFY_TYPES = {"Anim", "Stance_Anim", "AnimBlendDirectional"}
@@ -57,6 +65,7 @@ GAMEPLAY_REFERENCE_TYPES = {
     "InputTiming",
     "Down",
     "AvoidPc",
+    "Effect",
 }
 
 
@@ -207,6 +216,8 @@ def notify_contract(source_type: str, references: list[dict[str, str]]) -> tuple
         return category, "PRESENTATION", "SOURCE_PARAMETERS_SERIALIZED"
     if category in {"unresolved_effect", "decal", "mesh", "particle"}:
         return category, "PRESENTATION", "UNRESOLVED_SOURCE_PAYLOAD"
+    if category != "other":
+        return category, "PRESENTATION", "SOURCE_PARAMETERS_SERIALIZED"
     return category, "REFERENCE_ONLY", "TIMING_OR_STATE_ONLY"
 
 
@@ -228,6 +239,7 @@ def parse_stage(
         block_end = matches[notify_index + 1].start() if notify_index + 1 < len(matches) else stage_end
         start, end, duration = read_notify_timing(data, match.start(), marker)
         references = object_references(data[match.start() : block_end])
+        serialized_payload = data[match.start() : block_end]
         category, authority, resolution = notify_contract(source_type, references)
         row: dict[str, Any] = {
             "notifyId": f"action-{action_id}/stage-{stage_index:03d}/notify-{notify_index:03d}",
@@ -240,6 +252,13 @@ def parse_stage(
             "durationSeconds": float(duration),
             "sourceOffset": match.start(),
             "assetReferences": references,
+            "serializedPayload": {
+                "encoding": "base64",
+                "byteOffset": match.start(),
+                "byteSize": len(serialized_payload),
+                "sha256": hashlib.sha256(serialized_payload).hexdigest(),
+                "data": base64.b64encode(serialized_payload).decode("ascii"),
+            },
         }
         strings = [
             item["value"]
@@ -314,6 +333,8 @@ def extract_action_document(
     profile_id: str,
     action_min: int | None = None,
     action_max: int | None = None,
+    action_ids: set[int] | None = None,
+    source_logical_path: str | None = None,
 ) -> dict[str, Any]:
     data = source_path.read_bytes()
     action_positions = find_all(data, ACTION_MARKER)
@@ -331,6 +352,8 @@ def extract_action_document(
             else len(data)
         )
         action_id, display_name = read_action_identity(data, action_start)
+        if action_ids is not None and action_id not in action_ids:
+            continue
         if action_min is not None and action_id < action_min:
             continue
         if action_max is not None and action_id > action_max:
@@ -483,7 +506,7 @@ def extract_action_document(
         "formatVersion": 1,
         "profileId": profile_id,
         "source": {
-            "path": source_path.as_posix(),
+            "path": source_logical_path or source_path.as_posix(),
             "byteSize": source_path.stat().st_size,
             "sha256": sha256_file(source_path),
             "evidenceGrade": "OFFICIAL_EXTRACTED",
@@ -493,7 +516,11 @@ def extract_action_document(
             "presentationNotifies": "Action LOA -> Effect/Animation presentation",
             "damageAndCollision": "Server combat timeline; Action hit rows are reference only",
         },
-        "actionFilter": {"minimum": action_min, "maximum": action_max},
+        "actionFilter": {
+            "minimum": action_min,
+            "maximum": action_max,
+            "actionIds": sorted(action_ids) if action_ids is not None else None,
+        },
         "actions": actions,
         "particleSystems": serialized_systems,
         "meshes": [
@@ -542,13 +569,23 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--action-min", type=int)
     parser.add_argument("--action-max", type=int)
+    parser.add_argument("--action-id", action="append", type=int)
+    parser.add_argument(
+        "--source-logical-path",
+        help="Stable source identity recorded in the output instead of the local input path",
+    )
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
     manifest_rows = []
     for profile_id, source_path in args.source:
         document = extract_action_document(
-            source_path, profile_id, args.action_min, args.action_max
+            source_path,
+            profile_id,
+            args.action_min,
+            args.action_max,
+            set(args.action_id) if args.action_id else None,
+            args.source_logical_path,
         )
         output_path = args.output / f"{profile_id}.action-effects.json"
         output_path.write_text(

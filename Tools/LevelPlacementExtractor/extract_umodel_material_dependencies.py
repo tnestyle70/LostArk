@@ -16,11 +16,16 @@ from typing import Any
 
 PARENT_RE = re.compile(r"^Parent\s*=\s*\w+'([^']+)'$")
 VALUE_RE = re.compile(r"^ParameterValue\s*=\s*(.*)$")
+STATIC_VALUE_RE = re.compile(r"^(?:ParameterValue|Value)\s*=\s*(.*)$")
 NAME_RE = re.compile(r"^ParameterName\s*=\s*(.*)$")
 TEXTURE_RE = re.compile(r"\w+'([^']+)'$")
 VECTOR_RE = re.compile(
     r"\{\s*R=([^,]+),\s*G=([^,]+),\s*B=([^,]+),\s*A=([^}]+)\s*\}"
 )
+TEXTURE_REFERENCE_RE = re.compile(
+    r"(?:Texture2D|TextureCube|Texture)'([^']+)'", re.IGNORECASE
+)
+EXPRESSION_ENTRY_RE = re.compile(r"^Expressions\[\d+\]\s*=\s*(.*)$")
 
 
 def sha256_file(path: Path) -> str:
@@ -46,6 +51,7 @@ def parse_props(text: str) -> dict[str, Any]:
         "scalar": [],
         "texture": [],
         "vector": [],
+        "static_switch": [],
     }
     parameter_type: str | None = None
     pending_value: str | None = None
@@ -59,12 +65,17 @@ def parse_props(text: str) -> dict[str, Any]:
             ("ScalarParameterValues[", "scalar"),
             ("TextureParameterValues[", "texture"),
             ("VectorParameterValues[", "vector"),
+            ("StaticSwitchParameters[", "static_switch"),
         ):
             if line.startswith(prefix):
                 parameter_type = kind
                 pending_value = None
                 break
-        value_match = VALUE_RE.match(line)
+        value_match = (
+            STATIC_VALUE_RE.match(line)
+            if parameter_type == "static_switch"
+            else VALUE_RE.match(line)
+        )
         if value_match and parameter_type:
             pending_value = value_match.group(1).strip()
             continue
@@ -80,7 +91,7 @@ def parse_props(text: str) -> dict[str, Any]:
         elif parameter_type == "texture":
             texture_match = TEXTURE_RE.search(pending_value)
             value = texture_match.group(1) if texture_match else pending_value
-        else:
+        elif parameter_type == "vector":
             vector_match = VECTOR_RE.search(pending_value)
             value = (
                 {
@@ -91,9 +102,87 @@ def parse_props(text: str) -> dict[str, Any]:
                 }
                 if vector_match else pending_value
             )
+        else:
+            normalized = pending_value.casefold()
+            value = normalized in {"true", "1"}
         parameters[parameter_type].append({"name": name, "value": value})
         pending_value = None
     return {"parent": parent, **parameters}
+
+
+def parse_material_dump(text: str) -> dict[str, Any]:
+    """Recover only explicit UModel Material evidence; never infer graph links."""
+    folded = text.casefold()
+
+    def token(name: str) -> str | None:
+        match = re.search(
+            rf"^\s*{re.escape(name)}\s*=\s*([^\s]+)\s*$",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        )
+        return match.group(1) if match else None
+
+    def boolean(name: str) -> bool | None:
+        value = token(name)
+        if value is None:
+            return None
+        normalized = value.casefold()
+        if normalized in {"true", "1"}:
+            return True
+        if normalized in {"false", "0"}:
+            return False
+        return None
+
+    referenced_textures = []
+    seen_textures = set()
+    for match in TEXTURE_REFERENCE_RE.finditer(text):
+        texture = match.group(1)
+        key = texture.casefold()
+        if key in seen_textures:
+            continue
+        seen_textures.add(key)
+        referenced_textures.append(texture)
+
+    expression_count = 0
+    expression_non_null_count = 0
+    for raw_line in text.splitlines():
+        match = EXPRESSION_ENTRY_RE.match(raw_line.strip())
+        if not match:
+            continue
+        expression_count += 1
+        value = match.group(1).strip().casefold()
+        if value not in {"0", "none", "null", "<null>"}:
+            expression_non_null_count += 1
+
+    parameters = parse_props(text)
+    return {
+        "renderState": {
+            "blendMode": token("BlendMode"),
+            "lightingModel": token("LightingModel"),
+            "twoSided": boolean("TwoSided"),
+            "usesDistortion": (
+                boolean("bUsesDistortion")
+                if "busesdistortion" in folded
+                else boolean("UsesDistortion")
+            ),
+        },
+        "referencedTextures": referenced_textures,
+        "scalars": parameters["scalar"],
+        "vectors": parameters["vector"],
+        "staticSwitches": parameters["static_switch"],
+        "expressionCoverage": {
+            "entryCount": expression_count,
+            "nonNullCount": expression_non_null_count,
+            "nullCount": expression_count - expression_non_null_count,
+            "topologyStatus": (
+                "NO_EXPRESSION_ENTRIES"
+                if expression_count == 0
+                else "PARTIAL_OR_COOKED_STRIPPED"
+                if expression_non_null_count < expression_count
+                else "NON_NULL_ENTRIES_PRESENT"
+            ),
+        },
+    }
 
 
 def texture_assets(root: Path) -> dict[str, list[dict[str, Any]]]:
@@ -146,6 +235,10 @@ def build_candidate(
     parent_source_file = None
     normalized_parent = props["parent"]
     if props["parent"]:
+        parent_logical_name = str(props["parent"]).split(".", 1)[0]
+        parent_source_file = (inventory or {}).get(
+            parent_logical_name.casefold()
+        )
         parent_name = str(props["parent"]).rsplit(".", 1)[-1]
         parent_matches = sorted(output_root.rglob(f"{parent_name}.mat"))
         instance_matches = [
@@ -159,7 +252,9 @@ def build_candidate(
         if selected_parent is not None:
             parent_relative = selected_parent.relative_to(output_root)
             parent_logical = parent_relative.parts[0] if parent_relative.parts else ""
-            parent_source_file = (inventory or {}).get(parent_logical.casefold())
+            parent_source_file = parent_source_file or (
+                inventory or {}
+            ).get(parent_logical.casefold())
             if parent_source_file is None and parent_logical.casefold() \
                     == source_path.split(".", 1)[0].casefold():
                 parent_source_file = physical_package
@@ -202,6 +297,8 @@ def build_candidate(
         "textures": textures,
         "scalars": props["scalar"],
         "vectors": props["vector"],
+        "static_switches": props["static_switch"],
+        "materialEvidence": parse_material_dump(umodel_log),
         "resolutionStatus": "RESOLVED_UMODEL_EXPORT",
         "propsFile": props_matches[0].relative_to(output_root).as_posix(),
         "exportedTextures": [

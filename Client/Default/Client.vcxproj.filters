@@ -85,15 +85,6 @@
     <Filter Include="96.DataFiles\Balance">
       <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
     </Filter>
-    <Filter Include="96.DataFiles\Effects">
-      <UniqueIdentifier>{98a698a7-6755-4d8d-8795-c3c1ea0b6737}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="96.DataFiles\Effects\Authored">
-      <UniqueIdentifier>{096fe528-80e6-47da-b169-96fb56a53729}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="96.DataFiles\Effects\Imported">
-      <UniqueIdentifier>{94b89e0f-c55f-4f0d-8d90-a6bd2b7a3d8e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="96.DataFiles\Encounters">
       <UniqueIdentifier>{b09ba3ed-3f63-4c04-a1f7-05080a2f25e1}</UniqueIdentifier>
     </Filter>
@@ -274,6 +265,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Distribution.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Playback.cpp">
@@ -652,6 +646,12 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Effect_ComponentDocument.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Distribution.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Effect_MaterialTemplate.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -865,125 +865,6 @@
     <None Include="..\..\Data\Balance\PlayerSkills.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
-    <None Include="..\..\Data\Effects\EffectCatalog.json">
-      <Filter>96.DataFiles\Effects</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050150.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Warlord\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Artist.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Artist.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31000.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31210.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31230.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31410.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31490.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31900.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\skill.31920.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050010.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050110.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050150.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050190.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050200.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050210.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050220.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050540.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050500.external-module-closure.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050500.imported.effect.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34010.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34020.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34050.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34070.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34080.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34090.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34110.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34120.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34150.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34170.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34500.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34520.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34540.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34550.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34560.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34570.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34580.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34590.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34600.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34620.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-effect-draft-index.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.basebuff-effect-source.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.effect-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31000.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31210.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31230.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31410.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31470.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31490.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31900.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050010.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050110.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050150.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050190.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050200.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050210.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050220.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050240.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050500.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050540.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34010.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34020.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34050.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34070.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34080.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34090.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34110.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34120.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34150.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34170.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34500.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34520.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34540.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34550.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34560.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34570.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34580.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34590.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34600.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34620.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34640.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
-    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.action-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
       <Filter>96.DataFiles\Encounters</Filter>
     </None>
@@ -1204,6 +1085,1440 @@
     </FxCompile>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
       <Filter>97.ShaderFiles</Filter>
+    </None>
+  </ItemGroup>
+  <!-- Generated by Tools/EffectPipeline/Sync-EffectDataProject.ps1. -->
+  <ItemGroup Label="GeneratedEffectDataFilters">
+    <Filter Include="96.DataFiles\Effects">
+      <UniqueIdentifier>{98a698a7-6755-4d8d-8795-c3c1ea0b6737}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Assemblies">
+      <UniqueIdentifier>{724722cc-5da5-5956-80f2-819b821de3b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Assemblies\DimensionMaster">
+      <UniqueIdentifier>{f699ded9-3fc2-5210-99da-53e065252ee0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Authored">
+      <UniqueIdentifier>{096fe528-80e6-47da-b169-96fb56a53729}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components">
+      <UniqueIdentifier>{e019d382-fc72-59f9-877d-a7f22ac00d68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster">
+      <UniqueIdentifier>{387232c9-87f1-5cec-9fdd-952a0f7d83d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050010">
+      <UniqueIdentifier>{8efc5586-0fad-56af-bcda-997dc3d30ec0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba1">
+      <UniqueIdentifier>{272d7648-6981-5711-bd5e-4d517221bd3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba2">
+      <UniqueIdentifier>{c7649a64-33ae-5936-8d7a-52f2c192aaeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba3">
+      <UniqueIdentifier>{d69d09a4-47ad-5543-af05-28439c08a786}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4">
+      <UniqueIdentifier>{d60190d2-dbc3-5959-9eb9-ad4f47dd7860}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050100">
+      <UniqueIdentifier>{8dd8805b-cbe4-5544-88a4-76781643f193}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050120">
+      <UniqueIdentifier>{70730bed-23c0-5111-a83d-2f943dae59c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050160">
+      <UniqueIdentifier>{22210864-aaa1-5017-a8f9-d94beba9e60e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050180">
+      <UniqueIdentifier>{c9038172-f193-50c6-9329-79d54c48d095}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050210">
+      <UniqueIdentifier>{eea3f592-021c-50dd-9f56-056c71b0e9db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050220">
+      <UniqueIdentifier>{3ad12b05-1d5f-5514-90f0-5d5769e6d5e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050230">
+      <UniqueIdentifier>{4b548f3e-e8a8-5cef-a7dc-397c116c0fd4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050240">
+      <UniqueIdentifier>{c5954df7-ca14-5bb4-869c-e546ea99aa5e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050500">
+      <UniqueIdentifier>{3d75afa2-c8be-52a1-bc9c-72e1cfa8f87b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050520">
+      <UniqueIdentifier>{402f7ec2-408a-5e9a-bfd0-117fda90ff20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Components\DimensionMaster\skill.2050540">
+      <UniqueIdentifier>{578b9be8-60a8-5d5b-9176-2fc6255d27c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported">
+      <UniqueIdentifier>{94b89e0f-c55f-4f0d-8d90-a6bd2b7a3d8e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist">
+      <UniqueIdentifier>{bad9600d-5720-5eee-bbeb-786a1ea7f519}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Drafts">
+      <UniqueIdentifier>{7af8d9d0-3c29-5a4d-a9df-64f00c30f9c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster">
+      <UniqueIdentifier>{78876c2f-8083-54e4-93a4-3f27a588f00c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\ActionSource">
+      <UniqueIdentifier>{bafa4923-fe4d-583f-b548-305ce2982db5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Converted">
+      <UniqueIdentifier>{874a8d93-089c-5756-aaac-0a753d592c4a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Drafts">
+      <UniqueIdentifier>{b8ebd09b-39ab-5d03-b59e-933bb55af970}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Modules">
+      <UniqueIdentifier>{4ab9b51a-e613-5e4c-9814-7e2272d6dc48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\LanceMaster">
+      <UniqueIdentifier>{c712c4e7-25be-5a3d-8ae2-561126926891}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\LanceMaster\Drafts">
+      <UniqueIdentifier>{4df6e2ab-a026-589c-8a42-2e2f338d3148}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan">
+      <UniqueIdentifier>{ab7fff82-53b5-53fd-b5de-bd0232493d5a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Warlord">
+      <UniqueIdentifier>{8c257d50-0dab-5f2c-8bb2-eb3db8d8b0e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex">
+      <UniqueIdentifier>{8540aebb-45e6-53b5-9a48-891bc0bc3edb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster">
+      <UniqueIdentifier>{02e73528-60be-511d-9503-f0c2b1f19a35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\A">
+      <UniqueIdentifier>{1ea9d974-ff27-5572-94c3-c8204fe8e8c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\ALT_V">
+      <UniqueIdentifier>{fa3f51ef-a6bc-5cf9-a406-0a3efdb62210}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\D">
+      <UniqueIdentifier>{74720390-05d0-5e96-80b5-a214c41b1723}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\E">
+      <UniqueIdentifier>{d8184c9a-3504-5f34-88c0-5ed04cfa7b3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\F">
+      <UniqueIdentifier>{5c8595d0-0c5c-5684-9af2-65ad9f21b183}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\Q">
+      <UniqueIdentifier>{26aa2d09-2aa0-5d5f-9a83-a169f8b8d2fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\R">
+      <UniqueIdentifier>{a3549e7b-e5b6-59ea-8b41-bdd07c1b6f4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\S">
+      <UniqueIdentifier>{847bb710-4295-53b3-be5f-182e374f4443}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\T">
+      <UniqueIdentifier>{3fee200d-4a31-57f0-8031-d7247b008208}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\V">
+      <UniqueIdentifier>{bfd5da22-296b-5b9e-9f95-f71b6be6efb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\W">
+      <UniqueIdentifier>{a503052b-d3c1-581c-b8a2-8377cef6f66c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <!-- Generated by Tools/EffectPipeline/Sync-EffectDataProject.ps1. -->
+  <ItemGroup Label="GeneratedEffectDataFilterItems">
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050010.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050010.ba1.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050010.ba2.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050010.ba3.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050010.ba4.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050100.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050120.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050160.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050180.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050210.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050220.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050230.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050240.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050500.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050520.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Assemblies\DimensionMaster\effect.dimensionmaster.skill.2050540.assembly.json">
+      <Filter>96.DataFiles\Effects\Assemblies\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba3.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba4.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050150.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba1\DimensionMaster_skill_2050010_ba1_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba1\DimensionMaster_skill_2050010_ba1_01.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba1\DimensionMaster_skill_2050010_ba1_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba1\DimensionMaster_skill_2050010_ba1_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba2\DimensionMaster_skill_2050010_ba2_00.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba2</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba2\DimensionMaster_skill_2050010_ba2_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba2</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba2\DimensionMaster_skill_2050010_ba2_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba2</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba3\DimensionMaster_skill_2050010_ba3_00.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba3</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba3\DimensionMaster_skill_2050010_ba3_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba3</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_02.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_03.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_05.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_06.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_08.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_09.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_10.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010.ba4\DimensionMaster_skill_2050010_ba4_11.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010.ba4</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_01.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_04.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_06.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_07.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_09.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_10.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_11.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_12.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_13.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_14.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_15.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_16.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_17.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_18.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_19.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050010\DimensionMaster_skill_2050010_20.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050010</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050100\DimensionMaster_skill_2050100_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050100</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050100\DimensionMaster_skill_2050100_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050100</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_03.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_06.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_09.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_10.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_11.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_12.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_13.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_14.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050120\DimensionMaster_skill_2050120_15.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050120</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_01.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_03.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050160\DimensionMaster_skill_2050160_06.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050160</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_01.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_06.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_07.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050180\DimensionMaster_skill_2050180_08.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050180</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_01.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_02.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_06.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_07.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_08.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_09.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_10.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_11.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_12.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_13.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_14.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_15.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_16.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_17.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_18.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_19.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_20.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_21.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_22.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_23.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_24.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_25.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_26.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_27.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_28.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_29.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_30.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_31.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050210\DimensionMaster_skill_2050210_32.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050210</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_01.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_02.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_04.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_05.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050220\DimensionMaster_skill_2050220_06.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050220</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_02.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_04.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_05.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_06.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050230\DimensionMaster_skill_2050230_09.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050230</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_01.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_02.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_05.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_06.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_09.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_10.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_11.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050240\DimensionMaster_skill_2050240_12.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050240</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_00.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_01.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_05.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_06.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_09.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_10.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_11.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050500\DimensionMaster_skill_2050500_12.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050500</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_00.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_01.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_02.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_03.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_04.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050520\DimensionMaster_skill_2050520_05.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050520</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_00.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_01.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_02.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_03.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_04.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_05.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_06.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_07.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_08.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_09.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_10.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_11.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_12.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_13.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_14.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_15.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_16.light.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_17.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_18.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_19.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_20.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_21.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_22.particlesystem.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Components\DimensionMaster\skill.2050540\DimensionMaster_skill_2050540_23.screenpost.wfx.json">
+      <Filter>96.DataFiles\Effects\Components\DimensionMaster\skill.2050540</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\EffectCatalog.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Artist.resource-source-manifest.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Artist.skill-effect-source-inventory.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31000.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31210.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31230.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31410.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31470.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31490.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31510.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31900.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\README.md">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31000.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31210.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31230.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31410.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31490.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31510.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31900.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31920.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-cook.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-export.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-manifest.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.skeletal-mesh-sockets.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMasterBase.action-effects.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\action-effect-source-manifest.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050010.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050100.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050110.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050120.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050150.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050160.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050180.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050190.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050200.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050210.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050220.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050230.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050240.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050500.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050510.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050520.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050540.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050550.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050010.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050010.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050100.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050100.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050110.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050110.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050120.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050120.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050150.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050150.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050160.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050160.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050180.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050180.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050190.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050190.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050200.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050200.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050210.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050210.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050220.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050220.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050230.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050230.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050240.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050240.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050520.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050520.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050540.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050540.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base-effect-extraction.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base-effect-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.character-animation-retime.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.component-build.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.model-cue-runtime-bindings.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.resource-source-manifest.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.skill-effect-source-inventory.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.source-semantic-overlay.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.summon-animation-retime.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050010.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050110.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050150.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050190.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050200.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050210.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050220.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050240.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050500.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050510.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050540.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050010.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050100.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050110.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050120.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050150.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050160.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050180.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050190.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050200.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050210.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050220.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050230.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050240.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050500.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050510.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050520.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050540.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050550.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050010.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050100.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050110.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050120.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050150.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050160.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050180.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050190.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050200.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050210.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050220.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050230.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050510.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050520.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050540.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050550.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34010.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34020.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34050.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34070.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34080.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34090.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34110.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34120.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34150.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34170.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34500.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34510.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34520.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34540.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34550.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34560.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34570.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34580.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34590.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34600.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34620.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34640.imported-effect-draft.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34010.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34020.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34050.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34070.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34080.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34090.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34110.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34120.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34150.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34170.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34500.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34510.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34520.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34540.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34550.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34560.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34570.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34580.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34590.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34600.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34620.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\README.md">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.basebuff-effect-source.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.effect-resource-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\README.md">
+      <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.action-particle-resource-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-effect-draft-index.json">
+      <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-particle-resource-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\A</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\ALT_V\DimensionMaster.ALT_V.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\ALT_V</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\D\DimensionMaster.D.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\D</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\DimensionMaster.skill-effect-resource-index.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\E\DimensionMaster.E.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\E</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\F\DimensionMaster.F.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\F</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\Q\DimensionMaster.Q.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\Q</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\R\DimensionMaster.R.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\R</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\S\DimensionMaster.S.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\S</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\T\DimensionMaster.T.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\T</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\V\DimensionMaster.V.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\V</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\W\DimensionMaster.W.effect-resources.json">
+      <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\W</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -9,11 +9,19 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 #include <vector>
 
 namespace
 {
     constexpr const wchar_t* EFFECT_LAYER = L"Layer_Effect";
+
+    struct SOURCE_ANCHOR_REQUEST final
+    {
+        std::string strRuntimeAnchorSlotId;
+        std::string strRuntimeBoneName;
+        Client::EFFECT_TRANSFORM_DESC SocketLocalTransform{};
+    };
 
     struct ACTIVE_EFFECT final
     {
@@ -32,6 +40,7 @@ namespace
         uint32_t iCueStartMs = 0u;
         f32_t fElapsedSeconds = 0.f;
         bool_t bFollowAnchorMissing = false;
+        std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
     };
 
     std::vector<ACTIVE_EFFECT> g_ActiveEffects;
@@ -55,6 +64,105 @@ namespace
             pModel->Get_BoneMatrix(strAnchorSlotId.c_str()) *
             XMLoadFloat4x4(&Out));
         return true;
+    }
+
+    std::vector<SOURCE_ANCHOR_REQUEST> Collect_SourceAnchorRequests(
+        const Client::EFFECT_DOCUMENT_DESC& Document)
+    {
+        std::vector<SOURCE_ANCHOR_REQUEST> Requests;
+        const auto AddRequest = [&Requests](SOURCE_ANCHOR_REQUEST Request)
+        {
+            if (Request.strRuntimeAnchorSlotId.empty() ||
+                Request.strRuntimeBoneName.empty())
+            {
+                return;
+            }
+            const auto Existing = std::find_if(
+                Requests.begin(), Requests.end(),
+                [&Request](const SOURCE_ANCHOR_REQUEST& Value)
+                {
+                    return Value.strRuntimeAnchorSlotId ==
+                        Request.strRuntimeAnchorSlotId;
+                });
+            if (Existing == Requests.end())
+                Requests.push_back(std::move(Request));
+        };
+        for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+        {
+            if (Element.ActionCueAttachment.bEnabled &&
+                Element.ActionCueAttachment.bFollow)
+            {
+                AddRequest({
+                    Element.ActionCueAttachment.strRuntimeAnchorSlotId,
+                    Element.ActionCueAttachment.strRuntimeBoneName,
+                    Element.ActionCueAttachment.SocketLocalTransform });
+            }
+            for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+                Element.SourceRecipe.Modules)
+            {
+                if (Module.strClassName != "particlemodulelocationbonesocket")
+                    continue;
+                for (const Client::EFFECT_SOURCE_LITERAL_DESC& Literal :
+                    Module.Literals)
+                {
+                    if (Client::EFFECT_SOURCE_LITERAL_KIND::STRING !=
+                        Literal.eKind ||
+                        !Literal.strPropertyPath.starts_with("sourcelocations[") ||
+                        !Literal.strPropertyPath.ends_with("].bonesocketname") ||
+                        Literal.strString.empty())
+                    {
+                        continue;
+                    }
+                    AddRequest({ Literal.strString, Literal.strString, {} });
+                }
+            }
+        }
+        std::sort(Requests.begin(), Requests.end(),
+            [](const SOURCE_ANCHOR_REQUEST& Left,
+                const SOURCE_ANCHOR_REQUEST& Right)
+            {
+                return Left.strRuntimeAnchorSlotId <
+                    Right.strRuntimeAnchorSlotId;
+            });
+        return Requests;
+    }
+
+    std::unordered_map<std::string, float4x4_t> Resolve_SourceAnchors(
+        const std::shared_ptr<Client::CCharacter>& pOwner,
+        const std::vector<SOURCE_ANCHOR_REQUEST>& Requests)
+    {
+        std::unordered_map<std::string, float4x4_t> Result;
+        if (nullptr == pOwner || nullptr == pOwner->Get_Transform())
+            return Result;
+        const std::shared_ptr<Engine::CModel> pModel = pOwner->Get_BodyModel();
+        if (nullptr == pModel)
+            return Result;
+        const matrix_t OwnerWorld = XMLoadFloat4x4(
+            pOwner->Get_Transform()->Get_WorldMatrixPtr());
+        for (const SOURCE_ANCHOR_REQUEST& Request : Requests)
+        {
+            if (!pModel->Has_Bone(Request.strRuntimeBoneName.c_str()))
+                continue;
+            const Client::EFFECT_TRANSFORM_DESC& Local =
+                Request.SocketLocalTransform;
+            const matrix_t SocketLocal = XMMatrixScaling(
+                Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+                XMMatrixRotationRollPitchYaw(
+                    XMConvertToRadians(Local.vRotationDegrees.x),
+                    XMConvertToRadians(Local.vRotationDegrees.y),
+                    XMConvertToRadians(Local.vRotationDegrees.z)) *
+                XMMatrixTranslation(
+                    Local.vPosition.x,
+                    Local.vPosition.y,
+                    Local.vPosition.z);
+            float4x4_t World{};
+            XMStoreFloat4x4(&World,
+                SocketLocal *
+                pModel->Get_BoneMatrix(Request.strRuntimeBoneName.c_str()) *
+                OwnerWorld);
+            Result.emplace(Request.strRuntimeAnchorSlotId, World);
+        }
+        return Result;
     }
 
     float4x4_t Compose_Local(
@@ -168,6 +276,9 @@ bool_t Client::CEffectPresentationService::Spawn(
     Active.iCueDurationMs = Desc.iCueDurationMs;
     Active.iActionStartTick = Desc.iActionStartTick;
     Active.iCueStartMs = Desc.iCueStartMs;
+    Active.SourceAnchorRequests = Collect_SourceAnchorRequests(*pDocument);
+    pEffect->Set_SourceAnchorWorlds(
+        Resolve_SourceAnchors(pOwner, Active.SourceAnchorRequests));
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -200,8 +311,6 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
     const uint32_t iCurrentLevel = CGameInstance::Get().Get_CurrentLevelID();
     for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
     {
-        if (EFFECT_FOLLOW_POLICY::FOLLOW != Effect.eFollowPolicy)
-            continue;
         const std::shared_ptr<CCharacter> pOwner = Effect.pOwner.lock();
         if (nullptr == pOwner || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel)
@@ -211,6 +320,10 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
                 Effect.pObject->Set_Visible(false);
             continue;
         }
+        Effect.pObject->Set_SourceAnchorWorlds(
+            Resolve_SourceAnchors(pOwner, Effect.SourceAnchorRequests));
+        if (EFFECT_FOLLOW_POLICY::FOLLOW != Effect.eFollowPolicy)
+            continue;
         float4x4_t Anchor{};
         if (!Resolve_Anchor(pOwner, Effect.strAnchorSlotId, Anchor))
         {

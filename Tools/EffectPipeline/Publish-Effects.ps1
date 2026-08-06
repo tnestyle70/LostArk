@@ -22,6 +22,8 @@ $ResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
 $catalogPath = Join-Path $DataRoot 'Effects\EffectCatalog.json'
 $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored'))
+$assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
+$componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 
 function Read-JsonDocument([string]$Path) {
@@ -49,13 +51,15 @@ function Get-RequiredProperty(
             $value -is [single] -or $value -is [double] -or
             $value -is [decimal] }
         'Boolean' { $value -is [bool] }
-        'Array' { $value -is [array] }
-        'Object' { $null -ne $value -and
-            $value -isnot [string] -and $value -isnot [array] -and
-            $value.PSObject.Properties.Count -gt 0 }
+        'Array' { $null -eq $value -or $value -is [array] }
+        'Object' { $value -is [pscustomobject] -or
+            $value -is [Collections.IDictionary] }
     }
     if (-not $valid) {
-        throw "Required property '$Name' has the wrong type."
+        $actualType = if ($null -eq $value) { 'null' } else {
+            $value.GetType().FullName
+        }
+        throw "Required property '$Name' has the wrong type: $actualType"
     }
     return $value
 }
@@ -276,6 +280,214 @@ function Resolve-SafeResource([string]$AssetId) {
     return $candidate
 }
 
+function Resolve-SafeModelCueResource([string]$AssetId) {
+    if (-not $AssetId.StartsWith('Character/', [StringComparison]::Ordinal) -or
+        $AssetId.Contains('\') -or $AssetId.Contains(':') -or
+        [IO.Path]::IsPathRooted($AssetId) -or
+        [IO.Path]::GetExtension($AssetId) -cne '.wmodel') {
+        throw "Unsafe Effect Model Cue asset ID: $AssetId"
+    }
+    foreach ($segment in $AssetId.Split('/')) {
+        if ([string]::IsNullOrWhiteSpace($segment) -or
+            $segment -eq '.' -or $segment -eq '..') {
+            throw "Unsafe Effect Model Cue path segment: $AssetId"
+        }
+    }
+    $candidate = [IO.Path]::GetFullPath((Join-Path $ResourceRoot $AssetId))
+    $prefix = $ResourceRoot.TrimEnd('\') + '\'
+    if (-not $candidate.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Effect Model Cue resource escaped Resources: $AssetId"
+    }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw "Missing Effect Model Cue resource: $AssetId"
+    }
+    return $candidate
+}
+
+function Copy-JsonValue([object]$Value) {
+    return ($Value | ConvertTo-Json -Depth 100 -Compress) | ConvertFrom-Json
+}
+
+function Assert-JsonEquivalent(
+    [object]$Expected,
+    [object]$Actual,
+    [string]$Path = '$') {
+    if ($null -eq $Expected -or $null -eq $Actual) {
+        if ($null -eq $Expected -and $null -eq $Actual) { return }
+        throw "JSON identity mismatch at ${Path}: null differs."
+    }
+    $expectedIsNumber = $Expected -is [byte] -or $Expected -is [int16] -or
+        $Expected -is [int32] -or $Expected -is [int64] -or
+        $Expected -is [single] -or $Expected -is [double] -or
+        $Expected -is [decimal]
+    $actualIsNumber = $Actual -is [byte] -or $Actual -is [int16] -or
+        $Actual -is [int32] -or $Actual -is [int64] -or
+        $Actual -is [single] -or $Actual -is [double] -or
+        $Actual -is [decimal]
+    if ($expectedIsNumber -or $actualIsNumber) {
+        if (-not $expectedIsNumber -or -not $actualIsNumber -or
+            [double]$Expected -ne [double]$Actual) {
+            throw "JSON numeric identity mismatch at ${Path}: $Expected != $Actual"
+        }
+        return
+    }
+    if ($Expected -is [string] -or $Expected -is [bool] -or
+        $Actual -is [string] -or $Actual -is [bool]) {
+        if ($Expected.GetType() -ne $Actual.GetType() -or $Expected -cne $Actual) {
+            throw "JSON scalar identity mismatch at ${Path}: $Expected != $Actual"
+        }
+        return
+    }
+    if ($Expected -is [array] -or $Actual -is [array]) {
+        if ($Expected -isnot [array] -or $Actual -isnot [array] -or
+            $Expected.Count -ne $Actual.Count) {
+            throw "JSON array identity mismatch at ${Path}."
+        }
+        for ($index = 0; $index -lt $Expected.Count; ++$index) {
+            Assert-JsonEquivalent $Expected[$index] $Actual[$index] "${Path}[$index]"
+        }
+        return
+    }
+    $expectedProperties = @($Expected.PSObject.Properties | Sort-Object Name)
+    $actualProperties = @($Actual.PSObject.Properties | Sort-Object Name)
+    if ($expectedProperties.Count -ne $actualProperties.Count) {
+        throw "JSON object property count mismatch at ${Path}."
+    }
+    for ($index = 0; $index -lt $expectedProperties.Count; ++$index) {
+        $expectedProperty = $expectedProperties[$index]
+        $actualProperty = $actualProperties[$index]
+        if ($expectedProperty.Name -cne $actualProperty.Name) {
+            throw "JSON object property mismatch at ${Path}: $($expectedProperty.Name) != $($actualProperty.Name)"
+        }
+        Assert-JsonEquivalent $expectedProperty.Value $actualProperty.Value `
+            "${Path}.$($expectedProperty.Name)"
+    }
+}
+
+function Assert-IdentityTransform([object]$Transform, [string]$Label) {
+    $position = Get-NumberVector $Transform 'position' 3 $Label
+    $rotation = Get-NumberVector $Transform 'rotationDegrees' 3 $Label
+    $scale = Get-NumberVector $Transform 'scale' 3 $Label
+    if (@($position | Where-Object { $_ -ne 0 }).Count -ne 0 -or
+        @($rotation | Where-Object { $_ -ne 0 }).Count -ne 0 -or
+        @($scale | Where-Object { $_ -ne 1 }).Count -ne 0) {
+        throw "$Label is not supported until component transform execution is exact."
+    }
+}
+
+function Compile-EffectAssembly(
+    [object]$Assembly,
+    [Collections.Generic.Dictionary[string,object]]$ComponentsById) {
+    if ((Get-RequiredProperty $Assembly 'schema' String) -cne
+            'lostark.effect-assembly' -or
+        [int](Get-RequiredProperty $Assembly 'version' Number) -ne 1) {
+        throw 'Unsupported Effect assembly.'
+    }
+    $rows = [Collections.Generic.List[object]]::new()
+    $compiledIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    foreach ($cue in @(Get-RequiredProperty $Assembly 'componentCues' Array)) {
+        $cueId = Get-RequiredProperty $cue 'cueId' String
+        $componentId = Get-RequiredProperty $cue 'componentAssetId' String
+        Assert-StableId $cueId 'Effect Component cue ID'
+        Assert-StableId $componentId 'Effect Component asset ID'
+        $offset = Get-NumberValue $cue 'startDelaySeconds' $cueId
+        if ($offset -lt 0 -or
+            (Get-RequiredProperty $cue 'anchor' String) -cne 'root') {
+            throw "Component cue timing or anchor is invalid: $cueId"
+        }
+        [void](Get-RequiredProperty $cue 'visible' Boolean)
+        Assert-IdentityTransform `
+            (Get-RequiredProperty $cue 'localTransform' Object) $cueId
+        $component = $null
+        if (-not $ComponentsById.TryGetValue($componentId, [ref]$component)) {
+            throw "Missing Effect Component: $componentId"
+        }
+        if ((Get-RequiredProperty $component 'schema' String) -cne
+                'lostark.effect-component' -or
+            [int](Get-RequiredProperty $component 'version' Number) -ne 1 -or
+            (Get-RequiredProperty $component 'componentAssetId' String) -cne
+                $componentId) {
+            throw "Effect Component header mismatch: $componentId"
+        }
+        $document = Get-RequiredProperty $component 'document' Object
+        if ((Get-RequiredProperty $document 'effectAssetId' String) -cne
+                $componentId) {
+            throw "Effect Component Document identity mismatch: $componentId"
+        }
+        $elementsById = [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal)
+        foreach ($element in @(Get-RequiredProperty $document 'elements' Array)) {
+            $elementId = Get-RequiredProperty $element 'id' String
+            if ($elementsById.ContainsKey($elementId)) {
+                throw "Duplicate Component Element ID: $componentId/$elementId"
+            }
+            $elementsById.Add($elementId, $element)
+        }
+        $emitters = @(Get-RequiredProperty $component 'emitters' Array)
+        if ($emitters.Count -ne $elementsById.Count) {
+            throw "Component Emitter/Element count mismatch: $componentId"
+        }
+        foreach ($emitter in $emitters) {
+            $emitterId = Get-RequiredProperty $emitter 'emitterId' String
+            $elementId = Get-RequiredProperty $emitter 'elementId' String
+            Assert-StableId $emitterId 'Effect Emitter ID'
+            Assert-StableId $elementId 'Effect Component Element ID'
+            $sourceIndex = Get-IntegerValue $emitter 'sourceElementIndex' $emitterId
+            $element = $null
+            if ($sourceIndex -lt 0 -or
+                -not $elementsById.TryGetValue($elementId, [ref]$element)) {
+                throw "Component Emitter has no source Element: $componentId/$emitterId"
+            }
+            $copy = Copy-JsonValue $element
+            $copy.detail.timing.startDelaySeconds =
+                [double]$copy.detail.timing.startDelaySeconds + $offset
+            if (-not $compiledIds.Add([string]$copy.id)) {
+                throw "Duplicate compiled Effect Element ID: $($copy.id)"
+            }
+            $rows.Add([pscustomobject]@{
+                sourceElementIndex = $sourceIndex
+                element = $copy
+            })
+        }
+    }
+    $orderedElements = @($rows | Sort-Object sourceElementIndex | ForEach-Object {
+        $_.element
+    })
+    return Copy-JsonValue ([ordered]@{
+        schema = 'lostark.effect-authoring'
+        version = [int](Get-RequiredProperty $Assembly 'sourceAuthoringVersion' Number)
+        effectAssetId = Get-RequiredProperty $Assembly 'effectAssetId' String
+        displayName = Get-RequiredProperty $Assembly 'displayName' String
+        particleSystem = Get-RequiredProperty $Assembly 'particleSystem' Object
+        modelCues = @(Get-RequiredProperty $Assembly 'modelCues' Array)
+        elements = $orderedElements
+    })
+}
+
+$assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
+    [StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath $assemblyRoot -Recurse `
+        -Filter '*.assembly.json' -File)) {
+    $assembly = Read-JsonDocument $path.FullName
+    $assemblyId = Get-RequiredProperty $assembly 'effectAssetId' String
+    if ($assemblyById.ContainsKey($assemblyId)) {
+        throw "Duplicate Effect Assembly ID: $assemblyId"
+    }
+    $assemblyById.Add($assemblyId, $assembly)
+}
+$componentById = [Collections.Generic.Dictionary[string,object]]::new(
+    [StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath $componentRoot -Recurse `
+        -Filter '*.wfx.json' -File)) {
+    $component = Read-JsonDocument $path.FullName
+    $componentId = Get-RequiredProperty $component 'componentAssetId' String
+    if ($componentById.ContainsKey($componentId)) {
+        throw "Duplicate Effect Component ID: $componentId"
+    }
+    $componentById.Add($componentId, $component)
+}
+
 $catalog = Read-JsonDocument $catalogPath
 try {
     $root = $catalog
@@ -288,6 +500,8 @@ try {
     $claimedIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     $runtimeEffects = [Collections.Generic.List[object]]::new()
+    $runtimeComponentsById = [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal)
     foreach ($entry in @($effects)) {
         $effectAssetId = Get-RequiredProperty $entry 'effectAssetId' String
         $authoringPath = Get-RequiredProperty $entry 'authoringPath' String
@@ -326,14 +540,14 @@ try {
             [void](Get-RequiredProperty $document 'displayName' String)
             $elements = Get-RequiredProperty $document 'elements' Array
             if ($schema -cne 'lostark.effect-authoring' -or
-                $documentVersion -notin @(5, 6) -or
+                $documentVersion -notin @(5, 6, 7, 8, 9, 10, 11) -or
                 $documentId -cne $effectAssetId) {
                 throw "Effect authoring header mismatch: $effectAssetId"
             }
             if ([Text.Encoding]::UTF8.GetByteCount($document.displayName) -lt 1 -or
                 [Text.Encoding]::UTF8.GetByteCount($document.displayName) -gt 64 -or
                 [string]::IsNullOrWhiteSpace($document.displayName) -or
-                @($elements).Count -gt 256) {
+                @($elements).Count -gt 2048) {
                 throw "Effect authoring display name or Element budget is invalid: $effectAssetId"
             }
             $elementIds = [Collections.Generic.HashSet[string]]::new(
@@ -343,6 +557,59 @@ try {
             [int64]$totalParticles = 0
             [int64]$totalTrailPoints = 0
             [int64]$totalAfterImages = 0
+            if ($documentVersion -ge 8) {
+                $particleSystem = Get-RequiredProperty $document 'particleSystem' Object
+                $uniformScale = Get-NumberValue $particleSystem `
+                    'uniformScaleMultiplier' 'particleSystem'
+                $yawOffset = Get-NumberValue $particleSystem `
+                    'yawOffsetDegrees' 'particleSystem'
+                $directionYaw = Get-NumberValue $particleSystem `
+                    'directionYawDegrees' 'particleSystem'
+                $initialSpeed = Get-NumberValue $particleSystem `
+                    'initialSpeedMultiplier' 'particleSystem'
+                if ($uniformScale -le 0 -or $uniformScale -gt 100 -or
+                    [Math]::Abs($yawOffset) -gt 3600 -or
+                    [Math]::Abs($directionYaw) -gt 3600 -or
+                    $initialSpeed -lt 0 -or $initialSpeed -gt 100) {
+                    throw "Effect Particle System modifier is invalid: $effectAssetId"
+                }
+            }
+            if ($documentVersion -ge 7) {
+                $modelCues = @(Get-RequiredProperty $document 'modelCues' Array)
+                if ($modelCues.Count -gt 8) {
+                    throw "Effect Model Cue budget is invalid: $effectAssetId"
+                }
+                $cueIds = [Collections.Generic.HashSet[string]]::new(
+                    [StringComparer]::Ordinal)
+                foreach ($cue in $modelCues) {
+                    $cueId = Get-RequiredProperty $cue 'cueId' String
+                    $modelAssetId = Get-RequiredProperty $cue 'modelAssetId' String
+                    $clipName = Get-RequiredProperty $cue 'clipName' String
+                    $startDelay = Get-NumberValue $cue 'startDelaySeconds' $cueId
+                    $duration = Get-NumberValue $cue 'durationSeconds' $cueId
+                    [void](Get-RequiredProperty $cue 'visible' Boolean)
+                    $localTransform = Get-RequiredProperty $cue 'localTransform' Object
+                    $assetPreTransform = Get-RequiredProperty $cue 'assetPreTransform' Object
+                    Assert-StableId $cueId 'Effect Model Cue ID'
+                    if (-not $cueIds.Add($cueId) -or
+                        [string]::IsNullOrWhiteSpace($clipName) -or
+                        [Text.Encoding]::UTF8.GetByteCount($clipName) -gt 128 -or
+                        $startDelay -lt 0 -or $duration -le 0 -or $duration -gt 30) {
+                        throw "Effect Model Cue identity or time is invalid: $cueId"
+                    }
+                    [void](Get-NumberVector $localTransform 'position' 3 $cueId)
+                    [void](Get-NumberVector $localTransform 'rotationDegrees' 3 $cueId)
+                    $localScale = Get-NumberVector $localTransform 'scale' 3 $cueId
+                    $preScale = Get-NumberVector $assetPreTransform 'scale' 3 $cueId
+                    [void](Get-NumberVector $assetPreTransform 'rotationDegrees' 3 $cueId)
+                    if (@($localScale + $preScale | Where-Object { $_ -le 0 }).Count -ne 0) {
+                        throw "Effect Model Cue scale must be positive: $cueId"
+                    }
+                    $modelFile = Resolve-SafeModelCueResource $modelAssetId
+                    $dependencies[$modelAssetId] =
+                        (Get-FileHash -LiteralPath $modelFile -Algorithm SHA256).Hash.ToLowerInvariant()
+                }
+            }
             foreach ($element in @($elements)) {
                 $elementId = Get-RequiredProperty $element 'id' String
                 $kind = Get-RequiredProperty $element 'kind' String
@@ -364,14 +631,68 @@ try {
                         Assert-StableId $groupId 'Element groupId'
                     }
                     $materialTemplateId = Get-RequiredProperty $material 'templateId' String
-                    if ($materialTemplateId -cne 'effect.standard') {
+                    $sourceMaterialPath = if ($documentVersion -ge 10) {
+                        Get-RequiredProperty $material 'sourceMaterialPath' String
+                    } else { '' }
+                    if ($materialTemplateId -notin @('effect.standard','effect.source_material')) {
                         throw "Unknown Material Template in ${effectAssetId}: $materialTemplateId"
                     }
+                    if ($materialTemplateId -eq 'effect.source_material' -and
+                        [string]::IsNullOrWhiteSpace($sourceMaterialPath)) {
+                        throw "Source Material Template requires sourceMaterialPath in ${effectAssetId}: $elementId"
+                    }
+					if ($documentVersion -ge 11) {
+						$sourceProfile = Get-RequiredProperty $material 'sourceProfile' Object
+						$sourceProfileEnabled = [bool](Get-RequiredProperty `
+							$sourceProfile 'enabled' Boolean)
+						if ($materialTemplateId -eq 'effect.source_material' -and
+							-not $sourceProfileEnabled) {
+							throw "Source Material Template requires an enabled profile in ${effectAssetId}: $elementId"
+						}
+						if ($sourceProfileEnabled) {
+							$profileId = Get-RequiredProperty $sourceProfile 'profileId' String
+							$shaderProfileId = Get-RequiredProperty `
+								$sourceProfile 'runtimeShaderProfileId' String
+							$parentMaterialPath = Get-RequiredProperty `
+								$sourceProfile 'parentMaterialPath' String
+							$semanticStatus = Get-RequiredProperty `
+								$sourceProfile 'semanticStatus' String
+							$subUVMode = Get-RequiredProperty $sourceProfile 'subUVMode' String
+							Assert-StableId $profileId 'Source Material profile ID'
+							Assert-StableId $shaderProfileId 'Source Material shader profile ID'
+							Assert-StableId $subUVMode 'Source Material SubUV mode'
+							if ([string]::IsNullOrWhiteSpace($parentMaterialPath) -or
+								$semanticStatus -notin @('source_exact','runtime_exact','reconstructed_profile')) {
+								throw "Source Material profile metadata is invalid in ${effectAssetId}: $elementId"
+							}
+							$dynamicSemantics = @(Get-RequiredProperty `
+								$sourceProfile 'dynamicParameterSemantics' Array)
+							if ($dynamicSemantics.Count -ne 4) {
+								throw "Source Material Dynamic Parameter contract must have four channels: $elementId"
+							}
+							foreach ($semantic in $dynamicSemantics) {
+								Assert-StableId ([string]$semantic) `
+									'Source Material Dynamic Parameter semantic'
+							}
+							foreach ($scalar in @(Get-RequiredProperty $sourceProfile 'scalars' Array)) {
+								[void](Get-RequiredProperty $scalar 'name' String)
+								[void](Get-RequiredProperty $scalar 'value' Number)
+							}
+							foreach ($vector in @(Get-RequiredProperty $sourceProfile 'vectors' Array)) {
+								[void](Get-RequiredProperty $vector 'name' String)
+								[void](Get-NumberVector $vector 'value' 4 $elementId)
+							}
+							foreach ($switch in @(Get-RequiredProperty $sourceProfile 'staticSwitches' Array)) {
+								[void](Get-RequiredProperty $switch 'name' String)
+								[void](Get-RequiredProperty $switch 'value' Boolean)
+							}
+						}
+					}
                 }
                 if (-not $elementIds.Add($elementId)) {
                     throw "Duplicate Element ID in ${effectAssetId}: $elementId"
                 }
-                if ($kind -notin @('mesh','sprite','particle','decal','trail')) {
+                if ($kind -notin @('mesh','sprite','particle','decal','trail','light','screenPost')) {
                     throw "Unknown Effect kind in ${effectAssetId}: $kind"
                 }
                 $renderProfile = Get-RequiredProperty $material 'renderProfile' String
@@ -405,8 +726,14 @@ try {
                         (Get-FileHash -LiteralPath $resourceFile -Algorithm SHA256).Hash.ToLowerInvariant()
                 }
 				$isMeshParticle = $kind -eq 'particle' -and $claimedSlots.Contains('meshModel')
-				$requiredSlot = if ($kind -eq 'mesh' -or $isMeshParticle) { 'meshModel' } else { 'base' }
-                if (-not $claimedSlots.Contains($requiredSlot)) {
+				$requiredSlot = if ($kind -eq 'mesh' -or $isMeshParticle) {
+                    'meshModel'
+                } elseif ($kind -in @('light','screenPost') -or
+                    $materialTemplateId -eq 'effect.source_material') {
+                    ''
+                } else { 'base' }
+                if (-not [string]::IsNullOrEmpty($requiredSlot) -and
+                    -not $claimedSlots.Contains($requiredSlot)) {
                     throw "$kind Element requires '$requiredSlot' in ${effectAssetId}: $elementId"
                 }
                 Assert-EffectDetail $detail $kind "${effectAssetId}/$elementId"
@@ -433,12 +760,43 @@ try {
             $dependencyRows = @($dependencies.GetEnumerator() | ForEach-Object {
                 [ordered]@{ assetId = $_.Key; sha256 = $_.Value }
             })
+            $assembly = $null
+            if (-not $assemblyById.TryGetValue($effectAssetId, [ref]$assembly)) {
+                throw "Missing Effect Assembly: $effectAssetId"
+            }
+            if ([int](Get-RequiredProperty $assembly `
+                    'sourceAuthoringVersion' Number) -ne $documentVersion) {
+                throw "Effect Assembly authoring version mismatch: $effectAssetId"
+            }
+            $authoringSha = (Get-FileHash -LiteralPath $authoringFile `
+                -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-RequiredProperty $assembly 'sourceDocumentFileSha256' String) -cne
+                $authoringSha) {
+                throw "Effect Assembly source file hash mismatch: $effectAssetId"
+            }
+            foreach ($cue in @(Get-RequiredProperty $assembly `
+                    'componentCues' Array)) {
+                $componentId = Get-RequiredProperty $cue 'componentAssetId' String
+                $component = $null
+                if (-not $componentById.TryGetValue($componentId, [ref]$component)) {
+                    throw "Missing Effect Component: $effectAssetId/$componentId"
+                }
+                if (-not $runtimeComponentsById.ContainsKey($componentId)) {
+                    $runtimeComponentsById.Add($componentId, $component)
+                }
+            }
+            $compiledDocument = Compile-EffectAssembly `
+                $assembly $runtimeComponentsById
+            if ([string]$compiledDocument.effectAssetId -cne $effectAssetId -or
+                @($compiledDocument.elements).Count -ne @($document.elements).Count) {
+                throw "Effect Assembly compiled identity mismatch: $effectAssetId"
+            }
             $runtimeEffects.Add([ordered]@{
                 effectAssetId = $effectAssetId
                 authoringFormatVersion = $documentVersion
-                contentSha256 = (Get-FileHash -LiteralPath $authoringFile -Algorithm SHA256).Hash.ToLowerInvariant()
+                contentSha256 = $authoringSha
                 dependencies = $dependencyRows
-                document = $document
+                assembly = $assembly
             })
         }
         finally {
@@ -446,11 +804,14 @@ try {
         }
     }
 
+    $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
+        Sort-Object Key | ForEach-Object { $_.Value })
     $runtime = [ordered]@{
-        formatVersion = 1
+        formatVersion = 2
+        components = $runtimeComponents
         effects = @($runtimeEffects | Sort-Object effectAssetId)
     }
-    $json = $runtime | ConvertTo-Json -Depth 100
+    $json = $runtime | ConvertTo-Json -Depth 100 -Compress
     if ($Mode -eq 'Validate') {
         Write-Host "PASS: validated $($runtimeEffects.Count) admitted Effects."
         return
@@ -464,8 +825,10 @@ try {
     $roundTrip = Read-JsonDocument $temporary
     try {
         $roundEffects = @(Get-RequiredProperty $roundTrip 'effects' Array)
-        if ([int](Get-RequiredProperty $roundTrip 'formatVersion' Number) -ne 1 -or
-            $roundEffects.Count -ne $runtimeEffects.Count) {
+        $roundComponents = @(Get-RequiredProperty $roundTrip 'components' Array)
+        if ([int](Get-RequiredProperty $roundTrip 'formatVersion' Number) -ne 2 -or
+            $roundEffects.Count -ne $runtimeEffects.Count -or
+            $roundComponents.Count -ne $runtimeComponents.Count) {
             throw 'Generated runtime catalog failed round-trip validation.'
         }
         $expectedById = @{}
@@ -481,7 +844,9 @@ try {
                 (Get-RequiredProperty $entry 'contentSha256' String) -cne
                     [string]$expected.contentSha256 -or
                 @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
-                    @($expected.dependencies).Count) {
+                    @($expected.dependencies).Count -or
+                (Get-RequiredProperty $entry 'assembly' Object).effectAssetId -cne
+                    $id) {
                 throw "Generated runtime catalog entry failed round-trip validation: $id"
             }
         }
@@ -508,7 +873,7 @@ try {
     if (Test-Path -LiteralPath $backup) {
         Remove-Item -LiteralPath $backup -Force
     }
-    Write-Host "PASS: published $($runtimeEffects.Count) Effects to $OutputPath"
+    Write-Host "PASS: published $($runtimeEffects.Count) Effects and $($runtimeComponents.Count) Components to $OutputPath"
 }
 finally {
     $catalog = $null

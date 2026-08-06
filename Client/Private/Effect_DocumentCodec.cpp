@@ -22,14 +22,20 @@ namespace
 	constexpr const char_t* EFFECT_DOCUMENT_SCHEMA =
 		"lostark.effect-authoring";
 	constexpr size_t MAX_RESOURCE_ID_BYTES = 512u;
-	constexpr size_t MAX_ELEMENTS = 256u;
+	constexpr size_t MAX_ELEMENTS = 2048u;
+	constexpr size_t MAX_MODEL_CUES = 8u;
 	constexpr uint64_t MAX_DOCUMENT_PARTICLES = 8192u;
 	constexpr uint64_t MAX_DOCUMENT_TRAIL_POINTS = 2048u;
 	constexpr uint64_t MAX_DOCUMENT_AFTERIMAGES = 256u;
+	constexpr size_t MAX_SOURCE_MODULES_PER_ELEMENT = 256u;
+	constexpr size_t MAX_SOURCE_LITERALS_PER_MODULE = 1024u;
+	constexpr size_t MAX_SOURCE_DISTRIBUTIONS_PER_MODULE = 128u;
+	constexpr size_t MAX_SOURCE_BURSTS_PER_ELEMENT = 1024u;
 
 	constexpr const char_t* KIND_TOKENS[] =
 	{
-		"mesh", "sprite", "particle", "decal", "trail"
+		"mesh", "sprite", "particle", "decal", "trail", "light",
+		"screenPost"
 	};
 	constexpr const char_t* SLOT_TOKENS[] =
 	{
@@ -40,6 +46,22 @@ namespace
 		"opaque_back_depth_write",
 		"alpha_two_sided_depth_read",
 		"additive_two_sided_depth_read"
+	};
+	constexpr const char_t* SOURCE_MATERIAL_STATUS_TOKENS[] =
+	{
+		"source_exact",
+		"runtime_exact",
+		"reconstructed_profile",
+		"unsupported",
+		"missing_resource"
+	};
+	constexpr const char_t* SOURCE_LITERAL_KIND_TOKENS[] =
+	{
+		"boolean", "number", "string"
+	};
+	constexpr const char_t* DISTRIBUTION_INTERPOLATION_TOKENS[] =
+	{
+		"constant", "linear", "cubic"
 	};
 
 	bool_t Is_StableId(const std::string& Value)
@@ -177,6 +199,20 @@ namespace
 		return true;
 	}
 
+	bool_t Read_String(
+		const Client::DATA_JSON_VALUE& Object,
+		const char_t* pName,
+		std::string& OutValue,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Find_Field(
+			Object, pName, Client::DATA_JSON_TYPE::STRING, strOutError);
+		if (nullptr == pValue)
+			return false;
+		OutValue = pValue->Get_String();
+		return true;
+	}
+
 	bool_t Read_Array(
 		const Client::DATA_JSON_VALUE& Object,
 		const char_t* pName,
@@ -244,6 +280,588 @@ namespace
 	{
 		Output << '[' << Value.x << ", " << Value.y << ", "
 			<< Value.z << ", " << Value.w << ']';
+	}
+
+	bool_t Read_SourceMaterialProfile(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_MATERIAL_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Value.Is_Object() ||
+			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError))
+		{
+			return false;
+		}
+		if (!Out.bEnabled)
+			return true;
+		const Client::DATA_JSON_VALUE* pScalars = Find_Field(
+			Value, "scalars", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pVectors = Find_Field(
+			Value, "vectors", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pSwitches = Find_Field(
+			Value, "staticSwitches", Client::DATA_JSON_TYPE::ARRAY,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pDynamicSemantics = Find_Field(
+			Value, "dynamicParameterSemantics",
+			Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pStatus = Find_Field(
+			Value, "semanticStatus", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		if (nullptr == pScalars || nullptr == pVectors ||
+			nullptr == pSwitches || nullptr == pDynamicSemantics ||
+			nullptr == pStatus ||
+			!Read_String(Value, "profileId", Out.strProfileId,
+				strOutError) ||
+			!Read_String(Value, "runtimeShaderProfileId",
+				Out.strRuntimeShaderProfileId, strOutError) ||
+			!Read_String(Value, "parentMaterialPath",
+				Out.strParentMaterialPath, strOutError) ||
+			!Read_String(Value, "subUVMode", Out.strSubUVMode,
+				strOutError) ||
+			!Parse_Token(pStatus->Get_String(),
+				SOURCE_MATERIAL_STATUS_TOKENS,
+				std::size(SOURCE_MATERIAL_STATUS_TOKENS), Out.eStatus) ||
+			pDynamicSemantics->Get_Array().size() !=
+				Out.DynamicParameterSemantics.size())
+		{
+			return false;
+		}
+		for (size_t iSemantic = 0u;
+			iSemantic < Out.DynamicParameterSemantics.size(); ++iSemantic)
+		{
+			const Client::DATA_JSON_VALUE& Semantic =
+				pDynamicSemantics->Get_Array()[iSemantic];
+			if (!Semantic.Is_String())
+				return false;
+			Out.DynamicParameterSemantics[iSemantic] =
+				Semantic.Get_String();
+		}
+		for (const Client::DATA_JSON_VALUE& Item : pScalars->Get_Array())
+		{
+			Client::EFFECT_NAMED_FLOAT_DESC Scalar;
+			if (!Item.Is_Object() ||
+				!Read_String(Item, "name", Scalar.strName, strOutError) ||
+				!Read_Float(Item, "value", Scalar.fValue, strOutError))
+			{
+				return false;
+			}
+			Out.Scalars.push_back(std::move(Scalar));
+		}
+		for (const Client::DATA_JSON_VALUE& Item : pVectors->Get_Array())
+		{
+			Client::EFFECT_NAMED_FLOAT4_DESC Vector;
+			if (!Item.Is_Object() ||
+				!Read_String(Item, "name", Vector.strName, strOutError) ||
+				!Read_Array(Item, "value", &Vector.vValue.x, 4u,
+					strOutError))
+			{
+				return false;
+			}
+			Out.Vectors.push_back(std::move(Vector));
+		}
+		for (const Client::DATA_JSON_VALUE& Item : pSwitches->Get_Array())
+		{
+			Client::EFFECT_NAMED_BOOL_DESC Switch;
+			if (!Item.Is_Object() ||
+				!Read_String(Item, "name", Switch.strName, strOutError) ||
+				!Read_Bool(Item, "value", Switch.bValue, strOutError))
+			{
+				return false;
+			}
+			Out.StaticSwitches.push_back(std::move(Switch));
+		}
+		return true;
+	}
+
+	const char_t* SourceMaterialStatusToken(
+		const Client::EFFECT_SOURCE_MATERIAL_STATUS eStatus)
+	{
+		const size_t iIndex = static_cast<size_t>(eStatus);
+		return iIndex < std::size(SOURCE_MATERIAL_STATUS_TOKENS) ?
+			SOURCE_MATERIAL_STATUS_TOKENS[iIndex] : "unsupported";
+	}
+
+	void Write_SourceMaterialProfile(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	{
+		Output << "{ \"enabled\": "
+			<< (Source.bEnabled ? "true" : "false");
+		if (!Source.bEnabled)
+		{
+			Output << " }";
+			return;
+		}
+		Output << ", \"profileId\": \""
+			<< Client::CDataJson::Escape(Source.strProfileId)
+			<< "\", \"runtimeShaderProfileId\": \""
+			<< Client::CDataJson::Escape(Source.strRuntimeShaderProfileId)
+			<< "\", \"parentMaterialPath\": \""
+			<< Client::CDataJson::Escape(Source.strParentMaterialPath)
+			<< "\", \"semanticStatus\": \""
+			<< SourceMaterialStatusToken(Source.eStatus)
+			<< "\", \"scalars\": [";
+		for (size_t i = 0u; i < Source.Scalars.size(); ++i)
+		{
+			if (0u != i)
+				Output << ", ";
+			Output << "{ \"name\": \""
+				<< Client::CDataJson::Escape(Source.Scalars[i].strName)
+				<< "\", \"value\": " << Source.Scalars[i].fValue << " }";
+		}
+		Output << "], \"vectors\": [";
+		for (size_t i = 0u; i < Source.Vectors.size(); ++i)
+		{
+			if (0u != i)
+				Output << ", ";
+			Output << "{ \"name\": \""
+				<< Client::CDataJson::Escape(Source.Vectors[i].strName)
+				<< "\", \"value\": ";
+			Write_Float4(Output, Source.Vectors[i].vValue);
+			Output << " }";
+		}
+		Output << "], \"staticSwitches\": [";
+		for (size_t i = 0u; i < Source.StaticSwitches.size(); ++i)
+		{
+			if (0u != i)
+				Output << ", ";
+			Output << "{ \"name\": \""
+				<< Client::CDataJson::Escape(
+					Source.StaticSwitches[i].strName)
+				<< "\", \"value\": "
+				<< (Source.StaticSwitches[i].bValue ? "true" : "false")
+				<< " }";
+		}
+		Output << "], \"dynamicParameterSemantics\": [";
+		for (size_t i = 0u; i < Source.DynamicParameterSemantics.size(); ++i)
+		{
+			if (0u != i)
+				Output << ", ";
+			Output << '"' << Client::CDataJson::Escape(
+				Source.DynamicParameterSemantics[i]) << '"';
+		}
+		Output << "], \"subUVMode\": \""
+			<< Client::CDataJson::Escape(Source.strSubUVMode) << "\" }";
+	}
+
+	bool_t Read_Distribution(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_DISTRIBUTION_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pLookupTable = Find_Field(
+			Value, "lookupTable", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pKeys = Find_Field(
+			Value, "keys", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		if (nullptr == pLookupTable || nullptr == pKeys ||
+			!Read_String(Value, "propertyPath", Out.strPropertyPath,
+				strOutError) ||
+			!Read_String(Value, "sourceClass", Out.strSourceClass,
+				strOutError) ||
+			!Read_String(Value, "sourceObjectPath", Out.strSourceObjectPath,
+				strOutError) ||
+			!Read_UInt(Value, "componentCount", Out.iComponentCount,
+				strOutError) ||
+			!Read_UInt(Value, "operation", Out.iOperation, strOutError) ||
+			!Read_UInt(Value, "lookupTableChunkSize",
+				Out.iLookupTableChunkSize, strOutError) ||
+			!Read_UInt(Value, "lookupTableNumElements",
+				Out.iLookupTableNumElements, strOutError) ||
+			!Read_Float(Value, "lookupTableTimeScale",
+				Out.fLookupTableTimeScale, strOutError) ||
+			!Read_Float(Value, "lookupTableStartTime",
+				Out.fLookupTableStartTime, strOutError) ||
+			!Read_Array(Value, "defaultMinimum", &Out.vDefaultMinimum.x,
+				4u, strOutError) ||
+			!Read_Array(Value, "defaultMaximum", &Out.vDefaultMaximum.x,
+				4u, strOutError))
+		{
+			return false;
+		}
+		if (const Client::DATA_JSON_VALUE* pRandomLockAxes =
+			Value.Find("randomLockAxes"))
+		{
+			if (!pRandomLockAxes->Is_Number() ||
+				!std::isfinite(pRandomLockAxes->Get_Number()) ||
+				pRandomLockAxes->Get_Number() !=
+					std::floor(pRandomLockAxes->Get_Number()) ||
+				pRandomLockAxes->Get_Number() < 0.0 ||
+				pRandomLockAxes->Get_Number() > 4.0)
+			{
+				strOutError = "Effect distribution randomLockAxes is invalid.";
+				return false;
+			}
+			Out.iRandomLockAxes = static_cast<uint32_t>(
+				pRandomLockAxes->Get_Number());
+		}
+		Out.LookupTable.reserve(pLookupTable->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& Item : pLookupTable->Get_Array())
+		{
+			if (!Item.Is_Number() || !std::isfinite(Item.Get_Number()))
+			{
+				strOutError = "Effect distribution lookup table is invalid.";
+				return false;
+			}
+			Out.LookupTable.push_back(static_cast<f32_t>(Item.Get_Number()));
+		}
+		Out.Keys.reserve(pKeys->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& KeyValue : pKeys->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* pInterpolation =
+				KeyValue.Is_Object() ? KeyValue.Find("interpolation") : nullptr;
+			Client::EFFECT_DISTRIBUTION_KEY_DESC Key;
+			if (nullptr == pInterpolation || !pInterpolation->Is_String() ||
+				!Parse_Token(pInterpolation->Get_String(),
+					DISTRIBUTION_INTERPOLATION_TOKENS,
+					std::size(DISTRIBUTION_INTERPOLATION_TOKENS),
+					Key.eInterpolation) ||
+				!Read_Float(KeyValue, "time", Key.fTime, strOutError) ||
+				!Read_Array(KeyValue, "minimum", &Key.vMinimum.x, 4u,
+					strOutError) ||
+				!Read_Array(KeyValue, "maximum", &Key.vMaximum.x, 4u,
+					strOutError) ||
+				!Read_Array(KeyValue, "arriveTangentMinimum",
+					&Key.vArriveTangentMinimum.x, 4u, strOutError) ||
+				!Read_Array(KeyValue, "leaveTangentMinimum",
+					&Key.vLeaveTangentMinimum.x, 4u, strOutError) ||
+				!Read_Array(KeyValue, "arriveTangentMaximum",
+					&Key.vArriveTangentMaximum.x, 4u, strOutError) ||
+				!Read_Array(KeyValue, "leaveTangentMaximum",
+					&Key.vLeaveTangentMaximum.x, 4u, strOutError))
+			{
+				return false;
+			}
+			Out.Keys.push_back(std::move(Key));
+		}
+		return true;
+	}
+
+	bool_t Read_SourceRecipe(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_CASCADE_RECIPE_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pBursts = Find_Field(
+			Value, "bursts", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pModules = Find_Field(
+			Value, "modules", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		if (nullptr == pBursts || nullptr == pModules ||
+			!Read_Bool(Value, "enabled", Out.bEnabled, strOutError) ||
+			!Read_String(Value, "rendererShape", Out.strRendererShape,
+				strOutError) ||
+			!Read_Float(Value, "emitterDelaySeconds",
+				Out.fEmitterDelaySeconds, strOutError) ||
+			!Read_Float(Value, "emitterDurationSeconds",
+				Out.fEmitterDurationSeconds, strOutError) ||
+			!Read_UInt(Value, "emitterLoopCount", Out.iEmitterLoopCount,
+				strOutError))
+		{
+			return false;
+		}
+		Out.Bursts.reserve(pBursts->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& BurstValue : pBursts->Get_Array())
+		{
+			Client::EFFECT_PARTICLE_BURST_DESC Burst;
+			if (!BurstValue.Is_Object() ||
+				!Read_Float(BurstValue, "timeSeconds", Burst.fTimeSeconds,
+					strOutError) ||
+				!Read_UInt(BurstValue, "countMinimum", Burst.iCountMinimum,
+					strOutError) ||
+				!Read_UInt(BurstValue, "countMaximum", Burst.iCountMaximum,
+					strOutError))
+			{
+				return false;
+			}
+			Out.Bursts.push_back(Burst);
+		}
+		Out.Modules.reserve(pModules->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& ModuleValue : pModules->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* pLiterals = ModuleValue.Is_Object() ?
+				ModuleValue.Find("literals") : nullptr;
+			const Client::DATA_JSON_VALUE* pDistributions =
+				ModuleValue.Is_Object() ? ModuleValue.Find("distributions") :
+				nullptr;
+			Client::EFFECT_SOURCE_MODULE_DESC Module;
+			if (nullptr == pLiterals || !pLiterals->Is_Array() ||
+				nullptr == pDistributions || !pDistributions->Is_Array() ||
+				!Read_String(ModuleValue, "stableId", Module.strStableId,
+					strOutError) ||
+				!Read_String(ModuleValue, "className", Module.strClassName,
+					strOutError) ||
+				!Read_String(ModuleValue, "objectPath", Module.strObjectPath,
+					strOutError))
+			{
+				return false;
+			}
+			for (const Client::DATA_JSON_VALUE& LiteralValue :
+				pLiterals->Get_Array())
+			{
+				const Client::DATA_JSON_VALUE* pKind = LiteralValue.Is_Object() ?
+					LiteralValue.Find("kind") : nullptr;
+				Client::EFFECT_SOURCE_LITERAL_DESC Literal;
+				if (nullptr == pKind || !pKind->Is_String() ||
+					!Read_String(LiteralValue, "propertyPath",
+						Literal.strPropertyPath, strOutError) ||
+					!Parse_Token(pKind->Get_String(),
+						SOURCE_LITERAL_KIND_TOKENS,
+						std::size(SOURCE_LITERAL_KIND_TOKENS), Literal.eKind))
+				{
+					return false;
+				}
+				const Client::DATA_JSON_VALUE* pLiteralValue =
+					LiteralValue.Find("value");
+				if (nullptr == pLiteralValue ||
+					(Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN ==
+						Literal.eKind && !pLiteralValue->Is_Boolean()) ||
+					(Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER ==
+						Literal.eKind && !pLiteralValue->Is_Number()) ||
+					(Client::EFFECT_SOURCE_LITERAL_KIND::STRING ==
+						Literal.eKind && !pLiteralValue->Is_String()))
+				{
+					strOutError = "Effect source literal value is invalid.";
+					return false;
+				}
+				if (Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN == Literal.eKind)
+					Literal.bBoolean = pLiteralValue->Get_Boolean();
+				else if (Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER == Literal.eKind)
+					Literal.fNumber = pLiteralValue->Get_Number();
+				else
+					Literal.strString = pLiteralValue->Get_String();
+				Module.Literals.push_back(std::move(Literal));
+			}
+			for (const Client::DATA_JSON_VALUE& DistributionValue :
+				pDistributions->Get_Array())
+			{
+				Client::EFFECT_DISTRIBUTION_DESC Distribution;
+				if (!DistributionValue.Is_Object() ||
+					!Read_Distribution(DistributionValue, Distribution,
+						strOutError))
+				{
+					return false;
+				}
+				Module.Distributions.push_back(std::move(Distribution));
+			}
+			Out.Modules.push_back(std::move(Module));
+		}
+		return true;
+	}
+
+	void Write_SourceRecipe(
+		std::ostringstream& Output,
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe)
+	{
+		Output << "      \"sourceRecipe\": { \"enabled\": "
+			<< (Recipe.bEnabled ? "true" : "false")
+			<< ", \"rendererShape\": \""
+			<< Client::CDataJson::Escape(Recipe.strRendererShape)
+			<< "\", \"emitterDelaySeconds\": "
+			<< Recipe.fEmitterDelaySeconds
+			<< ", \"emitterDurationSeconds\": "
+			<< Recipe.fEmitterDurationSeconds
+			<< ", \"emitterLoopCount\": " << Recipe.iEmitterLoopCount
+			<< ",\n        \"bursts\": [";
+		for (size_t iBurst = 0u; iBurst < Recipe.Bursts.size(); ++iBurst)
+		{
+			const Client::EFFECT_PARTICLE_BURST_DESC& Burst =
+				Recipe.Bursts[iBurst];
+			Output << (0u == iBurst ? "\n" : ",\n")
+				<< "          { \"timeSeconds\": " << Burst.fTimeSeconds
+				<< ", \"countMinimum\": " << Burst.iCountMinimum
+				<< ", \"countMaximum\": " << Burst.iCountMaximum
+				<< " }";
+		}
+		if (!Recipe.Bursts.empty())
+			Output << '\n';
+		Output << "        ],\n        \"modules\": [";
+		for (size_t iModule = 0u; iModule < Recipe.Modules.size(); ++iModule)
+		{
+			const Client::EFFECT_SOURCE_MODULE_DESC& Module =
+				Recipe.Modules[iModule];
+			Output << (0u == iModule ? "\n" : ",\n")
+				<< "          { \"stableId\": \""
+				<< Client::CDataJson::Escape(Module.strStableId)
+				<< "\", \"className\": \""
+				<< Client::CDataJson::Escape(Module.strClassName)
+				<< "\", \"objectPath\": \""
+				<< Client::CDataJson::Escape(Module.strObjectPath)
+				<< "\",\n            \"literals\": [";
+			for (size_t iLiteral = 0u; iLiteral < Module.Literals.size();
+				++iLiteral)
+			{
+				const Client::EFFECT_SOURCE_LITERAL_DESC& Literal =
+					Module.Literals[iLiteral];
+				Output << (0u == iLiteral ? "\n" : ",\n")
+					<< "              { \"propertyPath\": \""
+					<< Client::CDataJson::Escape(Literal.strPropertyPath)
+					<< "\", \"kind\": \""
+					<< SOURCE_LITERAL_KIND_TOKENS[
+						static_cast<size_t>(Literal.eKind)]
+					<< "\", \"value\": ";
+				if (Client::EFFECT_SOURCE_LITERAL_KIND::BOOLEAN == Literal.eKind)
+					Output << (Literal.bBoolean ? "true" : "false");
+				else if (Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER == Literal.eKind)
+					Output << Literal.fNumber;
+				else
+					Output << '"' << Client::CDataJson::Escape(
+						Literal.strString) << '"';
+				Output << " }";
+			}
+			if (!Module.Literals.empty())
+				Output << '\n';
+			Output << "            ],\n            \"distributions\": [";
+			for (size_t iDistribution = 0u;
+				iDistribution < Module.Distributions.size(); ++iDistribution)
+			{
+				const Client::EFFECT_DISTRIBUTION_DESC& Distribution =
+					Module.Distributions[iDistribution];
+				Output << (0u == iDistribution ? "\n" : ",\n")
+					<< "              { \"propertyPath\": \""
+					<< Client::CDataJson::Escape(Distribution.strPropertyPath)
+					<< "\", \"sourceClass\": \""
+					<< Client::CDataJson::Escape(Distribution.strSourceClass)
+					<< "\", \"sourceObjectPath\": \""
+					<< Client::CDataJson::Escape(
+						Distribution.strSourceObjectPath)
+					<< "\", \"componentCount\": "
+					<< Distribution.iComponentCount
+					<< ", \"operation\": " << Distribution.iOperation
+					<< ", \"randomLockAxes\": "
+					<< Distribution.iRandomLockAxes
+					<< ", \"lookupTableChunkSize\": "
+					<< Distribution.iLookupTableChunkSize
+					<< ", \"lookupTableNumElements\": "
+					<< Distribution.iLookupTableNumElements
+					<< ", \"lookupTableTimeScale\": "
+					<< Distribution.fLookupTableTimeScale
+					<< ", \"lookupTableStartTime\": "
+					<< Distribution.fLookupTableStartTime
+					<< ", \"defaultMinimum\": ";
+				Write_Float4(Output, Distribution.vDefaultMinimum);
+				Output << ", \"defaultMaximum\": ";
+				Write_Float4(Output, Distribution.vDefaultMaximum);
+				Output << ", \"lookupTable\": [";
+				for (size_t iValue = 0u;
+					iValue < Distribution.LookupTable.size(); ++iValue)
+				{
+					if (iValue > 0u)
+						Output << ", ";
+					Output << Distribution.LookupTable[iValue];
+				}
+				Output << "], \"keys\": [";
+				for (size_t iKey = 0u; iKey < Distribution.Keys.size(); ++iKey)
+				{
+					const Client::EFFECT_DISTRIBUTION_KEY_DESC& Key =
+						Distribution.Keys[iKey];
+					Output << (0u == iKey ? "\n" : ",\n")
+						<< "                { \"time\": " << Key.fTime
+						<< ", \"minimum\": ";
+					Write_Float4(Output, Key.vMinimum);
+					Output << ", \"maximum\": ";
+					Write_Float4(Output, Key.vMaximum);
+					Output << ", \"arriveTangentMinimum\": ";
+					Write_Float4(Output, Key.vArriveTangentMinimum);
+					Output << ", \"leaveTangentMinimum\": ";
+					Write_Float4(Output, Key.vLeaveTangentMinimum);
+					Output << ", \"arriveTangentMaximum\": ";
+					Write_Float4(Output, Key.vArriveTangentMaximum);
+					Output << ", \"leaveTangentMaximum\": ";
+					Write_Float4(Output, Key.vLeaveTangentMaximum);
+					Output << ", \"interpolation\": \""
+						<< DISTRIBUTION_INTERPOLATION_TOKENS[
+							static_cast<size_t>(Key.eInterpolation)]
+						<< "\" }";
+				}
+				if (!Distribution.Keys.empty())
+					Output << '\n';
+				Output << "              ] }";
+			}
+			if (!Module.Distributions.empty())
+				Output << '\n';
+			Output << "            ] }";
+		}
+		if (!Recipe.Modules.empty())
+			Output << '\n';
+		Output << "        ] }";
+	}
+
+	bool_t Read_ModelCueTransform(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_MODEL_CUE_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pLocal = Find_Field(
+			Value, "localTransform", Client::DATA_JSON_TYPE::OBJECT,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pPre = Find_Field(
+			Value, "assetPreTransform", Client::DATA_JSON_TYPE::OBJECT,
+			strOutError);
+		return nullptr != pLocal && nullptr != pPre &&
+			Read_Array(*pLocal, "position",
+				&Out.LocalTransform.vPosition.x, 3u, strOutError) &&
+			Read_Array(*pLocal, "rotationDegrees",
+				&Out.LocalTransform.vRotationDegrees.x, 3u, strOutError) &&
+			Read_Array(*pLocal, "scale",
+				&Out.LocalTransform.vScale.x, 3u, strOutError) &&
+			Read_Array(*pPre, "scale",
+				&Out.vAssetPreScale.x, 3u, strOutError) &&
+			Read_Array(*pPre, "rotationDegrees",
+				&Out.vAssetPreRotationDegrees.x, 3u, strOutError);
+	}
+
+	bool_t Read_ActionCueAttachment(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_ACTION_CUE_ATTACHMENT_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pSocketLocal = Find_Field(
+			Value, "socketLocalTransform", Client::DATA_JSON_TYPE::OBJECT,
+			strOutError);
+		return nullptr != pSocketLocal &&
+			Read_Bool(Value, "enabled", Out.bEnabled, strOutError) &&
+			Read_Bool(Value, "follow", Out.bFollow, strOutError) &&
+			Read_String(Value, "sourceAnchorSlotId",
+				Out.strSourceAnchorSlotId, strOutError) &&
+			Read_String(Value, "runtimeAnchorSlotId",
+				Out.strRuntimeAnchorSlotId, strOutError) &&
+			Read_String(Value, "runtimeBoneName",
+				Out.strRuntimeBoneName, strOutError) &&
+			Read_Array(*pSocketLocal, "position",
+				&Out.SocketLocalTransform.vPosition.x, 3u, strOutError) &&
+			Read_Array(*pSocketLocal, "rotationDegrees",
+				&Out.SocketLocalTransform.vRotationDegrees.x, 3u,
+				strOutError) &&
+			Read_Array(*pSocketLocal, "scale",
+				&Out.SocketLocalTransform.vScale.x, 3u, strOutError);
+	}
+
+	bool_t Is_SafeModelCueAssetIdInternal(const std::string& strAssetId)
+	{
+		if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
+			0u != strAssetId.rfind("Character/", 0u) ||
+			std::string::npos != strAssetId.find('\\') ||
+			std::string::npos != strAssetId.find(':'))
+		{
+			return false;
+		}
+		const std::filesystem::path RelativePath(strAssetId);
+		if (RelativePath.is_absolute() || RelativePath.has_root_path() ||
+			RelativePath.lexically_normal().generic_string() != strAssetId ||
+			RelativePath.extension() != ".wmodel")
+		{
+			return false;
+		}
+		for (const std::filesystem::path& Component : RelativePath)
+		{
+			const std::string Value = Component.generic_string();
+			if (Value.empty() || Value == "." || Value == "..")
+				return false;
+		}
+		const std::filesystem::path Resolved =
+			CRuntimeAssetRoot::Resolve(RelativePath);
+		std::error_code Error;
+		return !Resolved.empty() &&
+			std::filesystem::is_regular_file(Resolved, Error) && !Error;
 	}
 
 	bool_t Read_CommonDetail(
@@ -464,7 +1082,7 @@ namespace
 			<< "        \"afterImage\": { \"sampleIntervalSeconds\": " << Detail.AfterImage.fSampleIntervalSeconds
 			<< ", \"maxCopies\": " << Detail.AfterImage.iMaxCopies
 			<< ", \"alphaExponent\": " << Detail.AfterImage.fAlphaExponent << " }\n"
-			<< "      }\n";
+			<< "      }";
 	}
 }
 
@@ -554,6 +1172,12 @@ bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 	return true;
 }
 
+bool_t Client::CEffectDocumentCodec::Is_SafeModelCueAssetId(
+	const std::string& strAssetId)
+{
+	return Is_SafeModelCueAssetIdInternal(strAssetId);
+}
+
 bool_t Client::CEffectDocumentCodec::Validate(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -574,10 +1198,61 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		strOutError = "Display Name must be 1-64 bytes and not blank.";
 		return false;
 	}
+	const EFFECT_PARTICLE_SYSTEM_DESC& ParticleSystem =
+		Document.ParticleSystem;
+	if (!std::isfinite(ParticleSystem.fUniformScaleMultiplier) ||
+		ParticleSystem.fUniformScaleMultiplier <= 0.f ||
+		ParticleSystem.fUniformScaleMultiplier > 100.f ||
+		!std::isfinite(ParticleSystem.fYawOffsetDegrees) ||
+		std::abs(ParticleSystem.fYawOffsetDegrees) > 3600.f ||
+		!std::isfinite(ParticleSystem.fDirectionYawDegrees) ||
+		std::abs(ParticleSystem.fDirectionYawDegrees) > 3600.f ||
+		!std::isfinite(ParticleSystem.fInitialSpeedMultiplier) ||
+		ParticleSystem.fInitialSpeedMultiplier < 0.f ||
+		ParticleSystem.fInitialSpeedMultiplier > 100.f)
+	{
+		strOutError = "Particle System modifier contains an invalid number or range.";
+		return false;
+	}
 	if (Document.Elements.size() > MAX_ELEMENTS)
 	{
-		strOutError = "Effect Element count exceeds 256.";
+		strOutError = "Effect Element count exceeds 2048.";
 		return false;
+	}
+	if (Document.ModelCues.size() > MAX_MODEL_CUES)
+	{
+		strOutError = "Effect Model Cue count exceeds 8.";
+		return false;
+	}
+	std::unordered_set<std::string> ModelCueIds;
+	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+	{
+		const bool_t bTransformValid =
+			Is_Finite(Cue.LocalTransform.vPosition) &&
+			Is_Finite(Cue.LocalTransform.vRotationDegrees) &&
+			Is_Finite(Cue.LocalTransform.vScale) &&
+			Cue.LocalTransform.vScale.x > 0.f &&
+			Cue.LocalTransform.vScale.y > 0.f &&
+			Cue.LocalTransform.vScale.z > 0.f &&
+			Is_Finite(Cue.vAssetPreScale) &&
+			Cue.vAssetPreScale.x > 0.f && Cue.vAssetPreScale.y > 0.f &&
+			Cue.vAssetPreScale.z > 0.f &&
+			Is_Finite(Cue.vAssetPreRotationDegrees);
+		if (!Is_StableId(Cue.strCueId) ||
+			!ModelCueIds.insert(Cue.strCueId).second ||
+			Cue.strClipName.empty() || Cue.strClipName.size() > 128u ||
+			!Has_VisibleCharacter(Cue.strClipName) ||
+			!Is_SafeModelCueAssetId(Cue.strModelAssetId) ||
+			!std::isfinite(Cue.fStartDelaySeconds) ||
+			Cue.fStartDelaySeconds < 0.f ||
+			!std::isfinite(Cue.fDurationSeconds) ||
+			Cue.fDurationSeconds <= 0.f || Cue.fDurationSeconds > 30.f ||
+			!bTransformValid)
+		{
+			strOutError =
+				"Effect Model Cue identity, resource, time, or transform is invalid.";
+			return false;
+		}
 	}
 
 	std::unordered_set<std::string> ElementIds;
@@ -598,6 +1273,34 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Element metadata, kind, profile, or duplicate is invalid.";
 			return false;
 		}
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
+			Element.ActionCueAttachment;
+		const bool_t bAttachmentTransformValid =
+			Is_Finite(Attachment.SocketLocalTransform.vPosition) &&
+			Is_Finite(Attachment.SocketLocalTransform.vRotationDegrees) &&
+			Is_Finite(Attachment.SocketLocalTransform.vScale) &&
+			Attachment.SocketLocalTransform.vScale.x > 0.f &&
+			Attachment.SocketLocalTransform.vScale.y > 0.f &&
+			Attachment.SocketLocalTransform.vScale.z > 0.f;
+		if (!bAttachmentTransformValid ||
+			(Attachment.bEnabled &&
+				(Attachment.strSourceAnchorSlotId.empty() ||
+					Attachment.strSourceAnchorSlotId.size() > 128u ||
+					!Has_VisibleCharacter(
+						Attachment.strSourceAnchorSlotId) ||
+					Attachment.strRuntimeAnchorSlotId.empty() ||
+					Attachment.strRuntimeAnchorSlotId.size() > 128u ||
+					!Has_VisibleCharacter(
+						Attachment.strRuntimeAnchorSlotId) ||
+					(Attachment.bFollow &&
+						(Attachment.strRuntimeBoneName.empty() ||
+							Attachment.strRuntimeBoneName.size() > 128u ||
+							!Has_VisibleCharacter(
+								Attachment.strRuntimeBoneName))))))
+		{
+			strOutError = "Effect Action cue attachment contract is invalid.";
+			return false;
+		}
 		const EFFECT_MATERIAL_TEMPLATE_DESC* pMaterialTemplate =
 			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
 		if (nullptr == pMaterialTemplate)
@@ -605,6 +1308,84 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError = "Effect Material Template is not registered: " +
 				Element.Material.strTemplateId;
 			return false;
+		}
+		if (Element.Material.strSourceMaterialPath.size() > 512u ||
+			(Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
+				(Element.Material.strSourceMaterialPath.empty() ||
+					!Has_VisibleCharacter(
+						Element.Material.strSourceMaterialPath))))
+		{
+			strOutError = "Effect source Material identity is invalid.";
+			return false;
+		}
+		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+			Element.Material.SourceMaterial;
+		if (SourceMaterial.bEnabled)
+		{
+			if (!Is_StableId(SourceMaterial.strProfileId) ||
+				!Is_StableId(SourceMaterial.strRuntimeShaderProfileId) ||
+				SourceMaterial.strParentMaterialPath.empty() ||
+				SourceMaterial.strParentMaterialPath.size() > 512u ||
+				!Has_VisibleCharacter(
+					SourceMaterial.strParentMaterialPath) ||
+				SourceMaterial.eStatus >=
+					EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED ||
+				!Is_StableId(SourceMaterial.strSubUVMode) ||
+				SourceMaterial.Scalars.size() > 128u ||
+				SourceMaterial.Vectors.size() > 128u ||
+				SourceMaterial.StaticSwitches.size() > 128u)
+			{
+				strOutError = "Effect source Material profile metadata is invalid.";
+				return false;
+			}
+			std::unordered_set<std::string> ScalarNames;
+			for (const EFFECT_NAMED_FLOAT_DESC& Scalar :
+				SourceMaterial.Scalars)
+			{
+				if (Scalar.strName.empty() || Scalar.strName.size() > 128u ||
+					!Has_VisibleCharacter(Scalar.strName) ||
+					!std::isfinite(Scalar.fValue) ||
+					!ScalarNames.insert(Scalar.strName).second)
+				{
+					strOutError = "Effect source Material scalar is invalid.";
+					return false;
+				}
+			}
+			std::unordered_set<std::string> VectorNames;
+			for (const EFFECT_NAMED_FLOAT4_DESC& Vector :
+				SourceMaterial.Vectors)
+			{
+				if (Vector.strName.empty() || Vector.strName.size() > 128u ||
+					!Has_VisibleCharacter(Vector.strName) ||
+					!Is_Finite(Vector.vValue) ||
+					!VectorNames.insert(Vector.strName).second)
+				{
+					strOutError = "Effect source Material vector is invalid.";
+					return false;
+				}
+			}
+			std::unordered_set<std::string> SwitchNames;
+			for (const EFFECT_NAMED_BOOL_DESC& Switch :
+				SourceMaterial.StaticSwitches)
+			{
+				if (Switch.strName.empty() || Switch.strName.size() > 128u ||
+					!Has_VisibleCharacter(Switch.strName) ||
+					!SwitchNames.insert(Switch.strName).second)
+				{
+					strOutError = "Effect source Material switch is invalid.";
+					return false;
+				}
+			}
+			for (const std::string& Semantic :
+				SourceMaterial.DynamicParameterSemantics)
+			{
+				if (!Is_StableId(Semantic))
+				{
+					strOutError =
+						"Effect source Material Dynamic Parameter semantic is invalid.";
+					return false;
+				}
+			}
 		}
 
 		std::unordered_set<std::string> Slots;
@@ -632,6 +1413,90 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			{
 				strOutError = "Effect resource slot, path, file, or duplicate is invalid.";
 				return false;
+			}
+		}
+		const EFFECT_CASCADE_RECIPE_DESC& Recipe = Element.SourceRecipe;
+		if (Recipe.bEnabled)
+		{
+			const bool_t bRendererShapeValid =
+				Recipe.strRendererShape == "sprite" ||
+				Recipe.strRendererShape == "mesh" ||
+				Recipe.strRendererShape == "decal" ||
+				Recipe.strRendererShape == "ribbon" ||
+				Recipe.strRendererShape == "light" ||
+				Recipe.strRendererShape == "screenPost";
+			if (!bRendererShapeValid ||
+				!std::isfinite(Recipe.fEmitterDelaySeconds) ||
+				Recipe.fEmitterDelaySeconds < 0.f ||
+				!std::isfinite(Recipe.fEmitterDurationSeconds) ||
+				Recipe.fEmitterDurationSeconds < 0.f ||
+				Recipe.fEmitterDurationSeconds > 300.f ||
+				Recipe.iEmitterLoopCount > 100000u ||
+				Recipe.Bursts.size() > MAX_SOURCE_BURSTS_PER_ELEMENT ||
+				Recipe.Modules.size() > MAX_SOURCE_MODULES_PER_ELEMENT)
+			{
+				strOutError = "Effect source recipe metadata or size is invalid.";
+				return false;
+			}
+			f32_t fPreviousBurstTime = -1.f;
+			for (const EFFECT_PARTICLE_BURST_DESC& Burst : Recipe.Bursts)
+			{
+				if (!std::isfinite(Burst.fTimeSeconds) ||
+					Burst.fTimeSeconds < fPreviousBurstTime ||
+					Burst.iCountMinimum > Burst.iCountMaximum ||
+					Burst.iCountMaximum > 65535u)
+				{
+					strOutError = "Effect source burst is invalid.";
+					return false;
+				}
+				fPreviousBurstTime = Burst.fTimeSeconds;
+			}
+			std::unordered_set<std::string> SourceModuleIds;
+			for (const EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
+			{
+				if (Module.strStableId.empty() ||
+					Module.strStableId.size() > 256u ||
+					!SourceModuleIds.insert(Module.strStableId).second ||
+					Module.strClassName.empty() ||
+					Module.strClassName.size() > 128u ||
+					Module.strObjectPath.empty() ||
+					Module.strObjectPath.size() > 512u ||
+					Module.Literals.size() > MAX_SOURCE_LITERALS_PER_MODULE ||
+					Module.Distributions.size() >
+						MAX_SOURCE_DISTRIBUTIONS_PER_MODULE)
+				{
+					strOutError = "Effect source module metadata or size is invalid.";
+					return false;
+				}
+				std::unordered_set<std::string> PropertyPaths;
+				for (const EFFECT_SOURCE_LITERAL_DESC& Literal : Module.Literals)
+				{
+					if (Literal.strPropertyPath.empty() ||
+						Literal.strPropertyPath.size() > 512u ||
+						Literal.eKind >= EFFECT_SOURCE_LITERAL_KIND::END ||
+						!PropertyPaths.insert(Literal.strPropertyPath).second ||
+						(EFFECT_SOURCE_LITERAL_KIND::NUMBER == Literal.eKind &&
+							!std::isfinite(Literal.fNumber)) ||
+						Literal.strString.size() > 2048u)
+					{
+						strOutError = "Effect source module literal is invalid.";
+						return false;
+					}
+				}
+				for (const EFFECT_DISTRIBUTION_DESC& Distribution :
+					Module.Distributions)
+				{
+					if (!PropertyPaths.insert(
+						Distribution.strPropertyPath).second ||
+						!CEffectDistribution::Validate(Distribution,
+							strOutError))
+					{
+						if (strOutError.empty())
+							strOutError =
+								"Effect source distribution is duplicated.";
+						return false;
+					}
+				}
 			}
 		}
 		const EFFECT_DETAIL_DESC& D = Element.Detail;
@@ -725,6 +1590,16 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		return false;
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			continue;
+		}
+		if (Element.Material.strTemplateId ==
+			EFFECT_SOURCE_MATERIAL_TEMPLATE_ID)
+		{
+			continue;
+		}
 		const EFFECT_MATERIAL_TEMPLATE_DESC* pTemplate =
 			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
 		const EFFECT_MATERIAL_INPUT_SLOT_DESC* pBaseInput =
@@ -783,7 +1658,11 @@ bool_t Client::CEffectDocumentCodec::Parse(
 	std::string& strOutError)
 {
 	DATA_JSON_VALUE Root;
-	if (!CDataJson::Parse(Json, Root, strOutError))
+	DATA_JSON_PARSE_LIMITS EffectDocumentLimits;
+	EffectDocumentLimits.iMaximumBytes = 64u * 1024u * 1024u;
+	EffectDocumentLimits.iMaximumDepth = 64u;
+	EffectDocumentLimits.iMaximumValues = 3'000'000u;
+	if (!CDataJson::Parse(Json, Root, strOutError, EffectDocumentLimits))
 		return false;
 	return Parse_Value(Root, OutDocument, strOutError);
 }
@@ -826,6 +1705,67 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 	Staged.iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
 	Staged.strEffectAssetId = pAssetId->Get_String();
 	Staged.strDisplayName = pDisplayName->Get_String();
+	if (iSourceVersion >= 8u)
+	{
+		const DATA_JSON_VALUE* pParticleSystem = Root.Find("particleSystem");
+		if (nullptr == pParticleSystem || !pParticleSystem->Is_Object() ||
+			!Read_Float(*pParticleSystem, "uniformScaleMultiplier",
+				Staged.ParticleSystem.fUniformScaleMultiplier, strOutError) ||
+			!Read_Float(*pParticleSystem, "yawOffsetDegrees",
+				Staged.ParticleSystem.fYawOffsetDegrees, strOutError) ||
+			!Read_Float(*pParticleSystem, "directionYawDegrees",
+				Staged.ParticleSystem.fDirectionYawDegrees, strOutError) ||
+			!Read_Float(*pParticleSystem, "initialSpeedMultiplier",
+				Staged.ParticleSystem.fInitialSpeedMultiplier, strOutError))
+		{
+			if (strOutError.empty())
+				strOutError = "Effect particleSystem fields are invalid.";
+			return false;
+		}
+	}
+	const DATA_JSON_VALUE* pModelCues = Root.Find("modelCues");
+	if (nullptr != pModelCues)
+	{
+		if (!pModelCues->Is_Array())
+		{
+			strOutError = "Effect modelCues must be an array.";
+			return false;
+		}
+		Staged.ModelCues.reserve(pModelCues->Get_Array().size());
+		for (const DATA_JSON_VALUE& CueValue : pModelCues->Get_Array())
+		{
+			if (!CueValue.Is_Object())
+			{
+				strOutError = "Effect Model Cue must be an object.";
+				return false;
+			}
+			const DATA_JSON_VALUE* pCueId = CueValue.Find("cueId");
+			const DATA_JSON_VALUE* pModelAssetId =
+				CueValue.Find("modelAssetId");
+			const DATA_JSON_VALUE* pClipName = CueValue.Find("clipName");
+			const DATA_JSON_VALUE* pVisible = CueValue.Find("visible");
+			EFFECT_MODEL_CUE_DESC Cue;
+			if (nullptr == pCueId || !pCueId->Is_String() ||
+				nullptr == pModelAssetId || !pModelAssetId->Is_String() ||
+				nullptr == pClipName || !pClipName->Is_String() ||
+				nullptr == pVisible || !pVisible->Is_Boolean() ||
+				!Read_Float(CueValue, "startDelaySeconds",
+					Cue.fStartDelaySeconds, strOutError) ||
+				!Read_Float(CueValue, "durationSeconds",
+					Cue.fDurationSeconds, strOutError) ||
+				!Read_ModelCueTransform(CueValue, Cue, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect Model Cue fields are invalid.";
+				return false;
+			}
+			Cue.strCueId = pCueId->Get_String();
+			Cue.strModelAssetId = pModelAssetId->Get_String();
+			Cue.strClipName = pClipName->Get_String();
+			Cue.bVisible = pVisible->Get_Boolean();
+			Staged.ModelCues.push_back(std::move(Cue));
+		}
+	}
 	Staged.Elements.reserve(pElements->Get_Array().size());
 	for (const DATA_JSON_VALUE& ElementValue : pElements->Get_Array())
 	{
@@ -872,6 +1812,18 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		{
 			Element.strDisplayName = Element.strElementId;
 		}
+		if (const DATA_JSON_VALUE* pActionCueAttachment =
+			ElementValue.Find("actionCueAttachment"))
+		{
+			if (!pActionCueAttachment->Is_Object() ||
+				!Read_ActionCueAttachment(*pActionCueAttachment,
+					Element.ActionCueAttachment, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect Action cue attachment is invalid.";
+				return false;
+			}
+		}
 		for (const DATA_JSON_VALUE& ResourceValue : pResources->Get_Array())
 		{
 			if (!ResourceValue.Is_Object())
@@ -903,11 +1855,46 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			}
 			Element.Material.strTemplateId = pTemplateId->Get_String();
 		}
+		if (iSourceVersion >= 10u)
+		{
+			const DATA_JSON_VALUE* pSourceMaterialPath =
+				pMaterial->Find("sourceMaterialPath");
+			if (nullptr == pSourceMaterialPath ||
+				!pSourceMaterialPath->Is_String())
+			{
+				strOutError = "Effect source Material path is invalid.";
+				return false;
+			}
+			Element.Material.strSourceMaterialPath =
+				pSourceMaterialPath->Get_String();
+		}
+		if (iSourceVersion >= 11u)
+		{
+			const DATA_JSON_VALUE* pSourceProfile =
+				pMaterial->Find("sourceProfile");
+			if (nullptr == pSourceProfile ||
+				!Read_SourceMaterialProfile(*pSourceProfile,
+					Element.Material.SourceMaterial, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect source Material profile is invalid.";
+				return false;
+			}
+		}
 		const DATA_JSON_VALUE* pProfile = pMaterial->Find("renderProfile");
 		if (nullptr == pProfile || !pProfile->Is_String() ||
 			!Parse_Token(pProfile->Get_String(), PROFILE_TOKENS, std::size(PROFILE_TOKENS), Element.Material.eRenderProfile))
 		{
 			strOutError = "Effect render profile is invalid.";
+			return false;
+		}
+		if (iSourceVersion >= 11u &&
+			Element.Material.strTemplateId ==
+				EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.SourceMaterial.bEnabled)
+		{
+			strOutError =
+				"Effect source Material template requires a staged profile.";
 			return false;
 		}
 		if (iSourceVersion >= 4u)
@@ -921,6 +1908,19 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			if (iSourceVersion >= 5u &&
 				!Read_V5Detail(*pDetail, Element.Detail, strOutError))
 			{
+				return false;
+			}
+		}
+		if (iSourceVersion >= 9u)
+		{
+			const DATA_JSON_VALUE* pSourceRecipe =
+				ElementValue.Find("sourceRecipe");
+			if (nullptr == pSourceRecipe || !pSourceRecipe->Is_Object() ||
+				!Read_SourceRecipe(*pSourceRecipe, Element.SourceRecipe,
+					strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect source recipe is invalid.";
 				return false;
 			}
 		}
@@ -942,6 +1942,42 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		<< "  \"version\": " << EFFECT_AUTHORING_FORMAT_VERSION << ",\n"
 		<< "  \"effectAssetId\": \"" << CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
 		<< "  \"displayName\": \"" << CDataJson::Escape(Document.strDisplayName) << "\",\n"
+		<< "  \"particleSystem\": { \"uniformScaleMultiplier\": "
+		<< Document.ParticleSystem.fUniformScaleMultiplier
+		<< ", \"yawOffsetDegrees\": "
+		<< Document.ParticleSystem.fYawOffsetDegrees
+		<< ", \"directionYawDegrees\": "
+		<< Document.ParticleSystem.fDirectionYawDegrees
+		<< ", \"initialSpeedMultiplier\": "
+		<< Document.ParticleSystem.fInitialSpeedMultiplier << " },\n"
+		<< "  \"modelCues\": [";
+	for (size_t iCue = 0u; iCue < Document.ModelCues.size(); ++iCue)
+	{
+		const EFFECT_MODEL_CUE_DESC& Cue = Document.ModelCues[iCue];
+		Output << (0u == iCue ? "\n" : ",\n")
+			<< "    { \"cueId\": \"" << CDataJson::Escape(Cue.strCueId)
+			<< "\", \"modelAssetId\": \""
+			<< CDataJson::Escape(Cue.strModelAssetId)
+			<< "\", \"clipName\": \""
+			<< CDataJson::Escape(Cue.strClipName)
+			<< "\", \"startDelaySeconds\": " << Cue.fStartDelaySeconds
+			<< ", \"durationSeconds\": " << Cue.fDurationSeconds
+			<< ", \"visible\": " << (Cue.bVisible ? "true" : "false")
+			<< ",\n      \"localTransform\": { \"position\": ";
+		Write_Float3(Output, Cue.LocalTransform.vPosition);
+		Output << ", \"rotationDegrees\": ";
+		Write_Float3(Output, Cue.LocalTransform.vRotationDegrees);
+		Output << ", \"scale\": ";
+		Write_Float3(Output, Cue.LocalTransform.vScale);
+		Output << " },\n      \"assetPreTransform\": { \"scale\": ";
+		Write_Float3(Output, Cue.vAssetPreScale);
+		Output << ", \"rotationDegrees\": ";
+		Write_Float3(Output, Cue.vAssetPreRotationDegrees);
+		Output << " } }";
+	}
+	if (!Document.ModelCues.empty())
+		Output << '\n';
+	Output << "  ],\n"
 		<< "  \"elements\": [";
 	for (size_t iElement = 0u; iElement < Document.Elements.size(); ++iElement)
 	{
@@ -965,10 +2001,40 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			Output << '\n';
 		Output << "      ],\n      \"material\": { \"templateId\": \""
 			<< CDataJson::Escape(Element.Material.strTemplateId)
+			<< "\", \"sourceMaterialPath\": \""
+			<< CDataJson::Escape(Element.Material.strSourceMaterialPath)
 			<< "\", \"renderProfile\": \""
-			<< To_Token(Element.Material.eRenderProfile) << "\" },\n";
+			<< To_Token(Element.Material.eRenderProfile)
+			<< "\", \"sourceProfile\": ";
+		Write_SourceMaterialProfile(Output, Element.Material.SourceMaterial);
+		Output << " },\n"
+			<< "      \"actionCueAttachment\": { \"enabled\": "
+			<< (Element.ActionCueAttachment.bEnabled ? "true" : "false")
+			<< ", \"follow\": "
+			<< (Element.ActionCueAttachment.bFollow ? "true" : "false")
+			<< ", \"sourceAnchorSlotId\": \""
+			<< CDataJson::Escape(
+				Element.ActionCueAttachment.strSourceAnchorSlotId)
+			<< "\", \"runtimeAnchorSlotId\": \""
+			<< CDataJson::Escape(
+				Element.ActionCueAttachment.strRuntimeAnchorSlotId)
+			<< "\", \"runtimeBoneName\": \""
+			<< CDataJson::Escape(
+				Element.ActionCueAttachment.strRuntimeBoneName)
+			<< "\", \"socketLocalTransform\": { \"position\": ";
+		Write_Float3(Output,
+			Element.ActionCueAttachment.SocketLocalTransform.vPosition);
+		Output << ", \"rotationDegrees\": ";
+		Write_Float3(Output,
+			Element.ActionCueAttachment.SocketLocalTransform.vRotationDegrees);
+		Output << ", \"scale\": ";
+		Write_Float3(Output,
+			Element.ActionCueAttachment.SocketLocalTransform.vScale);
+		Output << " } },\n";
 		Write_Detail(Output, Element.Detail);
-		Output << "    }";
+		Output << ",\n";
+		Write_SourceRecipe(Output, Element.SourceRecipe);
+		Output << "\n    }";
 	}
 	if (!Document.Elements.empty())
 		Output << "\n  ";
@@ -1066,6 +2132,8 @@ void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
 	std::vector<std::string>& OutAssetIds)
 {
 	std::unordered_set<std::string> Unique;
+	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+		Unique.insert(Cue.strModelAssetId);
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)

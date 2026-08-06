@@ -1,0 +1,40 @@
+{
+  "schema": "lostark.effect-source-material-contract-receipt",
+  "formatVersion": 1,
+  "effectAssetId": "effect.dimensionmaster.skill.2050240",
+  "summary": {
+    "particleElementCount": 46,
+    "materialIdentityCount": 26,
+    "parentProfileGroupCount": 21,
+    "pendingRuntimeOccurrenceCount": 14,
+    "standardRuntimeOccurrenceCount": 32,
+    "parameterNameHeuristicCount": 72,
+    "failureCount": 0,
+    "sourceExactIdentityCount": 26,
+    "runtimeExactProfileCount": 0,
+    "reconstructedProfileCount": 21
+  },
+  "failures": [],
+  "sources": [
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json",
+      "sha256": "c871494ee78eac219744aed74de08e744d4fbe3f012b2e195c14907f9d9b8973"
+    },
+    {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050240/skill.2050240.normalized-effect-graph.json",
+      "sha256": "ebc649dcb29f3a7fbbf57fae242d56e7d8c41a801f5f0a276fd84e3b7362ea72"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/Converted/skill.2050240.element-conversion-receipt.json",
+      "sha256": "22191ae399ec6fd1f21ade2e80b700b5357dbb4fc601db192053d19d70e49778"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json",
+      "sha256": "1bad5e30c29c3e5aee55fb165e10357406eefc8f1e14b34493704f77c2ff7e4c"
+    },
+    {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/material_texture_map.json",
+      "sha256": "77fec9e36e331e79f9f54342d3b8b61b6b2296053193d2eb5458a504b6bc5de7"
+    }
+  ]
+}

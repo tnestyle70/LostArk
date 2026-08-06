@@ -2,14 +2,16 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Effect_Distribution.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
 
-inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 6u;
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 11u;
 inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
 
 enum class EFFECT_ELEMENT_KIND : uint8_t
@@ -19,6 +21,8 @@ enum class EFFECT_ELEMENT_KIND : uint8_t
 	PARTICLE,
 	DECAL,
 	TRAIL,
+	LIGHT,
+	SCREEN_POST,
 	END
 };
 
@@ -54,11 +58,58 @@ struct EFFECT_RESOURCE_BINDING_DESC final
 	std::string strAssetId;
 };
 
+enum class EFFECT_SOURCE_MATERIAL_STATUS : uint8_t
+{
+	SOURCE_EXACT,
+	RUNTIME_EXACT,
+	RECONSTRUCTED_PROFILE,
+	UNSUPPORTED,
+	MISSING_RESOURCE,
+	END
+};
+
+struct EFFECT_NAMED_FLOAT_DESC final
+{
+	std::string strName;
+	f32_t fValue = 0.f;
+};
+
+struct EFFECT_NAMED_FLOAT4_DESC final
+{
+	std::string strName;
+	float4_t vValue{};
+};
+
+struct EFFECT_NAMED_BOOL_DESC final
+{
+	std::string strName;
+	bool_t bValue = false;
+};
+
+struct EFFECT_SOURCE_MATERIAL_DESC final
+{
+	bool_t bEnabled = false;
+	std::string strProfileId;
+	std::string strRuntimeShaderProfileId;
+	std::string strParentMaterialPath;
+	EFFECT_SOURCE_MATERIAL_STATUS eStatus =
+		EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED;
+	std::vector<EFFECT_NAMED_FLOAT_DESC> Scalars;
+	std::vector<EFFECT_NAMED_FLOAT4_DESC> Vectors;
+	std::vector<EFFECT_NAMED_BOOL_DESC> StaticSwitches;
+	std::array<std::string, 4u> DynamicParameterSemantics = {
+		"unbound", "unbound", "unbound", "unbound"
+	};
+	std::string strSubUVMode = "none";
+};
+
 struct EFFECT_MATERIAL_DESC final
 {
 	std::string strTemplateId = "effect.standard";
+	std::string strSourceMaterialPath;
 	EFFECT_RENDER_PROFILE eRenderProfile =
 		EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+	EFFECT_SOURCE_MATERIAL_DESC SourceMaterial;
 };
 
 struct EFFECT_TRANSFORM_DESC final
@@ -159,6 +210,50 @@ struct EFFECT_PARTICLE_DESC final
 	bool_t bBillboard = true;
 };
 
+enum class EFFECT_SOURCE_LITERAL_KIND : uint8_t
+{
+	BOOLEAN,
+	NUMBER,
+	STRING,
+	END
+};
+
+struct EFFECT_SOURCE_LITERAL_DESC final
+{
+	std::string strPropertyPath;
+	EFFECT_SOURCE_LITERAL_KIND eKind = EFFECT_SOURCE_LITERAL_KIND::END;
+	bool_t bBoolean = false;
+	f64_t fNumber = 0.0;
+	std::string strString;
+};
+
+struct EFFECT_SOURCE_MODULE_DESC final
+{
+	std::string strStableId;
+	std::string strClassName;
+	std::string strObjectPath;
+	std::vector<EFFECT_SOURCE_LITERAL_DESC> Literals;
+	std::vector<EFFECT_DISTRIBUTION_DESC> Distributions;
+};
+
+struct EFFECT_PARTICLE_BURST_DESC final
+{
+	f32_t fTimeSeconds = 0.f;
+	uint32_t iCountMinimum = 0u;
+	uint32_t iCountMaximum = 0u;
+};
+
+struct EFFECT_CASCADE_RECIPE_DESC final
+{
+	bool_t bEnabled = false;
+	std::string strRendererShape;
+	f32_t fEmitterDelaySeconds = 0.f;
+	f32_t fEmitterDurationSeconds = 0.f;
+	uint32_t iEmitterLoopCount = 1u;
+	std::vector<EFFECT_PARTICLE_BURST_DESC> Bursts;
+	std::vector<EFFECT_SOURCE_MODULE_DESC> Modules;
+};
+
 struct EFFECT_TRAIL_DESC final
 {
 	uint32_t iMaxPoints = 64u;
@@ -192,6 +287,16 @@ struct EFFECT_DETAIL_DESC final
 	EFFECT_AFTERIMAGE_DESC AfterImage;
 };
 
+struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
+{
+	bool_t bEnabled = false;
+	bool_t bFollow = false;
+	std::string strSourceAnchorSlotId;
+	std::string strRuntimeAnchorSlotId;
+	std::string strRuntimeBoneName;
+	EFFECT_TRANSFORM_DESC SocketLocalTransform;
+};
+
 struct EFFECT_ELEMENT_DESC final
 {
 	std::string strElementId;
@@ -202,7 +307,30 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
 	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
 	EFFECT_MATERIAL_DESC Material;
+	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
 	EFFECT_DETAIL_DESC Detail;
+	EFFECT_CASCADE_RECIPE_DESC SourceRecipe;
+};
+
+struct EFFECT_MODEL_CUE_DESC final
+{
+	std::string strCueId;
+	std::string strModelAssetId;
+	std::string strClipName;
+	f32_t fStartDelaySeconds = 0.f;
+	f32_t fDurationSeconds = 1.f;
+	EFFECT_TRANSFORM_DESC LocalTransform;
+	float3_t vAssetPreScale = { 1.f, 1.f, 1.f };
+	float3_t vAssetPreRotationDegrees = { 0.f, 0.f, 0.f };
+	bool_t bVisible = true;
+};
+
+struct EFFECT_PARTICLE_SYSTEM_DESC final
+{
+	f32_t fUniformScaleMultiplier = 1.f;
+	f32_t fYawOffsetDegrees = 0.f;
+	f32_t fDirectionYawDegrees = 0.f;
+	f32_t fInitialSpeedMultiplier = 1.f;
 };
 
 struct EFFECT_DOCUMENT_DESC final
@@ -210,6 +338,8 @@ struct EFFECT_DOCUMENT_DESC final
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
 	std::string strEffectAssetId;
 	std::string strDisplayName;
+	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;
+	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };
 

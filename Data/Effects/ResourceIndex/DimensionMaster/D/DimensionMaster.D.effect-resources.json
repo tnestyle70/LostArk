@@ -1,0 +1,1268 @@
+{
+  "schema": "lostark.skill-effect-resource-index",
+  "formatVersion": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "animationAssetId": "DimensionMaster",
+  "inputSlot": "D",
+  "skillId": 2050240,
+  "displayName": "경계 돌파",
+  "actionId": "dimensionmaster.skill.2050240",
+  "effectId": "effect.dimensionmaster.skill.2050240",
+  "bindingStatus": "INDEX_READY",
+  "animationClips": [
+    "pc_sp_m_00_sk_sk_telekinesisthrust_01",
+    "pc_sp_m_00_sk_sk_telekinesisthrust_04"
+  ],
+  "source": {
+    "playerSkills": "Data/Balance/PlayerSkills.json",
+    "skillBindings": "Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json",
+    "authoredEffect": "Data/Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json"
+  },
+  "assets": [
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_a_plan_001.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_52"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_b_cylinder_002.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_46"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_b_plane_001.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_15",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_4"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_cone_007.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_30"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_crack_037.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Meshes/fm_d_squarecross_003.wmodel",
+      "kinds": [
+        "mesh"
+      ],
+      "slotIds": [
+        "meshModel"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_048.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_30"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_021.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_12"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_electric_008.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 5,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_65",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_66"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_007.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_64"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_bg_waterspray_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_14"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_cloud_018.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_018.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_022.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_13"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_035.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_066.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_33"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_12",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_68",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_14",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 5,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_030.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_031.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_68"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_037.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_fragment_002.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_038.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_4"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_line_004.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_52"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_rectangle_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_15"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_atypical_01_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_52"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_12",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_05.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_70"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_30"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_20_1_cl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_33"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_fluidtile_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "emissive"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_33"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask",
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_33",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_38",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_70"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 5,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-025"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 4,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_51",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_11"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_12",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 3,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "mask"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_51",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_crosshairline_axis_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_4"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_51"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_38"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_s_dust_04.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_70"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_016_xcl.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "dissolve"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_38"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_017.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_15"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_a_cloud_026.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_65",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_66"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "base"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_62",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_63"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_d_environ_099.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 1,
+      "physicalStatus": "PRESENT"
+    },
+    {
+      "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_x_hexagongradient_01.dds",
+      "kinds": [
+        "texture"
+      ],
+      "slotIds": [
+        "noise"
+      ],
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_15"
+      ],
+      "modelCueIds": [],
+      "occurrenceCount": 2,
+      "physicalStatus": "PRESENT"
+    }
+  ],
+  "materials": [
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_afterburn_01_39_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.afterburn.01.tr.75ee17c3dfee",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_afterburn_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_13"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.source_material",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+      "profileId": "ue3.material.bfx.m.bfx.d.pa.circ.01.ad.e79446d13bb8",
+      "parentMaterialPath": "bfx_m.bfx_d_pa_circ_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.circle.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_17"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "enginematerials.defaultmaterial",
+      "profileId": "ue3.material.enginematerials.defaultmaterial.6131d8dad51a",
+      "parentMaterialPath": "enginematerials.defaultmaterial",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_0"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2",
+        "fx_cm_02.light.par_mp_light_05_l.particlespriteemitter_2"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_b_pa_gl_01_1_ad",
+      "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
+      "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_64"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
+      "profileId": "ue3.material.fx.m.fx.c.pa.lensflare.01.ad.ed326b13c7b3",
+      "parentMaterialPath": "fx_m.fx_c_pa_lensflare_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_62",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_63"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+      "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.shine.01.ad.d944bc82b616",
+      "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_shine_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_68"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_o_me_master_01_04_ds_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_30"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_me_splitline_01_1_ad",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.j.me.splitline.01.1.ad.d9bf97c767a0",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_j_me_splitline_01_1_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_46"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.source_material",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.j.pa.dot.ad.01.3568dcff5c7c",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
+      "runtimeShaderProfileId": "effect.ue3.dot.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_16",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_trail_00.particlespriteemitter_52",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_8",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_8",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_8.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_8.event_source-event-025"
+      ],
+      "occurrenceCount": 6
+    },
+    {
+      "templateId": "effect.source_material",
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_11_09_ts_tr",
+      "profileId": "ue3.material.fx.m.fx.d.pa.ring.11.tr.5e1304f0604c",
+      "parentMaterialPath": "fx_m.fx_d_pa_ring_11_tr",
+      "runtimeShaderProfileId": "effect.ue3.ring.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_14"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.source_material",
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+      "profileId": "ue3.material.fx.m.mi.05.fx.m.fx.c.pa.aura.02.tr.6b6be3c64e52",
+      "parentMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.aura.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_65",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_66"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr",
+      "profileId": "ue3.material.fx.m.fx.j.pa.glasshole.02.tr.e0e09ec24344",
+      "parentMaterialPath": "fx_m.fx_j_pa_glasshole_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_51"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
+      "profileId": "ue3.material.fx.m.fx.j.me.hologram.01.tr.17fe3560c2f2",
+      "parentMaterialPath": "fx_m.fx_j_me_hologram_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_3.event_source-event-025"
+      ],
+      "occurrenceCount": 4
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
+      "profileId": "ue3.material.fx.m.fx.j.pa.spriteinvert.01.tr.f8e2214b46d6",
+      "parentMaterialPath": "fx_m.fx_j_pa_spriteinvert_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_1.event_source-event-025"
+      ],
+      "occurrenceCount": 5
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_post.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+        "fx_post.fx_par.par_j_rgbnoise_01.particlespriteemitter_11.event_source-event-021"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_flowtrail_03_09_ts_ad",
+      "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.k.me.flowtrail.01.ts.ad.363e47f44894",
+      "parentMaterialPath": "fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_52"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_1_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_4"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_3_ad",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_70",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_15"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_06_00_tr",
+      "profileId": "ue3.material.fx.m.mi.d.00.fx.m.fx.d.me.kazerosmark.tr.4050bfb1ad43",
+      "parentMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_me_kazerosmark_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_40"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_afterburn_01_27_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.afterburn.01.tr.75ee17c3dfee",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_afterburn_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_0"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_blackvoid_01_01_tr",
+      "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.blackvoid.01.tr.7f060283cccc",
+      "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_blackvoid_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_11"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_7",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_jump.particlespriteemitter_2"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr",
+      "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_12"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_105_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_dust_00.particlespriteemitter_70"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_106_tr",
+      "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_38"
+      ],
+      "occurrenceCount": 1
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_40_tr",
+      "profileId": "ue3.material.fx.m.mi.03.fx.mi.fx.m.pa.worldoffset.02.tr.6507c4b13a9b",
+      "parentMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_worldoffset_02_tr",
+      "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_32",
+        "fx_pc_swp_01.par_w_swp_flickerthrust_01.particlespriteemitter_33"
+      ],
+      "occurrenceCount": 2
+    },
+    {
+      "templateId": "effect.source_material",
+      "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad",
+      "profileId": "ue3.material.fx.mm.fx.mm.onelayerdistortion.02.ad.7b52607c1f26",
+      "parentMaterialPath": "fx_mm.fx_mm_onelayerdistortion_02_ad",
+      "runtimeShaderProfileId": "effect.ue3.one-layer-distortion.v1",
+      "semanticStatus": "reconstructed_profile",
+      "elementIds": [
+        "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5.event_source-event-014",
+        "fx_pc_swp_01.par_w_swp_jump_01_1.particlespriteemitter_5.event_source-event-025"
+      ],
+      "occurrenceCount": 4
+    },
+    {
+      "templateId": "effect.standard",
+      "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "profileId": null,
+      "parentMaterialPath": null,
+      "runtimeShaderProfileId": null,
+      "semanticStatus": null,
+      "elementIds": [
+        "fx_post.fx_par.par_c_zoomblur_02.particlespriteemitter_0"
+      ],
+      "occurrenceCount": 1
+    }
+  ],
+  "summary": {
+    "assetCount": 54,
+    "assetKindCounts": {
+      "mesh": 6,
+      "texture": 48
+    },
+    "materialIdentityCount": 29,
+    "physicalStatusCounts": {
+      "PRESENT": 54
+    },
+    "effectElementCount": 51,
+    "modelCueCount": 0
+  }
+}

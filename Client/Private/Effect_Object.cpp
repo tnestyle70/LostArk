@@ -63,6 +63,12 @@ void Client::CEffectObject::Set_RootWorld(const float4x4_t& RootWorld)
 	m_Playback.Update(0.f, m_RootWorld);
 }
 
+void Client::CEffectObject::Set_SourceAnchorWorlds(
+	const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds)
+{
+	m_Playback.Set_SourceAnchorWorlds(SourceAnchorWorlds);
+}
+
 void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
 {
 	m_bPlaying = false;

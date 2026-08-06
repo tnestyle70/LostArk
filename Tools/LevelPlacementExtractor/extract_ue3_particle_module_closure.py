@@ -133,6 +133,7 @@ def collect_external_lod0_requests(graph: dict) -> dict[str, list[dict]]:
             grouped[logical_package.casefold()].append(
                 {
                     "sourceNodeId": str(row["sourceNodeId"]),
+                    "referenceIndex": int(row.get("referenceIndex", 0)),
                     "property": str(row.get("property", "")),
                     "sourceSystemId": str(system["sourceSystemId"]),
                     "objectPath": object_path,
@@ -147,12 +148,39 @@ def extract_requested_package(
     logical_package: str,
     requests: list[dict],
     aes_key: str,
+    seed_packages: dict[str, dict] | None = None,
 ) -> dict:
     physical_path = package_root / f"{obfuscate_package_name(logical_package)}.upk"
     if not physical_path.is_file():
-        raise ValueError(
-            f"physical package is missing for {logical_package}: {physical_path}"
-        )
+        seed = (seed_packages or {}).get(logical_package.casefold())
+        seed_objects = list(seed.get("objects", [])) if seed else []
+        available = {
+            str(row.get("objectPath", "")).casefold()
+            for row in seed_objects
+        }
+        unresolved = [
+            row for row in requests
+            if str(row["relativeObjectPath"]).casefold() not in available
+        ]
+        return {
+            "logicalPackage": logical_package.upper(),
+            "physicalPackage": (
+                str(seed.get("physicalPackage")) if seed
+                else physical_path.name
+            ),
+            "resolutionSource": "SEED_CLOSURE" if seed else "MISSING_PACKAGE",
+            "requestedReferences": requests,
+            "unresolvedRequestedReferences": unresolved,
+            "objects": seed_objects,
+            "propertyErrors": [],
+            "summary": {
+                "requestCount": len(requests),
+                "resolvedRequestCount": len(requests) - len(unresolved),
+                "unresolvedRequestCount": len(unresolved),
+                "closureObjectCount": len(seed_objects),
+                "propertyErrorCount": 0,
+            },
+        }
 
     physical = physical_path.read_bytes()
     summary = parse_summary(physical)
@@ -237,6 +265,7 @@ def extract_requested_package(
     return {
         "logicalPackage": logical_package.upper(),
         "physicalPackage": physical_path.name,
+        "resolutionSource": "SOURCE_PACKAGE",
         "requestedReferences": requests,
         "unresolvedRequestedReferences": unresolved,
         "objects": objects,
@@ -255,13 +284,20 @@ def build_closure(
     graph: dict,
     package_root: Path,
     aes_key: str = LOSTARK_KR_AES_KEY,
+    seed_closures: list[dict] | None = None,
 ) -> dict:
     grouped = collect_external_lod0_requests(graph)
+    seed_packages: dict[str, dict] = {}
+    for closure in seed_closures or []:
+        for package in closure.get("packages", []):
+            logical_package = str(package.get("logicalPackage", "")).casefold()
+            if logical_package and logical_package not in seed_packages:
+                seed_packages[logical_package] = package
     packages = []
     for logical_package, requests in sorted(grouped.items()):
         packages.append(
             extract_requested_package(
-                package_root, logical_package, requests, aes_key
+                package_root, logical_package, requests, aes_key, seed_packages
             )
         )
     return {
@@ -298,10 +334,26 @@ def main() -> int:
     parser.add_argument("--package-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--aes-key", default=LOSTARK_KR_AES_KEY)
+    parser.add_argument(
+        "--seed-closure",
+        action="append",
+        default=[],
+        type=Path,
+        help=(
+            "Previously audited closure used only when its physical UPK is no "
+            "longer present; every requested object path must still resolve."
+        ),
+    )
     args = parser.parse_args()
 
     graph = json.loads(args.normalized_graph.read_text(encoding="utf-8-sig"))
-    result = build_closure(graph, args.package_root, args.aes_key)
+    seed_closures = [
+        json.loads(path.read_text(encoding="utf-8-sig"))
+        for path in args.seed_closure
+    ]
+    result = build_closure(
+        graph, args.package_root, args.aes_key, seed_closures
+    )
     if result["summary"]["unresolvedRequestCount"]:
         raise ValueError(
             "external particle module closure has unresolved requested references"

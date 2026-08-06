@@ -1,0 +1,309 @@
+{
+  "schema": "lostark.dimensionmaster-base-effect-materialization-receipt",
+  "formatVersion": 1,
+  "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
+  "canonicalSkillCount": 12,
+  "aggregateSkillCount": 12,
+  "comboStageDocumentCount": 4,
+  "missingCanonicalSources": [],
+  "unsupportedModelMaterialCueCount": 1,
+  "runtimeModelMaterialExecutionComplete": false,
+  "sourceMaterialProfileReconstructionComplete": true,
+  "catalogSynchronization": {
+    "preservedEffectCount": 0,
+    "dimensionMasterEffectCount": 16
+  },
+  "runtimeExecutionComplete": false,
+  "documents": [
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.effect.json",
+      "elementCount": 75,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 66,
+        "materialIdentityCount": 27,
+        "parentProfileGroupCount": 23,
+        "pendingRuntimeOccurrenceCount": 10,
+        "standardRuntimeOccurrenceCount": 56,
+        "parameterNameHeuristicCount": 78,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 27,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 23
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050100",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050100.effect.json",
+      "elementCount": 10,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 10,
+        "materialIdentityCount": 10,
+        "parentProfileGroupCount": 10,
+        "pendingRuntimeOccurrenceCount": 1,
+        "standardRuntimeOccurrenceCount": 9,
+        "parameterNameHeuristicCount": 18,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 10,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 10
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050120",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050120.effect.json",
+      "elementCount": 95,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 91,
+        "materialIdentityCount": 42,
+        "parentProfileGroupCount": 35,
+        "pendingRuntimeOccurrenceCount": 19,
+        "standardRuntimeOccurrenceCount": 72,
+        "parameterNameHeuristicCount": 86,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 42,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 35
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050160",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050160.effect.json",
+      "elementCount": 56,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 53,
+        "materialIdentityCount": 18,
+        "parentProfileGroupCount": 15,
+        "pendingRuntimeOccurrenceCount": 10,
+        "standardRuntimeOccurrenceCount": 43,
+        "parameterNameHeuristicCount": 55,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 18,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 15
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050180",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050180.effect.json",
+      "elementCount": 33,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 29,
+        "materialIdentityCount": 16,
+        "parentProfileGroupCount": 15,
+        "pendingRuntimeOccurrenceCount": 0,
+        "standardRuntimeOccurrenceCount": 29,
+        "parameterNameHeuristicCount": 39,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 16,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 15
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050210.effect.json",
+      "elementCount": 117,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 100,
+        "materialIdentityCount": 31,
+        "parentProfileGroupCount": 24,
+        "pendingRuntimeOccurrenceCount": 7,
+        "standardRuntimeOccurrenceCount": 93,
+        "parameterNameHeuristicCount": 65,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 31,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 24
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050220",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050220.effect.json",
+      "elementCount": 30,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 26,
+        "materialIdentityCount": 14,
+        "parentProfileGroupCount": 13,
+        "pendingRuntimeOccurrenceCount": 0,
+        "standardRuntimeOccurrenceCount": 26,
+        "parameterNameHeuristicCount": 32,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 14,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 13
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050230.effect.json",
+      "elementCount": 69,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 64,
+        "materialIdentityCount": 51,
+        "parentProfileGroupCount": 43,
+        "pendingRuntimeOccurrenceCount": 13,
+        "standardRuntimeOccurrenceCount": 51,
+        "parameterNameHeuristicCount": 126,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 51,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 43
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050240.effect.json",
+      "elementCount": 51,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 46,
+        "materialIdentityCount": 26,
+        "parentProfileGroupCount": 21,
+        "pendingRuntimeOccurrenceCount": 14,
+        "standardRuntimeOccurrenceCount": 32,
+        "parameterNameHeuristicCount": 72,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 26,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 21
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050500.effect.json",
+      "elementCount": 89,
+      "modelCueCount": 1,
+      "unsupportedModelMaterialCueCount": 1,
+      "unsupportedModelMaterialCueIds": [
+        "skill-2050500/clip-000/notify-038"
+      ],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 81,
+        "materialIdentityCount": 74,
+        "parentProfileGroupCount": 48,
+        "pendingRuntimeOccurrenceCount": 0,
+        "standardRuntimeOccurrenceCount": 81,
+        "parameterNameHeuristicCount": 178,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 74,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 48
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050520",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050520.effect.json",
+      "elementCount": 19,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 15,
+        "materialIdentityCount": 13,
+        "parentProfileGroupCount": 13,
+        "pendingRuntimeOccurrenceCount": 4,
+        "standardRuntimeOccurrenceCount": 11,
+        "parameterNameHeuristicCount": 23,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 13,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 13
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050540.effect.json",
+      "elementCount": 228,
+      "modelCueCount": 0,
+      "unsupportedModelMaterialCueCount": 0,
+      "unsupportedModelMaterialCueIds": [],
+      "sourceMaterialProfileSummary": {
+        "particleElementCount": 218,
+        "materialIdentityCount": 73,
+        "parentProfileGroupCount": 51,
+        "pendingRuntimeOccurrenceCount": 0,
+        "standardRuntimeOccurrenceCount": 218,
+        "parameterNameHeuristicCount": 282,
+        "failureCount": 0,
+        "sourceExactIdentityCount": 73,
+        "runtimeExactProfileCount": 0,
+        "reconstructedProfileCount": 51
+      },
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba1.effect.json",
+      "elementCount": 18,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_01",
+      "sourceOffsetSeconds": 0.0
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba2.effect.json",
+      "elementCount": 14,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_02",
+      "sourceOffsetSeconds": 4.0
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba3.effect.json",
+      "elementCount": 9,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_03",
+      "sourceOffsetSeconds": 5.5
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba4.effect.json",
+      "elementCount": 34,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_04",
+      "sourceOffsetSeconds": 6.5667
+    }
+  ]
+}

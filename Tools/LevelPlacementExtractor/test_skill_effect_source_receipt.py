@@ -7,6 +7,7 @@ from build_skill_effect_source_receipt import (
     build_timeline,
     collect_system_graph,
     find_particle_system,
+    load_bound_clips,
     load_graphs,
     parse_animnotify,
     resolve_material_parameters,
@@ -16,6 +17,27 @@ from build_skill_effect_source_receipt import (
 
 
 class SkillEffectSourceReceiptTests(unittest.TestCase):
+    def test_bound_clip_objects_preserve_timing_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "sample.skillbindings.json"
+            path.write_text(json.dumps({
+                "bindings": [{
+                    "skillId": 7,
+                    "clips": [
+                        {"clip": "clip_a", "playMs": 500, "playRate": 1.25},
+                        "clip_b",
+                    ],
+                }],
+            }), encoding="utf-8")
+
+            document, clips = load_bound_clips(path, 7)
+
+            self.assertEqual(["clip_a", "clip_b"], clips)
+            self.assertEqual(
+                {"clip": "clip_a", "playMs": 500, "playRate": 1.25},
+                document["bindings"][0]["clips"][0],
+            )
+
     def test_animnotify_timeline_accumulates_bound_clip_lengths(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "sample.animnotify"

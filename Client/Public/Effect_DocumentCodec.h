@@ -57,6 +57,7 @@ public:
 	static bool_t Is_SafeResourceAssetId(
 		const std::string& strAssetId,
 		EFFECT_RESOURCE_FILE_KIND* pOutKind = nullptr);
+	static bool_t Is_SafeModelCueAssetId(const std::string& strAssetId);
 };
 
 NS_END

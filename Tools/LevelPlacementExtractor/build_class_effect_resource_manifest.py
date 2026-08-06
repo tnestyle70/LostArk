@@ -218,9 +218,23 @@ def main() -> int:
     parser.add_argument("--character-class", required=True)
     parser.add_argument("--material-map", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--exclude-skill-id",
+        action="append",
+        default=[],
+        type=int,
+        help="Do not admit stale normalized graphs for replaced skill IDs.",
+    )
     args = parser.parse_args()
 
     graph_paths = sorted(args.graphs_root.rglob("*.normalized-effect-graph.json"))
+    excluded_skill_ids = set(args.exclude_skill_id)
+    if excluded_skill_ids:
+        graph_paths = [
+            path for path in graph_paths
+            if int(json.loads(path.read_text(encoding="utf-8-sig"))["skillId"])
+            not in excluded_skill_ids
+        ]
     if not graph_paths:
         raise ValueError(f"no normalized graphs below {args.graphs_root}")
     document = build_manifest(

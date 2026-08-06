@@ -11,6 +11,7 @@ from extract_ue3_particle_graph import (
     parse_physical_package_overrides,
 )
 from extract_ue3_placements import decode_property_value
+from extract_ue3_effect_semantics import encode_vector_field
 from stage_ue3_source_pack import load_inventory, resolve_package, sha256_file
 
 
@@ -207,6 +208,66 @@ class EffectExtractionToolTests(unittest.TestCase):
         self.assertEqual(1, len(keys))
         self.assertAlmostEqual(0.5, keys[0]["InVal"]["value"])
         self.assertAlmostEqual(2.0, keys[0]["OutVal"]["value"])
+
+    def test_particle_random_seed_info_recovers_seed_array(self):
+        names = ["None", "RandomSeeds", "ArrayProperty"]
+        seeds = struct.pack("<i3i", 3, 17, -23, 991)
+        payload = encode_property(1, 2, seeds) + encode_fname(0)
+        decoded = decode_property_value(
+            "StructProperty",
+            "ParticleRandomSeedInfo",
+            payload,
+            names,
+            None,
+        )
+        self.assertEqual(
+            [17, -23, 991],
+            decoded["properties"]["RandomSeeds"]["value"],
+        )
+
+    def test_material_input_recovers_expression_reference(self):
+        names = ["None", "Expression", "ObjectProperty"]
+        payload = (
+            encode_property(1, 2, struct.pack("<i", -17))
+            + encode_fname(0)
+        )
+        decoded = decode_property_value(
+            "StructProperty",
+            "ColorMaterialInput",
+            payload,
+            names,
+            None,
+        )
+        self.assertEqual(
+            -17,
+            decoded["properties"]["Expression"]["value"],
+        )
+        properties = {
+            "EmissiveColor": {
+                "type": "StructProperty",
+                "structType": "ColorMaterialInput",
+                "value": decoded,
+            }
+        }
+        self.assertEqual(
+            [("EmissiveColor.Expression", -17)],
+            list(iter_property_reference_values(properties)),
+        )
+
+    def test_vector_field_binary_preserves_dimensions_and_float_bits(self):
+        words = [
+            struct.unpack("<i", struct.pack("<f", value))[0]
+            for value in (1.0, -2.0, 3.5)
+        ]
+        payload = encode_vector_field(1, 1, 1, words + [0])
+        magic, version, size_x, size_y, size_z, sample_count = struct.unpack(
+            "<4sIIIII", payload[:24]
+        )
+        self.assertEqual(b"WVF1", magic)
+        self.assertEqual((1, 1, 1, 1, 1), (
+            version, size_x, size_y, size_z, sample_count
+        ))
+        self.assertEqual((1.0, -2.0, 3.5), struct.unpack("<3f", payload[24:]))
 
 
 if __name__ == "__main__":

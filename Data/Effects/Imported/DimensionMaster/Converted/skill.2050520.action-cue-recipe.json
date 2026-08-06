@@ -1,0 +1,1052 @@
+{
+  "schema": "lostark.effect-action-cue-recipe",
+  "formatVersion": 2,
+  "characterClass": "DIMENSIONMASTER",
+  "skillId": 2050520,
+  "inputSlot": "V",
+  "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
+  "source": {
+    "actionSourceSha256": "33d35fe6b97c6ea707da0e293e265a26afe0f97823155a25783d1cb5175cf73e",
+    "loaSha256": "256e51c0d4f0bc537df904e7b58af559a9224807a58d37bcd19aa5e707366dc6"
+  },
+  "selectedStages": [
+    {
+      "sequenceIndex": 0,
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipOffsetSeconds": 0.0,
+      "sourceStageName": "Main",
+      "candidateStageIndices": [
+        0
+      ],
+      "selectedStageIndex": 0,
+      "referenceEventCount": 8,
+      "matchedReferenceEventCount": 8,
+      "tieBreakContract": "BASE_STAGE_LOWEST_INDEX_ON_EQUAL_SCORE"
+    }
+  ],
+  "cues": [
+    {
+      "cueId": "skill-2050520/clip-000/notify-003",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0,
+      "globalTimeSeconds": 0.0,
+      "durationSeconds": 0.0,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_CM_02.Light.Par_MP_Light_01"
+        }
+      ],
+      "serializedLabels": [
+        "Locallight",
+        "FX-ExMove",
+        "CEFParticleData",
+        "ParticleSystem'FX_CM_02.Light.Par_MP_Light_01'",
+        "Spawn",
+        "Lifetime",
+        "Size",
+        "Color",
+        "Alpha",
+        "Location"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1104317,
+        "byteSize": 1068,
+        "sha256": "8e3efe440ce17b8d431c20e1ca9240f7f7e1eb7cdac1574be7e6ff9609113a2d",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAAAExvY2FsbGlnaHQACgAAAEZYLUV4TW92ZQBkAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDRQwAAs0MAAAJDFgAAAENFRkFjdGlvblBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQ0VGUGFydGljbGVEYXRhAAEAAAAAAAAAAAAAAC8AAABQYXJ0aWNsZVN5c3RlbSdGWF9DTV8wMi5MaWdodC5QYXJfTVBfTGlnaHRfMDEnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAjEIAAAAAAAAAAAAAoEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8GAAAABgAAAFNwYXduAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAkAAABMaWZldGltZQABAAAAzczMPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAFAAAAU2l6ZQADAAAAAAAAAAAAAAAAAEhDAABIQwAASEMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAGAAAAQ29sb3IAAwAAAAAAAAAAAAAAAACAQAAAwEAAACBBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQAAAAAABgAAAEFscGhhAAEAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAkAAABMb2NhdGlvbgADAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAxAAAA"
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_CM_02.Light.Par_MP_Light_01'",
+        "attachment": {
+          "mode": "SNAPSHOT_ROOT",
+          "sourceAnchorNames": [],
+          "runtimeAnchors": [],
+          "runtimeAnchorSlotIds": [],
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_ROOT_SNAPSHOT",
+          "sourceSelectorByteOffset": null
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            70.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.7000000000000001
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            20.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sourceTransformByteOffset": 397
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 0,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-004",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0,
+      "globalTimeSeconds": 0.0,
+      "durationSeconds": 2.5333330631256104,
+      "sourceType": "DominantDirectionalLight_Control",
+      "category": "light",
+      "runtimeChannel": "DIRECTIONAL_LIGHT",
+      "assetReferences": [],
+      "serializedLabels": [
+        "FX-ExMove"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1105385,
+        "byteSize": 167,
+        "sha256": "249c71a35f6cae0922b353878a3c5a76af3638d4186613e67f20441531e5c6cb",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAACEiIkAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLUV4TW92ZQBkAAAAAQAAAAAAAAAAAAAAAQAAAAAAAADNzMw9AACQQJqZmT7NzEw+AAAAAAAAAAAAAAAAAAAAACMAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-005",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0,
+      "globalTimeSeconds": 0.0,
+      "durationSeconds": 0.0,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_BS_04.State.Par_J_ExMove_01"
+        }
+      ],
+      "serializedLabels": [
+        "ExMove",
+        "FX-ExMove",
+        "CEFParticleData",
+        "ParticleSystem'FX_BS_04.State.Par_J_ExMove_01'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1105552,
+        "byteSize": 585,
+        "sha256": "1a5256748e144d29ac5920f1704695723fc1c9c857a6b389cd18826ecb764ae2",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABwAAAEV4TW92ZQAKAAAARlgtRXhNb3ZlAGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgNFDAACzQwAAAkMWAAAAQ0VGQWN0aW9uUGFydGljbGVEYXRhAAAAAAAAAAAAAAAAAJqZmT8AAAAAAAAAAAAAAAAAAAAAAAAAABAAAABDRUZQYXJ0aWNsZURhdGEAAAAAAAAAAAAAAAAALwAAAFBhcnRpY2xlU3lzdGVtJ0ZYX0JTXzA0LlN0YXRlLlBhcl9KX0V4TW92ZV8wMScAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAcMEAAAAAAABwQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApAAAA"
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_BS_04.State.Par_J_ExMove_01'",
+        "attachment": {
+          "mode": "SNAPSHOT_ROOT",
+          "sourceAnchorNames": [],
+          "runtimeAnchors": [],
+          "runtimeAnchorSlotIds": [],
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_ROOT_SNAPSHOT",
+          "sourceSelectorByteOffset": null
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            -15.0,
+            0.0,
+            60.0
+          ],
+          "position": [
+            -0.15,
+            0.0,
+            0.6
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sourceTransformByteOffset": 393
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 1,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-006",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0,
+      "globalTimeSeconds": 0.0,
+      "durationSeconds": 0.7188959717750549,
+      "sourceType": "PlayCameraParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_01"
+        }
+      ],
+      "serializedLabels": [
+        "FX",
+        "ParticleSystem'FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_01'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1106137,
+        "byteSize": 214,
+        "sha256": "dfa1a4cd1fd9162ba1849b1f04792a65c91d74af05e1dc37cb8899b893caa93e",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlDYW1lcmFQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAACRCTg/AAAAAAEAAAAAAAAAAAAAAAMAAABGWABkAAAAAQAAAAEAAAA6AAAAUGFydGljbGVTeXN0ZW0nRlhfUENfU1dQXzAyLlBhcl9SX1NXUF9UaW1lV2F2ZV8wMF9jYW1fMDEnAAAASEIAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAGAAAAA=="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-007",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0,
+      "globalTimeSeconds": 0.0,
+      "durationSeconds": 1.7999999523162842,
+      "sourceType": "AKEvent",
+      "category": "sound",
+      "runtimeChannel": "SOUND",
+      "assetReferences": [
+        {
+          "className": "AkEvent",
+          "objectPath": "PC_COMMON.PC_Common_FX_Ultimate1"
+        }
+      ],
+      "serializedLabels": [
+        "EX",
+        "Sound",
+        "AkEvent'PC_COMMON.PC_Common_FX_Ultimate1'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1106351,
+        "byteSize": 192,
+        "sha256": "e356a03b7ff42ce4ad45e17cbb31078663e2cf31b8ff8cf51e0eafeae05f512e",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0FLRXZlbnQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAZmbmPwAAAAABAAAAAAAAAAMAAABFWAAGAAAAU291bmQAZAAAACoAAABBa0V2ZW50J1BDX0NPTU1PTi5QQ19Db21tb25fRlhfVWx0aW1hdGUxJwAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAmpkZP5qZGT8AAAAADqMSQAAAAAAYAAAA"
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-008",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0010000000474974513,
+      "globalTimeSeconds": 0.0010000000474974513,
+      "durationSeconds": 2.0333340167999268,
+      "sourceType": "AKEvent",
+      "category": "sound",
+      "runtimeChannel": "SOUND",
+      "assetReferences": [
+        {
+          "className": "AkEvent",
+          "objectPath": "PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_1"
+        }
+      ],
+      "serializedLabels": [
+        "FX000_1",
+        "Sound",
+        "AkEvent'PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_1'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1106543,
+        "byteSize": 227,
+        "sha256": "fc3feb33545637231cf43c437c4d41871ab05b405a5324ed7def0e6cc143bea6",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0FLRXZlbnQAAAAAAAAAAAAAAAAAAQAAAG8SgzpvEoM6JSICQAAAAAABAAAAAAAAAAgAAABGWDAwMF8xAAYAAABTb3VuZABkAAAASAAAAEFrRXZlbnQnUENfRElNRU5TSU9OTUFTVEVSX00uUENfRGltZW5zaW9uTWFzdGVyX01fU0tfVGltZVdhdmUxX0ZYMDAwXzEnAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQCamRk/mpkZPwAAAAAlIgJAAAAAABgAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-009",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.0024629998952150345,
+      "globalTimeSeconds": 0.0024629998952150345,
+      "durationSeconds": 0.4975369870662689,
+      "sourceType": "AKEvent",
+      "category": "sound",
+      "runtimeChannel": "SOUND",
+      "assetReferences": [
+        {
+          "className": "AkEvent",
+          "objectPath": "PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_1"
+        }
+      ],
+      "serializedLabels": [
+        "VOX1",
+        "Sound",
+        "AkEvent'PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_1'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1106770,
+        "byteSize": 223,
+        "sha256": "b6f2f2b68870e7922e5b9bf56a41e9237f983c323ff9ef3489b7691c21e7dac8",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0FLRXZlbnQAAAAAAAAAAAAAAAAAAQAAAEhqITtIaiE7K73+PgAAAAABAAAAAAAAAAUAAABWT1gxAAYAAABTb3VuZABkAAAARwAAAEFrRXZlbnQnUENfRElNRU5TSU9OTUFTVEVSX00uUENfRGltZW5zaW9uTWFzdGVyX01fU0tfVGltZVdhdmUxX1ZveDFfMScAAAAAAAEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAJqZGT+amRk/AAAAAM9JpT8AAAAAIwAAAA=="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-010",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.690159022808075,
+      "globalTimeSeconds": 0.690159022808075,
+      "durationSeconds": 0.0,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_Post.FX_Par.Par_J_RGBNoise_01"
+        }
+      ],
+      "serializedLabels": [
+        "RGB",
+        "FX",
+        "CEFParticleData",
+        "ParticleSystem'FX_Post.FX_Par.Par_J_RGBNoise_01'",
+        "FX_State_01",
+        "Lifetime",
+        "Size",
+        "Location",
+        "CameraOffset",
+        "Color",
+        "Alpha"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1106993,
+        "byteSize": 1079,
+        "sha256": "5792f84682caed364fd4ab5ea4eb00c4b015a0dc5db857f52bbdcdb2ff4ea253",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAQ64wP0OuMD8AAAAAAAAAAAEAAAAAAAAABAAAAFJHQgADAAAARlgAZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAj8MAAATEAAACQxYAAABDRUZBY3Rpb25QYXJ0aWNsZURhdGEAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAENFRlBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAAxAAAAUGFydGljbGVTeXN0ZW0nRlhfUG9zdC5GWF9QYXIuUGFyX0pfUkdCTm9pc2VfMDEnAAAAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAwAAABGWF9TdGF0ZV8wMQAAAAAAAAAAAAAAgD8AAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAIA/BgAAAAkAAABMaWZldGltZQABAAAAzczMPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAFAAAAU2l6ZQADAAAAAAAAAAAAAAAAAJZDAACWQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAJAAAATG9jYXRpb24AAwAAAAAAAAAAAAAAAAAAAAAAAAAAACBBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQAAAAAADQAAAENhbWVyYU9mZnNldAABAAAAAAAgQQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAGAAAAQ29sb3IAAwAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQAAAAAABgAAAEFscGhhAAEAAAAzM7M+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_Post.FX_Par.Par_J_RGBNoise_01'",
+        "attachment": {
+          "mode": "FOLLOW_NAMED_ANCHORS",
+          "sourceAnchorNames": [
+            "FX_State_01"
+          ],
+          "runtimeAnchors": [
+            {
+              "sourceAnchorName": "FX_State_01",
+              "runtimeAnchorSlotId": "FX_State_01",
+              "runtimeBoneName": "bip001-spine2",
+              "socketLocalTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "resolutionStatus": "EXACT_SOURCE_SOCKET"
+            }
+          ],
+          "runtimeAnchorSlotIds": [
+            "FX_State_01"
+          ],
+          "runtimeAnchorSlotId": "FX_State_01",
+          "runtimeBoneName": "bip001-spine2",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_SOURCE_SOCKET",
+          "sourceSelectorByteOffset": 381
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sourceTransformByteOffset": 401
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 2,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-011",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.690900981426239,
+      "globalTimeSeconds": 0.690900981426239,
+      "durationSeconds": 0.4406070113182068,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_PC_SWP_02.Par_R_SWP_TimeWave_00_03"
+        }
+      ],
+      "serializedLabels": [
+        "cast",
+        "FX",
+        "CEFParticleData",
+        "ParticleSystem'FX_PC_SWP_02.Par_R_SWP_TimeWave_00_03'",
+        "WP_SWM_M_2",
+        "Color"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1108072,
+        "byteSize": 677,
+        "sha256": "fcfecc4ac2ec7f34e10306217895fdbf23bb80984f4f6753542d77a2b7e69bad",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAA494wP+PeMD8+l+E+AAAAAAEAAAAAAAAABQAAAGNhc3QAAwAAAEZYAGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADi2ljEm4VXRAAAAkMWAAAAQ0VGQWN0aW9uUGFydGljbGVEYXRhAAAAAAAAAAAAAAAAAM3MTD8AAAAAAAAAAAAAAAAAAAAAAAAAABAAAABDRUZQYXJ0aWNsZURhdGEAAAAAAAAAAAAAAAAANgAAAFBhcnRpY2xlU3lzdGVtJ0ZYX1BDX1NXUF8wMi5QYXJfUl9TV1BfVGltZVdhdmVfMDBfMDMnAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAsAAABXUF9TV01fTV8yAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACamZk/mpmZP5qZmT8BAAAABgAAAENvbG9yAAMAAAAAAAAAAAAAAAAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_PC_SWP_02.Par_R_SWP_TimeWave_00_03'",
+        "attachment": {
+          "mode": "FOLLOW_NAMED_ANCHORS",
+          "sourceAnchorNames": [
+            "WP_SWM_M_2"
+          ],
+          "runtimeAnchors": [
+            {
+              "sourceAnchorName": "WP_SWM_M_2",
+              "runtimeAnchorSlotId": "WP_SWM_M_2",
+              "runtimeBoneName": "b_wp_swm_m_2",
+              "socketLocalTransform": {
+                "position": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rotationDegrees": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "scale": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              },
+              "resolutionStatus": "EXACT_SOURCE_SOCKET"
+            }
+          ],
+          "runtimeAnchorSlotIds": [
+            "WP_SWM_M_2"
+          ],
+          "runtimeAnchorSlotId": "WP_SWM_M_2",
+          "runtimeBoneName": "b_wp_swm_m_2",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_SOURCE_SOCKET",
+          "sourceSelectorByteOffset": 387
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.2000000476837158,
+            1.2000000476837158,
+            1.2000000476837158
+          ]
+        },
+        "sourceTransformByteOffset": 406
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 3,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-012",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.6926130056381226,
+      "globalTimeSeconds": 0.6926130056381226,
+      "durationSeconds": 0.0,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_Post.FX_Par.Par_J_ZoomBlur_01"
+        }
+      ],
+      "serializedLabels": [
+        "ZoomBlur",
+        "FX",
+        "CEFParticleData",
+        "ParticleSystem'FX_Post.FX_Par.Par_J_ZoomBlur_01'",
+        "life",
+        "Size",
+        "Color",
+        "Alpha"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1108749,
+        "byteSize": 896,
+        "sha256": "101493a1ec07ca3bc7571e8a8c3297d80fef1009a799d56793a9274d6f242532",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAFk8xPxZPMT8AAAAAAAAAAAAAAAAAAAAACQAAAFpvb21CbHVyAAMAAABGWABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMHKOxPuZU0QAAAJDFgAAAENFRkFjdGlvblBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQ0VGUGFydGljbGVEYXRhAAEAAAAAAAAAAAAAADEAAABQYXJ0aWNsZVN5c3RlbSdGWF9Qb3N0LkZYX1Bhci5QYXJfSl9ab29tQmx1cl8wMScAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAFkMAAAAAAABIQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAIA/AACAPwQAAAAFAAAAbGlmZQABAAAAmpmZPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAFAAAAU2l6ZQADAAAAAAAAAAAAAAAAAPpDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAGAAAAQ29sb3IAAwAAAAAAAAAAAAAAAACAPwAAgD8AAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQAAAAAABgAAAEFscGhhAAEAAAAAAEA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_Post.FX_Par.Par_J_ZoomBlur_01'",
+        "attachment": {
+          "mode": "SNAPSHOT_ROOT",
+          "sourceAnchorNames": [],
+          "runtimeAnchors": [],
+          "runtimeAnchorSlotIds": [],
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_ROOT_SNAPSHOT",
+          "sourceSelectorByteOffset": null
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            150.0,
+            0.0,
+            50.0
+          ],
+          "position": [
+            1.5,
+            0.0,
+            0.5
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sourceTransformByteOffset": 390
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 4,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-013",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.6926130056381226,
+      "globalTimeSeconds": 0.6926130056381226,
+      "durationSeconds": 0.0,
+      "sourceType": "PlayParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_CM_02.Light.Par_MP_Light_01"
+        }
+      ],
+      "serializedLabels": [
+        "Light",
+        "FX",
+        "CEFParticleData",
+        "ParticleSystem'FX_CM_02.Light.Par_MP_Light_01'",
+        "Spawn",
+        "Lifetime",
+        "Size",
+        "Color",
+        "Alpha",
+        "Location"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1109645,
+        "byteSize": 1056,
+        "sha256": "0b0b0e75c6c1065a4d4f3b86ec74447129e1f06f6d715471a36402e326a71db0",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAFk8xPxZPMT8AAAAAAAAAAAEAAAAAAAAABgAAAExpZ2h0AAMAAABGWABkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALj9ZxHHoVUQAAAJDFgAAAENFRkFjdGlvblBhcnRpY2xlRGF0YQAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAQ0VGUGFydGljbGVEYXRhAAEAAAAAAAAAAAAAAC8AAABQYXJ0aWNsZVN5c3RlbSdGWF9DTV8wMi5MaWdodC5QYXJfTVBfTGlnaHRfMDEnAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAgD8AAAAAAAAAAAAAyEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8GAAAABgAAAFNwYXduAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAkAAABMaWZldGltZQABAAAAzczMPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAFAAAAU2l6ZQADAAAAAAAAAAAAAAAAABZEAABIQwAASEMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAGAAAAQ29sb3IAAwAAAAAAAAAAAAAAAAAAQAAAQEAAAKBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQAAAAAABgAAAEFscGhhAAEAAAAAAIA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAkAAABMb2NhdGlvbgADAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaAAAA"
+      },
+      "typedPayload": {
+        "schema": "lostark.cef-play-particle-effect-header",
+        "version": 2,
+        "enabled": true,
+        "sourceByteOffset": 47,
+        "sourceByteValue": 1,
+        "particleDataDecoded": true,
+        "sourceParticleSystem": "ParticleSystem'FX_CM_02.Light.Par_MP_Light_01'",
+        "attachment": {
+          "mode": "SNAPSHOT_ROOT",
+          "sourceAnchorNames": [],
+          "runtimeAnchors": [],
+          "runtimeAnchorSlotIds": [],
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "runtimeResolutionStatus": "EXACT_ROOT_SNAPSHOT",
+          "sourceSelectorByteOffset": null
+        },
+        "localTransform": {
+          "sourcePositionUeUnits": [
+            0.0,
+            0.0,
+            100.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sourceTransformByteOffset": 385
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 5,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-014",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.6956520080566406,
+      "globalTimeSeconds": 0.6956520080566406,
+      "durationSeconds": 0.0,
+      "sourceType": "ViewShake",
+      "category": "camera",
+      "runtimeChannel": "CAMERA_SHAKE",
+      "assetReferences": [],
+      "serializedLabels": [
+        "FX",
+        "CEFCameraViewShake"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1110701,
+        "byteSize": 252,
+        "sha256": "688eccf4e8372752dddc4b98927e073c52a3cdd216fcee7e4c17afd2997f7874",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1ZpZXdTaGFrZQAAAAAAAAAAAAAAAAABAAAAQBYyP0AWMj8AAAAAAAAAAAEAAAAAAAAAAAAAAAMAAABGWABkAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAEwAAAENFRkNhbWVyYVZpZXdTaGFrZQAAAAAAAAB6RAAAyEKamRk+AAAAAM3MzD0AAKBAAACgQgAAAAAAAKBAAACgQgAAAAAAAEBBAADwQQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAA"
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": 6,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-015",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.699999988079071,
+      "globalTimeSeconds": 0.699999988079071,
+      "durationSeconds": 1.8333330154418945,
+      "sourceType": "AKEvent",
+      "category": "sound",
+      "runtimeChannel": "SOUND",
+      "assetReferences": [
+        {
+          "className": "AkEvent",
+          "objectPath": "PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_2"
+        }
+      ],
+      "serializedLabels": [
+        "FX000_2",
+        "Sound",
+        "AkEvent'PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_2'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1110953,
+        "byteSize": 227,
+        "sha256": "d5ef57d450f30930af7d93cd0551e5c054cf077d7101314507e608a94d0b464c",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0FLRXZlbnQAAAAAAAAAAAAAAAAAAQAAADMzMz8zMzM/qKrqPwAAAAABAAAAAAAAAAgAAABGWDAwMF8yAAYAAABTb3VuZABkAAAASAAAAEFrRXZlbnQnUENfRElNRU5TSU9OTUFTVEVSX00uUENfRGltZW5zaW9uTWFzdGVyX01fU0tfVGltZVdhdmUxX0ZYMDAwXzInAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAFAAAATm9uZQCamRk/mpkZPwAAAAAYlxVAAAAAACkAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-016",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 0.7027959823608398,
+      "globalTimeSeconds": 0.7027959823608398,
+      "durationSeconds": 0.8500000238418579,
+      "sourceType": "PlayCameraParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_02"
+        }
+      ],
+      "serializedLabels": [
+        "FX",
+        "ParticleSystem'FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_02'",
+        "Color"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1111180,
+        "byteSize": 293,
+        "sha256": "1144c6ed931dd98e38d0e5b31be25a97dcd3a5b28ade8d60fd671f1d9507674d",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlDYW1lcmFQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAAAAAABAAAAcOozP3DqMz+amVk/AAAAAAEAAAAAAAAAAAAAAAMAAABGWABkAAAAAQAAAAEAAAA6AAAAUGFydGljbGVTeXN0ZW0nRlhfUENfU1dQXzAyLlBhcl9SX1NXUF9UaW1lV2F2ZV8wMF9jYW1fMDInAAAASEIAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8BAAAABgAAAENvbG9yAAMAAAAAAAAAAAAAAAAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAAAAAABwAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-019",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 1.2420179843902588,
+      "globalTimeSeconds": 1.2420179843902588,
+      "durationSeconds": 1.291314959526062,
+      "sourceType": "AKEvent",
+      "category": "sound",
+      "runtimeChannel": "SOUND",
+      "assetReferences": [
+        {
+          "className": "AkEvent",
+          "objectPath": "PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_2"
+        }
+      ],
+      "serializedLabels": [
+        "VOX2",
+        "Sound",
+        "AkEvent'PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_Vox1_2'"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1111779,
+        "byteSize": 223,
+        "sha256": "aed20835a3cf2d23adab36f4f9ce99884968fd3a5ebe38945594f8a6ed9e017c",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X0FLRXZlbnQAAAAAAAAAAAAAAAAAAQAAAHL6nj9y+p4/z0mlPwAAAAABAAAAAAAAAAUAAABWT1gyAAYAAABTb3VuZABkAAAARwAAAEFrRXZlbnQnUENfRElNRU5TSU9OTUFTVEVSX00uUENfRGltZW5zaW9uTWFzdGVyX01fU0tfVGltZVdhdmUxX1ZveDFfMicAAAAAAAEAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAUAAABOb25lAJqZGT+amRk/AAAAAM9JpT8AAAAAFwAAAA=="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    },
+    {
+      "cueId": "skill-2050520/clip-000/notify-021",
+      "clip": "pc_sp_m_00_sk_sk_timewave",
+      "clipSequenceIndex": 0,
+      "sourceStageIndex": 0,
+      "localTimeSeconds": 1.5700639486312866,
+      "globalTimeSeconds": 1.5700639486312866,
+      "durationSeconds": 0.9632689952850342,
+      "sourceType": "PlayCameraParticleEffect",
+      "category": "particle",
+      "runtimeChannel": "PARTICLE_SYSTEM",
+      "assetReferences": [
+        {
+          "className": "ParticleSystem",
+          "objectPath": "FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_03"
+        }
+      ],
+      "serializedLabels": [
+        "FX",
+        "ParticleSystem'FX_PC_SWP_02.Par_R_SWP_TimeWave_00_cam_03'",
+        "Color"
+      ],
+      "serializedPayload": {
+        "encoding": "base64",
+        "byteOffset": 1112212,
+        "byteSize": 293,
+        "sha256": "27ee6f27735fdba97cd6170771dfd211ac58cdcf5760973a2a2b476ae86c658e",
+        "data": "Q0VGQWN0aW9uTm90aWZ5X1BsYXlDYW1lcmFQYXJ0aWNsZUVmZmVjdAAAAAAAAAAAAAEAAAABAAAA2/fIP9v3yD/MmHY/AAAAAAEAAAAAAAAAAAAAAAMAAABGWABkAAAAAQAAAAEAAAA6AAAAUGFydGljbGVTeXN0ZW0nRlhfUENfU1dQXzAyLlBhcl9SX1NXUF9UaW1lV2F2ZV8wMF9jYW1fMDMnAAAASEIAAAAAAAAAAAAAAAAAAIA/AACAPwAAgD8BAAAABgAAAENvbG9yAAMAAAAAAAAAAAAAAAAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAE5vbmUAAAAAAAAAAAAAAAAAAAAAABwAAAA="
+      },
+      "typedPayload": {
+        "schema": "lostark.action-cue-payload",
+        "enabled": true
+      },
+      "executionEnabled": true,
+      "sourceReceiptEventIndex": null,
+      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+    }
+  ],
+  "summary": {
+    "referenceEventCount": 8,
+    "matchedReferenceEventCount": 8,
+    "presentationCueCount": 16,
+    "serializedPayloadBytes": 7672,
+    "sourceTypeCounts": {
+      "AKEvent": 5,
+      "DominantDirectionalLight_Control": 1,
+      "PlayCameraParticleEffect": 3,
+      "PlayParticleEffect": 6,
+      "ViewShake": 1
+    },
+    "runtimeChannelCounts": {
+      "CAMERA_SHAKE": 1,
+      "DIRECTIONAL_LIGHT": 1,
+      "PARTICLE_SYSTEM": 9,
+      "SOUND": 5
+    },
+    "enabledPlayParticleEffectCount": 6,
+    "disabledPlayParticleEffectCount": 0,
+    "byteLosslessPayloadComplete": true,
+    "referenceJoinComplete": true,
+    "runtimeAnchorResolutionComplete": true,
+    "runtimeModelCueTransformComplete": true,
+    "runtimeModelMaterialSemanticComplete": true
+  },
+  "sourceExtractionComplete": true,
+  "runtimeExecutionComplete": false
+}

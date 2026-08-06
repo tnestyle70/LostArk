@@ -5,6 +5,7 @@
 #include "Effect_AuthoringDocument.h"
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -19,12 +20,45 @@ struct EFFECT_EVALUATED_ELEMENT final
 	f32_t fNormalizedLife = 0.f;
 };
 
+enum class EFFECT_PARTICLE_SPRITE_ALIGNMENT : uint8_t
+{
+	CAMERA_SQUARE,
+	CAMERA_RECTANGLE,
+	CAMERA_VELOCITY,
+	AXIS_POSITIVE_X,
+	AXIS_NEGATIVE_X,
+	AXIS_POSITIVE_Y,
+	AXIS_NEGATIVE_Y,
+	AXIS_POSITIVE_Z,
+	AXIS_NEGATIVE_Z,
+	ROTATE_X,
+	ROTATE_Y,
+	ROTATE_Z,
+	END
+};
+
 struct EFFECT_EVALUATED_PARTICLE final
 {
 	const EFFECT_ELEMENT_DESC* pElement = nullptr;
 	float4x4_t World{};
 	float4_t Color = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vDynamicParameter{};
+	float3_t vWorldVelocity{};
+	float2_t vSpritePivot = { 0.5f, 0.5f };
+	EFFECT_PARTICLE_SPRITE_ALIGNMENT eSpriteAlignment =
+		EFFECT_PARTICLE_SPRITE_ALIGNMENT::CAMERA_RECTANGLE;
+	f32_t fSpriteRotationDegrees = 0.f;
+	f32_t fCameraOffset = 0.f;
+	f32_t fSubImageIndex = 0.f;
+	f32_t fDistributionRandom = 0.f;
 	f32_t fNormalizedLife = 0.f;
+};
+
+struct EFFECT_SUBUV_FRAME_DESC final
+{
+	float4_t Current = { 1.f, 1.f, 0.f, 0.f };
+	float4_t Next = { 1.f, 1.f, 0.f, 0.f };
+	f32_t fBlend = 0.f;
 };
 
 struct EFFECT_EVALUATED_TRAIL_POINT final
@@ -49,6 +83,7 @@ struct EFFECT_EVALUATED_AFTERIMAGE final
 struct EFFECT_EVALUATED_FRAME final
 {
 	f32_t fSampleTimeSeconds = 0.f;
+	float4x4_t RootWorld{};
 	std::vector<EFFECT_EVALUATED_ELEMENT> Elements;
 	std::vector<EFFECT_EVALUATED_PARTICLE> Particles;
 	std::vector<EFFECT_EVALUATED_TRAIL> Trails;
@@ -62,9 +97,45 @@ private:
 	{
 		float3_t vPosition{};
 		float3_t vVelocity{};
+		float3_t vBaseVelocity{};
+		float3_t vVelocityScale = { 1.f, 1.f, 1.f };
+		float3_t vBaseSize = { 1.f, 1.f, 1.f };
+		float3_t vSize = { 1.f, 1.f, 1.f };
+		float3_t vRotationDegrees{};
+		float3_t vRotationRateDegreesPerSecond{};
+		float3_t vRotationRateScale = { 1.f, 1.f, 1.f };
+		float4_t vBaseColor = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vDynamicParameter{};
+		float3_t vOrbitOffset{};
+		float3_t vOrbitRotationDegrees{};
+		float3_t vOrbitRotationRateDegreesPerSecond{};
+		f32_t fCameraOffset = 0.f;
+		f32_t fSubImageIndex = 0.f;
+		f32_t fDistributionRandom = 0.f;
+		f32_t fSpawnEmitterTimeSeconds = 0.f;
 		f32_t fAgeSeconds = 0.f;
 		f32_t fLifeTimeSeconds = 1.f;
+		std::string strSourceAnchorName;
+		float3_t vSourceAnchorOffset{};
+		bool_t bUpdateSourceAnchor = false;
 		float4x4_t SpawnRootWorld{};
+	};
+
+	struct MODULE_RANDOM_STATE final
+	{
+		uint32_t iInitialSeed = 0u;
+		uint32_t iCurrentSeed = 0u;
+		bool_t bResetOnEmitterLoop = true;
+	};
+
+	struct SOURCE_PARTICLE_EVENT final
+	{
+		std::string strType;
+		std::string strName;
+		f32_t fEmitterTimeSeconds = 0.f;
+		float3_t vPosition{};
+		float3_t vVelocity{};
 	};
 
 	struct AFTERIMAGE_STATE final
@@ -80,6 +151,13 @@ private:
 		f32_t fTrailSampleAccumulator = 0.f;
 		f32_t fAfterImageAccumulator = 0.f;
 		bool_t bBurstSpawned = false;
+		bool_t bActionRootCaptured = false;
+		float4x4_t ActionRootWorld{};
+		uint32_t iSourceLoopIndex = 0u;
+		size_t iNextSourceBurst = 0u;
+		std::unordered_map<std::string, MODULE_RANDOM_STATE> ModuleRandomStates;
+		std::unordered_map<std::string, uint32_t> EventTrackingCounts;
+		std::unordered_map<std::string, uint32_t> BoneSocketNextIndices;
 		std::vector<PARTICLE_STATE> Particles;
 		std::vector<EFFECT_EVALUATED_TRAIL_POINT> TrailPoints;
 		std::vector<AFTERIMAGE_STATE> AfterImages;
@@ -92,9 +170,19 @@ public:
 	void Reset();
 	void Update(f32_t fTimeDelta, const float4x4_t& RootWorld);
 	void Seek(f32_t fSampleTimeSeconds, const float4x4_t& RootWorld);
+	void Set_SourceAnchorWorlds(
+		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
 	const EFFECT_EVALUATED_FRAME& Get_Frame() const { return m_Frame; }
 	bool_t Is_Finished() const;
 	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
+	static EFFECT_SUBUV_FRAME_DESC Resolve_SourceSubUVFrame(
+		uint32_t iColumns,
+		uint32_t iRows,
+		f32_t fFrameValue,
+		bool_t bAllowFlip,
+		bool_t bSquareFlip,
+		f32_t fDistributionRandom,
+		bool_t bLinearBlend);
 
 private:
 	void Step(f32_t fFixedDelta, const float4x4_t& RootWorld);
@@ -103,11 +191,68 @@ private:
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
 		uint32_t iCount,
-		const float4x4_t& RootWorld);
+		const float4x4_t& RootWorld,
+		const SOURCE_PARTICLE_EVENT* pSourceEvent = nullptr);
 	void Update_Particles(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
-		f32_t fFixedDelta);
+		f32_t fFixedDelta,
+		const float4x4_t& RootWorld);
+	void Apply_SourceSpawnModules(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		PARTICLE_STATE& Particle,
+		f32_t fEmitterTimeSeconds,
+		const float4x4_t& ElementWorld);
+	void Apply_SourceUpdateModules(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		PARTICLE_STATE& Particle,
+		f32_t fEmitterTimeSeconds,
+		f32_t fNormalizedAge,
+		f32_t fFixedDelta,
+		const float4x4_t& ElementWorld);
+	void Initialize_ModuleRandomStates(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State);
+	void Reset_LoopingModuleRandomStates(ELEMENT_STATE& State);
+	f32_t Next_ModuleRandom(
+		ELEMENT_STATE& State,
+		const EFFECT_SOURCE_MODULE_DESC& Module);
+	f32_t Evaluate_ModuleFloat(
+		ELEMENT_STATE& State,
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string_view PropertyPath,
+		f32_t fTime,
+		f32_t fFallback);
+	float3_t Evaluate_ModuleVector(
+		ELEMENT_STATE& State,
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string_view PropertyPath,
+		f32_t fTime,
+		const float3_t& Fallback);
+	void Queue_SpawnEvents(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_STATE& State,
+		const PARTICLE_STATE& Particle,
+		const float4x4_t& ElementWorld);
+	void Dispatch_SourceEvents(
+		f32_t fFixedDelta,
+		const float4x4_t& RootWorld);
+	f32_t Evaluate_SourceFloat(
+		const EFFECT_ELEMENT_DESC& Element,
+		const char_t* pModuleClass,
+		const char_t* pPropertyPath,
+		f32_t fTime,
+		f32_t fRandomUnit,
+		f32_t fFallback) const;
+	float3_t Evaluate_SourceVector(
+		const EFFECT_ELEMENT_DESC& Element,
+		const char_t* pModuleClass,
+		const char_t* pPropertyPath,
+		f32_t fTime,
+		f32_t fRandomUnit,
+		const float3_t& Fallback) const;
 	void Sample_Trail(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,
@@ -118,10 +263,14 @@ private:
 		ELEMENT_STATE& State,
 		f32_t fFixedDelta,
 		const float4x4_t& RootWorld);
+	bool_t Can_EvaluateElementWorld(
+		const EFFECT_ELEMENT_DESC& Element) const;
 	float4x4_t Evaluate_ElementWorld(
 		const EFFECT_ELEMENT_DESC& Element,
 		f32_t fSampleTimeSeconds,
 		const float4x4_t& RootWorld) const;
+	float3_t Apply_ParticleEmissionModifier(
+		const float3_t& Velocity) const;
 	EFFECT_COLOR_DESC Evaluate_Color(
 		const EFFECT_ELEMENT_DESC& Element,
 		f32_t fNormalizedLife) const;
@@ -131,6 +280,8 @@ private:
 private:
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
+	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
+	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;
 	EFFECT_EVALUATED_FRAME m_Frame;
 	f32_t m_fSampleTimeSeconds = 0.f;
 	f64_t m_fAccumulatorSeconds = 0.0;

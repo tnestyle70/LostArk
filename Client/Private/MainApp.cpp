@@ -172,7 +172,8 @@ HRESULT CMainApp::Initialize()
 	}
 
 	std::string effectCatalogStatus;
-	CEffectCatalog::Load(effectCatalogStatus);
+	if (!CEffectCatalog::Load(effectCatalogStatus))
+		return E_FAIL;
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(

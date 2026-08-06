@@ -83,9 +83,22 @@ def load_bound_clips(path: Path, skill_id: int) -> tuple[dict[str, Any], list[st
     if len(matches) != 1:
         raise ValueError(f"skill {skill_id} must have exactly one binding, got {len(matches)}")
     clips = matches[0].get("clips")
-    if not isinstance(clips, list) or not clips or not all(isinstance(item, str) for item in clips):
+    if not isinstance(clips, list) or not clips:
         raise ValueError(f"skill {skill_id} has an invalid clips array")
-    return document, clips
+    clip_names = []
+    for item in clips:
+        if isinstance(item, str):
+            clip_name = item
+        elif isinstance(item, dict):
+            clip_name = str(item.get("clip") or "")
+        else:
+            clip_name = ""
+        if not clip_name:
+            raise ValueError(f"skill {skill_id} has an invalid clip entry")
+        clip_names.append(clip_name)
+    # Return the untouched document so playMs/playRate and future per-clip
+    # metadata remain available to downstream receipts.
+    return document, clip_names
 
 
 def build_timeline(
@@ -693,7 +706,7 @@ def main() -> int:
 
     systems_by_asset: dict[str, dict[str, Any]] = {}
     for event in events:
-        if event["kind"] == "SHAKE":
+        if event["kind"] == "SHAKE" or event["sourceType"] == "Effect":
             event["resolutionStatus"] = "OUT_OF_EFFECT_DOCUMENT"
             continue
         if event["sourceType"] != "PlayParticleEffect" or not event["sourceAsset"]:
@@ -820,6 +833,11 @@ def main() -> int:
         },
         "timeline": {
             "durationSeconds": duration,
+            "bindingClips": next(
+                row["clips"]
+                for row in binding_document.get("bindings", [])
+                if int(row.get("skillId", -1)) == args.skill_id
+            ),
             "clips": clips,
             "events": events,
         },

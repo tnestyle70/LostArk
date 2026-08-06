@@ -1,0 +1,39 @@
+{
+  "schema": "lostark.effect-model-cue-runtime-bindings",
+  "formatVersion": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "bindings": [
+    {
+      "skillId": 2050500,
+      "source": {
+        "cueName": "SK_DimensionPrison",
+        "skeletalMesh": "SK_SWP_DMS_00.Mesh.SK_SWP_DMS_00_SK",
+        "animSet": "SK_SWP_DMS_00.Ani.SK_SWP_DMS_00_Ani",
+        "materialInstances": [
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_01_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_02_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_03_MI_Dead",
+          "SK_SWP_DMS_00.Mat.SK_SWP_DMS_00_04_MI_Dead"
+        ],
+        "animationClip": "sk_dimensionprison"
+      },
+      "runtime": {
+        "cueId": "dimension_summon",
+        "modelAssetId": "Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel",
+        "clipName": "sk_swp_dms_00_sk_sk_dimensionprison",
+        "assetPreTransform": {
+          "scale": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "rotationDegrees": [
+            0.0,
+            -90.0,
+            0.0
+          ]
+        }
+      }
+    }
+  ]
+}

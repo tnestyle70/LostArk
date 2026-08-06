@@ -41,6 +41,8 @@ struct EFFECT_MATERIAL_TEMPLATE_DESC final
 inline constexpr std::string_view EFFECT_MESH_SHAPE_SLOT_ID = "meshModel";
 inline constexpr std::string_view EFFECT_STANDARD_MATERIAL_TEMPLATE_ID =
 	"effect.standard";
+inline constexpr std::string_view EFFECT_SOURCE_MATERIAL_TEMPLATE_ID =
+	"effect.source_material";
 
 inline constexpr std::array<EFFECT_MATERIAL_INPUT_SLOT_DESC, 5u>
 	EFFECT_STANDARD_MATERIAL_INPUTS = {{
@@ -74,11 +76,22 @@ inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
 		EFFECT_STANDARD_MATERIAL_INPUTS.size()
 	};
 
+inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
+	EFFECT_SOURCE_MATERIAL_TEMPLATE = {
+		EFFECT_SOURCE_MATERIAL_TEMPLATE_ID,
+		"effect.source-material.ue3-profile-runtime.v1",
+		EFFECT_STANDARD_MATERIAL_INPUTS.data(),
+		EFFECT_STANDARD_MATERIAL_INPUTS.size()
+	};
+
 inline const EFFECT_MATERIAL_TEMPLATE_DESC* Find_EffectMaterialTemplate(
 	const std::string_view strTemplateId)
 {
-	return strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID ?
-		&EFFECT_STANDARD_MATERIAL_TEMPLATE : nullptr;
+	if (strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID)
+		return &EFFECT_STANDARD_MATERIAL_TEMPLATE;
+	if (strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID)
+		return &EFFECT_SOURCE_MATERIAL_TEMPLATE;
+	return nullptr;
 }
 
 inline const EFFECT_MATERIAL_INPUT_SLOT_DESC* Find_EffectMaterialInput(

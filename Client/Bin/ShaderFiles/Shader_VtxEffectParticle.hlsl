@@ -12,6 +12,10 @@ struct VS_IN
     float4 world2 : WORLD2;
     float4 world3 : WORLD3;
     float4 color : COLOR0;
+    float4 dynamicParameter : DYNAMIC0;
+    float4 uvTransform : UVTRANSFORM0;
+    float4 uvTransformNext : UVTRANSFORM1;
+    float2 particleData : PARTICLEDATA0;
 };
 
 struct VS_OUT
@@ -19,6 +23,9 @@ struct VS_OUT
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
     float4 color : COLOR0;
+    float4 dynamicParameter : TEXCOORD1;
+    float2 uvNext : TEXCOORD2;
+    float2 particleData : TEXCOORD3;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -29,14 +36,32 @@ VS_OUT VS_MAIN(VS_IN input)
     output.position = mul(
         float4(input.position, 1.f),
         mul(mul(world, g_ViewMatrix), g_ProjMatrix));
-    output.uv = input.uv * g_UVScale + g_UVOffset;
+    output.uv =
+        (input.uv * input.uvTransform.xy + input.uvTransform.zw) *
+        g_UVScale + g_UVOffset;
+    output.uvNext =
+        (input.uv * input.uvTransformNext.xy + input.uvTransformNext.zw) *
+        g_UVScale + g_UVOffset;
     output.color = input.color;
+    output.dynamicParameter = input.dynamicParameter;
+    output.particleData = input.particleData;
     return output;
 }
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
-    return Shade_Effect(input.uv, float3(1.f, 1.f, 1.f), input.color);
+    EFFECT_PS_OUT current = Shade_EffectParticle(
+        input.uv, float3(1.f, 1.f, 1.f), input.color,
+        input.dynamicParameter);
+    const float blend = saturate(input.particleData.y);
+    if (blend <= 0.f)
+        return current;
+    const EFFECT_PS_OUT next = Shade_EffectParticle(
+        input.uvNext, float3(1.f, 1.f, 1.f), input.color,
+        input.dynamicParameter);
+    current.SceneColor = lerp(current.SceneColor, next.SceneColor, blend);
+    current.Distortion = lerp(current.Distortion, next.Distortion, blend);
+    return current;
 }
 
 technique11 DefaultTechnique
