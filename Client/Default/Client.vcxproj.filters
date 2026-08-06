@@ -757,6 +757,15 @@
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json">
       <Filter>96.DataFiles\Animation\RootMotion</Filter>
     </None>
+    <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\DimensionMaster.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
