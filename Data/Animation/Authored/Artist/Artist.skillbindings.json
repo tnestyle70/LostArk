@@ -5,34 +5,51 @@
   "characterClass": "ARTIST",
   "bindings": [
     {
+      "skillId": 31000,
+      "clips": [
+        "sdm_att_battle_1_03",
+        "sdm_att_battle_1_02",
+        "sdm_att_battle_1_01",
+        "sdm_att_battle_1_04"
+      ]
+    },
+    {
+      "skillId": 31200,
+      "clips": [
+        "sdm_sk_inkpaddle"
+      ]
+    },
+    {
+      "skillId": 31430,
+      "clips": [
+        "sdm_sk_inkshot"
+      ]
+    },
+    {
+      "skillId": 31480,
+      "clips": [
+        "sdm_sk_flyinheaven"
+      ]
+    },
+    {
       "skillId": 31210,
       "clips": [
-        "sdm_sk_skykongkong_custom_8"
+        "sdm_sk_skykongkong_01",
+        "sdm_sk_skykongkong_03",
+        "sdm_sk_skykongkong_01",
+        "sdm_sk_skykongkong_02"
       ]
     },
     {
-      "skillId": 31230,
+      "skillId": 31460,
       "clips": [
-        "sdm_sk_pondofyin"
+        "sdm_sk_butterflydream"
       ]
     },
     {
-      "skillId": 31510,
+      "skillId": 31420,
       "clips": [
-        "sdm_sk_moondrawing_01",
-        "sdm_sk_moondrawing_02"
-      ]
-    },
-    {
-      "skillId": 31470,
-      "clips": [
-        "sdm_sk_onestroke"
-      ]
-    },
-    {
-      "skillId": 31410,
-      "clips": [
-        "sdm_sk_congenitalenergy"
+        "sdm_sk_fourgentlemen"
       ]
     },
     {
@@ -42,24 +59,48 @@
       ]
     },
     {
-      "skillId": 31900,
+      "skillId": 31470,
       "clips": [
-        "sdm_sk_landscapepainting"
+        "sdm_sk_onestroke"
       ]
     },
     {
-      "skillId": 31920,
+      "skillId": 31950,
       "clips": [
-        "sdm_sk_super_landscapepainting"
+        "sdm_sk_dragonrising_01"
       ]
     },
     {
-      "skillId": 31000,
+      "skillId": 31910,
       "clips": [
-        "sdm_att_battle_1_03",
-        "sdm_att_battle_1_02",
-        "sdm_att_battle_1_01",
-        "sdm_att_battle_1_04"
+        "sdm_sk_pungnyudo"
+      ]
+    },
+    {
+      "skillId": 31930,
+      "clips": [
+        "sdm_sk_super_pungnyudo_01",
+        "sdm_sk_super_pungnyudo_02"
+      ]
+    },
+    {
+      "skillId": 31110,
+      "clips": [
+        "sdm_sk_harmonyofyang"
+      ]
+    },
+    {
+      "skillId": 31050,
+      "clips": [
+        "sdm_sk_harmonyofyin_01",
+        "sdm_sk_harmonyofyin_02"
+      ]
+    },
+    {
+      "skillId": 31020,
+      "clips": [
+        "sdm_sk_moving_normal_1",
+        "sdm_sk_spacing"
       ]
     }
   ]

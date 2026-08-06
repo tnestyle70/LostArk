@@ -1010,7 +1010,7 @@ try {
 		'LANCE_MASTER' = @('Q','W','E','R','A','S','D','F','Z','SPACE','T','V','ALT_V','LMB')
 		'GUNSLINGER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','LMB')
 		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
-		'ARTIST' = @('Q','W','E','R','A','S','V','ALT_V','LMB')
+		'ARTIST' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
 		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','LMB')
 		'WARLORD' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
 	}
