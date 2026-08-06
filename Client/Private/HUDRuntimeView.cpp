@@ -36,9 +36,9 @@ namespace
 }
 
 Client::CHUDRuntimeView::CHUDRuntimeView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
-	const wstring& strDocumentPath, const bool_t bUseCurrentWindowDrawList)
+	const wstring& strDocumentPath, const DRAW_TARGET eDrawTarget)
 	: m_strDocumentPath{ strDocumentPath }
-	, m_bUseCurrentWindowDrawList{ bUseCurrentWindowDrawList }
+	, m_eDrawTarget{ eDrawTarget }
 	, m_pDevice{ pDevice }
 	, m_pContext{ pContext }
 {
@@ -173,6 +173,22 @@ HRESULT Client::CHUDRuntimeView::Load()
 					Slot.bShineAdditive = pAdditive->Get_Boolean();
 		}
 
+		if (const DATA_JSON_VALUE* pAnimation = SlotValue.Find("animation"))
+		{
+			if (const DATA_JSON_VALUE* pFps = pAnimation->Find("fps"))
+				if (pFps->Is_Number() && pFps->Get_Number() > 0.0)
+					Slot.fAnimationFPS = static_cast<f32_t>(pFps->Get_Number());
+			if (const DATA_JSON_VALUE* pFrames = pAnimation->Find("frames"))
+			{
+				if (pFrames->Is_Array())
+				{
+					for (const DATA_JSON_VALUE& FrameValue : pFrames->Get_Array())
+						if (FrameValue.Is_String() && !FrameValue.Get_String().empty())
+							Slot.AnimationFrames.push_back(FrameValue.Get_String());
+				}
+			}
+		}
+
 		m_Slots.push_back(move(Slot));
 	}
 
@@ -247,8 +263,20 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 		return;
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImDrawList* pDrawList = m_bUseCurrentWindowDrawList ?
-		ImGui::GetWindowDrawList() : ImGui::GetForegroundDrawList(pViewport);
+	ImDrawList* pDrawList;
+	switch (m_eDrawTarget)
+	{
+	case DRAW_TARGET::CURRENT_WINDOW:
+		pDrawList = ImGui::GetWindowDrawList();
+		break;
+	case DRAW_TARGET::BACKGROUND:
+		pDrawList = ImGui::GetBackgroundDrawList(pViewport);
+		break;
+	case DRAW_TARGET::FOREGROUND:
+	default:
+		pDrawList = ImGui::GetForegroundDrawList(pViewport);
+		break;
+	}
 
 	const float fScaleX = pViewport->WorkSize.x / m_fResolutionWidth;
 	const float fScaleY = pViewport->WorkSize.y / m_fResolutionHeight;
@@ -269,6 +297,25 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 
 		ImVec2 Corners[4];
 		Get_Rotated_Rect_Corners(vTopLeft, vBotRight, Slot.fRotation, Corners);
+
+		/* A flipbook slot (login/lobby background frame sequences, ...) plays instead of
+		drawing Layers -- ImGui::GetTime() is already the monotonic clock every other draw
+		call this frame reads, so the whole HUD stays on one time source. Looping (modulo
+		frame count) instead of clamping is deliberate: a background sequence is meant to
+		keep playing for as long as this view is on screen. */
+		if (!Slot.AnimationFrames.empty())
+		{
+			const double dElapsedSeconds = ImGui::GetTime();
+			const size_t iFrameCount = Slot.AnimationFrames.size();
+			const size_t iFrameIndex = static_cast<size_t>(
+				dElapsedSeconds * static_cast<double>(Slot.fAnimationFPS)) % iFrameCount;
+
+			ID3D11ShaderResourceView* pSRV =
+				Get_Or_Load_Texture(Slot.AnimationFrames[iFrameIndex]);
+			if (nullptr != pSRV)
+				Draw_Image_Quad(pDrawList, pSRV, Corners, IM_COL32(255, 255, 255, 255), false, false);
+			continue;
+		}
 
 		for (const TEXTURE_LAYER& Layer : Slot.Layers)
 		{
