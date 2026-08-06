@@ -664,6 +664,13 @@ def decode_property_value(
             "rawdistributionvector",
             "interpcurvefloat",
             "interpcurvevector",
+            "particlerandomseedinfo",
+            "expressioninput",
+            "materialinput",
+            "colormaterialinput",
+            "scalarmaterialinput",
+            "vectormaterialinput",
+            "vector2materialinput",
         }:
             try:
                 nested, nested_end = parse_tagged_properties_at(

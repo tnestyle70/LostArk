@@ -286,16 +286,16 @@ if ($mainAppSource -notmatch 'Update_Engine\(fTimeDelta\);\s+CEffectPresentation
 }
 if ($effectToolSource -notmatch 'Discard unsaved Effect changes\?' -or
     $effectToolSource -notmatch 'if \(Has_UnsavedWork\(\)\)' -or
-    $effectToolSource -notmatch 'if \(m_bDetailDraftDirty\)' -or
-    $effectToolSource -notmatch 'Apply Detail or Revert Detail before saving') {
+    $effectToolSource -notmatch 'Has_UnappliedDetailDraft' -or
+    $effectToolSource -notmatch 'Apply or Revert the open Detail draft before saving') {
     throw 'Effect Create/Load/Discard/Save must preserve unsaved Document and Detail work.'
 }
 if ($effectToolSource -notmatch 'Loaded editable draft; preview is hidden' -or
     $effectToolSource -notmatch 'Load rejected; active Document and preview were preserved' -or
-    $effectToolSource -notmatch 'Apply Detail or Revert Detail before selecting another Element' -or
-    $effectToolSource -notmatch 'Apply Detail or Revert Detail before adding an Element' -or
-    $effectToolSource -notmatch 'Apply Detail or Revert Detail before deleting an Element' -or
-    $effectToolSource -notmatch 'Apply Detail or Revert Detail before clearing Elements') {
+    $effectToolSource -notmatch 'open Detail draft before selecting another Element' -or
+    $effectToolSource -notmatch 'open Detail draft before adding an Element' -or
+    $effectToolSource -notmatch 'open Detail draft before deleting an Element' -or
+    $effectToolSource -notmatch 'open Detail draft before clearing Elements') {
     throw 'Valid partial drafts must reload, and dirty Detail drafts must survive selection/structure commands.'
 }
 $codecSource = Get-Content -LiteralPath (
@@ -323,10 +323,11 @@ if ($effectToolSource -notmatch 'm_bPreviewPlaying = false;\s+bSeekAfterLoop = t
     $effectToolSource -match 'Published Effects') {
     throw 'All Effects authoring tree, stable resource cards, preview filters, and Data Files commands are required without Published authoring UI.'
 }
-if ($effectToolSource -notmatch 'bRuntimeMatchesActive' -or
+if ($effectToolSource -notmatch 'm_bActiveDocumentMatchesRuntime' -or
+    $effectToolSource -notmatch 'Refresh_RuntimeEquivalence' -or
     $effectToolSource -notmatch 'CEffectDocumentCodec::Serialize\(\*pRuntimeDocument\)' -or
     $effectToolSource -notmatch '!Has_UnsavedWork\(\)') {
-    throw 'Animation cue transfer must use the exact clean document admitted in the runtime Effect catalog.'
+    throw 'Animation cue transfer must use the cached equivalence of the exact clean document admitted in the runtime Effect catalog.'
 }
 $thumbnailSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_ThumbnailCache.cpp') -Raw -Encoding UTF8
@@ -364,6 +365,81 @@ if ($effectToolHeader -notmatch 'EFFECT_RESOURCE_DOMAIN_CATALOG' -or
     $effectToolSource -notmatch 'EffectAsset_DomainId' -or
     $effectToolSource -notmatch 'Uncategorized') {
     throw 'Effect resources and Data Files must share a class/boss authoring-domain boundary.'
+}
+if ($effectToolHeader -notmatch 'm_eResourceLibraryFileKind' -or
+    $effectToolSource -notmatch 'SeparatorText\("Resource Library"\)' -or
+    $effectToolSource -notmatch 'RadioButton\("Meshes"' -or
+    $effectToolSource -notmatch 'RadioButton\("Textures"' -or
+    $effectToolSource -notmatch 'PARTICLE == pElement->eKind' -or
+    $effectToolSource -notmatch 'ImVec2\(540\.f, 500\.f\)' -or
+    $effectToolSource -notmatch 'Promote to Authored Skill' -or
+    $effectToolSource -notmatch 'Try_PromoteImportedDocument') {
+    throw 'Resource Library, mesh-backed Particle cards, larger All Effects, and Imported promotion are required.'
+}
+if ($effectToolHeader -notmatch 'PENDING_DOCUMENT_LOAD' -or
+    $effectToolHeader -notmatch 'm_SynchronizedAnimationClips' -or
+    $effectToolSource -notmatch 'Unsaved Effect Changes' -or
+    $effectToolSource -notmatch 'Save & Load' -or
+    $effectToolSource -notmatch 'Discard & Load' -or
+    $effectToolSource -notmatch 'Try_LoadDocumentPathStaged' -or
+    $effectToolSource -notmatch 'bBypassUnsavedGuard' -or
+    $effectToolSource -notmatch 'Update_SynchronizedAnimationSequence' -or
+    $effectToolSource -notmatch 'm_iSynchronizedAnimationClipIndex \+ 1u' -or
+    $effectToolSource -notmatch 'Start_Animation\(strNext\.c_str\(\), false\)' -or
+    $effectToolSource -notmatch 'Audition Selected' -or
+    $effectToolSource -notmatch 'EFFECT_PREVIEW_FILTER::SOLO_SELECTED' -or
+    $effectToolSource -notmatch 'Selected->Detail\.Timing\.fStartDelaySeconds' -or
+    $effectToolSource -notmatch 'Applied to active Document memory; Save required to persist\.' -or
+    $effectToolSource -notmatch 'Particle System \| Source Systems ' -or
+    $effectToolSource -notmatch 'Mesh-backed ' -or
+    $effectToolSource -notmatch 'iParticleBudget') {
+    throw 'Effect document switching, animation sequence, Element audition, Apply feedback, and Particle layer summary must remain explicit.'
+}
+foreach ($scopeName in @(
+    'EffectTool.AuthoringWindow',
+    'EffectTool.ModelViewWindow',
+    'EffectTool.DetailWindow',
+    'EffectTool.AllEffectsWindow',
+    'EffectTool.DataFilesWindow',
+    'EffectTool.ThumbnailTrim')) {
+    if ($effectToolSource -notmatch [regex]::Escape($scopeName)) {
+        throw "Effect Tool profiler capture is missing detail scope: $scopeName"
+    }
+}
+$authoringHeader = Get-Content -LiteralPath (
+    Require-File 'Client\Public\Effect_AuthoringDocument.h') -Raw -Encoding UTF8
+$rendererSource = Get-Content -LiteralPath (
+    Require-File 'Client\Private\Effect_DocumentRenderer.cpp') -Raw -Encoding UTF8
+$playbackSource = Get-Content -LiteralPath (
+    Require-File 'Client\Private\Effect_Playback.cpp') -Raw -Encoding UTF8
+if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 11u' -or
+	$authoringHeader -notmatch 'struct EFFECT_SOURCE_MATERIAL_DESC' -or
+	$authoringHeader -notmatch 'DynamicParameterSemantics' -or
+	$codecSource -notmatch 'Read_SourceMaterialProfile' -or
+	$rendererSource -notmatch 'SourceMaterialProfileIndex' -or
+	$rendererSource -notmatch 'Resolve_SubUVFrames' -or
+	$authoringHeader -notmatch 'struct EFFECT_PARTICLE_SYSTEM_DESC' -or
+    $authoringHeader -notmatch 'ParticleSystem' -or
+    $authoringHeader -notmatch 'struct EFFECT_MODEL_CUE_DESC' -or
+    $authoringHeader -notmatch 'ModelCues' -or
+    $codecSource -notmatch 'Read_ModelCueTransform' -or
+    $codecSource -notmatch 'Is_SafeModelCueAssetId' -or
+    $rendererSource -notmatch 'Shader_VtxAnimMeshBinary\.hlsl' -or
+    $rendererSource -notmatch 'Stage_ModelCueResource' -or
+    $rendererSource -notmatch 'Render_ModelCues' -or
+    $playbackSource -notmatch 'Cue\.fStartDelaySeconds \+ Cue\.fDurationSeconds') {
+    throw 'Current Effect Particle System and animated Model Cue codec/runtime paths are required.'
+}
+if ($effectToolHeader -notmatch 'EFFECT_DETAIL_SELECTION' -or
+    $effectToolHeader -notmatch 'SOLO_PARTICLE_SYSTEM' -or
+    $effectToolSource -notmatch 'Try_SelectParticleSystem' -or
+    $effectToolSource -notmatch 'Apply Particle System' -or
+    $effectToolSource -notmatch 'Audition Particle System' -or
+    $effectToolSource -notmatch 'Source Systems %zu \| Emitters %zu \| Layers %zu' -or
+    $playbackSource -notmatch 'fUniformScaleMultiplier' -or
+    $playbackSource -notmatch 'fDirectionYawDegrees' -or
+    $playbackSource -notmatch 'fInitialSpeedMultiplier') {
+    throw 'Effect Tool must expose one non-destructive Particle System parent over source layers.'
 }
 $effectAuthoringDomains = @(
     'Artist',
@@ -439,7 +515,7 @@ foreach ($relativePath in $registrationFiles) {
 
 $expectedSkillIds = @(
     2050010, 2050110, 2050150, 2050220, 2050190, 2050240,
-    2050210, 2050200, 2050500, 2050510, 2050540
+    2050550, 2050200, 2050500, 2050510, 2050540
 )
 # The subset the current quick-slot roster binds. An authored Effect document
 # outlives the slot it was written for, so the documents, the catalog and the
@@ -451,13 +527,16 @@ $boundSkillIds = @(
 $expectedEffectIds = @($expectedSkillIds | ForEach-Object {
     "effect.dimensionmaster.skill.$_"
 })
+$expectedEffectIds += @(1..4 | ForEach-Object {
+    "effect.dimensionmaster.skill.2050010.ba$_"
+})
 
 $catalog = Read-JsonFile 'Data\Effects\EffectCatalog.json'
-if ($catalog.formatVersion -ne 1 -or $catalog.effects.Count -ne 11) {
-    throw 'EffectCatalog.json must be formatVersion 1 with exactly 11 entries.'
+if ($catalog.formatVersion -ne 1 -or $catalog.effects.Count -ne 15) {
+    throw 'EffectCatalog.json must be formatVersion 1 with 11 aggregate skill entries and four BA stage entries.'
 }
 $catalogIds = @($catalog.effects | ForEach-Object { [string]$_.effectAssetId })
-if (@($catalogIds | Sort-Object -Unique).Count -ne 11) {
+if (@($catalogIds | Sort-Object -Unique).Count -ne 15) {
     throw 'EffectCatalog.json contains a duplicate EffectAssetId.'
 }
 foreach ($effectId in $expectedEffectIds) {
@@ -474,25 +553,38 @@ foreach ($entry in $catalog.effects) {
         throw "Unsafe catalog document path: $relativeDocument"
     }
     $document = Read-JsonFile (Join-Path 'Data' $relativeDocument)
-    if ($document.version -notin @(5, 6) -or
+    if ($document.version -notin @(5, 6, 7, 8, 9, 10, 11) -or
         $document.effectAssetId -cne $entry.effectAssetId -or
         @($document.elements).Count -eq 0) {
         throw "Effect document header/elements are invalid: $relativeDocument"
+    }
+    if ($document.version -ge 8) {
+        $particleSystem = $document.particleSystem
+        if ($null -eq $particleSystem -or
+            [double]$particleSystem.uniformScaleMultiplier -le 0 -or
+            [double]$particleSystem.uniformScaleMultiplier -gt 100 -or
+            [Math]::Abs([double]$particleSystem.yawOffsetDegrees) -gt 3600 -or
+            [Math]::Abs([double]$particleSystem.directionYawDegrees) -gt 3600 -or
+            [double]$particleSystem.initialSpeedMultiplier -lt 0 -or
+            [double]$particleSystem.initialSpeedMultiplier -gt 100) {
+            throw "Effect v8 Particle System is invalid: $relativeDocument"
+        }
     }
     $elementIds = @($document.elements | ForEach-Object { [string]$_.id })
     if (@($elementIds | Sort-Object -Unique).Count -ne $elementIds.Count) {
         throw "Duplicate Element ID in $relativeDocument"
     }
     foreach ($element in $document.elements) {
-        if ($document.version -eq 6 -and
+        if ($document.version -ge 6 -and
             ($element.displayName -isnot [string] -or
              $element.groupId -isnot [string] -or
              $element.sourceNode -isnot [string] -or
              $element.visible -isnot [bool] -or
-             [string]$element.material.templateId -cne 'effect.standard')) {
+             @('effect.standard','effect.source_material') -cnotcontains
+                [string]$element.material.templateId)) {
             throw "Effect v6 Element metadata/template is invalid: $relativeDocument"
         }
-        if (@('mesh','sprite','particle','decal','trail') -cnotcontains
+        if (@('mesh','sprite','particle','decal','trail','light','screenPost') -cnotcontains
             [string]$element.kind) {
             throw "Unknown Element kind in ${relativeDocument}: $($element.kind)"
         }
@@ -509,6 +601,95 @@ foreach ($entry in $catalog.effects) {
             }
         }
     }
+    if ($document.version -ge 7) {
+        $modelCues = @($document.modelCues)
+        if ($modelCues.Count -gt 8) {
+            throw "Effect Model Cue budget is invalid: $relativeDocument"
+        }
+        $cueIds = @($modelCues | ForEach-Object { [string]$_.cueId })
+        if (@($cueIds | Sort-Object -Unique).Count -ne $cueIds.Count) {
+            throw "Duplicate Effect Model Cue ID: $relativeDocument"
+        }
+        foreach ($cue in $modelCues) {
+            $modelAssetId = [string]$cue.modelAssetId
+            if ([string]$cue.cueId -notmatch '^[A-Za-z0-9_.-]+$' -or
+                [string]::IsNullOrWhiteSpace([string]$cue.clipName) -or
+                $modelAssetId -notmatch '^Character/[A-Za-z0-9_./-]+\.wmodel$' -or
+                $modelAssetId.Contains('..') -or
+                [double]$cue.startDelaySeconds -lt 0 -or
+                [double]$cue.durationSeconds -le 0) {
+                throw "Effect Model Cue is invalid: $relativeDocument"
+            }
+            $modelPath = Join-Path $ResourceRoot ($modelAssetId -replace '/', '\')
+            if (-not [IO.File]::Exists($modelPath)) {
+                throw "Missing Effect Model Cue payload: $modelAssetId"
+            }
+        }
+    }
+}
+
+$completeF = Read-JsonFile `
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json'
+$completeT = Read-JsonFile `
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json'
+$completeS = Read-JsonFile `
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json'
+$completeFReceipt = Read-JsonFile `
+    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json'
+$completeTReceipt = Read-JsonFile `
+    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.element-conversion-receipt.json'
+$completeSReceipt = Read-JsonFile `
+    'Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json'
+if ($completeF.version -ne 10 -or
+    @($completeF.elements).Count -ne
+        [int]$completeFReceipt.summary.emittedElementCount -or
+    [double]$completeF.particleSystem.uniformScaleMultiplier -ne 1.0 -or
+    [double]$completeF.particleSystem.initialSpeedMultiplier -ne 1.0 -or
+    @($completeF.modelCues).Count -ne 1 -or
+    [string]$completeF.modelCues[0].modelAssetId -cne
+        'Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel' -or
+    [string]$completeF.modelCues[0].clipName -cne
+        'sk_swp_dms_00_sk_sk_dimensionprison') {
+    throw 'DimensionMaster F must match its source-derived Element receipt and Summon cue.'
+}
+if ($completeT.version -ne 10 -or
+    @($completeT.elements).Count -ne
+        [int]$completeTReceipt.summary.emittedElementCount -or
+    [double]$completeT.particleSystem.uniformScaleMultiplier -ne 1.0 -or
+    [double]$completeT.particleSystem.initialSpeedMultiplier -ne 1.0 -or
+    @($completeT.modelCues).Count -ne 0) {
+    throw 'DimensionMaster T must match its source-derived Element receipt without Summon.'
+}
+$sWeaponElements = @($completeS.elements | Where-Object {
+    [string]$_.groupId -eq 'fx_pc_swp_03.par_s_swp_instance_wp_01'
+})
+$sWeaponMeshResources = @($sWeaponElements.resources | Where-Object {
+    [string]$_.slotId -eq 'meshModel' -and
+    [string]$_.assetId -eq
+        'Effect/DimensionMaster/Meshes/fm_s_swp_superweapon_01.wmodel'
+})
+$sWeaponDmcResources = @($sWeaponElements.resources | Where-Object {
+    [string]$_.assetId -eq
+        'Effect/DimensionMaster/Textures/SK_SWP_DMC_01/sk_swp_dmc_01_d.dds'
+})
+$sLandmarks = @(0.01, 0.95, 1.5, 2.178, 3.0, 3.7, 3.75)
+foreach ($landmark in $sLandmarks) {
+    if (@($completeS.elements | Where-Object {
+        [Math]::Abs([double]$_.detail.timing.startDelaySeconds - $landmark) -lt 0.0001
+    }).Count -eq 0) {
+        throw "DimensionMaster S is missing source timeline landmark $landmark seconds."
+    }
+}
+if ($completeS.version -ne 10 -or
+    @($completeS.elements).Count -ne
+        [int]$completeSReceipt.summary.emittedElementCount -or
+    [double]$completeS.particleSystem.uniformScaleMultiplier -ne 1.0 -or
+    [double]$completeS.particleSystem.initialSpeedMultiplier -ne 1.0 -or
+    @($completeS.modelCues).Count -ne 0 -or
+    $sWeaponElements.Count -eq 0 -or
+    $sWeaponMeshResources.Count -lt 2 -or
+    $sWeaponDmcResources.Count -lt 1) {
+    throw 'DimensionMaster S must match its source-derived receipt, source landmarks, and Superweapon/DMC01 Weapon Group.'
 }
 
 $skills = Read-JsonFile 'Data\Balance\PlayerSkills.json'
@@ -547,24 +728,44 @@ if ($admittedRows.Count -ne 14) {
 }
 foreach ($effectId in $expectedEffectIds) {
     $expectedCueCount = if ($effectId -eq
-        'effect.dimensionmaster.skill.2050010') { 4 } else { 1 }
+        'effect.dimensionmaster.skill.2050010') { 0 } else { 1 }
     if (@($admittedRows | Where-Object {
         $_ -match ('payload="' + [regex]::Escape($effectId) + '"')
     }).Count -ne $expectedCueCount) {
         throw "Expected $expectedCueCount admitted animation cues for $effectId"
     }
 }
-$comboCueTimes = [ordered]@{
-    'pc_sp_m_00_sk_att_battle_1_01' = 100
-    'pc_sp_m_00_sk_att_battle_1_02' = 43
-    'pc_sp_m_00_sk_att_battle_1_03' = 28
-    'pc_sp_m_00_sk_att_battle_1_04' = 335
+foreach ($completeEffectId in @(
+    'effect.dimensionmaster.skill.2050500',
+    'effect.dimensionmaster.skill.2050510',
+    'effect.dimensionmaster.skill.2050550')) {
+    $completeCue = @($admittedRows | Where-Object {
+        $_ -match ('payload="' + [regex]::Escape($completeEffectId) + '"')
+    })
+    if ($completeCue.Count -ne 1 -or $completeCue[0] -notmatch ' startms=0 ') {
+        throw "Complete Imported timeline must start once at 0ms: $completeEffectId"
+    }
 }
-foreach ($comboClip in $comboCueTimes.Keys) {
+$sCue = @($admittedRows | Where-Object {
+    $_ -match 'payload="effect\.dimensionmaster\.skill\.2050550"'
+})
+if ($sCue.Count -ne 1 -or
+    $sCue[0] -notmatch ' startms=0 endms=5000 ' -or
+    $sCue[0] -notmatch ' anchor="root" follow=follow stop=cue_end ') {
+    throw 'DimensionMaster S cue must follow root from 0ms and stop at the 5000ms action boundary.'
+}
+$comboCueEffects = [ordered]@{
+    'pc_sp_m_00_sk_att_battle_1_01' = 'effect.dimensionmaster.skill.2050010.ba1'
+    'pc_sp_m_00_sk_att_battle_1_02' = 'effect.dimensionmaster.skill.2050010.ba2'
+    'pc_sp_m_00_sk_att_battle_1_03' = 'effect.dimensionmaster.skill.2050010.ba3'
+    'pc_sp_m_00_sk_att_battle_1_04' = 'effect.dimensionmaster.skill.2050010.ba4'
+}
+foreach ($comboClip in $comboCueEffects.Keys) {
     if (@($admittedRows | Where-Object {
         $_ -match ('^"' + [regex]::Escape($comboClip) + '" ') -and
-        $_ -match (' EFFECT startms=' + $comboCueTimes[$comboClip] + ' ') -and
-        $_ -match 'payload="effect\.dimensionmaster\.skill\.2050010"'
+        $_ -match ' EFFECT startms=0 ' -and
+        $_ -match ('payload="' +
+            [regex]::Escape($comboCueEffects[$comboClip]) + '"')
     }).Count -ne 1) {
         throw "Missing DimensionMaster combo Effect cue: $comboClip"
     }

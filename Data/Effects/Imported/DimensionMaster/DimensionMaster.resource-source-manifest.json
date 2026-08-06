@@ -8,12 +8,12 @@
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050150/skill.2050150.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050190/skill.2050190.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050200/skill.2050200.normalized-effect-graph.json",
-    "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050210/skill.2050210.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050220/skill.2050220.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050240/skill.2050240.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050500/skill.2050500.normalized-effect-graph.json",
     "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050510/skill.2050510.normalized-effect-graph.json",
-    "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050540/skill.2050540.normalized-effect-graph.json"
+    "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050540/skill.2050540.normalized-effect-graph.json",
+    "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/all_bound_skills/skills/skill_2050550/skill.2050550.normalized-effect-graph.json"
   ],
   "assets": [
     {
@@ -27,7 +27,8 @@
         2050110,
         2050190,
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -47,7 +48,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -60,7 +62,21 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m.bfx_d_pa_twik_01_tr",
+      "logicalPackage": "bfx_m",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -75,8 +91,8 @@
       "skillIds": [
         2050010,
         2050200,
-        2050210,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -91,9 +107,9 @@
       "skillIds": [
         2050110,
         2050200,
-        2050210,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -108,7 +124,34 @@
       "skillIds": [
         2050240,
         2050510,
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_shine_02_ad",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_shine_02_ad_dt",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -203,10 +246,13 @@
         2050110,
         2050190,
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_06",
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1",
@@ -248,7 +294,8 @@
         2050190,
         2050220,
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Signal_01",
@@ -261,6 +308,7 @@
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_05",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_03",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -288,11 +336,13 @@
         "material"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_01",
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -313,6 +363,21 @@
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Signal_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_master_01_13_tr",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -347,6 +412,51 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_smoke_ulit_01_08_tr",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_twik_01_01_tr",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_m_mi_00.bfx_mi.bfx_h_pa_circle_01_02_ad",
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "bfx_m_mi_00.bfx_mi.bfx_j_pa_ring_07_08_ad",
       "logicalPackage": "bfx_m_mi_00",
       "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
@@ -358,6 +468,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_sm_00.bfm_q_crack_01",
+      "logicalPackage": "bfx_sm_00",
+      "physicalPackage": "5XFB2CGA2C00F8C4YEC00XKC.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -374,6 +499,73 @@
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_Aurora_01"
       ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "bfx_sm_00.fm_l_transcendencemagic_01_sm",
+      "logicalPackage": "bfx_sm_00",
+      "physicalPackage": "5XFB2CGA2C00F8C4YEC00XKC.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "efbasematerial_prologue.ch.realpbr.base.realpbr_wp_dead_msk",
+      "logicalPackage": "efbasematerial_prologue",
+      "physicalPackage": "QX5YGQAYNQ9IY32NV9O3O4UQ.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "efmaster_material_prologue.mastermaterial_ch.monster.high.realpbr.monster_base_msk_high_realpbr",
+      "logicalPackage": "efmaster_material_prologue",
+      "physicalPackage": "U1E2KRUD6GE2RUDM276RZDS7S8YU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "efmaster_material_prologue.mastermaterial_ch.monster.high.realpbr.monster_dead_msk_high_realpbr",
+      "logicalPackage": "efmaster_material_prologue",
+      "physicalPackage": "U1E2KRUD6GE2RUDM276RZDS7S8YU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "efmaster_material_prologue.tex.fx_a_ice_003",
+      "logicalPackage": "efmaster_material_prologue",
+      "physicalPackage": "U1E2KRUD6GE2RUDM276RZDS7S8YU.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
@@ -405,12 +597,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_CM_02.Light.Par_MP_Light_01",
@@ -418,6 +610,9 @@
         "FX_CM_02.Light.Par_MP_Light_04",
         "FX_CM_02.Light.Par_MP_Light_05_L",
         "FX_CM_02.Light.Par_MP_Light_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_FLight_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Light_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Sidelight_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_Light_01_Loop",
         "FX_PC_SWP_04.Par_M_SWP_TW_S1_BigLight_01_Test_01"
@@ -490,7 +685,8 @@
         2050200,
         2050240,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -506,12 +702,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -524,7 +720,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -566,7 +763,21 @@
       "skillIds": [
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_d_me_icecrack_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -665,7 +876,8 @@
         2050200,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -678,7 +890,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -704,7 +917,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -717,7 +931,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -744,7 +959,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -757,7 +973,21 @@
         "material_parent"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_d_pa_shockwave_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -784,7 +1014,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050220
+        2050220,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -810,7 +1041,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -823,7 +1055,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -840,7 +1073,21 @@
         2050110,
         2050190,
         2050200,
-        2050220
+        2050220,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_i_pa_beam_01",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -867,7 +1114,6 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -885,7 +1131,8 @@
         2050150,
         2050190,
         2050200,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -901,12 +1148,25 @@
         2050010,
         2050110,
         2050150,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_j_me_wingtrail_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -920,8 +1180,7 @@
       ],
       "skillIds": [
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -935,6 +1194,19 @@
       ],
       "skillIds": [
         2050510
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_j_pa_customparticle_01_ad",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -961,9 +1233,9 @@
         "material_parent"
       ],
       "skillIds": [
-        2050210,
         2050240,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -984,6 +1256,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m.fx_j_pa_hologramnoise_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m.fx_j_pa_linearflow_02_tr",
       "logicalPackage": "fx_m",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -993,7 +1278,6 @@
       "skillIds": [
         2050010,
         2050200,
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -1021,7 +1305,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1035,7 +1320,7 @@
       ],
       "skillIds": [
         2050150,
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1076,8 +1361,8 @@
       "skillIds": [
         2050190,
         2050200,
-        2050210,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1094,8 +1379,8 @@
         2050150,
         2050190,
         2050200,
-        2050210,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1180,12 +1465,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1200,7 +1485,8 @@
       "skillIds": [
         2050190,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1219,14 +1505,14 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m.fx_j_ribbonwave_02_tr",
+      "sourceAssetPath": "fx_m.fx_j_simplestep_01_tr",
       "logicalPackage": "fx_m",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
       "roles": [
         "material_parent"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1253,8 +1539,20 @@
       ],
       "skillIds": [
         2050190,
-        2050200,
-        2050210
+        2050200
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_k_pa_window_crack_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1405,7 +1703,8 @@
       ],
       "skillIds": [
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1421,7 +1720,8 @@
         2050190,
         2050200,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1462,6 +1762,19 @@
       "skillIds": [
         2050510,
         2050540
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m.fx_s_pa_glasshole_01_tr",
+      "logicalPackage": "fx_m",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1527,7 +1840,21 @@
         "material_parent"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_00.fx_m.fx_d_pa_ball_01_ad",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1569,7 +1896,8 @@
         2050010,
         2050200,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1588,7 +1916,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1605,7 +1934,8 @@
         2050200,
         2050240,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1618,11 +1948,9 @@
         "material"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -1654,10 +1982,10 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
@@ -1666,11 +1994,13 @@
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_0_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_04",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1",
@@ -1742,10 +2072,12 @@
         "material"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -1776,10 +2108,12 @@
         2050110,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_06",
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_Cube_01",
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01",
         "FX_PC_WHK_02.Par_O_WHK_ExMove_03"
@@ -1797,10 +2131,12 @@
         2050200,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_02",
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_Cube_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_02",
@@ -1935,6 +2271,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_08_ad",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
       "logicalPackage": "fx_m_mi_00",
       "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -1969,9 +2320,11 @@
       ],
       "skillIds": [
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_WP_01",
         "FX_PC_WHK_02.Par_O_WHK_ExMove_03"
       ],
@@ -2033,13 +2386,45 @@
       "skillIds": [
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02",
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_me_icecrack_01_01_tr",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_003_ds_ad",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2052,9 +2437,11 @@
       ],
       "skillIds": [
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
       ],
@@ -2106,6 +2493,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_100_ts_dt_tr",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_118_fs_dt_ad",
       "logicalPackage": "fx_m_mi_00",
       "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2143,13 +2545,11 @@
         "material"
       ],
       "skillIds": [
-        2050210,
         2050500,
         2050510,
         2050540
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01",
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
       ],
@@ -2183,11 +2583,9 @@
         "material"
       ],
       "skillIds": [
-        2050150,
-        2050210
+        2050150
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -2229,6 +2627,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_23_tr",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_02_ad",
       "logicalPackage": "fx_m_mi_00",
       "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2241,6 +2654,21 @@
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_05",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_03"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_10_06_ad",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2269,15 +2697,16 @@
       ],
       "skillIds": [
         2050110,
-        2050210,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_2",
         "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_06",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_05",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_03",
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_02",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S1_ExMove_Vector_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -2338,11 +2767,13 @@
         "material"
       ],
       "skillIds": [
-        2050010
+        2050010,
+        2050550
       ],
       "sourceSystems": [
         "FX_O_W_01.Par_O_Test_01_01",
-        "FX_O_W_01.Par_O_Test_02_01"
+        "FX_O_W_01.Par_O_Test_02_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2355,13 +2786,26 @@
       ],
       "skillIds": [
         2050200,
-        2050210,
         2050540
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_pa_master_01_016_tr",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2412,6 +2856,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_pa_master_01_065_dt_ad",
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_00.fx_mi.fx_d_post3ch_02_01_tr",
       "logicalPackage": "fx_m_mi_00",
       "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
@@ -2419,12 +2878,15 @@
         "material"
       ],
       "skillIds": [
-        2050220
+        2050220,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_04",
-        "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04"
+        "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2455,21 +2917,6 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_01.fx_m.fx_h_me_swing_01_1_tr",
-      "logicalPackage": "fx_m_mi_01",
-      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2554,6 +3001,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_e_me_ap_02_5_ts_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_e_me_fd_01_2_ts_tr",
       "logicalPackage": "fx_m_mi_01",
       "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2577,9 +3039,12 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-2",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
@@ -2595,9 +3060,12 @@
         "material"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -2615,6 +3083,21 @@
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_01_2_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2641,12 +3124,10 @@
         "material"
       ],
       "skillIds": [
-        2050210,
         2050510
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_02",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_02"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2684,6 +3165,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_e_pa_ht_10_1_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_e_pa_ri_04_1_ad",
       "logicalPackage": "fx_m_mi_01",
       "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2692,9 +3188,12 @@
       ],
       "skillIds": [
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -2730,6 +3229,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_3_ad",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr",
       "logicalPackage": "fx_m_mi_01",
       "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
@@ -2755,10 +3269,73 @@
         "material"
       ],
       "skillIds": [
-        2050010
+        2050010,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Signal_01"
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Signal_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_i_pa_beam_03_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_j_me_ringrainbow_01_2_ts_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_j_pa_clock_01_1_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_j_pa_clock_01_tr",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2775,6 +3352,21 @@
       ],
       "sourceSystems": [
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2801,11 +3393,9 @@
         "material"
       ],
       "skillIds": [
-        2050150,
-        2050210
+        2050150
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -2863,10 +3453,27 @@
         "material"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_01.fx_mi.fx_l_pa_ap_23_4_ad",
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -2923,9 +3530,11 @@
         "material"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3037,7 +3646,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3052,7 +3662,8 @@
       "skillIds": [
         2050010,
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3069,6 +3680,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_05"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_m.fx_j_me_icesurfacee_01",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3100,9 +3726,11 @@
       "skillIds": [
         2050200,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-1",
         "FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01"
       ],
@@ -3120,7 +3748,8 @@
         2050150,
         2050200,
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_Jump_00_1",
@@ -3133,6 +3762,7 @@
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
         "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
         "FX_PC_SWP_01.Par_W_SWP_Jump_01_7",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3148,6 +3778,21 @@
         2050510
       ],
       "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_m.fx_j_pa_splitline_01_ad",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
@@ -3193,19 +3838,6 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m_mi_02.fx_m.fx_k_pa_turbpa_01_tr",
-      "logicalPackage": "fx_m_mi_02",
-      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
-      "roles": [
-        "material_parent"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
       "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_d_me_shine_02_14_ad",
       "logicalPackage": "fx_m_mi_02",
       "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
@@ -3216,6 +3848,21 @@
         2050540
       ],
       "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_06d_ad",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
+      ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
@@ -3230,6 +3877,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_e_pa_ap_23_2_tr",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3307,12 +3969,14 @@
       "skillIds": [
         2050190,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_04",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_02",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01"
       ],
@@ -3401,6 +4065,36 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_k_pa_window_crack_01_01_tr",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_m_pa_shine_02_3_ad",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_01_ad",
       "logicalPackage": "fx_m_mi_02",
       "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
@@ -3412,6 +4106,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_02.fx_mi.fx_s_pa_shine_01_1_tr",
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3441,8 +4150,20 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050500
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_07_tr",
+      "logicalPackage": "fx_m_mi_03",
+      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3469,7 +4190,8 @@
       ],
       "skillIds": [
         2050010,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3483,7 +4205,8 @@
       ],
       "skillIds": [
         2050150,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3496,7 +4219,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3523,7 +4247,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3536,7 +4261,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050220
+        2050220,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3563,20 +4289,8 @@
       ],
       "skillIds": [
         2050200,
-        2050540
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr",
-      "logicalPackage": "fx_m_mi_03",
-      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
-      "roles": [
-        "material_parent"
-      ],
-      "skillIds": [
-        2050210
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3603,8 +4317,7 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3641,6 +4354,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_21_tr",
+      "logicalPackage": "fx_m_mi_03",
+      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_07_38_tr",
       "logicalPackage": "fx_m_mi_03",
       "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3648,10 +4376,12 @@
         "material"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3663,11 +4393,13 @@
         "material"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3715,6 +4447,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_03.fx_mi.fx_d_pa_shockwave_01_08_tr",
+      "logicalPackage": "fx_m_mi_03",
+      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_03.fx_mi.fx_m_pa_ribbonmaster_01_tr",
       "logicalPackage": "fx_m_mi_03",
       "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
@@ -3737,7 +4484,8 @@
       "skillIds": [
         2050200,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3752,8 +4500,7 @@
       "skillIds": [
         2050010,
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -3826,10 +4573,27 @@
         "material"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_05.fx_m.fx_c_me_energy_04_tr",
+      "logicalPackage": "fx_m_mi_05",
+      "physicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3845,18 +4609,17 @@
         2050010,
         2050150,
         2050200,
-        2050210,
         2050240,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_BS_06.Skill.Par_D_FT_Moving_02",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Dust_3_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Dust_3_2",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_2",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dsut_00_01",
@@ -3876,6 +4639,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Hand_00_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_05.fx_m.fx_c_pa_glitter_01_tr",
+      "logicalPackage": "fx_m_mi_05",
+      "physicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -3976,12 +4754,14 @@
       ],
       "skillIds": [
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_04",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4013,11 +4793,13 @@
         "material"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4032,6 +4814,36 @@
         2050500
       ],
       "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_afterburn_01_101_dt_tr",
+      "logicalPackage": "fx_m_mi_d_00",
+      "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_ball_01_101_ad",
+      "logicalPackage": "fx_m_mi_d_00",
+      "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01"
+      ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
@@ -4096,6 +4908,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_turbulence_01_101_dt_tr",
+      "logicalPackage": "fx_m_mi_d_00",
+      "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_g_00.fx_mi.fx_g_me_field_01_1_tr",
       "logicalPackage": "fx_m_mi_g_00",
       "physicalPackage": "ZHJ4TC4PCK4P64J22HIXEYUX8U.upk",
@@ -4107,6 +4934,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_g_00.fx_mi.fx_g_pa_ninjaflow_01_06_tr",
+      "logicalPackage": "fx_m_mi_g_00",
+      "physicalPackage": "ZHJ4TC4PCK4P64J22HIXEYUX8U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4131,7 +4973,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4152,6 +4995,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_m.fx_j_de_glasshole_01_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_m.fx_j_me_cubesample_01_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4159,7 +5015,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4173,7 +5030,8 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4186,7 +5044,8 @@
         "material_parent"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4252,7 +5111,8 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4273,6 +5133,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_hologramnoise_01_01_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_blacklineaura_01_06_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4281,28 +5156,11 @@
       ],
       "skillIds": [
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_01_tr",
-      "logicalPackage": "fx_m_mi_j_00",
-      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4315,12 +5173,10 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
         2050510
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4348,11 +5204,9 @@
         "material"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4365,28 +5219,11 @@
         "material"
       ],
       "skillIds": [
-        2050010,
-        2050210
+        2050010
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
-        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_13_tr",
-      "logicalPackage": "fx_m_mi_j_00",
-      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4438,6 +5275,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearwave_02_22_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_01_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4453,21 +5305,6 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_03_tr",
-      "logicalPackage": "fx_m_mi_j_00",
-      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4476,12 +5313,12 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_rib_00_01"
       ],
@@ -4501,7 +5338,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
@@ -4510,6 +5348,13 @@
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00",
         "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_05",
         "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hole_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -4545,6 +5390,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_slice_01_01_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_me_spritetransition_01_03_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -4571,6 +5431,36 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_customparticle_01_05_ad",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_customparticle_01_06_ad",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4614,13 +5504,13 @@
         "material"
       ],
       "skillIds": [
-        2050210,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4698,6 +5588,36 @@
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_02_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_03_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4801,11 +5721,25 @@
         "material"
       ],
       "skillIds": [
-        2050150,
-        2050210
+        2050150
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_movedissolve_01_02_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4879,11 +5813,13 @@
       "skillIds": [
         2050190,
         2050200,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1",
@@ -4914,12 +5850,26 @@
         "material"
       ],
       "skillIds": [
-        2050210,
         2050510
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_slice_01_07_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4931,10 +5881,12 @@
         "material"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4950,8 +5902,8 @@
         2050150,
         2050190,
         2050200,
-        2050210,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_Jump_00_1",
@@ -4962,12 +5914,29 @@
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Wp_00",
         "FX_PC_SWP_01.Par_W_SWP_Jump_01_1",
         "FX_PC_SWP_01.Par_W_SWP_Jump_01_7",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_CastCrack_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spritewave_01_43_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_03"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -4983,21 +5952,6 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_trail_01_09_tr",
-      "logicalPackage": "fx_m_mi_j_00",
-      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -5095,6 +6049,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_wingtrail_01_03_tr",
+      "logicalPackage": "fx_m_mi_j_00",
+      "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
@@ -5107,12 +6076,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_VT_RGBNoise_01",
@@ -5153,17 +6122,17 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_ribbonwave_02_01_tr",
+      "sourceAssetPath": "fx_m_mi_j_00.fx_mi.fx_j_simplestep_01_01_tr",
       "logicalPackage": "fx_m_mi_j_00",
       "physicalPackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
       "roles": [
         "material"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1"
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_02"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -5190,10 +6159,27 @@
         "material"
       ],
       "skillIds": [
-        2050010
+        2050010,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Core_3_1"
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Core_3_1",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_k_00.fx_k_pa_shine_02_02_ad_ts",
+      "logicalPackage": "fx_m_mi_k_00",
+      "physicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -5206,8 +6192,7 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5234,6 +6219,19 @@
       ],
       "skillIds": [
         2050510
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_k_00.fx_m.fx_k_pa_ninjaflow_01_tr",
+      "logicalPackage": "fx_m_mi_k_00",
+      "physicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5277,11 +6275,9 @@
         "material"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5361,6 +6357,21 @@
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_slice_01_02_tr",
+      "logicalPackage": "fx_m_mi_k_00",
+      "physicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -5485,7 +6496,8 @@
       "skillIds": [
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5503,7 +6515,8 @@
         2050220,
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5660,9 +6673,11 @@
         "material"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -5709,21 +6724,6 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
-      ],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_me_missiletrail_01_23_tr",
-      "logicalPackage": "fx_m_mi_m_00",
-      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
-      "roles": [
-        "material"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -5784,6 +6784,22 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_6_ad",
+      "logicalPackage": "fx_m_mi_m_00",
+      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -6048,6 +7064,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_me_watertrail_01_46q_tr",
+      "logicalPackage": "fx_m_mi_m_00",
+      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_me_whk_flow_02_24_tr",
       "logicalPackage": "fx_m_mi_m_00",
       "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
@@ -6219,6 +7250,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01-04"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_7_ad",
+      "logicalPackage": "fx_m_mi_m_00",
+      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -6528,6 +7574,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_whkf_shockoflight_spritewave_03",
+      "logicalPackage": "fx_m_mi_m_00",
+      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_m_00.fx_mi.fx_m_whkf_test_me_flow_02_24_tr",
       "logicalPackage": "fx_m_mi_m_00",
       "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
@@ -6805,6 +7866,34 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_o_00.fx_m.fx_o_me_horn_01_tr",
+      "logicalPackage": "fx_m_mi_o_00",
+      "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_o_00.fx_m.fx_o_pa_cd_02_tr",
+      "logicalPackage": "fx_m_mi_o_00",
+      "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_o_00.fx_m.fx_o_pa_circledisort_01_ad",
       "logicalPackage": "fx_m_mi_o_00",
       "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
@@ -6893,13 +7982,11 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -6987,6 +8074,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ap_23_2_tr",
+      "logicalPackage": "fx_m_mi_o_00",
+      "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_circledisort_01_01_ad",
       "logicalPackage": "fx_m_mi_o_00",
       "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
@@ -7039,6 +8141,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_shine_02_22_tr",
+      "logicalPackage": "fx_m_mi_o_00",
+      "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_spritewave_01_29_tr",
       "logicalPackage": "fx_m_mi_o_00",
       "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
@@ -7047,10 +8164,13 @@
       ],
       "skillIds": [
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
         "FX_PC_WHK_02.Par_O_WHK_ExMove_03"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -7097,6 +8217,21 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_flare_05_01_dt_ad",
+      "logicalPackage": "fx_m_mi_r_00",
+      "physicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7207,6 +8342,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_twirl_02_01_dt_ad",
+      "logicalPackage": "fx_m_mi_r_00",
+      "physicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_r_00.fx_mi.fx_r_pa_twirl_03_09_ad",
       "logicalPackage": "fx_m_mi_r_00",
       "physicalPackage": "ZHJ4TC4PCK4PB4J22HIXEYUX7U.upk",
@@ -7254,6 +8404,126 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_m.fx_s_pa_shine_02_ad",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_de_glasshole_01_01_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_08_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_09_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_10_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_11_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_12_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_horn_13_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01_b"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_localcrack_01_01_tr",
       "logicalPackage": "fx_m_mi_s_00",
       "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
@@ -7271,6 +8541,81 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_localcrack_01_02_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_magiccircle_10_1_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_me_space_01_01_ad",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_glasshole_01_02_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_magiccircle_01_09_tr_ts",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr",
       "logicalPackage": "fx_m_mi_s_00",
       "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
@@ -7279,14 +8624,27 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_ringmaster_01_189_ad_ts",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7298,28 +8656,116 @@
         "material"
       ],
       "skillIds": [
-        2050010,
-        2050210
+        2050010
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
-        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+        "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_turbpa_01_3_tr",
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_twirl_05_16_ad",
       "logicalPackage": "fx_m_mi_s_00",
       "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
       "roles": [
         "material"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hole_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_swp_dms_pbr_01",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_swp_dms_pbr_02",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_swp_dms_pbr_03",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_s_swp_dms_pbr_04",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_s_00.fx_mi.fx_swp_instance_clock_01_pbr_tr",
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01_b"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_t_00.fx_mi.fx_t_me_watertrail_01_08_tr",
+      "logicalPackage": "fx_m_mi_t_00",
+      "physicalPackage": "ZHJ4TC4PCK4PP4J22HIXEYUXXU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7516,11 +8962,13 @@
         "material"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00",
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7619,6 +9067,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_me_master_02_243_dt_tr",
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_me_master_06_00_tr",
       "logicalPackage": "fx_m_mi_w_00",
       "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
@@ -7662,10 +9125,12 @@
         "material"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7692,9 +9157,12 @@
         "material"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1"
       ],
@@ -7708,11 +9176,13 @@
         "material"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7739,11 +9209,13 @@
         "material"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7775,6 +9247,36 @@
       "sourceSystems": [
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_graring_01_tr",
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_hole_01_03_ts_tr",
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7816,13 +9318,18 @@
         "material"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_07",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Jump_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7837,12 +9344,16 @@
         2050190,
         2050200,
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Timepause_Body",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_WP_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04"
@@ -7882,17 +9393,17 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_missiletrail_01_34_01_tr",
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_211_dt5_ad",
       "logicalPackage": "fx_m_mi_w_00",
       "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
       "roles": [
         "material"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1"
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7908,6 +9419,36 @@
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp_local"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_ringmaster_01_228_dt_tr",
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_w_00.mi.fx_w_pa_ringmaster_03_02_ad",
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -7935,11 +9476,13 @@
         "material"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_01",
-        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07"
+        "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_07",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8050,6 +9593,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_m_mi_x_00.fx_mi.fx_x_me_shine_01_01_ts_ad",
+      "logicalPackage": "fx_m_mi_x_00",
+      "physicalPackage": "0IK5UD5QDL5QIX5Q33IWM625LI2.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_m_mi_x_00.fx_mi.fx_x_me_trail_15_01_dt_tr",
       "logicalPackage": "fx_m_mi_x_00",
       "physicalPackage": "0IK5UD5QDL5QIX5Q33IWM625LI2.upk",
@@ -8109,6 +9667,21 @@
         "FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01-04"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_m_mi_y_00.fx_mi.fx_y_me_ringmaster_01_10_ts_ad",
+      "logicalPackage": "fx_m_mi_y_00",
+      "physicalPackage": "ZHJ4TC4PCK4PO4J22HIXEYUXQU.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8212,7 +9785,8 @@
         2050220,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8229,7 +9803,8 @@
         2050190,
         2050200,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8257,7 +9832,8 @@
       "skillIds": [
         2050010,
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8270,7 +9846,6 @@
         "material_parent"
       ],
       "skillIds": [
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -8284,8 +9859,20 @@
         "material_parent"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_mastermaterial.fx_mm.fx_mm_extraalpha_01_tr",
+      "logicalPackage": "fx_mastermaterial",
+      "physicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8304,6 +9891,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_mastermaterial.fx_mm.fx_mm_hole_06_tr",
+      "logicalPackage": "fx_mastermaterial",
+      "physicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_mastermaterial.fx_mm.fx_mm_light_01_ad",
       "logicalPackage": "fx_mastermaterial",
       "physicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk",
@@ -8314,7 +9914,6 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050500,
         2050510,
         2050540
@@ -8331,7 +9930,8 @@
       ],
       "skillIds": [
         2050190,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8362,12 +9962,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8423,12 +10023,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_Post.FX_Par.Par_C_ZoomBlur_01",
@@ -8495,6 +10095,49 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_o_w_01.fm_o_line_04",
+      "logicalPackage": "fx_o_w_01",
+      "physicalPackage": "YGI3SP3O93I18GHMPSMJ8L5CB.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_o_w_01.fx_o_pa_master_01_043_ad",
+      "logicalPackage": "fx_o_w_01",
+      "physicalPackage": "YGI3SP3O93I18GHMPSMJ8L5CB.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_q_w_01.fx_m.fx_q_pa_space_01_ad",
+      "logicalPackage": "fx_q_w_01",
+      "physicalPackage": "ZHJ4T4L4TA4P29HVUP0UXGTD3W.upk",
+      "roles": [
+        "material_parent"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_sm_00.fm_a_broken_011",
       "logicalPackage": "fx_sm_00",
       "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
@@ -8502,10 +10145,12 @@
         "mesh"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01"
+        "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8519,13 +10164,14 @@
       "skillIds": [
         2050150,
         2050190,
-        2050210,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1",
         "FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01",
@@ -8713,11 +10359,9 @@
         "mesh"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8736,6 +10380,36 @@
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_00.fm_c_circle_002",
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_00.fm_c_planecrossup_001",
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8772,6 +10446,21 @@
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01",
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_0_1"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_00.fm_d_bendplane_010",
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8830,11 +10519,16 @@
       "skillIds": [
         2050010,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_Core_3_1",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Hole_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -8849,12 +10543,15 @@
       "skillIds": [
         2050220,
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
         "FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Trail_00",
-        "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02"
+        "FX_PC_SWP_02.Par_R_SWP_MomentaryRift_00_02",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8917,12 +10614,14 @@
         "mesh"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00",
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp",
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -8981,9 +10680,11 @@
       "skillIds": [
         2050190,
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_ExMove_02",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_Ember_01"
@@ -8999,9 +10700,11 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_Cast_Ground_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1"
@@ -9062,10 +10765,12 @@
         "mesh"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -9100,6 +10805,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_sm_00.fm_d_hemisphere_017",
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_sm_00.fm_d_plane_002",
       "logicalPackage": "fx_sm_00",
       "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
@@ -9128,11 +10848,13 @@
         2050200,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Impact_01_01",
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01",
         "FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
       ],
@@ -9146,11 +10868,13 @@
         "mesh"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp",
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_Hand",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -9206,6 +10930,21 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_sm_00.fm_e_planetwist_002",
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_sm_00.fm_f_trail002",
       "logicalPackage": "fx_sm_00",
       "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
@@ -9228,9 +10967,11 @@
         "mesh"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_Local_BoxShockWave_01",
@@ -9296,13 +11037,11 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9317,13 +11056,11 @@
       "skillIds": [
         2050010,
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1",
         "FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
@@ -9356,12 +11093,9 @@
       ],
       "skillIds": [
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
@@ -9405,26 +11139,29 @@
         "mesh"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01",
         "FX_PC_SWP_04.Par_M_SWP_VT_Exp_01_04-1"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_sm_00.fm_m_trail_01",
+      "sourceAssetPath": "fx_sm_00.fn_m_helix_005",
       "logicalPackage": "fx_sm_00",
       "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk",
       "roles": [
         "mesh"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1"
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -9468,9 +11205,11 @@
         "mesh"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01",
         "FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9483,11 +11222,9 @@
         "mesh"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
         "FX_PC_SWP_04.Par_M_SWP_TS_Tratil_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9531,10 +11268,28 @@
         "mesh"
       ],
       "skillIds": [
-        2050110
+        2050110,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_05"
+        "FX_PC_SWP_02.Par_R_SWP_DimensionBreak_00_05",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_ClockExp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_02.fm_o_trail_02",
+      "logicalPackage": "fx_sm_02",
+      "physicalPackage": "XFH2RGA2R0EF04YE90QX0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Back_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -9546,10 +11301,12 @@
         "mesh"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [
-        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp"
+        "FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
@@ -9569,6 +11326,36 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_sm_03.fm_g_gear_02",
+      "logicalPackage": "fx_sm_03",
+      "physicalPackage": "XFH2RGA2R0LF04YE903X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_03.fm_j_camplane_high_02",
+      "logicalPackage": "fx_sm_03",
+      "physicalPackage": "XFH2RGA2R0LF04YE903X0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_sm_03.fm_j_cube_01",
       "logicalPackage": "fx_sm_03",
       "physicalPackage": "XFH2RGA2R0LF04YE903X0SMQ.upk",
@@ -9577,14 +11364,13 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_01",
         "FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1",
-        "FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1",
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Atk_01",
         "FX_PC_SWP_05.Par_K_SWP_RiftSlash_atk_00_01"
       ],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9682,6 +11468,36 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_sm_04.fm_s_swp_dms_01",
+      "logicalPackage": "fx_sm_04",
+      "physicalPackage": "XFH2RGA2R0SF04YE90GX0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_sm_04.fm_s_swp_superweapon_01",
+      "logicalPackage": "fx_sm_04",
+      "physicalPackage": "XFH2RGA2R0SF04YE90GX0SMQ.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_00.fx_a_atypical_006",
       "logicalPackage": "fx_tex_00",
       "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
@@ -9702,8 +11518,7 @@
         "texture"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9718,7 +11533,8 @@
       "skillIds": [
         2050200,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9731,7 +11547,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9749,7 +11566,8 @@
         2050200,
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9813,6 +11631,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_00.fx_a_cloud_016",
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_00.fx_a_cloud_021",
       "logicalPackage": "fx_tex_00",
       "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
@@ -9823,7 +11654,8 @@
         2050190,
         2050200,
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9838,7 +11670,8 @@
       "skillIds": [
         2050190,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9855,8 +11688,8 @@
         2050150,
         2050190,
         2050200,
-        2050210,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9882,8 +11715,20 @@
         "texture"
       ],
       "skillIds": [
-        2050200,
-        2050210
+        2050200
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_00.fx_a_fire_004",
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9910,7 +11755,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9927,10 +11773,10 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9946,7 +11792,8 @@
         2050110,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -9994,7 +11841,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10050,7 +11898,21 @@
       ],
       "skillIds": [
         2050200,
-        2050510
+        2050510,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_00.fx_a_ice_006",
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10145,7 +12007,8 @@
         "texture"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10230,7 +12093,7 @@
       ],
       "skillIds": [
         2050010,
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10262,7 +12125,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10281,7 +12145,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10308,19 +12173,6 @@
       ],
       "skillIds": [
         2050500
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_tex_00.fx_b_atypical_018",
-      "logicalPackage": "fx_tex_00",
-      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
-      "roles": [
-        "texture"
-      ],
-      "skillIds": [
-        2050210
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10379,20 +12231,21 @@
         2050190,
         2050200,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_tex_00.fx_bg_fogsheet_cloudtex_01",
+      "sourceAssetPath": "fx_tex_00.fx_bg_fogsheet_flarecolors_01_cl",
       "logicalPackage": "fx_tex_00",
       "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
       "roles": [
         "texture"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10446,8 +12299,7 @@
       "skillIds": [
         2050010,
         2050190,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10462,7 +12314,34 @@
       "skillIds": [
         2050010,
         2050240,
-        2050510
+        2050510,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_01.fx_c_glow_001",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_01.fx_c_ice_003",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10481,6 +12360,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_01.fx_c_line_002_cl",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_01.fx_c_line_004_ycl",
       "logicalPackage": "fx_tex_01",
       "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
@@ -10488,7 +12380,8 @@
         "texture"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10547,6 +12440,32 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_01.fx_c_sand_002",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_01.fx_d_normal_085",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_atypical_002_1_ycl",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -10554,7 +12473,8 @@
         "texture"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10582,7 +12502,8 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10595,7 +12516,7 @@
         "texture"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10627,7 +12548,8 @@
         2050220,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10640,7 +12562,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10655,9 +12578,9 @@
       "skillIds": [
         2050150,
         2050190,
-        2050210,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10697,7 +12620,8 @@
       ],
       "skillIds": [
         2050190,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10736,7 +12660,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10749,7 +12674,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10778,7 +12704,8 @@
         2050190,
         2050200,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10804,7 +12731,8 @@
         "texture"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10817,7 +12745,8 @@
         "texture"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10843,7 +12772,21 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_02.fx_d_atypical_055_3_cl",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10870,8 +12813,7 @@
         "texture"
       ],
       "skillIds": [
-        2050150,
-        2050210
+        2050150
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10890,6 +12832,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_02.fx_d_atypical_060_1_cl",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_atypical_060_cl",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -10898,7 +12853,8 @@
       ],
       "skillIds": [
         2050010,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10938,7 +12894,8 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10951,7 +12908,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10964,7 +12922,8 @@
         "texture"
       ],
       "skillIds": [
-        2050150
+        2050150,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -10990,7 +12949,8 @@
         "texture"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11095,7 +13055,8 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11111,7 +13072,8 @@
         2050190,
         2050200,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11165,7 +13127,8 @@
       "skillIds": [
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11195,7 +13158,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11281,6 +13245,45 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_02.fx_d_fluid_070_cl",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_02.fx_d_fluid_071_cl",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_02.fx_d_fragment_003",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_fragment_005",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -11333,6 +13336,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_02.fx_d_hit_010",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_noise_002",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -11344,7 +13360,6 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050540
@@ -11363,7 +13378,8 @@
         2050190,
         2050200,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11409,12 +13425,12 @@
         2050110,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11431,10 +13447,10 @@
         2050110,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11447,7 +13463,6 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050500
       ],
       "sourceSystems": [],
@@ -11467,6 +13482,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_02.fx_d_noise_020_cl",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_noise_021",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -11480,7 +13508,8 @@
         2050200,
         2050220,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11501,7 +13530,8 @@
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11533,7 +13563,8 @@
       "skillIds": [
         2050190,
         2050200,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11577,7 +13608,8 @@
         2050150,
         2050190,
         2050200,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11609,6 +13641,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_02.fx_d_normal_009",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_02.fx_d_normal_010_5",
       "logicalPackage": "fx_tex_02",
       "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
@@ -11617,6 +13662,19 @@
       ],
       "skillIds": [
         2050500
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_02.fx_d_normal_011_1",
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11682,7 +13740,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11725,7 +13784,8 @@
       "skillIds": [
         2050110,
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11739,6 +13799,19 @@
       ],
       "skillIds": [
         2050200
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_03.fx_e_atypical_008",
+      "logicalPackage": "fx_tex_03",
+      "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11781,7 +13854,8 @@
         2050190,
         2050200,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11836,7 +13910,8 @@
         "texture"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11901,7 +13976,8 @@
         "texture"
       ],
       "skillIds": [
-        2050190
+        2050190,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11915,7 +13991,8 @@
       ],
       "skillIds": [
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11969,7 +14046,8 @@
       ],
       "skillIds": [
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -11988,6 +14066,32 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_03.fx_e_line_008",
+      "logicalPackage": "fx_tex_03",
+      "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_03.fx_e_line_011_1_ycl",
+      "logicalPackage": "fx_tex_03",
+      "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_03.fx_e_noise_001",
       "logicalPackage": "fx_tex_03",
       "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
@@ -11995,7 +14099,6 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050540
       ],
       "sourceSystems": [],
@@ -12011,7 +14114,8 @@
       "skillIds": [
         2050200,
         2050240,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12025,7 +14129,8 @@
       ],
       "skillIds": [
         2050200,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12040,7 +14145,8 @@
       "skillIds": [
         2050010,
         2050190,
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12094,7 +14200,8 @@
       ],
       "skillIds": [
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12179,6 +14286,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_04.fx_f_noise_0191_ycl",
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_04.fx_f_rectangle_001",
       "logicalPackage": "fx_tex_04",
       "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
@@ -12202,7 +14322,6 @@
       "skillIds": [
         2050190,
         2050200,
-        2050210,
         2050500,
         2050510,
         2050540
@@ -12224,6 +14343,58 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_04.fx_f_star_002",
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_04.fx_f_symbol_041",
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_04.fx_f_symbol_042",
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_04.fx_g_rainbowmosaic_01",
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_04.fx_h_atypical_01_1",
       "logicalPackage": "fx_tex_04",
       "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
@@ -12232,8 +14403,7 @@
       ],
       "skillIds": [
         2050190,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12250,7 +14420,8 @@
         2050150,
         2050190,
         2050200,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12278,7 +14449,8 @@
       "skillIds": [
         2050190,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12292,19 +14464,6 @@
       ],
       "skillIds": [
         2050500
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_tex_04.fx_h_trail_01_1",
-      "logicalPackage": "fx_tex_04",
-      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
-      "roles": [
-        "texture"
-      ],
-      "skillIds": [
-        2050210
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12330,8 +14489,7 @@
         "texture"
       ],
       "skillIds": [
-        2050150,
-        2050210
+        2050150
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12358,7 +14516,8 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12372,7 +14531,8 @@
       ],
       "skillIds": [
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12402,7 +14562,8 @@
         2050200,
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12431,7 +14592,8 @@
         "texture"
       ],
       "skillIds": [
-        2050010
+        2050010,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12448,7 +14610,8 @@
         2050190,
         2050200,
         2050240,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12476,7 +14639,8 @@
       ],
       "skillIds": [
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12492,7 +14656,8 @@
         2050110,
         2050190,
         2050200,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12507,8 +14672,8 @@
       "skillIds": [
         2050010,
         2050200,
-        2050210,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12569,14 +14734,14 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_tex_05.fx_k_auraline_04_ycl",
+      "sourceAssetPath": "fx_tex_05.fx_k_auraline_04",
       "logicalPackage": "fx_tex_05",
       "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
       "roles": [
         "texture"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12590,7 +14755,8 @@
       ],
       "skillIds": [
         2050190,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12622,6 +14788,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_05.fx_k_auraline_15",
+      "logicalPackage": "fx_tex_05",
+      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_05.fx_k_auraline_16",
       "logicalPackage": "fx_tex_05",
       "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
@@ -12631,8 +14810,7 @@
       "skillIds": [
         2050010,
         2050190,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12688,7 +14866,6 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -12758,7 +14935,8 @@
       ],
       "skillIds": [
         2050240,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12777,19 +14955,6 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_tex_05.fx_k_smoketile_01",
-      "logicalPackage": "fx_tex_05",
-      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
-      "roles": [
-        "texture"
-      ],
-      "skillIds": [
-        2050210
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
       "sourceAssetPath": "fx_tex_05.fx_k_trail_up_01",
       "logicalPackage": "fx_tex_05",
       "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
@@ -12798,8 +14963,7 @@
       ],
       "skillIds": [
         2050010,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12814,10 +14978,23 @@
       "skillIds": [
         2050150,
         2050200,
-        2050210,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_05.fx_l_spiderline_01",
+      "logicalPackage": "fx_tex_05",
+      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12844,19 +15021,6 @@
       ],
       "skillIds": [
         2050510
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_tex_05.fx_m_atypical_007",
-      "logicalPackage": "fx_tex_05",
-      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
-      "roles": [
-        "texture"
-      ],
-      "skillIds": [
-        2050210
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12896,7 +15060,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -12992,11 +15157,11 @@
         2050010,
         2050190,
         2050200,
-        2050210,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13036,8 +15201,7 @@
         "texture"
       ],
       "skillIds": [
-        2050010,
-        2050210
+        2050010
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13053,7 +15217,8 @@
         2050220,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13081,7 +15246,8 @@
       "skillIds": [
         2050150,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13097,7 +15263,6 @@
         2050010,
         2050190,
         2050200,
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -13113,7 +15278,6 @@
       "skillIds": [
         2050010,
         2050200,
-        2050210,
         2050500
       ],
       "sourceSystems": [],
@@ -13143,7 +15307,8 @@
         2050190,
         2050200,
         2050220,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13172,7 +15337,8 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13226,7 +15392,8 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13240,7 +15407,7 @@
       ],
       "skillIds": [
         2050150,
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13293,7 +15460,6 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -13309,8 +15475,33 @@
       "skillIds": [
         2050010,
         2050200,
-        2050210,
         2050510
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_06.fx_j_auraline_21_ycl",
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_06.fx_j_auraline_22_ycl",
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13354,7 +15545,8 @@
         2050010,
         2050200,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13367,7 +15559,8 @@
         "texture"
       ],
       "skillIds": [
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13384,10 +15577,10 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13401,8 +15594,8 @@
       ],
       "skillIds": [
         2050200,
-        2050210,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13431,7 +15624,8 @@
       "skillIds": [
         2050150,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13448,7 +15642,8 @@
         2050150,
         2050190,
         2050200,
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13488,7 +15683,8 @@
       ],
       "skillIds": [
         2050150,
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13501,9 +15697,9 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050240,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13533,7 +15729,8 @@
         2050200,
         2050240,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13548,6 +15745,19 @@
       "skillIds": [
         2050190,
         2050510
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_06.fx_j_flaredust_01",
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13654,8 +15864,7 @@
       ],
       "skillIds": [
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13669,21 +15878,20 @@
       ],
       "skillIds": [
         2050150,
-        2050200,
-        2050210
+        2050200
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
-      "sourceAssetPath": "fx_tex_06.fx_j_line_08_cl",
+      "sourceAssetPath": "fx_tex_06.fx_j_noise_01",
       "logicalPackage": "fx_tex_06",
       "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
       "roles": [
         "texture"
       ],
       "skillIds": [
-        2050210
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13725,7 +15933,6 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -13747,6 +15954,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_06.fx_j_noise_tile_06",
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_06.fx_j_noise_tile_07",
       "logicalPackage": "fx_tex_06",
       "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
@@ -13755,9 +15975,9 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13787,8 +16007,20 @@
       ],
       "skillIds": [
         2050150,
-        2050210,
         2050540
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_06.fx_j_noise_tile_10",
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13827,7 +16059,8 @@
         "texture"
       ],
       "skillIds": [
-        2050200
+        2050200,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13842,9 +16075,9 @@
       "skillIds": [
         2050150,
         2050200,
-        2050210,
         2050500,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13900,7 +16133,8 @@
         2050190,
         2050200,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13918,12 +16152,12 @@
         2050150,
         2050190,
         2050200,
-        2050210,
         2050220,
         2050240,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -13937,7 +16171,6 @@
       ],
       "skillIds": [
         2050010,
-        2050210,
         2050510
       ],
       "sourceSystems": [],
@@ -13993,9 +16226,9 @@
       "skillIds": [
         2050190,
         2050200,
-        2050210,
         2050510,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14089,9 +16322,9 @@
         "texture"
       ],
       "skillIds": [
-        2050210,
         2050240,
-        2050510
+        2050510,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14198,7 +16431,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14332,7 +16566,8 @@
       "skillIds": [
         2050240,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14384,7 +16619,8 @@
         "texture"
       ],
       "skillIds": [
-        2050500
+        2050500,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14425,7 +16661,8 @@
       "skillIds": [
         2050190,
         2050200,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14478,7 +16715,8 @@
         "texture"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14494,7 +16732,8 @@
         2050190,
         2050240,
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14552,6 +16791,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_high_00.fx_c_glow_006",
+      "logicalPackage": "fx_tex_high_00",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T22H2DJURL.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_high_00.fx_c_glow_007",
       "logicalPackage": "fx_tex_high_00",
       "physicalPackage": "ZHJ4TPSHN4JDK6D4T22H2DJURL.upk",
@@ -14579,7 +16831,8 @@
         2050190,
         2050200,
         2050240,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14597,7 +16850,21 @@
         2050200,
         2050500,
         2050510,
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_high_00.fx_d_cloud_051",
+      "logicalPackage": "fx_tex_high_00",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T22H2DJURL.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14650,7 +16917,21 @@
         "texture"
       ],
       "skillIds": [
-        2050540
+        2050540,
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "fx_tex_high_01.fx_w_swp_magiccircle_01",
+      "logicalPackage": "fx_tex_high_01",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T29H2DJURL.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14761,6 +17042,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_high_03.fx_w_mbd_magicsymbol_02",
+      "logicalPackage": "fx_tex_high_03",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T2NH2DJURL.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_nomipmap_00.fx_d_symbol_160_nomipmap_cl",
       "logicalPackage": "fx_tex_nomipmap_00",
       "physicalPackage": "ZHJ4TPSHN4JJQCKXC0X4T22H2D.upk",
@@ -14774,6 +17068,19 @@
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
     },
     {
+      "sourceAssetPath": "fx_tex_nomipmap_00.fx_d_typical_001_nomipmap_cl",
+      "logicalPackage": "fx_tex_nomipmap_00",
+      "physicalPackage": "ZHJ4TPSHN4JJQCKXC0X4T22H2D.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
       "sourceAssetPath": "fx_tex_nomipmap_00.fx_d_uvturbulence_004",
       "logicalPackage": "fx_tex_nomipmap_00",
       "physicalPackage": "ZHJ4TPSHN4JJQCKXC0X4T22H2D.upk",
@@ -14781,7 +17088,8 @@
         "texture"
       ],
       "skillIds": [
-        2050240
+        2050240,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14808,19 +17116,6 @@
       ],
       "skillIds": [
         2050540
-      ],
-      "sourceSystems": [],
-      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
-    },
-    {
-      "sourceAssetPath": "fx_tex_nomipmap_00.fx_n_trail_001_cl",
-      "logicalPackage": "fx_tex_nomipmap_00",
-      "physicalPackage": "ZHJ4TPSHN4JJQCKXC0X4T22H2D.upk",
-      "roles": [
-        "texture"
-      ],
-      "skillIds": [
-        2050210
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
@@ -14874,10 +17169,472 @@
       ],
       "skillIds": [
         2050500,
-        2050540
+        2050540,
+        2050550
       ],
       "sourceSystems": [],
       "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "pc_dl_av_219a.tex.pc_dl_av_219a_paning",
+      "logicalPackage": "pc_dl_av_219a",
+      "physicalPackage": "VC2NJ32NY12NE7RYF8LEHM7E.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00-1.mesh.sk_swp_dmc_00-1_sk",
+      "logicalPackage": "sk_swp_dmc_00-1",
+      "physicalPackage": "HX3OH9W3SKBD3D11348G19MHX.upk",
+      "roles": [
+        "mesh"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Clock_01_b"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00.tex.sk_swp_dmc_00_cm",
+      "logicalPackage": "sk_swp_dmc_00",
+      "physicalPackage": "GW2NG8V2RJAC2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00.tex.sk_swp_dmc_00_d",
+      "logicalPackage": "sk_swp_dmc_00",
+      "physicalPackage": "GW2NG8V2RJAC2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00.tex.sk_swp_dmc_00_e",
+      "logicalPackage": "sk_swp_dmc_00",
+      "physicalPackage": "GW2NG8V2RJAC2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00.tex.sk_swp_dmc_00_n",
+      "logicalPackage": "sk_swp_dmc_00",
+      "physicalPackage": "GW2NG8V2RJAC2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_00.tex.sk_swp_dmc_00_orm",
+      "logicalPackage": "sk_swp_dmc_00",
+      "physicalPackage": "GW2NG8V2RJAC2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_01.mat.sk_swp_dmc_01_mi_dead",
+      "logicalPackage": "sk_swp_dmc_01",
+      "physicalPackage": "GW2NG8V2RJAC2C07F8K1E9PY.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_Wp_01"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_01.tex.sk_swp_dmc_01_d",
+      "logicalPackage": "sk_swp_dmc_01",
+      "physicalPackage": "GW2NG8V2RJAC2C07F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dmc_01.tex.sk_swp_dmc_01_n",
+      "logicalPackage": "sk_swp_dmc_01",
+      "physicalPackage": "GW2NG8V2RJAC2C07F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.mat.sk_swp_dms_00_01_mi",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "material"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [
+        "FX_PC_SWP_03.Par_S_SWP_Instance_BG_02"
+      ],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_01_d",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_01_e",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_01_n",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_01_orm",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_02_d",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_02_n",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_02_orm",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_03_d",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_03_e",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_03_n",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_03_orm",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_04_d",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_04_e",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_04_n",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "sk_swp_dms_00.tex.sk_swp_dms_00_04_orm",
+      "logicalPackage": "sk_swp_dms_00",
+      "physicalPackage": "GW2NG8V2RJAG2C00F8K1E9PY.upk",
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "RESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dmc_01_cm",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dmc_01_d",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dmc_01_e",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dmc_01_n",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dmc_01_orm",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dms_00_01_d",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dms_00_01_e",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dms_00_01_n",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
+    },
+    {
+      "sourceAssetPath": "tex.sk_swp_dms_00_01_orm",
+      "logicalPackage": "tex",
+      "physicalPackage": null,
+      "roles": [
+        "texture"
+      ],
+      "skillIds": [
+        2050550
+      ],
+      "sourceSystems": [],
+      "resolutionStatus": "UNRESOLVED_SOURCE_PACKAGE"
     }
   ],
   "unresolvedMaterialBindings": [
@@ -14925,12 +17682,6 @@
     },
     {
       "skillId": 2050200,
-      "sourceMaterialPath": "enginematerials.defaultparticle",
-      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
-      "candidateCount": 0
-    },
-    {
-      "skillId": 2050210,
       "sourceMaterialPath": "enginematerials.defaultparticle",
       "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
       "candidateCount": 0
@@ -15000,22 +17751,35 @@
       "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_magiccircle_01_01_tr",
       "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
       "candidateCount": 2
+    },
+    {
+      "skillId": 2050550,
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+      "candidateCount": 0
+    },
+    {
+      "skillId": 2050550,
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ap_23_2_tr",
+      "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
+      "candidateCount": 2
     }
   ],
   "unresolvedLogicalPackages": [
-    "enginematerials"
+    "enginematerials",
+    "tex"
   ],
   "summary": {
     "skillGraphCount": 11,
-    "assetCount": 976,
-    "resolvedSourcePackageCount": 974,
-    "unresolvedSourcePackageCount": 2,
-    "unresolvedMaterialBindingCount": 20,
+    "assetCount": 1158,
+    "resolvedSourcePackageCount": 1147,
+    "unresolvedSourcePackageCount": 11,
+    "unresolvedMaterialBindingCount": 21,
     "roleCounts": {
-      "material": 376,
-      "material_parent": 159,
-      "mesh": 71,
-      "texture": 371
+      "material": 459,
+      "material_parent": 179,
+      "mesh": 85,
+      "texture": 436
     }
   }
 }

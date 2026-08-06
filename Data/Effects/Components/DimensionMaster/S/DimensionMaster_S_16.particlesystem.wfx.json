@@ -1,0 +1,3091 @@
+{
+  "schema": "lostark.effect-component",
+  "version": 1,
+  "componentAssetId": "effect.component.dimensionmaster.s.16",
+  "displayName": "DimensionMaster_S_16.particlesystem.wfx",
+  "componentType": "particleSystem",
+  "source": {
+    "effectAssetId": "effect.dimensionmaster.skill.2050550",
+    "groupId": "fx_pc_swp_03.par_s_swp_instance_hole_01",
+    "sourceNodes": [
+      "fx_pc_swp_03.par_s_swp_instance_hole_01|FX_PC_SWP_03.par_s_swp_instance_hole_01.particlespriteemitter_23",
+      "fx_pc_swp_03.par_s_swp_instance_hole_01|FX_PC_SWP_03.par_s_swp_instance_hole_01.particlespriteemitter_26"
+    ],
+    "sourceElementSha256": "cb4a85ddb9b77720e594314460be47250e7cf2225d8ed3acab28907d13634a93"
+  },
+  "emitters": [
+    {
+      "emitterId": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_23",
+      "elementId": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_23",
+      "sourceElementIndex": 165,
+      "renderer": "sprite",
+      "visible": true,
+      "resourceBindingCount": 3,
+      "moduleCount": 11
+    },
+    {
+      "emitterId": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_26",
+      "elementId": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_26",
+      "sourceElementIndex": 166,
+      "renderer": "mesh",
+      "visible": true,
+      "resourceBindingCount": 3,
+      "moduleCount": 20
+    }
+  ],
+  "document": {
+    "schema": "lostark.effect-authoring",
+    "version": 10,
+    "effectAssetId": "effect.component.dimensionmaster.s.16",
+    "displayName": "DimensionMaster_S_16.particlesystem.wfx",
+    "particleSystem": {
+      "uniformScaleMultiplier": 1.0,
+      "yawOffsetDegrees": 0.0,
+      "directionYawDegrees": 0.0,
+      "initialSpeedMultiplier": 1.0
+    },
+    "modelCues": [],
+    "elements": [
+      {
+        "id": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_23",
+        "displayName": "particlespriteemitter_23",
+        "groupId": "fx_pc_swp_03.par_s_swp_instance_hole_01",
+        "sourceNode": "fx_pc_swp_03.par_s_swp_instance_hole_01|FX_PC_SWP_03.par_s_swp_instance_hole_01.particlespriteemitter_23",
+        "visible": true,
+        "kind": "particle",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_033.dds"
+          },
+          {
+            "slotId": "mask",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_environment_001.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_s_00.fx_mi.fx_s_pa_twirl_05_16_ad",
+          "renderProfile": "additive_two_sided_depth_read"
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              8.0,
+              0.0,
+              1.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.10000000149011612,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.7,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": true
+          },
+          "sprite": {
+            "billboard": true
+          },
+          "decal": {
+            "size": [
+              100.0,
+              0.01
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": false,
+            "endScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 3,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 157,
+            "lifeTimeSeconds": [
+              1.0,
+              1.0
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              100.0,
+              0.01
+            ],
+            "endSize": [
+              0.0,
+              0.0
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          }
+        },
+        "sourceRecipe": {
+          "enabled": true,
+          "rendererShape": "sprite",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 1,
+          "bursts": [
+            {
+              "timeSeconds": 0.0,
+              "countMinimum": 1,
+              "countMaximum": 1
+            }
+          ],
+          "modules": [
+            {
+              "stableId": "FX_PC_SWP_03:export:3496@ref:0",
+              "className": "particlemodulerequired",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulerequired_23",
+              "literals": [
+                {
+                  "propertyPath": "ballowimageflipping",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "bkillondeactivate",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "buselegacyemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "buselocalspace",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "emitterloops",
+                  "kind": "number",
+                  "value": 1.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "material",
+                  "kind": "number",
+                  "value": -314.0
+                },
+                {
+                  "propertyPath": "randomimagetime",
+                  "kind": "number",
+                  "value": 1.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "spawnrate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_LOW_10:export:1981@ref:1",
+              "className": "particlemodulelifetime",
+              "objectPath": "BFX_LOW_10.dust.par_l_dustbust_01.particlemodulelifetime_0",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifetime",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_GST_10:export:6230@ref:2",
+              "className": "particlemodulesize",
+              "objectPath": "FX_PC_GST_10.par_m_sr_aim_background_01.particlemodulesize_32",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startsize",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    10000.0,
+                    10000.0,
+                    0.0,
+                    0.0,
+                    10000.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:1858@ref:3",
+              "className": "particlemodulecolor",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulecolor_31",
+              "literals": [
+                {
+                  "propertyPath": "benabled",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startalpha",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.5,
+                    0.5,
+                    0.5,
+                    0.5
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startcolor",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.8999999761581421,
+                    1.5,
+                    1.5,
+                    0.8999999761581421,
+                    1.0,
+                    1.5,
+                    0.8999999761581421,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_BS_03:export:2024@ref:4",
+              "className": "particlemodulecolor",
+              "objectPath": "FX_BS_03.mark.par_i_talkevent_01.particlemodulecolor_0",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startalpha",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.5,
+                    0.5,
+                    0.5,
+                    0.5
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startcolor",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:1857@ref:5",
+              "className": "particlemodulecolor",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulecolor_16",
+              "literals": [
+                {
+                  "propertyPath": "benabled",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startalpha",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.10000000149011612,
+                    0.10000000149011612,
+                    0.10000000149011612,
+                    0.10000000149011612
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startcolor",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.20000000298023224,
+                    1.5,
+                    1.5,
+                    0.6000000238418579,
+                    0.20000000298023224,
+                    1.5,
+                    0.6000000238418579,
+                    0.20000000298023224
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:2726@ref:6",
+              "className": "particlemoduleparameterdynamic",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemoduleparameterdynamic_17",
+              "literals": [
+                {
+                  "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].paramname",
+                  "kind": "string",
+                  "value": "light_str[1-x]"
+                },
+                {
+                  "propertyPath": "dynamicparams[0].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramname",
+                  "kind": "string",
+                  "value": "distortion_str"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramname",
+                  "kind": "string",
+                  "value": "curvature"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramname",
+                  "kind": "string",
+                  "value": "twirl"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "updateflags",
+                  "kind": "number",
+                  "value": 15.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "dynamicparams[0].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    1.5,
+                    1.5,
+                    1.49751877784729,
+                    1.4898079633712769,
+                    1.4764670133590698,
+                    1.4570952653884888,
+                    1.4312916994094849,
+                    1.3986561298370361,
+                    1.3587875366210938,
+                    1.3112854957580566,
+                    1.255748987197876,
+                    1.1917779445648193,
+                    1.1189711093902588,
+                    1.0369281768798828,
+                    0.9452481269836426,
+                    0.8435308933258057,
+                    0.7313751578330994,
+                    0.6083806157112122,
+                    0.4741465151309967,
+                    0.3282718062400818,
+                    0.17035678029060364,
+                    0.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:2227@ref:7",
+              "className": "particlemodulecolorscaleoverlife",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulecolorscaleoverlife_27",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "alphascaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.055555559694767,
+                    0.111111119389534,
+                    0.1666666716337204,
+                    0.222222238779068,
+                    0.2777777910232544,
+                    0.3333333432674408,
+                    0.3888888955116272,
+                    0.444444477558136,
+                    0.5000000596046448,
+                    0.5555555820465088,
+                    0.6111111640930176,
+                    0.6666666865348816,
+                    0.7222222685813904,
+                    0.7777777910232544,
+                    0.8333333730697632,
+                    0.888888955116272,
+                    0.944444477558136,
+                    0.9999994039535522,
+                    0.5,
+                    0.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "colorscaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 1.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    3.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    3.0,
+                    3.0,
+                    3.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_BS_00:export:7827@ref:8",
+              "className": "particlemodulecolorscaleoverlife",
+              "objectPath": "FX_BS_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "alphascaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "colorscaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_LOW_13:export:4412@ref:9",
+              "className": "particlemodulerotation",
+              "objectPath": "BFX_LOW_13.light.par_d_unseallight_start_01.particlemodulerotation_2",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startrotation",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.30000001192092896,
+                    0.30000001192092896,
+                    0.30000001192092896,
+                    0.30000001192092896
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_HIGH_00:export:45470@ref:10",
+              "className": "particlemodulespawn",
+              "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+              "literals": [
+                {
+                  "propertyPath": "burstlist[0].count",
+                  "kind": "number",
+                  "value": 1.0
+                },
+                {
+                  "propertyPath": "burstlist[0].countlow",
+                  "kind": "number",
+                  "value": -1.0
+                },
+                {
+                  "propertyPath": "burstlist[0].time",
+                  "kind": "number",
+                  "value": 0.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "rate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "ratescale",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "fx_pc_swp_03.par_s_swp_instance_hole_01.particlespriteemitter_26",
+        "displayName": "particlespriteemitter_26",
+        "groupId": "fx_pc_swp_03.par_s_swp_instance_hole_01",
+        "sourceNode": "fx_pc_swp_03.par_s_swp_instance_hole_01|FX_PC_SWP_03.par_s_swp_instance_hole_01.particlespriteemitter_26",
+        "visible": true,
+        "kind": "particle",
+        "resources": [
+          {
+            "slotId": "meshModel",
+            "assetId": "Effect/DimensionMaster/Meshes/fm_d_crack_032.wmodel"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
+          "renderProfile": "alpha_two_sided_depth_read"
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              8.0,
+              0.0,
+              1.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.7,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": true
+          },
+          "decal": {
+            "size": [
+              0.02,
+              0.02
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": false,
+            "endScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 64,
+            "spawnRatePerSecond": 100.0,
+            "burstCount": 0,
+            "randomSeed": 158,
+            "lifeTimeSeconds": [
+              0.6000000238418579,
+              1.5
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              -12.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              -8.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              0.02,
+              0.02
+            ],
+            "endSize": [
+              0.0,
+              0.0
+            ],
+            "localSpace": true,
+            "billboard": false
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          }
+        },
+        "sourceRecipe": {
+          "enabled": true,
+          "rendererShape": "mesh",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 1,
+          "bursts": [],
+          "modules": [
+            {
+              "stableId": "FX_PC_SWP_03:export:3497@ref:0",
+              "className": "particlemodulerequired",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulerequired_26",
+              "literals": [
+                {
+                  "propertyPath": "ballowimageflipping",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "bkilloncompleted",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "bkillondeactivate",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "buselegacyemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "buselocalspace",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "emitterloops",
+                  "kind": "number",
+                  "value": 1.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "material",
+                  "kind": "number",
+                  "value": -210.0
+                },
+                {
+                  "propertyPath": "randomimagetime",
+                  "kind": "number",
+                  "value": 1.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "spawnrate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_BS_04:export:6303@ref:1",
+              "className": "particlemodulelifetime",
+              "objectPath": "FX_BS_04.state.par_k_ghe_arrowstack_exp_01.particlemodulelifetime_14",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifetime",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 2,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 2,
+                  "lookupTableNumElements": 2,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.6000000238418579,
+                    1.5,
+                    0.6000000238418579,
+                    1.5,
+                    0.6000000238418579,
+                    1.5
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:3760@ref:2",
+              "className": "particlemodulesize",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulesize_27",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startsize",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 2.5,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    2.0,
+                    5.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    5.0,
+                    5.0,
+                    5.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_LOW_01:export:9306@ref:3",
+              "className": "particlemodulemeshrotation",
+              "objectPath": "BFX_LOW_01.explosion.par_g_explosion_02.particlemodulemeshrotation_0",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startrotation",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:1856@ref:4",
+              "className": "particlemodulecolor",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulecolor_12",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startalpha",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.20000000298023224,
+                    0.20000000298023224,
+                    0.20000000298023224,
+                    0.20000000298023224
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startcolor",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 3,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 6,
+                  "lookupTableNumElements": 2,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    2.0,
+                    8.0,
+                    6.0,
+                    4.0,
+                    2.0,
+                    0.15000000596046448,
+                    1.5,
+                    8.0,
+                    6.0,
+                    4.0,
+                    2.0,
+                    0.15000000596046448,
+                    1.5,
+                    8.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_BS_04:export:10527@ref:5",
+              "className": "particlemodulesizemultiplylife",
+              "objectPath": "FX_BS_04.state.par_g_gravityarea_02.particlemodulesizemultiplylife_1",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.5,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.972000002861023,
+                    0.972000002861023,
+                    0.972000002861023,
+                    0.8959999680519104,
+                    0.8959999680519104,
+                    0.8959999680519104,
+                    0.784000039100647,
+                    0.784000039100647,
+                    0.784000039100647,
+                    0.6480000019073486,
+                    0.6480000019073486,
+                    0.6480000019073486,
+                    0.5,
+                    0.5,
+                    0.5,
+                    0.35199999809265137,
+                    0.35199999809265137,
+                    0.35199999809265137,
+                    0.21599990129470825,
+                    0.21599990129470825,
+                    0.21599990129470825,
+                    0.10399997234344482,
+                    0.10399997234344482,
+                    0.10399997234344482,
+                    0.0279998779296875,
+                    0.0279998779296875,
+                    0.0279998779296875,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:2228@ref:6",
+              "className": "particlemodulecolorscaleoverlife",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulecolorscaleoverlife_48",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "alphascaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "colorscaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 2.500000238418579,
+                  "lookupTableStartTime": 0.30000001192092896,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    50.0,
+                    200.0,
+                    200.0,
+                    200.0,
+                    200.0,
+                    50.0,
+                    50.0,
+                    50.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_CONFRONT_00:export:1237@ref:7",
+              "className": "particlemodulemeshrotationrate",
+              "objectPath": "FX_PC_CONFRONT_00.par_j_swp_justguard_01.particlemodulemeshrotationrate_10",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startrotationrate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    -0.30000001192092896,
+                    1.0,
+                    0.5,
+                    -0.30000001192092896,
+                    -0.30000001192092896,
+                    1.0,
+                    0.30000001192092896,
+                    0.30000001192092896,
+                    0.5,
+                    -0.30000001192092896,
+                    -0.30000001192092896,
+                    1.0,
+                    0.30000001192092896,
+                    0.30000001192092896
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_00:export:2055@ref:8",
+              "className": "particlemodulemeshrotationratemultiplylife",
+              "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemodulemeshrotationratemultiplylife_15",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.6000000238418579,
+                    6.0,
+                    6.0,
+                    6.0,
+                    6.0,
+                    5.736802577972412,
+                    5.736802577972412,
+                    5.736802577972412,
+                    5.110454559326172,
+                    5.110454559326172,
+                    5.110454559326172,
+                    4.243702411651611,
+                    4.243702411651611,
+                    4.243702411651611,
+                    3.2592928409576416,
+                    3.2592928409576416,
+                    3.2592928409576416,
+                    2.2799715995788574,
+                    2.2799715995788574,
+                    2.2799715995788574,
+                    1.4284849166870117,
+                    1.4284849166870117,
+                    1.4284849166870117,
+                    0.8275789022445679,
+                    0.8275789022445679,
+                    0.8275789022445679,
+                    0.6000000238418579,
+                    0.6000000238418579,
+                    0.6000000238418579
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_00:export:2102@ref:9",
+              "className": "particlemoduleparameterdynamic",
+              "objectPath": "FX_PC_SWP_00.par_j_swp_dimensionthrust_exp_01_01.particlemoduleparameterdynamic_3",
+              "literals": [
+                {
+                  "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].paramname",
+                  "kind": "string",
+                  "value": "uvoffset"
+                },
+                {
+                  "propertyPath": "dynamicparams[0].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "dynamicparams[1].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramname",
+                  "kind": "string",
+                  "value": "vector_screenpos_str"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramname",
+                  "kind": "string",
+                  "value": "dissolve"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramname",
+                  "kind": "string",
+                  "value": "_"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "updateflags",
+                  "kind": "number",
+                  "value": 13.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "dynamicparams[0].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    3.0,
+                    3.0,
+                    3.0,
+                    3.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:4001@ref:10",
+              "className": "particlemodulesizemultiplylife",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulesizemultiplylife_62",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.009999999776482582,
+                    0.019999999552965164,
+                    0.009999999776482582,
+                    0.009999999776482582,
+                    0.019999999552965164,
+                    0.009999999776482582,
+                    0.009999999776482582,
+                    0.019999999552965164
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_BOAG_00_V:export:4067@ref:11",
+              "className": "particlemodulesizemultiplylife",
+              "objectPath": "FX_MN_BOAG_00_V.par_v_boag_stack_buff_e.particlemodulesizemultiplylife_10",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:4002@ref:12",
+              "className": "particlemodulesizemultiplylife",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulesizemultiplylife_64",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.30000001192092896,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    2.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.1666667461395264,
+                    1.1666667461395264,
+                    1.1666667461395264,
+                    1.3333332538604736,
+                    1.3333332538604736,
+                    1.3333332538604736,
+                    1.5,
+                    1.5,
+                    1.5,
+                    1.6666666269302368,
+                    1.6666666269302368,
+                    1.6666666269302368,
+                    1.8333332538604736,
+                    1.8333332538604736,
+                    1.8333332538604736,
+                    2.0,
+                    2.0,
+                    2.0,
+                    1.750000238418579,
+                    1.750000238418579,
+                    1.750000238418579,
+                    1.499999761581421,
+                    1.499999761581421,
+                    1.499999761581421,
+                    1.25,
+                    1.25,
+                    1.25,
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.7499998807907104,
+                    0.7499998807907104,
+                    0.7499998807907104,
+                    0.49999988079071045,
+                    0.49999988079071045,
+                    0.49999988079071045,
+                    0.2499997615814209,
+                    0.2499997615814209,
+                    0.2499997615814209,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:2461@ref:13",
+              "className": "particlemodulelocationprimitivecylinder",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulelocationprimitivecylinder_47",
+              "literals": [
+                {
+                  "propertyPath": "badjustforworldspace",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "heightaxis",
+                  "kind": "string",
+                  "value": "pmlpc_heightaxis_x"
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "surfaceonly",
+                  "kind": "boolean",
+                  "value": true
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startheight",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startlocation",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startradius",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 2,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 2,
+                  "lookupTableNumElements": 2,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    150.0,
+                    1200.0,
+                    150.0,
+                    1200.0,
+                    150.0,
+                    1200.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "velocityscale",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:4327@ref:14",
+              "className": "particlemodulevelocity",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulevelocity_14",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startvelocity",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 3.3333332538604736,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    -1200.0,
+                    0.0,
+                    -800.0,
+                    0.0,
+                    0.0,
+                    -1200.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startvelocityradial",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:182@ref:15",
+              "className": "efparticlemodulevelocityoverlifetime",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.efparticlemodulevelocityoverlifetime_5",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "veloverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.2972488403320312,
+                    5.0,
+                    1.2999999523162842,
+                    1.2999999523162842,
+                    1.2999999523162842,
+                    1.3101506233215332,
+                    1.3101506233215332,
+                    1.3101506233215332,
+                    1.3723721504211426,
+                    1.3723721504211426,
+                    1.3723721504211426,
+                    1.4812101125717163,
+                    1.4812101125717163,
+                    1.4812101125717163,
+                    1.631209373474121,
+                    1.631209373474121,
+                    1.631209373474121,
+                    1.816915512084961,
+                    1.816915512084961,
+                    1.816915512084961,
+                    2.03287935256958,
+                    2.03287935256958,
+                    2.03287935256958,
+                    2.2738828659057617,
+                    2.2738828659057617,
+                    2.2738828659057617,
+                    2.5342345237731934,
+                    2.5342345237731934,
+                    2.5342345237731934,
+                    2.8079793453216553,
+                    2.8079793453216553,
+                    2.8079793453216553,
+                    3.089162588119507,
+                    3.089162588119507,
+                    3.089162588119507,
+                    3.371829032897949,
+                    3.371829032897949,
+                    3.371829032897949,
+                    3.650023937225342,
+                    3.650023937225342,
+                    3.650023937225342,
+                    3.9177920818328857,
+                    3.9177920818328857,
+                    3.9177920818328857,
+                    4.169178009033203,
+                    4.169178009033203,
+                    4.169178009033203,
+                    4.398228168487549,
+                    4.398228168487549,
+                    4.398228168487549,
+                    4.59898567199707,
+                    4.59898567199707,
+                    4.59898567199707,
+                    4.765496730804443,
+                    4.765496730804443,
+                    4.765496730804443,
+                    4.891806602478027,
+                    4.891806602478027,
+                    4.891806602478027,
+                    4.971959590911865,
+                    4.971959590911865,
+                    4.971959590911865,
+                    5.0,
+                    5.0,
+                    5.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_HIGH_01:export:11842@ref:16",
+              "className": "particlemodulelocation",
+              "objectPath": "BFX_HIGH_01.light.par_j_lighthit_002.particlemodulelocation_0",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startlocation",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "BFX_HIGH_00:export:12582@ref:17",
+              "className": "particlemodulecameraoffset",
+              "objectPath": "BFX_HIGH_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "cameraoffset",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    50.0,
+                    50.0,
+                    50.0,
+                    50.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:4258@ref:18",
+              "className": "particlemoduletypedatamesh",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemoduletypedatamesh_5",
+              "literals": [
+                {
+                  "propertyPath": "boverridematerial",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "mesh",
+                  "kind": "number",
+                  "value": -3363.0
+                }
+              ],
+              "distributions": []
+            },
+            {
+              "stableId": "FX_PC_SWP_03:export:4084@ref:19",
+              "className": "particlemodulespawn",
+              "objectPath": "FX_PC_SWP_03.par_s_swp_instance_hole_01.particlemodulespawn_27",
+              "literals": [
+                {
+                  "propertyPath": "burstlist[0].count",
+                  "kind": "number",
+                  "value": 0.0
+                },
+                {
+                  "propertyPath": "burstlist[0].countlow",
+                  "kind": "number",
+                  "value": -1.0
+                },
+                {
+                  "propertyPath": "burstlist[0].time",
+                  "kind": "number",
+                  "value": 0.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "rate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    100.0,
+                    100.0,
+                    100.0,
+                    100.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "ratescale",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    5.0,
+                    5.0,
+                    5.0,
+                    5.0
+                  ],
+                  "keys": []
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

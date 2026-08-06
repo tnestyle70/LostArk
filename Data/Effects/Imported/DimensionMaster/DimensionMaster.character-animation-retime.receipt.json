@@ -1,0 +1,1555 @@
+{
+  "schema": "lostark.wmodel-animation-retime-receipt",
+  "formatVersion": 1,
+  "sourceContract": "PSA_ANIMINFO_ANIMRATE",
+  "sourcePsa": "C:\\Users\\user\\Desktop\\Resource_LostArk\\01_Extracted\\Character\\Dimensionist\\ActorX\\PC_SWP_M_00\\PC_SWP_M_00\\ani\\pc_swp_m_00_ani.psa",
+  "sourcePsaSha256": "96e79e19d6d5854cdac45bbe130d2a52eb673ff8ac7900006d2ed9d45102ea50",
+  "runtimeWModel": "..\\..\\Client\\Bin\\Resources\\Character\\DimensionMaster\\DimensionMaster_Character.wmodel",
+  "beforeSha256": "a089d11d7e375f1a153b4f71d171914cf427e9e3523dd8ecc0132368d93b1748",
+  "afterSha256": "8bcaa9c8e72778262b428926595c8f3b978e4945d49ad7fb1d534e8ef3a83ef5",
+  "animationCount": 154,
+  "changedAnimationCount": 154,
+  "sourceRateRestorationComplete": true,
+  "clips": [
+    {
+      "index": 1,
+      "runtimeIndex": 0,
+      "sourceClip": "abn_bug_1",
+      "runtimeClip": "pc_sp_m_00_sk_abn_bug_1",
+      "durationTicks": 80.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.6666666666666665
+    },
+    {
+      "index": 2,
+      "runtimeIndex": 1,
+      "sourceClip": "abn_earthquake_1",
+      "runtimeClip": "pc_sp_m_00_sk_abn_earthquake_1",
+      "durationTicks": 90.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 3.0
+    },
+    {
+      "index": 3,
+      "runtimeIndex": 2,
+      "sourceClip": "abn_fear_1",
+      "runtimeClip": "pc_sp_m_00_sk_abn_fear_1",
+      "durationTicks": 88.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.933333333333333
+    },
+    {
+      "index": 4,
+      "runtimeIndex": 3,
+      "sourceClip": "abn_shock_1",
+      "runtimeClip": "pc_sp_m_00_sk_abn_shock_1",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 5,
+      "runtimeIndex": 4,
+      "sourceClip": "abn_stun_1",
+      "runtimeClip": "pc_sp_m_00_sk_abn_stun_1",
+      "durationTicks": 60.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.0
+    },
+    {
+      "index": 6,
+      "runtimeIndex": 5,
+      "sourceClip": "att_battle_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_1_01",
+      "durationTicks": 120.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 4.0
+    },
+    {
+      "index": 7,
+      "runtimeIndex": 6,
+      "sourceClip": "att_battle_1_02",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_1_02",
+      "durationTicks": 45.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5
+    },
+    {
+      "index": 8,
+      "runtimeIndex": 7,
+      "sourceClip": "att_battle_1_03",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_1_03",
+      "durationTicks": 32.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0666667344835112
+    },
+    {
+      "index": 9,
+      "runtimeIndex": 8,
+      "sourceClip": "att_battle_1_04",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_1_04",
+      "durationTicks": 51.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.7
+    },
+    {
+      "index": 10,
+      "runtimeIndex": 9,
+      "sourceClip": "att_battle_compete_1_dmg",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_compete_1_dmg",
+      "durationTicks": 10.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.3333333333333333
+    },
+    {
+      "index": 11,
+      "runtimeIndex": 10,
+      "sourceClip": "att_battle_compete_1_loop",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_compete_1_loop",
+      "durationTicks": 15.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.5
+    },
+    {
+      "index": 12,
+      "runtimeIndex": 11,
+      "sourceClip": "att_battle_compete_1_start",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_compete_1_star",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 13,
+      "runtimeIndex": 12,
+      "sourceClip": "att_battle_compete_1_success",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_compete_1_succ",
+      "durationTicks": 60.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.0
+    },
+    {
+      "index": 14,
+      "runtimeIndex": 13,
+      "sourceClip": "att_battle_guide_1_start",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_guide_1_start",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 15,
+      "runtimeIndex": 14,
+      "sourceClip": "att_battle_guide_1_success",
+      "runtimeClip": "pc_sp_m_00_sk_att_battle_guide_1_succes",
+      "durationTicks": 60.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.0
+    },
+    {
+      "index": 16,
+      "runtimeIndex": 15,
+      "sourceClip": "bound",
+      "runtimeClip": "pc_sp_m_00_sk_bound",
+      "durationTicks": 25.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.8333333333333334
+    },
+    {
+      "index": 17,
+      "runtimeIndex": 16,
+      "sourceClip": "bound_hit_land",
+      "runtimeClip": "pc_sp_m_00_sk_bound_hit_land",
+      "durationTicks": 27.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9
+    },
+    {
+      "index": 18,
+      "runtimeIndex": 17,
+      "sourceClip": "bound_land",
+      "runtimeClip": "pc_sp_m_00_sk_bound_land",
+      "durationTicks": 27.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9
+    },
+    {
+      "index": 19,
+      "runtimeIndex": 18,
+      "sourceClip": "dead_1",
+      "runtimeClip": "pc_sp_m_00_sk_dead_1",
+      "durationTicks": 129.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 4.3000002733866545
+    },
+    {
+      "index": 20,
+      "runtimeIndex": 19,
+      "sourceClip": "dead_1_loop",
+      "runtimeClip": "pc_sp_m_00_sk_dead_1_loop",
+      "durationTicks": 10.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.3333333333333333
+    },
+    {
+      "index": 21,
+      "runtimeIndex": 20,
+      "sourceClip": "dmg_idle_1",
+      "runtimeClip": "pc_sp_m_00_sk_dmg_idle_1",
+      "durationTicks": 1.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.033333335452609726
+    },
+    {
+      "index": 22,
+      "runtimeIndex": 21,
+      "sourceClip": "dmg_idle_2",
+      "runtimeClip": "pc_sp_m_00_sk_dmg_idle_2",
+      "durationTicks": 1.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.033333335452609726
+    },
+    {
+      "index": 23,
+      "runtimeIndex": 22,
+      "sourceClip": "down",
+      "runtimeClip": "pc_sp_m_00_sk_down",
+      "durationTicks": 40.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.3333333333333333
+    },
+    {
+      "index": 25,
+      "runtimeIndex": 23,
+      "sourceClip": "evt1_att_battle_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_evt1_att_battle_1_01",
+      "durationTicks": 120.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 4.0
+    },
+    {
+      "index": 26,
+      "runtimeIndex": 24,
+      "sourceClip": "evt1_att_battle_2_01",
+      "runtimeClip": "pc_sp_m_00_sk_evt1_att_battle_2_01",
+      "durationTicks": 51.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.7
+    },
+    {
+      "index": 27,
+      "runtimeIndex": 25,
+      "sourceClip": "evt1_att_battle_3_01",
+      "runtimeClip": "pc_sp_m_00_sk_evt1_att_battle_3_01",
+      "durationTicks": 40.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.3333333333333333
+    },
+    {
+      "index": 28,
+      "runtimeIndex": 26,
+      "sourceClip": "evt1_sk_dimensionalleap_01",
+      "runtimeClip": "pc_sp_m_00_sk_evt1_sk_dimensionalleap_0",
+      "durationTicks": 12.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4
+    },
+    {
+      "index": 29,
+      "runtimeIndex": 27,
+      "sourceClip": "evt1_sk_dimensionalleap_02",
+      "runtimeClip": "pc_sp_m_00_sk_evt1_sk_dimensionalleap_0",
+      "durationTicks": 9.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.30000001907348756
+    },
+    {
+      "index": 24,
+      "runtimeIndex": 28,
+      "sourceClip": "evt_defence_loop_1",
+      "runtimeClip": "pc_sp_m_00_sk_evt_defence_loop_1",
+      "durationTicks": 44.0,
+      "sourceAnimRate": 28.69565200805664,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5333333421957613
+    },
+    {
+      "index": 30,
+      "runtimeIndex": 29,
+      "sourceClip": "fx_sk_chronorecoil_custom_06",
+      "runtimeClip": "pc_sp_m_00_sk_fx_sk_chronorecoil_custom",
+      "durationTicks": 37.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2333333333333334
+    },
+    {
+      "index": 31,
+      "runtimeIndex": 30,
+      "sourceClip": "fx_sk_tearingsword_custom_5_01",
+      "runtimeClip": "pc_sp_m_00_sk_fx_sk_tearingsword_custom",
+      "durationTicks": 14.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4666666666666667
+    },
+    {
+      "index": 32,
+      "runtimeIndex": 31,
+      "sourceClip": "fx_sk_tearingsword_custom_5_02",
+      "runtimeClip": "pc_sp_m_00_sk_fx_sk_tearingsword_custom",
+      "durationTicks": 65.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.1666668044196324
+    },
+    {
+      "index": 33,
+      "runtimeIndex": 32,
+      "sourceClip": "fx_sk_telekinesisthrust_custom_5_01",
+      "runtimeClip": "pc_sp_m_00_sk_fx_sk_telekinesisthrust_c",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 34,
+      "runtimeIndex": 33,
+      "sourceClip": "fx_sk_telekinesisthrust_custom_5_02",
+      "runtimeClip": "pc_sp_m_00_sk_fx_sk_telekinesisthrust_c",
+      "durationTicks": 38.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2666666666666666
+    },
+    {
+      "index": 35,
+      "runtimeIndex": 34,
+      "sourceClip": "idle_battle_1",
+      "runtimeClip": "pc_sp_m_00_sk_idle_battle_1",
+      "durationTicks": 44.0,
+      "sourceAnimRate": 28.69565200805664,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5333333421957613
+    },
+    {
+      "index": 36,
+      "runtimeIndex": 35,
+      "sourceClip": "knockdown",
+      "runtimeClip": "pc_sp_m_00_sk_knockdown",
+      "durationTicks": 13.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.43333333333333335
+    },
+    {
+      "index": 37,
+      "runtimeIndex": 36,
+      "sourceClip": "knockdown_land",
+      "runtimeClip": "pc_sp_m_00_sk_knockdown_land",
+      "durationTicks": 27.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9
+    },
+    {
+      "index": 38,
+      "runtimeIndex": 37,
+      "sourceClip": "mode_battle",
+      "runtimeClip": "pc_sp_m_00_sk_mode_battle",
+      "durationTicks": 59.0,
+      "sourceAnimRate": 28.54838752746582,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.066666635488162
+    },
+    {
+      "index": 39,
+      "runtimeIndex": 38,
+      "sourceClip": "mode_normal",
+      "runtimeClip": "pc_sp_m_00_sk_mode_normal",
+      "durationTicks": 40.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.3333333333333333
+    },
+    {
+      "index": 0,
+      "runtimeIndex": 39,
+      "sourceClip": "pc_sp_m_shadow_sk",
+      "runtimeClip": "pc_sp_m_00_sk_pc_sp_m_shadow_sk",
+      "durationTicks": 222.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 7.4
+    },
+    {
+      "index": 40,
+      "runtimeIndex": 40,
+      "sourceClip": "resurrect_1",
+      "runtimeClip": "pc_sp_m_00_sk_resurrect_1",
+      "durationTicks": 60.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.0
+    },
+    {
+      "index": 41,
+      "runtimeIndex": 41,
+      "sourceClip": "run_battle_1",
+      "runtimeClip": "pc_sp_m_00_sk_run_battle_1",
+      "durationTicks": 18.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6000000381469751
+    },
+    {
+      "index": 42,
+      "runtimeIndex": 42,
+      "sourceClip": "sk_chronorecoil",
+      "runtimeClip": "pc_sp_m_00_sk_sk_chronorecoil",
+      "durationTicks": 67.0,
+      "sourceAnimRate": 28.71428680419922,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.3333332447665676
+    },
+    {
+      "index": 43,
+      "runtimeIndex": 43,
+      "sourceClip": "sk_chronorecoil_custom_5",
+      "runtimeClip": "pc_sp_m_00_sk_sk_chronorecoil_custom_5",
+      "durationTicks": 73.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.433333333333333
+    },
+    {
+      "index": 44,
+      "runtimeIndex": 44,
+      "sourceClip": "sk_chronorecoil_custom_6",
+      "runtimeClip": "pc_sp_m_00_sk_sk_chronorecoil_custom_6",
+      "durationTicks": 59.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.9666666666666666
+    },
+    {
+      "index": 45,
+      "runtimeIndex": 45,
+      "sourceClip": "sk_dimensionalbreak_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalbreak_01",
+      "durationTicks": 63.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.099999866485604
+    },
+    {
+      "index": 46,
+      "runtimeIndex": 46,
+      "sourceClip": "sk_dimensionalgate_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalgate_01",
+      "durationTicks": 53.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.7666666666666666
+    },
+    {
+      "index": 47,
+      "runtimeIndex": 47,
+      "sourceClip": "sk_dimensionalgate_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalgate_02",
+      "durationTicks": 9.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.30000001907348756
+    },
+    {
+      "index": 48,
+      "runtimeIndex": 48,
+      "sourceClip": "sk_dimensionalgate_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalgate_03",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 49,
+      "runtimeIndex": 49,
+      "sourceClip": "sk_dimensionalgate_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalgate_04",
+      "durationTicks": 29.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9666666666666667
+    },
+    {
+      "index": 147,
+      "runtimeIndex": 50,
+      "sourceClip": "sk_dimensionalgate_05",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalgate_05",
+      "durationTicks": 18.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6000000381469751
+    },
+    {
+      "index": 50,
+      "runtimeIndex": 51,
+      "sourceClip": "sk_dimensionalleap_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_01",
+      "durationTicks": 12.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4
+    },
+    {
+      "index": 51,
+      "runtimeIndex": 52,
+      "sourceClip": "sk_dimensionalleap_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_02",
+      "durationTicks": 9.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.30000001907348756
+    },
+    {
+      "index": 52,
+      "runtimeIndex": 53,
+      "sourceClip": "sk_dimensionalleap_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_03",
+      "durationTicks": 47.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5666667662726572
+    },
+    {
+      "index": 150,
+      "runtimeIndex": 54,
+      "sourceClip": "sk_dimensionalleap_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_04",
+      "durationTicks": 59.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.9666666666666666
+    },
+    {
+      "index": 53,
+      "runtimeIndex": 55,
+      "sourceClip": "sk_dimensionalleap_custom_2",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_custom",
+      "durationTicks": 34.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.1333333333333333
+    },
+    {
+      "index": 151,
+      "runtimeIndex": 56,
+      "sourceClip": "sk_dimensionalleap_custom_2_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionalleap_custom",
+      "durationTicks": 43.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.43333324220446
+    },
+    {
+      "index": 54,
+      "runtimeIndex": 57,
+      "sourceClip": "sk_dimensiondetonate",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensiondetonate",
+      "durationTicks": 33.0,
+      "sourceAnimRate": 28.285715103149414,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.166666632950909
+    },
+    {
+      "index": 55,
+      "runtimeIndex": 58,
+      "sourceClip": "sk_dimensionprison",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionprison",
+      "durationTicks": 131.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 4.366666666666666
+    },
+    {
+      "index": 56,
+      "runtimeIndex": 59,
+      "sourceClip": "sk_dimensionprison_1",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionprison_1",
+      "durationTicks": 61.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.033333333333333
+    },
+    {
+      "index": 57,
+      "runtimeIndex": 60,
+      "sourceClip": "sk_dimensionthrust_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionthrust_01",
+      "durationTicks": 18.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6000000381469751
+    },
+    {
+      "index": 58,
+      "runtimeIndex": 61,
+      "sourceClip": "sk_dimensionthrust_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionthrust_02",
+      "durationTicks": 72.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.4000001525879004
+    },
+    {
+      "index": 59,
+      "runtimeIndex": 62,
+      "sourceClip": "sk_dimensionthrust_1",
+      "runtimeClip": "pc_sp_m_00_sk_sk_dimensionthrust_1",
+      "durationTicks": 59.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.9666666666666666
+    },
+    {
+      "index": 60,
+      "runtimeIndex": 63,
+      "sourceClip": "sk_foldcut",
+      "runtimeClip": "pc_sp_m_00_sk_sk_foldcut",
+      "durationTicks": 70.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.3333331849840047
+    },
+    {
+      "index": 61,
+      "runtimeIndex": 64,
+      "sourceClip": "sk_foldcut_custom_8_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_foldcut_custom_8_01",
+      "durationTicks": 12.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4
+    },
+    {
+      "index": 62,
+      "runtimeIndex": 65,
+      "sourceClip": "sk_foldcut_custom_8_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_foldcut_custom_8_02",
+      "durationTicks": 46.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5333333333333334
+    },
+    {
+      "index": 63,
+      "runtimeIndex": 66,
+      "sourceClip": "sk_foldcut_custom_8_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_foldcut_custom_8_03",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 64,
+      "runtimeIndex": 67,
+      "sourceClip": "sk_gravitypoint_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_01",
+      "durationTicks": 22.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.7333333333333333
+    },
+    {
+      "index": 65,
+      "runtimeIndex": 68,
+      "sourceClip": "sk_gravitypoint_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_02",
+      "durationTicks": 2.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.06666667090521945
+    },
+    {
+      "index": 66,
+      "runtimeIndex": 69,
+      "sourceClip": "sk_gravitypoint_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_03",
+      "durationTicks": 49.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6333333333333333
+    },
+    {
+      "index": 67,
+      "runtimeIndex": 70,
+      "sourceClip": "sk_gravitypoint_custom_5_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_5_",
+      "durationTicks": 50.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6666666666666667
+    },
+    {
+      "index": 68,
+      "runtimeIndex": 71,
+      "sourceClip": "sk_gravitypoint_custom_5_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_5_",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 69,
+      "runtimeIndex": 72,
+      "sourceClip": "sk_gravitypoint_custom_5_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_5_",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 70,
+      "runtimeIndex": 73,
+      "sourceClip": "sk_gravitypoint_custom_6_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_6_",
+      "durationTicks": 22.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.7333333333333333
+    },
+    {
+      "index": 71,
+      "runtimeIndex": 74,
+      "sourceClip": "sk_gravitypoint_custom_6_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_6_",
+      "durationTicks": 12.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4
+    },
+    {
+      "index": 72,
+      "runtimeIndex": 75,
+      "sourceClip": "sk_gravitypoint_custom_6_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_gravitypoint_custom_6_",
+      "durationTicks": 49.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6333333333333333
+    },
+    {
+      "index": 73,
+      "runtimeIndex": 76,
+      "sourceClip": "sk_instance_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_01",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 74,
+      "runtimeIndex": 77,
+      "sourceClip": "sk_instance_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_02",
+      "durationTicks": 18.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6000000381469751
+    },
+    {
+      "index": 75,
+      "runtimeIndex": 78,
+      "sourceClip": "sk_instance_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_03",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 76,
+      "runtimeIndex": 79,
+      "sourceClip": "sk_instance_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_04",
+      "durationTicks": 15.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.5
+    },
+    {
+      "index": 77,
+      "runtimeIndex": 80,
+      "sourceClip": "sk_instance_05",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_05",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 78,
+      "runtimeIndex": 81,
+      "sourceClip": "sk_instance_06",
+      "runtimeClip": "pc_sp_m_00_sk_sk_instance_06",
+      "durationTicks": 59.0,
+      "sourceAnimRate": 28.54838752746582,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.066666635488162
+    },
+    {
+      "index": 79,
+      "runtimeIndex": 82,
+      "sourceClip": "sk_jump_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_jump_01",
+      "durationTicks": 7.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.23333333333333334
+    },
+    {
+      "index": 80,
+      "runtimeIndex": 83,
+      "sourceClip": "sk_jump_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_jump_02",
+      "durationTicks": 1.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.033333335452609726
+    },
+    {
+      "index": 81,
+      "runtimeIndex": 84,
+      "sourceClip": "sk_jump_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_jump_03",
+      "durationTicks": 29.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9666666666666667
+    },
+    {
+      "index": 146,
+      "runtimeIndex": 85,
+      "sourceClip": "sk_jump_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_jump_04",
+      "durationTicks": 37.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2333333333333334
+    },
+    {
+      "index": 82,
+      "runtimeIndex": 86,
+      "sourceClip": "sk_momentaryrift",
+      "runtimeClip": "pc_sp_m_00_sk_sk_momentaryrift",
+      "durationTicks": 50.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6666666666666667
+    },
+    {
+      "index": 83,
+      "runtimeIndex": 87,
+      "sourceClip": "sk_moving_normal_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_moving_normal_1_01",
+      "durationTicks": 7.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.23333333333333334
+    },
+    {
+      "index": 84,
+      "runtimeIndex": 88,
+      "sourceClip": "sk_moving_normal_1_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_moving_normal_1_02",
+      "durationTicks": 1.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.033333335452609726
+    },
+    {
+      "index": 85,
+      "runtimeIndex": 89,
+      "sourceClip": "sk_moving_normal_1_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_moving_normal_1_03",
+      "durationTicks": 29.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9666666666666667
+    },
+    {
+      "index": 145,
+      "runtimeIndex": 90,
+      "sourceClip": "sk_moving_normal_1_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_moving_normal_1_04",
+      "durationTicks": 37.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2333333333333334
+    },
+    {
+      "index": 86,
+      "runtimeIndex": 91,
+      "sourceClip": "sk_nailstrike_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_nailstrike_01",
+      "durationTicks": 42.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.4
+    },
+    {
+      "index": 87,
+      "runtimeIndex": 92,
+      "sourceClip": "sk_nailstrike_01_custom_5",
+      "runtimeClip": "pc_sp_m_00_sk_sk_nailstrike_01_custom_5",
+      "durationTicks": 51.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.7
+    },
+    {
+      "index": 88,
+      "runtimeIndex": 93,
+      "sourceClip": "sk_othertimelineenter",
+      "runtimeClip": "pc_sp_m_00_sk_sk_othertimelineenter",
+      "durationTicks": 49.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6333333333333333
+    },
+    {
+      "index": 89,
+      "runtimeIndex": 94,
+      "sourceClip": "sk_othertimelineleave_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_othertimelineleave_01",
+      "durationTicks": 18.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6000000381469751
+    },
+    {
+      "index": 90,
+      "runtimeIndex": 95,
+      "sourceClip": "sk_othertimelineleave_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_othertimelineleave_02",
+      "durationTicks": 43.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.43333324220446
+    },
+    {
+      "index": 91,
+      "runtimeIndex": 96,
+      "sourceClip": "sk_overslash_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_01",
+      "durationTicks": 19.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.6333333333333333
+    },
+    {
+      "index": 92,
+      "runtimeIndex": 97,
+      "sourceClip": "sk_overslash_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_02",
+      "durationTicks": 45.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5
+    },
+    {
+      "index": 93,
+      "runtimeIndex": 98,
+      "sourceClip": "sk_overslash_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_03",
+      "durationTicks": 45.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5
+    },
+    {
+      "index": 94,
+      "runtimeIndex": 99,
+      "sourceClip": "sk_overslash_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_04",
+      "durationTicks": 45.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5
+    },
+    {
+      "index": 95,
+      "runtimeIndex": 100,
+      "sourceClip": "sk_overslash_05",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_05",
+      "durationTicks": 23.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.7666666666666667
+    },
+    {
+      "index": 96,
+      "runtimeIndex": 101,
+      "sourceClip": "sk_overslash_custom_8_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_custom_8_02",
+      "durationTicks": 24.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.8
+    },
+    {
+      "index": 97,
+      "runtimeIndex": 102,
+      "sourceClip": "sk_overslash_custom_8_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_overslash_custom_8_03",
+      "durationTicks": 54.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.8
+    },
+    {
+      "index": 98,
+      "runtimeIndex": 103,
+      "sourceClip": "sk_phantomthrust_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_phantomthrust_01",
+      "durationTicks": 42.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.4
+    },
+    {
+      "index": 99,
+      "runtimeIndex": 104,
+      "sourceClip": "sk_phantomthrust_custom_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_phantomthrust_custom_1",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 100,
+      "runtimeIndex": 105,
+      "sourceClip": "sk_phantomthrust_custom_1_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_phantomthrust_custom_1",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 101,
+      "runtimeIndex": 106,
+      "sourceClip": "sk_phantomthrust_custom_1_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_phantomthrust_custom_1",
+      "durationTicks": 35.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.1666665924920023
+    },
+    {
+      "index": 102,
+      "runtimeIndex": 107,
+      "sourceClip": "sk_riftslash_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riftslash_01",
+      "durationTicks": 11.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.36666666666666664
+    },
+    {
+      "index": 103,
+      "runtimeIndex": 108,
+      "sourceClip": "sk_riftslash_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riftslash_02",
+      "durationTicks": 47.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5666667662726572
+    },
+    {
+      "index": 104,
+      "runtimeIndex": 109,
+      "sourceClip": "sk_riftslash_custom_8_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riftslash_custom_8_01",
+      "durationTicks": 36.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2000000762939502
+    },
+    {
+      "index": 105,
+      "runtimeIndex": 110,
+      "sourceClip": "sk_riftslash_custom_8_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riftslash_custom_8_02",
+      "durationTicks": 11.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.36666666666666664
+    },
+    {
+      "index": 106,
+      "runtimeIndex": 111,
+      "sourceClip": "sk_riposte_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riposte_01",
+      "durationTicks": 10.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.3333333333333333
+    },
+    {
+      "index": 107,
+      "runtimeIndex": 112,
+      "sourceClip": "sk_riposte_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riposte_02",
+      "durationTicks": 24.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.8
+    },
+    {
+      "index": 108,
+      "runtimeIndex": 113,
+      "sourceClip": "sk_riposte_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riposte_03",
+      "durationTicks": 57.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.9
+    },
+    {
+      "index": 109,
+      "runtimeIndex": 114,
+      "sourceClip": "sk_riposte_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_riposte_04",
+      "durationTicks": 53.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.7666666666666666
+    },
+    {
+      "index": 110,
+      "runtimeIndex": 115,
+      "sourceClip": "sk_standup_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_01",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 111,
+      "runtimeIndex": 116,
+      "sourceClip": "sk_standup_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_02",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 112,
+      "runtimeIndex": 117,
+      "sourceClip": "sk_standup_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_03",
+      "durationTicks": 24.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.8
+    },
+    {
+      "index": 148,
+      "runtimeIndex": 118,
+      "sourceClip": "sk_standup_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_04",
+      "durationTicks": 31.0,
+      "sourceAnimRate": 28.18181800842285,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.1000000067680114
+    },
+    {
+      "index": 113,
+      "runtimeIndex": 119,
+      "sourceClip": "sk_standup_normal_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_normal_1_01",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 114,
+      "runtimeIndex": 120,
+      "sourceClip": "sk_standup_normal_1_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_normal_1_02",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 115,
+      "runtimeIndex": 121,
+      "sourceClip": "sk_standup_normal_1_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_normal_1_03",
+      "durationTicks": 24.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.8
+    },
+    {
+      "index": 149,
+      "runtimeIndex": 122,
+      "sourceClip": "sk_standup_normal_1_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_standup_normal_1_04",
+      "durationTicks": 31.0,
+      "sourceAnimRate": 28.18181800842285,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.1000000067680114
+    },
+    {
+      "index": 116,
+      "runtimeIndex": 123,
+      "sourceClip": "sk_super_instance",
+      "runtimeClip": "pc_sp_m_00_sk_sk_super_instance",
+      "durationTicks": 150.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 5.0
+    },
+    {
+      "index": 117,
+      "runtimeIndex": 124,
+      "sourceClip": "sk_super_timewave",
+      "runtimeClip": "pc_sp_m_00_sk_sk_super_timewave",
+      "durationTicks": 153.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 5.1
+    },
+    {
+      "index": 118,
+      "runtimeIndex": 125,
+      "sourceClip": "sk_tearingsword_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_01",
+      "durationTicks": 14.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4666666666666667
+    },
+    {
+      "index": 119,
+      "runtimeIndex": 126,
+      "sourceClip": "sk_tearingsword_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_02",
+      "durationTicks": 65.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.1666668044196324
+    },
+    {
+      "index": 120,
+      "runtimeIndex": 127,
+      "sourceClip": "sk_tearingsword_custom_4_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 10.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.3333333333333333
+    },
+    {
+      "index": 121,
+      "runtimeIndex": 128,
+      "sourceClip": "sk_tearingsword_custom_4_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 9.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.30000001907348756
+    },
+    {
+      "index": 122,
+      "runtimeIndex": 129,
+      "sourceClip": "sk_tearingsword_custom_4_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 123,
+      "runtimeIndex": 130,
+      "sourceClip": "sk_tearingsword_custom_4_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 124,
+      "runtimeIndex": 131,
+      "sourceClip": "sk_tearingsword_custom_4_05",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 3.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.1
+    },
+    {
+      "index": 125,
+      "runtimeIndex": 132,
+      "sourceClip": "sk_tearingsword_custom_4_06",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 126,
+      "runtimeIndex": 133,
+      "sourceClip": "sk_tearingsword_custom_4_07",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_4_",
+      "durationTicks": 65.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.1666668044196324
+    },
+    {
+      "index": 127,
+      "runtimeIndex": 134,
+      "sourceClip": "sk_tearingsword_custom_5_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_5_",
+      "durationTicks": 14.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.4666666666666667
+    },
+    {
+      "index": 128,
+      "runtimeIndex": 135,
+      "sourceClip": "sk_tearingsword_custom_5_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_5_",
+      "durationTicks": 65.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.1666668044196324
+    },
+    {
+      "index": 129,
+      "runtimeIndex": 136,
+      "sourceClip": "sk_tearingsword_custom_6_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_tearingsword_custom_6_",
+      "durationTicks": 50.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6666666666666667
+    },
+    {
+      "index": 130,
+      "runtimeIndex": 137,
+      "sourceClip": "sk_telekinesisthrust_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_01",
+      "durationTicks": 15.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.5
+    },
+    {
+      "index": 131,
+      "runtimeIndex": 138,
+      "sourceClip": "sk_telekinesisthrust_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_02",
+      "durationTicks": 6.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.2
+    },
+    {
+      "index": 132,
+      "runtimeIndex": 139,
+      "sourceClip": "sk_telekinesisthrust_03",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_03",
+      "durationTicks": 38.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.2666666666666666
+    },
+    {
+      "index": 153,
+      "runtimeIndex": 140,
+      "sourceClip": "sk_telekinesisthrust_04",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_04",
+      "durationTicks": 45.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.5
+    },
+    {
+      "index": 133,
+      "runtimeIndex": 141,
+      "sourceClip": "sk_telekinesisthrust_custom_6",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_cust",
+      "durationTicks": 41.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.3666666666666667
+    },
+    {
+      "index": 152,
+      "runtimeIndex": 142,
+      "sourceClip": "sk_telekinesisthrust_custom_6_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_telekinesisthrust_cust",
+      "durationTicks": 48.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.6
+    },
+    {
+      "index": 134,
+      "runtimeIndex": 143,
+      "sourceClip": "sk_timecollapse",
+      "runtimeClip": "pc_sp_m_00_sk_sk_timecollapse",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 135,
+      "runtimeIndex": 144,
+      "sourceClip": "sk_timewave",
+      "runtimeClip": "pc_sp_m_00_sk_sk_timewave",
+      "durationTicks": 76.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.533333333333333
+    },
+    {
+      "index": 136,
+      "runtimeIndex": 145,
+      "sourceClip": "sk_voidcurse_1_01",
+      "runtimeClip": "pc_sp_m_00_sk_sk_voidcurse_1_01",
+      "durationTicks": 9.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.30000001907348756
+    },
+    {
+      "index": 137,
+      "runtimeIndex": 146,
+      "sourceClip": "sk_voidcurse_1_02",
+      "runtimeClip": "pc_sp_m_00_sk_sk_voidcurse_1_02",
+      "durationTicks": 42.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.4
+    },
+    {
+      "index": 138,
+      "runtimeIndex": 147,
+      "sourceClip": "sk_voidtrigger",
+      "runtimeClip": "pc_sp_m_00_sk_sk_voidtrigger",
+      "durationTicks": 72.0,
+      "sourceAnimRate": 29.999998092651367,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.4000001525879004
+    },
+    {
+      "index": 139,
+      "runtimeIndex": 148,
+      "sourceClip": "sk_voidtrigger_custom_5",
+      "runtimeClip": "pc_sp_m_00_sk_sk_voidtrigger_custom_5",
+      "durationTicks": 86.0,
+      "sourceAnimRate": 30.000001907348633,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.86666648440892
+    },
+    {
+      "index": 140,
+      "runtimeIndex": 149,
+      "sourceClip": "sk_willowrend",
+      "runtimeClip": "pc_sp_m_00_sk_sk_willowrend",
+      "durationTicks": 83.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 2.7666666666666666
+    },
+    {
+      "index": 141,
+      "runtimeIndex": 150,
+      "sourceClip": "sk_willowrend_custom_7",
+      "runtimeClip": "pc_sp_m_00_sk_sk_willowrend_custom_7",
+      "durationTicks": 97.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 3.2333333333333334
+    },
+    {
+      "index": 142,
+      "runtimeIndex": 151,
+      "sourceClip": "standup_1",
+      "runtimeClip": "pc_sp_m_00_sk_standup_1",
+      "durationTicks": 30.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 1.0
+    },
+    {
+      "index": 143,
+      "runtimeIndex": 152,
+      "sourceClip": "twistknockdown",
+      "runtimeClip": "pc_sp_m_00_sk_twistknockdown",
+      "durationTicks": 13.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.43333333333333335
+    },
+    {
+      "index": 144,
+      "runtimeIndex": 153,
+      "sourceClip": "twistknockdown_land",
+      "runtimeClip": "pc_sp_m_00_sk_twistknockdown_land",
+      "durationTicks": 27.0,
+      "sourceAnimRate": 30.0,
+      "previousTicksPerSecond": 24.0,
+      "durationSeconds": 0.9
+    }
+  ]
+}

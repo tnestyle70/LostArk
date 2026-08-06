@@ -693,7 +693,7 @@ def main() -> int:
 
     systems_by_asset: dict[str, dict[str, Any]] = {}
     for event in events:
-        if event["kind"] == "SHAKE":
+        if event["kind"] == "SHAKE" or event["sourceType"] == "Effect":
             event["resolutionStatus"] = "OUT_OF_EFFECT_DOCUMENT"
             continue
         if event["sourceType"] != "PlayParticleEffect" or not event["sourceAsset"]:

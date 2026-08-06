@@ -52,6 +52,59 @@ VectorParameterValues[1] =
         self.assertEqual("fx_mask", document["texture"][0]["value"])
         self.assertEqual(0.5, document["vector"][0]["value"]["g"])
 
+    def test_static_switch_and_material_dump_are_explicit_evidence(self) -> None:
+        document = MODULE.parse_props(
+            """
+StaticSwitchParameters[1] =
+{
+    StaticSwitchParameters[0] =
+    {
+        Value = true
+        ParameterName = usedynamicparam
+    }
+}
+"""
+        )
+        self.assertTrue(document["static_switch"][0]["value"])
+
+        evidence = MODULE.parse_material_dump(
+            """
+BlendMode = BLEND_Additive
+LightingModel = MLM_Unlit
+TwoSided = true
+bUsesDistortion = false
+ReferencedTextures[0] = Texture2D'fx_tex_00.fx_a_noise_002'
+Expressions[0] = 0
+Expressions[1] = MaterialExpressionScalarParameter'power'
+"""
+        )
+        self.assertEqual("BLEND_Additive", evidence["renderState"]["blendMode"])
+        self.assertTrue(evidence["renderState"]["twoSided"])
+        self.assertEqual(
+            ["fx_tex_00.fx_a_noise_002"], evidence["referencedTextures"]
+        )
+        self.assertEqual(2, evidence["expressionCoverage"]["entryCount"])
+        self.assertEqual(1, evidence["expressionCoverage"]["nonNullCount"])
+
+    def test_parent_package_resolves_without_exported_parent_mat(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            material = root / "MaterialInstanceConstant"
+            material.mkdir()
+            (material / "child.props.txt").write_text(
+                "Parent = Material3'fx_parent.fx_material'\n",
+                encoding="utf-8",
+            )
+            candidate = MODULE.build_candidate(
+                "fx_child.fx_mi.child",
+                "child.upk",
+                root,
+                inventory={"fx_parent": "parent.upk"},
+            )
+            self.assertEqual("parent.upk", candidate["parent_source_file"])
+
 
 if __name__ == "__main__":
     unittest.main()

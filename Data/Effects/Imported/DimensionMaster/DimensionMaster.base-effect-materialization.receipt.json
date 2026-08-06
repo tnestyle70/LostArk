@@ -1,0 +1,123 @@
+{
+  "schema": "lostark.dimensionmaster-base-effect-materialization-receipt",
+  "formatVersion": 1,
+  "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
+  "aggregateSkillCount": 11,
+  "comboStageDocumentCount": 4,
+  "runtimeExecutionComplete": false,
+  "documents": [
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.effect.json",
+      "elementCount": 75,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050110",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050110.effect.json",
+      "elementCount": 11,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050150",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050150.effect.json",
+      "elementCount": 37,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050220",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050220.effect.json",
+      "elementCount": 30,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050190",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050190.effect.json",
+      "elementCount": 91,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050240.effect.json",
+      "elementCount": 51,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050550",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050550.effect.json",
+      "elementCount": 209,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050200",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050200.effect.json",
+      "elementCount": 75,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050500.effect.json",
+      "elementCount": 89,
+      "modelCueCount": 1,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050510",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050510.effect.json",
+      "elementCount": 105,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050540.effect.json",
+      "elementCount": 228,
+      "modelCueCount": 0,
+      "role": "AGGREGATE"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba1.effect.json",
+      "elementCount": 18,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_01",
+      "sourceOffsetSeconds": 0.0
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba2.effect.json",
+      "elementCount": 14,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_02",
+      "sourceOffsetSeconds": 4.0
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba3.effect.json",
+      "elementCount": 9,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_03",
+      "sourceOffsetSeconds": 5.5
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
+      "path": "Data\\Effects\\Authored\\effect.dimensionmaster.skill.2050010.ba4.effect.json",
+      "elementCount": 34,
+      "modelCueCount": 0,
+      "role": "COMBO_STAGE",
+      "clip": "pc_sp_m_00_sk_att_battle_1_04",
+      "sourceOffsetSeconds": 6.5667
+    }
+  ]
+}

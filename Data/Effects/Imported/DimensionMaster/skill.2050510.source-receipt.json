@@ -12742,8 +12742,8 @@
   "conversionState": {
     "normalizedSourceGraph": "EXTRACTED",
     "materialInstanceParameterBindings": "PARTIAL",
-    "runtimeElementMapping": "PENDING",
-    "importedEffectDocument": "PENDING"
+    "runtimeElementMapping": "CONVERTED_WITH_UNSUPPORTED_RECEIPT",
+    "importedEffectDocument": "GENERATED"
   },
   "summary": {
     "sourceSystemCount": 14,

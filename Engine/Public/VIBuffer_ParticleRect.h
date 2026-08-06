@@ -10,8 +10,12 @@ struct VTXEFFECT_PARTICLE final
 {
 	float4x4_t World{};
 	float4_t Color = { 1.f, 1.f, 1.f, 1.f };
+	float4_t DynamicParameter{};
+	float4_t UVTransform = { 1.f, 1.f, 0.f, 0.f };
+	float4_t UVTransformNext = { 1.f, 1.f, 0.f, 0.f };
+	float2_t ParticleData{};
 
-	static constexpr uint32_t iNumElements = 7u;
+	static constexpr uint32_t iNumElements = 11u;
 	static constexpr D3D11_INPUT_ELEMENT_DESC Elements[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,
@@ -27,7 +31,15 @@ struct VTXEFFECT_PARTICLE final
 		{ "WORLD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT,
 			1, 48, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
-			1, 64, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
+			1, 64, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "DYNAMIC", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
+			1, 80, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "UVTRANSFORM", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
+			1, 96, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "UVTRANSFORM", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+			1, 112, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		{ "PARTICLEDATA", 0, DXGI_FORMAT_R32G32_FLOAT,
+			1, 128, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
 	};
 };
 

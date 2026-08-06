@@ -29,6 +29,8 @@
     <ClInclude Include="..\Public\ActorCatalog.h" />
     <ClInclude Include="..\Public\CharacterSelectionState.h" />
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
+    <ClInclude Include="..\Public\Effect_ComponentDocument.h" />
+    <ClInclude Include="..\Public\Effect_Distribution.h" />
     <ClInclude Include="..\Public\Effect_MaterialTemplate.h" />
     <ClInclude Include="..\Public\EffectAuthoringTransfer.h" />
     <ClInclude Include="..\Public\Effect_DocumentCodec.h" />
@@ -126,6 +128,7 @@
     <ClCompile Include="..\Private\ActorCatalog.cpp" />
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
+    <ClCompile Include="..\Private\Effect_Distribution.cpp" />
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
@@ -272,6 +275,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\README.md" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050510.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md" />
@@ -299,9 +303,16 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050540.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050550.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050500.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050500.imported.effect.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050510.external-module-closure.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050510.imported.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.element-conversion-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050550.external-module-closure.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050550.imported.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json" />

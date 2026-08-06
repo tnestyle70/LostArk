@@ -3,20 +3,66 @@
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_Distribution.h"
+#include "Effect_Catalog.h"
 #include "Effect_Playback.h"
 #include "PlayerSkillCatalog.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <Windows.h>
 
 namespace
 {
+	uint64_t Calculate_ImportedParticleBudget(
+		const Client::EFFECT_DOCUMENT_DESC& document)
+	{
+		struct SOURCE_EMITTER_BUDGET final
+		{
+			uint32_t iMaxParticles = 0u;
+			bool_t bHasBaseLayer = false;
+		};
+		std::map<std::string, SOURCE_EMITTER_BUDGET> sourceEmitterBudgets;
+		uint64_t particleBudget = 0u;
+		for (const Client::EFFECT_ELEMENT_DESC& element : document.Elements)
+		{
+			if (element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE)
+				continue;
+			particleBudget += element.Detail.Particle.iMaxParticles;
+			if (element.strSourceNode.empty())
+				continue;
+			std::string sourceEmitter = element.strSourceNode;
+			const std::size_t burstMarker = sourceEmitter.rfind("|burst:");
+			const bool_t isBurstLayer = std::string::npos != burstMarker ||
+				std::string::npos != element.strDisplayName.rfind(" Burst ");
+			if (std::string::npos != burstMarker)
+				sourceEmitter.erase(burstMarker);
+			SOURCE_EMITTER_BUDGET& emitterBudget =
+				sourceEmitterBudgets[sourceEmitter];
+			emitterBudget.iMaxParticles = (std::max)(
+				emitterBudget.iMaxParticles,
+				element.Detail.Particle.iMaxParticles);
+			emitterBudget.bHasBaseLayer =
+				emitterBudget.bHasBaseLayer || !isBurstLayer;
+		}
+		for (const auto& entry : sourceEmitterBudgets)
+		{
+			if (!entry.second.bHasBaseLayer)
+				particleBudget += entry.second.iMaxParticles;
+		}
+		return particleBudget;
+	}
+
 	struct TEST_RUNNER final
 	{
 		void Require(const bool_t condition, const char_t* pName)
@@ -389,6 +435,36 @@ namespace
 				owner.asset, owner.characterClass, CPlayerSkillCatalog::Get_Skills(),
 				available, status),
 				"Real Skill Binding Covers Current Class Catalog");
+			if (CHARACTER_CLASS_ID::DIMENSIONMASTER == owner.characterClass)
+			{
+				const auto sBinding = std::find_if(
+					parsed.Bindings.begin(), parsed.Bindings.end(),
+					[](const ANIMATION_SKILL_BINDING& binding)
+					{
+						return 2050550u == binding.iSkillId;
+					});
+				const PLAYER_SKILL_DEFINITION* sSkill =
+					CPlayerSkillCatalog::Find_BySlot(
+						CHARACTER_CLASS_ID::DIMENSIONMASTER, "S");
+				runner.Require(
+					sBinding != parsed.Bindings.end() &&
+					sBinding->Clips == std::vector<std::string>{
+						"pc_sp_m_00_sk_sk_super_instance" } &&
+					nullptr != sSkill && 2050550u == sSkill->iSkillId &&
+					5000u == sSkill->iActionDurationMs,
+					"DimensionMaster S Resolves 2050550 Super Instance At Five Seconds");
+				const auto tBinding = std::find_if(
+					parsed.Bindings.begin(), parsed.Bindings.end(),
+					[](const ANIMATION_SKILL_BINDING& binding)
+					{
+						return 2050510u == binding.iSkillId;
+					});
+				runner.Require(tBinding != parsed.Bindings.end() &&
+					tBinding->Clips == std::vector<std::string>{
+						"pc_sp_m_00_sk_sk_dimensionthrust_01",
+						"pc_sp_m_00_sk_sk_dimensionthrust_02" },
+					"DimensionMaster T Binding Preserves Two Clip Sequence");
+			}
 			total += parsed.Bindings.size();
 		}
 		runner.Require(CPlayerSkillCatalog::Get_Skills().size() == total,
@@ -592,6 +668,961 @@ namespace
 			beforeInvalid == Snapshot_EffectFrame(seeked.Get_Frame()) &&
 			durationBeforeInvalid == seeked.Get_DurationSeconds(),
 			"Effect Playback Rejects Reversed Initial Position Range");
+		invalid = document;
+		invalid.ParticleSystem.fUniformScaleMultiplier = 0.f;
+		runner.Require(!seeked.Stage_Document(invalid, status) &&
+			beforeInvalid == Snapshot_EffectFrame(seeked.Get_Frame()) &&
+			durationBeforeInvalid == seeked.Get_DurationSeconds(),
+			"Effect Playback Rejects Invalid Particle System Without Replacing State");
+
+		EFFECT_DOCUMENT_DESC modifierDocument;
+		modifierDocument.strEffectAssetId = "effect.particle.system.harness";
+		modifierDocument.strDisplayName = "Particle System Harness";
+		EFFECT_ELEMENT_DESC modifierParticle;
+		modifierParticle.strElementId = "particle";
+		modifierParticle.strDisplayName = "Particle";
+		modifierParticle.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		modifierParticle.Detail.Timing.fLifeTimeSeconds = 2.f;
+		modifierParticle.Detail.Particle.iMaxParticles = 1u;
+		modifierParticle.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		modifierParticle.Detail.Particle.iBurstCount = 1u;
+		modifierParticle.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+		modifierParticle.Detail.Particle.vInitialPositionMin = { 1.f, 0.f, 0.f };
+		modifierParticle.Detail.Particle.vInitialPositionMax = { 1.f, 0.f, 0.f };
+		modifierParticle.Detail.Particle.vInitialVelocityMin = { 1.f, 0.f, 0.f };
+		modifierParticle.Detail.Particle.vInitialVelocityMax = { 1.f, 0.f, 0.f };
+		modifierParticle.Detail.Particle.vAcceleration = { 0.f, 0.f, 0.f };
+		modifierParticle.Detail.Particle.vStartSize = { 1.f, 1.f };
+		modifierParticle.Detail.Particle.vEndSize = { 1.f, 1.f };
+		modifierDocument.Elements.push_back(modifierParticle);
+		EFFECT_ELEMENT_DESC unaffectedSprite;
+		unaffectedSprite.strElementId = "sprite";
+		unaffectedSprite.strDisplayName = "Sprite";
+		unaffectedSprite.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		unaffectedSprite.Detail.Timing.fLifeTimeSeconds = 2.f;
+		unaffectedSprite.Detail.Transform.vPosition = { 2.f, 0.f, 0.f };
+		modifierDocument.Elements.push_back(unaffectedSprite);
+
+		CEffectPlayback identitySystem;
+		runner.Require(identitySystem.Stage_Document(modifierDocument, status),
+			"Identity Particle System Stages");
+		identitySystem.Seek(1.f / 60.f, root);
+		const EFFECT_EVALUATED_FRAME identityFrame = identitySystem.Get_Frame();
+		modifierDocument.ParticleSystem.fUniformScaleMultiplier = 2.f;
+		modifierDocument.ParticleSystem.fYawOffsetDegrees = 90.f;
+		modifierDocument.ParticleSystem.fDirectionYawDegrees = 90.f;
+		modifierDocument.ParticleSystem.fInitialSpeedMultiplier = 3.f;
+		CEffectPlayback modifiedSystem;
+		runner.Require(modifiedSystem.Stage_Document(modifierDocument, status),
+			"Modified Particle System Stages");
+		modifiedSystem.Seek(1.f / 60.f, root);
+		const EFFECT_EVALUATED_FRAME modifiedFrame = modifiedSystem.Get_Frame();
+		const bool_t bFrameShape = identityFrame.Particles.size() == 1u &&
+			modifiedFrame.Particles.size() == 1u &&
+			identityFrame.Elements.size() == 1u &&
+			modifiedFrame.Elements.size() == 1u;
+		bool_t bParticleModifierMatches = false;
+		bool_t bNonParticleUnchanged = false;
+		if (bFrameShape)
+		{
+			float3_t velocity{};
+			XMStoreFloat3(&velocity, XMVectorScale(
+				XMVector3TransformNormal(
+					XMVectorSet(1.f, 0.f, 0.f, 0.f),
+					XMMatrixRotationY(XMConvertToRadians(90.f))),
+				3.f));
+			const float3_t position = {
+				1.f + velocity.x / 60.f,
+				velocity.y / 60.f,
+				velocity.z / 60.f };
+			float4x4_t expectedWorld{};
+			XMStoreFloat4x4(&expectedWorld,
+				XMMatrixTranslation(position.x, position.y, position.z) *
+				XMMatrixScaling(2.f, 2.f, 2.f) *
+				XMMatrixRotationY(XMConvertToRadians(90.f)));
+			const float4x4_t& actualWorld = modifiedFrame.Particles.front().World;
+			bParticleModifierMatches =
+				std::abs(actualWorld._41 - expectedWorld._41) < 0.0001f &&
+				std::abs(actualWorld._42 - expectedWorld._42) < 0.0001f &&
+				std::abs(actualWorld._43 - expectedWorld._43) < 0.0001f &&
+				std::abs(actualWorld._11 - expectedWorld._11) < 0.0001f &&
+				std::abs(actualWorld._13 - expectedWorld._13) < 0.0001f;
+			const float4x4_t& identitySprite = identityFrame.Elements.front().World;
+			const float4x4_t& modifiedSprite = modifiedFrame.Elements.front().World;
+			bNonParticleUnchanged =
+				std::abs(identitySprite._41 - modifiedSprite._41) < 0.0001f &&
+				std::abs(identitySprite._42 - modifiedSprite._42) < 0.0001f &&
+				std::abs(identitySprite._43 - modifiedSprite._43) < 0.0001f &&
+				std::abs(identitySprite._11 - modifiedSprite._11) < 0.0001f;
+		}
+		runner.Require(bFrameShape && bParticleModifierMatches,
+			"Particle System Applies Layout Scale Yaw And Emission Direction Speed");
+		runner.Require(bFrameShape && bNonParticleUnchanged,
+			"Particle System Leaves Non Particle Elements Unchanged");
+	}
+
+	void Test_EffectSourceModuleOccurrenceOrder(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		auto distribution = [](const std::string& path,
+			const float3_t& value, const uint32_t components)
+		{
+			EFFECT_DISTRIBUTION_DESC result;
+			result.strPropertyPath = path;
+			result.iComponentCount = components;
+			result.iOperation = 1u;
+			result.vDefaultMinimum = { value.x, value.y, value.z, 0.f };
+			result.vDefaultMaximum = result.vDefaultMinimum;
+			return result;
+		};
+		auto module = [&distribution](const std::string& id,
+			const std::string& className, const std::string& path,
+			const float3_t& value, const uint32_t components)
+		{
+			EFFECT_SOURCE_MODULE_DESC result;
+			result.strStableId = id;
+			result.strClassName = className;
+			result.strObjectPath = "Harness." + id;
+			result.Distributions.push_back(
+				distribution(path, value, components));
+			return result;
+		};
+
+		EFFECT_DOCUMENT_DESC document;
+		document.strEffectAssetId = "effect.module.order.harness";
+		document.strDisplayName = "Module Order Harness";
+		EFFECT_ELEMENT_DESC element;
+		element.strElementId = "source_emitter";
+		element.strDisplayName = "Source Emitter";
+		element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		element.Detail.Timing.fLifeTimeSeconds = 1.f;
+		element.Detail.Particle.iMaxParticles = 1u;
+		element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+		element.SourceRecipe.bEnabled = true;
+		element.SourceRecipe.strRendererShape = "sprite";
+		element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+		element.SourceRecipe.iEmitterLoopCount = 1u;
+		element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		element.SourceRecipe.Modules.push_back(module(
+			"lifetime", "particlemodulelifetime", "lifetime",
+			{ 1.f, 0.f, 0.f }, 1u));
+		const EFFECT_SOURCE_MODULE_DESC accelerationA = module(
+			"acceleration.a", "particlemoduleacceleration", "acceleration",
+			{ 100.f, 0.f, 0.f }, 3u);
+		EFFECT_SOURCE_MODULE_DESC absoluteVelocity = module(
+			"velocity.absolute", "particlemodulevelocityoverlifetime",
+			"veloverlife", { 100.f, 0.f, 0.f }, 3u);
+		EFFECT_SOURCE_LITERAL_DESC absolute;
+		absolute.strPropertyPath = "absolute";
+		absolute.eKind = EFFECT_SOURCE_LITERAL_KIND::BOOLEAN;
+		absolute.bBoolean = true;
+		absoluteVelocity.Literals.push_back(absolute);
+		const EFFECT_SOURCE_MODULE_DESC accelerationB = module(
+			"acceleration.b", "particlemoduleacceleration", "acceleration",
+			{ 100.f, 0.f, 0.f }, 3u);
+		element.SourceRecipe.Modules.push_back(accelerationA);
+		element.SourceRecipe.Modules.push_back(absoluteVelocity);
+		element.SourceRecipe.Modules.push_back(accelerationB);
+		document.Elements.push_back(element);
+
+		float4x4_t root{};
+		XMStoreFloat4x4(&root, XMMatrixIdentity());
+		auto sampleX = [&root](const EFFECT_DOCUMENT_DESC& value)
+		{
+			CEffectPlayback playback;
+			std::string status;
+			if (!playback.Stage_Document(value, status))
+				return -1.f;
+			playback.Seek(1.f / 60.f, root);
+			return playback.Get_Frame().Particles.empty() ? -1.f :
+				playback.Get_Frame().Particles.front().World._41;
+		};
+		const f32_t sourceOrderX = sampleX(document);
+		EFFECT_DOCUMENT_DESC reordered = document;
+		auto& modules = reordered.Elements.front().SourceRecipe.Modules;
+		std::swap(modules[1], modules[2]);
+		const f32_t reorderedX = sampleX(reordered);
+		const f32_t expectedSourceOrder =
+			(1.f + 1.f / 60.f) / 60.f;
+		const f32_t expectedReordered =
+			(1.f + 2.f / 60.f) / 60.f;
+		runner.Require(
+			std::abs(sourceOrderX - expectedSourceOrder) < 0.00001f &&
+			std::abs(reorderedX - expectedReordered) < 0.00001f &&
+			sourceOrderX != reorderedX,
+			"Effect Playback Preserves Source Module Order And Duplicate Occurrences");
+	}
+
+	void Test_EffectExactSourceSemantics(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		auto literalNumber = [](const std::string& path, const f64_t value)
+		{
+			EFFECT_SOURCE_LITERAL_DESC result;
+			result.strPropertyPath = path;
+			result.eKind = EFFECT_SOURCE_LITERAL_KIND::NUMBER;
+			result.fNumber = value;
+			return result;
+		};
+		auto literalString = [](const std::string& path, const std::string& value)
+		{
+			EFFECT_SOURCE_LITERAL_DESC result;
+			result.strPropertyPath = path;
+			result.eKind = EFFECT_SOURCE_LITERAL_KIND::STRING;
+			result.strString = value;
+			return result;
+		};
+		auto distribution = [](const std::string& path,
+			const float4_t& minimum, const float4_t& maximum,
+			const uint32_t components, const uint32_t operation = 1u)
+		{
+			EFFECT_DISTRIBUTION_DESC result;
+			result.strPropertyPath = path;
+			result.iComponentCount = components;
+			result.iOperation = operation;
+			result.vDefaultMinimum = minimum;
+			result.vDefaultMaximum = maximum;
+			return result;
+		};
+		auto sourceElement = [](const std::string& id)
+		{
+			EFFECT_ELEMENT_DESC element;
+			element.strElementId = id;
+			element.strDisplayName = id;
+			element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			element.Detail.Timing.fLifeTimeSeconds = 2.f;
+			element.Detail.Particle.iMaxParticles = 16u;
+			element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+			element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+			element.SourceRecipe.bEnabled = true;
+			element.SourceRecipe.strRendererShape = "sprite";
+			element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+			element.SourceRecipe.iEmitterLoopCount = 1u;
+			return element;
+		};
+		auto lifetime = [&distribution]()
+		{
+			EFFECT_SOURCE_MODULE_DESC module;
+			module.strStableId = "lifetime";
+			module.strClassName = "particlemodulelifetime";
+			module.strObjectPath = "Harness.Lifetime";
+			module.Distributions.push_back(distribution(
+				"lifetime", { 1.f, 0.f, 0.f, 0.f },
+				{ 1.f, 0.f, 0.f, 0.f }, 1u));
+			return module;
+		};
+
+		float4x4_t identity{};
+		XMStoreFloat4x4(&identity, XMMatrixIdentity());
+		std::string status;
+
+		EFFECT_DISTRIBUTION_DESC cookedSquareSize;
+		cookedSquareSize.strPropertyPath = "startsize";
+		cookedSquareSize.iComponentCount = 3u;
+		cookedSquareSize.iOperation = 1u;
+		cookedSquareSize.LookupTable = {
+			0.f, 500.f,
+			500.f, 0.f, 0.f,
+			500.f, 0.f, 0.f
+		};
+		const float4_t squareSize = CEffectDistribution::Evaluate(
+			cookedSquareSize, 0.f, float4_t{});
+		runner.Require(CEffectDistribution::Validate(cookedSquareSize, status) &&
+			std::abs(squareSize.x - 500.f) < 0.0001f &&
+			std::abs(squareSize.y) < 0.0001f &&
+			std::abs(squareSize.z) < 0.0001f,
+			"Effect Cooked Vector Lookup Skips Range Cache And Uses XYZ Stride");
+
+		EFFECT_DISTRIBUTION_DESC cookedRandom;
+		cookedRandom.strPropertyPath = "startvelocity";
+		cookedRandom.iComponentCount = 3u;
+		cookedRandom.iOperation = 2u;
+		cookedRandom.iLookupTableChunkSize = 6u;
+		cookedRandom.fLookupTableTimeScale = 1.f;
+		cookedRandom.LookupTable = {
+			0.f, 20.f,
+			0.f, 2.f, 4.f, 10.f, 12.f, 14.f,
+			2.f, 4.f, 6.f, 12.f, 14.f, 16.f
+		};
+		const float4_t randomMiddle = CEffectDistribution::Evaluate(
+			cookedRandom, 0.5f, float4_t(0.5f, 0.5f, 0.5f, 0.5f));
+		runner.Require(CEffectDistribution::Validate(cookedRandom, status) &&
+			std::abs(randomMiddle.x - 6.f) < 0.0001f &&
+			std::abs(randomMiddle.y - 8.f) < 0.0001f &&
+			std::abs(randomMiddle.z - 10.f) < 0.0001f,
+			"Effect Cooked Random Lookup Interpolates Payload Entries Only");
+		EFFECT_DISTRIBUTION_DESC malformed = cookedSquareSize;
+		malformed.LookupTable.pop_back();
+		runner.Require(!CEffectDistribution::Validate(malformed, status),
+			"Effect Malformed Cooked Lookup Fails Closed");
+		EFFECT_DISTRIBUTION_DESC malformedMetadata = cookedRandom;
+		malformedMetadata.iLookupTableNumElements = 1u;
+		runner.Require(!CEffectDistribution::Validate(
+				malformedMetadata, status),
+			"Effect Cooked Lookup Rejects Noncanonical Element Count");
+
+		const EFFECT_SUBUV_FRAME_DESC subUV =
+			CEffectPlayback::Resolve_SourceSubUVFrame(
+				8u, 4u, 10.5f, false, false, 0.f, true);
+		runner.Require(
+			std::abs(subUV.Current.x - 0.125f) < 0.0001f &&
+			std::abs(subUV.Current.y - 0.25f) < 0.0001f &&
+			std::abs(subUV.Current.z - 0.25f) < 0.0001f &&
+			std::abs(subUV.Current.w - 0.25f) < 0.0001f &&
+			std::abs(subUV.Next.z - 0.375f) < 0.0001f &&
+			std::abs(subUV.Next.w - 0.25f) < 0.0001f &&
+			std::abs(subUV.fBlend - 0.5f) < 0.0001f,
+			"Effect Source SubUV Eight By Four Transform Executes Once");
+
+		EFFECT_DOCUMENT_DESC seededDocument;
+		seededDocument.strEffectAssetId = "effect.seeded.exact.harness";
+		seededDocument.strDisplayName = "Seeded Exact Harness";
+		EFFECT_ELEMENT_DESC seeded = sourceElement("seeded");
+		seeded.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		seeded.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC seededLocation;
+		seededLocation.strStableId = "location.seeded";
+		seededLocation.strClassName = "particlemodulelocation_seeded";
+		seededLocation.strObjectPath = "Harness.LocationSeeded";
+		seededLocation.Literals.push_back(literalNumber(
+			"randomseedinfo.randomseeds[0]", 123));
+		seededLocation.Distributions.push_back(distribution(
+			"startlocation", { 0.f, 0.f, 0.f, 0.f },
+			{ 100.f, 100.f, 100.f, 0.f }, 3u, 2u));
+		seeded.SourceRecipe.Modules.push_back(seededLocation);
+		seededDocument.Elements.push_back(seeded);
+		CEffectPlayback seededPlayback;
+		runner.Require(seededPlayback.Stage_Document(seededDocument, status),
+			"Effect Seeded Source Document Stages");
+		seededPlayback.Seek(1.f / 60.f, identity);
+		uint32_t ueSeed = 123u;
+		auto nextUeFraction = [&ueSeed]()
+		{
+			ueSeed = ueSeed * 196314165u + 907633515u;
+			const uint32_t ueBits = 0x3f800000u | (ueSeed >> 9u);
+			f32_t value = 0.f;
+			std::memcpy(&value, &ueBits, sizeof(value));
+			return value - 1.f;
+		};
+		const float3_t ueFractions = {
+			nextUeFraction(), nextUeFraction(), nextUeFraction()
+		};
+		const bool_t seededExact =
+			seededPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(seededPlayback.Get_Frame().Particles.front().World._41 -
+				ueFractions.x) < 0.00001f &&
+			std::abs(seededPlayback.Get_Frame().Particles.front().World._42 -
+				ueFractions.y) < 0.00001f &&
+			std::abs(seededPlayback.Get_Frame().Particles.front().World._43 -
+				ueFractions.z) < 0.00001f;
+		seededPlayback.Reset();
+		seededPlayback.Seek(1.f / 60.f, identity);
+		runner.Require(seededExact &&
+			std::abs(seededPlayback.Get_Frame().Particles.front().World._41 -
+				ueFractions.x) < 0.00001f,
+			"Effect Seeded Vector Uses UE Axis Random Order And Reset Replays It");
+
+		EFFECT_DOCUMENT_DESC lockedDocument;
+		lockedDocument.strEffectAssetId = "effect.random.lock.exact.harness";
+		lockedDocument.strDisplayName = "Random Lock Exact Harness";
+		EFFECT_ELEMENT_DESC locked = sourceElement("locked");
+		locked.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		locked.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC lockedLocation;
+		lockedLocation.strStableId = "location.locked";
+		lockedLocation.strClassName = "particlemodulelocation_seeded";
+		lockedLocation.strObjectPath = "Harness.LocationLocked";
+		lockedLocation.Literals.push_back(literalNumber(
+			"randomseedinfo.randomseeds[0]", 313));
+		EFFECT_DISTRIBUTION_DESC lockedDistribution;
+		lockedDistribution.strPropertyPath = "startlocation";
+		lockedDistribution.iComponentCount = 3u;
+		lockedDistribution.iOperation = 2u;
+		lockedDistribution.iRandomLockAxes = 4u;
+		lockedDistribution.iLookupTableChunkSize = 6u;
+		lockedDistribution.iLookupTableNumElements = 2u;
+		lockedDistribution.LookupTable = {
+			6.f, 7.f,
+			6.f, 6.f, 6.f, 7.f, 7.f, 7.f
+		};
+		lockedLocation.Distributions.push_back(lockedDistribution);
+		locked.SourceRecipe.Modules.push_back(lockedLocation);
+		lockedDocument.Elements.push_back(locked);
+		CEffectPlayback lockedPlayback;
+		const bool_t lockedStaged =
+			lockedPlayback.Stage_Document(lockedDocument, status);
+		if (lockedStaged)
+			lockedPlayback.Seek(1.f / 60.f, identity);
+		uint32_t lockedSeed = 313u;
+		lockedSeed = lockedSeed * 196314165u + 907633515u;
+		const uint32_t lockedBits = 0x3f800000u | (lockedSeed >> 9u);
+		f32_t lockedFraction = 0.f;
+		std::memcpy(&lockedFraction, &lockedBits, sizeof(lockedFraction));
+		lockedFraction -= 1.f;
+		const f32_t expectedLockedPosition =
+			(6.f + lockedFraction) * 0.01f;
+		const bool_t lockedExact = lockedStaged &&
+			lockedPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(lockedPlayback.Get_Frame().Particles.front().World._41 -
+				expectedLockedPosition) < 0.00001f &&
+			std::abs(lockedPlayback.Get_Frame().Particles.front().World._42 -
+				expectedLockedPosition) < 0.00001f &&
+			std::abs(lockedPlayback.Get_Frame().Particles.front().World._43 -
+				expectedLockedPosition) < 0.00001f;
+		runner.Require(lockedExact,
+			"Effect Raw Type XYZ Lock Reuses First UE Random Fraction");
+
+		EFFECT_DOCUMENT_DESC colorDocument;
+		colorDocument.strEffectAssetId = "effect.color.ownership.harness";
+		colorDocument.strDisplayName = "Source Color Ownership Harness";
+		EFFECT_ELEMENT_DESC colored = sourceElement("colored");
+		colored.Detail.Color.vColorMultiply = { 0.5f, 2.f, 0.25f, 0.5f };
+		colored.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		colored.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC colorModule;
+		colorModule.strStableId = "color.start";
+		colorModule.strClassName = "particlemodulecolor";
+		colorModule.strObjectPath = "Harness.Color";
+		colorModule.Distributions.push_back(distribution(
+			"startcolor", { 2.f, 3.f, 4.f, 0.f },
+			{ 2.f, 3.f, 4.f, 0.f }, 3u));
+		colorModule.Distributions.push_back(distribution(
+			"startalpha", { 0.5f, 0.f, 0.f, 0.f },
+			{ 0.5f, 0.f, 0.f, 0.f }, 1u));
+		colored.SourceRecipe.Modules.push_back(colorModule);
+		colorDocument.Elements.push_back(colored);
+		CEffectPlayback colorPlayback;
+		const bool_t colorStaged =
+			colorPlayback.Stage_Document(colorDocument, status);
+		if (colorStaged)
+			colorPlayback.Seek(1.f / 60.f, identity);
+		const bool_t colorExact = colorStaged &&
+			colorPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(colorPlayback.Get_Frame().Particles.front().Color.x - 1.f) <
+				0.0001f &&
+			std::abs(colorPlayback.Get_Frame().Particles.front().Color.y - 6.f) <
+				0.0001f &&
+			std::abs(colorPlayback.Get_Frame().Particles.front().Color.z - 1.f) <
+				0.0001f &&
+			std::abs(colorPlayback.Get_Frame().Particles.front().Color.w - 0.25f) <
+				0.0001f;
+		runner.Require(colorExact,
+			"Effect Source Color And Detail Override Each Execute Once");
+
+		EFFECT_DOCUMENT_DESC sizeDocument;
+		sizeDocument.strEffectAssetId = "effect.size.exact.harness";
+		sizeDocument.strDisplayName = "Source Size Unit Harness";
+		EFFECT_ELEMENT_DESC sized = sourceElement("sized.mesh");
+		sized.SourceRecipe.strRendererShape = "mesh";
+		sized.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		sized.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC sizeModule;
+		sizeModule.strStableId = "size.start";
+		sizeModule.strClassName = "particlemodulesize";
+		sizeModule.strObjectPath = "Harness.Size";
+		sizeModule.Distributions.push_back(distribution(
+			"startsize", { 100.f, 200.f, 300.f, 0.f },
+			{ 100.f, 200.f, 300.f, 0.f }, 3u));
+		sized.SourceRecipe.Modules.push_back(sizeModule);
+		sized.ResourceBindings.push_back({
+			"meshModel", "Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" });
+		sizeDocument.Elements.push_back(sized);
+		const std::filesystem::path sizeResourceRoot =
+			CProjectDataRoot::Get().parent_path() /
+			L"Client" / L"Bin" / L"Resources";
+		SetEnvironmentVariableW(
+			L"LOSTARK_RESOURCE_ROOT", sizeResourceRoot.c_str());
+		CEffectPlayback sizePlayback;
+		const bool_t sizeStaged = sizePlayback.Stage_Document(sizeDocument, status);
+		if (sizeStaged)
+			sizePlayback.Seek(1.f / 60.f, identity);
+		if (!sizeStaged || sizePlayback.Get_Frame().Particles.size() != 1u ||
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._11 - 1.f) >= 0.0001f ||
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 2.f) >= 0.0001f ||
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 3.f) >= 0.0001f)
+		{
+			std::cout << "[DETAIL] source size stage=" << sizeStaged
+				<< " status=" << status
+				<< " particles=" << sizePlayback.Get_Frame().Particles.size();
+			if (!sizePlayback.Get_Frame().Particles.empty())
+			{
+				const float4x4_t& world =
+					sizePlayback.Get_Frame().Particles.front().World;
+				std::cout << " scale=" << world._11 << ',' << world._22
+					<< ',' << world._33;
+			}
+			std::cout << '\n';
+		}
+		runner.Require(sizeStaged &&
+			sizePlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._11 - 1.f) < 0.0001f &&
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 2.f) < 0.0001f &&
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 3.f) < 0.0001f,
+			"Effect Source Mesh Size Converts UE Units By Project 0.01 Scale");
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+
+		EFFECT_DOCUMENT_DESC spaceDocument;
+		spaceDocument.strEffectAssetId = "effect.space.exact.harness";
+		spaceDocument.strDisplayName = "Space Exact Harness";
+		for (const bool_t local : { true, false })
+		{
+			EFFECT_ELEMENT_DESC element = sourceElement(local ? "local" : "world");
+			element.Detail.Particle.bLocalSpace = local;
+			element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+			element.SourceRecipe.Modules.push_back(lifetime());
+			spaceDocument.Elements.push_back(element);
+		}
+		CEffectPlayback spacePlayback;
+		runner.Require(spacePlayback.Stage_Document(spaceDocument, status),
+			"Effect Local And World Source Document Stages");
+		spacePlayback.Update(1.f / 60.f, identity);
+		float4x4_t moved{};
+		XMStoreFloat4x4(&moved, XMMatrixTranslation(10.f, 0.f, 0.f));
+		spacePlayback.Update(1.f / 60.f, moved);
+		f32_t localX = -1.f;
+		f32_t worldX = -1.f;
+		for (const EFFECT_EVALUATED_PARTICLE& particle :
+			spacePlayback.Get_Frame().Particles)
+		{
+			if (particle.pElement->strElementId == "local") localX = particle.World._41;
+			if (particle.pElement->strElementId == "world") worldX = particle.World._41;
+		}
+		runner.Require(std::abs(localX - 10.f) < 0.0001f &&
+			std::abs(worldX) < 0.0001f,
+			"Effect Local Particles Follow Current Root And World Particles Keep Spawn Root");
+
+		EFFECT_DOCUMENT_DESC boneDocument;
+		boneDocument.strEffectAssetId = "effect.bone.exact.harness";
+		boneDocument.strDisplayName = "Bone Exact Harness";
+		EFFECT_ELEMENT_DESC bone = sourceElement("bone");
+		bone.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		bone.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC boneModule;
+		boneModule.strStableId = "bone.socket";
+		boneModule.strClassName = "particlemodulelocationbonesocket";
+		boneModule.strObjectPath = "Harness.BoneSocket";
+		boneModule.Literals.push_back(literalString(
+			"sourcelocations[0].bonesocketname", "fx_r_hand"));
+		bone.SourceRecipe.Modules.push_back(boneModule);
+		boneDocument.Elements.push_back(bone);
+		CEffectPlayback bonePlayback;
+		runner.Require(bonePlayback.Stage_Document(boneDocument, status),
+			"Effect Bone Socket Source Document Stages");
+		float4x4_t hand{};
+		XMStoreFloat4x4(&hand, XMMatrixTranslation(3.f, 2.f, 1.f));
+		bonePlayback.Set_SourceAnchorWorlds({ { "fx_r_hand", hand } });
+		bonePlayback.Seek(1.f / 60.f, identity);
+		runner.Require(bonePlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(bonePlayback.Get_Frame().Particles.front().World._41 - 3.f) < 0.0001f &&
+			std::abs(bonePlayback.Get_Frame().Particles.front().World._42 - 2.f) < 0.0001f,
+			"Effect Bone Socket Module Consumes Live Source Anchor Matrix");
+
+		EFFECT_DOCUMENT_DESC eventDocument;
+		eventDocument.strEffectAssetId = "effect.event.exact.harness";
+		eventDocument.strDisplayName = "Event Exact Harness";
+		EFFECT_ELEMENT_DESC generator = sourceElement("generator");
+		generator.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		generator.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC eventGenerator;
+		eventGenerator.strStableId = "event.generator";
+		eventGenerator.strClassName = "particlemoduleeventgenerator";
+		eventGenerator.strObjectPath = "Harness.EventGenerator";
+		eventGenerator.Literals.push_back(literalString("events[0].type", "epet_spawn"));
+		eventGenerator.Literals.push_back(literalString("events[0].customname", "aaa"));
+		eventGenerator.Literals.push_back(literalNumber("events[0].frequency", 1));
+		generator.SourceRecipe.Modules.push_back(eventGenerator);
+		eventDocument.Elements.push_back(generator);
+		EFFECT_ELEMENT_DESC receiver = sourceElement("receiver");
+		receiver.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC eventReceiver;
+		eventReceiver.strStableId = "event.receiver";
+		eventReceiver.strClassName = "particlemoduleeventreceiverspawn";
+		eventReceiver.strObjectPath = "Harness.EventReceiver";
+		eventReceiver.Literals.push_back(literalString("eventgeneratortype", "epet_spawn"));
+		eventReceiver.Literals.push_back(literalString("eventname", "aaa"));
+		eventReceiver.Distributions.push_back(distribution(
+			"spawncount", { 2.f, 0.f, 0.f, 0.f },
+			{ 2.f, 0.f, 0.f, 0.f }, 1u));
+		receiver.SourceRecipe.Modules.push_back(eventReceiver);
+		eventDocument.Elements.push_back(receiver);
+		CEffectPlayback eventPlayback;
+		runner.Require(eventPlayback.Stage_Document(eventDocument, status),
+			"Effect Event Source Document Stages");
+		eventPlayback.Seek(1.f / 60.f, identity);
+		const size_t receiverCount = std::count_if(
+			eventPlayback.Get_Frame().Particles.begin(),
+			eventPlayback.Get_Frame().Particles.end(),
+			[](const EFFECT_EVALUATED_PARTICLE& particle)
+			{
+				return particle.pElement->strElementId == "receiver";
+			});
+		runner.Require(receiverCount == 2u,
+			"Effect Spawn Event Routes By Name And Type Into Receiver Spawn Count");
+
+		const std::filesystem::path vectorRoot =
+			std::filesystem::temp_directory_path() /
+			"lostark-effect-vector-field-harness";
+		const std::filesystem::path vectorPath = vectorRoot /
+			"Effect" / "Harness" / "constant.wvectorfield";
+		std::error_code vectorError;
+		std::filesystem::create_directories(vectorPath.parent_path(), vectorError);
+		{
+			std::ofstream output(vectorPath, std::ios::binary | std::ios::trunc);
+			const char magic[4] = { 'W', 'V', 'F', '1' };
+			const uint32_t header[5] = { 1u, 2u, 2u, 2u, 8u };
+			const float3_t sample = { 100.f, 0.f, 0.f };
+			output.write(magic, sizeof(magic));
+			output.write(reinterpret_cast<const char*>(header), sizeof(header));
+			for (uint32_t index = 0u; index < 8u; ++index)
+			{
+				output.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
+			}
+		}
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", vectorRoot.c_str());
+		EFFECT_DOCUMENT_DESC vectorDocument;
+		vectorDocument.strEffectAssetId = "effect.vector.exact.harness";
+		vectorDocument.strDisplayName = "Vector Exact Harness";
+		EFFECT_ELEMENT_DESC vectorElement = sourceElement("vector");
+		vectorElement.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		vectorElement.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC vectorModule;
+		vectorModule.strStableId = "vector.field";
+		vectorModule.strClassName = "particlemodulelocalvectorfield";
+		vectorModule.strObjectPath = "Harness.VectorField";
+		vectorModule.Literals.push_back(literalString(
+			"vectorfield.assetid", "Effect/Harness/constant.wvectorfield"));
+		for (const char axis : { 'x', 'y', 'z' })
+		{
+			vectorModule.Literals.push_back(literalNumber(
+				std::string("relativescale3d.") + axis, 100.0));
+		}
+		vectorModule.Literals.push_back(literalNumber("intensity", 1.0));
+		vectorModule.Literals.push_back(literalNumber("tightness", 1.0));
+		vectorElement.SourceRecipe.Modules.push_back(vectorModule);
+		vectorDocument.Elements.push_back(vectorElement);
+		CEffectPlayback vectorPlayback;
+		const bool_t vectorStaged = !vectorError &&
+			vectorPlayback.Stage_Document(vectorDocument, status);
+		if (vectorStaged)
+			vectorPlayback.Seek(1.f / 60.f, identity);
+		const bool_t vectorExecuted = vectorStaged &&
+			vectorPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(vectorPlayback.Get_Frame().Particles.front().World._41 -
+				(61.f / 3600.f)) < 0.00001f;
+		runner.Require(vectorExecuted,
+			"Effect Local Vector Field Loads Volume And Applies Trilinear Force");
+
+		EFFECT_DOCUMENT_DESC missingVector = vectorDocument;
+		missingVector.strEffectAssetId = "effect.vector.missing.harness";
+		for (EFFECT_SOURCE_LITERAL_DESC& literal :
+			missingVector.Elements.front().SourceRecipe.Modules.back().Literals)
+		{
+			if (literal.strPropertyPath == "vectorfield.assetid")
+				literal.strString = "Effect/Harness/missing.wvectorfield";
+		}
+		runner.Require(
+			!vectorPlayback.Stage_Document(missingVector, status) &&
+			vectorPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(vectorPlayback.Get_Frame().Particles.front().World._41 -
+				(61.f / 3600.f)) < 0.00001f,
+			"Effect Invalid Vector Field Fails Staging And Preserves Commit");
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
+		std::filesystem::remove(vectorPath, vectorError);
+		std::filesystem::remove(vectorPath.parent_path(), vectorError);
+		std::filesystem::remove(vectorPath.parent_path().parent_path(), vectorError);
+		std::filesystem::remove(vectorRoot, vectorError);
+	}
+
+	void Test_DimensionMasterSourceSemanticAssets(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path resourceRoot = repositoryRoot /
+			L"Client" / L"Bin" / L"Resources";
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", resourceRoot.c_str());
+		const uint32_t skillIds[] = {
+			2050010u, 2050110u, 2050150u, 2050190u, 2050200u,
+			2050220u, 2050240u, 2050500u, 2050510u, 2050540u, 2050550u
+		};
+		bool_t bLoadedAndStaged = true;
+		size_t iSeededModules = 0u;
+		size_t iSeedMetadataComplete = 0u;
+		size_t iVectorModules = 0u;
+		size_t iBoundVectorModules = 0u;
+		size_t iBoneSocketModules = 0u;
+		size_t iEventGenerators = 0u;
+		size_t iEventReceivers = 0u;
+		std::set<std::string> vectorAssetIds;
+		std::string status;
+		for (const uint32_t skillId : skillIds)
+		{
+			const std::filesystem::path path = CProjectDataRoot::Resolve(
+				L"Effects/Imported/DimensionMaster/Converted/"
+				L"effect.dimensionmaster.skill." + std::to_wstring(skillId) +
+				L".imported.effect.json");
+			EFFECT_DOCUMENT_DESC document;
+			CEffectPlayback playback;
+			const bool_t loaded = !path.empty() &&
+				CEffectDocumentCodec::Load(path, document, status);
+			const bool_t staged = loaded &&
+				playback.Stage_Document(document, status);
+			bLoadedAndStaged = bLoadedAndStaged && staged;
+			if (!staged)
+			{
+				std::cout << "[DETAIL] DimensionMaster semantic stage " <<
+					skillId << ": " << path.string() << " status=" << status << '\n';
+			}
+			if (!loaded)
+				continue;
+			for (const EFFECT_ELEMENT_DESC& element : document.Elements)
+			{
+				for (const EFFECT_SOURCE_MODULE_DESC& module :
+					element.SourceRecipe.Modules)
+				{
+					if (module.strClassName.ends_with("_seeded"))
+					{
+						++iSeededModules;
+						std::set<std::string> seedFlags;
+						for (const EFFECT_SOURCE_LITERAL_DESC& literal : module.Literals)
+						{
+							if (literal.strPropertyPath.starts_with(
+								"randomseedinfo.b"))
+							{
+								seedFlags.insert(literal.strPropertyPath);
+							}
+						}
+						if (seedFlags.contains(
+							"randomseedinfo.bresetseedonemitterlooping") &&
+							seedFlags.contains(
+								"randomseedinfo.brandomlyselectseedarray") &&
+							seedFlags.contains(
+								"randomseedinfo.bgetseedfrominstance") &&
+							seedFlags.contains(
+								"randomseedinfo.binstanceseedisindex"))
+						{
+							++iSeedMetadataComplete;
+						}
+					}
+					if (module.strClassName == "particlemodulelocationbonesocket")
+						++iBoneSocketModules;
+					if (module.strClassName == "particlemoduleeventgenerator")
+						++iEventGenerators;
+					if (module.strClassName == "particlemoduleeventreceiverspawn")
+						++iEventReceivers;
+					if (module.strClassName != "particlemodulelocalvectorfield")
+						continue;
+					++iVectorModules;
+					for (const EFFECT_SOURCE_LITERAL_DESC& literal : module.Literals)
+					{
+						if (literal.strPropertyPath != "vectorfield.assetid" ||
+							literal.eKind != EFFECT_SOURCE_LITERAL_KIND::STRING)
+						{
+							continue;
+						}
+						const std::filesystem::path resolved =
+							resourceRoot / std::filesystem::path(literal.strString);
+						if (std::filesystem::is_regular_file(resolved))
+							++iBoundVectorModules;
+						vectorAssetIds.insert(literal.strString);
+					}
+				}
+			}
+		}
+		if (!bLoadedAndStaged || iSeededModules != 206u ||
+			iSeedMetadataComplete != iSeededModules ||
+			iBoneSocketModules != 0u || iEventGenerators != 2u ||
+			iEventReceivers != 1u || iVectorModules != 9u ||
+			iBoundVectorModules != iVectorModules || vectorAssetIds.size() != 4u)
+		{
+			std::cout << "[DETAIL] DimensionMaster semantic counts seeded=" <<
+				iSeededModules << " seedComplete=" << iSeedMetadataComplete <<
+				" bone=" << iBoneSocketModules << " eventGenerator=" <<
+				iEventGenerators << " eventReceiver=" << iEventReceivers <<
+				" vector=" << iVectorModules << " vectorBound=" <<
+				iBoundVectorModules << " vectorAssets=" << vectorAssetIds.size() << '\n';
+		}
+		runner.Require(bLoadedAndStaged && iSeededModules == 206u &&
+			iSeedMetadataComplete == iSeededModules &&
+			iBoneSocketModules == 0u && iEventGenerators == 2u &&
+			iEventReceivers == 1u,
+			"DimensionMaster Source Semantic Documents Stage With Exact Metadata");
+		runner.Require(iVectorModules == 9u &&
+			iBoundVectorModules == iVectorModules && vectorAssetIds.size() == 4u,
+			"DimensionMaster Vector Field Occurrences Resolve Four Source Volumes");
+		bool_t bAllEffectsAuthoredStage = true;
+		size_t iAuthoredStageCount = 0u;
+		for (const uint32_t skillId : skillIds)
+		{
+			const std::filesystem::path path = CProjectDataRoot::Resolve(
+				L"Effects/Authored/effect.dimensionmaster.skill." +
+				std::to_wstring(skillId) + L".effect.json");
+			EFFECT_DOCUMENT_DESC document;
+			CEffectPlayback playback;
+			const bool_t staged = !path.empty() &&
+				CEffectDocumentCodec::Load(path, document, status) &&
+				CEffectDocumentCodec::Validate_Drawable(document, status) &&
+				playback.Stage_Document(document, status);
+			bAllEffectsAuthoredStage = bAllEffectsAuthoredStage && staged;
+			if (staged)
+				++iAuthoredStageCount;
+			else
+				std::cout << "[DETAIL] All Effects authored stage " << skillId
+					<< ": " << status << '\n';
+		}
+		runner.Require(bAllEffectsAuthoredStage && iAuthoredStageCount == 11u,
+			"All Effects Stages All Eleven DimensionMaster Authored Documents");
+
+		const std::filesystem::path aPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json");
+		EFFECT_DOCUMENT_DESC aDocument;
+		EFFECT_DOCUMENT_DESC aRoundTrip;
+		const bool_t aLoaded = !aPath.empty() &&
+			CEffectDocumentCodec::Load(aPath, aDocument, status);
+		std::set<std::string> aProfileIds;
+		size_t aParticleCount = 0u;
+		size_t aEnabledProfileCount = 0u;
+		size_t aReconstructedProfileCount = 0u;
+		size_t aSpecializedShaderCount = 0u;
+		size_t aDynamicSemanticElementCount = 0u;
+		size_t aSubUVElementCount = 0u;
+		size_t aSourceModuleOccurrenceCount = 0u;
+		size_t aCookedLookupCount = 0u;
+		size_t aMalformedLookupCount = 0u;
+		size_t aXyzRandomLockCount = 0u;
+		size_t aSourceColorElementCount = 0u;
+		size_t aSourceColorOverrideViolationCount = 0u;
+		size_t aSourceSubUVOverrideViolationCount = 0u;
+		bool_t aEmitter17SizeExact = false;
+		bool_t aEmitter32SizeExact = false;
+		bool_t aEmitter64SizeExact = false;
+		std::set<std::string> aSourceModuleClasses;
+		for (const EFFECT_ELEMENT_DESC& element : aDocument.Elements)
+		{
+			if (element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
+				continue;
+			++aParticleCount;
+			aSourceModuleOccurrenceCount += element.SourceRecipe.Modules.size();
+			bool_t bHasSourceColor = false;
+			bool_t bHasSourceSubUV = false;
+			for (const EFFECT_SOURCE_MODULE_DESC& module :
+				element.SourceRecipe.Modules)
+			{
+				aSourceModuleClasses.insert(module.strClassName);
+				bHasSourceColor = bHasSourceColor ||
+					module.strClassName.starts_with("particlemodulecolor");
+				bHasSourceSubUV = bHasSourceSubUV ||
+					module.strClassName == "particlemodulesubuv";
+				for (const EFFECT_DISTRIBUTION_DESC& distribution :
+					module.Distributions)
+				{
+					if (distribution.iRandomLockAxes == 4u)
+						++aXyzRandomLockCount;
+					if (distribution.LookupTable.empty())
+						continue;
+					++aCookedLookupCount;
+					std::string distributionStatus;
+					if (!CEffectDistribution::Validate(
+							distribution, distributionStatus))
+					{
+						++aMalformedLookupCount;
+					}
+					if (distribution.strPropertyPath != "startsize")
+						continue;
+					const float4_t value = CEffectDistribution::Evaluate(
+						distribution, 0.f, float4_t{});
+					if (element.strElementId.ends_with("particlespriteemitter_17"))
+					{
+						aEmitter17SizeExact = std::abs(value.x - 500.f) < 0.0001f &&
+							std::abs(value.y) < 0.0001f;
+					}
+					else if (element.strElementId.ends_with("particlespriteemitter_32"))
+					{
+						aEmitter32SizeExact = std::abs(value.x - 250.f) < 0.0001f &&
+							std::abs(value.y + 100.f) < 0.0001f;
+					}
+					else if (element.strElementId.ends_with("particlespriteemitter_64"))
+					{
+						aEmitter64SizeExact = std::abs(value.x - 60.f) < 0.0001f &&
+							std::abs(value.y - 180.f) < 0.0001f;
+					}
+				}
+			}
+			if (bHasSourceColor)
+			{
+				++aSourceColorElementCount;
+				const float4_t& multiply = element.Detail.Color.vColorMultiply;
+				if (std::abs(multiply.x - 1.f) >= 0.0001f ||
+					std::abs(multiply.y - 1.f) >= 0.0001f ||
+					std::abs(multiply.z - 1.f) >= 0.0001f ||
+					std::abs(multiply.w - 1.f) >= 0.0001f ||
+					element.Detail.LinearLerp.bColorMultiply)
+				{
+					++aSourceColorOverrideViolationCount;
+				}
+			}
+			if (bHasSourceSubUV &&
+				(element.Detail.UV.bSequence ||
+					element.Detail.UV.iTileColumns != 1 ||
+					element.Detail.UV.iTileRows != 1 ||
+					element.Detail.UV.iTileIndex != 0))
+			{
+				++aSourceSubUVOverrideViolationCount;
+			}
+			const EFFECT_SOURCE_MATERIAL_DESC& source =
+				element.Material.SourceMaterial;
+			if (!source.bEnabled)
+				continue;
+			++aEnabledProfileCount;
+			aProfileIds.insert(source.strProfileId);
+			if (source.eStatus ==
+				EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE)
+			{
+				++aReconstructedProfileCount;
+			}
+			if (source.strRuntimeShaderProfileId !=
+				"effect.ue3.reconstructed-standard.v1")
+			{
+				++aSpecializedShaderCount;
+			}
+			if (std::any_of(source.DynamicParameterSemantics.begin(),
+				source.DynamicParameterSemantics.end(),
+				[](const std::string& semantic)
+				{
+					return semantic != "unbound";
+				}))
+			{
+				++aDynamicSemanticElementCount;
+			}
+			if (source.strSubUVMode != "none")
+				++aSubUVElementCount;
+		}
+		const std::string aSerialized = aLoaded ?
+			CEffectDocumentCodec::Serialize(aDocument) : std::string{};
+		const bool_t aRoundTripped = aLoaded &&
+			CEffectDocumentCodec::Parse(aSerialized, aRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(aRoundTrip) == aSerialized;
+		runner.Require(aLoaded && aDocument.iFormatVersion == 11u &&
+			aDocument.Elements.size() == 51u && aParticleCount == 46u &&
+			aEnabledProfileCount == 46u &&
+			aReconstructedProfileCount == 46u &&
+			aProfileIds.size() == 21u && aSpecializedShaderCount == 14u &&
+			aDynamicSemanticElementCount == 32u &&
+			aSubUVElementCount == 2u &&
+			aSourceModuleOccurrenceCount == 518u &&
+			aSourceModuleClasses.size() == 28u && aRoundTripped,
+			"DimensionMaster A V11 Source Material Profiles Round Trip Losslessly");
+		runner.Require(aCookedLookupCount == 604u &&
+			aMalformedLookupCount == 0u && aEmitter17SizeExact &&
+			aEmitter32SizeExact && aEmitter64SizeExact &&
+			aXyzRandomLockCount == 13u,
+			"DimensionMaster A Cooked Distribution Payloads And Sprite Sizes Are Exact");
+		runner.Require(aSourceColorElementCount == 46u &&
+			aSourceColorOverrideViolationCount == 0u &&
+			aSourceSubUVOverrideViolationCount == 0u,
+			"DimensionMaster A Source Color And SubUV Baselines Execute Once");
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
 	}
 
 	void Test_DimensionMasterImportedPortalDraft(TEST_RUNNER& runner)
@@ -604,10 +1635,13 @@ namespace
 		std::string status;
 		const bool_t loaded = !path.empty() &&
 			CEffectDocumentCodec::Load(path, document, status) &&
-			CEffectDocumentCodec::Validate_Drawable(document, status);
+			CEffectDocumentCodec::Validate(document, status);
 		std::size_t meshParticleCount = 0u;
+		std::size_t sourceRecipeCount = 0u;
 		for (const EFFECT_ELEMENT_DESC& element : document.Elements)
 		{
+			if (element.SourceRecipe.bEnabled)
+				++sourceRecipeCount;
 			if (element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
 				continue;
 			meshParticleCount += std::count_if(
@@ -618,14 +1652,112 @@ namespace
 					return binding.strSlotId == "meshModel";
 				});
 		}
+		const uint64_t particleBudget =
+			Calculate_ImportedParticleBudget(document);
 		if (!loaded)
 		{
 			std::cout << "[DETAIL] DimensionMaster imported portal: "
 				<< path.string() << " status=" << status << '\n';
 		}
-		runner.Require(loaded && document.Elements.size() == 97u &&
-			meshParticleCount >= 28u,
-			"DimensionMaster F Imported Portal Is Drawable With Mesh Particles");
+		runner.Require(loaded && document.Elements.size() == 89u &&
+			sourceRecipeCount == 89u &&
+			meshParticleCount == 28u && particleBudget == 510u,
+			"DimensionMaster F V9 Imported Recipe Preserves Source Emitters");
+		runner.Require(loaded &&
+			CEffectDocumentCodec::Validate_Drawable(document, status),
+			"DimensionMaster F V9 Imported Recipe Is Drawable");
+
+		const std::filesystem::path tPath = CProjectDataRoot::Resolve(
+			L"Effects/Imported/DimensionMaster/Converted/"
+			L"effect.dimensionmaster.skill.2050510.imported.effect.json");
+		EFFECT_DOCUMENT_DESC tDocument;
+		const bool_t tLoaded = !tPath.empty() &&
+			CEffectDocumentCodec::Load(tPath, tDocument, status) &&
+			CEffectDocumentCodec::Validate(tDocument, status);
+		const std::size_t tMeshParticleCount = static_cast<std::size_t>(
+			std::count_if(tDocument.Elements.begin(), tDocument.Elements.end(),
+				[](const EFFECT_ELEMENT_DESC& element)
+				{
+					return element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+						std::any_of(element.ResourceBindings.begin(),
+							element.ResourceBindings.end(),
+							[](const EFFECT_RESOURCE_BINDING_DESC& binding)
+							{
+								return binding.strSlotId == "meshModel";
+							});
+				}));
+		const uint64_t tParticleBudget =
+			Calculate_ImportedParticleBudget(tDocument);
+		const std::size_t tMissingResourceCount = static_cast<std::size_t>(
+			std::count_if(tDocument.Elements.begin(), tDocument.Elements.end(),
+				[](const EFFECT_ELEMENT_DESC& element)
+				{
+					return element.bVisible &&
+						element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+						element.ResourceBindings.empty();
+				}));
+		runner.Require(tLoaded && tDocument.Elements.size() == 105u &&
+			tMeshParticleCount == 27u && tParticleBudget == 928u &&
+			tMissingResourceCount == 19u,
+			"DimensionMaster T V9 Imported Recipe Reports Missing Resources");
+		runner.Require(tLoaded &&
+			!CEffectDocumentCodec::Validate_Drawable(tDocument, status),
+			"DimensionMaster T V9 Missing Resources Fail Closed");
+
+		const std::filesystem::path qPath = CProjectDataRoot::Resolve(
+			L"Effects/Imported/DimensionMaster/Converted/"
+			L"effect.dimensionmaster.skill.2050110.imported.effect.json");
+		EFFECT_DOCUMENT_DESC qDocument;
+		const bool_t qLoaded = !qPath.empty() &&
+			CEffectDocumentCodec::Load(qPath, qDocument, status) &&
+			CEffectDocumentCodec::Validate(qDocument, status);
+		EFFECT_DOCUMENT_DESC qRoundTrip;
+		runner.Require(qLoaded && qDocument.Elements.size() == 31u &&
+			Calculate_ImportedParticleBudget(qDocument) == 648u &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(qDocument), qRoundTrip, status) &&
+			qRoundTrip.Elements.size() == qDocument.Elements.size(),
+			"DimensionMaster Q V9 Imported Recipe Round Trips Losslessly");
+
+		const std::filesystem::path authoredFPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json");
+		EFFECT_DOCUMENT_DESC authoredF;
+		const bool_t authoredFLoaded = !authoredFPath.empty() &&
+			CEffectDocumentCodec::Load(authoredFPath, authoredF, status);
+		std::vector<std::string> resourceIds;
+		CEffectDocumentCodec::Collect_ResourceAssetIds(authoredF, resourceIds);
+		const bool_t hasSummonDependency = std::find(resourceIds.begin(),
+			resourceIds.end(),
+			"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel") !=
+			resourceIds.end();
+		CEffectPlayback completePlayback;
+		const bool_t playbackStaged = authoredFLoaded &&
+			completePlayback.Stage_Document(authoredF, status);
+		EFFECT_DOCUMENT_DESC roundTrip;
+		const bool_t roundTripped = authoredFLoaded &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(authoredF), roundTrip, status);
+		runner.Require(authoredFLoaded && authoredF.Elements.size() == 97u &&
+			authoredF.ModelCues.size() == 1u && hasSummonDependency &&
+			playbackStaged && completePlayback.Get_DurationSeconds() >= 5.4583f &&
+			roundTripped && roundTrip.ModelCues.size() == 1u &&
+			roundTrip.ParticleSystem.fUniformScaleMultiplier == 1.f &&
+			roundTrip.ParticleSystem.fInitialSpeedMultiplier == 1.f &&
+			roundTrip.ModelCues.front().strClipName ==
+				"sk_swp_dms_00_sk_sk_dimensionprison",
+			"DimensionMaster F Complete Effect Round Trips Summon Model Cue");
+
+		if (authoredFLoaded)
+		{
+			EFFECT_DOCUMENT_DESC invalidCue = authoredF;
+			invalidCue.ModelCues.push_back(invalidCue.ModelCues.front());
+			const f32_t committedDuration =
+				completePlayback.Get_DurationSeconds();
+			runner.Require(
+				!completePlayback.Stage_Document(invalidCue, status) &&
+				completePlayback.Get_DurationSeconds() == committedDuration,
+				"Duplicate Model Cue Stage Preserves Committed Effect Playback");
+		}
 	}
 
 	void Test_EffectAllEffectsAuthoringJoin(TEST_RUNNER& runner)
@@ -688,6 +1820,61 @@ namespace
 			!CEffectDocumentCodec::Validate(unknownTemplate, status),
 			"Effect Authoring Rejects Unregistered Material Template");
 
+		EFFECT_DOCUMENT_DESC sourceRecipeDocument = document;
+		EFFECT_ELEMENT_DESC& sourceElement =
+			sourceRecipeDocument.Elements.front();
+		sourceElement.SourceRecipe.bEnabled = true;
+		sourceElement.SourceRecipe.strRendererShape = "sprite";
+		sourceElement.SourceRecipe.fEmitterDurationSeconds = 1.f;
+		EFFECT_SOURCE_MODULE_DESC sourceModule;
+		sourceModule.strStableId = "harness:module:spawn";
+		sourceModule.strClassName = "particlemodulespawn";
+		sourceModule.strObjectPath = "Harness.ParticleModuleSpawn";
+		EFFECT_DISTRIBUTION_DESC sourceRate;
+		sourceRate.strPropertyPath = "rate";
+		sourceRate.iComponentCount = 1u;
+		sourceRate.iOperation = 1u;
+		sourceRate.vDefaultMinimum.x = 12.f;
+		sourceRate.vDefaultMaximum.x = 12.f;
+		sourceModule.Distributions.push_back(sourceRate);
+		sourceElement.SourceRecipe.Modules.push_back(sourceModule);
+		EFFECT_DOCUMENT_DESC sourceRoundTrip;
+		const float4_t evaluatedRate = CEffectDistribution::Evaluate(
+			sourceRate, 0.5f, 0.25f);
+		runner.Require(
+			CEffectDocumentCodec::Validate(sourceRecipeDocument, status) &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(sourceRecipeDocument),
+				sourceRoundTrip, status) &&
+			sourceRoundTrip.Elements.front().SourceRecipe.bEnabled &&
+			sourceRoundTrip.Elements.front().SourceRecipe.Modules.size() == 1u &&
+			evaluatedRate.x == 12.f,
+			"Effect V9 Source Recipe And Distribution Round Trip Losslessly");
+
+		std::string legacyV7 = CEffectDocumentCodec::Serialize(document);
+		const std::string version9 = "\"version\": 9";
+		const size_t versionOffset = legacyV7.find(version9);
+		if (std::string::npos != versionOffset)
+			legacyV7.replace(versionOffset, version9.size(), "\"version\": 7");
+		const size_t particleSystemOffset = legacyV7.find(
+			"  \"particleSystem\":");
+		if (std::string::npos != particleSystemOffset)
+		{
+			const size_t particleSystemEnd = legacyV7.find(
+				'\n', particleSystemOffset);
+			legacyV7.erase(particleSystemOffset,
+				particleSystemEnd - particleSystemOffset + 1u);
+		}
+		EFFECT_DOCUMENT_DESC upgradedV7;
+		runner.Require(std::string::npos != versionOffset &&
+			CEffectDocumentCodec::Parse(legacyV7, upgradedV7, status) &&
+			upgradedV7.iFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
+			upgradedV7.ParticleSystem.fUniformScaleMultiplier == 1.f &&
+			upgradedV7.ParticleSystem.fYawOffsetDegrees == 0.f &&
+			upgradedV7.ParticleSystem.fDirectionYawDegrees == 0.f &&
+			upgradedV7.ParticleSystem.fInitialSpeedMultiplier == 1.f,
+			"Effect Authoring Upgrades V7 To Identity Particle System");
+
 		const std::filesystem::path path =
 			std::filesystem::temp_directory_path() /
 			"lostark-effect-draft-harness.effect.json";
@@ -707,14 +1894,162 @@ namespace
 		loaded.Elements.front().Detail.Particle.vInitialPositionMin.x == 0.f &&
 		loaded.Elements.front().Detail.Particle.vInitialPositionMax.x == 0.f &&
 		loaded.Elements.front().ResourceBindings.empty(),
-			"Effect Authoring Atomically Saves And Reloads V6 Metadata Draft");
+			"Effect Authoring Atomically Saves And Reloads V9 Metadata Draft");
 		std::filesystem::remove(path, error);
+	}
+
+	void Test_EffectAssemblyRuntimeCatalog(
+		TEST_RUNNER& runner,
+		const bool_t bCheckFailedReloadRollback = true)
+	{
+		using namespace Client;
+		wchar_t moduleBuffer[32768]{};
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr, moduleBuffer, static_cast<DWORD>(std::size(moduleBuffer)));
+		const std::filesystem::path moduleDirectory =
+			0u == moduleLength || moduleLength >= std::size(moduleBuffer) ?
+			std::filesystem::path{} :
+			std::filesystem::path(moduleBuffer).parent_path();
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path sourceCatalog = repositoryRoot /
+			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
+			L"EffectCatalog.runtime.json";
+		const std::filesystem::path stagedCatalog = moduleDirectory /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		std::error_code error;
+		std::filesystem::create_directories(stagedCatalog.parent_path(), error);
+		error.clear();
+		std::filesystem::copy_file(sourceCatalog, stagedCatalog,
+			std::filesystem::copy_options::overwrite_existing, error);
+		const std::filesystem::path resourceRoot = repositoryRoot /
+			L"Client" / L"Bin" / L"Resources";
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT",
+			resourceRoot.c_str());
+
+		CEffectCatalog::Clear();
+		std::string status;
+		const bool_t loaded = !error && CEffectCatalog::Load(status);
+		if (!loaded)
+			std::cout << "[DETAIL] Effect runtime catalog: " << status << '\n';
+		const std::vector<std::string> effectIds =
+			CEffectCatalog::Get_EffectAssetIds();
+		bool_t hierarchyComplete = loaded && 15u == effectIds.size();
+		bool_t playbackStageComplete = loaded;
+		size_t stagedEffectCount = 0u;
+		std::set<std::string> componentIds;
+		for (const std::string& effectId : effectIds)
+		{
+			const std::shared_ptr<const EFFECT_ASSEMBLY_DESC> assembly =
+				CEffectCatalog::Find_Assembly(effectId);
+			const std::shared_ptr<const EFFECT_DOCUMENT_DESC> document =
+				CEffectCatalog::Find(effectId);
+			hierarchyComplete = hierarchyComplete && nullptr != assembly &&
+				nullptr != document && !assembly->ComponentCues.empty();
+			if (nullptr != document)
+			{
+				CEffectPlayback playback;
+				std::string playbackStatus;
+				const bool_t staged =
+					playback.Stage_Document(*document, playbackStatus);
+				playbackStageComplete = playbackStageComplete && staged;
+				if (staged)
+					++stagedEffectCount;
+				else
+					std::cout << "[DETAIL] Runtime playback stage " << effectId
+						<< ": " << playbackStatus << '\n';
+			}
+			if (nullptr == assembly)
+				continue;
+			for (const EFFECT_COMPONENT_CUE_DESC& cue : assembly->ComponentCues)
+			{
+				const std::shared_ptr<const EFFECT_COMPONENT_DESC> component =
+					CEffectCatalog::Find_Component(cue.strComponentAssetId);
+				hierarchyComplete = hierarchyComplete && nullptr != component &&
+					!component->Emitters.empty() &&
+					component->Emitters.size() ==
+						component->Document.Elements.size();
+				componentIds.insert(cue.strComponentAssetId);
+			}
+		}
+		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> sDocument =
+			CEffectCatalog::Find("effect.dimensionmaster.skill.2050550");
+		runner.Require(
+			hierarchyComplete && 180u == componentIds.size() &&
+			nullptr != sDocument && 209u == sDocument->Elements.size(),
+			"Effect Runtime Loads Assembly Component Emitter Hierarchy And Compiles S");
+		runner.Require(playbackStageComplete && 15u == stagedEffectCount,
+			"Effect Runtime Stages All Fifteen Compiled DimensionMaster Documents");
+		bool_t componentStageComplete = true;
+		size_t stagedComponentCount = 0u;
+		for (const std::string& componentId :
+			CEffectCatalog::Get_ComponentAssetIds())
+		{
+			const std::shared_ptr<const EFFECT_COMPONENT_DESC> component =
+				CEffectCatalog::Find_Component(componentId);
+			CEffectPlayback playback;
+			std::string playbackStatus;
+			const bool_t staged = nullptr != component &&
+				playback.Stage_Document(component->Document, playbackStatus);
+			componentStageComplete = componentStageComplete && staged;
+			if (staged)
+				++stagedComponentCount;
+			else
+				std::cout << "[DETAIL] WFX component stage " << componentId
+					<< ": " << playbackStatus << '\n';
+		}
+		runner.Require(componentStageComplete && stagedComponentCount == 180u,
+			"Data Files Stages All One Hundred Eighty WFX Components");
+
+		if (bCheckFailedReloadRollback)
+		{
+			const uint64_t revision = CEffectCatalog::Get_RuntimeRevision();
+			std::ifstream input(stagedCatalog, std::ios::binary);
+			std::string invalid{
+				std::istreambuf_iterator<char>(input),
+				std::istreambuf_iterator<char>() };
+			const std::string marker = "\"formatVersion\":2";
+			const size_t markerIndex = invalid.find(marker);
+			if (std::string::npos != markerIndex)
+				invalid[markerIndex + marker.size() - 1u] = '9';
+			std::ofstream output(stagedCatalog,
+				std::ios::binary | std::ios::trunc);
+			output.write(invalid.data(), static_cast<std::streamsize>(invalid.size()));
+			output.close();
+			const bool_t rejected = !CEffectCatalog::Load(status);
+			runner.Require(
+				std::string::npos != markerIndex && rejected &&
+				revision == CEffectCatalog::Get_RuntimeRevision() &&
+				CEffectCatalog::Contains("effect.dimensionmaster.skill.2050550"),
+				"Effect Runtime Invalid Catalog Preserves Committed Assembly State");
+		}
+
+		CEffectCatalog::Clear();
+		error.clear();
+		std::filesystem::remove(stagedCatalog, error);
+		SetEnvironmentVariableW(L"LOSTARK_RESOURCE_ROOT", nullptr);
 	}
 }
 
-int main()
+int main(const int argc, char* argv[])
 {
 	TEST_RUNNER runner{};
+	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--effect-executor-fast")
+	{
+		Test_EffectPlaybackDeterminism(runner);
+		Test_EffectSourceModuleOccurrenceOrder(runner);
+		Test_EffectExactSourceSemantics(runner);
+		Test_DimensionMasterSourceSemanticAssets(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-runtime-fast")
+	{
+		Test_EffectAssemblyRuntimeCatalog(runner, false);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 
 	Test_NormalHandoff(runner);
 	Test_CharacterSelectServerHandoff(runner);
@@ -727,9 +2062,13 @@ int main()
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
 	Test_EffectPlaybackDeterminism(runner);
+	Test_EffectSourceModuleOccurrenceOrder(runner);
+	Test_EffectExactSourceSemantics(runner);
+	Test_DimensionMasterSourceSemanticAssets(runner);
 	Test_DimensionMasterImportedPortalDraft(runner);
 	Test_EffectAllEffectsAuthoringJoin(runner);
 	Test_EffectDraftAtomicSave(runner);
+	Test_EffectAssemblyRuntimeCatalog(runner);
 
 	std::cout << "failures : " << runner.iFailureCount << '\n';
 	return 0 == runner.iFailureCount ? 0 : 1;

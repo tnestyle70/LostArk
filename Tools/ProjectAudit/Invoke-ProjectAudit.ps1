@@ -570,7 +570,9 @@ try {
 	$effectPassOrderPattern =
 		'pass\s+OpaqueBackDepthWrite[\s\S]*pass\s+AlphaTwoSidedDepthRead[\s\S]*pass\s+AdditiveTwoSidedDepthRead'
 	$effectG6DetailPreviewShape =
-		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*6u' -and
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*11u' -and
+		$effectDocumentHeader -match 'struct EFFECT_SOURCE_MATERIAL_DESC[\s\S]*DynamicParameterSemantics[\s\S]*strSubUVMode' -and
+		$effectDocumentHeader -match 'struct EFFECT_PARTICLE_SYSTEM_DESC[\s\S]*fUniformScaleMultiplier[\s\S]*fDirectionYawDegrees[\s\S]*fInitialSpeedMultiplier' -and
 		$effectDocumentHeader -match 'EFFECT_AUTHORING_MIN_SUPPORTED_VERSION\s*=\s*3u' -and
 		$effectDocumentHeader -match 'struct EFFECT_ELEMENT_DESC[\s\S]*ResourceBindings[\s\S]*Material[\s\S]*Detail' -and
 		$effectDocumentHeader -match 'struct EFFECT_DETAIL_DESC[\s\S]*Transform[\s\S]*Color[\s\S]*UV[\s\S]*Timing[\s\S]*Mesh[\s\S]*Sprite[\s\S]*Decal[\s\S]*LinearLerp[\s\S]*Particle[\s\S]*Trail[\s\S]*AfterImage' -and
@@ -580,7 +582,9 @@ try {
 		$effectToolHeader -match 'Render_ModelViewWindow' -and
 		$effectToolSource -match 'Try_CommitDocument' -and
 		$effectToolSource -match 'Stage_WorldPreview' -and
-		$effectToolSource -match 'Render_ResourceGrid'
+		$effectToolSource -match 'Render_ResourceGrid' -and
+		$effectToolSource -match 'Render_SourceRecipeDetail' -and
+		$effectToolSource -match 'duplicate classes execute in source order'
 	$effectG6DetailPreviewShape =
 		$effectG6DetailPreviewShape -and
 		$mainAppSource -match 'make_unique<CEffect_Tool>\(\s*m_pDevice,\s*m_pContext,\s*m_pCharacterPreviewPanel\s*\)' -and
@@ -616,6 +620,29 @@ try {
 		$effectFinalAuditDetail = $_.Exception.Message
 	}
 	Add-Check 'effect.g09-cross-document-contract' $effectFinalAuditPassed $effectFinalAuditDetail
+	$effectComponentAuditPassed = $false
+	$effectComponentAuditDetail = ''
+	try {
+		$effectComponentAuditDetail = (& python `
+			'.\Tools\LevelPlacementExtractor\build_effect_components.py' `
+			'--verify-existing' 2>&1 | Out-String).Trim()
+		if ($LASTEXITCODE -ne 0) {
+			throw "WFX verifier exited with code $LASTEXITCODE`: $effectComponentAuditDetail"
+		}
+		$effectComponentAuditResult = $effectComponentAuditDetail |
+			ConvertFrom-Json
+		$effectComponentAuditPassed =
+			[bool]$effectComponentAuditResult.compileIdentityComplete -and
+			[int]$effectComponentAuditResult.effectCount -eq 15 -and
+			[int]$effectComponentAuditResult.componentCount -gt 0 -and
+			[int]$effectComponentAuditResult.emitterCount -gt 0 -and
+			[int]$effectComponentAuditResult.sourceActionCueCount -gt 0
+	}
+	catch {
+		$effectComponentAuditDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.wfx-component-assembly' `
+		$effectComponentAuditPassed $effectComponentAuditDetail
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"

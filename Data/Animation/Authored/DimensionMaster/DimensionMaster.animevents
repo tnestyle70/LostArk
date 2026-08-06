@@ -1520,17 +1520,17 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1535
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1857 payload="" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=2000 endms=3233 payload="" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=2350 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Rb_00_1" src=orig
-"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=100 payload="effect.dimensionmaster.skill.2050010" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=43 payload="effect.dimensionmaster.skill.2050010" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=28 payload="effect.dimensionmaster.skill.2050010" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=335 payload="effect.dimensionmaster.skill.2050010" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=350 payload="effect.dimensionmaster.skill.2050110" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=350 payload="effect.dimensionmaster.skill.2050150" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=300 payload="effect.dimensionmaster.skill.2050220" effectref=asset anchor="root" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=700 payload="effect.dimensionmaster.skill.2050190" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=250 payload="effect.dimensionmaster.skill.2050240" effectref=asset anchor="b_wp_swm_m_2" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="effect.dimensionmaster.skill.2050210" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=400 payload="effect.dimensionmaster.skill.2050200" effectref=asset anchor="root" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=1000 payload="effect.dimensionmaster.skill.2050500" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=500 payload="effect.dimensionmaster.skill.2050510" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=1200 payload="effect.dimensionmaster.skill.2050540" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba1" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_att_battle_1_02" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba2" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba3" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050010.ba4" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_dimensionalbreak_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050110" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_riftslash_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050150" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050220" effectref=asset anchor="root" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050190" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050240" effectref=asset anchor="b_wp_swm_m_2" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_super_instance" EFFECT startms=0 endms=5000 payload="effect.dimensionmaster.skill.2050550" effectref=asset anchor="root" follow=follow stop=cue_end px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_tearingsword_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050200" effectref=asset anchor="root" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050500" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050510" effectref=asset anchor="b_wp_swm_m_1" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050540" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

@@ -8,10 +8,6 @@ namespace
 {
 	using namespace Client;
 
-	constexpr size_t MAX_JSON_BYTES = 16u * 1024u * 1024u;
-	constexpr size_t MAX_JSON_DEPTH = 64u;
-	constexpr size_t MAX_JSON_VALUES = 1'000'000u;
-
 	void AppendUtf8(string& output, const uint32_t codePoint)
 	{
 		if (codePoint <= 0x7fu)
@@ -44,8 +40,9 @@ namespace
 	class JSON_READER final
 	{
 	public:
-		explicit JSON_READER(const string_view text)
-			: m_Text(text)
+		explicit JSON_READER(const string_view text,
+			const DATA_JSON_PARSE_LIMITS& limits)
+			: m_Text(text), m_Limits(limits)
 		{
 		}
 
@@ -73,9 +70,9 @@ namespace
 			const size_t depth,
 			DATA_JSON_VALUE& outValue)
 		{
-			if (depth > MAX_JSON_DEPTH)
+			if (depth > m_Limits.iMaximumDepth)
 				return SetError("Maximum nesting depth exceeded");
-			if (++m_ValueCount > MAX_JSON_VALUES)
+			if (++m_ValueCount > m_Limits.iMaximumValues)
 				return SetError("Maximum value count exceeded");
 
 			SkipWhitespace();
@@ -393,6 +390,7 @@ namespace
 
 	private:
 		string_view m_Text;
+		DATA_JSON_PARSE_LIMITS m_Limits;
 		size_t m_Position = {};
 		size_t m_ValueCount = {};
 		string m_Error;
@@ -457,19 +455,34 @@ bool_t CDataJson::Parse(
 	DATA_JSON_VALUE& outValue,
 	string& outError)
 {
+	return Parse(text, outValue, outError, DATA_JSON_PARSE_LIMITS{});
+}
+
+bool_t CDataJson::Parse(
+	const string_view text,
+	DATA_JSON_VALUE& outValue,
+	string& outError,
+	const DATA_JSON_PARSE_LIMITS& limits)
+{
 	if (text.empty())
 	{
 		outError = "JSON document is empty";
 		return false;
 	}
-	if (text.size() > MAX_JSON_BYTES)
+	if (0u == limits.iMaximumBytes || 0u == limits.iMaximumDepth ||
+		0u == limits.iMaximumValues)
 	{
-		outError = "JSON document exceeds 16 MiB";
+		outError = "JSON parse limits must be positive";
+		return false;
+	}
+	if (text.size() > limits.iMaximumBytes)
+	{
+		outError = "JSON document exceeds its byte limit";
 		return false;
 	}
 
 	DATA_JSON_VALUE staged;
-	if (!JSON_READER(text).Read(staged, outError))
+	if (!JSON_READER(text, limits).Read(staged, outError))
 		return false;
 	outValue = move(staged);
 	return true;

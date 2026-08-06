@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import struct
 import tempfile
 import unittest
@@ -76,6 +78,29 @@ class ActionEffectNotifyTests(unittest.TestCase):
         self.assertEqual(particle["assetReferences"][0]["objectPath"], "FX_TEST.Par_Test")
         hit = next(row for row in parsed_stage["notifies"] if row["sourceType"] == "ParticleHit")
         self.assertEqual(hit["authority"], "REFERENCE_ONLY")
+        serialized = hit["serializedPayload"]
+        decoded = base64.b64decode(serialized["data"])
+        self.assertEqual(serialized["byteSize"], len(decoded))
+        self.assertEqual(serialized["sha256"], hashlib.sha256(decoded).hexdigest())
+
+    def test_action_id_filter_is_fail_closed(self) -> None:
+        payload = (
+            lp_ascii("CEFActionObject")
+            + struct.pack("<ii", 0, 100)
+            + lp_ascii("First")
+            + lp_ascii("CEFActionStage")
+            + b"\0" * 48
+            + lp_ascii("Stage")
+            + notify("Effect", 0.1, 0.2)
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "Action.loa"
+            source.write_bytes(payload)
+            document = extract_action_document(
+                source, "TEST", action_ids={999}
+            )
+        self.assertEqual(document["actions"], [])
+        self.assertEqual(document["actionFilter"]["actionIds"], [999])
 
 
 if __name__ == "__main__":

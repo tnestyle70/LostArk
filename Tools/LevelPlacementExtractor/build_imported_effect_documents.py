@@ -2,7 +2,7 @@
 """Convert one normalized UE3 Cascade graph into a loadable Effect document.
 
 The conversion is intentionally conservative.  It emits values that the current
-v6 runtime can execute and records every approximation or unsupported source
+v7 runtime can execute and records every approximation or unsupported source
 module in a separate receipt.  The receipt, not a filename guess, is the audit
 trail from an original Cascade emitter to an authored Element.
 """
@@ -25,25 +25,28 @@ PROCEDURAL_MATERIAL_BASE_FALLBACK = (
     "fx_tex_00.fx_a_blankwhite_01",
     "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
 )
-MAX_ELEMENTS = 256
+MAX_ELEMENTS = 2048
 MAX_DOCUMENT_PARTICLES = 8192
 MAX_PARTICLES_PER_IMPORTED_ELEMENT = 64
-SUPPORTED_DETAIL_MODULE_TOKENS = (
-    "required",
-    "spawn",
-    "lifetime",
-    "velocity",
-    "acceleration",
-    "size",
-    "color",
-    "subuv",
-    "location",
-    "rotation",
-    "orbit",
-    "orientation",
-    "cameraoffset",
-    "parameterdynamic",
-)
+REPRESENTED_DETAIL_MODULE_CLASSES = {
+    "particlemodulerequired",
+    "particlemodulespawn",
+    "particlemodulelifetime",
+    "particlemodulevelocity",
+    "particlemoduleacceleration",
+    "particlemodulesize",
+    "particlemodulesize_seeded",
+    "particlemodulesizemultiplylife",
+    "particlemodulecolor",
+    "particlemodulecolor_seeded",
+    "particlemodulecoloroverlife",
+    "particlemodulecolorscaleoverlife",
+    "particlemodulelocation",
+    "particlemodulelocation_seeded",
+    "particlemodulesubuv",
+    "particlemoduletypedatamesh",
+    "efparticlemoduletypedatadecal",
+}
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -123,6 +126,7 @@ class SourceObject:
     object_path: str
     properties: dict[str, Any]
     references: list[tuple[str, str]] = field(default_factory=list)
+    reference_paths: list[tuple[str, str]] = field(default_factory=list)
 
 
 class SourceIndex:
@@ -152,8 +156,23 @@ class SourceIndex:
         for edge in graph.get("edges", []):
             source = self.by_source_id.get(str(edge["sourceNodeId"]))
             target = self.by_source_id.get(str(edge.get("targetNodeId") or ""))
-            if source is not None and target is not None:
-                source.references.append((str(edge.get("property") or ""), target.key))
+            if source is None:
+                continue
+            property_name = str(edge.get("property") or "")
+            object_path = str(edge.get("objectPath") or "")
+            if object_path:
+                source.reference_paths.append((property_name, object_path))
+            if target is not None:
+                source.references.append((property_name, target.key))
+
+        for system in graph.get("sourceSystems", []):
+            for reference in system.get("unresolvedExternalReferences", []):
+                source = self.by_source_id.get(str(reference.get("sourceNodeId") or ""))
+                object_path = str(reference.get("objectPath") or "")
+                if source is not None and object_path:
+                    source.reference_paths.append(
+                        (str(reference.get("property") or ""), object_path)
+                    )
 
         for package in closure.get("packages", []):
             logical_package = str(package.get("logicalPackage") or "")
@@ -179,12 +198,15 @@ class SourceIndex:
                     continue
                 for reference in row.get("references", []):
                     object_path = str(reference.get("objectPath") or "")
+                    property_name = str(reference.get("property") or "")
+                    if object_path:
+                        source.reference_paths.append((property_name, object_path))
                     target_key = object_path.casefold()
                     if not target_key.startswith(logical_package.casefold() + "."):
                         target_key = f"{logical_package}.{object_path}".casefold()
                     if target_key in self.objects:
                         source.references.append(
-                            (str(reference.get("property") or ""), target_key)
+                            (property_name, target_key)
                         )
 
     def get_id(self, source_id: str | None) -> SourceObject | None:
@@ -228,15 +250,32 @@ def distribution_float(
     if raw is None:
         value = finite_number(prop(source.properties, property_name))
         return None if value is None else (value, value, value, value, "EXACT")
+    target = distribution_target(index, source, property_name)
+    target_class = folded(target.class_name) if target else ""
+    operation = int(finite_number(prop(raw, "op")) or 0)
+    if operation == 0:
+        operation = 2 if "uniform" in target_class else 1
     table = prop(raw, "lookuptable", [])
     values = [number for item in table if (number := finite_number(item)) is not None]
-    if values:
-        return min(values), max(values), values[0], values[-1], "APPROXIMATION"
+    if len(values) >= 2:
+        payload = values[2:]
+        chunk_size = int(finite_number(prop(raw, "lookuptablechunksize")) or 0)
+        if chunk_size <= 0:
+            chunk_size = 2 if operation >= 2 else 1
+        if payload and len(payload) % chunk_size == 0:
+            samples = [
+                payload[index : index + chunk_size]
+                for index in range(0, len(payload), chunk_size)
+            ]
+            flattened = [value for sample in samples for value in sample]
+            return (
+                min(flattened), max(flattened),
+                samples[0][0], samples[-1][-1], "APPROXIMATION",
+            )
 
-    target = distribution_target(index, source, property_name)
     if target is None:
         return None
-    class_name = folded(target.class_name)
+    class_name = target_class
     if "constantcurve" in class_name:
         curve = distribution_properties(target.properties.get("constantcurve"))
         points = prop(curve or {}, "points", [])
@@ -262,20 +301,25 @@ def distribution_float(
     return None
 
 
-def table_vector_samples(raw: dict[str, Any]) -> list[list[float]]:
+def table_vector_samples(
+    raw: dict[str, Any], operation: int = 1
+) -> list[list[float]]:
     table = prop(raw, "lookuptable", [])
     values = [number for item in table if (number := finite_number(item)) is not None]
-    if len(values) < 3:
+    if len(values) < 5:
         return []
+    values = values[2:]
     chunk_size = int(finite_number(prop(raw, "lookuptablechunksize")) or 0)
-    if chunk_size >= 3 and len(values) >= chunk_size:
-        payload = values[-chunk_size:]
-        if chunk_size % 3 == 0:
-            return [payload[index : index + 3] for index in range(0, chunk_size, 3)]
-    if len(values) % 4 == 0:
-        return [values[index : index + 3] for index in range(0, len(values), 4)]
-    usable = len(values) - len(values) % 3
-    return [values[index : index + 3] for index in range(0, usable, 3)]
+    if chunk_size <= 0:
+        chunk_size = 3 * (2 if operation >= 2 else 1)
+    if chunk_size < 3 or len(values) % chunk_size != 0:
+        return []
+    samples: list[list[float]] = []
+    for entry in range(0, len(values), chunk_size):
+        samples.append(values[entry : entry + 3])
+        if operation >= 2:
+            samples.append(values[entry + 3 : entry + 6])
+    return samples
 
 
 def distribution_vector(
@@ -289,13 +333,17 @@ def distribution_vector(
     if raw is None:
         value = vector_value(prop(source.properties, property_name))
         return None if value is None else (value, value, value, value, "EXACT")
-    samples = table_vector_samples(raw)
+    target = distribution_target(index, source, property_name)
+    target_class = folded(target.class_name) if target else ""
+    operation = int(finite_number(prop(raw, "op")) or 0)
+    if operation == 0:
+        operation = 2 if "uniform" in target_class else 1
+    samples = table_vector_samples(raw, operation)
     if samples:
         minimum = [min(sample[axis] for sample in samples) for axis in range(3)]
         maximum = [max(sample[axis] for sample in samples) for axis in range(3)]
         return minimum, maximum, samples[0], samples[-1], "APPROXIMATION"
 
-    target = distribution_target(index, source, property_name)
     if target is None:
         return None
     class_name = folded(target.class_name)
@@ -447,12 +495,15 @@ def emitter_detail(
     duration = finite_number(prop(required.properties, "emitterduration")) if required else None
     delay_distribution = distribution_float(index, required, "emitterdelay")
     emitter_delay = max(0.0, delay_distribution[2]) if delay_distribution else 0.0
-    detail["timing"]["startDelaySeconds"] = max(0.0, event_time + emitter_delay)
+    # The skill cue and the emitter-local delay are separate clocks. Keep the
+    # cue time on the Element and execute Required.EmitterDelay inside the
+    # source recipe so loops and component audition preserve UE3 semantics.
+    detail["timing"]["startDelaySeconds"] = max(0.0, event_time)
     mapping(
         mappings,
         "timing.startDelaySeconds",
         "EXACT" if not delay_distribution else delay_distribution[4],
-        "animation event + Required.EmitterDelay",
+        "animation event only; Required.EmitterDelay is sourceRecipe-local",
         detail["timing"]["startDelaySeconds"],
     )
 
@@ -467,9 +518,14 @@ def emitter_detail(
         life_min, life_max = 0.5, 1.0
         mapping(mappings, "particle.lifeTimeSeconds", "DEFAULT_NEEDS_TUNING", "missing/parameter-only Lifetime", [life_min, life_max])
 
-    timing_life = max(duration or 0.0, event_duration, life_max, 0.1)
+    # The Effect runtime treats timing.lifeTimeSeconds as the emitter's active
+    # window, then adds particle.lifeTimeSeconds.max as the surviving-particle
+    # tail.  Including particle lifetime here would therefore emit for an
+    # extra lifetime and count the same tail twice (for example 20 s became
+    # roughly 40 s for Instance_BGCrack_01).
+    timing_life = max(duration or 0.0, event_duration, 0.1)
     detail["timing"]["lifeTimeSeconds"] = timing_life
-    mapping(mappings, "timing.lifeTimeSeconds", "APPROXIMATION", "max(EmitterDuration, notify duration, particle lifetime)", timing_life)
+    mapping(mappings, "timing.lifeTimeSeconds", "APPROXIMATION", "max(EmitterDuration, notify duration, 0.1); particle lifetime is a separate runtime tail", timing_life)
 
     rate = distribution_float(index, spawn, "rate") or distribution_float(index, required, "spawnrate")
     spawn_rate = clamp(rate[3] if rate else 0.0, 0.0, 2048.0)
@@ -527,8 +583,11 @@ def emitter_detail(
     start_alpha = distribution_float(index, color_module, "startalpha")
     if start_color:
         rgba = [max(0.0, value) for value in start_color[2]] + [max(0.0, start_alpha[2] if start_alpha else 1.0)]
-        detail["color"]["multiply"] = rgba
-        mapping(mappings, "color.multiply", "APPROXIMATION", f"{color_module.object_path}.StartColor/StartAlpha", rgba)
+        mapping(
+            mappings, "sourceRecipe.color", "SOURCE_RECIPE_OWNS_BASELINE",
+            f"{color_module.object_path}.StartColor/StartAlpha", rgba,
+            "Detail color multiply remains identity for authored override",
+        )
 
     over_life = first_module(modules, "particlemodulecoloroverlife") or first_module(modules, "particlemodulecolorscaleoverlife")
     if over_life:
@@ -537,11 +596,12 @@ def emitter_detail(
         end_color = distribution_vector(index, over_life, color_property)
         end_alpha = distribution_float(index, over_life, alpha_property)
         if end_color or end_alpha:
-            current = detail["color"]["multiply"]
-            rgba = [max(0.0, value) for value in (end_color[3] if end_color else current[:3])] + [max(0.0, end_alpha[3] if end_alpha else current[3])]
-            detail["linearLerp"]["colorMultiply"] = True
-            detail["linearLerp"]["endColorMultiply"] = rgba
-            mapping(mappings, "linearLerp.endColorMultiply", "APPROXIMATION", over_life.object_path, rgba, "full Cascade curve collapsed to start/end linear lerp")
+            rgba = [max(0.0, value) for value in (end_color[3] if end_color else [1.0, 1.0, 1.0])] + [max(0.0, end_alpha[3] if end_alpha else 1.0)]
+            mapping(
+                mappings, "sourceRecipe.colorOverLife",
+                "SOURCE_RECIPE_OWNS_BASELINE", over_life.object_path, rgba,
+                "Detail color lerp remains disabled for authored override",
+            )
 
     location_module = first_module(modules, "particlemodulelocation")
     location = distribution_vector(index, location_module, "startlocation")
@@ -557,11 +617,12 @@ def emitter_detail(
         horizontal = int(finite_number(prop(required.properties, "subimages_horizontal")) or 1) if required else 1
         vertical = int(finite_number(prop(required.properties, "subimages_vertical")) or 1) if required else 1
         if horizontal > 1 or vertical > 1:
-            detail["uv"]["sequence"] = True
-            detail["uv"]["tileColumns"] = max(1, horizontal)
-            detail["uv"]["tileRows"] = max(1, vertical)
-            detail["uv"]["sequenceTerm"] = max(0.001, life_max / (horizontal * vertical))
-            mapping(mappings, "uv.sequence/tileColumns/tileRows", "APPROXIMATION", f"{required.object_path}.SubImages", [horizontal, vertical])
+            mapping(
+                mappings, "sourceRecipe.subUV",
+                "SOURCE_RECIPE_OWNS_BASELINE",
+                f"{required.object_path}.SubImages", [horizontal, vertical],
+                "Detail UV sequence remains identity for authored override",
+            )
 
     bursts: list[dict[str, Any]] = []
     burst_rows = prop(spawn.properties, "burstlist", []) if spawn else []
@@ -583,6 +644,106 @@ def event_index(source_receipt: dict[str, Any]) -> dict[str, list[dict[str, Any]
         if event.get("resolutionStatus") == "RESOLVED_PARTICLE_GRAPH" and event.get("sourceSystemId"):
             result[folded(event["sourceSystemId"])].append(event)
     return result
+
+
+def apply_action_cue_transform(
+    detail: dict[str, Any],
+    event: dict[str, Any],
+    previous_event: dict[str, Any] | None = None,
+) -> None:
+    def transform(row: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(row, dict):
+            return None
+        payload = row.get("actionCuePayload")
+        if not isinstance(payload, dict) or not payload.get(
+            "particleDataDecoded", False
+        ):
+            return None
+        value = payload.get("localTransform")
+        return value if isinstance(value, dict) else None
+
+    current = transform(event)
+    if current is None:
+        return
+    previous = transform(previous_event)
+    previous_position = (
+        previous.get("position", [0.0, 0.0, 0.0])
+        if previous is not None else [0.0, 0.0, 0.0]
+    )
+    previous_rotation = (
+        previous.get("rotationDegrees", [0.0, 0.0, 0.0])
+        if previous is not None else [0.0, 0.0, 0.0]
+    )
+    previous_scale = (
+        previous.get("scale", [1.0, 1.0, 1.0])
+        if previous is not None else [1.0, 1.0, 1.0]
+    )
+    target = detail["transform"]
+    for index in range(3):
+        target["position"][index] += (
+            float(current["position"][index])
+            - float(previous_position[index])
+        )
+        target["rotationDegrees"][index] += (
+            float(current["rotationDegrees"][index])
+            - float(previous_rotation[index])
+        )
+        denominator = float(previous_scale[index])
+        if denominator <= 0.0:
+            raise ValueError("previous Action cue scale must be positive")
+        target["scale"][index] *= (
+            float(current["scale"][index]) / denominator
+        )
+
+
+def action_cue_attachment(event: dict[str, Any]) -> dict[str, Any]:
+    payload = event.get("actionCuePayload")
+    if not isinstance(payload, dict) or not payload.get(
+        "particleDataDecoded", False
+    ):
+        return {
+            "enabled": False,
+            "follow": False,
+            "sourceAnchorSlotId": "",
+            "runtimeAnchorSlotId": "",
+            "runtimeBoneName": "",
+            "socketLocalTransform": {
+                "position": [0.0, 0.0, 0.0],
+                "rotationDegrees": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0],
+            },
+        }
+    attachment = payload.get("attachment")
+    if not isinstance(attachment, dict):
+        raise ValueError("decoded Action cue has no attachment contract")
+    follow = attachment.get("mode") == "FOLLOW_NAMED_ANCHORS"
+    runtime_bone = str(attachment.get("runtimeBoneName") or "")
+    if follow and not runtime_bone:
+        raise ValueError(
+            "follow Action cue has no exact runtime bone resolution: "
+            f"{attachment.get('sourceAnchorNames', [])} "
+            f"({event.get('sourceActionCueId', 'unknown cue')})"
+        )
+    source_names = attachment.get("sourceAnchorNames", [])
+    return {
+        "enabled": True,
+        "follow": follow,
+        "sourceAnchorSlotId": (
+            str(source_names[0]) if source_names else "root"
+        ),
+        "runtimeAnchorSlotId": str(
+            attachment.get("runtimeAnchorSlotId") or "root"
+        ),
+        "runtimeBoneName": runtime_bone,
+        "socketLocalTransform": copy.deepcopy(
+            attachment.get("socketLocalTransform")
+            or {
+                "position": [0.0, 0.0, 0.0],
+                "rotationDegrees": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0],
+            }
+        ),
+    }
 
 
 def runtime_index(graph: dict[str, Any]) -> dict[str, str]:
@@ -699,24 +860,43 @@ def material_detail(material_rows: list[dict[str, Any]], detail: dict[str, Any],
     names = " ".join(folded(row.get("sourceMaterialPath")) for row in material_rows)
     profile = "additive_two_sided_depth_read" if any(token in names for token in ("_ad", "add", "glow")) else "alpha_two_sided_depth_read"
     scalar_rows = [scalar for material in material_rows for scalar in material.get("scalars", [])]
-    for row in scalar_rows:
+    emissive_candidates: list[tuple[int, int, dict[str, Any], float]] = []
+    for scalar_index, row in enumerate(scalar_rows):
         name = folded(row.get("name"))
         value = finite_number(row.get("value"))
         if value is None:
             continue
-        if any(token in name for token in ("emissive", "bloom", "glowpower", "intensity")):
-            detail["color"]["emissiveIntensity"] = max(0.0, value)
-            mapping(mappings, "color.emissiveIntensity", "PARAMETER_NAME_HEURISTIC", str(row.get("name")), max(0.0, value))
-        elif "distort" in name and any(token in name for token in ("power", "intensity", "strength")):
+        if "distort" in name and any(token in name for token in ("power", "intensity", "strength")):
             detail["color"]["distortionIntensity"] = max(0.0, value)
             detail["color"]["distortionOnBaseMaterial"] = True
             mapping(mappings, "color.distortionIntensity", "PARAMETER_NAME_HEURISTIC", str(row.get("name")), max(0.0, value))
+        elif (
+            any(token in name for token in ("emissive", "emission", "emissiion", "bloom", "glow"))
+            and any(token in name for token in ("intensity", "strength", "_str", "multiply", "value", "velue"))
+            and not any(token in name for token in ("flicker", "speed", "tile", "pan", "texcoord", "_min", "min_", "_max", "max_", "power"))
+        ):
+            priority = 0 if "intensity" in name else 1
+            emissive_candidates.append((priority, scalar_index, row, value))
         elif any(token in name for token in ("panning_x", "pan_x", "uspeed", "speed_u")):
             detail["uv"]["speed"][0] = value
             mapping(mappings, "uv.speed.x", "PARAMETER_NAME_HEURISTIC", str(row.get("name")), value)
         elif any(token in name for token in ("panning_y", "pan_y", "vspeed", "speed_v")):
             detail["uv"]["speed"][1] = value
             mapping(mappings, "uv.speed.y", "PARAMETER_NAME_HEURISTIC", str(row.get("name")), value)
+    if emissive_candidates:
+        _, _, selected, source_value = min(emissive_candidates, key=lambda row: (row[0], row[1]))
+        mapped_value = clamp(source_value, 0.0, 100.0)
+        detail["color"]["emissiveIntensity"] = mapped_value
+        mapping(
+            mappings,
+            "color.emissiveIntensity",
+            "PARAMETER_NAME_HEURISTIC",
+            str(selected.get("name")),
+            mapped_value,
+            "explicit emissive strength/intensity scalar; runtime safety clamp [0, 100]"
+            if mapped_value != source_value
+            else "explicit emissive strength/intensity scalar",
+        )
     return profile
 
 
@@ -725,12 +905,39 @@ def selected_lod_partitions(
     index: SourceIndex,
     closure: dict[str, Any],
 ) -> list[tuple[dict[str, Any], SourceObject, SourceObject, list[SourceObject]]]:
-    external_by_lod: dict[str, list[SourceObject]] = defaultdict(list)
-    for package in closure.get("packages", []):
-        for request in package.get("requestedReferences", []):
+    # One UE3 LOD stores RequiredModule, Modules[], TypeDataModule and
+    # SpawnModule in a single ordered reference stream. Internal exports and
+    # external imports must be merged by referenceIndex; appending imports
+    # afterwards changes Cascade execution order. The normalized graph owns
+    # that occurrence order while the closure owns decoded external payloads.
+    external_by_lod: dict[str, list[tuple[int, SourceObject]]] = defaultdict(list)
+    for system in graph.get("sourceSystems", []):
+        for request in system.get("unresolvedExternalReferences", []):
             record = index.get_path(request.get("objectPath"))
             if record is not None:
-                external_by_lod[str(request.get("sourceNodeId"))].append(record)
+                external_by_lod[str(request.get("sourceNodeId"))].append(
+                    (int(request.get("referenceIndex", 0)), record)
+                )
+
+    def occurrence(
+        source: SourceObject,
+        source_lod_id: str,
+        reference_index: int,
+    ) -> SourceObject:
+        # A single module object may intentionally appear more than once in
+        # Modules[]. Preserve every occurrence rather than deduplicating the
+        # source object path.
+        return SourceObject(
+            key=(
+                f"{source.key}#occurrence:{source_lod_id}:"
+                f"{reference_index}"
+            ),
+            source_id=f"{source.source_id}@ref:{reference_index}",
+            class_name=source.class_name,
+            object_path=source.object_path,
+            properties=source.properties,
+            references=source.references,
+        )
 
     partitions = []
     for system in graph.get("sourceSystems", []):
@@ -755,23 +962,332 @@ def selected_lod_partitions(
             lod = index.get_id(str(lod_edge.get("targetNodeId"))) if lod_edge else None
             if lod is None:
                 continue
-            modules = []
+            ordered_references: list[tuple[int, SourceObject]] = []
             for edge in index.outgoing.get(lod.source_id, []):
                 target = index.get_id(str(edge.get("targetNodeId") or ""))
                 if target is not None:
-                    modules.append(target)
-            modules.extend(external_by_lod.get(lod.source_id, []))
-            deduplicated = {module.key: module for module in modules}
-            partitions.append((system, emitter, lod, list(deduplicated.values())))
+                    ordered_references.append(
+                        (int(edge.get("referenceIndex", 0)), target)
+                    )
+            ordered_references.extend(external_by_lod.get(lod.source_id, []))
+            ordered_references.sort(key=lambda row: row[0])
+            modules = [
+                occurrence(target, lod.source_id, reference_index)
+                for reference_index, target in ordered_references
+            ]
+            partitions.append((system, emitter, lod, modules))
     return partitions
+
+
+def float4(value: Any, component_count: int) -> list[float]:
+    if component_count == 1:
+        number = finite_number(unwrap(value))
+        return [float(number or 0.0), 0.0, 0.0, 0.0]
+    vector = vector_value(value) or [0.0, 0.0, 0.0]
+    return [*vector[:component_count], *([0.0] * (4 - component_count))]
+
+
+def curve_key(point: dict[str, Any], component_count: int) -> dict[str, Any] | None:
+    time = finite_number(prop(point, "inval"))
+    if time is None:
+        return None
+    value = float4(prop(point, "outval"), component_count)
+    arrive = float4(prop(point, "arrivetangent"), component_count)
+    leave = float4(prop(point, "leavetangent"), component_count)
+    mode = folded(prop(point, "interpmode", "cim_linear"))
+    interpolation = (
+        "constant" if "constant" in mode else
+        "linear" if "linear" in mode else
+        "cubic"
+    )
+    return {
+        "time": time,
+        "minimum": value,
+        "maximum": value,
+        "arriveTangentMinimum": arrive,
+        "leaveTangentMinimum": leave,
+        "arriveTangentMaximum": arrive,
+        "leaveTangentMaximum": leave,
+        "interpolation": interpolation,
+    }
+
+
+def referenced_distribution_defaults(
+    target: SourceObject | None,
+    component_count: int,
+) -> tuple[list[float], list[float], list[dict[str, Any]]]:
+    zero = [0.0, 0.0, 0.0, 0.0]
+    if target is None:
+        return zero, zero, []
+    class_name = folded(target.class_name)
+    if "constantcurve" in class_name:
+        curve_name = "constantcurve"
+        curve = distribution_properties(target.properties.get(curve_name))
+        points = prop(curve or {}, "points", [])
+        keys = [
+            key for row in points if isinstance(row, dict)
+            if (key := curve_key(row, component_count)) is not None
+        ] if isinstance(points, list) else []
+        if keys:
+            return keys[0]["minimum"], keys[0]["maximum"], keys
+    if "uniformrange" in class_name:
+        candidates = [
+            float4(prop(target.properties, name), component_count)
+            for name in ("minlow", "minhigh", "maxlow", "maxhigh")
+        ]
+        minimum = [min(row[index] for row in candidates) for index in range(4)]
+        maximum = [max(row[index] for row in candidates) for index in range(4)]
+        return minimum, maximum, []
+    if "uniform" in class_name:
+        return (
+            float4(prop(target.properties, "min"), component_count),
+            float4(prop(target.properties, "max"), component_count),
+            [],
+        )
+    constant = prop(target.properties, "constant")
+    if constant is not None:
+        value = float4(constant, component_count)
+        return value, value, []
+    return zero, zero, []
+
+
+def build_distribution_recipe(
+    index: SourceIndex,
+    module: SourceObject,
+    property_path: str,
+    raw_wrapper: dict[str, Any],
+) -> dict[str, Any]:
+    component_count = 1 if folded(raw_wrapper.get("structType")) == "rawdistributionfloat" else 3
+    raw = distribution_properties(raw_wrapper) or {}
+    target = distribution_target(index, module, property_path)
+    default_minimum, default_maximum, keys = referenced_distribution_defaults(
+        target, component_count
+    )
+    lookup_table = [
+        number for item in prop(raw, "lookuptable", [])
+        if (number := finite_number(item)) is not None
+    ]
+    operation = int(finite_number(prop(raw, "op")) or 0)
+    if operation == 0:
+        target_class = folded(target.class_name) if target else ""
+        operation = 2 if "uniform" in target_class else 1
+    if operation not in (1, 2, 3):
+        raise ValueError(
+            f"unsupported UE3 raw distribution operation {operation}: "
+            f"{module.object_path}.{property_path}"
+        )
+    chunk_size = int(finite_number(prop(raw, "lookuptablechunksize")) or 0)
+    if lookup_table and chunk_size == 0:
+        chunk_size = component_count * (2 if operation >= 2 else 1)
+    expected_num_elements = 2 if operation >= 2 else 1
+    num_elements = int(finite_number(prop(raw, "lookuptablenumelements")) or 0)
+    if lookup_table and num_elements == 0:
+        num_elements = expected_num_elements
+    required_values = component_count * expected_num_elements
+    if lookup_table and (
+        len(lookup_table) < 2 + required_values
+        or chunk_size != required_values
+        or num_elements != expected_num_elements
+        or (len(lookup_table) - 2) % chunk_size != 0
+    ):
+        raise ValueError(
+            "malformed UE3 cooked distribution lookup payload: "
+            f"{module.object_path}.{property_path}"
+        )
+    raw_type = finite_number(prop(raw, "type"))
+    if component_count > 1 and raw_type is not None:
+        # UE3 serializes FRawDistributionVector::Type as a bit field.  Bits
+        # 0..2 are the runtime LockFlag consumed by GetValue3Random.  Keep
+        # the already-cooked lookup payload intact and forward that flag;
+        # higher bits describe source-curve metadata, not another sample.
+        random_lock_axes = int(raw_type) & 0x07
+    else:
+        random_lock_axes = {
+            "edvlf_xy": 1,
+            "edvlf_xz": 2,
+            "edvlf_yz": 3,
+            "edvlf_xyz": 4,
+        }.get(folded(prop(target.properties, "lockedaxes")) if target else "", 0)
+    return {
+        "propertyPath": property_path,
+        "sourceClass": target.class_name if target else "",
+        "sourceObjectPath": target.object_path if target else "",
+        "componentCount": component_count,
+        "operation": operation,
+        "randomLockAxes": random_lock_axes,
+        "lookupTableChunkSize": max(0, chunk_size),
+        "lookupTableNumElements": max(0, num_elements),
+        "lookupTableTimeScale": finite_number(prop(raw, "lookuptabletimescale")) or 0.0,
+        "lookupTableStartTime": finite_number(prop(raw, "lookuptablestarttime")) or 0.0,
+        "defaultMinimum": default_minimum,
+        "defaultMaximum": default_maximum,
+        "lookupTable": lookup_table,
+        "keys": keys,
+    }
+
+
+def flatten_source_properties(
+    index: SourceIndex,
+    module: SourceObject,
+    semantic_overlay: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    literals: list[dict[str, Any]] = []
+    distributions: list[dict[str, Any]] = []
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, dict) and value.get("type") == "structproperty" and folded(value.get("structType")) in {"rawdistributionfloat", "rawdistributionvector"}:
+            distributions.append(build_distribution_recipe(index, module, path, value))
+            return
+        if isinstance(value, dict) and "type" in value and "value" in value:
+            visit(value.get("value"), path)
+            return
+        if isinstance(value, bool):
+            literals.append({"propertyPath": path, "kind": "boolean", "value": value})
+            return
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            number = finite_number(value)
+            if number is not None:
+                literals.append({"propertyPath": path, "kind": "number", "value": number})
+            return
+        if isinstance(value, str):
+            literals.append({"propertyPath": path, "kind": "string", "value": value})
+            return
+        if isinstance(value, list):
+            for item_index, item in enumerate(value):
+                visit(item, f"{path}[{item_index}]")
+            return
+        if isinstance(value, dict):
+            for name, item in value.items():
+                child = f"{path}.{folded(name)}" if path else folded(name)
+                visit(item, child)
+
+    for property_name, property_value in module.properties.items():
+        visit(property_value, folded(property_name))
+
+    seen_reference_paths: set[tuple[str, str]] = set()
+    for property_name, object_path in module.reference_paths:
+        reference_path = folded(property_name) + ".objectpath"
+        key = (reference_path, object_path.casefold())
+        if key in seen_reference_paths:
+            continue
+        seen_reference_paths.add(key)
+        literals.append(
+            {"propertyPath": reference_path, "kind": "string", "value": object_path}
+        )
+
+    overlay = (semantic_overlay or {}).get(folded(module.object_path))
+    if isinstance(overlay, dict):
+        random_seeds = overlay.get("randomSeeds")
+        if isinstance(random_seeds, list):
+            literals = [
+                row for row in literals
+                if not str(row.get("propertyPath", "")).startswith("randomseedinfo.")
+            ]
+            for seed_index, seed in enumerate(random_seeds):
+                literals.append(
+                    {
+                        "propertyPath": f"randomseedinfo.randomseeds[{seed_index}]",
+                        "kind": "number",
+                        "value": int(seed),
+                    }
+                )
+            literals.append(
+                {
+                    "propertyPath": "randomseedinfo.bresetseedonemitterlooping",
+                    "kind": "boolean",
+                    "value": bool(overlay.get("resetSeedOnEmitterLooping", False)),
+                }
+            )
+            for property_path, overlay_name in (
+                ("randomseedinfo.brandomlyselectseedarray", "randomlySelectSeedArray"),
+                ("randomseedinfo.bgetseedfrominstance", "getSeedFromInstance"),
+                ("randomseedinfo.binstanceseedisindex", "instanceSeedIsIndex"),
+            ):
+                literals.append(
+                    {
+                        "propertyPath": property_path,
+                        "kind": "boolean",
+                        "value": bool(overlay.get(overlay_name, False)),
+                    }
+                )
+        vector_field_asset_id = overlay.get("vectorFieldAssetId")
+        if isinstance(vector_field_asset_id, str) and vector_field_asset_id:
+            vector_field_object_path = str(
+                overlay.get("vectorFieldObjectPath") or ""
+            )
+            if vector_field_object_path:
+                literals.append(
+                    {
+                        "propertyPath": "vectorfield.objectpath",
+                        "kind": "string",
+                        "value": vector_field_object_path,
+                    }
+                )
+            literals.append(
+                {
+                    "propertyPath": "vectorfield.assetid",
+                    "kind": "string",
+                    "value": vector_field_asset_id,
+                }
+            )
+    literals.sort(key=lambda row: row["propertyPath"])
+    distributions.sort(key=lambda row: row["propertyPath"])
+    return literals, distributions
+
+
+def build_source_recipe(
+    index: SourceIndex,
+    modules: list[SourceObject],
+    renderer_shape: str,
+    bursts: list[dict[str, Any]],
+    semantic_overlay: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    required = first_module(modules, "particlemodulerequired")
+    delay_distribution = distribution_float(index, required, "emitterdelay")
+    emitter_delay = max(0.0, delay_distribution[2]) if delay_distribution else (
+        max(0.0, finite_number(prop(required.properties, "emitterdelay")) or 0.0)
+        if required else 0.0
+    )
+    emitter_duration = max(0.0, finite_number(prop(required.properties, "emitterduration")) or 0.0) if required else 0.0
+    emitter_loops = max(0, int(finite_number(prop(required.properties, "emitterloops")) or 1)) if required else 1
+    source_modules = []
+    for module in modules:
+        literals, distributions = flatten_source_properties(
+            index, module, semantic_overlay
+        )
+        source_modules.append(
+            {
+                "stableId": module.source_id,
+                "className": folded(module.class_name),
+                "objectPath": module.object_path,
+                "literals": literals,
+                "distributions": distributions,
+            }
+        )
+    return {
+        "enabled": True,
+        "rendererShape": renderer_shape,
+        "emitterDelaySeconds": emitter_delay,
+        "emitterDurationSeconds": emitter_duration,
+        "emitterLoopCount": emitter_loops,
+        "bursts": [
+            {
+                "timeSeconds": row["timeSeconds"],
+                "countMinimum": row["count"] if row["countLow"] < 0 else row["countLow"],
+                "countMaximum": row["count"],
+            }
+            for row in sorted(bursts, key=lambda item: (item["timeSeconds"], item["index"]))
+        ],
+        "modules": source_modules,
+    }
 
 
 def classify(system: dict[str, Any], modules: list[SourceObject]) -> tuple[str | None, str | None, str | None]:
     classes = [folded(module.class_name) for module in modules]
     if any("typedatalight" in name for name in classes):
-        return None, "LIGHT_RENDERER_NOT_SUPPORTED", None
+        return "light", None, "light"
     if folded(system.get("sourceSystemId")).startswith("fx_post"):
-        return None, "SCREEN_SPACE_POST_EFFECT_NOT_SUPPORTED", None
+        return "screenPost", None, "screenPost"
     if any("typedatadecal" in name for name in classes):
         return "decal", None, "decal"
     if any("typedatamesh" in name for name in classes):
@@ -783,6 +1299,7 @@ def build_document(
     source_receipt: dict[str, Any],
     graph: dict[str, Any],
     closure: dict[str, Any],
+    semantic_overlay: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if int(source_receipt["skillId"]) != int(graph["skillId"]):
         raise ValueError("source receipt and normalized graph skillId differ")
@@ -797,8 +1314,20 @@ def build_document(
     unsupported = []
     total_particle_budget = 0
 
+    source_partitions = selected_lod_partitions(graph, index, closure)
+    active_partitions = [
+        partition
+        for partition in source_partitions
+        if folded(partition[0].get("sourceSystemId")) in events
+    ]
+
+    # A normalized graph can contain every variant referenced by the source
+    # action package.  Only systems reached by the selected action timeline are
+    # executable for this document.  Materializing an unreferenced system at
+    # t=0 reactivates disabled FX variants (for example DimensionMaster A's
+    # FX-07 branch) and is not a valid fallback.
     for partition_index, (system, emitter, lod, modules) in enumerate(
-        selected_lod_partitions(graph, index, closure), start=1
+        active_partitions, start=1
     ):
         kind, unsupported_reason, renderer_shape = classify(system, modules)
         source_system_id = str(system["sourceSystemId"])
@@ -806,8 +1335,18 @@ def build_document(
         event = source_events[0] if source_events else {}
         event_time = finite_number(event.get("globalTimeSeconds")) or 0.0
         event_duration = finite_number(event.get("durationSeconds")) or 0.0
-        module_ids = {lod.source_id, emitter.source_id, *(module.source_id for module in modules)}
+        module_ids = {
+            lod.source_id,
+            emitter.source_id,
+            *(
+                module.source_id.split("@ref:", 1)[0]
+                for module in modules
+            ),
+        }
         resources, resource_receipt, material_rows = choose_resources(system, module_ids, graph)
+        source_material_path = str(
+            material_rows[0].get("sourceMaterialPath") or ""
+        ) if material_rows else ""
         module_evidence = [
             {"className": module.class_name, "objectPath": module.object_path}
             for module in modules
@@ -824,18 +1363,20 @@ def build_document(
             conversions.append({**row, "status": "UNSUPPORTED", "elementIds": []})
             continue
 
+        missing_resources = []
         if renderer_shape == "mesh" and not any(row["slotId"] == "meshModel" for row in resources):
-            reason = "MESH_RENDERER_HAS_NO_RUNTIME_MESH_BINDING"
-            unsupported.append({"sourceSystemId": source_system_id, "sourceEmitter": emitter.object_path, "reason": reason})
-            conversions.append({"sourceSystemId": source_system_id, "sourceEmitter": emitter.object_path, "status": "UNSUPPORTED", "reason": reason, "elementIds": [], "moduleEvidence": module_evidence})
-            continue
-        if renderer_shape != "mesh" and kind in {"particle", "decal"} and not any(row["slotId"] == "base" for row in resources):
-            reason = "RENDERER_HAS_NO_RUNTIME_BASE_TEXTURE_BINDING"
-            unsupported.append({"sourceSystemId": source_system_id, "sourceEmitter": emitter.object_path, "reason": reason})
-            conversions.append({"sourceSystemId": source_system_id, "sourceEmitter": emitter.object_path, "status": "UNSUPPORTED", "reason": reason, "elementIds": [], "moduleEvidence": module_evidence})
-            continue
+            missing_resources.append("MESH_RENDERER_HAS_NO_RUNTIME_MESH_BINDING")
+        source_material_pending = (
+            renderer_shape not in {"mesh", "light", "screenPost"}
+            and kind in {"particle", "decal"}
+            and not any(row["slotId"] == "base" for row in resources)
+            and bool(source_material_path)
+        )
+        if renderer_shape not in {"mesh", "light", "screenPost"} and kind in {"particle", "decal"} and not any(row["slotId"] == "base" for row in resources) and not source_material_pending:
+            missing_resources.append("RENDERER_HAS_NO_RUNTIME_BASE_TEXTURE_BINDING")
 
         detail, detail_mappings, bursts = emitter_detail(index, lod, modules, event_time, event_duration, partition_index)
+        apply_action_cue_transform(detail, event)
         profile = material_detail(material_rows, detail, detail_mappings)
         if renderer_shape == "mesh":
             detail["mesh"]["useModelMaterial"] = not any(row["slotId"] == "base" for row in resources)
@@ -847,13 +1388,24 @@ def build_document(
         base_burst = sum(row["count"] for row in bursts if row["timeSeconds"] <= 0.00001)
         delayed_bursts = [row for row in bursts if row["timeSeconds"] > 0.00001]
         if kind == "particle":
-            detail["particle"]["burstCount"] = min(base_burst, detail["particle"]["maxParticles"])
-            total_particle_budget += detail["particle"]["maxParticles"]
+            detail["particle"]["burstCount"] = 0
+
+        source_recipe = build_source_recipe(
+            index, modules, renderer_shape, bursts,
+            (semantic_overlay or {}).get("modules", {}),
+        )
 
         element_ids = []
-        should_emit_base = kind != "particle" or detail["particle"]["spawnRatePerSecond"] > 0.0 or base_burst > 0 or not delayed_bursts
+        should_emit_base = True
         if should_emit_base:
             element_id = unique_id(f"{safe_slug(source_system_id, 55)}.{safe_slug(emitter.object_path.split('.')[-1], 45)}", used_ids)
+            material_template = (
+                "effect.source_material"
+                if kind not in ("mesh", "light", "screenPost")
+                and not any(row.get("slotId") in ("base", "meshModel") for row in resources)
+                and source_material_path
+                else "effect.standard"
+            )
             elements.append(
                 {
                     "id": element_id,
@@ -863,45 +1415,70 @@ def build_document(
                     "visible": True,
                     "kind": kind,
                     "resources": resources,
-                    "material": {"templateId": "effect.standard", "renderProfile": profile},
+                    "material": {
+                        "templateId": material_template,
+                        "sourceMaterialPath": source_material_path,
+                        "renderProfile": profile,
+                    },
+                    "actionCueAttachment": action_cue_attachment(event),
                     "detail": detail,
+                    "sourceRecipe": source_recipe,
                 }
             )
             element_ids.append(element_id)
+            if kind == "particle":
+                total_particle_budget += detail["particle"]["maxParticles"]
 
-        if kind == "particle":
-            for burst in delayed_bursts:
-                burst_detail = copy.deepcopy(detail)
-                burst_detail["timing"]["startDelaySeconds"] += burst["timeSeconds"]
-                burst_detail["timing"]["lifeTimeSeconds"] = max(burst_detail["particle"]["lifeTimeSeconds"][1], 0.1)
-                burst_detail["particle"]["spawnRatePerSecond"] = 0.0
-                burst_detail["particle"]["burstCount"] = min(burst["count"], burst_detail["particle"]["maxParticles"])
-                element_id = unique_id(f"{safe_slug(source_system_id, 48)}.{safe_slug(emitter.object_path.split('.')[-1], 42)}.burst_{burst['index']}", used_ids)
-                elements.append(
-                    {
-                        "id": element_id,
-                        "displayName": f"{emitter.object_path.split('.')[-1]} Burst {burst['index']}"[:64],
-                        "groupId": safe_slug(source_system_id, 120),
-                        "sourceNode": f"{source_system_id}|{emitter.object_path}|burst:{burst['index']}"[:256],
-                        "visible": True,
-                        "kind": kind,
-                        "resources": resources,
-                        "material": {"templateId": "effect.standard", "renderProfile": profile},
-                        "detail": burst_detail,
-                    }
+        # A Cascade ParticleSystem can be triggered more than once by one
+        # animation timeline.  Its emitter recipe is shared, but every notify is
+        # a distinct runtime occurrence.  Keeping only source_events[0] silently
+        # dropped repeated impacts such as super_instance BGCrack_01.
+        first_occurrence_element_ids = list(element_ids)
+        for occurrence_index, occurrence in enumerate(source_events[1:], start=2):
+            occurrence_time = (
+                finite_number(occurrence.get("globalTimeSeconds")) or 0.0
+            )
+            time_offset = occurrence_time - event_time
+            occurrence_id = str(
+                occurrence.get("eventId") or f"occurrence-{occurrence_index}"
+            )
+            for source_element_id in first_occurrence_element_ids:
+                source_element = next(
+                    row for row in elements if row["id"] == source_element_id
                 )
-                element_ids.append(element_id)
-                total_particle_budget += burst_detail["particle"]["maxParticles"]
+                duplicated = copy.deepcopy(source_element)
+                duplicated["id"] = unique_id(
+                    f"{source_element_id}.event_{safe_slug(occurrence_id, 32)}",
+                    used_ids,
+                )
+                duplicated["groupId"] = safe_slug(
+                    f"{source_element['groupId']}.{occurrence_id}", 120
+                )
+                duplicated["sourceNode"] = (
+                    f"{source_element['sourceNode']}|event:{occurrence_id}"[:256]
+                )
+                duplicated["detail"]["timing"]["startDelaySeconds"] += time_offset
+                apply_action_cue_transform(
+                    duplicated["detail"], occurrence, event
+                )
+                duplicated["actionCueAttachment"] = action_cue_attachment(
+                    occurrence
+                )
+                elements.append(duplicated)
+                element_ids.append(duplicated["id"])
+                if kind == "particle":
+                    total_particle_budget += duplicated["detail"]["particle"][
+                        "maxParticles"
+                    ]
 
-        represented_tokens = {
-            token for token in SUPPORTED_DETAIL_MODULE_TOKENS
-            if any(token in folded(module.class_name) for module in modules)
-        }
         unrepresented = [
-            {"className": module.class_name, "objectPath": module.object_path}
+            {
+                "className": module.class_name,
+                "objectPath": module.object_path,
+                "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING",
+            }
             for module in modules
-            if not any(token in folded(module.class_name) for token in represented_tokens)
-            and "typedata" not in folded(module.class_name)
+            if folded(module.class_name) not in REPRESENTED_DETAIL_MODULE_CLASSES
         ]
         conversions.append(
             {
@@ -910,8 +1487,22 @@ def build_document(
                 "sourceLod": lod.object_path,
                 "targetKind": kind,
                 "rendererShape": renderer_shape,
-                "status": "APPROXIMATION_REQUIRES_VISUAL_TUNING" if renderer_shape == "mesh" or kind == "decal" or any(row["status"] != "EXACT" for row in detail_mappings) else "EXACT",
+                "status": (
+                    "MISSING_RESOURCE" if missing_resources
+                    else "SOURCE_MATERIAL_RUNTIME_PENDING" if source_material_pending
+                    else "SOURCE_RECIPE_RUNTIME_PENDING"
+                ),
+                "sourceMaterialRuntimePending": source_material_pending,
+                "missingResources": missing_resources,
                 "eventTimeSeconds": event_time,
+                "eventOccurrences": [
+                    {
+                        "eventId": row.get("eventId"),
+                        "globalTimeSeconds": row.get("globalTimeSeconds"),
+                        "durationSeconds": row.get("durationSeconds"),
+                    }
+                    for row in source_events
+                ],
                 "elementIds": element_ids,
                 "resourceMappings": resource_receipt,
                 "detailMappings": detail_mappings,
@@ -936,11 +1527,19 @@ def build_document(
 
     character_class = str(source_receipt["characterClass"])
     skill_id = int(source_receipt["skillId"])
+    input_slot = str(source_receipt.get("inputSlot") or "Unbound")
     document = {
         "schema": "lostark.effect-authoring",
-        "version": 6,
+        "version": 10,
         "effectAssetId": f"effect.{character_class.casefold()}.skill.{skill_id}.imported",
-        "displayName": f"DimensionMaster F {skill_id} Imported Portal Draft",
+        "displayName": f"{character_class} {input_slot} {skill_id} Imported Cascade Draft",
+        "particleSystem": {
+            "uniformScaleMultiplier": 1.0,
+            "yawOffsetDegrees": 0.0,
+            "directionYawDegrees": 0.0,
+            "initialSpeedMultiplier": 1.0,
+        },
+        "modelCues": [],
         "elements": elements,
     }
     receipt = {
@@ -952,7 +1551,7 @@ def build_document(
         "sourcePolicy": {
             "partition": "ParticleSystem/Emitter/FIRST_LOD",
             "coordinateScale": SOURCE_UNITS_TO_RUNTIME,
-            "curvePolicy": "start/end or range approximation; raw source remains in graph/module closure",
+            "curvePolicy": "v9 preserves baked lookup tables and referenced curve keys; v8 Detail remains a compatibility preview",
             "materialSlotPolicy": "Material Instance parameter binding first, parameter-name heuristic second",
         },
         "documentEffectAssetId": document["effectAssetId"],
@@ -964,16 +1563,22 @@ def build_document(
             "Cascade curves are collapsed to the current Detail panel's start/end or min/max fields.",
             "Simple StartLocation ranges map to particle spawn position min/max; sphere/cylinder volumes, orbit, camera offset, seeded distributions and dynamic parameters remain source evidence.",
             "Material texture slots use original parameter bindings, but Base/Noise/Mask/Emissive/Dissolve semantic assignment needs thumbnail review.",
-            "Procedural source materials without a texture parameter use fx_a_blankwhite_01 as an explicit preview fallback; their shape cannot be recovered by texture binding alone.",
+            "Procedural source materials preserve sourceMaterialPath and use effect.source_material; expression-graph execution remains fail-closed in coverage until implemented.",
             "UE source position, velocity, acceleration and size use a 0.01 project-scale assumption and require visual scale verification.",
             "Light renderer, screen-space post process, source camera shake and assetless Effect notifies stay outside this Effect Document.",
             "Dimension Summon model animation spawn/synchronization is a presentation cue concern and is not encoded as a particle Element.",
         ],
         "summary": {
-            "sourceEmitterPartitionCount": len(selected_lod_partitions(graph, index, closure)),
+            "sourceEmitterPartitionCount": len(active_partitions),
+            "graphEmitterPartitionCount": len(source_partitions),
+            "inactiveSourceSystemEmitterPartitionCount": (
+                len(source_partitions) - len(active_partitions)
+            ),
             "emittedElementCount": len(elements),
             "convertedEmitterCount": sum(bool(row.get("elementIds")) for row in conversions),
             "unsupportedEmitterCount": len(unsupported),
+            "missingResourceEmitterCount": sum(bool(row.get("missingResources")) for row in conversions),
+            "sourceMaterialPendingEmitterCount": sum(bool(row.get("sourceMaterialRuntimePending")) for row in conversions),
             "particleBudget": total_particle_budget,
             "externalPackageCount": closure.get("summary", {}).get("packageCount", 0),
             "externalRequestCount": closure.get("summary", {}).get("requestCount", 0),
@@ -983,6 +1588,36 @@ def build_document(
     return document, receipt
 
 
+def promote_document(
+    imported_document: dict[str, Any],
+    effect_asset_id: str,
+    display_name: str,
+    model_cues: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    imported_id = str(imported_document.get("effectAssetId") or "")
+    if not imported_id.endswith(".imported"):
+        raise ValueError("promotion source Effect ID must end with .imported")
+    if imported_id.removesuffix(".imported") != effect_asset_id:
+        raise ValueError("promotion target must match the Imported Effect ID")
+    if not effect_asset_id or not display_name.strip():
+        raise ValueError("promotion target ID and display name are required")
+    promoted = copy.deepcopy(imported_document)
+    promoted["version"] = 10
+    promoted["effectAssetId"] = effect_asset_id
+    promoted["displayName"] = display_name
+    promoted["particleSystem"] = copy.deepcopy(imported_document.get(
+        "particleSystem",
+        {
+            "uniformScaleMultiplier": 1.0,
+            "yawOffsetDegrees": 0.0,
+            "directionYawDegrees": 0.0,
+            "initialSpeedMultiplier": 1.0,
+        },
+    ))
+    promoted["modelCues"] = copy.deepcopy(model_cues or [])
+    return promoted
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-receipt", required=True, type=Path)
@@ -990,6 +1625,23 @@ def main() -> int:
     parser.add_argument("--external-module-closure", required=True, type=Path)
     parser.add_argument("--output-document", required=True, type=Path)
     parser.add_argument("--output-receipt", required=True, type=Path)
+    parser.add_argument("--output-authored-document", type=Path)
+    parser.add_argument("--authored-effect-asset-id")
+    parser.add_argument("--authored-display-name")
+    parser.add_argument("--model-cue-id")
+    parser.add_argument("--model-cue-asset-id")
+    parser.add_argument("--model-cue-clip")
+    parser.add_argument("--model-cue-duration-seconds", type=float)
+    parser.add_argument("--model-cue-local-position", nargs=3, type=float,
+                        default=(0.0, 0.0, 0.0))
+    parser.add_argument("--model-cue-local-rotation", nargs=3, type=float,
+                        default=(0.0, 0.0, 0.0))
+    parser.add_argument("--model-cue-local-scale", nargs=3, type=float,
+                        default=(1.0, 1.0, 1.0))
+    parser.add_argument("--model-cue-asset-pre-scale", nargs=3, type=float,
+                        default=(1.0, 1.0, 1.0))
+    parser.add_argument("--model-cue-asset-pre-rotation", nargs=3, type=float,
+                        default=(0.0, 0.0, 0.0))
     args = parser.parse_args()
 
     document, receipt = build_document(
@@ -999,11 +1651,55 @@ def main() -> int:
     )
     write_json_atomic(args.output_document, document)
     write_json_atomic(args.output_receipt, receipt)
+    authored_output = None
+    if args.output_authored_document is not None:
+        if not args.authored_effect_asset_id or not args.authored_display_name:
+            parser.error("Authored output requires target Effect ID and display name")
+        cue_fields = (
+            args.model_cue_id,
+            args.model_cue_asset_id,
+            args.model_cue_clip,
+            args.model_cue_duration_seconds,
+        )
+        if any(value is not None for value in cue_fields) and not all(
+            value is not None for value in cue_fields
+        ):
+            parser.error("Model Cue ID, asset, clip, and duration are all required")
+        model_cues = []
+        if all(value is not None for value in cue_fields):
+            model_cues.append(
+                {
+                    "cueId": args.model_cue_id,
+                    "modelAssetId": args.model_cue_asset_id,
+                    "clipName": args.model_cue_clip,
+                    "startDelaySeconds": 0.0,
+                    "durationSeconds": args.model_cue_duration_seconds,
+                    "visible": True,
+                    "localTransform": {
+                        "position": list(args.model_cue_local_position),
+                        "rotationDegrees": list(args.model_cue_local_rotation),
+                        "scale": list(args.model_cue_local_scale),
+                    },
+                    "assetPreTransform": {
+                        "scale": list(args.model_cue_asset_pre_scale),
+                        "rotationDegrees": list(args.model_cue_asset_pre_rotation),
+                    },
+                }
+            )
+        authored = promote_document(
+            document,
+            args.authored_effect_asset_id,
+            args.authored_display_name,
+            model_cues,
+        )
+        write_json_atomic(args.output_authored_document, authored)
+        authored_output = str(args.output_authored_document)
     print(
         json.dumps(
             {
                 "document": str(args.output_document),
                 "receipt": str(args.output_receipt),
+                "authoredDocument": authored_output,
                 **receipt["summary"],
             },
             ensure_ascii=False,

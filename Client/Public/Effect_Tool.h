@@ -1,8 +1,10 @@
 #pragma once
 
 #include "CharacterPreviewPanel.h"
+#include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_ComponentDocument.h"
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
 #include "PlayerSkillCatalog.h"
@@ -35,8 +37,20 @@ enum class EFFECT_PREVIEW_PIVOT_KIND : uint8_t
 enum class EFFECT_PREVIEW_FILTER : uint8_t
 {
     COMPLETE,
+    SOLO_PARTICLE_SYSTEM,
     SOLO_SELECTED,
     MUTE_SELECTED,
+    END
+};
+
+enum class EFFECT_DETAIL_SELECTION : uint8_t
+{
+    NONE,
+    PARTICLE_SYSTEM,
+    ELEMENT,
+	COMPONENT,
+	EMITTER,
+	SOURCE_MODULE,
     END
 };
 
@@ -46,6 +60,8 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
     AUTHORED,
     IMPORTED,
     IMPORTED_REFERENCE,
+	RUNTIME_ASSEMBLY,
+	RUNTIME_COMPONENT,
     END
 };
 
@@ -84,6 +100,13 @@ private:
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
     };
 
+    struct PENDING_DOCUMENT_LOAD final
+    {
+        std::filesystem::path Path;
+        std::string strSelectionId;
+        EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+    };
+
 public:
     CEffect_Tool(
         ComPtr<ID3D11Device> pDevice,
@@ -100,7 +123,9 @@ private:
     void Render_EffectDetailWindow();
     void Render_AllEffectsWindow();
     void Render_DataFilesWindow();
+    void Render_PendingDocumentLoadModal();
     void Render_EffectTypeSelector();
+    void Render_ParticleSystemDetail();
     void Render_ResourceSlots();
     void Render_ResourceGrid();
     void Rebuild_ResourceBrowserView(
@@ -115,6 +140,19 @@ private:
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TimingDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_KindDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
+    void Render_SourceRecipeDetail(
+        EFFECT_CASCADE_RECIPE_DESC& Recipe,
+        bool_t& bChanged);
+    void Render_SourceModuleDetail(
+        EFFECT_SOURCE_MODULE_DESC& Module,
+        bool_t& bChanged);
+    void Render_SourceDistributionDetail(
+        EFFECT_DISTRIBUTION_DESC& Distribution,
+        bool_t& bChanged);
+	void Render_AssemblyHierarchy(const std::string& strEffectAssetId);
+	void Render_ComponentSelectionDetail();
+	void Render_EmitterSelectionDetail();
+	void Render_SourceModuleSelectionDetail();
     void Render_LerpDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_AnimationControls(
         const std::shared_ptr<Engine::CModel>& pModel);
@@ -125,12 +163,19 @@ private:
     bool_t Try_ClearElements();
     bool_t Try_SaveDocument();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
+    bool_t Try_PromoteImportedDocument();
     bool_t Try_ReloadActiveDocument();
     bool_t Try_LoadDocument(const std::string& strAssetId);
     bool_t Try_LoadDocumentPath(
         const std::filesystem::path& Path,
         EFFECT_DOCUMENT_SOURCE eSource,
         const std::string& strSelectionId);
+    bool_t Try_LoadDocumentPathStaged(
+        const std::filesystem::path& Path,
+        EFFECT_DOCUMENT_SOURCE eSource,
+        const std::string& strSelectionId,
+        bool_t bBypassUnsavedGuard);
+    bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects();
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
@@ -146,20 +191,43 @@ private:
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
         const EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Try_SelectSkill(const std::string& strEffectAssetId);
+    bool_t Try_SelectParticleSystem(const std::string& strEffectAssetId);
     bool_t Try_SelectElement(
         const std::string& strEffectAssetId,
         const std::string& strElementId);
+	bool_t Try_SelectComponent(
+		const std::string& strEffectAssetId,
+		const std::string& strComponentAssetId);
+	bool_t Try_SelectEmitter(
+		const std::string& strEffectAssetId,
+		const std::string& strComponentAssetId,
+		const std::string& strEmitterId);
+	bool_t Try_SelectSourceModule(
+		const std::string& strEffectAssetId,
+		const std::string& strComponentAssetId,
+		const std::string& strEmitterId,
+		const std::string& strModuleStableId);
+    bool_t Try_AuditionParticleSystem();
+    bool_t Try_AuditionSelectedElement();
+    bool_t Stage_ParticleSystemDraftPreview();
     bool_t Stage_DetailDraftPreview();
+    bool_t Apply_ParticleSystemDraft(EFFECT_DOCUMENT_DESC& Document) const;
+    bool_t Apply_DetailDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Resolve_PreviewRoot(float4x4_t& OutRoot);
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
+    void Update_SynchronizedAnimationSequence();
+    void Reset_SynchronizedAnimationSequence();
     void Release_WorldPreview(bool_t bRemoveFromLayer);
     void Update_Picking();
     void Discard_ActiveDocument();
+    void Reset_ParticleSystemDraft();
     void Reset_DetailDraft();
     void Recalculate_PreviewDuration();
     void Recalculate_PreviewDuration(const EFFECT_DOCUMENT_DESC& Document);
     bool_t Has_UnsavedWork() const;
+    bool_t Has_UnappliedDetailDraft() const;
+    void Refresh_RuntimeEquivalence();
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
 
@@ -172,14 +240,19 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+    optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
     optional<EFFECT_ELEMENT_DESC> m_DetailDraft;
+    optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
     vector<EFFECT_RESOURCE_CATALOG_ENTRY> m_ResourceCatalog;
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
+    vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
+    EFFECT_DETAIL_SELECTION m_eDetailSelection =
+        EFFECT_DETAIL_SELECTION::NONE;
     LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
         LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
@@ -190,6 +263,9 @@ private:
     std::filesystem::path m_ActiveDocumentPath;
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
+	string m_strSelectedComponentId;
+	string m_strSelectedEmitterId;
+	string m_strSelectedSourceModuleId;
     string m_strSelectedResourceAssetId;
     string m_strSelectedDataFileAssetId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
@@ -220,21 +296,30 @@ private:
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;
     bool_t m_bDocumentDirty = false;
+    bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
     bool_t m_bDataFilesRefreshAttempted = false;
     bool_t m_bPendingWorldPivotPick = false;
+    bool_t m_bParticleSystemDraftDirty = false;
     bool_t m_bDetailDraftDirty = false;
     bool_t m_bDiscardConfirmationRequested = false;
+    bool_t m_bPromoteConfirmationRequested = false;
+    bool_t m_bPendingDocumentLoadModalRequested = false;
     uint64_t m_iFrameNumber = 0u;
+    uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
     uint64_t m_iResourceCatalogRevision = 0u;
     uint64_t m_iResourceViewRevision = UINT64_MAX;
     EFFECT_RESOURCE_FILE_KIND m_eResourceViewFileKind =
         EFFECT_RESOURCE_FILE_KIND::END;
+    EFFECT_RESOURCE_FILE_KIND m_eResourceLibraryFileKind =
+        EFFECT_RESOURCE_FILE_KIND::MODEL;
     uint32_t m_iCueTransferDurationMs = 250u;
+    size_t m_iSynchronizedAnimationClipIndex = 0u;
 
     string m_strDocumentStatus;
     string m_strElementStatus;
+    string m_strDetailStatus;
     string m_strResourceStatus;
     string m_strPreviewStatus;
     string m_strPreviewAnimationStatus;

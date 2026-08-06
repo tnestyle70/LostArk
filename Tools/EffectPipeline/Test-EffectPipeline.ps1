@@ -5,6 +5,8 @@ $dataRoot = Join-Path $fixture 'Data'
 $resourceRoot = Join-Path $fixture 'Resources'
 $output = Join-Path $fixture 'Runtime\EffectCatalog.runtime.json'
 $authored = Join-Path $dataRoot 'Effects\Authored'
+$assemblies = Join-Path $dataRoot 'Effects\Assemblies\Fixture'
+$components = Join-Path $dataRoot 'Effects\Components\Fixture'
 $effectResource = Join-Path $resourceRoot 'Effect\Test'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 
@@ -14,10 +16,82 @@ function Write-Utf8([string]$Path, [string]$Text) {
 }
 
 function Write-Fixture([object]$Document, [object]$Catalog) {
-    Write-Utf8 (Join-Path $authored "$effectId.effect.json") `
-        (($Document | ConvertTo-Json -Depth 30) + "`n")
+    $authoringPath = Join-Path $authored "$effectId.effect.json"
+    Write-Utf8 $authoringPath (($Document | ConvertTo-Json -Depth 30) + "`n")
     Write-Utf8 (Join-Path $dataRoot 'Effects\EffectCatalog.json') `
         (($Catalog | ConvertTo-Json -Depth 10) + "`n")
+    $componentId = 'effect.component.fixture.00'
+    $componentDocument = ($Document | ConvertTo-Json -Depth 30) |
+        ConvertFrom-Json
+    $componentDocument.effectAssetId = $componentId
+    $emitters = [Collections.Generic.List[object]]::new()
+    for ($index = 0; $index -lt @($componentDocument.elements).Count; ++$index) {
+        $element = $componentDocument.elements[$index]
+        $renderer = if (@($element.resources | Where-Object {
+            $_.slotId -eq 'meshModel'
+        }).Count -ne 0) { 'mesh' } else { [string]$element.kind }
+        $moduleCount = if ($null -ne $element.sourceRecipe) {
+            @($element.sourceRecipe.modules).Count
+        } else { 0 }
+        $emitters.Add([ordered]@{
+            emitterId = [string]$element.id
+            elementId = [string]$element.id
+            sourceElementIndex = $index
+            renderer = $renderer
+            visible = [bool]$element.visible
+            resourceBindingCount = @($element.resources).Count
+            moduleCount = $moduleCount
+        })
+    }
+    $component = [ordered]@{
+        schema = 'lostark.effect-component'
+        version = 1
+        componentAssetId = $componentId
+        displayName = 'Fixture Component'
+        componentType = 'particleSystem'
+        source = [ordered]@{
+            effectAssetId = $effectId
+            groupId = 'fixture_group'
+            sourceNodes = @('Fixture/Node/0')
+            sourceElementSha256 = ('0' * 64)
+        }
+        emitters = @($emitters)
+        document = $componentDocument
+    }
+    $particleSystem = if ($null -ne $Document.particleSystem) {
+        $Document.particleSystem
+    } else { [ordered]@{} }
+    $modelCues = if ($null -ne $Document.modelCues) {
+        @($Document.modelCues)
+    } else { @() }
+    $assembly = [ordered]@{
+        schema = 'lostark.effect-assembly'
+        version = 1
+        effectAssetId = $effectId
+        displayName = [string]$Document.displayName
+        sourceAuthoringVersion = [int]$Document.version
+        particleSystem = $particleSystem
+        modelCues = @($modelCues)
+        componentCues = @([ordered]@{
+            cueId = 'component-00'
+            componentAssetId = $componentId
+            startDelaySeconds = 0.0
+            visible = $true
+            anchor = 'root'
+            localTransform = [ordered]@{
+                position = @(0.0, 0.0, 0.0)
+                rotationDegrees = @(0.0, 0.0, 0.0)
+                scale = @(1.0, 1.0, 1.0)
+            }
+        })
+        sourceDocumentSha256 = ('1' * 64)
+        sourceDocumentFileSha256 = (Get-FileHash -LiteralPath $authoringPath `
+            -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    Write-Utf8 (Join-Path $components 'Fixture_00.particlesystem.wfx.json') `
+        (($component | ConvertTo-Json -Depth 40) + "`n")
+    Write-Utf8 (Join-Path $assemblies "$effectId.assembly.json") `
+        (($assembly | ConvertTo-Json -Depth 40) + "`n")
 }
 
 function Assert-PublishRejected([string]$Name, [byte[]]$Committed) {
@@ -58,6 +132,10 @@ try {
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'mesh.wmodel'), [byte[]](5,6,7,8))
+    $modelCueResource = Join-Path $resourceRoot 'Character\Test'
+    [IO.Directory]::CreateDirectory($modelCueResource) | Out-Null
+    [IO.File]::WriteAllBytes((Join-Path $modelCueResource 'cue.wmodel'),
+        [byte[]](9,10,11,12))
     $referenceDocumentPath = Join-Path $PSScriptRoot `
         '..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json'
     $referenceDocument = [IO.File]::ReadAllText(
@@ -96,6 +174,71 @@ try {
 
     & $publisher -Mode Publish -DataRoot $dataRoot -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Baseline publish failed.' }
+    $baseline = [IO.File]::ReadAllBytes($output)
+
+    $document.version = 7
+    $document['modelCues'] = @([ordered]@{
+        cueId = 'fixture_model'
+        modelAssetId = 'Character/Test/cue.wmodel'
+        clipName = 'fixture_clip'
+        startDelaySeconds = 0.0
+        durationSeconds = 1.0
+        visible = $true
+        localTransform = [ordered]@{
+            position = @(0.0, 0.0, 0.0)
+            rotationDegrees = @(0.0, 0.0, 0.0)
+            scale = @(1.0, 1.0, 1.0)
+        }
+        assetPreTransform = [ordered]@{
+            scale = @(0.01, 0.01, 0.01)
+            rotationDegrees = @(0.0, -90.0, 0.0)
+        }
+    })
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v7 Model Cue publish failed.' }
+    Assert-RuntimeResourceHashes $output $resourceRoot
+
+    $document.version = 8
+    $document['particleSystem'] = [ordered]@{
+        uniformScaleMultiplier = 1.0
+        yawOffsetDegrees = 0.0
+        directionYawDegrees = 0.0
+        initialSpeedMultiplier = 1.0
+    }
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v8 Particle System publish failed.' }
+    Assert-RuntimeResourceHashes $output $resourceRoot
+    $modelCueBaseline = [IO.File]::ReadAllBytes($output)
+
+    $document.particleSystem.uniformScaleMultiplier = 0.0
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Invalid Particle System scale' $modelCueBaseline
+    $document.particleSystem.uniformScaleMultiplier = 1.0
+
+    $duplicateCue = ($document.modelCues[0] | ConvertTo-Json -Depth 10) |
+        ConvertFrom-Json
+    $document.modelCues = @($document.modelCues[0], $duplicateCue)
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Duplicate Model Cue ID' $modelCueBaseline
+    $document.modelCues = @($document.modelCues[0])
+    $document.modelCues[0].modelAssetId = '../escape.wmodel'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unsafe Model Cue resource path' $modelCueBaseline
+    $document.modelCues[0].modelAssetId = 'Character/Test/cue.wmodel'
+    $document.modelCues[0].durationSeconds = 0.0
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Invalid Model Cue duration' $modelCueBaseline
+    $document.version = 6
+    $document.Remove('modelCues')
+    $document.Remove('particleSystem')
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v6 compatibility restore failed.' }
     $baseline = [IO.File]::ReadAllBytes($output)
 
     $originalElement = ($document.elements[0] | ConvertTo-Json -Depth 30) |
@@ -199,7 +342,7 @@ try {
     }
 
     $document.elements[0].resources[0].assetId = '../escape.dds'
-    Write-Utf8 (Join-Path $authored "$effectId.effect.json") (($document | ConvertTo-Json -Depth 30) + "`n")
+    Write-Fixture $document $catalog
     $failed = $false
     try {
         & $publisher -Mode Publish -DataRoot $dataRoot -ResourceRoot $resourceRoot -OutputPath $output
@@ -214,7 +357,7 @@ try {
 
     $document.elements[0].resources[0].assetId = 'Effect/Test/base.dds'
     $document.elements[0].detail.particle.maxParticles = 4096
-    Write-Utf8 (Join-Path $authored "$effectId.effect.json") (($document | ConvertTo-Json -Depth 30) + "`n")
+    Write-Fixture $document $catalog
     $failed = $false
     try {
         & $publisher -Mode Publish -DataRoot $dataRoot -ResourceRoot $resourceRoot -OutputPath $output
@@ -228,7 +371,7 @@ try {
 
     $document.elements[0].detail.particle.maxParticles = 256
     $document.elements[0].resources = @()
-    Write-Utf8 (Join-Path $authored "$effectId.effect.json") (($document | ConvertTo-Json -Depth 30) + "`n")
+    Write-Fixture $document $catalog
     $failed = $false
     try {
         & $publisher -Mode Publish -DataRoot $dataRoot -ResourceRoot $resourceRoot -OutputPath $output
@@ -239,7 +382,7 @@ try {
         [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
         throw 'Required binding failure changed the committed runtime catalog.'
     }
-    Write-Host 'PASS: Effect pipeline v6/mesh-particle publish, version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
+    Write-Host 'PASS: Effect pipeline v8/particle-system/v7 model-cue/v6 compatibility/mesh-particle publish, version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
 }
 finally {
     if (Test-Path -LiteralPath $fixture) {

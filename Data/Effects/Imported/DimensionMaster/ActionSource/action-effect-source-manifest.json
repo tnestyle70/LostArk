@@ -1,0 +1,66 @@
+{
+  "schema": "lostark.ue3-action-effect-source-manifest",
+  "formatVersion": 1,
+  "profiles": [
+    {
+      "profileId": "DimensionMasterBase",
+      "output": "DimensionMasterBase.action-effects.json",
+      "source": {
+        "path": "data3/EFGame_Extra/ClientData/XmlData/Action/DIMENSIONMASTER.loa",
+        "byteSize": 1430596,
+        "sha256": "256e51c0d4f0bc537df904e7b58af559a9224807a58d37bcd19aa5e707366dc6",
+        "evidenceGrade": "OFFICIAL_EXTRACTED"
+      },
+      "summary": {
+        "sourceActionObjectCount": 51,
+        "selectedActionObjectCount": 11,
+        "selectedStageCount": 48,
+        "selectedAnimationClipOccurrenceCount": 46,
+        "selectedNotifyCount": 1275,
+        "uniqueParticleSystemCount": 168,
+        "uniqueDirectMeshCount": 4,
+        "uniqueDirectMaterialCount": 15,
+        "uniqueDirectTextureCount": 3,
+        "unsupportedUnresolvedCount": 0,
+        "notifyTypeCounts": {
+          "AKEvent": 137,
+          "Anim": 46,
+          "AnimEvent_MaterialParamterLinearColor": 7,
+          "AnimEvent_MaterialParamterScalar": 14,
+          "Condition": 1,
+          "DominantDirectionalLight_Control": 9,
+          "Effect": 88,
+          "HidePawn": 16,
+          "InputTiming": 164,
+          "ParticleHit": 10,
+          "PawnMaterialParam": 40,
+          "PlayCameraParticleEffect": 21,
+          "PlayParticleEffect": 465,
+          "PlaySkeletalMesh": 4,
+          "PlaySkeletalMeshMaterialParam": 1,
+          "PostProcessChain": 15,
+          "SceneCapture": 1,
+          "SuperArmor": 62,
+          "SuperArmorPVP": 62,
+          "TrailGhostEffect": 63,
+          "UltimateSkillCameraControl": 4,
+          "ViewShake": 45
+        },
+        "categoryCounts": {
+          "animation": 46,
+          "camera": 50,
+          "gameplay_reference": 386,
+          "light": 9,
+          "material": 62,
+          "mesh": 4,
+          "other": 1,
+          "particle": 486,
+          "post_process": 15,
+          "sound": 137,
+          "trail": 63,
+          "visibility": 16
+        }
+      }
+    }
+  ]
+}

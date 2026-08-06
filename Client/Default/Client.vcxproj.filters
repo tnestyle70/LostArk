@@ -276,6 +276,9 @@
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_Distribution.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_Playback.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -652,6 +655,12 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Effect_ComponentDocument.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Distribution.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Effect_MaterialTemplate.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -879,6 +888,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
     <None Include="..\..\Data\Effects\Imported\Artist\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
@@ -906,9 +916,16 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050540.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050550.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050500.external-module-closure.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050500.imported.effect.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050510.external-module-closure.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050510.imported.effect.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050510.element-conversion-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050550.external-module-closure.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050550.imported.effect.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>

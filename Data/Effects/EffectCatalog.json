@@ -6,6 +6,22 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba4.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050110",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050110.effect.json"
     },
@@ -26,8 +42,8 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json"
     },
     {
-      "effectAssetId": "effect.dimensionmaster.skill.2050210",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.effect.json"
+      "effectAssetId": "effect.dimensionmaster.skill.2050550",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050550.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050200",

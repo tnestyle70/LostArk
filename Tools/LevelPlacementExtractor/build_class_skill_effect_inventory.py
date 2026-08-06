@@ -32,7 +32,7 @@ def source_package(source_asset: str) -> str | None:
 
 
 def event_resolution(event: dict[str, Any]) -> str:
-    if event["kind"] == "SHAKE":
+    if event["kind"] == "SHAKE" or event["sourceType"] == "Effect":
         return "OUTSIDE_EFFECT_DOCUMENT"
     if event["sourceType"] == "PlayParticleEffect" and event["sourceAsset"]:
         return "PARTICLE_GRAPH_REQUIRED"

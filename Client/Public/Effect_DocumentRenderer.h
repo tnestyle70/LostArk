@@ -28,6 +28,12 @@ private:
 		shared_ptr<Engine::CModel> pModel;
 		std::array<ComPtr<ID3D11ShaderResourceView>, 5> Textures;
 	};
+	struct MODEL_CUE_RESOURCE final
+	{
+		shared_ptr<Engine::CModel> pModel;
+		uint32_t iAnimationIndex = 0u;
+		f32_t fTicksPerSecond = 0.f;
+	};
 
 public:
 	CEffectDocumentRenderer(
@@ -47,6 +53,10 @@ private:
 	HRESULT Stage_ElementResource(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& OutResource,
+		std::string& strOutError) const;
+	HRESULT Stage_ModelCueResource(
+		const EFFECT_MODEL_CUE_DESC& Cue,
+		MODEL_CUE_RESOURCE& OutResource,
 		std::string& strOutError) const;
 	HRESULT Load_Texture(
 		const std::string& strAssetId,
@@ -98,6 +108,7 @@ private:
 	HRESULT Render_AfterImages(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		const std::string& strElementId);
+	HRESULT Render_ModelCues(const EFFECT_EVALUATED_FRAME& Frame);
 	uint32_t Select_Pass(EFFECT_RENDER_PROFILE eProfile) const;
 	const ELEMENT_RESOURCE* Find_Resource(const std::string& strElementId) const;
 
@@ -106,7 +117,9 @@ private:
 	ComPtr<ID3D11DeviceContext> m_pContext;
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::unordered_map<std::string, ELEMENT_RESOURCE> m_Resources;
+	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
 	shared_ptr<Engine::CShader> m_pMeshShader;
+	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
 	shared_ptr<Engine::CShader> m_pRectShader;
 	shared_ptr<Engine::CShader> m_pParticleShader;
 	shared_ptr<Engine::CShader> m_pTrailShader;

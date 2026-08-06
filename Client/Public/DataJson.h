@@ -70,6 +70,13 @@ private:
 	OBJECT m_Object;
 };
 
+struct DATA_JSON_PARSE_LIMITS final
+{
+	size_t iMaximumBytes = 16u * 1024u * 1024u;
+	size_t iMaximumDepth = 64u;
+	size_t iMaximumValues = 1'000'000u;
+};
+
 class CDataJson final
 {
 public:
@@ -77,6 +84,11 @@ public:
 		string_view text,
 		DATA_JSON_VALUE& outValue,
 		string& outError);
+	static bool_t Parse(
+		string_view text,
+		DATA_JSON_VALUE& outValue,
+		string& outError,
+		const DATA_JSON_PARSE_LIMITS& limits);
 	static string Escape(string_view value);
 };
 

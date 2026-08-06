@@ -1,0 +1,179 @@
+{
+  "schema": "lostark.effect-component-build-receipt",
+  "version": 1,
+  "characterClass": "DIMENSIONMASTER",
+  "effectCount": 15,
+  "componentCount": 180,
+  "emitterCount": 1076,
+  "sourceActionCueCount": 501,
+  "removedStaleComponentFileCount": 0,
+  "removedStaleComponentFiles": [],
+  "compileIdentityComplete": true,
+  "effects": [
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010",
+      "inputSlot": "BA",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.assembly.json",
+      "componentCount": 21,
+      "emitterCount": 75,
+      "sourceActionCueCount": 49,
+      "sourceDocumentSha256": "5785ee1c05c01100056d22c2b082d2e593876ed67105fba62932333a12151081",
+      "compiledDocumentSha256": "5785ee1c05c01100056d22c2b082d2e593876ed67105fba62932333a12151081",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
+      "inputSlot": "BA1",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba1.assembly.json",
+      "componentCount": 4,
+      "emitterCount": 18,
+      "sourceActionCueCount": 11,
+      "sourceDocumentSha256": "f6865baec729cf366be4a6bf4fab9155dcd871b35a87ad47a9be94a112c0d3fe",
+      "compiledDocumentSha256": "f6865baec729cf366be4a6bf4fab9155dcd871b35a87ad47a9be94a112c0d3fe",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
+      "inputSlot": "BA2",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba2.assembly.json",
+      "componentCount": 3,
+      "emitterCount": 14,
+      "sourceActionCueCount": 6,
+      "sourceDocumentSha256": "ad83e14d75f94217870b4afbe518df9f6bc1d08fe641d1432ed72c40daca0d3c",
+      "compiledDocumentSha256": "ad83e14d75f94217870b4afbe518df9f6bc1d08fe641d1432ed72c40daca0d3c",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
+      "inputSlot": "BA3",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba3.assembly.json",
+      "componentCount": 2,
+      "emitterCount": 9,
+      "sourceActionCueCount": 6,
+      "sourceDocumentSha256": "c90fc1596efa5cc9efbb2b6e2d3cb7d0180d8dcc5f686b786e4b7988a3411274",
+      "compiledDocumentSha256": "c90fc1596efa5cc9efbb2b6e2d3cb7d0180d8dcc5f686b786e4b7988a3411274",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
+      "inputSlot": "BA4",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba4.assembly.json",
+      "componentCount": 12,
+      "emitterCount": 34,
+      "sourceActionCueCount": 26,
+      "sourceDocumentSha256": "129bfb7d9976bc6bc1817d5fe35e8a477f7a291fcb0b17ef15d58f4bd22ae6ce",
+      "compiledDocumentSha256": "129bfb7d9976bc6bc1817d5fe35e8a477f7a291fcb0b17ef15d58f4bd22ae6ce",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050110",
+      "inputSlot": "Q",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050110.assembly.json",
+      "componentCount": 3,
+      "emitterCount": 11,
+      "sourceActionCueCount": 14,
+      "sourceDocumentSha256": "595374cfab562a4f8b0bfe6a5c291079336932ce86ec8c2f8b777343e35080d6",
+      "compiledDocumentSha256": "595374cfab562a4f8b0bfe6a5c291079336932ce86ec8c2f8b777343e35080d6",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050150",
+      "inputSlot": "W",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050150.assembly.json",
+      "componentCount": 12,
+      "emitterCount": 37,
+      "sourceActionCueCount": 21,
+      "sourceDocumentSha256": "e22049ba59ddb93d577fcbdd08d483346e0eb22af3d78a3785fe34cbd9562c4e",
+      "compiledDocumentSha256": "e22049ba59ddb93d577fcbdd08d483346e0eb22af3d78a3785fe34cbd9562c4e",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050220",
+      "inputSlot": "E",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050220.assembly.json",
+      "componentCount": 7,
+      "emitterCount": 30,
+      "sourceActionCueCount": 44,
+      "sourceDocumentSha256": "e8d6b3bd46cacf5d97bb536c857e154c2dfb19a78d21e208b1bbcecd537702af",
+      "compiledDocumentSha256": "e8d6b3bd46cacf5d97bb536c857e154c2dfb19a78d21e208b1bbcecd537702af",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050190",
+      "inputSlot": "R",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050190.assembly.json",
+      "componentCount": 12,
+      "emitterCount": 91,
+      "sourceActionCueCount": 54,
+      "sourceDocumentSha256": "2b05a8da67cefe47e32c9eeadba03c0227fbdbfd430973d3dded829299ebcc51",
+      "compiledDocumentSha256": "2b05a8da67cefe47e32c9eeadba03c0227fbdbfd430973d3dded829299ebcc51",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240",
+      "inputSlot": "A",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050240.assembly.json",
+      "componentCount": 13,
+      "emitterCount": 51,
+      "sourceActionCueCount": 49,
+      "sourceDocumentSha256": "de5b2d8aa61ba44cc671e274dad3a02fe8d93c685a7c574a533c658e6f2e3c16",
+      "compiledDocumentSha256": "de5b2d8aa61ba44cc671e274dad3a02fe8d93c685a7c574a533c658e6f2e3c16",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050550",
+      "inputSlot": "S",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050550.assembly.json",
+      "componentCount": 26,
+      "emitterCount": 209,
+      "sourceActionCueCount": 52,
+      "sourceDocumentSha256": "ca14c73d081aba010c1bf654b2a0facb7c1a2bee81af231c7818aa339b7bf27f",
+      "compiledDocumentSha256": "ca14c73d081aba010c1bf654b2a0facb7c1a2bee81af231c7818aa339b7bf27f",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050200",
+      "inputSlot": "D",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050200.assembly.json",
+      "componentCount": 10,
+      "emitterCount": 75,
+      "sourceActionCueCount": 27,
+      "sourceDocumentSha256": "6549bdee8354661e3c161b27f776c8c57faf13593d36fbc1ae17fed4d4185e09",
+      "compiledDocumentSha256": "6549bdee8354661e3c161b27f776c8c57faf13593d36fbc1ae17fed4d4185e09",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500",
+      "inputSlot": "F",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050500.assembly.json",
+      "componentCount": 13,
+      "emitterCount": 89,
+      "sourceActionCueCount": 33,
+      "sourceDocumentSha256": "c56b2178a307dc76160d7b4b6574681ab0331d852741c7b43b8593dd2e23681d",
+      "compiledDocumentSha256": "c56b2178a307dc76160d7b4b6574681ab0331d852741c7b43b8593dd2e23681d",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050510",
+      "inputSlot": "T",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050510.assembly.json",
+      "componentCount": 18,
+      "emitterCount": 105,
+      "sourceActionCueCount": 36,
+      "sourceDocumentSha256": "01489d5892d10b022eff3a3482d113041b2c97e63130ff2b23acb473fa9de968",
+      "compiledDocumentSha256": "01489d5892d10b022eff3a3482d113041b2c97e63130ff2b23acb473fa9de968",
+      "compileIdentity": true
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540",
+      "inputSlot": "V",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050540.assembly.json",
+      "componentCount": 24,
+      "emitterCount": 228,
+      "sourceActionCueCount": 73,
+      "sourceDocumentSha256": "749b62e8a547f73377a9292043aa99904202bce999a7c21ea5d2bd573608fcaf",
+      "compiledDocumentSha256": "749b62e8a547f73377a9292043aa99904202bce999a7c21ea5d2bd573608fcaf",
+      "compileIdentity": true
+    }
+  ]
+}
