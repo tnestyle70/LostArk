@@ -269,8 +269,13 @@ HRESULT CMainApp::Render()
 			ETOUI(LEVEL::DEVELOPMENT) == hudLevel ||
 			ETOUI(LEVEL::BERN) == hudLevel ||
 			ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
+		/* Same reason RenderCombatHUD skips m_pHUDRuntimeView while the Skill Window is open --
+		this is a second, independent path that draws the same class emblem/bars and was not
+		gated on that the first time, so it kept bleeding through underneath. */
+		const bool_t skillWindowOpenForPreview =
+			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 		if (nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
-			supportsAuthoredHUD)
+			supportsAuthoredHUD && !skillWindowOpenForPreview)
 		{
 			m_pHUDLayoutTool->Render_RuntimePreview(
 				GetHUDLayoutClassId(hudPlayer.eCharacterClass));

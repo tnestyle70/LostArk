@@ -287,10 +287,14 @@ void Client::CSkillWindowView::Render(
 
 	ImGui::SameLine();
 
-	/* Matches TripodPanel.png's real native width (402px, confirmed by inspecting the file) *
-	uiScale -- an earlier version of this used a guessed 260 that never matched the actual art
-	at any scale. */
-	constexpr float tripodPanelWidth = 402.f * uiScale;
+	/* The tripod plate fills the window's vertical space (matching the reference, where the
+	tripod is exactly as tall as the window's content area) instead of being sized off native
+	pixels times uiScale like the row/icon art -- those are read at a fixed comfortable size,
+	but the tripod plate is meant to be as big as the column lets it be. Width follows from
+	TripodPanel.png's real 402:556 aspect ratio so it does not stretch. Keep in sync with the
+	rect this same math produces in Data/UI/SkillWindow/SkillWindow_Layout.json. */
+	constexpr float tripodPanelHeight = 650.f;
+	constexpr float tripodPanelWidth = tripodPanelHeight * (402.f / 556.f);
 	ImGui::BeginChild("##TripodPanel", ImVec2(tripodPanelWidth, -8.f), true, ImGuiWindowFlags_NoBackground);
 	/* No hardcoded tripod art here anymore -- the tripod plate and all 8 node glows are
 	slots in Data/UI/SkillWindow/SkillWindow_Layout.json, placed with CHUDLayoutTool's
