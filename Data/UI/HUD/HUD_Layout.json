@@ -349,7 +349,7 @@
       "id": "ManaBar",
       "ownerClass": null,
       "type": 4,
-      "rect": { "x": 761.721008, "y": 605.713989, "width": 258, "height": 20 },
+      "rect": { "x": 759.767212, "y": 604.597534, "width": 258, "height": 20 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [

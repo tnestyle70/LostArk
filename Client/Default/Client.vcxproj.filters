@@ -366,6 +366,12 @@
     <ClCompile Include="..\Private\HUDRuntimeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SkillWindowView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\UITextureCache.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UI_Sprite.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -596,6 +602,12 @@
       <Filter>04. Network</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\HUDRuntimeView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SkillWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\UITextureCache.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UI_Sprite.h">

@@ -1,4 +1,4 @@
-#include "imgui.h"
+﻿#include "imgui.h"
 
 #include "HUDLayoutTool.h"
 #include "DataJson.h"
@@ -28,6 +28,7 @@ namespace
 		{ "Combat HUD",     "UI/HUD/HUD_Layout.json",           "UI/HUD/",      true  },
 		{ "Screen UI",      "UI/ScreenUI/ScreenUI.json",        "UI/ScreenUI/", false },
 		{ "Loading Screen", "UI/Loading/LoadingLayout.json", "UI/Loading/",  false },
+		{ "Skill Window",   "UI/SkillWindow/SkillWindow_Layout.json", "UI/SkillWindow/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -374,6 +375,7 @@ void Client::CHUDLayoutTool::Render()
 	ImGui::SameLine();
 	Render_Canvas();
 	ImGui::SameLine();
+
 	Render_Inspector();
 
 	ImGui::End();
@@ -1032,6 +1034,29 @@ void Client::CHUDLayoutTool::Render_Canvas()
 				{
 					TEXTURE_LAYER Layer{};
 					Layer.strPath = m_TextureAssetPaths[iAssetIndex];
+
+					/* A slot's first layer defines its footprint: size to the texture's actual
+					pixel dimensions instead of leaving whatever generic palette-type default the
+					slot was created with, so a dropped background/frame image is not silently
+					stretched off its own aspect ratio. Later layers on the same slot (hover art,
+					shine, ...) do not resize it again. */
+					if (Slot.TextureLayers.empty())
+					{
+						if (ID3D11ShaderResourceView* pSRV = Get_Or_Load_Texture(Layer.strPath))
+						{
+							ComPtr<ID3D11Resource> pResource;
+							pSRV->GetResource(&pResource);
+							ComPtr<ID3D11Texture2D> pTexture2D;
+							if (SUCCEEDED(pResource.As(&pTexture2D)))
+							{
+								D3D11_TEXTURE2D_DESC Desc{};
+								pTexture2D->GetDesc(&Desc);
+								Slot.fSizeX = static_cast<float>(Desc.Width);
+								Slot.fSizeY = static_cast<float>(Desc.Height);
+							}
+						}
+					}
+
 					Slot.TextureLayers.push_back(move(Layer));
 				}
 			}

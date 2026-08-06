@@ -17,6 +17,8 @@ class CHUDLayoutTool;
 class CHUDRuntimeView;
 class CBalanceTool;
 class CCharacterPreviewPanel;
+class CSkillWindowView;
+
 
 class CMainApp final
 {
@@ -71,6 +73,9 @@ private:
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
+	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
+	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
+	bool_t m_bKDown = false;
 
 #ifdef _DEBUG
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };
