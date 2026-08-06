@@ -43,12 +43,12 @@
         }
     ],
     "coverage": {
-        "playerProfileCount": 5,
-        "skillDefinitionCount": 66,
-        "damageProfileCount": 63,
+        "playerProfileCount": 6,
+        "skillDefinitionCount": 82,
+        "damageProfileCount": 73,
         "bossProfileCount": 1,
         "encounterPatternCount": 1,
-        "fieldEntryCount": 1432
+        "fieldEntryCount": 1756
     },
     "entries": [
         {
@@ -20176,6 +20176,4588 @@
             "transform": "identity",
             "resultValue": 800,
             "note": "Client action payload is reference evidence only; it does not prove server timing/damage."
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17000,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17000,
+            "transform": "identity",
+            "resultValue": 17000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "LMB",
+            "transform": "identity",
+            "resultValue": "LMB"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "기본 평타",
+            "transform": "identity",
+            "resultValue": "기본 평타"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17000",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17000"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "COMBO",
+            "transform": "identity",
+            "resultValue": "COMBO"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17000,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 3267,
+            "transform": "identity",
+            "resultValue": 3267
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 300,
+            "transform": "identity",
+            "resultValue": 300
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17000,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17000,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 1.8
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17000",
+            "transform": "identity",
+            "resultValue": "damage.player.17000"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 3,
+            "transform": "identity",
+            "resultValue": 3
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17000",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17000",
+            "transform": "identity",
+            "resultValue": "damage.player.17000"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17000",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170000,
+                "secondaryKey": 1,
+                "column": "ValueA"
+            },
+            "sourceValue": 100,
+            "transform": "identity",
+            "resultValue": 100
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17020,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17020,
+            "transform": "identity",
+            "resultValue": 17020
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "SPACE",
+            "transform": "identity",
+            "resultValue": "SPACE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "돌격",
+            "transform": "identity",
+            "resultValue": "돌격"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17020",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17020"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17020,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 6000,
+            "transform": "identity",
+            "resultValue": 6000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1133,
+            "transform": "identity",
+            "resultValue": 1133
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17020,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17020,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17020",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17030,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17030,
+            "transform": "identity",
+            "resultValue": 17030
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "Q",
+            "transform": "identity",
+            "resultValue": "Q"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "날카로운 창",
+            "transform": "identity",
+            "resultValue": "날카로운 창"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17030",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17030"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17030,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 5000,
+            "transform": "identity",
+            "resultValue": 5000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1833,
+            "transform": "identity",
+            "resultValue": 1833
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 500,
+            "transform": "identity",
+            "resultValue": 500
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17030,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 211,
+            "transform": "identity",
+            "resultValue": 211
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17030,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 3.5
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17030",
+            "transform": "identity",
+            "resultValue": "damage.player.17030"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17030",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17030",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17030",
+            "transform": "identity",
+            "resultValue": "damage.player.17030"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17030",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170300,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 862,
+            "transform": "identity",
+            "resultValue": 862
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17040,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17040,
+            "transform": "identity",
+            "resultValue": 17040
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "S",
+            "transform": "identity",
+            "resultValue": "S"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "배쉬",
+            "transform": "identity",
+            "resultValue": "배쉬"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17040",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17040"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17040,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 10000,
+            "transform": "identity",
+            "resultValue": 10000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 300,
+            "transform": "identity",
+            "resultValue": 300
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17040,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 315,
+            "transform": "identity",
+            "resultValue": 315
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17040,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 3.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17040",
+            "transform": "identity",
+            "resultValue": "damage.player.17040"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17040",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17040",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17040",
+            "transform": "identity",
+            "resultValue": "damage.player.17040"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17040",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170400,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 587,
+            "transform": "identity",
+            "resultValue": 587
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17060,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17060,
+            "transform": "identity",
+            "resultValue": 17060
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "W",
+            "transform": "identity",
+            "resultValue": "W"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "파이어 불릿",
+            "transform": "identity",
+            "resultValue": "파이어 불릿"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17060",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17060"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17060,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 7000,
+            "transform": "identity",
+            "resultValue": 7000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1367,
+            "transform": "identity",
+            "resultValue": 1367
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 700,
+            "transform": "identity",
+            "resultValue": 700
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17060,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 256,
+            "transform": "identity",
+            "resultValue": 256
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17060,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 6.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17060",
+            "transform": "identity",
+            "resultValue": "damage.player.17060"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17060",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17060",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17060",
+            "transform": "identity",
+            "resultValue": "damage.player.17060"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17060",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170600,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 1255,
+            "transform": "identity",
+            "resultValue": 1255
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17080,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17080,
+            "transform": "identity",
+            "resultValue": 17080
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "E",
+            "transform": "identity",
+            "resultValue": "E"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "대쉬 어퍼 파이어",
+            "transform": "identity",
+            "resultValue": "대쉬 어퍼 파이어"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17080",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17080"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17080,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 16000,
+            "transform": "identity",
+            "resultValue": 16000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 3500,
+            "transform": "identity",
+            "resultValue": 3500
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 250,
+            "transform": "identity",
+            "resultValue": 250
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17080,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 412,
+            "transform": "identity",
+            "resultValue": 412
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17080,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 4.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17080",
+            "transform": "identity",
+            "resultValue": "damage.player.17080"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17080",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17080",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17080",
+            "transform": "identity",
+            "resultValue": "damage.player.17080"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17080",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170800,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 353,
+            "transform": "identity",
+            "resultValue": 353
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17090,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17090,
+            "transform": "identity",
+            "resultValue": 17090
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "A",
+            "transform": "identity",
+            "resultValue": "A"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "갈고리 사슬",
+            "transform": "identity",
+            "resultValue": "갈고리 사슬"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17090",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17090"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17090,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 24000,
+            "transform": "identity",
+            "resultValue": 24000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1667,
+            "transform": "identity",
+            "resultValue": 1667
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 400,
+            "transform": "identity",
+            "resultValue": 400
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17090,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 521,
+            "transform": "identity",
+            "resultValue": 521
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17090,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 8.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17090",
+            "transform": "identity",
+            "resultValue": "damage.player.17090"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17090",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17090",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17090",
+            "transform": "identity",
+            "resultValue": "damage.player.17090"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17090",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 170900,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 397,
+            "transform": "identity",
+            "resultValue": 397
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17100,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17100,
+            "transform": "identity",
+            "resultValue": 17100
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "D",
+            "transform": "identity",
+            "resultValue": "D"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "방패 격동",
+            "transform": "identity",
+            "resultValue": "방패 격동"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17100",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17100"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17100,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 12000,
+            "transform": "identity",
+            "resultValue": 12000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1433,
+            "transform": "identity",
+            "resultValue": 1433
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 700,
+            "transform": "identity",
+            "resultValue": 700
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17100,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 349,
+            "transform": "identity",
+            "resultValue": 349
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "maximumRange",
+            "basis": "OFFICIAL_DERIVED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17100,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 500,
+            "transform": "MaxRange / 100",
+            "resultValue": 5.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17100",
+            "transform": "identity",
+            "resultValue": "damage.player.17100"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17100",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17100",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17100",
+            "transform": "identity",
+            "resultValue": "damage.player.17100"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17100",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 171000,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 725,
+            "transform": "identity",
+            "resultValue": 725
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17110,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17110,
+            "transform": "identity",
+            "resultValue": 17110
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "R",
+            "transform": "identity",
+            "resultValue": "R"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "리프 어택",
+            "transform": "identity",
+            "resultValue": "리프 어택"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17110",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17110"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17110,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 16000,
+            "transform": "identity",
+            "resultValue": 16000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1933,
+            "transform": "identity",
+            "resultValue": 1933
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 967,
+            "transform": "identity",
+            "resultValue": 967
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17110,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 412,
+            "transform": "identity",
+            "resultValue": 412
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "maximumRange",
+            "basis": "OFFICIAL_DERIVED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17110,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 1000,
+            "transform": "MaxRange / 100",
+            "resultValue": 10.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17110",
+            "transform": "identity",
+            "resultValue": "damage.player.17110"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17110",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17110",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17110",
+            "transform": "identity",
+            "resultValue": "damage.player.17110"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17110",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 171100,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 1580,
+            "transform": "identity",
+            "resultValue": 1580
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17140,
+                "secondaryKey": 10,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17140,
+            "transform": "identity",
+            "resultValue": 17140
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "F",
+            "transform": "identity",
+            "resultValue": "F"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "가디언의 낙뢰",
+            "transform": "identity",
+            "resultValue": "가디언의 낙뢰"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17140",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17140"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17140,
+                "secondaryKey": 10,
+                "column": "Cooltime"
+            },
+            "sourceValue": 20000,
+            "transform": "identity",
+            "resultValue": 20000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 2133,
+            "transform": "identity",
+            "resultValue": 2133
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17140,
+                "secondaryKey": 10,
+                "column": "CostMp"
+            },
+            "sourceValue": 469,
+            "transform": "identity",
+            "resultValue": 469
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "maximumRange",
+            "basis": "OFFICIAL_DERIVED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17140,
+                "secondaryKey": 10,
+                "column": "MaxRange"
+            },
+            "sourceValue": 800,
+            "transform": "MaxRange / 100",
+            "resultValue": 8.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17140",
+            "transform": "identity",
+            "resultValue": "damage.player.17140"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17140",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17140",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17140",
+            "transform": "identity",
+            "resultValue": "damage.player.17140"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17140",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 171400,
+                "secondaryKey": 10,
+                "column": "ValueA"
+            },
+            "sourceValue": 2077,
+            "transform": "identity",
+            "resultValue": 2077
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17170,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17170,
+            "transform": "identity",
+            "resultValue": 17170
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "V",
+            "transform": "identity",
+            "resultValue": "V"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "가디언의 수호",
+            "transform": "identity",
+            "resultValue": "가디언의 수호"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17170",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17170"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17170,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 300000,
+            "transform": "identity",
+            "resultValue": 300000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 3667,
+            "transform": "identity",
+            "resultValue": 3667
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17170,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17170,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17170",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17240,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17240,
+            "transform": "identity",
+            "resultValue": 17240
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "T",
+            "transform": "identity",
+            "resultValue": "T"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "풀배럴 캐넌",
+            "transform": "identity",
+            "resultValue": "풀배럴 캐넌"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17240",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17240"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "HOLD",
+            "transform": "identity",
+            "resultValue": "HOLD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17240,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 75000,
+            "transform": "identity",
+            "resultValue": 75000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 3100,
+            "transform": "identity",
+            "resultValue": 3100
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 900,
+            "transform": "identity",
+            "resultValue": 900
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17240,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 907,
+            "transform": "identity",
+            "resultValue": 907
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17240,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 9.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "damage.player.17240",
+            "transform": "identity",
+            "resultValue": "damage.player.17240"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 3,
+            "transform": "identity",
+            "resultValue": 3
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17240",
+            "targetField": "damageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "stable-damage-profile-id-v1"
+            },
+            "sourceValue": "damage.player.17240",
+            "transform": "identity",
+            "resultValue": "damage.player.17240"
+        },
+        {
+            "targetDocument": "Data/Balance/DamageProfiles.json",
+            "targetId": "damage:damage.player.17240",
+            "targetField": "damageRatePercent",
+            "basis": "OFFICIAL_SCALED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_SkillEffect.db",
+                "databaseSha256": "25cad4759a6474d8932e857a7a045d325dc85159011f855c6a924e41881a1113",
+                "table": "SkillEffect",
+                "primaryKey": 172701,
+                "secondaryKey": 1,
+                "column": "ValueA"
+            },
+            "sourceValue": 392,
+            "transform": "ValueA x overcharge 2",
+            "resultValue": 784
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17250,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17250,
+            "transform": "identity",
+            "resultValue": 17250
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "ALT_V",
+            "transform": "identity",
+            "resultValue": "ALT_V"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "수호의 맹세",
+            "transform": "identity",
+            "resultValue": "수호의 맹세"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17250",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17250"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17250,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 300000,
+            "transform": "identity",
+            "resultValue": 300000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 4833,
+            "transform": "identity",
+            "resultValue": 4833
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17250,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17250,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17250",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17800,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17800,
+            "transform": "identity",
+            "resultValue": 17800
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "Z",
+            "transform": "identity",
+            "resultValue": "Z"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "방어 태세",
+            "transform": "identity",
+            "resultValue": "방어 태세"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17800",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17800"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "WARLORD_NORMAL",
+            "transform": "identity",
+            "resultValue": "WARLORD_NORMAL"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "WARLORD_DEFENSE",
+            "transform": "identity",
+            "resultValue": "WARLORD_DEFENSE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17800,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 2000,
+            "transform": "identity",
+            "resultValue": 2000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 567,
+            "transform": "identity",
+            "resultValue": 567
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17800,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17800,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17800",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17810,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17810,
+            "transform": "identity",
+            "resultValue": 17810
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "Z",
+            "transform": "identity",
+            "resultValue": "Z"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "방어 태세 해제",
+            "transform": "identity",
+            "resultValue": "방어 태세 해제"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17810",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17810"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "WARLORD_DEFENSE",
+            "transform": "identity",
+            "resultValue": "WARLORD_DEFENSE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "WARLORD_NORMAL",
+            "transform": "identity",
+            "resultValue": "WARLORD_NORMAL"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17810,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 2000,
+            "transform": "identity",
+            "resultValue": 2000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 567,
+            "transform": "identity",
+            "resultValue": 567
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17810,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17810,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 0,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17810",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "skillId",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17820,
+                "secondaryKey": 1,
+                "column": "PrimaryKey"
+            },
+            "sourceValue": 17820,
+            "transform": "identity",
+            "resultValue": 17820
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "inputSlot",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-quick-slot-layout-v1"
+            },
+            "sourceValue": "X",
+            "transform": "identity",
+            "resultValue": "X"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "displayName",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-localized-skill-label-v1"
+            },
+            "sourceValue": "전장의 방패",
+            "transform": "identity",
+            "resultValue": "전장의 방패"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "actionId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-animation-action-id-v1"
+            },
+            "sourceValue": "warlord.skill.17820",
+            "transform": "identity",
+            "resultValue": "warlord.skill.17820"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "skillKind",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-skill-kind-v1"
+            },
+            "sourceValue": "ACTIVE",
+            "transform": "identity",
+            "resultValue": "ACTIVE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "requiredStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "setsStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "NONE",
+            "transform": "identity",
+            "resultValue": "NONE"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "cooldownMs",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17820,
+                "secondaryKey": 1,
+                "column": "Cooltime"
+            },
+            "sourceValue": 90000,
+            "transform": "identity",
+            "resultValue": 90000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 15367,
+            "transform": "identity",
+            "resultValue": 15367
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-hit-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "resourceCost",
+            "basis": "OFFICIAL_EXTRACTED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17820,
+                "secondaryKey": 1,
+                "column": "CostMp"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "movementDistance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-movement-admission-v1"
+            },
+            "sourceValue": 0.0,
+            "transform": "identity",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "maximumRange",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "official-table-cell",
+                "database": "EFTable_Skill.db",
+                "databaseSha256": "8691edbd4fbef268dc709f3d2e240288f3d294c5648c3f8916939598c68723f3",
+                "table": "Skill",
+                "primaryKey": 17820,
+                "secondaryKey": 1,
+                "column": "MaxRange"
+            },
+            "sourceValue": 800,
+            "transform": "project server hit range override",
+            "resultValue": 0.0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "serverDamageProfileId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-damage-profile-link-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "effectId",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-effect-binding-v1"
+            },
+            "sourceValue": "",
+            "transform": "identity",
+            "resultValue": ""
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17820",
+            "targetField": "comboStages.length",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "server-combo-stage-count-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "characterClass",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-class-roster-v1"
+            },
+            "sourceValue": "WARLORD",
+            "transform": "identity",
+            "resultValue": "WARLORD"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "maximumHp",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-survivability-v1"
+            },
+            "sourceValue": 6500,
+            "transform": "identity",
+            "resultValue": 6500
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "maximumResource",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-resource-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "resourceRegenPerSecond",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-resource-v1"
+            },
+            "sourceValue": 25,
+            "transform": "identity",
+            "resultValue": 25
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "attackPower",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-offense-v1"
+            },
+            "sourceValue": 100,
+            "transform": "identity",
+            "resultValue": 100
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "defense",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-survivability-v1"
+            },
+            "sourceValue": 130,
+            "transform": "identity",
+            "resultValue": 130
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "moveSpeed",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "project-player-movement-v1"
+            },
+            "sourceValue": 2.8,
+            "transform": "identity",
+            "resultValue": 2.8
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerProfiles.json",
+            "targetId": "player:WARLORD",
+            "targetField": "defaultStance",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "warlord-stance-gate-v1"
+            },
+            "sourceValue": "WARLORD_NORMAL",
+            "transform": "identity",
+            "resultValue": "WARLORD_NORMAL"
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[0].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[0].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 300,
+            "transform": "identity",
+            "resultValue": 300
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[0].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 700,
+            "transform": "identity",
+            "resultValue": 700
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[0].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 200,
+            "transform": "identity",
+            "resultValue": 200
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[1].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 933,
+            "transform": "identity",
+            "resultValue": 933
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[1].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 200,
+            "transform": "identity",
+            "resultValue": 200
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[1].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 600,
+            "transform": "identity",
+            "resultValue": 600
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[1].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 200,
+            "transform": "identity",
+            "resultValue": 200
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[2].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1334,
+            "transform": "identity",
+            "resultValue": 1334
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[2].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 300,
+            "transform": "identity",
+            "resultValue": 300
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[2].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17000",
+            "targetField": "comboStages[2].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[0].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[0].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[0].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[0].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[1].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1000,
+            "transform": "identity",
+            "resultValue": 1000
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[1].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[1].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[1].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[2].actionDurationMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 1100,
+            "transform": "identity",
+            "resultValue": 1100
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[2].hitTimeMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 900,
+            "transform": "identity",
+            "resultValue": 900
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[2].inputCloseMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
+        },
+        {
+            "targetDocument": "Data/Balance/PlayerSkills.json",
+            "targetId": "skill:17240",
+            "targetField": "comboStages[2].inputOpenMs",
+            "basis": "PROJECT_TUNED",
+            "source": {
+                "type": "project-policy",
+                "policyId": "animation-reference-timing-v1"
+            },
+            "sourceValue": 0,
+            "transform": "identity",
+            "resultValue": 0
         }
     ]
 }

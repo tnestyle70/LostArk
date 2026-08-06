@@ -67,6 +67,8 @@ namespace
 			return "Yinyangshi";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "DimensionMaster";
+		case CHARACTER_CLASS_ID::WARLORD:
+			return "Warlord";
 		default:
 			return "Default";
 		}
@@ -89,6 +91,8 @@ namespace
 			return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "Dimension Master";
+		case CHARACTER_CLASS_ID::WARLORD:
+			return "Warlord";
 		default:
 			return "Unknown";
 		}
@@ -112,6 +116,8 @@ namespace
 			return "Yinyangshi";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "DimensionMaster";
+		case CHARACTER_CLASS_ID::WARLORD:
+			return "Warlord";
 		default:
 			return "";
 		}

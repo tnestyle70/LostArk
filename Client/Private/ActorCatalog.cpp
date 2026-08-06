@@ -76,6 +76,7 @@ namespace
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DESTROYER") return CHARACTER_CLASS_ID::DESTROYER;
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		if (value == "WARLORD") return CHARACTER_CLASS_ID::WARLORD;
 		return CHARACTER_CLASS_ID::END;
 	}
 

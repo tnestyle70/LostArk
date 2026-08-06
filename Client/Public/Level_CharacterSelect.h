@@ -68,13 +68,14 @@ private:
 
 private:
 	static constexpr std::array<
-		LostArk::Shared::CHARACTER_CLASS_ID, 5> SUPPORTED_CLASSES =
+		LostArk::Shared::CHARACTER_CLASS_ID, 6> SUPPORTED_CLASSES =
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
 		LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
 		LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
 		LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+		LostArk::Shared::CHARACTER_CLASS_ID::WARLORD
 	};
 
 	CMapPlacementRuntime m_MapRuntime;

@@ -38,6 +38,7 @@ namespace
 		{ "D",     DIK_D,     false },
 		{ "F",     DIK_F,     false },
 		{ "T",     DIK_T,     false },
+		{ "X",     DIK_X,     false },
 		{ "Z",     DIK_Z,     false },
 		{ "V",     DIK_V,     false },
 		{ "ALT_V", DIK_V,     true  },

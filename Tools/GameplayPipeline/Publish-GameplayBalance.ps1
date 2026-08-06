@@ -324,9 +324,11 @@ $supportedPlayerClasses = @(
 	'GUNSLINGER',
 	'SLAYER',
 	'ARTIST',
-	'DIMENSIONMASTER'
+	'DIMENSIONMASTER',
+	'WARLORD'
 )
-$knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR')
+$knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR',
+	'WARLORD_NORMAL', 'WARLORD_DEFENSE')
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @(
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',
@@ -372,7 +374,7 @@ $maximumPlayerResource = (@($playerDocument.players) |
 # Quick-slot names a loadout may bind. Modifier combinations use an underscore
 # (ALT_V), and the two mouse buttons are spelled out so the set stays a stable ID.
 $playerSkillSlots = @(
-	'Q','W','E','R','A','S','D','F','T','Z','V','ALT_V','SPACE','LMB','RMB')
+	'Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB','RMB')
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
 $claimedSlotStances = @{}
 $skillRows = [Collections.Generic.List[string]]::new()

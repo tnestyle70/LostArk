@@ -49,6 +49,7 @@ namespace
 		case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
 		case CHARACTER_CLASS_ID::ARTIST: return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "Dimension Master";
+		case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
 		default: return "Unknown";
 		}
 	}

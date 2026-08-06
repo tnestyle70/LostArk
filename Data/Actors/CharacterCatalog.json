@@ -89,6 +89,26 @@
       ],
       "animationSetId": "ANIM_DIMENSIONMASTER",
       "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "PLAYER_WARLORD",
+      "networkClassId": "WARLORD",
+      "assetId": "Warlord",
+      "bodyModel": "Character/Warlord/Warlord.wmodel",
+      "equipmentModels": [
+        "Character/Warlord/Warlord_Upper.wmodel",
+        "Character/Warlord/Warlord_Lower.wmodel",
+        "Character/Warlord/Warlord_Arm.wmodel",
+        "Character/Warlord/Warlord_Shoulder.wmodel",
+        "Character/Warlord/Warlord_Helmet.wmodel",
+        "Character/Warlord/Warlord_Hair.wmodel"
+      ],
+      "weaponModels": [
+        "Character/WP_WWGL_04/WP_WWGL_04.wmodel",
+        "Character/WP_WWGL_SD_04/WP_WWGL_SD_04.wmodel"
+      ],
+      "animationSetId": "ANIM_WARLORD",
+      "runtimeStatus": "supported"
     }
   ]
 }

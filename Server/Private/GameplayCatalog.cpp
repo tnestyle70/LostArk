@@ -108,6 +108,8 @@ namespace
 			output = CHARACTER_CLASS_ID::ARTIST;
 		else if ("DIMENSIONMASTER" == value)
 			output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		else if ("WARLORD" == value)
+			output = CHARACTER_CLASS_ID::WARLORD;
 		else
 			return false;
 		return true;
@@ -124,6 +126,10 @@ namespace
 			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		else if ("LANCE_MASTER_SHORT_SPEAR" == value)
 			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else if ("WARLORD_NORMAL" == value)
+			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
+		else if ("WARLORD_DEFENSE" == value)
+			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
 		else
 			return false;
 		return true;

@@ -73,6 +73,7 @@ namespace
 		if ("SLAYER" == value) return CHARACTER_CLASS_ID::SLAYER;
 		if ("ARTIST" == value) return CHARACTER_CLASS_ID::ARTIST;
 		if ("DIMENSIONMASTER" == value) return CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		if ("WARLORD" == value) return CHARACTER_CLASS_ID::WARLORD;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -85,6 +86,7 @@ namespace
 		case CHARACTER_CLASS_ID::SLAYER: return "SLAYER";
 		case CHARACTER_CLASS_ID::ARTIST: return "ARTIST";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DIMENSIONMASTER";
+		case CHARACTER_CLASS_ID::WARLORD: return "WARLORD";
 		default: return nullptr;
 		}
 	}

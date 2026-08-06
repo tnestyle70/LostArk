@@ -69,6 +69,7 @@
     <ClInclude Include="..\Public\Logic_Artist.h" />
     <ClInclude Include="..\Public\Logic_DimensionMaster.h" />
     <ClInclude Include="..\Public\Logic_Slayer.h" />
+    <ClInclude Include="..\Public\Logic_Warlord.h" />
     <ClInclude Include="..\Public\NetObjectRegistry.h" />
     <ClInclude Include="..\Public\Npc.h" />
     <ClInclude Include="..\Public\NetworkManager.h" />
@@ -156,6 +157,7 @@
     <ClCompile Include="..\Private\Logic_Artist.cpp" />
     <ClCompile Include="..\Private\Logic_DimensionMaster.cpp" />
     <ClCompile Include="..\Private\Logic_Slayer.cpp" />
+    <ClCompile Include="..\Private\Logic_Warlord.cpp" />
     <ClCompile Include="..\Private\NetObjectRegistry.cpp" />
     <ClCompile Include="..\Private\Npc.cpp" />
     <ClCompile Include="..\Private\NetworkManager.cpp" />
@@ -216,6 +218,12 @@
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents" />
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.animevents" />
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.animnotify" />
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipmap" />
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipseq" />
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />

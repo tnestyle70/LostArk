@@ -1,0 +1,1697 @@
+LOSTARK_ANIM_EVENTS 3 "Warlord" 1696
+"wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
+"wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
+"wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
+"wgl_att_battle_1_01" CANCEL startms=200 endms=450 payload="[선스]" src=orig
+"wgl_att_battle_1_01" CANCEL startms=200 endms=800 payload="[선이]" src=orig
+"wgl_att_battle_1_01" CANCEL startms=200 endms=700 payload="[선콤]" src=orig
+"wgl_att_battle_1_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_2" src=orig
+"wgl_att_battle_1_01" HIT startms=300 endms=486 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_att_battle_1_01" SHAKE startms=326 payload="" src=orig
+"wgl_att_battle_1_01" EFFECT startms=330 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_1_01" EFFECT startms=330 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" src=orig
+"wgl_att_battle_1_01" EFFECT startms=340 payload="" src=orig
+"wgl_att_battle_1_01" CANCEL startms=450 endms=1000 payload="[입력캔슬]" src=orig
+"wgl_att_battle_1_01" CANCEL startms=600 endms=1000 payload="" src=orig
+"wgl_att_battle_1_01" CANCEL startms=700 endms=1000 payload="" src=orig
+"wgl_att_battle_1_01" CANCEL startms=800 endms=1000 payload="[이동캔슬]" src=orig
+"wgl_att_battle_1_02" CANCEL startms=0 endms=933 payload="방어태세해제" src=orig
+"wgl_att_battle_1_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
+"wgl_att_battle_1_02" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
+"wgl_att_battle_1_02" CANCEL startms=200 endms=360 payload="[선스]" src=orig
+"wgl_att_battle_1_02" CANCEL startms=200 endms=800 payload="[선이]" src=orig
+"wgl_att_battle_1_02" CANCEL startms=200 endms=600 payload="[선콤]" src=orig
+"wgl_att_battle_1_02" HIT startms=200 endms=386 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_att_battle_1_02" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_2" src=orig
+"wgl_att_battle_1_02" SHAKE startms=237 payload="" src=orig
+"wgl_att_battle_1_02" EFFECT startms=240 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" src=orig
+"wgl_att_battle_1_02" EFFECT startms=240 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_1_02" EFFECT startms=250 payload="" src=orig
+"wgl_att_battle_1_02" CANCEL startms=360 endms=933 payload="[입력캔슬]" src=orig
+"wgl_att_battle_1_02" CANCEL startms=550 endms=933 payload="" src=orig
+"wgl_att_battle_1_02" CANCEL startms=600 endms=933 payload="" src=orig
+"wgl_att_battle_1_02" CANCEL startms=800 endms=933 payload="[이동캔슬]" src=orig
+"wgl_att_battle_1_03" CANCEL startms=0 endms=1000 payload="[선이]" src=orig
+"wgl_att_battle_1_03" CANCEL startms=0 endms=460 payload="[선스]" src=orig
+"wgl_att_battle_1_03" CANCEL startms=0 endms=1333 payload="방어태세해제" src=orig
+"wgl_att_battle_1_03" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_2" src=orig
+"wgl_att_battle_1_03" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
+"wgl_att_battle_1_03" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_3" src=orig
+"wgl_att_battle_1_03" HIT startms=300 endms=486 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_att_battle_1_03" SHAKE startms=331 payload="" src=orig
+"wgl_att_battle_1_03" EFFECT startms=340 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_1_03" EFFECT startms=340 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_02_01" src=orig
+"wgl_att_battle_1_03" EFFECT startms=350 payload="" src=orig
+"wgl_att_battle_1_03" CANCEL startms=460 endms=1333 payload="[입력캔슬]" src=orig
+"wgl_att_battle_1_03" CANCEL startms=1000 endms=1333 payload="이동캔슬" src=orig
+"wgl_att_battle_1_03" CANCEL startms=1100 endms=1333 payload="평타연결 개선" src=orig
+"wgl_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
+"wgl_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02_sine" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_att_battle_compete_1_loop" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_compete_1_loop" SOUND startms=400 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard2_Male_Jump1_1" src=orig
+"wgl_att_battle_compete_1_loop" SHAKE startms=500 payload="" src=orig
+"wgl_att_battle_compete_1_start" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_1" src=orig
+"wgl_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_Warrior_M_Vox1_1" src=orig
+"wgl_att_battle_compete_1_start" EFFECT startms=669 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_S" src=orig
+"wgl_att_battle_compete_1_start" SHAKE startms=669 payload="" src=orig
+"wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" src=orig
+"wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
+"wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_compete_1_start" EFFECT startms=674 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"wgl_att_battle_compete_1_start" SOUND startms=800 payload="PC_COMMON_DUAL.PC_Common_Dual1_2" src=orig
+"wgl_att_battle_compete_1_success" CANCEL startms=0 endms=501 payload="[선스]" src=orig
+"wgl_att_battle_compete_1_success" CANCEL startms=0 endms=706 payload="[선이]" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Bill_01" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_01" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_02" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_03" src=orig
+"wgl_att_battle_compete_1_success" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_compete_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
+"wgl_att_battle_compete_1_success" EFFECT startms=52 payload="" src=orig
+"wgl_att_battle_compete_1_success" CANCEL startms=494 endms=2000 payload="입력캔슬" src=orig
+"wgl_att_battle_compete_1_success" CANCEL startms=697 endms=2000 payload="이동캔슬" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=0 endms=400 payload="[선스]" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=0 endms=561 payload="[선이]" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=0 endms=2000 payload="방어 태세 해제" src=orig
+"wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
+"wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
+"wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_att_battle_guide_1_success" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
+"wgl_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_GunLancer_M_PerfectGuard1_Vox1_1" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=180 endms=2000 payload="[회피캔슬]" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=400 endms=2000 payload="입력캔슬" src=orig
+"wgl_att_battle_guide_1_success" CANCEL startms=550 endms=2000 payload="이동캔슬" src=orig
+"wgl_evt1_att_battle_3_01" EFFECT startms=299 payload="FX_PC_FSM_09.Par_J_FSM_Cutscence_01" src=orig
+"wgl_evt1_att_battle_3_01" EFFECT startms=1070 payload="FX_PC_MSR_13.Par_J_MSR_Cutscene_01" src=orig
+"wgl_idle_battle_1" EFFECT startms=0 payload="FX_CM_04.SYS.Teleport.Par_L_Teleport_Off_03" src=orig
+"wgl_idle_battle_1" SUPERARMOR startms=0 endms=5000 payload="" src=orig
+"wgl_idle_battle_1" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_7" src=orig
+"wgl_idle_battle_1" EFFECT startms=10 payload="" src=orig
+"wgl_sk_bash" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
+"wgl_sk_bash" SUPERARMOR startms=0 endms=720 payload="" src=orig
+"wgl_sk_bash" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Bash1_FX007_1" src=orig
+"wgl_sk_bash" SOUND startms=60 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Bash1_FX007_1" src=orig
+"wgl_sk_bash" CANCEL startms=200 endms=720 payload="[선이]" src=orig
+"wgl_sk_bash" CANCEL startms=200 endms=620 payload="[선스]" src=orig
+"wgl_sk_bash" EFFECT startms=256 payload="FX_BS_01.Trail.Par_A_Trail_007" src=orig
+"wgl_sk_bash" EFFECT startms=297 payload="FX_CM_00.Dust.Par_E_UnderDust_13_3" src=orig
+"wgl_sk_bash" HIT startms=300 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_bash" SHAKE startms=314 payload="" src=orig
+"wgl_sk_bash" EFFECT startms=319 payload="fx_pc_wgl_02.Par_N_Bash_04_LOC_INT" src=orig
+"wgl_sk_bash" EFFECT startms=320 payload="" src=orig
+"wgl_sk_bash" EFFECT startms=320 payload="FX_PC_WGL_02.Par_N_ShieldAtk_02" src=orig
+"wgl_sk_bash" EFFECT startms=320 payload="FX_PC_WGL_02.Par_N_Bash_01" src=orig
+"wgl_sk_bash" EFFECT startms=321 payload="FX_PC_WGL_02.Par_N_WGL_Shield_02" src=orig
+"wgl_sk_bash" EFFECT startms=321 payload="fx_pc_wgl_02.Par_N_WGL_Shield_04_LOC_INT" src=orig
+"wgl_sk_bash" EFFECT startms=321 payload="FX_PC_WGL_02.Par_N_WGL_Shield_05" src=orig
+"wgl_sk_bash" EFFECT startms=322 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_bash" EFFECT startms=328 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_bash" EFFECT startms=328 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_bash" CANCEL startms=420 endms=1000 payload="[회피캔슬]" src=orig
+"wgl_sk_bash" CANCEL startms=600 endms=1000 payload="입력캔슬" src=orig
+"wgl_sk_bash" CANCEL startms=700 endms=1000 payload="이동캔슬" src=orig
+"wgl_sk_changestinger_01" CANCEL startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_01" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_changestinger_01" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_1" src=orig
+"wgl_sk_changestinger_01" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_1" src=orig
+"wgl_sk_changestinger_02-1" CANCEL startms=0 endms=450 payload="" src=orig
+"wgl_sk_changestinger_02-1" CANCEL startms=0 endms=500 payload="회전동기화" src=orig
+"wgl_sk_changestinger_02-1" CANCEL startms=0 endms=500 payload="진격태세" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_WGL_StingerFlare_01" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_StingerCharge_07_1" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_ChargeStinger_Cast_07_LOC_INT" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
+"wgl_sk_changestinger_02-1" SHAKE startms=0 payload="" src=orig
+"wgl_sk_changestinger_02-1" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_2_2" src=orig
+"wgl_sk_changestinger_02-1" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"wgl_sk_changestinger_02-1" EFFECT startms=500 payload="FX_PC_WGL_01.Par_L_WGL_StingerExp_03" src=orig
+"wgl_sk_changestinger_02-2" CANCEL startms=0 endms=1000 payload="" src=orig
+"wgl_sk_changestinger_02-2" CANCEL startms=0 endms=1000 payload="회전동기화" src=orig
+"wgl_sk_changestinger_02-2" CANCEL startms=0 endms=1000 payload="진격태세" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_StingerCharge_07_1" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_01" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_ChargeStinger_Cast_06_LOC_INT" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_WGL_StingerIn_05_1" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_WGL_StingerFlare_01" src=orig
+"wgl_sk_changestinger_02-2" SHAKE startms=0 payload="" src=orig
+"wgl_sk_changestinger_02-2" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_2_3" src=orig
+"wgl_sk_changestinger_02-2" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_changestinger_02-2" EFFECT startms=799 payload="FX_PC_WGL_05.Par_U_WGL_ChargeStinger_Cast_02_1" src=orig
+"wgl_sk_changestinger_03-1" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_changestinger_03-1" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_RunTrail_02_LOC_INT" src=orig
+"wgl_sk_changestinger_03-1" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_Att_03_1" src=orig
+"wgl_sk_changestinger_03-1" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_03-1" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_3" src=orig
+"wgl_sk_changestinger_03-1" EFFECT startms=140 payload="FX_PC_WGL_01.Par_L_WGL_RunWind_01" src=orig
+"wgl_sk_changestinger_03-2" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_changestinger_03-2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_Att_03_1" src=orig
+"wgl_sk_changestinger_03-2" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_01" src=orig
+"wgl_sk_changestinger_03-2" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_RunTrail_02_LOC_INT" src=orig
+"wgl_sk_changestinger_03-2" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_03-2" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_3" src=orig
+"wgl_sk_changestinger_03-2" EFFECT startms=126 payload="" src=orig
+"wgl_sk_changestinger_03-2" EFFECT startms=138 payload="FX_PC_WGL_01.Par_L_WGL_RunWind_01" src=orig
+"wgl_sk_changestinger_03-3" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_changestinger_03-3" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_RunTrail_01_LOC_INT" src=orig
+"wgl_sk_changestinger_03-3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_Att_03_1" src=orig
+"wgl_sk_changestinger_03-3" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_03-3" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_3" src=orig
+"wgl_sk_changestinger_03-3" EFFECT startms=126 payload="" src=orig
+"wgl_sk_changestinger_03-3" EFFECT startms=138 payload="FX_PC_WGL_01.Par_L_WGL_RunWind_01" src=orig
+"wgl_sk_changestinger_03-4" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_changestinger_03-4" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_RunTrail_01_LOC_INT" src=orig
+"wgl_sk_changestinger_03-4" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_Att_03_1" src=orig
+"wgl_sk_changestinger_03-4" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_changestinger_03-4" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_3" src=orig
+"wgl_sk_changestinger_03-4" EFFECT startms=28 payload="FX_PC_WGL_05.Par_U_WGL_RunWind_08" src=orig
+"wgl_sk_changestinger_03-4" EFFECT startms=126 payload="" src=orig
+"wgl_sk_changestinger_03-4" EFFECT startms=138 payload="FX_PC_WGL_01.Par_L_WGL_RunWind_01" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=0 endms=347 payload="[선스]" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=0 endms=554 payload="[선이]" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=0 endms=1300 payload="진격태세" src=orig
+"wgl_sk_changestinger_04" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_changestinger_04" SUPERARMOR startms=0 endms=554 payload="" src=orig
+"wgl_sk_changestinger_04" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_4" src=orig
+"wgl_sk_changestinger_04" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_2" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=37 payload="FX_PC_WGL_05.Par_U_WGL_Stinger_01_4" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=37 payload="FX_PC_WGL_05.Par_U_WGL_Stinger_01_5" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=38 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_changestinger_04" SHAKE startms=40 payload="" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=50 payload="" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=66 payload="FX_CM_00.Dust.Par_L_SideDust_01" src=orig
+"wgl_sk_changestinger_04" EFFECT startms=110 payload="FX_PC_WGL_01.Par_L_WGL_Stinger_05_2" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=150 endms=1300 payload="[회피캔슬]" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=345 endms=1300 payload="입력캔슬" src=orig
+"wgl_sk_changestinger_04" CANCEL startms=546 endms=1300 payload="이동캔슬" src=orig
+"wgl_sk_changestinger_custom_1" CANCEL startms=0 endms=900 payload="" src=orig
+"wgl_sk_changestinger_custom_1" CANCEL startms=0 endms=900 payload="진격태세" src=orig
+"wgl_sk_changestinger_custom_1" SUPERARMOR startms=0 endms=900 payload="" src=orig
+"wgl_sk_changestinger_custom_1" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_2_1" src=orig
+"wgl_sk_changestinger_custom_1" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX000_1" src=orig
+"wgl_sk_changestinger_custom_1" SOUND startms=150 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_1" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=269 payload="FX_PC_WGL_05.Par_U_WGL_ChargeStinger_Elec_Cast_01" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=270 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=272 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_changestinger_custom_1" SHAKE startms=272 payload="" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=293 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=298 payload="FX_PC_WGL_05.Par_U_WGL_StingerCharge_07_2" src=orig
+"wgl_sk_changestinger_custom_1" EFFECT startms=310 payload="fx_pc_wgl_05.Par_U_WGL_ChargeStinger_Cast_Elec_01_LOC_INT" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=0 endms=802 payload="[선스]" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=0 endms=1004 payload="[선이]" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=0 endms=1467 payload="진격태세" src=orig
+"wgl_sk_changestinger_custom_2" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_changestinger_custom_2" SUPERARMOR startms=0 endms=1007 payload="" src=orig
+"wgl_sk_changestinger_custom_2" SUPERARMOR startms=0 endms=1009 payload="" src=orig
+"wgl_sk_changestinger_custom_2" SUPERARMOR startms=0 endms=1008 payload="" src=orig
+"wgl_sk_changestinger_custom_2" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX008_4" src=orig
+"wgl_sk_changestinger_custom_2" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_2" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=37 payload="FX_PC_WGL_05.Par_U_WGL_Stinger_01_2" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=38 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_changestinger_custom_2" SHAKE startms=40 payload="" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=50 payload="" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=66 payload="FX_CM_00.Dust.Par_L_SideDust_01" src=orig
+"wgl_sk_changestinger_custom_2" SOUND startms=265 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX008_5" src=orig
+"wgl_sk_changestinger_custom_2" SHAKE startms=286 payload="" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="fx_pc_wgl_10.Par_K_WGL_ChargeStinger_LastCharge_01" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="fx_pc_wgl_10.Par_K_WGL_ChargeStingerExp_01_01" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="FX_PC_WGL_06.Par_O_WGL_ChargeStingerDust_01_01" src=orig
+"wgl_sk_changestinger_custom_2" EFFECT startms=300 payload="" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=450 endms=1467 payload="[회피캔슬]" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=797 endms=1467 payload="입력캔슬" src=orig
+"wgl_sk_changestinger_custom_2" CANCEL startms=996 endms=1467 payload="이동캔슬" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=0 endms=1000 payload="[선이]" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=0 endms=804 payload="[선스]" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=0 endms=1333 payload="진격태세" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=0 payload="fx_pc_wgl_00.Par_D_CounterSpear_03" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_Flare_01_01" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=0 payload="FX_CM_02.LensFlare.Par_C_LensFlare_05_1" src=orig
+"wgl_sk_counterspear_attack02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX008_2" src=orig
+"wgl_sk_counterspear_attack02" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_counterspear_attack02" SUPERARMOR startms=0 endms=1005 payload="" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=100 payload="" src=orig
+"wgl_sk_counterspear_attack02" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX000_3" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_counterspear_attack02" HIT startms=300 endms=500 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_counterspear_attack02" SHAKE startms=300 payload="" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_06_LOC_INT" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_05" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_55_LOC_INT" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=343 payload="FX_CM_00.Dust.Par_D_Dust_002_pr" src=orig
+"wgl_sk_counterspear_attack02" EFFECT startms=350 payload="" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=500 endms=1333 payload="[회피캔슬]" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=797 endms=1333 payload="입력캔슬" src=orig
+"wgl_sk_counterspear_attack02" CANCEL startms=1000 endms=1333 payload="이동캔슬" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=0 endms=1202 payload="[선이]" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=0 endms=1006 payload="[선스]" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=0 endms=1800 payload="진격태세" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=0 payload="fx_pc_wgl_00.Par_D_CounterSpear_03" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=0 payload="FX_CM_02.LensFlare.Par_C_LensFlare_05_1" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_Flare_01_01" src=orig
+"wgl_sk_counterspear_custom_1" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX008_2" src=orig
+"wgl_sk_counterspear_custom_1" SUPERARMOR startms=0 endms=1200 payload="" src=orig
+"wgl_sk_counterspear_custom_1" SUPERARMOR startms=0 endms=1209 payload="" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=100 payload="" src=orig
+"wgl_sk_counterspear_custom_1" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX007_3" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=340 payload="FX_PC_WGL_01.Par_N_ConterSpear_02_LOC_INT" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=340 payload="FX_PC_WGL_01.Par_N_ConterSpear_01" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=340 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WGL_CS_01" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=343 payload="FX_CM_00.Dust.Par_D_Dust_002_pr" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_counterspear_custom_1" SHAKE startms=350 payload="" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=450 endms=1800 payload="[회피캔슬]" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=1003 endms=1800 payload="입력캔슬" src=orig
+"wgl_sk_counterspear_custom_1" CANCEL startms=1204 endms=1800 payload="이동캔슬" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=0 endms=2000 payload="반격확인용" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=0 endms=2000 payload="진격태세" src=orig
+"wgl_sk_counterspear_start" SUPERARMOR startms=0 endms=2000 payload="" src=orig
+"wgl_sk_counterspear_start" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX008_1" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=100 endms=400 payload="[선스]" src=orig
+"wgl_sk_counterspear_start" EFFECT startms=100 payload="fx_pc_wgl_00.Par_D_CounterSpear_02" src=orig
+"wgl_sk_counterspear_start" EFFECT startms=100 payload="FX_CM_02.LensFlare.Par_C_LensFlare_05_1" src=orig
+"wgl_sk_counterspear_start" EFFECT startms=100 payload="fx_pc_wgl_02.Par_N_CounterSpear_82_LOC_INT" src=orig
+"wgl_sk_counterspear_start" EFFECT startms=130 payload="fx_pc_wgl_00.Par_D_CounterSpear_01" src=orig
+"wgl_sk_counterspear_start" EFFECT startms=130 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=200 endms=1000 payload="[선이]" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=200 endms=2000 payload="[회피캔슬]" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=400 endms=2000 payload="입력캔슬" src=orig
+"wgl_sk_counterspear_start" CANCEL startms=1000 endms=2000 payload="이동캔슬" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=0 endms=1800 payload="진격태세" src=orig
+"wgl_sk_dashupperfire_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_1" src=orig
+"wgl_sk_dashupperfire_01" SUPERARMOR startms=0 endms=1800 payload="" src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=100 payload="FX_PC_WGL_06.Par_O_WGL_DUF_02_01" src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=100 payload="" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=200 endms=920 payload="[선스]" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=200 endms=920 payload="[선이]" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=200 endms=650 payload="[선콤]" src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_01" SHAKE startms=200 payload="" src=orig
+"wgl_sk_dashupperfire_01" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=270 payload="" src=orig
+"wgl_sk_dashupperfire_01" EFFECT startms=290 payload="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=370 endms=1800 payload="[회피캔슬]" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=630 endms=1800 payload="" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=900 endms=1800 payload="입력캔슬" src=orig
+"wgl_sk_dashupperfire_01" CANCEL startms=900 endms=1800 payload="이동캔슬" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=0 endms=720 payload="[선이]" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=0 endms=620 payload="[선스]" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=0 endms=1700 payload="진격태세" src=orig
+"wgl_sk_dashupperfire_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_2" src=orig
+"wgl_sk_dashupperfire_02" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_Vox1_2" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=120 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_01" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=120 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=120 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=126 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=137 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_02" SHAKE startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=240 endms=1700 payload="[회피캔슬]" src=orig
+"wgl_sk_dashupperfire_02" EFFECT startms=293 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=600 endms=1700 payload="입력캔슬" src=orig
+"wgl_sk_dashupperfire_02" CANCEL startms=700 endms=1700 payload="이동캔슬" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=0 endms=1800 payload="진격태세" src=orig
+"wgl_sk_dashupperfire_custom_2" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_1" src=orig
+"wgl_sk_dashupperfire_custom_2" SUPERARMOR startms=0 endms=1800 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=100 payload="FX_PC_WGL_06.Par_O_WGL_DUF_02_01" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=150 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=200 endms=920 payload="[선스]" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=200 endms=920 payload="[선이]" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=200 endms=650 payload="[선콤]" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_custom_2" SHAKE startms=200 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=270 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=290 payload="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" src=orig
+"wgl_sk_dashupperfire_custom_2" EFFECT startms=300 payload="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=370 endms=1800 payload="[회피캔슬]" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=630 endms=1800 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=900 endms=1800 payload="입력캔슬" src=orig
+"wgl_sk_dashupperfire_custom_2" CANCEL startms=900 endms=1800 payload="이동캔슬" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=0 endms=1600 payload="진격태세" src=orig
+"wgl_sk_dashupperfire_custom_7" SUPERARMOR startms=0 endms=1020 payload="" src=orig
+"wgl_sk_dashupperfire_custom_7" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_Vox1_2" src=orig
+"wgl_sk_dashupperfire_custom_7" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_3" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=200 endms=620 payload="[선스]" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=200 endms=1020 payload="[선이]" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=300 payload="FX_PC_WGL_06.Par_O_WGL_DUF_04_01" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=300 payload="FX_PC_WGL_06.Par_O_WGL_DUF_04_02_LOC_INT" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=350 payload="" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_custom_7" SHAKE startms=352 payload="" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_06_01_LOC_INT" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_05_01" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_06_02_LOC_INT" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_05_02" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_06_03_LOC_INT" src=orig
+"wgl_sk_dashupperfire_custom_7" EFFECT startms=363 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=450 endms=1600 payload="[회피캔슬]" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=600 endms=1600 payload="입력캔슬" src=orig
+"wgl_sk_dashupperfire_custom_7" CANCEL startms=1000 endms=1600 payload="이동캔슬" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=0 endms=820 payload="[선스]" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=0 endms=1200 payload="진격태세" src=orig
+"wgl_sk_dashupperfire_custom_8" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_4" src=orig
+"wgl_sk_dashupperfire_custom_8" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_2" src=orig
+"wgl_sk_dashupperfire_custom_8" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_Vox1_2" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=120 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=120 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=120 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=126 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=137 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" SHAKE startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=200 endms=1020 payload="[선이]" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=250 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_dashupperfire_custom_8" SOUND startms=300 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_2" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=434 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=434 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=434 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=435 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_dashupperfire_custom_8" SHAKE startms=438 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=440 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=440 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=540 endms=1200 payload="[회피캔슬]" src=orig
+"wgl_sk_dashupperfire_custom_8" EFFECT startms=600 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=800 endms=1200 payload="입력캔슬" src=orig
+"wgl_sk_dashupperfire_custom_8" CANCEL startms=1000 endms=1200 payload="이동캔슬" src=orig
+"wgl_sk_defence_end" CANCEL startms=0 endms=103 payload="[선스]" src=orig
+"wgl_sk_defence_end" CANCEL startms=0 endms=202 payload="[선이]" src=orig
+"wgl_sk_defence_end" EFFECT startms=0 payload="" src=orig
+"wgl_sk_defence_end" SUPERARMOR startms=0 endms=202 payload="" src=orig
+"wgl_sk_defence_end" SUPERARMOR startms=0 endms=200 payload="" src=orig
+"wgl_sk_defence_end" CANCEL startms=99 endms=567 payload="입력캔슬" src=orig
+"wgl_sk_defence_end" CANCEL startms=199 endms=566 payload="이동캔슬" src=orig
+"wgl_sk_defence_start" CANCEL startms=0 endms=401 payload="[선스]" src=orig
+"wgl_sk_defence_start" CANCEL startms=0 endms=503 payload="[선이]" src=orig
+"wgl_sk_defence_start" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Defence2_FX000_1" src=orig
+"wgl_sk_defence_start" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_Vox1_2" src=orig
+"wgl_sk_defence_start" SUPERARMOR startms=0 endms=505 payload="" src=orig
+"wgl_sk_defence_start" SUPERARMOR startms=0 endms=507 payload="" src=orig
+"wgl_sk_defence_start" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_defence_start" EFFECT startms=297 payload="FX_PC_WGL_06.Par_O_WGL_ApShield_03_02" src=orig
+"wgl_sk_defence_start" EFFECT startms=299 payload="FX_PC_WGL_06.Par_O_WGL_ApShield_03_01" src=orig
+"wgl_sk_defence_start" EFFECT startms=300 payload="" src=orig
+"wgl_sk_defence_start" CANCEL startms=399 endms=567 payload="입력캔슬" src=orig
+"wgl_sk_defence_start" CANCEL startms=500 endms=567 payload="이동캔슬" src=orig
+"wgl_sk_eternalcyclone_01" CANCEL startms=0 endms=1000 payload="" src=orig
+"wgl_sk_eternalcyclone_01" CANCEL startms=0 endms=1000 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_eternalcyclone_01" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_01" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_eternalcyclone_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_Vox2_1" src=orig
+"wgl_sk_eternalcyclone_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_1" src=orig
+"wgl_sk_eternalcyclone_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_FX000_2" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=316 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_WP_Start_01" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=316 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_00" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=316 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"wgl_sk_eternalcyclone_01" EFFECT startms=316 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_eternalcyclone_02" CANCEL startms=0 endms=300 payload="회전동기화" src=orig
+"wgl_sk_eternalcyclone_02" CANCEL startms=0 endms=250 payload="" src=orig
+"wgl_sk_eternalcyclone_02" CANCEL startms=0 endms=300 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
+"wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_00" src=orig
+"wgl_sk_eternalcyclone_02" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_02" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"wgl_sk_eternalcyclone_02" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_2" src=orig
+"wgl_sk_eternalcyclone_03" CANCEL startms=0 endms=300 payload="회전동기화" src=orig
+"wgl_sk_eternalcyclone_03" CANCEL startms=0 endms=250 payload="" src=orig
+"wgl_sk_eternalcyclone_03" CANCEL startms=0 endms=300 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
+"wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_01" src=orig
+"wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_00" src=orig
+"wgl_sk_eternalcyclone_03" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_03" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"wgl_sk_eternalcyclone_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX001_2" src=orig
+"wgl_sk_eternalcyclone_04" CANCEL startms=0 endms=300 payload="회전동기화" src=orig
+"wgl_sk_eternalcyclone_04" CANCEL startms=0 endms=250 payload="" src=orig
+"wgl_sk_eternalcyclone_04" CANCEL startms=0 endms=300 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
+"wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_01" src=orig
+"wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Cast_01" src=orig
+"wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_02" src=orig
+"wgl_sk_eternalcyclone_04" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_04" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"wgl_sk_eternalcyclone_04" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX002_2" src=orig
+"wgl_sk_eternalcyclone_05" CANCEL startms=0 endms=1000 payload="회전동기화" src=orig
+"wgl_sk_eternalcyclone_05" CANCEL startms=0 endms=1000 payload="" src=orig
+"wgl_sk_eternalcyclone_05" CANCEL startms=0 endms=1000 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Cast_02" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_02" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_03" src=orig
+"wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"wgl_sk_eternalcyclone_05" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_05" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_eternalcyclone_05" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX003_2" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=0 endms=420 payload="" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=0 endms=820 payload="" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=0 endms=1100 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_02" src=orig
+"wgl_sk_eternalcyclone_06" SUPERARMOR startms=0 endms=820 payload="" src=orig
+"wgl_sk_eternalcyclone_06" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX001_3" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_02" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Decal_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Backdust_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01" src=orig
+"wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01" src=orig
+"wgl_sk_eternalcyclone_06" SHAKE startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=200 endms=1100 payload="[회피캔슬]" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=400 endms=1100 payload="" src=orig
+"wgl_sk_eternalcyclone_06" CANCEL startms=800 endms=1100 payload="" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=0 endms=420 payload="" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=0 endms=820 payload="" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=0 endms=1100 payload="진격태세" src=orig
+"wgl_sk_eternalcyclone_07" SUPERARMOR startms=0 endms=820 payload="" src=orig
+"wgl_sk_eternalcyclone_07" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_3" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_02_Fail" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Decal_01_Fail" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Backdust_01" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01_Fail" src=orig
+"wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01_Fail" src=orig
+"wgl_sk_eternalcyclone_07" SHAKE startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=200 endms=1100 payload="[회피캔슬]" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=400 endms=1100 payload="" src=orig
+"wgl_sk_eternalcyclone_07" CANCEL startms=800 endms=1100 payload="" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=0 endms=500 payload="[선스]" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=0 endms=700 payload="[선이]" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=0 endms=1100 payload="진격태세" src=orig
+"wgl_sk_fire1_attack" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_4" src=orig
+"wgl_sk_fire1_attack" SUPERARMOR startms=0 endms=702 payload="" src=orig
+"wgl_sk_fire1_attack" EFFECT startms=44 payload="FX_PC_WGL_06.Par_O_WGL_CannonShotFail_01" src=orig
+"wgl_sk_fire1_attack" SHAKE startms=70 payload="" src=orig
+"wgl_sk_fire1_attack" EFFECT startms=78 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire1_attack" EFFECT startms=78 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_fire1_attack" EFFECT startms=80 payload="" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=180 endms=1100 payload="[회피캔슬]" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=500 endms=1100 payload="입력캔슬" src=orig
+"wgl_sk_fire1_attack" CANCEL startms=700 endms=1100 payload="이동캔슬" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=0 endms=550 payload="[선스]" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=0 endms=750 payload="[선이]" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=0 endms=1100 payload="진격태세" src=orig
+"wgl_sk_fire1_attack_re" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
+"wgl_sk_fire1_attack_re" SUPERARMOR startms=0 endms=752 payload="" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=50 payload="" src=orig
+"wgl_sk_fire1_attack_re" SHAKE startms=70 payload="" src=orig
+"wgl_sk_fire1_attack_re" EFFECT startms=72 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_Dust_01" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=150 endms=1100 payload="[회피캔슬]" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=550 endms=1100 payload="입력캔슬" src=orig
+"wgl_sk_fire1_attack_re" CANCEL startms=750 endms=1100 payload="이동캔슬" src=orig
+"wgl_sk_fire1_loop" CANCEL startms=0 endms=1067 payload="회전동기화" src=orig
+"wgl_sk_fire1_loop" CANCEL startms=0 endms=750 payload="" src=orig
+"wgl_sk_fire1_loop" CANCEL startms=0 endms=1067 payload="진격태세" src=orig
+"wgl_sk_fire1_loop" EFFECT startms=0 payload="FX_PC_WGL_01.Par_N_WGL_BerBlowSlash_04" src=orig
+"wgl_sk_fire1_loop" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_ItemFX-08_01_1" src=orig
+"wgl_sk_fire1_loop" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_CannonShot_Gain_01" src=orig
+"wgl_sk_fire1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_08" src=orig
+"wgl_sk_fire1_loop" SHAKE startms=0 payload="" src=orig
+"wgl_sk_fire1_loop" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_2" src=orig
+"wgl_sk_fire1_loop" SUPERARMOR startms=0 endms=1067 payload="" src=orig
+"wgl_sk_fire1_loop" EFFECT startms=2 payload="fx_pc_wgl_00.Par_D_PiercingSpear_00" src=orig
+"wgl_sk_fire1_loop" CANCEL startms=750 endms=900 payload="" src=orig
+"wgl_sk_fire1_loop" CANCEL startms=900 endms=1067 payload="" src=orig
+"wgl_sk_fire1_start" CANCEL startms=0 endms=433 payload="" src=orig
+"wgl_sk_fire1_start" CANCEL startms=0 endms=433 payload="진격태세" src=orig
+"wgl_sk_fire1_start" SUPERARMOR startms=0 endms=433 payload="" src=orig
+"wgl_sk_fire1_start" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_1" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=0 endms=1100 payload="[선스]" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=0 endms=1300 payload="[선이]" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=0 endms=1867 payload="진격태세" src=orig
+"wgl_sk_fire3_attack" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
+"wgl_sk_fire3_attack" SUPERARMOR startms=0 endms=1307 payload="" src=orig
+"wgl_sk_fire3_attack" SHAKE startms=11 payload="" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=27 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=40 payload="" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=44 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=140 endms=1867 payload="[회피캔슬]" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=167 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=167 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=167 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=167 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=177 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" SOUND startms=242 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=285 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=318 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=318 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=318 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=318 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=320 payload="" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=329 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=465 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=465 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=465 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=465 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" SOUND startms=474 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=476 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=549 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=570 payload="" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=624 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=624 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=624 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=624 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=636 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" SOUND startms=724 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=772 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=772 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=772 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_03" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=772 payload="FX_PC_WGL_09.Par_M_BustCannon_Muzzle_01_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=779 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=784 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_fire3_attack" EFFECT startms=830 payload="" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=1100 endms=1867 payload="입력캔슬" src=orig
+"wgl_sk_fire3_attack" CANCEL startms=1300 endms=1867 payload="이동캔슬" src=orig
+"wgl_sk_firebullet" CANCEL startms=0 endms=1367 payload="진격태세" src=orig
+"wgl_sk_firebullet" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_1" src=orig
+"wgl_sk_firebullet" CANCEL startms=201 endms=704 payload="[선스]" src=orig
+"wgl_sk_firebullet" CANCEL startms=202 endms=903 payload="[선이]" src=orig
+"wgl_sk_firebullet" EFFECT startms=325 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_firebullet" EFFECT startms=325 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_firebullet" SHAKE startms=325 payload="" src=orig
+"wgl_sk_firebullet" EFFECT startms=328 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_firebullet" EFFECT startms=328 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
+"wgl_sk_firebullet" EFFECT startms=330 payload="" src=orig
+"wgl_sk_firebullet" SOUND startms=330 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_2" src=orig
+"wgl_sk_firebullet" EFFECT startms=396 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_firebullet" CANCEL startms=430 endms=1367 payload="[회피캔슬]" src=orig
+"wgl_sk_firebullet" CANCEL startms=699 endms=1367 payload="입력캔슬" src=orig
+"wgl_sk_firebullet" CANCEL startms=894 endms=1367 payload="이동캔슬" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=0 endms=1867 payload="진격태세" src=orig
+"wgl_sk_firebullet_custom1_002" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_1" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=201 endms=1010 payload="[선스]" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=302 endms=1208 payload="[선이]" src=orig
+"wgl_sk_firebullet_custom1_002" SHAKE startms=350 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX040_2" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=357 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=357 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=360 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=361 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_firebullet_custom1_002" SOUND startms=380 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox1_2" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=432 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_firebullet_custom1_002" SHAKE startms=600 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=629 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=629 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=630 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=635 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=635 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_firebullet_custom1_002" EFFECT startms=700 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=730 endms=1867 payload="[회피캔슬]" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=1003 endms=1866 payload="입력캔슬" src=orig
+"wgl_sk_firebullet_custom1_002" CANCEL startms=1199 endms=1867 payload="이동캔슬" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=0 endms=1967 payload="진격태세" src=orig
+"wgl_sk_firebullet_custom2_003" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX060_1" src=orig
+"wgl_sk_firebullet_custom2_003" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox2_1" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=201 endms=1300 payload="[선스]" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=250 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_04_01" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=500 endms=1967 payload="[회피캔슬]" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=504 endms=1506 payload="[선이]" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=768 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=768 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=768 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=769 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=769 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_02" src=orig
+"wgl_sk_firebullet_custom2_003" SHAKE startms=769 payload="" src=orig
+"wgl_sk_firebullet_custom2_003" SOUND startms=790 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_2" src=orig
+"wgl_sk_firebullet_custom2_003" SOUND startms=790 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox2_2" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=800 payload="" src=orig
+"wgl_sk_firebullet_custom2_003" EFFECT startms=839 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=1295 endms=1967 payload="입력캔슬" src=orig
+"wgl_sk_firebullet_custom2_003" CANCEL startms=1496 endms=1967 payload="이동캔슬" src=orig
+"wgl_sk_frontdash" CANCEL startms=0 endms=1133 payload="방어태세해제" src=orig
+"wgl_sk_frontdash" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_AP44_01_1" src=orig
+"wgl_sk_frontdash" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_AP44_02_1" src=orig
+"wgl_sk_frontdash" SUPERARMOR startms=0 endms=520 payload="" src=orig
+"wgl_sk_frontdash" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Moving2_1" src=orig
+"wgl_sk_frontdash" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
+"wgl_sk_frontdash" EFFECT startms=50 payload="" src=orig
+"wgl_sk_frontdash" CANCEL startms=100 endms=520 payload="[선이]" src=orig
+"wgl_sk_frontdash" CANCEL startms=100 endms=520 payload="[선스]" src=orig
+"wgl_sk_frontdash" CANCEL startms=500 endms=1133 payload="[입력캔슬]" src=orig
+"wgl_sk_frontdash" CANCEL startms=500 endms=1133 payload="[이동캔슬]" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=0 endms=905 payload="[선이]" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=0 endms=700 payload="[선스]" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=0 endms=1167 payload="방어태세해제" src=orig
+"wgl_sk_guardianofprotection_attack" EFFECT startms=0 payload="fx_pc_wgl_00.Par_D_GProtection_05" src=orig
+"wgl_sk_guardianofprotection_attack" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_guardianofprotection_attack" SUPERARMOR startms=0 endms=914 payload="" src=orig
+"wgl_sk_guardianofprotection_attack" SUPERARMOR startms=0 endms=917 payload="" src=orig
+"wgl_sk_guardianofprotection_attack" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_FX000_2" src=orig
+"wgl_sk_guardianofprotection_attack" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_Vox1_2" src=orig
+"wgl_sk_guardianofprotection_attack" EFFECT startms=130 payload="" src=orig
+"wgl_sk_guardianofprotection_attack" EFFECT startms=160 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_guardianofprotection_attack" SHAKE startms=160 payload="" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=500 endms=1167 payload="[회피캔슬]" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=700 endms=1167 payload="입력캔슬" src=orig
+"wgl_sk_guardianofprotection_attack" CANCEL startms=900 endms=1167 payload="이동캔슬" src=orig
+"wgl_sk_guardianofprotection_loop" CANCEL startms=0 endms=1333 payload="방어태세해제" src=orig
+"wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="fx_pc_wgl_00.Par_D_GProtection_06" src=orig
+"wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_guardianofprotection_loop" SHAKE startms=0 payload="" src=orig
+"wgl_sk_guardianofprotection_loop" SUPERARMOR startms=0 endms=1333 payload="" src=orig
+"wgl_sk_guardianofprotection_loop" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_FX000_1" src=orig
+"wgl_sk_guardianofprotection_loop" CANCEL startms=600 endms=600 payload="" src=orig
+"wgl_sk_guardianofprotection_start" CANCEL startms=0 endms=1167 payload="방어태세해제" src=orig
+"wgl_sk_guardianofprotection_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_guardianofprotection_start" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"wgl_sk_guardianofprotection_start" SUPERARMOR startms=0 endms=1167 payload="" src=orig
+"wgl_sk_guardianofprotection_start" EFFECT startms=144 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_guardianofprotection_start" EFFECT startms=147 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"wgl_sk_guardianofprotection_start" SOUND startms=1100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_Vox1_1" src=orig
+"wgl_sk_guardianofprotection_start" CANCEL startms=1167 endms=1167 payload="" src=orig
+"wgl_sk_hookchain" CANCEL startms=0 endms=1667 payload="방어태세해제" src=orig
+"wgl_sk_hookchain" SOUND startms=85 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_HookChain1_FX000_1" src=orig
+"wgl_sk_hookchain" SOUND startms=85 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_HookChain1_Vox1_1" src=orig
+"wgl_sk_hookchain" CANCEL startms=301 endms=1103 payload="[선스]" src=orig
+"wgl_sk_hookchain" CANCEL startms=301 endms=1205 payload="[선이]" src=orig
+"wgl_sk_hookchain" EFFECT startms=367 payload="fx_pc_wgl_00.Par_D_Chain_Attraction_01" src=orig
+"wgl_sk_hookchain" EFFECT startms=367 payload="fx_pc_wgl_00.Par_D_Chain_Attraction_31" src=orig
+"wgl_sk_hookchain" EFFECT startms=367 payload="fx_cm_03.Spark.Par_D_Spark_03" src=orig
+"wgl_sk_hookchain" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_hookchain" EFFECT startms=420 payload="" src=orig
+"wgl_sk_hookchain" SOUND startms=700 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_HookChain1_FX000_2" src=orig
+"wgl_sk_hookchain" EFFECT startms=850 payload="" src=orig
+"wgl_sk_hookchain" CANCEL startms=950 endms=1667 payload="[회피캔슬]" src=orig
+"wgl_sk_hookchain" CANCEL startms=1099 endms=1667 payload="입력캔슬" src=orig
+"wgl_sk_hookchain" CANCEL startms=1199 endms=1667 payload="이동캔슬" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=0 endms=1467 payload="방어태세해제" src=orig
+"wgl_sk_judgmentspear_end" SUPERARMOR startms=0 endms=725 payload="" src=orig
+"wgl_sk_judgmentspear_end" SUPERARMOR startms=0 endms=723 payload="" src=orig
+"wgl_sk_judgmentspear_end" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_FX000_4" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=200 endms=720 payload="[선스]" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=200 endms=720 payload="[선이]" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=500 endms=1467 payload="[회피캔슬]" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=698 endms=1467 payload="이동캔슬" src=orig
+"wgl_sk_judgmentspear_end" CANCEL startms=700 endms=1467 payload="입력캔슬" src=orig
+"wgl_sk_judgmentspear_loop" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
+"wgl_sk_judgmentspear_loop" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_judgmentspear_loop" CANCEL startms=197 endms=197 payload="" src=orig
+"wgl_sk_judgmentspear_start" CANCEL startms=0 endms=1867 payload="방어태세해제" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=0 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_judgmentspear_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_judgmentspear_start" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
+"wgl_sk_judgmentspear_start" SUPERARMOR startms=0 endms=1867 payload="" src=orig
+"wgl_sk_judgmentspear_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_Vox1_1" src=orig
+"wgl_sk_judgmentspear_start" SOUND startms=360 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_FX000_1" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=400 payload="fx_pc_wgl_00.Par_K_WGL_JudgmentSpear_Cast_02" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=450 payload="fx_pc_wgl_00.Par_K_JudgmentSpear_Cast_01" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=1150 payload="" src=orig
+"wgl_sk_judgmentspear_start" SOUND startms=1350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_FX000_2" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=1470 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_judgmentspear_start" EFFECT startms=1470 payload="fx_pc_wgl_00.Par_K_WGL_JudgmentSpear_Exp_02" src=orig
+"wgl_sk_lancestance_start" CANCEL startms=0 endms=620 payload="[선스]" src=orig
+"wgl_sk_lancestance_start" CANCEL startms=0 endms=720 payload="[선이]" src=orig
+"wgl_sk_lancestance_start" SUPERARMOR startms=0 endms=720 payload="" src=orig
+"wgl_sk_lancestance_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LanceStance1_FX000_1" src=orig
+"wgl_sk_lancestance_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_3" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=201 payload="FX_PC_WGL_03.Par_Y_WGL_Ap42_01_2" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=297 payload="FX_PC_WGL_03.Par_Y_WGL_Ap42_01_1" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=299 payload="FX_PC_WGL_06.Par_O_WGL_ApShield_01_01" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=397 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_lancestance_start" EFFECT startms=400 payload="" src=orig
+"wgl_sk_lancestance_start" CANCEL startms=600 endms=833 payload="입력캔슬" src=orig
+"wgl_sk_lancestance_start" CANCEL startms=700 endms=833 payload="이동캔슬" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=0 endms=520 payload="[선콤]" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=0 endms=670 payload="[선이]" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=0 endms=620 payload="[선스]" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_cm_01.Debris.Par_E_Rock_Up_Blue_01_M" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_01_1" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_cm_01.Decal.Par_H_Decal_01" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_cm_01.Debris.Par_E_Rock_Up_White_01_M" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_01_2" src=orig
+"wgl_sk_leap_attack_01" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_leap_attack_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_2" src=orig
+"wgl_sk_leap_attack_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX100_2" src=orig
+"wgl_sk_leap_attack_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX040_2" src=orig
+"wgl_sk_leap_attack_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX050_2" src=orig
+"wgl_sk_leap_attack_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX060_2" src=orig
+"wgl_sk_leap_attack_01" SUPERARMOR startms=0 endms=670 payload="" src=orig
+"wgl_sk_leap_attack_01" SUPERARMOR startms=0 endms=671 payload="" src=orig
+"wgl_sk_leap_attack_01" EFFECT startms=30 payload="" src=orig
+"wgl_sk_leap_attack_01" SHAKE startms=33 payload="" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=130 endms=967 payload="[회피캔슬]" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=500 endms=967 payload="" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=500 endms=700 payload="" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=600 endms=967 payload="입력캔슬" src=orig
+"wgl_sk_leap_attack_01" CANCEL startms=650 endms=967 payload="이동캔슬" src=orig
+"wgl_sk_leap_custom_7_01" CANCEL startms=0 endms=700 payload="방어태세해제" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_J_WGL_JumpTrail_01" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_DustStart_00" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Wind_01" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Flare_01" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Flare_01_05" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01_05" src=orig
+"wgl_sk_leap_custom_7_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Wind_Custom_05" src=orig
+"wgl_sk_leap_custom_7_01" SUPERARMOR startms=0 endms=700 payload="" src=orig
+"wgl_sk_leap_custom_7_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_Vox1_1" src=orig
+"wgl_sk_leap_custom_7_01" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_1" src=orig
+"wgl_sk_leap_custom_7_01" CANCEL startms=97 endms=700 payload="[선스]" src=orig
+"wgl_sk_leap_custom_7_01" CANCEL startms=98 endms=700 payload="[선이]" src=orig
+"wgl_sk_leap_custom_7_02" CANCEL startms=0 endms=503 payload="[선이]" src=orig
+"wgl_sk_leap_custom_7_02" CANCEL startms=0 endms=404 payload="[선스]" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_cm_01.Debris.Par_E_Rock_Up_Blue_01_M" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_01_1" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_cm_01.Decal.Par_H_Decal_01" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_cm_01.Debris.Par_E_Rock_Up_White_01_M" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_01_2" src=orig
+"wgl_sk_leap_custom_7_02" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_leap_custom_7_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_2" src=orig
+"wgl_sk_leap_custom_7_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX100_2" src=orig
+"wgl_sk_leap_custom_7_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX040_2" src=orig
+"wgl_sk_leap_custom_7_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX050_2" src=orig
+"wgl_sk_leap_custom_7_02" SUPERARMOR startms=0 endms=505 payload="" src=orig
+"wgl_sk_leap_custom_7_02" SUPERARMOR startms=0 endms=510 payload="" src=orig
+"wgl_sk_leap_custom_7_02" EFFECT startms=30 payload="" src=orig
+"wgl_sk_leap_custom_7_02" SHAKE startms=33 payload="" src=orig
+"wgl_sk_leap_custom_7_02" CANCEL startms=130 endms=733 payload="[회피캔슬]" src=orig
+"wgl_sk_leap_custom_7_02" CANCEL startms=400 endms=733 payload="입력캔슬" src=orig
+"wgl_sk_leap_custom_7_02" CANCEL startms=500 endms=734 payload="이동캔슬" src=orig
+"wgl_sk_leap_custom_8_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Wind_Custom_01_08" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
+"wgl_sk_leap_custom_8_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_Vox2_1" src=orig
+"wgl_sk_leap_custom_8_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX008_1" src=orig
+"wgl_sk_leap_custom_8_01" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=200 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Costom_08" src=orig
+"wgl_sk_leap_custom_8_01" SHAKE startms=300 payload="" src=orig
+"wgl_sk_leap_custom_8_01" SOUND startms=700 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_1" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=850 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01_08" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01_05_08" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="FX_PC_WGL_09.Par_M_LeapAttack_DustStart_00" src=orig
+"wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" src=orig
+"wgl_sk_leap_custom_8_02" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
+"wgl_sk_leap_custom_8_02" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_leap_custom_8_02" CANCEL startms=701 endms=1000 payload="[선스]" src=orig
+"wgl_sk_leap_custom_8_02" CANCEL startms=796 endms=1000 payload="[선이]" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=0 endms=806 payload="[선이]" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=0 endms=700 payload="[선스]" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=0 endms=1933 payload="방어태세해제" src=orig
+"wgl_sk_leap_custom_8_03" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX068_3" src=orig
+"wgl_sk_leap_custom_8_03" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX058_3" src=orig
+"wgl_sk_leap_custom_8_03" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX048_3" src=orig
+"wgl_sk_leap_custom_8_03" SUPERARMOR startms=0 endms=810 payload="" src=orig
+"wgl_sk_leap_custom_8_03" SUPERARMOR startms=0 endms=806 payload="" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_PC_WGL_09.Par_M_LeapAttack_Exp_Custom_04" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_PC_WGL_09.Par_M_LeapAttack_Exp_Custom_05" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_PC_WGL_09.Par_M_LeapAttack_Exp_00" src=orig
+"wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_leap_custom_8_03" HIT startms=100 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_leap_custom_8_03" SHAKE startms=100 payload="" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=500 endms=1933 payload="[회피캔슬]" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=700 endms=1933 payload="입력캔슬" src=orig
+"wgl_sk_leap_custom_8_03" CANCEL startms=792 endms=1934 payload="이동캔슬" src=orig
+"wgl_sk_leap_jump" CANCEL startms=0 endms=667 payload="방어태세해제" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="fx_pc_wgl_00.Par_J_WGL_JumpTrail_01" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_DustStart_00" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Wind_01" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Wind_Custom_05" src=orig
+"wgl_sk_leap_jump" EFFECT startms=0 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Custom_01_05" src=orig
+"wgl_sk_leap_jump" SUPERARMOR startms=0 endms=667 payload="" src=orig
+"wgl_sk_leap_jump" CANCEL startms=67 endms=667 payload="[선스]" src=orig
+"wgl_sk_leap_jump" CANCEL startms=68 endms=667 payload="[선이]" src=orig
+"wgl_sk_leap_start" CANCEL startms=0 endms=300 payload="방어태세해제" src=orig
+"wgl_sk_leap_start" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"wgl_sk_leap_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_Vox1_1" src=orig
+"wgl_sk_leap_start" SOUND startms=20 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_1" src=orig
+"wgl_sk_nellasia" CANCEL startms=0 endms=1500 payload="방어태세해제" src=orig
+"wgl_sk_nellasia" SUPERARMOR startms=0 endms=620 payload="" src=orig
+"wgl_sk_nellasia" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX000_1" src=orig
+"wgl_sk_nellasia" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX008_1" src=orig
+"wgl_sk_nellasia" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX200_1" src=orig
+"wgl_sk_nellasia" CANCEL startms=200 endms=620 payload="[선스]" src=orig
+"wgl_sk_nellasia" CANCEL startms=200 endms=620 payload="[선이]" src=orig
+"wgl_sk_nellasia" EFFECT startms=335 payload="FX_CM_00.Dust.Par_D_Dust_001_pr" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_04_2" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_2" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_04_1" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_02_1" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_02_2" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_1" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_02_3" src=orig
+"wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_3" src=orig
+"wgl_sk_nellasia" SHAKE startms=366 payload="" src=orig
+"wgl_sk_nellasia" EFFECT startms=370 payload="" src=orig
+"wgl_sk_nellasia" CANCEL startms=470 endms=1500 payload="[회피캔슬]" src=orig
+"wgl_sk_nellasia" SOUND startms=520 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX100_1" src=orig
+"wgl_sk_nellasia" SOUND startms=520 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_Vox1_1" src=orig
+"wgl_sk_nellasia" EFFECT startms=580 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_03_1" src=orig
+"wgl_sk_nellasia" CANCEL startms=600 endms=1500 payload="이동캔슬" src=orig
+"wgl_sk_nellasia" CANCEL startms=600 endms=1500 payload="입력캔슬" src=orig
+"wgl_sk_nellasia" SHAKE startms=697 payload="" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=0 endms=1833 payload="진격태세" src=orig
+"wgl_sk_pierceingspear" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_1" src=orig
+"wgl_sk_pierceingspear" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_Vox1_1" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=120 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=120 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_02_LOC_INT" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=200 endms=900 payload="[선스]" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=201 endms=1107 payload="[선이]" src=orig
+"wgl_sk_pierceingspear" HIT startms=500 endms=686 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_pierceingspear" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_2" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=540 payload="" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=549 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_02_LOC_INT" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_04_LOC_INT" src=orig
+"wgl_sk_pierceingspear" SHAKE startms=558 payload="" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=600 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_01" src=orig
+"wgl_sk_pierceingspear" EFFECT startms=600 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_02" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=640 endms=1833 payload="[회피캔슬]" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=900 endms=1833 payload="입력캔슬" src=orig
+"wgl_sk_pierceingspear" CANCEL startms=1100 endms=1834 payload="이동캔슬" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=0 endms=1667 payload="진격태세" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=50 payload="" src=orig
+"wgl_sk_pierceingspear_custom_1" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_1" src=orig
+"wgl_sk_pierceingspear_custom_1" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_Vox1_1" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=120 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=120 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_02_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=200 endms=1000 payload="[선스]" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=200 endms=1200 payload="[선이]" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=500 endms=1667 payload="[회피캔슬]" src=orig
+"wgl_sk_pierceingspear_custom_1" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_2" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=698 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=699 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=699 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=700 payload="" src=orig
+"wgl_sk_pierceingspear_custom_1" SHAKE startms=716 payload="" src=orig
+"wgl_sk_pierceingspear_custom_1" EFFECT startms=720 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=1000 endms=1667 payload="입력캔슬" src=orig
+"wgl_sk_pierceingspear_custom_1" CANCEL startms=1200 endms=1667 payload="이동캔슬" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=0 endms=1900 payload="진격태세" src=orig
+"wgl_sk_pierceingspear_custom_3" SOUND startms=40 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX300_2" src=orig
+"wgl_sk_pierceingspear_custom_3" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX300_1" src=orig
+"wgl_sk_pierceingspear_custom_3" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_Vox1_1" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=150 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_02_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=150 payload="fx_pc_wgl_02.Par_N_WGL_Light_03_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=201 endms=1003 payload="[선스]" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=301 endms=1206 payload="[선이]" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=500 endms=1900 payload="[회피캔슬]" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=600 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=620 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=620 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_02_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_3" SHAKE startms=645 payload="" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=650 payload="" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=650 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" src=orig
+"wgl_sk_pierceingspear_custom_3" EFFECT startms=700 payload="" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=993 endms=1900 payload="입력캔슬" src=orig
+"wgl_sk_pierceingspear_custom_3" CANCEL startms=1196 endms=1900 payload="이동캔슬" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=0 endms=1400 payload="진격태세" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_pierceingspear_custom_37" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX308_3" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=200 endms=700 payload="[선스]" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=201 endms=903 payload="[선이]" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=241 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=241 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=261 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_37" SHAKE startms=276 payload="" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=291 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=300 payload="" src=orig
+"wgl_sk_pierceingspear_custom_37" EFFECT startms=350 payload="" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=500 endms=1400 payload="[회피캔슬]" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=700 endms=1400 payload="입력캔슬" src=orig
+"wgl_sk_pierceingspear_custom_37" CANCEL startms=899 endms=1400 payload="이동캔슬" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=0 endms=1400 payload="진격태세" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=200 endms=700 payload="[선스]" src=orig
+"wgl_sk_pierceingspear_custom_7" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=201 endms=905 payload="[선이]" src=orig
+"wgl_sk_pierceingspear_custom_7" SOUND startms=300 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX107_2" src=orig
+"wgl_sk_pierceingspear_custom_7" EFFECT startms=438 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_pierceingspear_custom_7" EFFECT startms=439 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" src=orig
+"wgl_sk_pierceingspear_custom_7" EFFECT startms=440 payload="" src=orig
+"wgl_sk_pierceingspear_custom_7" SHAKE startms=456 payload="" src=orig
+"wgl_sk_pierceingspear_custom_7" EFFECT startms=460 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=540 endms=1400 payload="[회피캔슬]" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=700 endms=1400 payload="입력캔슬" src=orig
+"wgl_sk_pierceingspear_custom_7" CANCEL startms=899 endms=1400 payload="이동캔슬" src=orig
+"wgl_sk_risingspear_01" CANCEL startms=0 endms=667 payload="진격태세" src=orig
+"wgl_sk_risingspear_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_1" src=orig
+"wgl_sk_risingspear_01" CANCEL startms=201 endms=666 payload="[선스]" src=orig
+"wgl_sk_risingspear_01" SOUND startms=280 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_Vox1_2" src=orig
+"wgl_sk_risingspear_01" SOUND startms=280 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_2" src=orig
+"wgl_sk_risingspear_01" SOUND startms=280 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_2" src=orig
+"wgl_sk_risingspear_01" SOUND startms=280 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_2" src=orig
+"wgl_sk_risingspear_01" SOUND startms=280 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_2" src=orig
+"wgl_sk_risingspear_01" CANCEL startms=298 endms=667 payload="[선이]" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=400 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_01_LOC_INT" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
+"wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
+"wgl_sk_risingspear_01" SHAKE startms=500 payload="" src=orig
+"wgl_sk_risingspear_01" CANCEL startms=600 endms=667 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=0 endms=1433 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=0 endms=506 payload="[선스]" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=0 endms=604 payload="[선이]" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=0 endms=1433 payload="진격태세" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_01_LOC_INT" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_02_LOC_INT" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_03_LOC_INT" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=100 payload="" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_risingspear_02" SHAKE startms=100 payload="" src=orig
+"wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" src=orig
+"wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" src=orig
+"wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_3" src=orig
+"wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_3" src=orig
+"wgl_sk_risingspear_02" EFFECT startms=200 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=497 endms=1434 payload="입력캔슬" src=orig
+"wgl_sk_risingspear_02" CANCEL startms=598 endms=1433 payload="이동캔슬" src=orig
+"wgl_sk_risingspear_custom_1_01" CANCEL startms=0 endms=933 payload="진격태세" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpearDust_01_01" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_03_01" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX200_1" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_Vox3_1" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=200 payload="" src=orig
+"wgl_sk_risingspear_custom_1_01" CANCEL startms=500 endms=933 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_2" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_2" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_2" src=orig
+"wgl_sk_risingspear_custom_1_01" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_2" src=orig
+"wgl_sk_risingspear_custom_1_01" CANCEL startms=523 endms=933 payload="[선스]" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=600 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_01" CANCEL startms=629 endms=934 payload="[선이]" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_01_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_01" SHAKE startms=700 payload="" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=605 payload="[선이]" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=506 payload="[선스]" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=1233 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=1233 payload="진격태세" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_01_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_02_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_03_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=100 payload="" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_risingspear_custom_1_02" SHAKE startms=100 payload="" src=orig
+"wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" src=orig
+"wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" src=orig
+"wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_3" src=orig
+"wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_3" src=orig
+"wgl_sk_risingspear_custom_1_02" EFFECT startms=200 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=500 endms=1234 payload="입력캔슬" src=orig
+"wgl_sk_risingspear_custom_1_02" CANCEL startms=600 endms=1234 payload="이동캔슬" src=orig
+"wgl_sk_risingspear_custom_3" CANCEL startms=0 endms=567 payload="진격태세" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_1" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=170 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_2" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=170 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_2" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=170 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_2" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_Vox1_2" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=250 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_05_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_03_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_02_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_3" SHAKE startms=350 payload="" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX067_3" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX057_3" src=orig
+"wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX007_3" src=orig
+"wgl_sk_risingspear_custom_3" CANCEL startms=500 endms=567 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_custom_7" CANCEL startms=0 endms=667 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_custom_7" CANCEL startms=0 endms=667 payload="진격태세" src=orig
+"wgl_sk_risingspear_custom_7" CANCEL startms=159 endms=667 payload="[선스]" src=orig
+"wgl_sk_risingspear_custom_7" SHAKE startms=198 payload="" src=orig
+"wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_02_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_03_LOC_INT" src=orig
+"wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="" src=orig
+"wgl_sk_risingspear_custom_7" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX007_3" src=orig
+"wgl_sk_risingspear_custom_7" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX057_3" src=orig
+"wgl_sk_risingspear_custom_7" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX067_3" src=orig
+"wgl_sk_risingspear_custom_7" CANCEL startms=266 endms=667 payload="[선이]" src=orig
+"wgl_sk_risingspear_custom_7" CANCEL startms=666 endms=666 payload="" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=0 endms=602 payload="[선스]" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=0 endms=702 payload="[선이]" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=0 endms=1133 payload="진격태세" src=orig
+"wgl_sk_risingspear_custom_8" EFFECT startms=100 payload="" src=orig
+"wgl_sk_risingspear_custom_8" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX000_3" src=orig
+"wgl_sk_risingspear_custom_8" EFFECT startms=200 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=450 endms=1133 payload="[회피캔슬]" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=598 endms=1134 payload="입력캔슬" src=orig
+"wgl_sk_risingspear_custom_8" CANCEL startms=699 endms=1133 payload="이동캔슬" src=orig
+"wgl_sk_roaring" CANCEL startms=0 endms=1000 payload="[선이]" src=orig
+"wgl_sk_roaring" CANCEL startms=0 endms=801 payload="[선스]" src=orig
+"wgl_sk_roaring" CANCEL startms=0 endms=1233 payload="방어태세해제" src=orig
+"wgl_sk_roaring" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Roaring1_FX000_1" src=orig
+"wgl_sk_roaring" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Roaring1_FX000_2" src=orig
+"wgl_sk_roaring" EFFECT startms=329 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" src=orig
+"wgl_sk_roaring" EFFECT startms=329 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_roaring" EFFECT startms=345 payload="FX_PC_WGL_04.Par_R_WGL_Roar_00_01" src=orig
+"wgl_sk_roaring" SHAKE startms=352 payload="" src=orig
+"wgl_sk_roaring" EFFECT startms=400 payload="" src=orig
+"wgl_sk_roaring" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_roaring" CANCEL startms=500 endms=1233 payload="[회피캔슬]" src=orig
+"wgl_sk_roaring" CANCEL startms=795 endms=1233 payload="입력캔슬" src=orig
+"wgl_sk_roaring" CANCEL startms=1000 endms=1233 payload="이동캔슬" src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=0 endms=1533 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_attack" SUPERARMOR startms=0 endms=813 payload="" src=orig
+"wgl_sk_shielddash_attack" SUPERARMOR startms=0 endms=816 payload="" src=orig
+"wgl_sk_shielddash_attack" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_4" src=orig
+"wgl_sk_shielddash_attack" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=201 endms=604 payload="[선스]" src=orig
+"wgl_sk_shielddash_attack" SHAKE startms=211 payload="" src=orig
+"wgl_sk_shielddash_attack" SOUND startms=224 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox2_2" src=orig
+"wgl_sk_shielddash_attack" EFFECT startms=250 payload="" src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=301 endms=807 payload="[선이]" src=orig
+"wgl_sk_shielddash_attack" EFFECT startms=314 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_shielddash_attack" EFFECT startms=328 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_Swing_01" src=orig
+"wgl_sk_shielddash_attack" EFFECT startms=328 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_Att_01" src=orig
+"wgl_sk_shielddash_attack" EFFECT startms=330 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=350 endms=1533 payload="[회피캔슬]" src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=596 endms=1533 payload="입력캔슬" src=orig
+"wgl_sk_shielddash_attack" CANCEL startms=797 endms=1533 payload="이동캔슬" src=orig
+"wgl_sk_shielddash_custom02-1" CANCEL startms=0 endms=500 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_custom02-1" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Dust_01" src=orig
+"wgl_sk_shielddash_custom02-1" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Atk_02" src=orig
+"wgl_sk_shielddash_custom02-1" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shielddash_custom02-1" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"wgl_sk_shielddash_custom02-1" EFFECT startms=1 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Wp_02" src=orig
+"wgl_sk_shielddash_custom02-1" EFFECT startms=100 payload="" src=orig
+"wgl_sk_shielddash_custom02-1" SHAKE startms=100 payload="" src=orig
+"wgl_sk_shielddash_custom02-1" CANCEL startms=200 endms=500 payload="[선스]" src=orig
+"wgl_sk_shielddash_custom02-1" CANCEL startms=200 endms=500 payload="[선이]" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=0 endms=320 payload="[선스]" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=0 endms=520 payload="[선이]" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=0 endms=1400 payload="[회피캔슬]" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=0 endms=1400 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=0 endms=1400 payload="" src=orig
+"wgl_sk_shielddash_fail" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_3" src=orig
+"wgl_sk_shielddash_fail" SUPERARMOR startms=0 endms=520 payload="" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=300 endms=1400 payload="입력캔슬" src=orig
+"wgl_sk_shielddash_fail" CANCEL startms=500 endms=1400 payload="이동캔슬" src=orig
+"wgl_sk_shielddash_run" CANCEL startms=0 endms=1600 payload="" src=orig
+"wgl_sk_shielddash_run" CANCEL startms=0 endms=1600 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_ShieldDash_06" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_01" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_ShieldDash_06" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shielddash_run" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run" SUPERARMOR startms=0 endms=1600 payload="" src=orig
+"wgl_sk_shielddash_run" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_2" src=orig
+"wgl_sk_shielddash_run" EFFECT startms=40 payload="" src=orig
+"wgl_sk_shielddash_run" CANCEL startms=193 endms=1600 payload="" src=orig
+"wgl_sk_shielddash_run" CANCEL startms=197 endms=1600 payload="" src=orig
+"wgl_sk_shielddash_run" HIT startms=200 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run" HIT startms=1000 endms=1100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run_re" CANCEL startms=0 endms=933 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_02" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_08" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ShieldDash_Att_Deco_02" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ShieldDash_01_1" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_ShieldDash_06" src=orig
+"wgl_sk_shielddash_run_re" HIT startms=0 endms=100 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shielddash_run_re" SUPERARMOR startms=0 endms=933 payload="" src=orig
+"wgl_sk_shielddash_run_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox1_1" src=orig
+"wgl_sk_shielddash_run_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_1" src=orig
+"wgl_sk_shielddash_run_re" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_2" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=40 payload="" src=orig
+"wgl_sk_shielddash_run_re" EFFECT startms=100 payload="FX_PC_WGL_03.Par_Y_WGL_ShieldDash_01_2" src=orig
+"wgl_sk_shielddash_run_re" HIT startms=200 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run_re" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_run_re" HIT startms=933 endms=933 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shielddash_start" CANCEL startms=0 endms=600 payload="방어태세해제" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Body_01" src=orig
+"wgl_sk_shielddash_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shielddash_start" SUPERARMOR startms=0 endms=600 payload="" src=orig
+"wgl_sk_shielddash_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_Vox1_1" src=orig
+"wgl_sk_shielddash_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_1" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=250 payload="" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Wp_01" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Body_02" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shielddash_start" SHAKE startms=250 payload="" src=orig
+"wgl_sk_shielddash_start" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_2" src=orig
+"wgl_sk_shielddash_start" EFFECT startms=300 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Atk_01" src=orig
+"wgl_sk_shielddash_start" CANCEL startms=500 endms=600 payload="" src=orig
+"wgl_sk_shielddash_start" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_Vox2_1" src=orig
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" src=orig
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=0 payload="fx_pc_wgl_00.Par_J_WGL_JumpTrail_01" src=orig
+"wgl_sk_shieldofbattlefield_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_1" src=orig
+"wgl_sk_shieldofbattlefield_01" SUPERARMOR startms=0 endms=300 payload="" src=orig
+"wgl_sk_shieldofbattlefield_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_Vox1_1" src=orig
+"wgl_sk_shieldofbattlefield_01" EFFECT startms=114 payload="" src=orig
+"wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="fx_pc_wgl_00.Par_J_WGL_JumpTrail_01" src=orig
+"wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_High_01" src=orig
+"wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_LeapAttack_JumpDust_01_01" src=orig
+"wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_02" SUPERARMOR startms=0 endms=1000 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldofbattlefield_03" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03" SUPERARMOR startms=0 endms=4900 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_2" src=orig
+"wgl_sk_shieldofbattlefield_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_2" src=orig
+"wgl_sk_shieldofbattlefield_03" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_shieldofbattlefield_03" EFFECT startms=100 payload="FX_PC_WGL_01.Par_O_WGL_Protect_01" src=orig
+"wgl_sk_shieldofbattlefield_03" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_3" src=orig
+"wgl_sk_shieldofbattlefield_03" SHAKE startms=488 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SUPERARMOR startms=0 endms=767 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_2" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_2" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=100 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=100 payload="FX_PC_WGL_01.Par_O_WGL_Protect_01" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=150 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_03" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=150 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_01" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=150 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_02" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=150 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" EFFECT startms=200 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectGather_01" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_3" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=488 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="입력캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="이동캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_1" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_2" CANCEL startms=0 endms=507 payload="[선이]" src=orig
+"wgl_sk_shieldofbattlefield_04_2" CANCEL startms=0 endms=299 payload="[선스]" src=orig
+"wgl_sk_shieldofbattlefield_04_2" CANCEL startms=0 endms=1600 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldofbattlefield_04_2" SUPERARMOR startms=0 endms=505 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_2" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_3" src=orig
+"wgl_sk_shieldofbattlefield_04_2" CANCEL startms=295 endms=1600 payload="입력캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_2" CANCEL startms=499 endms=1600 payload="이동캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_2" SOUND startms=600 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_4" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_O_WGL_ProtectGather_02" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_5" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SUPERARMOR startms=0 endms=505 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_3" CANCEL startms=100 endms=1170 payload="[선이]" src=orig
+"wgl_sk_shieldofbattlefield_04_3" CANCEL startms=100 endms=920 payload="[선스]" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SOUND startms=400 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_2" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_6" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=528 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SHAKE startms=532 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=550 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=550 payload="FX_PC_WGL_01.Par_O_WGL_Protect_02" src=orig
+"wgl_sk_shieldofbattlefield_04_3" EFFECT startms=552 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_shieldofbattlefield_04_3" CANCEL startms=900 endms=1700 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldofbattlefield_04_3" CANCEL startms=900 endms=1700 payload="입력캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_3" CANCEL startms=1150 endms=1700 payload="이동캔슬" src=orig
+"wgl_sk_shieldofbattlefield_04_re" CANCEL startms=0 endms=4133 payload="X 스킬 (17821) 발동 가능" src=orig
+"wgl_sk_shieldofbattlefield_04_re" CANCEL startms=0 endms=4133 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldofbattlefield_04_re" CANCEL startms=0 endms=4133 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectGather_01" src=orig
+"wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_01" src=orig
+"wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_04" src=orig
+"wgl_sk_shieldofbattlefield_04_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_re" SUPERARMOR startms=0 endms=4133 payload="" src=orig
+"wgl_sk_shieldshove_att01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_Vox1_1" src=orig
+"wgl_sk_shieldshove_att01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_1" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=114 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_Att_02" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=114 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_Att_02_1" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=200 endms=700 payload="[선스]" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=201 endms=603 payload="[선콤]" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=201 endms=805 payload="[선이]" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=212 payload="" src=orig
+"wgl_sk_shieldshove_att01" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldshove_att01" SHAKE startms=257 payload="" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=290 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=292 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=296 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=298 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=299 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldshove_att01" EFFECT startms=300 payload="" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=400 endms=1367 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=548 endms=1367 payload="" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=599 endms=805 payload="" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=700 endms=1367 payload="입력캔슬" src=orig
+"wgl_sk_shieldshove_att01" CANCEL startms=798 endms=1367 payload="이동캔슬" src=orig
+"wgl_sk_shieldshove_att02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_2" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=100 endms=720 payload="[선스]" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=100 endms=820 payload="[선이]" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=100 endms=402 payload="[선콤]" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=212 payload="" src=orig
+"wgl_sk_shieldshove_att02" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldshove_att02" SHAKE startms=257 payload="" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=281 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_Swing_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=290 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=291 payload="fx_pc_wgl_00.Par_J_ShockDust_1" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=292 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=299 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=300 payload="fx_pc_wgl_00.Par_J_ShockDust_1" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=300 payload="" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=300 payload="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=300 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
+"wgl_sk_shieldshove_att02" SHAKE startms=300 payload="" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=306 payload="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" src=orig
+"wgl_sk_shieldshove_att02" EFFECT startms=306 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=350 endms=1067 payload="" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=395 endms=1067 payload="" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=398 endms=1066 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=697 endms=1067 payload="입력캔슬" src=orig
+"wgl_sk_shieldshove_att02" CANCEL startms=800 endms=1067 payload="이동캔슬" src=orig
+"wgl_sk_shieldshove_att03" CANCEL startms=0 endms=1700 payload="방어태세해제" src=orig
+"wgl_sk_shieldshove_att03" EFFECT startms=361 payload="fx_pc_wgl_00.Par_J_Focus_01" src=orig
+"wgl_sk_shieldshove_att03" CANCEL startms=501 endms=1508 payload="[선스]" src=orig
+"wgl_sk_shieldshove_att03" CANCEL startms=606 endms=1599 payload="[선이]" src=orig
+"wgl_sk_shieldshove_att03" SHAKE startms=672 payload="" src=orig
+"wgl_sk_shieldshove_att03" HIT startms=684 endms=748 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldshove_att03" EFFECT startms=698 payload="" src=orig
+"wgl_sk_shieldshove_att03" EFFECT startms=699 payload="fx_pc_wgl_00.Par_J_shieldAtk_03" src=orig
+"wgl_sk_shieldshove_att03" EFFECT startms=703 payload="FX_PC_WGL_01.Par_E_SpearAura_06" src=orig
+"wgl_sk_shieldshove_att03" EFFECT startms=712 payload="FX_CM_00.Dust.Par_E_UnderDust_03_2" src=orig
+"wgl_sk_shieldshove_att03" CANCEL startms=1400 endms=1700 payload="" src=orig
+"wgl_sk_shieldshove_att03" CANCEL startms=1507 endms=1700 payload="" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=0 endms=1733 payload="방어태세해제" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=100 endms=1220 payload="[선스]" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=100 endms=1320 payload="[선이]" src=orig
+"wgl_sk_shieldshove_custom01" SOUND startms=150 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_3" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=294 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_Cast_01" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=500 endms=1733 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldshove_custom01" SOUND startms=600 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_Vox1_2" src=orig
+"wgl_sk_shieldshove_custom01" HIT startms=850 endms=1050 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_shieldshove_custom01" SHAKE startms=870 payload="" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=895 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldshove_custom01" SOUND startms=895 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_4" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=900 payload="" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=904 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=906 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=922 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01" src=orig
+"wgl_sk_shieldshove_custom01" EFFECT startms=922 payload="FX_PC_WGL_05.Par_U_WGL_shieldPush_UnderDust_13_1" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=1200 endms=1733 payload="입력캔슬" src=orig
+"wgl_sk_shieldshove_custom01" CANCEL startms=1300 endms=1733 payload="이동캔슬" src=orig
+"wgl_sk_shieldstamp" SUPERARMOR startms=0 endms=1111 payload="" src=orig
+"wgl_sk_shieldstamp" SOUND startms=30 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_1" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=64 payload="FX_CM_00.Dust.Par_D_Dust_007_pr" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=201 endms=1007 payload="[선콤]" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=201 endms=1107 payload="[선스]" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=301 endms=1104 payload="[선이]" src=orig
+"wgl_sk_shieldstamp" SOUND startms=540 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_2" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=590 payload="FX_PC_WGL_04.Par_R_WGL_ShieldStamp_00_02" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=590 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=590 payload="FX_PC_WGL_04.Par_R_WGL_ShieldStamp_05_02" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=590 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldstamp" SHAKE startms=590 payload="" src=orig
+"wgl_sk_shieldstamp" EFFECT startms=600 payload="" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=700 endms=1433 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=945 endms=1433 payload="" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=995 endms=1108 payload="" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=1100 endms=1434 payload="입력캔슬" src=orig
+"wgl_sk_shieldstamp" CANCEL startms=1102 endms=1434 payload="이동캔슬" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=0 endms=604 payload="[선이]" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=0 endms=320 payload="[선스]" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=0 endms=867 payload="방어태세해제" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_2" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" SUPERARMOR startms=0 endms=611 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="fx_pc_wgl_11.Par_J_WGL_ShieldShock_08_01" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" SHAKE startms=30 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=130 endms=867 payload="[회피캔슬]" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=300 endms=668 payload="입력캔슬" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=598 endms=867 payload="이동캔슬" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" CANCEL startms=0 endms=567 payload="방어태세해제" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="FX_CM_00.Dust.Par_D_Dust_007_pr" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="fx_pc_wgl_11.Par_J_WGL_ShieldShock_08_02" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" SUPERARMOR startms=0 endms=567 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_1" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" CANCEL startms=73 endms=567 payload="[선이]" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" CANCEL startms=73 endms=567 payload="[선스]" src=orig
+"wgl_sk_spearshot_01" CANCEL startms=0 endms=2400 payload="진격태세" src=orig
+"wgl_sk_spearshot_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_1" src=orig
+"wgl_sk_spearshot_01" SUPERARMOR startms=0 endms=2400 payload="" src=orig
+"wgl_sk_spearshot_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_2" src=orig
+"wgl_sk_spearshot_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_Vox1_1" src=orig
+"wgl_sk_spearshot_01" HIT startms=400 endms=600 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
+"wgl_sk_spearshot_01" SHAKE startms=425 payload="" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=450 payload="" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=460 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
+"wgl_sk_spearshot_01" CANCEL startms=550 endms=2400 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=700 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Cast_01" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=700 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Cast_04_01" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=705 payload="FX_PC_WGL_08.Par_W_WGL_SpearShot_Cast_02" src=orig
+"wgl_sk_spearshot_01" EFFECT startms=800 payload="" src=orig
+"wgl_sk_spearshot_01" CANCEL startms=900 endms=2400 payload="[선스]" src=orig
+"wgl_sk_spearshot_01" CANCEL startms=1094 endms=2400 payload="[선이]" src=orig
+"wgl_sk_spearshot_01" CANCEL startms=1400 endms=2400 payload="스테이지전환" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=0 endms=705 payload="[선이]" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=0 endms=501 payload="[선스]" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=0 endms=933 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=0 endms=933 payload="진격태세" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_01_1" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Exp_04_01" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
+"wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_spearshot_02" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_4" src=orig
+"wgl_sk_spearshot_02" SUPERARMOR startms=0 endms=705 payload="" src=orig
+"wgl_sk_spearshot_02" SUPERARMOR startms=0 endms=704 payload="" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=497 endms=933 payload="입력캔슬" src=orig
+"wgl_sk_spearshot_02" CANCEL startms=697 endms=934 payload="이동캔슬" src=orig
+"wgl_sk_spearshot_custom_1_1" CANCEL startms=0 endms=567 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_1_1" SUPERARMOR startms=0 endms=567 payload="" src=orig
+"wgl_sk_spearshot_custom_1_1" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_1" src=orig
+"wgl_sk_spearshot_custom_1_1" CANCEL startms=201 endms=567 payload="[선이]" src=orig
+"wgl_sk_spearshot_custom_1_1" CANCEL startms=351 endms=567 payload="[선스]" src=orig
+"wgl_sk_spearshot_custom_1_1" SOUND startms=400 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_Vox1_1" src=orig
+"wgl_sk_spearshot_custom_1_1" SOUND startms=400 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX007_1" src=orig
+"wgl_sk_spearshot_custom_1_1" CANCEL startms=500 endms=567 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_custom_1_2" CANCEL startms=0 endms=267 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_custom_1_2" CANCEL startms=0 endms=267 payload="[선스]" src=orig
+"wgl_sk_spearshot_custom_1_2" CANCEL startms=0 endms=267 payload="[선이]" src=orig
+"wgl_sk_spearshot_custom_1_2" CANCEL startms=0 endms=267 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_1_2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
+"wgl_sk_spearshot_custom_1_2" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_custom_1_2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
+"wgl_sk_spearshot_custom_1_2" HIT startms=0 endms=267 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_spearshot_custom_1_2" SUPERARMOR startms=0 endms=267 payload="" src=orig
+"wgl_sk_spearshot_custom_1_2" EFFECT startms=33 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
+"wgl_sk_spearshot_custom_1_2" EFFECT startms=50 payload="" src=orig
+"wgl_sk_spearshot_custom_1_2" SHAKE startms=50 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=604 payload="[선이]" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=402 payload="[선스]" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=1167 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=1167 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_01_1" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Exp_04_01" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
+"wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_spearshot_custom_1_3" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX007_2" src=orig
+"wgl_sk_spearshot_custom_1_3" SUPERARMOR startms=0 endms=602 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" SUPERARMOR startms=0 endms=606 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=399 endms=1167 payload="입력캔슬" src=orig
+"wgl_sk_spearshot_custom_1_3" CANCEL startms=596 endms=1166 payload="이동캔슬" src=orig
+"wgl_sk_spearshot_custom_2_1" CANCEL startms=0 endms=633 payload="" src=orig
+"wgl_sk_spearshot_custom_2_1" CANCEL startms=0 endms=633 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_2_1" SUPERARMOR startms=0 endms=633 payload="" src=orig
+"wgl_sk_spearshot_custom_2_1" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_1" src=orig
+"wgl_sk_spearshot_custom_2_1" SOUND startms=300 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_Vox1_1" src=orig
+"wgl_sk_spearshot_custom_2_1" SOUND startms=400 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_5" src=orig
+"wgl_sk_spearshot_custom_2_1" HIT startms=500 endms=633 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
+"wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="" src=orig
+"wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
+"wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
+"wgl_sk_spearshot_custom_2_1" SHAKE startms=600 payload="" src=orig
+"wgl_sk_spearshot_custom_2_1" EFFECT startms=630 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
+"wgl_sk_spearshot_custom_2_2" CANCEL startms=0 endms=450 payload="" src=orig
+"wgl_sk_spearshot_custom_2_2" CANCEL startms=0 endms=500 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Cast_08_04" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_Cast_01_1" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=0 payload="FX_PC_WGL_08.Par_W_WGL_SpearShot_Cast_02_1" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=0 payload="FX_PC_WGL_08.Par_W_WGL_SpearShot_Cast_02_2" src=orig
+"wgl_sk_spearshot_custom_2_2" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX008_2" src=orig
+"wgl_sk_spearshot_custom_2_2" SUPERARMOR startms=0 endms=500 payload="" src=orig
+"wgl_sk_spearshot_custom_2_2" EFFECT startms=100 payload="" src=orig
+"wgl_sk_spearshot_custom_2_2" CANCEL startms=150 endms=450 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=0 endms=706 payload="[선이]" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=0 endms=502 payload="[선스]" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=0 endms=1300 payload="진격태세" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Exp_08_04" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
+"wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_08.Par_W_WGL_SpearShot_01_2" src=orig
+"wgl_sk_spearshot_custom_2_3" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX008_5" src=orig
+"wgl_sk_spearshot_custom_2_3" SUPERARMOR startms=0 endms=707 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" SUPERARMOR startms=0 endms=705 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" SUPERARMOR startms=0 endms=704 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=100 endms=1300 payload="[회피캔슬]" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=497 endms=1300 payload="입력캔슬" src=orig
+"wgl_sk_spearshot_custom_2_3" CANCEL startms=700 endms=1300 payload="이동캔슬" src=orig
+"wgl_sk_standup_normal_1" CANCEL startms=0 endms=1267 payload="방어태세해제" src=orig
+"wgl_sk_standup_normal_1" SUPERARMOR startms=0 endms=900 payload="" src=orig
+"wgl_sk_standup_normal_1" SUPERARMOR startms=0 endms=902 payload="" src=orig
+"wgl_sk_standup_normal_1" EFFECT startms=100 payload="" src=orig
+"wgl_sk_standup_normal_1" EFFECT startms=147 payload="FX_BS_06.FootDown.Par_D_Dragdefault_001" src=orig
+"wgl_sk_standup_normal_1" CANCEL startms=200 endms=900 payload="[선이]" src=orig
+"wgl_sk_standup_normal_1" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_StandUp1_Vox1_1" src=orig
+"wgl_sk_standup_normal_1" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_StandUp1_1" src=orig
+"wgl_sk_standup_normal_1" EFFECT startms=574 payload="FX_BS_06.FootDown.Par_D_Knockdowndefault_001" src=orig
+"wgl_sk_standup_normal_1" CANCEL startms=900 endms=1267 payload="입력캔슬" src=orig
+"wgl_sk_standup_normal_1" CANCEL startms=900 endms=1267 payload="이동캔슬" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" SUPERARMOR startms=0 endms=2400 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearDash1_Vox1_1" src=orig
+"wgl_sk_super_guardianofprotection_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SiriusProtection1_FX000_1" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01_Loop" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=10 payload="FX_PC_WGL_08.Par_W_WGL_superAction_01_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_PC_SMW_12.Par_S_SMW_ExMove_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_PC_WGL_08.Par_W_WGL_ExMove_01" src=orig
+"wgl_sk_super_guardianofprotection_01" SHAKE startms=253 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=346 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SDenergy" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=354 payload="FX_PC_WGL_08.Par_W_WGL_ShieldSy_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=363 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=457 payload="FX_CM_02.Light.Par_MP_Light_01_sine" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=497 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=524 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=525 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=697 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" SHAKE startms=790 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=800 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=873 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=897 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1073 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1097 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1270 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1297 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1305 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01_1" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1470 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1497 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1670 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_01" EFFECT startms=1877 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=0 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_explo3" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01_Loop" src=orig
+"wgl_sk_super_guardianofprotection_02" SUPERARMOR startms=0 endms=1620 payload="" src=orig
+"wgl_sk_super_guardianofprotection_02" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SiriusProtection1_Vox2_1" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=123 payload="FX_PC_WGL_08.Par_W_WGL_Shieldsy_02" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=172 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtecion_explo_01" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=175 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=279 payload="FX_PC_WGL_08.Par_W_SuperGProtection_SD_Rot" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=295 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_super_guardianofprotection_02" CANCEL startms=600 endms=1620 payload="[선이]" src=orig
+"wgl_sk_super_guardianofprotection_02" CANCEL startms=600 endms=1620 payload="[선스]" src=orig
+"wgl_sk_super_guardianofprotection_02" SOUND startms=850 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SiriusProtection1_FX000_2" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=876 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_HitG" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=1026 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_explo_de" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=1027 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=1050 payload="" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=1064 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_HitG_Cam" src=orig
+"wgl_sk_super_guardianofprotection_02" EFFECT startms=1069 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_super_guardianofprotection_02" SHAKE startms=1090 payload="" src=orig
+"wgl_sk_super_guardianofprotection_02" CANCEL startms=1200 endms=2433 payload="[회피캔슬]" src=orig
+"wgl_sk_super_guardianofprotection_02" CANCEL startms=1600 endms=2433 payload="입력캔슬" src=orig
+"wgl_sk_super_guardianofprotection_02" CANCEL startms=1600 endms=2433 payload="이동캔슬" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=0 payload="" src=orig
+"wgl_sk_super_judgmentspear_01" SUPERARMOR startms=0 endms=3667 payload="" src=orig
+"wgl_sk_super_judgmentspear_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_Vox1_1" src=orig
+"wgl_sk_super_judgmentspear_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_FX000_1" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_PC_WHK_02.Par_O_WHK_ExMove_02" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_11" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01_Loop" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=200 payload="FX_PC_WBKF_04.Par_R_WBKF_ExMove_01" src=orig
+"wgl_sk_super_judgmentspear_01" SHAKE startms=1051 payload="" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=1063 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_02-3" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=1064 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_02-2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=1648 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_12" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2295 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_04-2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2295 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_10" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2330 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_04-2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2364 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_04-2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2384 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_04-2" src=orig
+"wgl_sk_super_judgmentspear_01" SOUND startms=2750 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_FX000_2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2851 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_06" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2851 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_05" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2875 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2875 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_02-2" src=orig
+"wgl_sk_super_judgmentspear_01" EFFECT startms=2911 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_body_01" src=orig
+"wgl_sk_super_judgmentspear_02" SUPERARMOR startms=0 endms=725 payload="" src=orig
+"wgl_sk_super_judgmentspear_02" SUPERARMOR startms=0 endms=723 payload="" src=orig
+"wgl_sk_super_judgmentspear_02" SOUND startms=150 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_Vox2_1" src=orig
+"wgl_sk_super_judgmentspear_02" CANCEL startms=200 endms=720 payload="[선스]" src=orig
+"wgl_sk_super_judgmentspear_02" CANCEL startms=200 endms=720 payload="[선이]" src=orig
+"wgl_sk_super_judgmentspear_02" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_KayangelSpear1_FX000_3" src=orig
+"wgl_sk_super_judgmentspear_02" EFFECT startms=300 payload="" src=orig
+"wgl_sk_super_judgmentspear_02" CANCEL startms=400 endms=1600 payload="[회피캔슬]" src=orig
+"wgl_sk_super_judgmentspear_02" CANCEL startms=700 endms=1600 payload="이동캔슬" src=orig
+"wgl_sk_super_judgmentspear_02" CANCEL startms=702 endms=1600 payload="입력캔슬" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=0 endms=2133 payload="방어태세해제" src=orig
+"wgl_sk_thunderbolt" SUPERARMOR startms=0 endms=1905 payload="" src=orig
+"wgl_sk_thunderbolt" SOUND startms=20 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_FX000_1" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=201 endms=2133 payload="[회피캔슬]" src=orig
+"wgl_sk_thunderbolt" SOUND startms=240 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_FX008_1" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=307 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_01_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=307 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_01_02" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_PC_WGL_05.Par_U_WGL_GuardianLight_Light_Cast_01" src=orig
+"wgl_sk_thunderbolt" SHAKE startms=335 payload="" src=orig
+"wgl_sk_thunderbolt" SOUND startms=370 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_Vox1_1" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=430 payload="FX_PC_WGL_05.Par_U_WGL_GuardianLightning_Cast_Wp_01" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=700 endms=1700 payload="[선스]" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=900 endms=1900 payload="[선이]" src=orig
+"wgl_sk_thunderbolt" SOUND startms=1150 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_FX000_2" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_CM_02.Light.Par_C_Light_004" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_02" src=orig
+"wgl_sk_thunderbolt" SHAKE startms=1200 payload="" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1202 payload="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_Cross_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1300 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_01" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1300 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_02" src=orig
+"wgl_sk_thunderbolt" EFFECT startms=1400 payload="" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=1700 endms=2133 payload="입력캔슬" src=orig
+"wgl_sk_thunderbolt" CANCEL startms=1900 endms=2133 payload="이동캔슬" src=orig
+"wgl_sk_warspear" EFFECT startms=0 payload="fx_pc_wgl_10.Par_K_WGL_Flare_01" src=orig
+"wgl_sk_warspear" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
+"wgl_sk_warspear" EFFECT startms=0 payload="" src=orig
+"wgl_sk_warspear" SUPERARMOR startms=0 endms=720 payload="" src=orig
+"wgl_sk_warspear" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_WarSpear1_FX000_1" src=orig
+"wgl_sk_warspear" CANCEL startms=100 endms=720 payload="[선스]" src=orig
+"wgl_sk_warspear" CANCEL startms=100 endms=720 payload="[선이]" src=orig
+"wgl_sk_warspear" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_WarSpear1_Vox1_1" src=orig
+"wgl_sk_warspear" SOUND startms=550 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_WarSpear1_FX042_2" src=orig
+"wgl_sk_warspear" EFFECT startms=600 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" src=orig
+"wgl_sk_warspear" EFFECT startms=600 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
+"wgl_sk_warspear" EFFECT startms=600 payload="fx_pc_wgl_10.Par_K_WGL_Flare_02" src=orig
+"wgl_sk_warspear" SHAKE startms=600 payload="" src=orig
+"wgl_sk_warspear" EFFECT startms=650 payload="" src=orig
+"wgl_sk_warspear" EFFECT startms=650 payload="fx_pc_wgl_10.Par_R_WGL_Warspear_Roar_01" src=orig
+"wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="입력캔슬" src=orig
+"wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="이동캔슬" src=orig
+"wgl_sk_warspear" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig

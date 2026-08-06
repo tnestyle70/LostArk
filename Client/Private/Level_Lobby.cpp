@@ -38,6 +38,8 @@ namespace
 			return "Artist";
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return "Dimension Master";
+		case CHARACTER_CLASS_ID::WARLORD:
+			return "Warlord";
 		default:
 			return "Not selected";
 		}

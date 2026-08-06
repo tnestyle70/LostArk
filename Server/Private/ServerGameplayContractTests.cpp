@@ -41,33 +41,33 @@ namespace
 	constexpr std::array QUICK_SKILLS
 	{
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34120, "Q" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34040, "Q" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34540, "Q" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34080, "W" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34090, "W" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34550, "W" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34070, "E" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34100, "E" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34560, "E" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34150, "R" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34160, "R" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34570, "R" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34110, "A" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34140, "A" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34580, "A" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34090, "S" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34120, "S" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34590, "S" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34050, "D" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34110, "D" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34170, "F" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34150, "F" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34000, "Z" },
 		QUICK_SKILL_CONTRACT{
@@ -77,11 +77,11 @@ namespace
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34520, "SPACE" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34640, "T" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34650, "T" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34600, "V" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34610, "V" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34620, "ALT_V" },
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34630, "ALT_V" },
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER, 38020, "Q" },
 		QUICK_SKILL_CONTRACT{
@@ -159,7 +159,31 @@ namespace
 		QUICK_SKILL_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050510, "T" },
 		QUICK_SKILL_CONTRACT{
-			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050540, "V" }
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER, 2050540, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17030, "Q" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17060, "W" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17080, "E" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17110, "R" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17090, "A" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17040, "S" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17100, "D" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17140, "F" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17240, "T" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17820, "X" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17170, "V" },
+		QUICK_SKILL_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17250, "ALT_V" }
 	};
 
 	struct BASIC_ATTACK_CONTRACT final
@@ -171,6 +195,8 @@ namespace
 
 	constexpr std::array BASIC_ATTACKS
 	{
+		BASIC_ATTACK_CONTRACT{
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD, 17000, 3 },
 		BASIC_ATTACK_CONTRACT{
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER, 34010, 4 },
 		BASIC_ATTACK_CONTRACT{
@@ -798,13 +824,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		meleeBoss.iCurrentHp = 10000;
 		meleeBoss.iMaximumHp = 10000;
 		meleeBoss.fPositionX = 0.f;
-		/* 34080 reaches 1.2 on its own; 3.5 is inside reach only because the
+		/* 34090 reaches 2.8 on its own; 3.5 is inside reach only because the
 		boss's 3.0 collision radius extends the centre-to-centre test. */
 		meleeBoss.fPositionZ = 3.5f;
 		std::vector<SERVER_WORLD_ENTITY> meleeEntities{ meleeBoss };
 		C2S_USE_SKILL melee{};
 		melee.iClientSequence = 1;
-		melee.iSkillId = 34080;
+		melee.iSkillId = 34090;
 		melee.fAimX = 0.f;
 		melee.fAimZ = 3.5f;
 		CPlayerSkillSystem meleeSkills;
@@ -817,7 +843,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				meleePlayer, meleeEntities, catalog, nullptr, 1.f / 30.f, tick,
 				meleeDamageEvents);
 		}
-		tests.Require(10000u - 261u == meleeEntities[0].iCurrentHp,
+		tests.Require(10000u - 1050u == meleeEntities[0].iCurrentHp,
 			"Reach the boss through its collision radius");
 	}
 

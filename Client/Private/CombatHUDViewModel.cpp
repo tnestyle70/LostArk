@@ -46,6 +46,7 @@ namespace
 		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		if (value == "WARLORD") return CHARACTER_CLASS_ID::WARLORD;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -59,6 +60,10 @@ namespace
 			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		else if (value == "LANCE_MASTER_SHORT_SPEAR")
 			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else if (value == "WARLORD_NORMAL")
+			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
+		else if (value == "WARLORD_DEFENSE")
+			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
 		else
 			return false;
 		return true;

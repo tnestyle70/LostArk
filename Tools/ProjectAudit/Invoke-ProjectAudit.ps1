@@ -937,12 +937,13 @@ try {
 	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
 	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
 	Add-Check 'actors.playable-roster' (
-		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONMASTER' -and
-		$rosterStatus -eq 'supported,supported,supported,supported,supported' -and
+		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONMASTER,WARLORD' -and
+		$rosterStatus -eq 'supported,supported,supported,supported,supported,supported' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::WARLORD' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::DIMENSIONMASTER' -and
 		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
@@ -1011,6 +1012,7 @@ try {
 		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
 		'ARTIST' = @('Q','W','E','R','A','S','V','ALT_V','LMB')
 		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','LMB')
+		'WARLORD' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
 	}
 	foreach ($className in $classQuickSlotContracts.Keys) {
 		foreach ($slotName in $classQuickSlotContracts[$className]) {
@@ -1035,6 +1037,7 @@ try {
 		'SLAYER' = 'Slayer'
 		'ARTIST' = 'Artist'
 		'DIMENSIONMASTER' = 'DimensionMaster'
+		'WARLORD' = 'Warlord'
 	}
 	$quickSkillAnimationErrors = [Collections.Generic.List[string]]::new()
 	$totalAuthoredBindings = 0

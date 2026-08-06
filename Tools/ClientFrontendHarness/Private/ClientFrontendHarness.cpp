@@ -364,7 +364,8 @@ namespace
 			{ "GunSlinger", CHARACTER_CLASS_ID::GUNSLINGER },
 			{ "Slayer", CHARACTER_CLASS_ID::SLAYER },
 			{ "Artist", CHARACTER_CLASS_ID::ARTIST },
-			{ "DimensionMaster", CHARACTER_CLASS_ID::DIMENSIONMASTER }
+			{ "DimensionMaster", CHARACTER_CLASS_ID::DIMENSIONMASTER },
+			{ "Warlord", CHARACTER_CLASS_ID::WARLORD }
 		};
 		std::size_t total = 0u;
 		for (const OWNER& owner : owners)
@@ -391,7 +392,7 @@ namespace
 			total += parsed.Bindings.size();
 		}
 		runner.Require(CPlayerSkillCatalog::Get_Skills().size() == total,
-			"Five Real Skill Binding Documents Cover Every Skill Definition");
+			"Every Real Skill Binding Document Covers Every Skill Definition");
 	}
 
 	void Test_SkillBindingAtomicSave(TEST_RUNNER& runner)

@@ -79,6 +79,7 @@ namespace
         case CHARACTER_CLASS_ID::SLAYER: return "Slayer";
         case CHARACTER_CLASS_ID::ARTIST: return "Artist";
         case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "Dimension Master";
+        case CHARACTER_CLASS_ID::WARLORD: return "Warlord";
         case CHARACTER_CLASS_ID::END:
         default: return "Invalid";
         }
@@ -1634,7 +1635,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
         LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
         LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
         LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-        LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER };
+        LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+        LostArk::Shared::CHARACTER_CLASS_ID::WARLORD };
     if (ImGui::BeginCombo("Class", Class_Label(m_eAllEffectsClass)))
     {
         for (const auto eClass : Classes)

@@ -114,6 +114,8 @@ namespace
 			return TEXT("Artist");
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return TEXT("DimensionMaster");
+		case CHARACTER_CLASS_ID::WARLORD:
+			return TEXT("Warlord");
 		default:
 			return TEXT("Unknown");
 		}
@@ -832,7 +834,8 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		CHARACTER_CLASS_ID::GUNSLINGER,
 		CHARACTER_CLASS_ID::SLAYER,
 		CHARACTER_CLASS_ID::ARTIST,
-		CHARACTER_CLASS_ID::DIMENSIONMASTER
+		CHARACTER_CLASS_ID::DIMENSIONMASTER,
+		CHARACTER_CLASS_ID::WARLORD
 	};
 	for (const CHARACTER_CLASS_ID characterClass : previewClasses)
 	{
@@ -858,7 +861,8 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		TEXT("Prototype_Component_Model_GunSlinger"),
 		TEXT("Prototype_Component_Model_Slayer"),
 		TEXT("Prototype_Component_Model_Artist"),
-		TEXT("Prototype_Component_Model_DimensionMaster")
+		TEXT("Prototype_Component_Model_DimensionMaster"),
+		TEXT("Prototype_Component_Model_Warlord")
 	};
 
 	// Core and summon use the same ActorX Blender unit contract as the playable
