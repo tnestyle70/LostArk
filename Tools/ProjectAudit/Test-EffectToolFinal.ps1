@@ -441,6 +441,13 @@ $expectedSkillIds = @(
     2050010, 2050110, 2050150, 2050220, 2050190, 2050240,
     2050210, 2050200, 2050500, 2050510, 2050540
 )
+# The subset the current quick-slot roster binds. An authored Effect document
+# outlives the slot it was written for, so the documents, the catalog and the
+# animation cues above still cover all eleven; only the PlayerSkills join is
+# limited to the skills a loadout can actually cast today.
+$boundSkillIds = @(
+    2050010, 2050210, 2050220, 2050240, 2050500, 2050540
+)
 $expectedEffectIds = @($expectedSkillIds | ForEach-Object {
     "effect.dimensionmaster.skill.$_"
 })
@@ -505,7 +512,7 @@ foreach ($entry in $catalog.effects) {
 }
 
 $skills = Read-JsonFile 'Data\Balance\PlayerSkills.json'
-foreach ($skillId in $expectedSkillIds) {
+foreach ($skillId in $boundSkillIds) {
     $matches = @($skills.skills | Where-Object {
         [int64]$_.skillId -eq $skillId -and
         [string]$_.characterClass -eq 'DIMENSIONMASTER'

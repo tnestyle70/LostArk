@@ -1011,7 +1011,7 @@ try {
 		'GUNSLINGER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','LMB')
 		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
 		'ARTIST' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
-		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','LMB')
+		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','SPACE','LMB')
 		'WARLORD' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
 	}
 	foreach ($className in $classQuickSlotContracts.Keys) {
@@ -1029,7 +1029,7 @@ try {
 		Where-Object characterClass -eq 'DIMENSIONMASTER')
 	Add-Check 'gameplay.playable-qw-contract' (
 		$missingQuickSlots.Count -eq 0 -and
-		$dimensionmasterSkillRows.Count -eq 11) "missing=$($missingQuickSlots -join ',') dimensionmasterRows=$($dimensionmasterSkillRows.Count)"
+		$dimensionmasterSkillRows.Count -eq 13) "missing=$($missingQuickSlots -join ',') dimensionmasterRows=$($dimensionmasterSkillRows.Count)"
 
 	$skillBindingOwners = [ordered]@{
 		'LANCE_MASTER' = 'LanceMaster'

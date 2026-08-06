@@ -5,16 +5,48 @@
   "characterClass": "DIMENSIONMASTER",
   "bindings": [
     {
-      "skillId": 2050110,
+      "skillId": 2050010,
       "clips": [
-        "pc_sp_m_00_sk_sk_dimensionalbreak_01"
+        "pc_sp_m_00_sk_att_battle_1_01",
+        "pc_sp_m_00_sk_att_battle_1_02",
+        "pc_sp_m_00_sk_att_battle_1_03",
+        "pc_sp_m_00_sk_att_battle_1_04"
       ]
     },
     {
-      "skillId": 2050150,
+      "skillId": 2050100,
       "clips": [
-        "pc_sp_m_00_sk_sk_riftslash_01",
-        "pc_sp_m_00_sk_sk_riftslash_02"
+        "pc_sp_m_00_sk_sk_nailstrike_01"
+      ]
+    },
+    {
+      "skillId": 2050120,
+      "clips": [
+        "pc_sp_m_00_sk_sk_dimensionalleap_01",
+        "pc_sp_m_00_sk_sk_dimensionalleap_02",
+        "pc_sp_m_00_sk_sk_dimensionalleap_03"
+      ]
+    },
+    {
+      "skillId": 2050160,
+      "clips": [
+        "pc_sp_m_00_sk_sk_overslash_01",
+        "pc_sp_m_00_sk_sk_overslash_02",
+        "pc_sp_m_00_sk_sk_overslash_03",
+        "pc_sp_m_00_sk_sk_overslash_04",
+        "pc_sp_m_00_sk_sk_overslash_05"
+      ]
+    },
+    {
+      "skillId": 2050180,
+      "clips": [
+        "pc_sp_m_00_sk_sk_foldcut"
+      ]
+    },
+    {
+      "skillId": 2050210,
+      "clips": [
+        "pc_sp_m_00_sk_sk_willowrend"
       ]
     },
     {
@@ -24,9 +56,9 @@
       ]
     },
     {
-      "skillId": 2050190,
+      "skillId": 2050230,
       "clips": [
-        "pc_sp_m_00_sk_sk_voidtrigger"
+        "pc_sp_m_00_sk_sk_chronorecoil"
       ]
     },
     {
@@ -37,29 +69,15 @@
       ]
     },
     {
-      "skillId": 2050210,
-      "clips": [
-        "pc_sp_m_00_sk_sk_willowrend"
-      ]
-    },
-    {
-      "skillId": 2050200,
-      "clips": [
-        "pc_sp_m_00_sk_sk_tearingsword_01",
-        "pc_sp_m_00_sk_sk_tearingsword_02"
-      ]
-    },
-    {
       "skillId": 2050500,
       "clips": [
         "pc_sp_m_00_sk_sk_dimensionprison"
       ]
     },
     {
-      "skillId": 2050510,
+      "skillId": 2050520,
       "clips": [
-        "pc_sp_m_00_sk_sk_dimensionthrust_01",
-        "pc_sp_m_00_sk_sk_dimensionthrust_02"
+        "pc_sp_m_00_sk_sk_timewave"
       ]
     },
     {
@@ -69,12 +87,10 @@
       ]
     },
     {
-      "skillId": 2050010,
+      "skillId": 2050020,
       "clips": [
-        "pc_sp_m_00_sk_att_battle_1_01",
-        "pc_sp_m_00_sk_att_battle_1_02",
-        "pc_sp_m_00_sk_att_battle_1_03",
-        "pc_sp_m_00_sk_att_battle_1_04"
+        "pc_sp_m_00_sk_sk_moving_normal_1_04",
+        "pc_sp_m_00_sk_sk_jump_04"
       ]
     }
   ]
