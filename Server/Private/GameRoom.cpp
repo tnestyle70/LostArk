@@ -44,6 +44,7 @@ namespace
 		{
 		case WORLD_BOOTSTRAP_KIND::NPC: return WORLD_ENTITY_KIND::NPC;
 		case WORLD_BOOTSTRAP_KIND::BOSS: return WORLD_ENTITY_KIND::BOSS;
+		case WORLD_BOOTSTRAP_KIND::MONSTER: return WORLD_ENTITY_KIND::MONSTER;
 		default: return WORLD_ENTITY_KIND::END;
 		}
 	}
@@ -82,6 +83,13 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_GameplayCatalog.Get_Status();
 		return;
 	}
+	if (!m_SpawnGroupBootstrap.Load(worldId))
+	{
+		m_strStatus = m_SpawnGroupBootstrap.Get_Status();
+		return;
+	}
+	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, m_strStatus))
+		return;
 	if ((LostArk::Shared::WORLD_ID::VALTAN_ARENA == worldId ||
 		LostArk::Shared::WORLD_ID::TRAINING_GROUND == worldId ||
 		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId) &&
@@ -197,7 +205,19 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-	m_ServerTriggerSystem.Evaluate_Entries(m_Players, updateTick, transfers);
+	m_ServerTriggerSystem.Evaluate_Entries(
+		m_Players,
+		updateTick,
+		transfers,
+		[this](const WORLD_TRIGGER_ACTION_KIND kind,
+			const std::string& targetId)
+		{
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP == kind)
+				return m_SpawnGroupRuntime.Activate(targetId);
+			if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER == kind)
+				return Activate_Encounter(targetId);
+			return false;
+		});
 	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
@@ -207,6 +227,22 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
 		m_PendingWorldTransfers.push_back(std::move(transfer));
 	}
+	m_SpawnGroupRuntime.Update(
+		fixedDeltaSeconds,
+		m_SpawnGroupBootstrap,
+		[this](const std::string& spawnGroupId)
+		{
+			return Count_SpawnGroupEntities(spawnGroupId);
+		},
+		[this](const std::string& spawnGroupId,
+			const SPAWN_GROUP_ENTRY& entry,
+			const SPAWN_GROUP_ANCHOR& anchor,
+			const MONSTER_RUNTIME_PROFILE& profile,
+			const std::uint32_t ordinal)
+		{
+			return Spawn_Monster(
+				spawnGroupId, entry, anchor, profile, ordinal);
+		});
 	Update_WorldEntities(fixedDeltaSeconds);
 	++m_iServerTick;
 	if (0u == m_iServerTick)
@@ -591,6 +627,19 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawned(
 			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED, writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_WorldEntityDespawned(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::NET_ENTITY_ID netEntityId)
+{
+	using namespace LostArk::Shared;
+	S2C_WORLD_ENTITY_DESPAWNED message{};
+	message.iNetEntityId = netEntityId;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED, writer.Get_Buffer());
+}
+
 bool LostArk::Server::CGameRoom::Send_Despawned(
 	const std::shared_ptr<CClientSession>& session,
 	const LostArk::Shared::NET_ENTITY_ID netEntityId,
@@ -660,6 +709,21 @@ void LostArk::Server::CGameRoom::Broadcast_WorldEntitySpawned(
 		const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
 		if (nullptr != session && !Send_WorldEntitySpawned(session, entity))
 			session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Broadcast_WorldEntityDespawned(
+	const LostArk::Shared::NET_ENTITY_ID netEntityId)
+{
+	for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+	{
+		(void)playerId;
+		const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+		if (nullptr != session &&
+			!Send_WorldEntityDespawned(session, netEntityId))
+		{
+			session->Request_Close();
+		}
 	}
 }
 
@@ -910,6 +974,105 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 	return true;
 }
 
+bool LostArk::Server::CGameRoom::Activate_Encounter(
+	const std::string& placementId)
+{
+	const WORLD_BOOTSTRAP_PLACEMENT* placement = Find_Placement(placementId);
+	if (nullptr == placement ||
+		placement->isEnabled ||
+		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind ||
+		m_iNextNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
+	{
+		return false;
+	}
+
+	const auto existing = std::find_if(
+		m_WorldEntities.begin(),
+		m_WorldEntities.end(),
+		[&placementId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.strPlacementId == placementId;
+		});
+	if (m_WorldEntities.end() != existing)
+		return false;
+
+	SERVER_WORLD_ENTITY staged{};
+	if (!Build_WorldEntity(*placement, m_iNextNetEntityId, staged))
+		return false;
+
+	++m_iNextNetEntityId;
+	m_WorldEntities.push_back(std::move(staged));
+	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Spawn_Monster(
+	const std::string& spawnGroupId,
+	const SPAWN_GROUP_ENTRY& entry,
+	const SPAWN_GROUP_ANCHOR& anchor,
+	const MONSTER_RUNTIME_PROFILE& profile,
+	const std::uint32_t ordinal)
+{
+	if (spawnGroupId.empty() ||
+		entry.strArchetypeId != profile.strArchetypeId ||
+		m_iNextNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
+	{
+		return false;
+	}
+
+	SERVER_NAV_POINT projected{
+		anchor.fPositionX, anchor.fPositionY, anchor.fPositionZ };
+	if (m_ServerNavigation.Is_Loaded() &&
+		!m_ServerNavigation.Project_Point(
+			anchor.fPositionX, anchor.fPositionZ, projected))
+	{
+		return false;
+	}
+
+	SERVER_WORLD_ENTITY staged{};
+	staged.iNetEntityId = m_iNextNetEntityId;
+	staged.strPlacementId = spawnGroupId + "." +
+		std::to_string(staged.iNetEntityId) + "." + std::to_string(ordinal);
+	staged.strArchetypeId = profile.strArchetypeId;
+	staged.strSpawnGroupId = spawnGroupId;
+	staged.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+	staged.eAction = SERVER_ENTITY_ACTION::IDLE;
+	staged.fPositionX = projected.x;
+	staged.fPositionY = projected.y;
+	staged.fPositionZ = projected.z;
+	staged.fYawDegrees = anchor.fYawDegrees;
+	staged.iCurrentHp = profile.iMaxHp;
+	staged.iMaximumHp = profile.iMaxHp;
+	staged.iAttackPower = profile.iAttackPower;
+	staged.iDefense = profile.iDefense;
+	staged.fCollisionRadius = profile.fCollisionRadius;
+	staged.fEngageDistance = profile.fEngageRange;
+	staged.fMoveSpeed = profile.fMoveSpeed;
+	staged.fAttackRange = profile.fAttackRange;
+	staged.iPatternTelegraphMs = profile.iAttackWindupMs;
+	staged.iPatternActiveMs = profile.iAttackActiveMs;
+	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
+	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
+
+	++m_iNextNetEntityId;
+	m_WorldEntities.push_back(std::move(staged));
+	Broadcast_WorldEntitySpawned(m_WorldEntities.back());
+	return true;
+}
+
+std::uint32_t LostArk::Server::CGameRoom::Count_SpawnGroupEntities(
+	const std::string& spawnGroupId) const
+{
+	return static_cast<std::uint32_t>(std::count_if(
+		m_WorldEntities.begin(),
+		m_WorldEntities.end(),
+		[&spawnGroupId](const SERVER_WORLD_ENTITY& entity)
+		{
+			return entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
+				entity.strSpawnGroupId == spawnGroupId;
+		}));
+}
+
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 {
 	const std::uint32_t updateTick =
@@ -1030,5 +1193,33 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				updateTick,
 				m_TickDamageEvents);
 		}
+		else if (entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
+			m_ServerNavigation.Is_Loaded())
+		{
+			m_MonsterBrain.Update(
+				entity,
+				m_Players,
+				m_GameplayCatalog,
+				m_ServerNavigation,
+				fixedDeltaSeconds,
+				updateTick,
+				m_TickDamageEvents);
+		}
+	}
+
+	for (auto iter = m_WorldEntities.begin(); iter != m_WorldEntities.end();)
+	{
+		const bool shouldDespawn =
+			WORLD_BOOTSTRAP_KIND::MONSTER == iter->eKind &&
+			SERVER_ENTITY_ACTION::DEAD == iter->eAction &&
+			iter->fActionElapsedSeconds * 1000.f >=
+				static_cast<float>(iter->iDeadDespawnMs);
+		if (!shouldDespawn)
+		{
+			++iter;
+			continue;
+		}
+		Broadcast_WorldEntityDespawned(iter->iNetEntityId);
+		iter = m_WorldEntities.erase(iter);
 	}
 }

@@ -600,6 +600,22 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_ReplicationEvents.push_back(std::move(event));
 		break;
 	}
+	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+	{
+		S2C_WORLD_ENTITY_DESPAWNED despawned{};
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED;
+		event.WorldEntityDespawned = despawned;
+		m_ReplicationEvents.push_back(std::move(event));
+		break;
+	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
 	{
 		S2C_WORLD_ENTITY_SPAWN_RESULT result{};

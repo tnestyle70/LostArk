@@ -16,6 +16,7 @@ namespace Client
 	{
 		PLAYER_SPAWNED,
 		WORLD_ENTITY_SPAWNED,
+		WORLD_ENTITY_DESPAWNED,
 		PLAYER_DESPAWNED,
 		WORLD_SNAPSHOT
 	};
@@ -29,6 +30,7 @@ namespace Client
 
 		LostArk::Shared::S2C_PLAYER_SPAWNED PlayerSpawned;
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED WorldEntitySpawned;
+		LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED WorldEntityDespawned;
 		LostArk::Shared::S2C_PLAYER_DESPAWNED PlayerDespawned;
 		LostArk::Shared::S2C_WORLD_SNAPSHOT WorldSnapshot;
 	};

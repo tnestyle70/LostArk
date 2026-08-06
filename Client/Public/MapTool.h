@@ -10,6 +10,7 @@
 #include "NavGridPaintDocument.h"
 #include "NavRuntimeBlockerDocument.h"
 #include "WorldGameplayDocument.h"
+#include "SpawnGroupDocument.h"
 
 #include <memory>
 #include <cstdint>
@@ -139,6 +140,7 @@ private:
 	void Render_ActiveMode(bool_t isAssetTest);
 	void Render_MapAssetsPanel(bool_t isAssetTest);
 	void Render_WorldGameplayPanel(bool_t isAssetTest);
+	void Render_SpawnGroupsPanel();
 	void Render_ModeBar();
 	void Render_CameraPanel();
 	void Render_NavigationPanel();
@@ -156,6 +158,7 @@ private:
 
 	/* Camera Runtime */
 	bool_t Find_AssetTestCamera();
+	bool_t Focus_ActiveEditorAreaCamera();
 
 	/* Navigation Document and Runtime */
 	bool_t Load_NavigationDocument();
@@ -224,12 +227,19 @@ private:
 	bool_t Save_WorldGameplay();
 	bool_t Try_PlaceWorldGameplay();
 	bool_t Try_PickWorldTriggerTarget();
+	bool_t Try_PlaceSpawnAnchor();
+	bool_t Load_SpawnGroups();
+	bool_t Save_SpawnGroups();
+	bool_t Stage_SpawnAnchorBoxes(
+		const CSpawnGroupDocument& document,
+		vector<TRIGGER_BOX_ENTRY>& outEntries);
 	bool_t Stage_WorldTriggerBoxes(
 		const CWorldGameplayDocument& document,
 		vector<TRIGGER_BOX_ENTRY>& outEntries);
 	void Remove_WorldTriggerBoxes(vector<TRIGGER_BOX_ENTRY>& entries);
 	void Update_WorldTriggerBoxPresentation(bool_t isVisible);
 	std::filesystem::path Get_WorldGameplayPath() const;
+	std::filesystem::path Get_SpawnGroupsPath() const;
 
 	/* Queries */
 	PLACED_ENTRY* Find_Placement(uint64_t placementId);
@@ -276,9 +286,13 @@ private:
 	/* World Gameplay State */
 	CWorldGameplayDocument m_WorldGameplayDocument;
 	vector<TRIGGER_BOX_ENTRY> m_WorldTriggerBoxes;
+	CSpawnGroupDocument m_SpawnGroupDocument;
+	vector<TRIGGER_BOX_ENTRY> m_SpawnAnchorBoxes;
 	bool_t m_bWorldGameplayDirty = false;
+	bool_t m_bSpawnGroupsDirty = false;
 	bool_t m_bWorldGameplayPlacementArmed = false;
 	bool_t m_bWorldTriggerTargetPickArmed = false;
+	bool_t m_bSpawnAnchorPlacementArmed = false;
 	WORLD_PLACEMENT_KIND m_eWorldPlacementKind =
 		WORLD_PLACEMENT_KIND::PLAYER_SPAWN;
 	std::string m_SelectedWorldPlacementId;
@@ -287,6 +301,18 @@ private:
 	char m_WorldPlacementId[128] = "player.spawn.editor";
 	char m_WorldArchetypeId[128] = "";
 	char m_WorldEncounterId[128] = "";
+	char m_SpawnAnchorId[128] = "anchor.valtan.editor";
+	char m_SpawnGroupId[128] = "spawn.valtan.stage01";
+	char m_SpawnWaveId[128] = "wave.01";
+	std::string m_SelectedSpawnAnchorId;
+	std::string m_SelectedSpawnGroupId;
+	std::string m_SelectedSpawnWaveId;
+	uint32_t m_iSpawnArchetypeOption = 0;
+	uint32_t m_iSpawnEntryCount = 1;
+	uint32_t m_iSpawnInitialDelayMs = 0;
+	uint32_t m_iSpawnIntervalMs = 250;
+	uint32_t m_iSpawnWaveStartDelayMs = 0;
+	uint32_t m_iSpawnGroupMaxAlive = 8;
 	float3_t m_WorldPlacementPositionDelta = {};
 	float3_t m_WorldTriggerHalfExtents = float3_t(2.f, 1.f, 2.f);
 	bool_t m_bWorldTriggerOnce = true;

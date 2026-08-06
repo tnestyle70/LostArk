@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <string>
 #include <unordered_set>
@@ -34,7 +35,9 @@ namespace LostArk::Server
 		void Evaluate_Entries(
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			std::uint32_t actionStartTick,
-			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers);
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers,
+			const std::function<bool(WORLD_TRIGGER_ACTION_KIND,
+				const std::string&)>& activateTarget);
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
 
 		[[nodiscard]] std::size_t Get_TriggerCount() const

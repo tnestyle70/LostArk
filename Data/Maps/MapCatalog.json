@@ -9,6 +9,8 @@
       "sourceCatalog": "Data/Maps/Imported/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapset",
       "sourcePlacements": "Data/Maps/Authoring/LV_BER_BERNCASTLE/LV_BER_BERNCASTLE.mapplacements",
       "catalog": "Client/Bin/DataFiles/Map/LV_BER_BERNCASTLE.mapset",
+      "navigationSource": "Data/Navigation/LV_BER_BERNCASTLE.navsource",
+      "navigationPaint": "Data/Navigation/LV_BER_BERNCASTLE.navpaint",
       "gameplayDocument": "Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json",
       "placementCount": 50017,
       "catalogAssetRows": 3021,

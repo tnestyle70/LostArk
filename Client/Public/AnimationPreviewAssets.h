@@ -13,6 +13,10 @@ struct ANIMATION_PREVIEW_ASSET final
 	const char* pModelAssetId = nullptr;
 	const wchar_t* pPrototypeTag = nullptr;
 	bool bPlayableClassBody = false;
+	float fPreviewScale = 0.01f;
+	float fPreviewYawDegrees = -90.f;
+	bool bPlaybackOnly = false;
+	const char* pBossArchetypeId = nullptr;
 };
 
 // Debug authoring targets reuse the same CModel path as the playable
@@ -80,6 +84,67 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"DimensionMaster_DimensionSummon",
 		"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_DimensionSummon"
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.480001.mn-padd-01",
+		"[Monster] Normal 01 - MN_PADD_01 (36 clips)",
+		"Monster_480001_MN_PADD_01",
+		"Character/Monster/NPC_480001_MN_PADD_01/NPC_480001_MN_PADD_01.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_480001",
+		false,
+		0.01f,
+		-90.f,
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.480002.mn-sjfc-00-4",
+		"[Monster] Normal 02 - MN_SJFC_00_4 (29 clips)",
+		"Monster_480002_MN_SJFC_00_4",
+		"Character/Monster/NPC_480002_MN_SJFC_00_4/NPC_480002_MN_SJFC_00_4.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_480002",
+		false,
+		0.01f,
+		-90.f,
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.480003.mn-0019-05",
+		"[Monster] Normal 03 - MN_0019_05 (25 clips)",
+		"Monster_480003_MN_0019_05",
+		"Character/Monster/NPC_480003_MN_0019_05/NPC_480003_MN_0019_05.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_480003",
+		false,
+		0.01f,
+		-90.f,
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"monster.480005.lugaru",
+		"[Mid Boss] Commander Lugaru - MN_RPRS_02 (91 clips)",
+		"Monster_480005_Lugaru_MN_RPRS_02",
+		"Character/Monster/NPC_480005_MN_RPRS_02/NPC_480005_MN_RPRS_02.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Monster_480005_Lugaru",
+		false,
+		0.01f,
+		-90.f,
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"boss.valtan",
+		"[Boss] Valtan - MN_RPBF_01 (27 clips)",
+		"Boss_Valtan",
+		"Character/Valtan/MN_RPBF_01.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan",
+		false,
+		0.0001f,
+		-90.f,
+		true,
+		"BOSS_VALTAN"
 	}
 };
 

@@ -1,0 +1,62 @@
+{
+  "schema": "lostark.monster-catalog",
+  "formatVersion": 1,
+  "monsters": [
+    {
+      "archetypeId": "MONSTER_VALTAN_PADD_01",
+      "clientPresentationId": "monster.valtan.padd01.client.v1",
+      "modelAssetId": "Character/Monster/NPC_480001_MN_PADD_01/NPC_480001_MN_PADD_01.wmodel",
+	  "modelScale": 0.01,
+	  "modelYawDegrees": -90.0,
+      "presentationClips": {
+        "idle": "mn_padd_01_sk.ao_idle_battle_1",
+        "chase": "mn_padd_01_sk.ao_run_battle_1",
+        "attack": "mn_padd_01_sk.ao_att_battle_1_01",
+        "dead": "mn_padd_01_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
+      "clientPresentationId": "monster.valtan.sjfc004.client.v1",
+      "modelAssetId": "Character/Monster/NPC_480002_MN_SJFC_00_4/NPC_480002_MN_SJFC_00_4.wmodel",
+	  "modelScale": 0.01,
+	  "modelYawDegrees": -90.0,
+      "presentationClips": {
+        "idle": "mn_sjfc_00_sk.ao_idle_normal_1",
+        "chase": "mn_sjfc_00_sk.ao_run_battle_1",
+        "attack": "mn_sjfc_00_sk.ao_att_battle_1_01",
+        "dead": "mn_sjfc_00_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_0019_05",
+      "clientPresentationId": "monster.valtan.001905.client.v1",
+      "modelAssetId": "Character/Monster/NPC_480003_MN_0019_05/NPC_480003_MN_0019_05.wmodel",
+	  "modelScale": 0.01,
+	  "modelYawDegrees": -90.0,
+      "presentationClips": {
+        "idle": "mn_0019_05_sk.ao_idle_battle_1",
+        "chase": "mn_0019_05_sk.ao_run_battle_1",
+        "attack": "mn_0019_05_sk.ao_att_battle_1_01",
+        "dead": "mn_0019_05_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    },
+    {
+      "archetypeId": "MINIBOSS_LUGARU",
+      "clientPresentationId": "monster.valtan.lugaru.client.v1",
+      "modelAssetId": "Character/Monster/NPC_480005_MN_RPRS_02/NPC_480005_MN_RPRS_02.wmodel",
+	  "modelScale": 0.01,
+	  "modelYawDegrees": -90.0,
+      "presentationClips": {
+        "idle": "mn_rprs_02_sk.ao_idle_battle_1",
+        "chase": "mn_rprs_02_sk.ao_run_battle_1",
+        "attack": "mn_rprs_02_sk.ao_att_battle_1_01",
+        "dead": "mn_rprs_02_sk.ao_dead_1"
+      },
+      "runtimeStatus": "supported"
+    }
+  ]
+}

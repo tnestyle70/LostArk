@@ -11,7 +11,7 @@
 #include <string_view>
 #include <unordered_map>
 
-//Network Event를 실제 Engine GameObject 생성 제거로 번역되는 단 하나의 main-thread 경계
+//Network Event瑜??ㅼ젣 Engine GameObject ?앹꽦 ?쒓굅濡?踰덉뿭?섎뒗 ???섎굹??main-thread 寃쎄퀎
 
 namespace Client
 {
@@ -22,8 +22,8 @@ namespace Client
 	class CClientReplication final
 	{
 	public:
-		//replication이 character를 어느 layer와 prototype에 생성해야 하는지를 전달한다.
-		//rpelication이 level baren을 하드코딩할 필요가 없다.
+		//replication??character瑜??대뒓 layer? prototype???앹꽦?댁빞 ?섎뒗吏瑜??꾨떖?쒕떎.
+		//rpelication??level baren???섎뱶肄붾뵫???꾩슂媛 ?녿떎.
 		struct DESC
 		{
 			ComPtr<ID3D11Device> pDevice;
@@ -59,23 +59,25 @@ namespace Client
 			const LostArk::Shared::S2C_PLAYER_DESPAWNED& despawned);
 		bool Apply_WorldEntitySpawn(
 			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
-		//snapshot의 netentityid를 실제 client character로 해석하는 함수
+		bool Apply_WorldEntityDespawn(
+			const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned);
+		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔
 		bool Apply_WorldSnapshot(
 			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
 
 		void Reset_World();
 
 	private:
-		//어떤 layer과 prototype에 생성되어야 하는지
+		//?대뼡 layer怨?prototype???앹꽦?섏뼱???섎뒗吏
 		DESC m_Desc;
-		//slot과 freeslotindex, handlebyentityid를 매개변수로 들고 있는 net 객체
+		//slot怨?freeslotindex, handlebyentityid瑜?留ㅺ컻蹂?섎줈 ?ㅺ퀬 ?덈뒗 net 媛앹껜
 		CNetObjectRegistry m_Registry;
 		//index slot, slotindex, generation
 		OBJECT_HANDLE m_LocalCharacterHandle;
 		bool m_isInitialized = false;
 		bool m_wasConnected = false;
 		bool m_hasPendingConnectionLoss = false;
-		//마지막으로 적용한 snapshot tick
+		//留덉?留됱쑝濡??곸슜??snapshot tick
 		std::uint32_t m_iLastServerTick = 0;
 
 		struct WORLD_ENTITY_PRESENTATION
@@ -84,6 +86,7 @@ namespace Client
 				LostArk::Shared::WORLD_ENTITY_KIND::END;
 			std::string strArchetypeId;
 			std::string strEncounterId;
+			std::string strCurrentClip;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};

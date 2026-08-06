@@ -30,6 +30,7 @@ namespace LostArk::Server
 		std::string strPatternId;
 		std::string strActionId;
 		std::string strDamageProfileId;
+		std::string strSpawnGroupId;
 		WORLD_BOOTSTRAP_KIND eKind = WORLD_BOOTSTRAP_KIND::END;
 		SERVER_ENTITY_ACTION eAction = SERVER_ENTITY_ACTION::IDLE;
 		float fPositionX = 0.f;
@@ -48,6 +49,12 @@ namespace LostArk::Server
 		std::uint8_t iPhase = 1;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
+		float fCollisionRadius = 0.f;
+		float fAttackRange = 0.f;
+		std::uint32_t iAttackPower = 0;
+		std::uint32_t iDefense = 0;
+		std::uint32_t iDeadDespawnMs = 0;
+		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		bool hasAppliedPatternDamage = false;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =

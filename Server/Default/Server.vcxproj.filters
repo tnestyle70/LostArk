@@ -39,6 +39,9 @@
     <ClInclude Include="..\Public\WorldBootstrap.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\SpawnGroupBootstrap.h"><Filter>Public</Filter></ClInclude>
+    <ClInclude Include="..\Public\SpawnGroupRuntime.h"><Filter>Public</Filter></ClInclude>
+    <ClInclude Include="..\Public\MonsterBrain.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\GameplayCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
@@ -69,6 +72,9 @@
     <ClCompile Include="..\Private\WorldBootstrap.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SpawnGroupBootstrap.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\SpawnGroupRuntime.cpp"><Filter>Private</Filter></ClCompile>
+    <ClCompile Include="..\Private\MonsterBrain.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\GameplayCatalog.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
