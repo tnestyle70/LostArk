@@ -287,6 +287,31 @@ bool_t Client::CWorldGameplayDocument::Load(
 						return false;
 					}
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP == event.eKind)
+				{
+					if (!Is_ExactObject(eventValue, { "type", "spawnGroupId" }))
+					{
+						outStatus = "Gameplay activateSpawnGroup event has invalid fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* spawnGroupId = eventValue.Find("spawnGroupId");
+					if (nullptr == spawnGroupId || !spawnGroupId->Is_String())
+						return false;
+					event.targetId = spawnGroupId->Get_String();
+				}
+				else if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER == event.eKind)
+				{
+					if (!Is_ExactObject(eventValue, { "type", "targetPlacementId" }))
+					{
+						outStatus = "Gameplay activateEncounter event has invalid fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* targetPlacementId =
+						eventValue.Find("targetPlacementId");
+					if (nullptr == targetPlacementId || !targetPlacementId->Is_String())
+						return false;
+					event.targetId = targetPlacementId->Get_String();
+				}
 				else
 				{
 					if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
@@ -520,6 +545,16 @@ bool_t Client::CWorldGameplayDocument::Save(
 					output << ", \"targetWorldId\": \""
 						<< WorldId_ToString(event.eTargetWorldId) << '"';
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP == event.eKind)
+				{
+					output << ", \"spawnGroupId\": \""
+						<< CDataJson::Escape(event.targetId) << '"';
+				}
+				else if (WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER == event.eKind)
+				{
+					output << ", \"targetPlacementId\": \""
+						<< CDataJson::Escape(event.targetId) << '"';
+				}
 				else
 				{
 					output << ", \"targetId\": \"" << CDataJson::Escape(event.targetId)
@@ -751,6 +786,8 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 	{
 	case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER: return "movePlayer";
 	case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL: return "changeLevel";
+	case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP: return "activateSpawnGroup";
+	case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER: return "activateEncounter";
 	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
 	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
 	default: return "invalid";
@@ -764,6 +801,10 @@ bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
 		outKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
 	else if ("changeLevel" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
+	else if ("activateSpawnGroup" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP;
+	else if ("activateEncounter" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER;
 	else if ("setCondition" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
 	else if ("setDestroyableState" == value)

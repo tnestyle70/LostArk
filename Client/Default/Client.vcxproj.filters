@@ -216,6 +216,9 @@
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\SpawnGroupDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\NavGridBaker.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -400,6 +403,9 @@
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp">
 	  <Filter>04. Network</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
@@ -461,6 +467,9 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldGameplayDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\SpawnGroupDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\NavGridBaker.h">
@@ -650,6 +659,9 @@
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h">
 	  <Filter>04. Network</Filter>
 	</ClInclude>
+	<ClInclude Include="..\Public\MonsterPresentationAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\Trigger_Box.h">
@@ -709,9 +721,12 @@
     <None Include="..\..\Data\Actors\CharacterCatalog.json">
       <Filter>96.DataFiles\Actors</Filter>
     </None>
-    <None Include="..\..\Data\Actors\NpcCatalog.json">
-      <Filter>96.DataFiles\Actors</Filter>
-    </None>
+	<None Include="..\..\Data\Actors\NpcCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
+	<None Include="..\..\Data\Actors\MonsterCatalog.json">
+	  <Filter>96.DataFiles\Actors</Filter>
+	</None>
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
@@ -832,9 +847,12 @@
     <None Include="..\..\Data\Animation\Reference\Slayer\Slayer.skilltiming">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>
-    <None Include="..\..\Data\Balance\BossProfiles.json">
-      <Filter>96.DataFiles\Balance</Filter>
-    </None>
+	<None Include="..\..\Data\Balance\BossProfiles.json">
+	  <Filter>96.DataFiles\Balance</Filter>
+	</None>
+	<None Include="..\..\Data\Balance\MonsterProfiles.json">
+	  <Filter>96.DataFiles\Balance</Filter>
+	</None>
     <None Include="..\..\Data\Balance\DamageProfiles.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
@@ -1143,9 +1161,12 @@
     <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json">
       <Filter>96.DataFiles\Worlds</Filter>
     </None>
-    <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json">
-      <Filter>96.DataFiles\Worlds</Filter>
-    </None>
+	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json">
+	  <Filter>96.DataFiles\Worlds</Filter>
+	</None>
+	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json">
+	  <Filter>96.DataFiles\Worlds</Filter>
+	</None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxTex.hlsl">

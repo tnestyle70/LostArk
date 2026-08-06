@@ -199,7 +199,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 ### 서버 권위 월드 파이프라인
 
-MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
+MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. Valtan monster anchor/wave/group은 같은 Area의 `SpawnGroups.world.json`에 분리하며 triggerBox는 stable group ID만 참조한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape/spawn 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`과 optional `*.spawngroupsbootstrap`을 한 transaction으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 `CMonster` 경로는 이 계약에 포함하지 않는다.
 
 Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v6 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
@@ -389,8 +389,8 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
 - quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
-- 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 단일 `movePlayer`/`changeLevel` action의 `triggerBox`, 정적 `collisionBox`다. NPC presentation은 `NPC_BEDA` 한 archetype을 지원한다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
-- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`와 `collisionBox`를 배치하면 publisher가 bootstrap v5로 변환하고 Server가 player OBB 기준 진입과 swept 이동 차단을 판정한다. `destroyable`, 파티 대기, 컷신, spawn wave/증분 spawn, Area별 balance override는 아직 지원하지 않는다.
+- 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 단일 `movePlayer`/`changeLevel`/`activateSpawnGroup`/`activateEncounter` action의 `triggerBox`, 정적 `collisionBox`다. NPC presentation은 `NPC_BEDA`, monster presentation은 Valtan 4 archetype을 지원한다. 수업용 Monster 구현은 포함하지 않는다.
+- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`, `collisionBox`, Valtan spawn anchor/group/wave를 저작하면 publisher가 bootstrap v5와 optional spawn bootstrap v1으로 변환하고 Server가 player OBB 진입, swept 이동 차단, monster wave/AI/combat/despawn을 판정한다. `destroyable`, 파티 대기, 컷신, Area별 balance override는 아직 지원하지 않는다.
 
 ## 작업 방식 지침
 

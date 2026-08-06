@@ -1,0 +1,99 @@
+{
+  "schema": "lostark.world-spawn-groups",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "revision": 1,
+  "anchors": [
+    { "anchorId": "anchor.valtan.stage01.a", "position": [34.5, 10.35, -42.5], "yawDegrees": 180 },
+    { "anchorId": "anchor.valtan.stage01.b", "position": [38.0, 10.35, -39.5], "yawDegrees": 180 },
+    { "anchorId": "anchor.valtan.stage01.c", "position": [36.0, 10.35, -46.0], "yawDegrees": 180 },
+    { "anchorId": "anchor.valtan.stage02.a", "position": [53.0, 10.1, -65.0], "yawDegrees": 225 },
+    { "anchorId": "anchor.valtan.stage02.b", "position": [56.0, 10.1, -69.0], "yawDegrees": 225 },
+    { "anchorId": "anchor.valtan.stage02.lugaru", "position": [58.0, 10.1, -66.0], "yawDegrees": 225 },
+    { "anchorId": "anchor.valtan.stage03.a", "position": [91.5, 14.65, -98.0], "yawDegrees": 180 },
+    { "anchorId": "anchor.valtan.stage03.b", "position": [94.0, 14.65, -93.0], "yawDegrees": 180 },
+    { "anchorId": "anchor.valtan.stage03.c", "position": [87.0, 14.65, -92.5], "yawDegrees": 180 }
+  ],
+  "spawnGroups": [
+    {
+      "spawnGroupId": "spawn.valtan.stage01",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 8,
+      "repeatPolicy": "ONCE",
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 300,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MONSTER_VALTAN_PADD_01", "count": 4, "anchorId": "anchor.valtan.stage01.a", "initialDelayMs": 0, "spawnIntervalMs": 350 },
+            { "archetypeId": "MONSTER_VALTAN_SJFC_00_4", "count": 3, "anchorId": "anchor.valtan.stage01.b", "initialDelayMs": 250, "spawnIntervalMs": 450 }
+          ]
+        },
+        {
+          "waveId": "wave.02",
+          "startDelayMs": 900,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MONSTER_VALTAN_0019_05", "count": 4, "anchorId": "anchor.valtan.stage01.c", "initialDelayMs": 0, "spawnIntervalMs": 500 },
+            { "archetypeId": "MONSTER_VALTAN_PADD_01", "count": 4, "anchorId": "anchor.valtan.stage01.a", "initialDelayMs": 200, "spawnIntervalMs": 350 }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.valtan.stage02.miniboss",
+      "requiredCompletedGroupId": "spawn.valtan.stage01",
+      "maxAlive": 8,
+      "repeatPolicy": "ONCE",
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 300,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MONSTER_VALTAN_PADD_01", "count": 4, "anchorId": "anchor.valtan.stage02.a", "initialDelayMs": 0, "spawnIntervalMs": 400 },
+            { "archetypeId": "MONSTER_VALTAN_SJFC_00_4", "count": 3, "anchorId": "anchor.valtan.stage02.b", "initialDelayMs": 300, "spawnIntervalMs": 500 }
+          ]
+        },
+        {
+          "waveId": "wave.02",
+          "startDelayMs": 1000,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MINIBOSS_LUGARU", "count": 1, "anchorId": "anchor.valtan.stage02.lugaru", "initialDelayMs": 0, "spawnIntervalMs": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.valtan.stage03",
+      "requiredCompletedGroupId": "spawn.valtan.stage02.miniboss",
+      "maxAlive": 10,
+      "repeatPolicy": "ONCE",
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.01",
+          "startDelayMs": 300,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MONSTER_VALTAN_PADD_01", "count": 5, "anchorId": "anchor.valtan.stage03.a", "initialDelayMs": 0, "spawnIntervalMs": 300 },
+            { "archetypeId": "MONSTER_VALTAN_SJFC_00_4", "count": 4, "anchorId": "anchor.valtan.stage03.b", "initialDelayMs": 200, "spawnIntervalMs": 400 }
+          ]
+        },
+        {
+          "waveId": "wave.02",
+          "startDelayMs": 800,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            { "archetypeId": "MONSTER_VALTAN_0019_05", "count": 5, "anchorId": "anchor.valtan.stage03.c", "initialDelayMs": 0, "spawnIntervalMs": 450 },
+            { "archetypeId": "MONSTER_VALTAN_PADD_01", "count": 5, "anchorId": "anchor.valtan.stage03.a", "initialDelayMs": 250, "spawnIntervalMs": 350 }
+          ]
+        }
+      ]
+    }
+  ]
+}

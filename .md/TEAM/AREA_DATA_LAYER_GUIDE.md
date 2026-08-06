@@ -23,7 +23,7 @@ LevelCatalog scenario
 
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
-| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | Server 제품 navgrid 없음 | NPC/boss 없음 |
+| `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,115 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay |
@@ -53,7 +53,7 @@ Debug Lobby에서 `Test`를 누르면 기존 `TRAINING_GROUND` 서버 승인을 
 | 선택 | visual source | navigation | gameplay |
 |---|---|---|---|
 | Character Select | `LV_LOBBY_CLASSSELECT_SL00` | source/paint, Nav Bounds bootstrap 허용 | exact `gameplayDocument` 필수 |
-| Bern | `LV_BER_BERNCASTLE` | disabled | exact `gameplayDocument` 필수 |
+| Bern | `LV_BER_BERNCASTLE` | source/paint Nav Bounds bootstrap 허용 | exact `gameplayDocument` 필수 |
 | Valtan | `LV_LUT_HEARTRB_ED` | source/paint/blockers 필수 | exact `gameplayDocument` 필수 |
 | Training Map | `LV_SHS_RCARENA_D` | disabled | disabled |
 
@@ -70,6 +70,11 @@ MapTool의 저장 대상은 Data 원본뿐이다.
 - visual: active descriptor의 `Data/Maps/Authoring/...mapplacements`
 - gameplay: Character Select/Bern/Valtan의 exact `Data/Worlds/.../Gameplay.world.json`
 - navigation: 정책이 허용한 `Data/Navigation/*.navsource/.navpaint/.navblockers`
+
+Bern bootstrap은 `Place Nav Bounds`로 실제 렌더 바닥을 고른 뒤 Bottom Y와 Height from Bottom으로
+세로 범위를 제한해 bake한다. source가 생성되기 전에는 authoring 준비 상태일 뿐이며 Server 제품
+navigation이 활성화된 것이 아니다. Bern runtime publish와 Server room admission은 실제 bake 결과,
+player spawn/trigger 연결성, cell 통계를 검증하는 별도 변경 단위에서 수행한다.
 
 Navigation `Walkability` 브러시는 높이가 해석된 셀에 대해 `Block`, `Force Walkable`,
 `Reset` 세 명령을 제공한다. `Block`과 `Force Walkable`은 bake 결과보다 우선하는 수동
@@ -91,16 +96,16 @@ Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이
 Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
 경로로 표현한다. 다른 NPC model은 catalog row와 검증을 추가하기 전까지 fail-closed다.
 
-일반 몬스터, spawn wave, 증분 생산은 저장 schema와 Server consumer가 없다. `triggerBox`는
+Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. `triggerBox`는
 world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
 편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
-제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer` 또는 `changeLevel`이다. movePlayer는
+제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는
 `targetPosition[3]`, `durationSeconds(0.05..10)`, `arcHeight(0..1000)`를 소유하며 Server가 yaw가 적용된
 OBB 진입과 포물선 이동을 판정하고 player snapshot으로 복제한다. `triggerOnce=true`는 room 전체에서
 첫 성공 진입 한 번, `false`는 player가 완전히 나간 뒤 다시 들어오는 edge마다 재실행한다. 저작용 wire
-box는 판정 권위가 아니다. `destroyable`, `setCondition`, `setDestroyableState`, 파티 대기, 컷신,
-몬스터 생성 event는 계속 publisher가 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나
-`npc`/`boss`로 위장하지 않는다.
+box는 판정 권위가 아니다. `activateSpawnGroup`은 Area spawn group stable ID만, `activateEncounter`는 disabled boss placement ID만 참조한다. `destroyable`, `setCondition`, `setDestroyableState`, 파티 대기, 컷신은 계속 publisher가 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나 `npc`/`boss`로 위장하지 않는다.
+
+Valtan `SpawnGroups.world.json`은 anchor transform, prerequisite group, maxAlive, wave 순서, archetype/count/delay를 소유한다. MapTool은 gameplay와 spawn group을 별도 dirty/save로 관리하고 publisher는 두 문서를 한 transaction으로 `VALTAN_ARENA.worldbootstrap`과 `VALTAN_ARENA.spawngroupsbootstrap`에 publish한다. Server가 wave·AI·damage·despawn을 확정하고 Client는 Shared spawn/snapshot/despawn만 표현한다.
 
 `collisionBox`는 transform, half extents, enabled만 저장한다. MapTool의 파란 wire box는 authoring
 표시이고 Server가 player OBB 크기를 포함한 swept OBB 판정으로 일반 보행을 차단한다. Client

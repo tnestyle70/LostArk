@@ -266,7 +266,7 @@ CGameRoom::Tick
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며
 `CGameplayCatalog::Apply_Defense` 한 곳에서만 계산한다. boss defense/outgoing 감산은 아직 없다.
 
-수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. Monster runtime/catalog/schema, placeholder enum을 다시 만들지 않는다. 잡몹 요구가 승인되면 실제 archetype, spawn, brain, replication, harness를 별도 수직 슬라이스로 설계한다.
+수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 실제 4개 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
 
 ## 8. MapTool과 gameplay 저장
 
@@ -275,9 +275,10 @@ payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 
 - visual import definition: `Data/Maps/Imported/<AreaId>/`
 - visual authoring: `Data/Maps/Authoring/<AreaId>/`
 - gameplay authoring: `Data/Worlds/<AreaId>/Gameplay.world.json`
+- monster wave authoring: `Data/Worlds/<AreaId>/SpawnGroups.world.json`
 - navigation authoring: `Data/Navigation/<AreaId>.navsource/.navpaint/.navblockers` 또는 uniform `<AreaId>.navgrid.json`
 - Client map/navigation 생성물: `Client/Bin/DataFiles/Map`, `Client/Bin/DataFiles/Navigation`
-- Server world 생성물: `Server/Bin/DataFiles/World/*.worldbootstrap`
+- Server world 생성물: `Server/Bin/DataFiles/World/*.worldbootstrap`, `*.spawngroupsbootstrap`
 
 `Data`만 사람이 편집하거나 재추출 결과를 반영하는 정본이다. Client/Server `Bin/DataFiles`는
 publisher 출력이며 source로 다시 읽어 authoring을 갱신하지 않는다. Visual Studio의
@@ -300,11 +301,13 @@ Debug Lobby Test의 승인 소비자가 editor intent를 세운다. F1/Map Tool�
 map, 서버 승인 character, replication, controller 경로를 유지한다.
 
 Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Character Select와
-원본 Training Map은 gameplay 문서를 만들지 않고, Bern/Training Map은 navigation 문서를
-추측 생성하지 않는다. Valtan DeployProp 편집은 현재 제외되어 있다.
+원본 Training Map은 gameplay 문서를 만들지 않는다. Bern은 명시된 source/paint 경로에서
+Nav Bounds bootstrap만 허용하며 실제 bake 검증 전에는 Server 제품 navigation으로 취급하지
+않는다. 원본 Training Map은 navigation 문서를 추측 생성하지 않는다. Valtan DeployProp 편집은
+현재 제외되어 있다.
 
 gameplay authoring은 formatVersion 4다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`,
-단일 `movePlayer` 또는 `changeLevel` action을 가진 `triggerBox`, 정적 `collisionBox`를 admission한다.
+단일 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter` action을 가진 `triggerBox`, 정적 `collisionBox`를 admission한다.
 placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다.
 NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`와 `encounterId`는 `null`이며 실제 class는
 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를
@@ -312,7 +315,7 @@ session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, v
 
 v4 `CWorldGameplayDocument`에서 `triggerBox`는 half extents, once 정책, typed event를 소유하고
 `collisionBox`는 transform, half extents, enabled만 소유한다.
-제품 event는 `movePlayer`와 `changeLevel`이다. movePlayer는 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다.
+제품 event는 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다. `activateSpawnGroup`은 `SpawnGroups.world.json`의 stable group ID, `activateEncounter`는 같은 gameplay 문서의 disabled boss placement ID만 저장한다.
 Server는 yaw OBB enter edge를 판정하고 일반 이동/스킬을 중단한 뒤 30 Hz 직선·포물선 이동을 확정한다.
 일반 보행은 player OBB를 반영한 swept collision으로 정적 collisionBox 앞에서 정지한다.
 Shared `TRIGGER_MOVE` action과 player transform snapshot이 Client 표현의 유일한 입력이다. Client는 별도
@@ -323,9 +326,11 @@ jump clip 계약이 생기기 전까지 RUN locomotion으로 이동을 표현한
 enter를 처리하고 새 `S2C_ENTER_ACCEPTED`를 보낸 뒤에만 Client가 `CLevelTransitionService`로 전환한다.
 
 Debug Development MapTool은 action이 아직 없는 `triggerBox`를 disabled draft로 배치하고 position,
-yaw, half extents, once 정책을 편집한다. 선택한 box에 `movePlayer` 또는 `changeLevel` 하나를 선택하고,
+yaw, half extents, once 정책을 편집한다. 선택한 box에 지원 action 하나를 선택하고,
 movePlayer는 목적지를 맵에서 pick한 뒤 duration/arc를 정해야 enabled로 저장할 수 있다. wire box는 저작용 presentation이며 overlap/action 권위는
 Server에만 있다. Save 뒤 publisher와 Server 재시작 전에는 제품 월드에 적용된 것이 아니다.
+
+MapTool `Spawn Groups` panel은 anchor, group, prerequisite, maxAlive, wave, entry의 archetype/count/delay를 별도 dirty 상태로 편집한다. Trigger Box는 이 정의를 복제하지 않고 group ID만 참조한다. Valtan Stage 1 → Lugaru → Stage 3은 prerequisite 완료 뒤에만 다음 group activation이 성공하며, 마지막 boss trigger는 disabled `boss.valtan.center`를 활성화한다.
 
 같은 panel의 `Collision Box` option은 표면 pick, position, yaw, half extents, enabled, 목록 선택과
 delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차단은 Server bootstrap을 읽은 뒤 적용된다.
@@ -333,7 +338,7 @@ delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
-Area별 optional layer, 현재 Bern/Valtan/Training 데이터 보유 현황과 Monster/wave 미지원 경계는 `AREA_DATA_LAYER_GUIDE.md`를 정본으로 사용한다.
+Area별 optional layer와 현재 Bern/Valtan/Training 데이터 보유 현황은 `AREA_DATA_LAYER_GUIDE.md`를 정본으로 사용한다.
 
 ## 9. 데이터 변경 절차
 

@@ -45,6 +45,7 @@
     <ClInclude Include="..\Public\Trigger_Box.h" />
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
+	<ClInclude Include="..\Public\MonsterPresentationAssetService.h" />
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\CharacterSpec.h" />
@@ -102,6 +103,7 @@
     <ClInclude Include="..\Public\MapLoadScope.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\WorldGameplayDocument.h" />
+    <ClInclude Include="..\Public\SpawnGroupDocument.h" />
     <ClInclude Include="..\Public\NavGridBaker.h" />
     <ClInclude Include="..\Public\NavGridPaintDocument.h" />
     <ClInclude Include="..\Public\NavRuntimeBlockerDocument.h" />
@@ -136,6 +138,7 @@
     <ClCompile Include="..\Private\Trigger_Box.cpp" />
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
 	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
@@ -188,6 +191,7 @@
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp" />
+    <ClCompile Include="..\Private\SpawnGroupDocument.cpp" />
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />
     <ClCompile Include="..\Private\NavRuntimeBlockerDocument.cpp" />
@@ -210,6 +214,7 @@
     <None Include="..\..\Data\Actors\BossCatalog.json" />
     <None Include="..\..\Data\Actors\CharacterCatalog.json" />
     <None Include="..\..\Data\Actors\NpcCatalog.json" />
+    <None Include="..\..\Data\Actors\MonsterCatalog.json" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.animevents" />
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
@@ -253,6 +258,7 @@
     <None Include="..\..\Data\Balance\BossProfiles.json" />
     <None Include="..\..\Data\Balance\DamageProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
+    <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
     <None Include="..\..\Data\Effects\EffectCatalog.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json" />
@@ -432,6 +438,7 @@
     <None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json" />
+    <None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />

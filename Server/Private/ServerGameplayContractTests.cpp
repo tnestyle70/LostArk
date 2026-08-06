@@ -5,6 +5,8 @@
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
+#include "SpawnGroupBootstrap.h"
+#include "SpawnGroupRuntime.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
 
@@ -952,7 +954,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		triggerPlayer.iMaximumHp = 100;
 		triggerPlayers.emplace(1, triggerPlayer);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers, {});
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
@@ -971,9 +973,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
 			!triggerPlayers.begin()->second.TriggerMove.isActive,
 			"Complete movePlayer at exact authored destination");
-		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers, {});
 		triggerPlayers.begin()->second.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers, {});
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
@@ -1010,7 +1012,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		player.iMaximumHp = 100;
 		players.emplace(player.iPlayerId, player);
 		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-		triggerSystem.Evaluate_Entries(players, 20, transfers);
+		triggerSystem.Evaluate_Entries(players, 20, transfers, {});
 		tests.Require(
 			1u == transfers.size() &&
 			7u == transfers.front().iSessionId &&
@@ -1019,10 +1021,118 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				transfers.front().eCharacterClass &&
 			"TriggerTransfer" == transfers.front().strNickName,
 			"Emit one typed Server world transfer request on OBB entry");
-		triggerSystem.Evaluate_Entries(players, 21, transfers);
-		tests.Require(
+		triggerSystem.Evaluate_Entries(players, 21, transfers, {});
+			tests.Require(
 			transfers.empty(),
 			"Do not repeat a triggerOnce world transfer while occupied");
+	}
+
+	{
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.activate-spawn-group";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP;
+		activate.strTargetId = "spawn.valtan.stage01";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus),
+			"Initialize enabled activateSpawnGroup trigger");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iPlayerId = 4;
+		player.iCurrentHp = 100;
+		player.iMaximumHp = 100;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::size_t activationCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players,
+			30,
+			transfers,
+			[&activationCount](
+				WORLD_TRIGGER_ACTION_KIND kind,
+				const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP != kind ||
+					"spawn.valtan.stage01" != targetId)
+				{
+					return false;
+				}
+				++activationCount;
+				return true;
+			});
+		tests.Require(
+			1u == activationCount && transfers.empty(),
+			"Dispatch typed activateSpawnGroup target on OBB entry");
+		triggerSystem.Evaluate_Entries(
+			players,
+			31,
+			transfers,
+			[&activationCount](WORLD_TRIGGER_ACTION_KIND, const std::string&)
+			{
+				++activationCount;
+				return true;
+			});
+		tests.Require(
+			1u == activationCount,
+			"Do not repeat a triggerOnce spawn-group activation while occupied");
+	}
+
+	{
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.activate-encounter";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION activate{};
+		activate.eKind = WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER;
+		activate.strTargetId = "boss.valtan.center";
+		trigger.TriggerActions.push_back(activate);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus),
+			"Initialize enabled activateEncounter trigger");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iPlayerId = 5;
+		player.iCurrentHp = 100;
+		player.iMaximumHp = 100;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		std::size_t activationCount = 0u;
+		triggerSystem.Evaluate_Entries(
+			players,
+			40,
+			transfers,
+			[&activationCount](
+				WORLD_TRIGGER_ACTION_KIND kind,
+				const std::string& targetId)
+			{
+				if (WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER != kind ||
+					"boss.valtan.center" != targetId)
+				{
+					return false;
+				}
+				++activationCount;
+				return true;
+			});
+		tests.Require(
+			1u == activationCount && transfers.empty(),
+			"Dispatch typed activateEncounter target on OBB entry");
 	}
 
 	{
@@ -1161,6 +1271,50 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		shortSkillNow.iClientSequence = 4;
 		tests.Require(stanceSkills.Try_Start(stancePlayer, shortSkillNow, catalog, 40),
 			"Approve a short spear skill after switching to the short spear stance");
+	}
+
+	{
+		CSpawnGroupBootstrap spawnBootstrap;
+		tests.Require(
+			spawnBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
+			3u == spawnBootstrap.Get_Groups().size(),
+			"Load three authored Valtan spawn groups");
+		CSpawnGroupRuntime spawnRuntime;
+		std::string spawnStatus;
+		tests.Require(
+			spawnRuntime.Initialize(spawnBootstrap, spawnStatus),
+			"Initialize Valtan spawn group runtime");
+		tests.Require(
+			!spawnRuntime.Activate("spawn.valtan.stage02.miniboss"),
+			"Reject miniboss group before Stage 1 completion");
+		tests.Require(
+			spawnRuntime.Activate("spawn.valtan.stage01"),
+			"Activate Stage 1 spawn group exactly once");
+		std::uint32_t scheduledMonsterCount = 0;
+		for (std::uint32_t step = 0; step < 64u &&
+			!spawnRuntime.Is_Completed("spawn.valtan.stage01"); ++step)
+		{
+			spawnRuntime.Update(
+				1.f,
+				spawnBootstrap,
+				[](const std::string&) { return 0u; },
+				[&scheduledMonsterCount](const std::string&,
+					const SPAWN_GROUP_ENTRY&,
+					const SPAWN_GROUP_ANCHOR&,
+					const MONSTER_RUNTIME_PROFILE&,
+					const std::uint32_t)
+				{
+					++scheduledMonsterCount;
+					return true;
+				});
+		}
+		tests.Require(
+			15u == scheduledMonsterCount &&
+			spawnRuntime.Is_Completed("spawn.valtan.stage01"),
+			"Schedule all Stage 1 waves and complete after all entities clear");
+		tests.Require(
+			spawnRuntime.Activate("spawn.valtan.stage02.miniboss"),
+			"Unlock miniboss group after Stage 1 completion");
 	}
 
 	std::cout << "failures : " << tests.failures << '\n';

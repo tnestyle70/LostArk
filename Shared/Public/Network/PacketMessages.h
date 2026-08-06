@@ -120,6 +120,7 @@ namespace LostArk::Shared
 	{
 		NPC,
 		BOSS,
+		MONSTER,
 		END
 	};
 
@@ -152,6 +153,18 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_WORLD_ENTITY_SPAWNED& spawned);
+
+	struct S2C_WORLD_ENTITY_DESPAWNED
+	{
+		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_WORLD_ENTITY_DESPAWNED& despawned);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_WORLD_ENTITY_DESPAWNED& despawned);
 
 	//server와 client가 player제거으 byte 순서를 똑같이 사용하기 위해서이다.
 	//H 계약 : NetEntityId와 제거 이유 enun을 값으로 선언하고, writer/reaeder/

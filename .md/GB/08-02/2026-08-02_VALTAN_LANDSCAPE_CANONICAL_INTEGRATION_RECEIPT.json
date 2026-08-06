@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "checkOnly": false,
+  "baseAssetCount": 269,
+  "basePlacementCount": 13103,
+  "landscapeAssetCount": 6,
+  "landscapePlacementCount": 6,
+  "addedAssetCount": 6,
+  "addedPlacementCount": 6,
+  "outputAssetCount": 275,
+  "outputPlacementCount": 13109,
+  "inputs": {
+    "baseCatalog": "977943A29F5C6A8A4EA51A32679EEEF01D9008C6049691ABC3ED8FFC3D0E9E87",
+    "basePlacements": "0C3D772D73CE71510A1E989A81530AFD4F1D7F4413C043A3F3D65C24472BA08D",
+    "landscapeCatalog": "838ED7D113D52E56ABA0F52ABDBEE5D83E90C8E34628B7896D01794852CCB683",
+    "landscapePlacements": "14D38C3B22B7D202162C4A6C9DCFEFFE62CE136DF12A77805324624ACF30CBFF"
+  },
+  "outputs": {
+    "catalog": "523D12B471141447C01225027467639D1980EDC2B91A403AC4D0EDA47C9CFAE4",
+    "placements": "FF344A82E7CB9DC514866F2BED158A16E92F7955BA5DA6AC1547D83867641B23"
+  }
+}

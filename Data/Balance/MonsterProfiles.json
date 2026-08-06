@@ -1,0 +1,63 @@
+{
+  "schema": "lostark.monster-profiles",
+  "formatVersion": 1,
+  "basis": "PROJECT_TUNED",
+  "profiles": [
+    {
+      "archetypeId": "MONSTER_VALTAN_PADD_01",
+      "maxHp": 2600,
+      "attackPower": 115,
+      "defense": 15,
+      "collisionRadius": 0.55,
+      "engageRange": 18.0,
+      "moveSpeed": 3.2,
+      "attackRange": 1.8,
+      "attackWindupMs": 450,
+      "attackActiveMs": 180,
+      "attackRecoveryMs": 700,
+      "deadDespawnMs": 1800
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
+      "maxHp": 3200,
+      "attackPower": 140,
+      "defense": 22,
+      "collisionRadius": 0.6,
+      "engageRange": 20.0,
+      "moveSpeed": 3.0,
+      "attackRange": 2.0,
+      "attackWindupMs": 520,
+      "attackActiveMs": 200,
+      "attackRecoveryMs": 760,
+      "deadDespawnMs": 1900
+    },
+    {
+      "archetypeId": "MONSTER_VALTAN_0019_05",
+      "maxHp": 4100,
+      "attackPower": 165,
+      "defense": 28,
+      "collisionRadius": 0.65,
+      "engageRange": 20.0,
+      "moveSpeed": 2.8,
+      "attackRange": 2.2,
+      "attackWindupMs": 600,
+      "attackActiveMs": 220,
+      "attackRecoveryMs": 820,
+      "deadDespawnMs": 2000
+    },
+    {
+      "archetypeId": "MINIBOSS_LUGARU",
+      "maxHp": 85000,
+      "attackPower": 460,
+      "defense": 95,
+      "collisionRadius": 1.35,
+      "engageRange": 28.0,
+      "moveSpeed": 3.6,
+      "attackRange": 3.2,
+      "attackWindupMs": 720,
+      "attackActiveMs": 280,
+      "attackRecoveryMs": 1050,
+      "deadDespawnMs": 3000
+    }
+  ]
+}

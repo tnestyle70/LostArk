@@ -293,7 +293,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		float closestDistanceSquared = 0.f;
 		for (SERVER_WORLD_ENTITY& entity : worldEntities)
 		{
-			if (WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind ||
+			if ((WORLD_BOOTSTRAP_KIND::BOSS != entity.eKind &&
+				WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind) ||
 				SERVER_ENTITY_ACTION::DEAD == entity.eAction || 0u == entity.iCurrentHp)
 			{
 				continue;
@@ -307,7 +308,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			const BOSS_RUNTIME_PROFILE* bossProfile =
 				catalog.Find_Boss(entity.strArchetypeId);
 			const float reach = skill->fMaximumRange +
-				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius);
+				(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
+					entity.fCollisionRadius :
+					(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
 			if (distanceSquared <= reach * reach &&
 				(nullptr == closestBoss || distanceSquared < closestDistanceSquared))
 			{
@@ -319,9 +322,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		{
 			const PLAYER_RUNTIME_PROFILE* playerProfile =
 				catalog.Find_Player(player.eCharacterClass);
-			const std::uint32_t damage = CGameplayCatalog::Resolve_Damage(
+			const std::uint32_t rawDamage = CGameplayCatalog::Resolve_Damage(
 				nullptr == playerProfile ? 0u : playerProfile->iAttackPower,
 				catalog.Find_DamageRatePercent(skill->strDamageProfileId));
+			const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == closestBoss->eKind ?
+				CGameplayCatalog::Apply_Defense(rawDamage, closestBoss->iDefense) : rawDamage;
 			closestBoss->iCurrentHp =
 				damage >= closestBoss->iCurrentHp ? 0u : closestBoss->iCurrentHp - damage;
 			/* A zero amount is not a hit and the snapshot writer rejects it; the

@@ -73,6 +73,9 @@ private:
 	unique_ptr<Engine::CImGuiLayer> m_pImGuiLayer = { nullptr };
 	/* Not _DEBUG-gated: the runtime HUD art must render in Release too. */
 	unique_ptr<CHUDRuntimeView> m_pHUDRuntimeView = { nullptr };
+	/* The Lobby's animated title-screen backdrop (Data/UI/Lobby/Lobby_Layout.json), drawn
+	behind everything else instead of a flat clear color. Release-safe, like the HUD view. */
+	unique_ptr<CHUDRuntimeView> m_pLobbyBackgroundView = { nullptr };
 	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
 	bool_t m_bKDown = false;

@@ -99,7 +99,9 @@ try {
             'navigationRuntime',
             'gameplayDocument')) {
             if ($area.PSObject.Properties.Name -contains $property -and
-                -not (Test-Path -LiteralPath $area.$property)) {
+                -not (Test-Path -LiteralPath $area.$property) -and
+                -not ($area.id -eq 'LV_BER_BERNCASTLE' -and
+                    $property -in @('navigationSource', 'navigationPaint'))) {
                 $missingMapFiles.Add($area.$property)
             }
         }
@@ -151,7 +153,8 @@ try {
 		$characterSelectEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
 		$null -ne $bernEditor -and
 		$bernEditor.PSObject.Properties.Name -contains 'gameplayDocument' -and
-		$bernEditor.PSObject.Properties.Name -notcontains 'navigationSource' -and
+		$bernEditor.navigationSource -eq 'Data/Navigation/LV_BER_BERNCASTLE.navsource' -and
+		$bernEditor.navigationPaint -eq 'Data/Navigation/LV_BER_BERNCASTLE.navpaint' -and
 		$null -ne $valtanEditor -and
 		$valtanEditor.PSObject.Properties.Name -contains 'navigationSource' -and
 		$valtanEditor.PSObject.Properties.Name -contains 'navigationPaint' -and
@@ -162,7 +165,7 @@ try {
 		$trainingEditor.PSObject.Properties.Name -notcontains 'gameplayDocument' -and
 		$mapToolSource -match 'Load_Source\(' -and
 		$mapToolSource -match 'if \(descriptor\.areaId == "LV_LOBBY_CLASSSELECT_SL00" \|\|[\s\S]{0,160}descriptor\.areaId == "LV_BER_BERNCASTLE"' -and
-		$mapToolSource -notmatch 'allowNavigationBootstrap\s*=' -and
+		$mapToolSource -match 'allowNavigationBootstrap\s*=\s*descriptor\.areaId == "LV_BER_BERNCASTLE"' -and
 		$mapToolSource -notmatch '\.Export_Runtime\(' -and
 		$mapToolSource -match 'MapEditorWorkspaceService::Is_Active' -and
 		$loaderSource -match 'Ready_MapAuthoringCore' -and
@@ -1323,20 +1326,32 @@ try {
 	}
 	Add-Check 'world.publish-generation-rollback' $worldRollbackPassed $worldRollbackDetail
 
-    $worldContractFiles = @(
-        'Client\Public\WorldGameplayDocument.h',
-        'Client\Private\WorldGameplayDocument.cpp',
-        'Server\Public\WorldBootstrap.h',
-        'Server\Private\WorldBootstrap.cpp',
-        'Shared\Public\Network\PacketMessages.h',
-        'Tools\WorldPipeline\Publish-WorldGameplay.ps1')
-    $monsterContractHits = @($worldContractFiles |
-        ForEach-Object { Select-String -LiteralPath $_ -Pattern '\bMONSTER\b|"monster"' })
+    $monsterContractFiles = @(
+        'Data\Actors\MonsterCatalog.json',
+        'Data\Balance\MonsterProfiles.json',
+        'Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json',
+        'Server\Public\SpawnGroupRuntime.h',
+        'Server\Private\SpawnGroupRuntime.cpp',
+        'Server\Public\MonsterBrain.h',
+        'Server\Private\MonsterBrain.cpp',
+        'Client\Public\MonsterPresentationAssetService.h',
+        'Client\Private\MonsterPresentationAssetService.cpp')
+    $missingMonsterContractFiles = @($monsterContractFiles |
+        Where-Object { -not (Test-Path -LiteralPath $_) })
+    $legacyMonsterRuntimeHits = @(
+        Select-String -LiteralPath @(
+            'Server\Private\GameRoom.cpp',
+            'Client\Private\ClientReplication.cpp',
+            'Client\Private\MonsterPresentationAssetService.cpp') `
+            -Pattern '#include\s+"Monster\.h"|CMonster::Create|Logic_Monster')
+    $spawnGroupPublisherSource = Get-Content -LiteralPath 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
     $staleWorldPublishFiles = @(Get-ChildItem -LiteralPath 'Server\Bin\DataFiles\World' -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match '\.(tmp|rollback)\.' })
-    Add-Check 'world.no-legacy-monster-contract' (
-        -not (Test-Path -LiteralPath 'Data\Actors\MonsterCatalog.json') -and
-        $monsterContractHits.Count -eq 0) "contractHits=$($monsterContractHits.Count) catalogExists=$(Test-Path -LiteralPath 'Data\Actors\MonsterCatalog.json')"
+    Add-Check 'world.monster-spawn-group-contract' (
+        $missingMonsterContractFiles.Count -eq 0 -and
+        $legacyMonsterRuntimeHits.Count -eq 0 -and
+        $spawnGroupPublisherSource -match 'SpawnGroups\.world\.json' -and
+        $spawnGroupPublisherSource -match 'spawngroupsbootstrap') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
     Add-Check 'world.publish-cleanup' ($staleWorldPublishFiles.Count -eq 0) "stale=$($staleWorldPublishFiles.Name -join ',')"
 
     $serverRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw

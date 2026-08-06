@@ -479,6 +479,36 @@ void Client::CAnimation_Tool::Render()
 		return;
 	}
 
+	const auto previewAsset = std::find_if(
+		ANIMATION_PREVIEW_ASSETS.begin(),
+		ANIMATION_PREVIEW_ASSETS.end(),
+		[this](const ANIMATION_PREVIEW_ASSET& asset)
+		{
+			return nullptr != asset.pAssetName &&
+				m_AssetName == asset.pAssetName;
+		});
+	if (previewAsset != ANIMATION_PREVIEW_ASSETS.end() &&
+		previewAsset->bPlaybackOnly)
+	{
+		ImGui::Text(
+			"Asset: %s   Animations: %u",
+			m_AssetName.c_str(),
+			pModel->Get_NumAnimations());
+		ImGui::TextDisabled(
+			"Playback-only preview: authored events and gameplay skill bindings are disabled.");
+		Render_Playback(pModel);
+		ImGui::SeparatorText("Clips");
+		ImGui::SetNextItemWidth(-1.f);
+		ImGui::InputTextWithHint(
+			"##filter",
+			"filter by name",
+			m_Filter,
+			sizeof(m_Filter));
+		Render_AnimationList(pModel);
+		ImGui::End();
+		return;
+	}
+
 	/* Load once the target actually exists, so a missing file is not reported
 	before the level is even open. */
 	if (!m_bLoadAttempted)

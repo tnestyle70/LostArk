@@ -57,7 +57,8 @@ namespace
 Client::CSkillWindowView::CSkillWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: m_pTextureCache{ make_unique<CUITextureCache>(pDevice) }
 	, m_pBackgroundView{ make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/SkillWindow/SkillWindow_Layout.json", true) }
+		pDevice, pContext, L"UI/SkillWindow/SkillWindow_Layout.json",
+		CHUDRuntimeView::DRAW_TARGET::CURRENT_WINDOW) }
 {
 }
 
@@ -188,9 +189,26 @@ void Client::CSkillWindowView::Render(
 		return;
 	}
 
-	constexpr float iconSize = 64.f; // matches the skill icon PNGs' native 64x64 pixels
+	/* Single scale applied to every atlas-sourced piece in this window (icon, row background,
+	...) uniformly. These pieces are all cropped from the same shared atlas, so their sizes are
+	already proportioned to each other at native scale; scaling only one of them independently
+	is what warped the row background's circle into an ellipse earlier. Change this one number
+	to resize everything together instead of touching any single element's size. */
+	constexpr float uiScale = 0.8f;
+	constexpr float rowBgWidth = 622.f * uiScale;
+	constexpr float rowBgHeight = 62.f * uiScale;
+	/* The icon must not exceed the row's own height (the native art is 64x64 icon on a 62-tall
+	bar, a 2px mismatch that becomes visible once everything is scaled up together), so the row
+	height is the icon's sizing authority, not its own native 64. */
+	constexpr float iconSize = rowBgHeight;
 
-	ImGui::BeginChild("##SkillList", ImVec2(400.f, -8.f), true);
+	/* ImGuiCol_ChildBg is fully transparent by default, so without an explicit opaque fill
+	here the tripod background art (drawn earlier, straight to this window's own draw list,
+	before any child) shows through this child's empty space instead of being covered by it --
+	that was the faint tripod ghost bleeding into the skill list. */
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.06f, 0.08f, 1.f));
+	ImGui::BeginChild("##SkillList", ImVec2(rowBgWidth + 30.f, -8.f), true);
+	ImGui::PopStyleColor();
 	ImGui::TextDisabled("Skill List (%d)", static_cast<int32_t>(pRoster->size()));
 	ImGui::Separator();
 	for (const char* stanceFilter : { "LONG", "SHORT", "NONE" })
@@ -215,42 +233,56 @@ void Client::CSkillWindowView::Render(
 				m_pTextureCache->Get_Or_Load(entry.strIconPath);
 			const bool_t isSelected = m_SelectedSkillId == entry.iSkillId;
 
-			/* Row background art (user-cut from the game's own skill window atlas) draws
-			first; the selected-row overlay draws on top of that when this row is the current
-			selection. Both keep SkillPanel.png's own aspect ratio (scaled to the row height,
-			not stretched to whatever width the row happens to be) so the bar does not warp --
-			it just does not reach the row's full width. Neither participates in hit-testing --
-			the ImageButton drawn afterward still owns the click. */
+			/* The whole row is one click target (not just the icon), matching the reference --
+			clicking the bar, the name, or the icon all select this skill. Everything below is
+			drawn straight to the draw list at fixed offsets from rowMin instead of through
+			separate ImGui widgets, so nothing here carries ImGui's own button frame/border
+			(that showed up as a blue outline around each icon that the reference does not have)
+			and nothing but this one InvisibleButton owns the click or the row's layout height. */
+			const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+			ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+
+			ID3D11ShaderResourceView* pRowBg =
+				m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
+			if (nullptr != pRowBg)
 			{
-				ID3D11ShaderResourceView* pRowBg =
-					m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
-				const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-				const float rowBarWidth = iconSize * (622.f / 62.f);
-				const ImVec2 rowMax(
-					rowMin.x + (min)(rowBarWidth, ImGui::GetContentRegionAvail().x),
-					rowMin.y + iconSize);
-				if (nullptr != pRowBg)
-					ImGui::GetWindowDrawList()->AddImage(pRowBg, rowMin, rowMax);
-				if (isSelected)
+				pDrawList->AddImage(pRowBg, rowMin,
+					ImVec2(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight));
+			}
+			if (isSelected)
+			{
+				ID3D11ShaderResourceView* pRowSelected =
+					m_pTextureCache->Get_Or_Load("UI/SkillWindow/PanelSelected.png");
+				if (nullptr != pRowSelected)
 				{
-					ID3D11ShaderResourceView* pRowSelected =
-						m_pTextureCache->Get_Or_Load("UI/SkillWindow/PanelSelected.png");
-					if (nullptr != pRowSelected)
-						ImGui::GetWindowDrawList()->AddImage(pRowSelected, rowMin, rowMax);
+					pDrawList->AddImage(pRowSelected, rowMin,
+						ImVec2(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight));
 				}
 			}
-
 			if (nullptr != pIcon)
 			{
-				if (ImGui::ImageButton("##icon", pIcon, ImVec2(iconSize, iconSize)))
-					m_SelectedSkillId = entry.iSkillId;
+				pDrawList->AddImage(pIcon, rowMin,
+					ImVec2(rowMin.x + iconSize, rowMin.y + iconSize));
 			}
-			else if (ImGui::Button("##icon", ImVec2(iconSize, iconSize)))
-			{
+			const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
+			pDrawList->AddText(
+				ImVec2(rowMin.x + iconSize + 6.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				textColor, entry.strDisplayName.c_str());
+
+			/* Placeholder values -- this project has no skill-point investment system yet
+			(Data/Balance carries cooldown/damage/etc. but no point cost or level concept),
+			so these are display-only stand-ins, same as the tripod/rune panels, until that
+			system exists to source real numbers from. */
+			const ImU32 disabledColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+			pDrawList->AddText(
+				ImVec2(rowMin.x + rowBgWidth - 90.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				disabledColor, "Req 1");
+			pDrawList->AddText(
+				ImVec2(rowMin.x + rowBgWidth - 40.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				disabledColor, "Lv 1");
+
+			if (ImGui::InvisibleButton("##row", ImVec2(rowBgWidth, rowBgHeight)))
 				m_SelectedSkillId = entry.iSkillId;
-			}
-			ImGui::SameLine();
-			ImGui::TextUnformatted(entry.strDisplayName.c_str());
 			ImGui::PopID();
 		}
 	}
@@ -258,7 +290,15 @@ void Client::CSkillWindowView::Render(
 
 	ImGui::SameLine();
 
-	ImGui::BeginChild("##TripodPanel", ImVec2(260.f, -8.f), true, ImGuiWindowFlags_NoBackground);
+	/* The tripod plate fills the window's vertical space (matching the reference, where the
+	tripod is exactly as tall as the window's content area) instead of being sized off native
+	pixels times uiScale like the row/icon art -- those are read at a fixed comfortable size,
+	but the tripod plate is meant to be as big as the column lets it be. Width follows from
+	TripodPanel.png's real 402:556 aspect ratio so it does not stretch. Keep in sync with the
+	rect this same math produces in Data/UI/SkillWindow/SkillWindow_Layout.json. */
+	constexpr float tripodPanelHeight = 650.f;
+	constexpr float tripodPanelWidth = tripodPanelHeight * (402.f / 556.f);
+	ImGui::BeginChild("##TripodPanel", ImVec2(tripodPanelWidth, -8.f), true, ImGuiWindowFlags_NoBackground);
 	/* No hardcoded tripod art here anymore -- the tripod plate and all 8 node glows are
 	slots in Data/UI/SkillWindow/SkillWindow_Layout.json, placed with CHUDLayoutTool's
 	"Skill Window" tab and drawn once for the whole window by m_pBackgroundView->Render()
@@ -278,7 +318,9 @@ void Client::CSkillWindowView::Render(
 
 	ImGui::SameLine();
 
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.06f, 0.08f, 1.f));
 	ImGui::BeginChild("##RunePanel", ImVec2(0.f, -8.f), true);
+	ImGui::PopStyleColor();
 	ImGui::TextDisabled("Rune (display only, not applied yet)");
 	ImGui::Separator();
 	ImGui::BeginDisabled();

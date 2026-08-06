@@ -6,6 +6,7 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "NetworkManager.h"
+#include "MonsterPresentationAssetService.h"
 #include "Npc.h"
 #include "NpcPresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
@@ -36,8 +37,8 @@ namespace
 
 		return record;
 	}
-	// TCP 재전송이나 중복 Event가 같은 Spawn을 다시 만들지 않게 하고,
-	// 같은 NetEntityId에 다른 내용이 오면 Protocol 충돌로 판단한다.
+	// TCP ?ъ쟾?≪씠??以묐났 Event媛 媛숈? Spawn???ㅼ떆 留뚮뱾吏 ?딄쾶 ?섍퀬,
+	// 媛숈? NetEntityId???ㅻⅨ ?댁슜???ㅻ㈃ Protocol 異⑸룎濡??먮떒?쒕떎.
 	bool Is_Same_Record(
 		const Client::NET_PLAYER_RECORD& left,
 		const Client::NET_PLAYER_RECORD& right)
@@ -56,8 +57,8 @@ namespace
 
 bool Client::CClientReplication::Initialize(const DESC& desc)
 {
-	//Layer 정보가 유한한지 검사하고, 설정을 저장한다.
-	//현재 network 연결 상태도 기억해 두어, 이후 연결이 끊겼는지 감지할 수 있게 한다.
+	//Layer ?뺣낫媛 ?좏븳?쒖? 寃?ы븯怨? ?ㅼ젙????ν븳??
+	//?꾩옱 network ?곌껐 ?곹깭??湲곗뼲???먯뼱, ?댄썑 ?곌껐???딄꼈?붿? 媛먯??????덇쾶 ?쒕떎.
 	if (nullptr == desc.pDevice ||
 		nullptr == desc.pContext ||
 		desc.strPlayerLayerTag.empty() ||
@@ -78,16 +79,16 @@ bool Client::CClientReplication::Update()
 {
 	if (!m_isInitialized)
 		return false;
-	//network manager가 만들어놓은 replication event를 실제 engine 변경으로 적용한다.
-	//baren main thread에서 매프레임 호출한다.
-	//초기화 여부 검사 -> 현재 network 연결 상태 확인
+	//network manager媛 留뚮뱾?대넃? replication event瑜??ㅼ젣 engine 蹂寃쎌쑝濡??곸슜?쒕떎.
+	//baren main thread?먯꽌 留ㅽ봽?덉엫 ?몄텧?쒕떎.
+	//珥덇린???щ? 寃??-> ?꾩옱 network ?곌껐 ?곹깭 ?뺤씤
 	CNetworkManager& networkManager =
 		CNetworkManager::Get();
 
 	const bool isConnected =
 		networkManager.Is_Connected();
-	//연결이 끊어진 경우 : 이전 프레임에는 연결돼 있었는가? -> 그렇다면 reset world()
-	//남아 있는 event queue 비우기 -> 이전 서버의 spawn이 재접속 후 적용되지 않게 함
+	//?곌껐???딆뼱吏?寃쎌슦 : ?댁쟾 ?꾨젅?꾩뿉???곌껐???덉뿀?붽?? -> 洹몃젃?ㅻ㈃ reset world()
+	//?⑥븘 ?덈뒗 event queue 鍮꾩슦湲?-> ?댁쟾 ?쒕쾭??spawn???ъ젒?????곸슜?섏? ?딄쾶 ??
 	if (!isConnected)
 	{
 		if (m_wasConnected)
@@ -122,6 +123,12 @@ bool Client::CClientReplication::Update()
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_SPAWNED:
 			allSucceeded =
 				Apply_WorldEntitySpawn(event.WorldEntitySpawned) &&
+				allSucceeded;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED:
+			allSucceeded =
+				Apply_WorldEntityDespawn(event.WorldEntityDespawned) &&
 				allSucceeded;
 			break;
 
@@ -166,6 +173,8 @@ bool Client::CClientReplication::Has_WorldEntity(
 		(void)entityId;
 		const bool_t hasLivePresentation =
 			(LostArk::Shared::WORLD_ENTITY_KIND::NPC == presentation.eKind &&
+				!presentation.pNpc.expired()) ||
+			(LostArk::Shared::WORLD_ENTITY_KIND::MONSTER == presentation.eKind &&
 				!presentation.pNpc.expired()) ||
 			(LostArk::Shared::WORLD_ENTITY_KIND::BOSS == presentation.eKind &&
 				!presentation.pValtan.expired());
@@ -247,13 +256,13 @@ bool Client::CClientReplication::Create_Character(
 bool Client::CClientReplication::Apply_Spawn(
 	const LostArk::Shared::S2C_PLAYER_SPAWNED& spawned)
 {
-	//서버 player를 client character로 생성한다.
-	//spawn message -> net player record 변환
-	//동일  entity id가 이미 있는지를 검사한다.
-	//character catalog에서 class spec 검색 ->
-	//character desc 구성 -> local remote 판정
-	//add gameobject to layer -> character 캐스팅 및 transform 검사
-	//yaw 반영 -> registry 등록 -> local이면 localcharacterhandle 저장
+	//?쒕쾭 player瑜?client character濡??앹꽦?쒕떎.
+	//spawn message -> net player record 蹂??
+	//?숈씪  entity id媛 ?대? ?덈뒗吏瑜?寃?ы븳??
+	//character catalog?먯꽌 class spec 寃??->
+	//character desc 援ъ꽦 -> local remote ?먯젙
+	//add gameobject to layer -> character 罹먯뒪??諛?transform 寃??
+	//yaw 諛섏쁺 -> registry ?깅줉 -> local?대㈃ localcharacterhandle ???
 
 	const NET_PLAYER_RECORD stagedRecord =
 		Make_Record(spawned);
@@ -261,7 +270,7 @@ bool Client::CClientReplication::Apply_Spawn(
 	if (const NET_PLAYER_RECORD* existing =
 		m_Registry.Find_Record(spawned.iNetEntityId))
 	{
-		//같은 event 재전송은 no-op, 다른 내용의 같은 id는  protocol conflict이다.
+		//媛숈? event ?ъ쟾?≪? no-op, ?ㅻⅨ ?댁슜??媛숈? id?? protocol conflict?대떎.
 		return Is_Same_Record(*existing, stagedRecord);
 	}
 
@@ -311,13 +320,13 @@ bool Client::CClientReplication::Apply_Despawn(
 	if (!m_Registry.Find_Handle(
 		despawned.iNetEntityId, handle))
 	{
-		//이미 제거된 중복 despawn은 no-op으로 취급
+		//?대? ?쒓굅??以묐났 despawn? no-op?쇰줈 痍④툒
 		return true;
 	}
 
 	const std::shared_ptr<CCharacter> character =
 		m_Registry.Resolve(handle);
-	//gameobject layer에서 제거
+	//gameobject layer?먯꽌 ?쒓굅
 	if (nullptr != character &&
 		FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
@@ -346,10 +355,12 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	const auto existing = m_WorldEntities.find(spawned.iNetEntityId);
 	if (existing != m_WorldEntities.end())
 	{
-		const bool_t hasLivePresentation =
-			(WORLD_ENTITY_KIND::NPC == existing->second.eKind &&
-				!existing->second.pNpc.expired()) ||
-			(WORLD_ENTITY_KIND::BOSS == existing->second.eKind &&
+			const bool_t hasLivePresentation =
+				(WORLD_ENTITY_KIND::NPC == existing->second.eKind &&
+					!existing->second.pNpc.expired()) ||
+				(WORLD_ENTITY_KIND::MONSTER == existing->second.eKind &&
+					!existing->second.pNpc.expired()) ||
+				(WORLD_ENTITY_KIND::BOSS == existing->second.eKind &&
 				!existing->second.pValtan.expired());
 		return hasLivePresentation &&
 			existing->second.eKind == spawned.eKind &&
@@ -425,6 +436,77 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		return inserted;
 	}
 
+	if (WORLD_ENTITY_KIND::MONSTER == spawned.eKind)
+	{
+		const MONSTER_ACTOR_ENTRY* actor =
+			CActorCatalog::Find_Monster(spawned.strArchetypeId);
+		if (nullptr == actor || actor->runtimeStatus != "supported" ||
+			FAILED(CMonsterPresentationAssetService::Ensure_Prototypes(
+				m_Desc.pDevice,
+				m_Desc.pContext,
+				m_Desc.iPrototypeLevelIndex,
+				spawned.strArchetypeId)))
+		{
+			return false;
+		}
+
+		const std::wstring modelTag =
+			CMonsterPresentationAssetService::Get_ModelPrototypeTag(
+				spawned.strArchetypeId);
+		CNpc::NPC_DESC desc{};
+		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+		desc.strModelTag = modelTag;
+		desc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.pIdleClip = actor->presentationClips.idle.c_str();
+		desc.vPosition = float3_t(
+			spawned.fPositionX,
+			spawned.fPositionY,
+			spawned.fPositionZ);
+		desc.fYawDegree = spawned.fYawDegrees;
+
+		std::shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_Desc.iPrototypeLevelIndex,
+			CMonsterPresentationAssetService::Get_GameObjectPrototypeTag(),
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			&desc,
+			&gameObject)))
+		{
+			return false;
+		}
+		const std::shared_ptr<CNpc> monster =
+			std::dynamic_pointer_cast<CNpc>(gameObject);
+		if (nullptr == monster || !monster->Apply_NetworkState(
+			desc.vPosition, spawned.fYawDegrees))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				gameObject);
+			return false;
+		}
+
+		WORLD_ENTITY_PRESENTATION presentation{};
+		presentation.eKind = spawned.eKind;
+		presentation.strArchetypeId = spawned.strArchetypeId;
+		presentation.strEncounterId = spawned.strEncounterId;
+		presentation.strCurrentClip = actor->presentationClips.idle;
+		presentation.pNpc = monster;
+		const auto [iter, inserted] = m_WorldEntities.emplace(
+			spawned.iNetEntityId, std::move(presentation));
+		(void)iter;
+		if (!inserted)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				monster);
+		}
+		return inserted;
+	}
+
 	const BOSS_ACTOR_ENTRY* pBoss =
 		CActorCatalog::Find_Boss(spawned.strArchetypeId);
 	if (spawned.eKind != WORLD_ENTITY_KIND::BOSS ||
@@ -493,24 +575,51 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	return inserted;
 }
 
+bool Client::CClientReplication::Apply_WorldEntityDespawn(
+	const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned)
+{
+	if (LostArk::Shared::INVALID_NET_ENTITY_ID == despawned.iNetEntityId)
+		return false;
+	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
+	if (m_WorldEntities.end() == iter)
+		return true;
+
+	if (const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			npc);
+	}
+	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			valtan);
+	}
+	m_WorldEntities.erase(iter);
+	return true;
+}
+
 bool Client::CClientReplication::Apply_WorldSnapshot(
 	const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot)
 {
-	//server tick 유효성 검사 -> 마지막 tick보다 새 snapshot인지 검사
-	//->snapshot의 player 배열 순회 -> netentityid로 objecthandle 검색
-	//handle로 살아 있는 character resolve
-	//위치 float3 생성 -> locomotion을 bool ismoving으로 변환
-	//character apply networkstate -> 마지막 servertick 갱신
+	//server tick ?좏슚??寃??-> 留덉?留?tick蹂대떎 ??snapshot?몄? 寃??
+	//->snapshot??player 諛곗뿴 ?쒗쉶 -> netentityid濡?objecthandle 寃??
+	//handle濡??댁븘 ?덈뒗 character resolve
+	//?꾩튂 float3 ?앹꽦 -> locomotion??bool ismoving?쇰줈 蹂??
+	//character apply networkstate -> 留덉?留?servertick 媛깆떊
 
-	//snapshot 안에 있는 packet타입이나 session 정보를 character로 넘기지 않는다.
-	//character가 받는 값을 순수 표현 값이다.
+	//snapshot ?덉뿉 ?덈뒗 packet??낆씠??session ?뺣낫瑜?character濡??섍린吏 ?딅뒗??
+	//character媛 諛쏅뒗 媛믪쓣 ?쒖닔 ?쒗쁽 媛믪씠??
 
 	using namespace LostArk::Shared;
 
 	if (0 == snapshot.iServerTick)
 		return false;
 
-	// 현재 TCP 경로는 순서가 보장된다. 중복 또는 역전 Tick은 다시 적용하지 않는다.
+	// ?꾩옱 TCP 寃쎈줈???쒖꽌媛 蹂댁옣?쒕떎. 以묐났 ?먮뒗 ??쟾 Tick? ?ㅼ떆 ?곸슜?섏? ?딅뒗??
 	if (snapshot.iServerTick <= m_iLastServerTick)
 		return true;
 
@@ -598,7 +707,45 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				allSucceeded = false;
 			}
 		}
-		else
+		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)
+		{
+			const std::shared_ptr<CNpc> monster = iter->second.pNpc.lock();
+			const MONSTER_ACTOR_ENTRY* actor =
+				CActorCatalog::Find_Monster(iter->second.strArchetypeId);
+			if (nullptr == monster || nullptr == actor ||
+				!monster->Apply_NetworkState(position, entity.fYawDegrees))
+			{
+				allSucceeded = false;
+				continue;
+			}
+
+			const std::string* clip = &actor->presentationClips.idle;
+			bool_t loop = true;
+			if (WORLD_ENTITY_ACTION::CHASE == entity.eAction)
+			{
+				clip = &actor->presentationClips.chase;
+			}
+			else if (WORLD_ENTITY_ACTION::PATTERN_WINDUP == entity.eAction ||
+				WORLD_ENTITY_ACTION::PATTERN_ACTIVE == entity.eAction ||
+				WORLD_ENTITY_ACTION::PATTERN_RECOVERY == entity.eAction)
+			{
+				clip = &actor->presentationClips.attack;
+				loop = false;
+			}
+			else if (WORLD_ENTITY_ACTION::DEAD == entity.eAction)
+			{
+				clip = &actor->presentationClips.dead;
+				loop = false;
+			}
+			if (iter->second.strCurrentClip != *clip)
+			{
+				if (!monster->Set_Animation(clip->c_str(), loop))
+					allSucceeded = false;
+				else
+					iter->second.strCurrentClip = *clip;
+			}
+		}
+		else if (WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
 		{
 			const std::shared_ptr<CValtan> valtan =
 				iter->second.pValtan.lock();
@@ -610,6 +757,10 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			{
 				allSucceeded = false;
 			}
+		}
+		else
+		{
+			allSucceeded = false;
 		}
 		if (iter->second.eKind == WORLD_ENTITY_KIND::BOSS)
 		{
@@ -628,11 +779,11 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 void Client::CClientReplication::Reset_World()
 {
-	//접속이 끊겼을 때 현재 registry의 살아있는 character를 모두 layer에서 제거하고,
-	//registry와 local handle을 초기화한다.
-	//파괴자에서 호출하지 않는 이유도 맞다. 현재 engine은 레벨 전환 시 layer를
-	//먼저 제거하므로, level 파괴자에서 다시 layer 제거를 시도하면, 이미
-	//사라진 layer를 건드릴 수 있다.
+	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
+	//registry? local handle??珥덇린?뷀븳??
+	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?
+	//癒쇱? ?쒓굅?섎?濡? level ?뚭눼?먯뿉???ㅼ떆 layer ?쒓굅瑜??쒕룄?섎㈃, ?대?
+	//?щ씪吏?layer瑜?嫄대뱶由????덈떎.
 	const std::vector<std::shared_ptr<CCharacter>> characters =
 		m_Registry.Get_LiveObjects();
 
@@ -641,7 +792,7 @@ void Client::CClientReplication::Reset_World()
 		if (nullptr == character)
 			continue;
 
-		//Layer에서 GameObject 제거하기
+		//Layer?먯꽌 GameObject ?쒓굅?섍린
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strPlayerLayerTag,

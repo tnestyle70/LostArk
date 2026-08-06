@@ -14,6 +14,7 @@ namespace LostArk::Server
 		PLAYER_SPAWN,
 		NPC,
 		BOSS,
+		MONSTER,
 		TRIGGER_BOX,
 		COLLISION_BOX,
 		END
@@ -23,6 +24,8 @@ namespace LostArk::Server
 	{
 		MOVE_PLAYER,
 		CHANGE_LEVEL,
+		ACTIVATE_SPAWN_GROUP,
+		ACTIVATE_ENCOUNTER,
 		END
 	};
 
@@ -36,6 +39,7 @@ namespace LostArk::Server
 		float fArcHeight = 0.f;
 		LostArk::Shared::WORLD_ID eTargetWorldId =
 			LostArk::Shared::WORLD_ID::END;
+		std::string strTargetId;
 	};
 
 	struct WORLD_BOOTSTRAP_PLACEMENT

@@ -121,6 +121,16 @@ namespace
 		payload = writer.Get_Buffer();
 		return true;
 	}
+	bool Build_WorldEntityDespawnedPayload(
+		const S2C_WORLD_ENTITY_DESPAWNED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
 	//플레이어 디스폰
 	bool Build_PlayerDespawnedPayload(
 		const S2C_PLAYER_DESPAWNED& message,
@@ -571,6 +581,33 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Unstable World Archetype ID");
+	}
+
+	void Test_WorldEntityDespawnedRoundTrip(TEST_RUNNER& testRunner)
+	{
+		S2C_WORLD_ENTITY_DESPAWNED source{};
+		source.iNetEntityId = 901u;
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_WorldEntityDespawnedPayload(source, payload),
+			"Writer World Entity Despawned");
+		testRunner.Require(
+			payload == std::vector<std::uint8_t>{ 0x85, 0x03, 0x00, 0x00 },
+			"World Entity Despawned Payload Layout");
+
+		CPacketReader reader{ payload };
+		S2C_WORLD_ENTITY_DESPAWNED decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iNetEntityId == source.iNetEntityId &&
+			0u == reader.Get_RemainingSize(),
+			"World Entity Despawned Round Trip");
+
+		S2C_WORLD_ENTITY_DESPAWNED invalid{};
+		CPacketWriter invalidWriter;
+		testRunner.Require(
+			!Write_Message(invalidWriter, invalid),
+			"Reject World Entity Despawned Zero Entity ID");
 	}
 	//유효하지 않은 입력에 대한 테스트 
 	void Test_InvalidEnterAcceptedPayloads(
@@ -1428,6 +1465,7 @@ int main()
 	Test_PlayerSpawnedRoundTrip(testRunner);
 	Test_InvalidPlayerSpawnedPayloads(testRunner);
 	Test_WorldEntitySpawnedRoundTrip(testRunner);
+	Test_WorldEntityDespawnedRoundTrip(testRunner);
 	Test_PlayerDespawnedRoundTrip(testRunner);
 	//Move, Snapshot roundtrip
 	Test_MoveRoundTrip(testRunner);

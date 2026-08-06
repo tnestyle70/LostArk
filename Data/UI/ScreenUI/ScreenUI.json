@@ -1,1093 +1,320 @@
 {
-    "schema":  "lostark.ui-layout",
-    "formatVersion":  1,
-    "resolution":  {
-                       "width":  1280,
-                       "height":  720
-                   },
-    "classes":  [
-                    "Default"
-                ],
-    "slots":  [
-                  {
-                      "id":  "TopBar_BG",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  0,
-                                   "y":  0,
-                                   "width":  780,
-                                   "height":  28
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Top HUD bar.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Clock",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  8,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Clock icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Chat",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  82,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Chat icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_House",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  111,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/House icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Boss",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  140,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Boss icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Wing",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  169,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Wing icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Lock",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  198,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Lock icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Bell",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  227,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Bell icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Mail",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  256,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Mail icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Calendar",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  285,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Calendar icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Stamp",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  314,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Stamp icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Coupon",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  343,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Coupon icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_Box",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  372,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Box icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Top_SecretBox",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  401,
-                                   "y":  2,
-                                   "width":  28,
-                                   "height":  23
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Top Menu/Secret Box icon.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Currency_Gold",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  450,
-                                   "y":  2,
-                                   "width":  24,
-                                   "height":  24
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Currency/Gold.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Currency_Silling",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  575,
-                                   "y":  2,
-                                   "width":  24,
-                                   "height":  24
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Currency/Silling.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Currency_Crystal",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  675,
-                                   "y":  2,
-                                   "width":  24,
-                                   "height":  24
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/Currency/Crystal.png",
-                                         "hoverPath":  null,
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Shop",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  970,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Shop icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Shop icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Roster",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1012,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Roster icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Roster icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Character",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1054,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Character icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Character icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Explore",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1096,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Explore icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Explore icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Navigation",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1138,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Navigation icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Navigation icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Community",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1180,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Community icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Community icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  },
-                  {
-                      "id":  "Quick_Settings",
-                      "ownerClass":  null,
-                      "type":  0,
-                      "rect":  {
-                                   "x":  1222,
-                                   "y":  650,
-                                   "width":  40,
-                                   "height":  40
-                               },
-                      "rotation":  0,
-                      "stages":  {
-                                     "baseFrom":  0,
-                                     "shineFrom":  1
-                                 },
-                      "layers":  [
-                                     {
-                                         "path":  "UI/ScreenUI/QuickMenu/Settings icon.png",
-                                         "hoverPath":  "UI/ScreenUI/QuickMenu/Settings icon hover.png",
-                                         "tint":  [
-                                                      1,
-                                                      1,
-                                                      1,
-                                                      1
-                                                  ],
-                                         "additive":  false,
-                                         "flipX":  false
-                                     }
-                                 ],
-                      "shine":  {
-                                    "texture":  null,
-                                    "additive":  false
-                                },
-                      "animation":  {
-                                        "fps":  10,
-                                        "scale":  1.1,
-                                        "offset":  {
-                                                       "x":  0,
-                                                       "y":  0
-                                                   },
-                                        "frames":  [
-
-                                                   ]
-                                    }
-                  }
-              ]
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": { "width": 1280, "height": 720 },
+  "classes": ["Default"],
+  "slots": [
+    {
+      "id": "TopBar_BG",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 0, "y": 0, "width": 780, "height": 28 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Top HUD bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Clock",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 8, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Clock icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Chat",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 82, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Chat icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_House",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 111, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/House icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Boss",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 140, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Boss icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Wing",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 169, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Wing icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Lock",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 198, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Lock icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Bell",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 227, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Bell icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Mail",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 256, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Mail icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Calendar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 285, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Calendar icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Stamp",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 314, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Stamp icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Coupon",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 343, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Coupon icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_Box",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 372, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Box icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Top_SecretBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 401, "y": 2, "width": 28, "height": 23 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Top Menu/Secret Box icon.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Currency_Gold",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 450, "y": 2, "width": 24, "height": 24 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Currency/Gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Currency_Silling",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 575, "y": 2, "width": 24, "height": 24 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Currency/Silling.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Currency_Crystal",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 675, "y": 2, "width": 24, "height": 24 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/Currency/Crystal.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Shop",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 970, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Shop icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Shop icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Roster",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1012, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Roster icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Roster icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Character",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1054, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Character icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Character icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Explore",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1096, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Explore icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Explore icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Navigation",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1138, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Navigation icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Navigation icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Community",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1180, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Community icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Community icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Quick_Settings",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1222, "y": 650, "width": 40, "height": 40 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ScreenUI/QuickMenu/Settings icon.png", "hoverPath": "UI/ScreenUI/QuickMenu/Settings icon hover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    }
+  ]
 }

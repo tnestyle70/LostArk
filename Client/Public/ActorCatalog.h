@@ -55,6 +55,25 @@ struct NPC_ACTOR_ENTRY final
 	std::string runtimeStatus;
 };
 
+struct MONSTER_ACTOR_ENTRY final
+{
+	struct PRESENTATION_CLIPS final
+	{
+		std::string idle;
+		std::string chase;
+		std::string attack;
+		std::string dead;
+	};
+
+	std::string archetypeId;
+	std::string clientPresentationId;
+	std::string modelAssetId;
+	f32_t modelScale = 1.f;
+	f32_t modelYawDegrees = 0.f;
+	PRESENTATION_CLIPS presentationClips;
+	std::string runtimeStatus;
+};
+
 class CActorCatalog final
 {
 public:
@@ -63,6 +82,8 @@ public:
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
 	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
+	static const MONSTER_ACTOR_ENTRY* Find_Monster(
+		std::string_view archetypeId);
 	static const std::string& Get_Status();
 };
 

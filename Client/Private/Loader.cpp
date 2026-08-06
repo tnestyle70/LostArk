@@ -19,6 +19,7 @@
 #include "MapStaticBatchObject.h"
 #include "Navigation.h"
 #include "NetworkManager.h"
+#include "MonsterPresentationAssetService.h"
 #include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
@@ -34,6 +35,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <exception>
 #include <unordered_set>
 
@@ -318,6 +320,8 @@ HRESULT CLoader::Ready_For_Bern()
 HRESULT CLoader::Ready_For_ValtanArena()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::VALTAN_ARENA));
+	CMonsterPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::VALTAN_ARENA));
 	CLevelResourceRollbackScope rollback(
 		ETOUI(LEVEL::VALTAN_ARENA));
@@ -827,6 +831,7 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 	{
 		return E_INVALIDARG;
 	}
+
 	using LostArk::Shared::CHARACTER_CLASS_ID;
 	constexpr std::array previewClasses =
 	{
@@ -855,6 +860,7 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			return E_FAIL;
 		}
 	}
+
 	constexpr std::array playablePrototypeTags =
 	{
 		TEXT("Prototype_Component_Model_LanceMaster"),
@@ -865,11 +871,6 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		TEXT("Prototype_Component_Model_Warlord")
 	};
 
-	// Core and summon use the same ActorX Blender unit contract as the playable
-	// DimensionMaster body, not the older UModel character-pack scale.
-	const matrix_t previewTransform =
-		XMMatrixScaling(0.01f, 0.01f, 0.01f) *
-		XMMatrixRotationY(XMConvertToRadians(-90.f));
 	for (const ANIMATION_PREVIEW_ASSET& asset :
 		ANIMATION_PREVIEW_ASSETS)
 	{
@@ -882,16 +883,38 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 				break;
 			}
 		}
-		// Playable models keep their class-specific transform and registration
-		// contract. This direct path is only for optional Core/Summon previews.
+		// Playable classes are loaded on demand by Character Select. This direct
+		// path is only for optional non-playable authoring previews.
 		if (bPlayablePrototype)
 		{
 			continue;
+		}
+		if (nullptr == asset.pModelAssetId ||
+			nullptr == asset.pPrototypeTag ||
+			!std::isfinite(asset.fPreviewScale) ||
+			asset.fPreviewScale <= 0.f ||
+			!std::isfinite(asset.fPreviewYawDegrees))
+		{
+			return E_FAIL;
+		}
+		if (nullptr != asset.pBossArchetypeId)
+		{
+			const BOSS_ACTOR_ENTRY* pBoss =
+				CActorCatalog::Find_Boss(asset.pBossArchetypeId);
+			if (nullptr == pBoss || pBoss->bodyModel != asset.pModelAssetId)
+				return E_FAIL;
 		}
 		const filesystem::path path =
 			CRuntimeAssetRoot::Resolve(asset.pModelAssetId);
 		if (path.empty() || !filesystem::is_regular_file(path))
 			continue;
+		const matrix_t previewTransform =
+			XMMatrixScaling(
+				asset.fPreviewScale,
+				asset.fPreviewScale,
+				asset.fPreviewScale) *
+			XMMatrixRotationY(
+				XMConvertToRadians(asset.fPreviewYawDegrees));
 
 		unique_ptr<CPrototype> model = CModel::Create(
 			m_pDevice,
@@ -899,8 +922,9 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			MODEL::ANIM,
 			path.string().c_str(),
 			previewTransform);
-		if (nullptr == model ||
-			FAILED(CGameInstance::Get().Add_Prototype(
+		if (nullptr == model)
+			continue;
+		if (FAILED(CGameInstance::Get().Add_Prototype(
 				iLevelIndex,
 				asset.pPrototypeTag,
 				move(model))))

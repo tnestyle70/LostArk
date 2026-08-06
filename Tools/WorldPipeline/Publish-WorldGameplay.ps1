@@ -3,7 +3,7 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/World',
-	[ValidateRange(0, 4)]
+	[ValidateRange(0, 8)]
 	[int]$FailureAfterPromote = 0
 )
 
@@ -78,6 +78,7 @@ function Get-ActorIds {
     $characterCatalog = Read-ProjectJson 'Data/Actors/CharacterCatalog.json'
     $bossCatalog = Read-ProjectJson 'Data/Actors/BossCatalog.json'
     $npcCatalog = Read-ProjectJson 'Data/Actors/NpcCatalog.json'
+	$monsterCatalog = Read-ProjectJson 'Data/Actors/MonsterCatalog.json'
 
     $idsByKind = @{
         playerSpawn = @($characterCatalog.characters |
@@ -85,6 +86,9 @@ function Get-ActorIds {
             ForEach-Object archetypeId)
         boss = @($bossCatalog.bosses | ForEach-Object archetypeId)
         npc = @($npcCatalog.npcs |
+			Where-Object runtimeStatus -eq 'supported' |
+			ForEach-Object archetypeId)
+		monster = @($monsterCatalog.monsters |
 			Where-Object runtimeStatus -eq 'supported' |
 			ForEach-Object archetypeId)
     }
@@ -168,12 +172,192 @@ function Get-EncounterProfiles {
     return $profiles
 }
 
+function Get-MonsterProfiles {
+    $document = Read-ProjectJson 'Data/Balance/MonsterProfiles.json'
+    Assert-ExactProperties $document @('schema','formatVersion','basis','profiles') 'monster profiles'
+    if ($document.schema -ne 'lostark.monster-profiles' -or
+        $document.formatVersion -ne 1 -or $document.basis -ne 'PROJECT_TUNED') {
+        throw 'Monster profile header is invalid.'
+    }
+    $profiles = @{}
+    foreach ($profile in @($document.profiles)) {
+        Assert-ExactProperties $profile @(
+            'archetypeId','maxHp','attackPower','defense','collisionRadius',
+            'engageRange','moveSpeed','attackRange','attackWindupMs',
+            'attackActiveMs','attackRecoveryMs','deadDespawnMs') 'monster profile'
+        Assert-StableId $profile.archetypeId 'monster profile archetypeId'
+        Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
+        Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
+        Assert-JsonInteger $profile.defense "$($profile.archetypeId) defense" 0 2000000000
+        foreach ($field in @('collisionRadius','engageRange','moveSpeed','attackRange')) {
+            Assert-JsonNumber $profile.$field "$($profile.archetypeId) $field"
+            if ([double]$profile.$field -le 0.0 -or [double]$profile.$field -gt 1000.0) {
+                throw "Monster profile $field is out of range: $($profile.archetypeId)"
+            }
+        }
+        foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs','deadDespawnMs')) {
+            Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 1 600000
+        }
+        if ($profiles.ContainsKey([string]$profile.archetypeId)) {
+            throw "Duplicate monster profile: $($profile.archetypeId)"
+        }
+        $profiles[[string]$profile.archetypeId] = $profile
+    }
+    return $profiles
+}
+
+function Convert-SpawnGroupsDocument {
+    param(
+        [string]$AreaId,
+        [string]$WorldId,
+        [hashtable]$ActorIds,
+        [hashtable]$MonsterProfiles
+    )
+
+    $relativePath = "Data/Worlds/$AreaId/SpawnGroups.world.json"
+    $absolutePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+    if (-not [IO.File]::Exists($absolutePath)) {
+        return [ordered]@{
+            WorldId = $WorldId; AreaId = $AreaId; Revision = 1
+            Lines = [Collections.Generic.List[string]]::new()
+            GroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            Count = 0; IsPresent = $false
+        }
+    }
+    $document = Read-ProjectJson $relativePath
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','areaId','revision','anchors','spawnGroups') $relativePath
+    if ($document.schema -ne 'lostark.world-spawn-groups' -or
+        $document.formatVersion -ne 1 -or $document.areaId -ne $AreaId) {
+        throw "Spawn group header is invalid: $relativePath"
+    }
+    Assert-JsonInteger $document.revision "$relativePath revision" 1 ([uint32]::MaxValue)
+    if (@($document.anchors).Count -gt 128 -or @($document.spawnGroups).Count -gt 32) {
+        throw "Spawn group document exceeds its limits: $relativePath"
+    }
+
+    $anchorIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $anchorRows = [Collections.Generic.List[string]]::new()
+    foreach ($anchor in @($document.anchors)) {
+        Assert-ExactProperties $anchor @('anchorId','position','yawDegrees') "$relativePath anchor"
+        Assert-StableId $anchor.anchorId "$relativePath anchorId"
+        if (-not $anchorIds.Add([string]$anchor.anchorId)) {
+            throw "Duplicate spawn anchor ID: $($anchor.anchorId)"
+        }
+        if (@($anchor.position).Count -ne 3) { throw "Spawn anchor requires three coordinates: $($anchor.anchorId)" }
+        for ($i = 0; $i -lt 3; $i++) { Assert-JsonNumber $anchor.position[$i] "$relativePath anchor position[$i]" }
+        Assert-JsonNumber $anchor.yawDegrees "$relativePath anchor yawDegrees"
+        $anchorRows.Add((@('ANCHOR',[string]$anchor.anchorId,
+            (Format-InvariantFloat $anchor.position[0]),
+            (Format-InvariantFloat $anchor.position[1]),
+            (Format-InvariantFloat $anchor.position[2]),
+            (Format-InvariantFloat $anchor.yawDegrees)) -join "`t"))
+    }
+
+    $groupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($group in @($document.spawnGroups)) {
+        Assert-StableId $group.spawnGroupId "$relativePath spawnGroupId"
+        if (-not $groupIds.Add([string]$group.spawnGroupId)) {
+            throw "Duplicate spawn group ID: $($group.spawnGroupId)"
+        }
+    }
+    $groupRows = [Collections.Generic.List[string]]::new()
+    $usedArchetypes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($group in @($document.spawnGroups)) {
+        Assert-ExactProperties $group @(
+            'spawnGroupId','requiredCompletedGroupId','maxAlive','repeatPolicy',
+            'completionPolicy','waves') "$relativePath group"
+        Assert-JsonString $group.requiredCompletedGroupId "$relativePath prerequisite" -AllowNull
+        if ($null -ne $group.requiredCompletedGroupId) {
+            Assert-StableId $group.requiredCompletedGroupId "$relativePath prerequisite"
+            if (-not $groupIds.Contains([string]$group.requiredCompletedGroupId)) {
+                throw "Unknown spawn group prerequisite: $($group.requiredCompletedGroupId)"
+            }
+        }
+        Assert-JsonInteger $group.maxAlive "$relativePath maxAlive" 1 64
+        if ($group.repeatPolicy -ne 'ONCE' -or $group.completionPolicy -ne 'ALL_WAVES_CLEARED') {
+            throw "Unsupported spawn group policy: $($group.spawnGroupId)"
+        }
+        $waves = @($group.waves)
+        if ($waves.Count -lt 1 -or $waves.Count -gt 16) { throw "Spawn group wave count is invalid: $($group.spawnGroupId)" }
+        $prerequisite = if ($null -eq $group.requiredCompletedGroupId) { '-' } else { [string]$group.requiredCompletedGroupId }
+        $groupRows.Add((@('GROUP',[string]$group.spawnGroupId,$prerequisite,[string][uint32]$group.maxAlive,[string]$waves.Count) -join "`t"))
+        $waveIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $totalCount = 0
+        for ($waveIndex = 0; $waveIndex -lt $waves.Count; $waveIndex++) {
+            $wave = $waves[$waveIndex]
+            Assert-ExactProperties $wave @('waveId','startDelayMs','nextWavePolicy','entries') "$relativePath wave"
+            Assert-StableId $wave.waveId "$relativePath waveId"
+            if (-not $waveIds.Add([string]$wave.waveId)) { throw "Duplicate wave ID in group $($group.spawnGroupId): $($wave.waveId)" }
+            Assert-JsonInteger $wave.startDelayMs "$relativePath startDelayMs" 0 600000
+            if ($wave.nextWavePolicy -ne 'ALL_DEAD') { throw "Unsupported next wave policy: $($wave.waveId)" }
+            $entries = @($wave.entries)
+            if ($entries.Count -lt 1 -or $entries.Count -gt 16) { throw "Spawn wave entry count is invalid: $($wave.waveId)" }
+            $groupRows.Add((@('WAVE',[string]$group.spawnGroupId,[string]$wave.waveId,
+                [string]$waveIndex,[string][uint32]$wave.startDelayMs,[string]$entries.Count) -join "`t"))
+            for ($entryIndex = 0; $entryIndex -lt $entries.Count; $entryIndex++) {
+                $entry = $entries[$entryIndex]
+                Assert-ExactProperties $entry @('archetypeId','count','anchorId','initialDelayMs','spawnIntervalMs') "$relativePath entry"
+                Assert-StableId $entry.archetypeId "$relativePath entry archetypeId"
+                Assert-StableId $entry.anchorId "$relativePath entry anchorId"
+                if ($entry.archetypeId -notin @($ActorIds.monster) -or -not $MonsterProfiles.ContainsKey([string]$entry.archetypeId)) {
+                    throw "Spawn entry references an unsupported monster archetype: $($entry.archetypeId)"
+                }
+                if (-not $anchorIds.Contains([string]$entry.anchorId)) { throw "Spawn entry references an unknown anchor: $($entry.anchorId)" }
+                Assert-JsonInteger $entry.count "$relativePath entry count" 1 1000
+                Assert-JsonInteger $entry.initialDelayMs "$relativePath initialDelayMs" 0 600000
+                Assert-JsonInteger $entry.spawnIntervalMs "$relativePath spawnIntervalMs" 0 600000
+                $totalCount += [uint32]$entry.count
+                if ($totalCount -gt 1000) { throw "Spawn group exceeds total spawn limit: $($group.spawnGroupId)" }
+                [void]$usedArchetypes.Add([string]$entry.archetypeId)
+                $groupRows.Add((@('ENTRY',[string]$group.spawnGroupId,[string]$wave.waveId,
+                    [string]$entryIndex,[string]$entry.archetypeId,[string][uint32]$entry.count,
+                    [string]$entry.anchorId,[string][uint32]$entry.initialDelayMs,
+                    [string][uint32]$entry.spawnIntervalMs) -join "`t"))
+            }
+        }
+    }
+
+    foreach ($group in @($document.spawnGroups)) {
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $cursor = $group
+        while ($null -ne $cursor.requiredCompletedGroupId) {
+            if (-not $seen.Add([string]$cursor.spawnGroupId)) { throw "Spawn group prerequisite cycle: $($group.spawnGroupId)" }
+            $nextId = [string]$cursor.requiredCompletedGroupId
+            $cursor = @($document.spawnGroups | Where-Object spawnGroupId -eq $nextId)[0]
+        }
+    }
+
+    $profileRows = [Collections.Generic.List[string]]::new()
+    foreach ($archetypeId in @($usedArchetypes | Sort-Object)) {
+        $profile = $MonsterProfiles[$archetypeId]
+        $profileRows.Add((@('PROFILE',$archetypeId,[string][uint32]$profile.maxHp,
+            [string][uint32]$profile.attackPower,[string][uint32]$profile.defense,
+            (Format-InvariantFloat $profile.collisionRadius),
+            (Format-InvariantFloat $profile.engageRange),
+            (Format-InvariantFloat $profile.moveSpeed),
+            (Format-InvariantFloat $profile.attackRange),
+            [string][uint32]$profile.attackWindupMs,[string][uint32]$profile.attackActiveMs,
+            [string][uint32]$profile.attackRecoveryMs,[string][uint32]$profile.deadDespawnMs) -join "`t"))
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t1`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
+    foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
+    foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
+    foreach ($row in $groupRows) { $lines.Add($row) }
+    return [ordered]@{
+        WorldId = $WorldId; AreaId = $AreaId; Revision = [uint32]$document.revision
+        Lines = $lines; GroupIds = $groupIds; Count = $groupIds.Count; IsPresent = $true
+    }
+}
+
 function Convert-WorldDocument {
     param(
         [string]$AreaId,
         [string]$WorldId,
         [hashtable]$ActorIds,
-        [hashtable]$EncounterProfiles
+        [hashtable]$EncounterProfiles,
+        [Collections.Generic.HashSet[string]]$SpawnGroupIds
     )
 
     $relativePath = "Data/Worlds/$AreaId/Gameplay.world.json"
@@ -191,6 +375,12 @@ function Convert-WorldDocument {
     }
 
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$placementIndex = @{}
+	foreach ($placement in @($document.placements)) {
+		if ($null -ne $placement.placementId) {
+			$placementIndex[[string]$placement.placementId] = $placement
+		}
+	}
     $rows = [Collections.Generic.List[string]]::new()
     foreach ($placement in @($document.placements)) {
 		Assert-JsonString $placement.placementId "$relativePath placementId"
@@ -308,6 +498,23 @@ function Convert-WorldDocument {
 					}
 					$triggerFields += @('changeLevel', '1', [string]$event.targetWorldId)
 				}
+				elseif ($event.type -eq 'activateSpawnGroup') {
+					Assert-ExactProperties $event @('type','spawnGroupId') "$relativePath activateSpawnGroup event"
+					Assert-StableId $event.spawnGroupId "$relativePath spawnGroupId"
+					if ($null -eq $SpawnGroupIds -or -not $SpawnGroupIds.Contains([string]$event.spawnGroupId)) {
+						throw "Trigger references an unknown spawn group: $($event.spawnGroupId)"
+					}
+					$triggerFields += @('activateSpawnGroup', '1', [string]$event.spawnGroupId)
+				}
+				elseif ($event.type -eq 'activateEncounter') {
+					Assert-ExactProperties $event @('type','targetPlacementId') "$relativePath activateEncounter event"
+					Assert-StableId $event.targetPlacementId "$relativePath targetPlacementId"
+					$target = $placementIndex[[string]$event.targetPlacementId]
+					if ($null -eq $target -or $target.kind -ne 'boss' -or $target.enabled) {
+						throw "Encounter trigger target must be a disabled boss placement: $($event.targetPlacementId)"
+					}
+					$triggerFields += @('activateEncounter', '1', [string]$event.targetPlacementId)
+				}
 				else {
 					throw "Unsupported product trigger event: $($event.type)"
 				}
@@ -387,11 +594,20 @@ function Convert-WorldDocument {
 
 $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
+$monsterProfiles = Get-MonsterProfiles
+$spawnDocuments = @(
+    (Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles)
+)
+$spawnByWorld = @{}
+foreach ($spawn in $spawnDocuments) { $spawnByWorld[$spawn.WorldId] = $spawn }
 $worlds = @(
-    (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles),
-    (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles),
-    (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles),
-    (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles)
+    (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.BERN.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.VALTAN_ARENA.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.TRAINING_GROUND.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.CHARACTER_SELECT_ARENA.GroupIds)
 )
 
 if ($Mode -eq 'Publish') {
@@ -413,6 +629,21 @@ if ($Mode -eq 'Publish') {
 				Staged = $staged
 				Destination = Join-Path $resolvedOutputRoot "$($world.WorldId).worldbootstrap"
 				Rollback = Join-Path $resolvedOutputRoot ".$($world.WorldId).rollback.$transactionId"
+				HadPrevious = $false
+				Promoted = $false
+			})
+		}
+		foreach ($spawn in @($spawnDocuments | Where-Object IsPresent)) {
+			$staged = Join-Path $stagingRoot "$($spawn.WorldId).spawngroupsbootstrap"
+			[IO.File]::WriteAllLines(
+				$staged,
+				$spawn.Lines,
+				[Text.UTF8Encoding]::new($false))
+			$promotions.Add([ordered]@{
+				World = $spawn
+				Staged = $staged
+				Destination = Join-Path $resolvedOutputRoot "$($spawn.WorldId).spawngroupsbootstrap"
+				Rollback = Join-Path $resolvedOutputRoot ".$($spawn.WorldId).spawngroups.rollback.$transactionId"
 				HadPrevious = $false
 				Promoted = $false
 			})
@@ -473,7 +704,10 @@ if ($Mode -eq 'Publish') {
 	}
 }
 else {
-    foreach ($world in $worlds) {
-        Write-Output "Validated $($world.WorldId): $($world.Count) placements"
-    }
+	foreach ($world in $worlds) {
+		Write-Output "Validated $($world.WorldId): $($world.Count) placements"
+	}
+	foreach ($spawn in @($spawnDocuments | Where-Object IsPresent)) {
+		Write-Output "Validated $($spawn.WorldId): $($spawn.Count) spawn groups"
+	}
 }
