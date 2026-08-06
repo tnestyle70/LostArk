@@ -16,7 +16,9 @@ class CAnimation_Tool;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
 class CBalanceTool;
+class CCharacterPreviewPanel;
 class CSkillWindowView;
+
 
 class CMainApp final
 {
@@ -79,6 +81,7 @@ private:
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };
 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
+	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 	unique_ptr<CBalanceTool> m_pBalanceTool = { nullptr };
 	bool_t m_bF1Down = false;

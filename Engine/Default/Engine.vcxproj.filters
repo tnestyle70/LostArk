@@ -288,6 +288,12 @@
     <ClInclude Include="..\Public\VIBuffer_Rect.h">
       <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\VIBuffer_ParticleRect.h">
+      <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\VIBuffer_DynamicTrail.h">
+      <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
+    </ClInclude>
     <ClInclude Include="..\public\Shader.h">
       <Filter>02.Utility\04.Component\Shader</Filter>
     </ClInclude>
@@ -483,6 +489,12 @@
       <Filter>02.Utility\04.Component\VIBuffer</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\VIBuffer_Rect.cpp">
+      <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\VIBuffer_ParticleRect.cpp">
+      <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\VIBuffer_DynamicTrail.cpp">
       <Filter>02.Utility\04.Component\VIBuffer\Rect</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Shader.cpp">

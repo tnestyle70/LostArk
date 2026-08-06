@@ -2,12 +2,16 @@
 #include "LobbyCommandService.h"
 #include "AnimationSkillBindingDocument.h"
 #include "CharacterSelectionState.h"
+#include "Effect_DocumentCodec.h"
+#include "Effect_Playback.h"
 #include "PlayerSkillCatalog.h"
+#include "ProjectDataRoot.h"
 
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -411,6 +415,287 @@ namespace
 		SetEnvironmentVariableW(L"LOSTARK_PROJECT_DATA_ROOT", nullptr);
 		std::filesystem::remove_all(root, error);
 	}
+
+	std::string Snapshot_EffectFrame(
+		const Client::EFFECT_EVALUATED_FRAME& frame)
+	{
+		std::ostringstream output;
+		output << std::hexfloat << frame.fSampleTimeSeconds << '|';
+		auto appendMatrix = [&output](const float4x4_t& value)
+		{
+			const f32_t* values = &value._11;
+			for (size_t index = 0u; index < 16u; ++index)
+				output << values[index] << ',';
+		};
+		for (const Client::EFFECT_EVALUATED_ELEMENT& element : frame.Elements)
+		{
+			output << 'E' << element.pElement->strElementId << ':';
+			appendMatrix(element.World);
+			output << element.Color.vColorOffset.x << ','
+				<< element.Color.vColorMultiply.x << ','
+				<< element.Color.fEmissiveIntensity << ','
+				<< element.fLocalTimeSeconds << ','
+				<< element.fNormalizedLife << '|';
+		}
+		for (const Client::EFFECT_EVALUATED_PARTICLE& particle : frame.Particles)
+		{
+			output << 'P' << particle.pElement->strElementId << ':';
+			appendMatrix(particle.World);
+			output << particle.Color.x << ',' << particle.Color.y << ','
+				<< particle.Color.z << ',' << particle.Color.w << '|';
+		}
+		for (const Client::EFFECT_EVALUATED_TRAIL& trail : frame.Trails)
+		{
+			output << 'T' << trail.pElement->strElementId << ':';
+			for (const Client::EFFECT_EVALUATED_TRAIL_POINT& point : trail.Points)
+			{
+				output << point.vWorldPosition.x << ','
+					<< point.vWorldPosition.y << ','
+					<< point.vWorldPosition.z << ','
+					<< point.fNormalizedAge << ';';
+			}
+			output << '|';
+		}
+		for (const Client::EFFECT_EVALUATED_AFTERIMAGE& image : frame.AfterImages)
+		{
+			output << 'A' << image.pElement->strElementId << ':';
+			appendMatrix(image.World);
+			output << image.fAlpha << '|';
+		}
+		return output.str();
+	}
+
+	void Test_EffectPlaybackDeterminism(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		EFFECT_DOCUMENT_DESC document;
+		document.strEffectAssetId = "effect.playback.harness";
+		document.strDisplayName = "Playback Harness";
+
+		EFFECT_ELEMENT_DESC particle;
+		particle.strElementId = "particle";
+		particle.strDisplayName = "Particle";
+		particle.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		particle.Detail.Timing.fLifeTimeSeconds = 3.f;
+		particle.Detail.Particle.iMaxParticles = 64u;
+		particle.Detail.Particle.fSpawnRatePerSecond = 12.f;
+		particle.Detail.Particle.iBurstCount = 3u;
+		particle.Detail.Particle.iRandomSeed = 77u;
+		particle.Detail.Particle.vLifeTimeSeconds = { 0.25f, 0.5f };
+		particle.Detail.Particle.vInitialPositionMin = { -1.f, -0.5f, 0.f };
+		particle.Detail.Particle.vInitialPositionMax = { 1.f, 0.5f, 0.f };
+		document.Elements.push_back(particle);
+
+		EFFECT_ELEMENT_DESC trail;
+		trail.strElementId = "trail";
+		trail.strDisplayName = "Trail";
+		trail.eKind = EFFECT_ELEMENT_KIND::TRAIL;
+		trail.Detail.Timing.fLifeTimeSeconds = 3.f;
+		trail.Detail.Transform.vVelocityPerSecond = { 1.f, 0.f, 0.f };
+		trail.Detail.Trail.fPointLifeTimeSeconds = 0.35f;
+		trail.Detail.Trail.fMinimumDistance = 0.f;
+		document.Elements.push_back(trail);
+
+		EFFECT_ELEMENT_DESC sprite;
+		sprite.strElementId = "sprite";
+		sprite.strDisplayName = "Sprite";
+		sprite.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		sprite.Detail.Timing.fLifeTimeSeconds = 3.f;
+		sprite.Detail.Timing.fAfterImageSeconds = 0.3f;
+		sprite.Detail.AfterImage.fSampleIntervalSeconds = 0.1f;
+		sprite.Detail.AfterImage.iMaxCopies = 4u;
+		document.Elements.push_back(sprite);
+
+		EFFECT_ELEMENT_DESC hidden;
+		hidden.strElementId = "hidden";
+		hidden.strDisplayName = "Hidden";
+		hidden.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		hidden.bVisible = false;
+		hidden.Detail.Timing.fLifeTimeSeconds = 20.f;
+		document.Elements.push_back(hidden);
+
+		float4x4_t root{};
+		XMStoreFloat4x4(&root, XMMatrixIdentity());
+		auto simulate = [&](const uint32_t framesPerSecond)
+		{
+			CEffectPlayback playback;
+			std::string status;
+			if (!playback.Stage_Document(document, status))
+				return std::string("STAGE-FAILED:") + status;
+			const f32_t delta = 1.f / static_cast<f32_t>(framesPerSecond);
+			for (uint32_t frame = 0u; frame < framesPerSecond * 2u; ++frame)
+				playback.Update(delta, root);
+			return Snapshot_EffectFrame(playback.Get_Frame());
+		};
+
+		const std::string at30 = simulate(30u);
+		const std::string at60 = simulate(60u);
+		const std::string at144 = simulate(144u);
+		if (at30 != at60 || at60 != at144)
+		{
+			std::cout << "[DETAIL] Effect signatures 30/60/144 bytes="
+				<< at30.size() << '/' << at60.size() << '/' << at144.size()
+				<< " hash=" << std::hash<std::string>{}(at30) << '/'
+				<< std::hash<std::string>{}(at60) << '/'
+				<< std::hash<std::string>{}(at144) << '\n';
+		}
+		runner.Require(at30 == at60 && at60 == at144,
+			"Effect Playback Is Deterministic At 30 60 And 144 FPS");
+
+		CEffectPlayback seeked;
+		std::string status;
+		runner.Require(seeked.Stage_Document(document, status),
+			"Effect Playback Stages Valid Document");
+		seeked.Seek(2.f, root);
+		const std::string seekSignature =
+			Snapshot_EffectFrame(seeked.Get_Frame());
+		if (at60 != seekSignature)
+		{
+			std::cout << "[DETAIL] Effect sequential/seek bytes="
+				<< at60.size() << '/' << seekSignature.size() << " hash="
+				<< std::hash<std::string>{}(at60) << '/'
+				<< std::hash<std::string>{}(seekSignature) << '\n';
+		}
+		runner.Require(at60 == seekSignature,
+			"Effect Playback Sequential Two Seconds Equals Seek");
+		runner.Require(std::abs(seeked.Get_DurationSeconds() - 3.5f) < 0.0001f,
+			"Effect Playback Duration Includes Particle Tail And Excludes Hidden Element");
+
+		seeked.Seek(1.f, root);
+		const std::string beforeInvalid =
+			Snapshot_EffectFrame(seeked.Get_Frame());
+		const f32_t durationBeforeInvalid = seeked.Get_DurationSeconds();
+		EFFECT_DOCUMENT_DESC invalid = document;
+		invalid.Elements[0].Detail.Particle.iMaxParticles = 4096u;
+		runner.Require(!seeked.Stage_Document(invalid, status) &&
+			beforeInvalid == Snapshot_EffectFrame(seeked.Get_Frame()) &&
+			durationBeforeInvalid == seeked.Get_DurationSeconds(),
+			"Effect Playback Invalid Stage Preserves Committed State");
+		invalid = document;
+		invalid.Elements[0].Detail.Particle.vInitialPositionMin.x = 2.f;
+		invalid.Elements[0].Detail.Particle.vInitialPositionMax.x = -2.f;
+		runner.Require(!seeked.Stage_Document(invalid, status) &&
+			beforeInvalid == Snapshot_EffectFrame(seeked.Get_Frame()) &&
+			durationBeforeInvalid == seeked.Get_DurationSeconds(),
+			"Effect Playback Rejects Reversed Initial Position Range");
+	}
+
+	void Test_DimensionMasterImportedPortalDraft(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const std::filesystem::path path = CProjectDataRoot::Resolve(
+			L"Effects/Imported/DimensionMaster/Converted/"
+			L"effect.dimensionmaster.skill.2050500.imported.effect.json");
+		EFFECT_DOCUMENT_DESC document;
+		std::string status;
+		const bool_t loaded = !path.empty() &&
+			CEffectDocumentCodec::Load(path, document, status) &&
+			CEffectDocumentCodec::Validate_Drawable(document, status);
+		std::size_t meshParticleCount = 0u;
+		for (const EFFECT_ELEMENT_DESC& element : document.Elements)
+		{
+			if (element.eKind != EFFECT_ELEMENT_KIND::PARTICLE)
+				continue;
+			meshParticleCount += std::count_if(
+				element.ResourceBindings.begin(),
+				element.ResourceBindings.end(),
+				[](const EFFECT_RESOURCE_BINDING_DESC& binding)
+				{
+					return binding.strSlotId == "meshModel";
+				});
+		}
+		if (!loaded)
+		{
+			std::cout << "[DETAIL] DimensionMaster imported portal: "
+				<< path.string() << " status=" << status << '\n';
+		}
+		runner.Require(loaded && document.Elements.size() == 97u &&
+			meshParticleCount >= 28u,
+			"DimensionMaster F Imported Portal Is Drawable With Mesh Particles");
+	}
+
+	void Test_EffectAllEffectsAuthoringJoin(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		std::string status;
+		bool_t valid = CPlayerSkillCatalog::Load(status);
+		if (!valid)
+			std::cout << "[DETAIL] PlayerSkills load: " << status << '\n';
+		std::size_t mappedCount = 0u;
+		for (const PLAYER_SKILL_DEFINITION& skill :
+			CPlayerSkillCatalog::Get_Skills())
+		{
+			if (skill.strEffectId.empty())
+				continue;
+			++mappedCount;
+			const std::filesystem::path path = CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Effects") / L"Authored" /
+				(std::filesystem::path(skill.strEffectId).wstring() +
+					L".effect.json"));
+			EFFECT_DOCUMENT_DESC document;
+			const bool_t joined = !path.empty() &&
+				CEffectDocumentCodec::Load(path, document, status) &&
+				document.strEffectAssetId == skill.strEffectId;
+			if (!joined)
+			{
+				std::cout << "[DETAIL] Effect join: " << skill.strEffectId
+					<< " path=" << path.string() << " status=" << status << '\n';
+			}
+			valid = valid && joined;
+		}
+		runner.Require(valid && 0u != mappedCount,
+			"All Effects Joins Every PlayerSkills EffectId To Valid Authored Document");
+	}
+
+	void Test_EffectDraftAtomicSave(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		EFFECT_DOCUMENT_DESC document;
+		document.strEffectAssetId = "effect.draft.harness";
+		document.strDisplayName = "Draft Harness";
+		EFFECT_ELEMENT_DESC sprite;
+		sprite.strElementId = "unbound_sprite";
+		sprite.strDisplayName = "Unbound Sprite";
+		sprite.strGroupId = "harness_group";
+		sprite.strSourceNode = "Harness/Node/0";
+		sprite.bVisible = false;
+		sprite.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		document.Elements.push_back(sprite);
+
+		std::string status;
+		runner.Require(
+			CEffectDocumentCodec::Validate(document, status) &&
+			!CEffectDocumentCodec::Validate_Drawable(document, status),
+			"Effect Authoring Distinguishes Valid Draft From Drawable Document");
+		EFFECT_DOCUMENT_DESC unknownTemplate = document;
+		unknownTemplate.Elements.front().Material.strTemplateId =
+			"effect.unproven.custom";
+		runner.Require(
+			!CEffectDocumentCodec::Validate(unknownTemplate, status),
+			"Effect Authoring Rejects Unregistered Material Template");
+
+		const std::filesystem::path path =
+			std::filesystem::temp_directory_path() /
+			"lostark-effect-draft-harness.effect.json";
+		std::error_code error;
+		std::filesystem::remove(path, error);
+		EFFECT_DOCUMENT_DESC loaded;
+		runner.Require(
+			CEffectDocumentCodec::Save_Atomic(path, document, status) &&
+			CEffectDocumentCodec::Load(path, loaded, status) &&
+			loaded.strEffectAssetId == document.strEffectAssetId &&
+			loaded.Elements.size() == 1u &&
+			loaded.Elements.front().strDisplayName == "Unbound Sprite" &&
+			loaded.Elements.front().strGroupId == "harness_group" &&
+			loaded.Elements.front().strSourceNode == "Harness/Node/0" &&
+			!loaded.Elements.front().bVisible &&
+		loaded.Elements.front().Material.strTemplateId == "effect.standard" &&
+		loaded.Elements.front().Detail.Particle.vInitialPositionMin.x == 0.f &&
+		loaded.Elements.front().Detail.Particle.vInitialPositionMax.x == 0.f &&
+		loaded.Elements.front().ResourceBindings.empty(),
+			"Effect Authoring Atomically Saves And Reloads V6 Metadata Draft");
+		std::filesystem::remove(path, error);
+	}
 }
 
 int main()
@@ -427,6 +712,10 @@ int main()
 	Test_SkillBindingSchema(runner);
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
+	Test_EffectPlaybackDeterminism(runner);
+	Test_DimensionMasterImportedPortalDraft(runner);
+	Test_EffectAllEffectsAuthoringJoin(runner);
+	Test_EffectDraftAtomicSave(runner);
 
 	std::cout << "failures : " << runner.iFailureCount << '\n';
 	return 0 == runner.iFailureCount ? 0 : 1;

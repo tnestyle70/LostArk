@@ -219,7 +219,6 @@ bool_t CMapAssetCatalog::Load_Source(
 		std::wstring(expectedAreaId.begin(), expectedAreaId.end()) + L":";
 	for (MAP_ASSET_ENTRY& entry : m_Entries)
 		entry.prototypeTag = authoringNamespace + entry.prototypeTag;
-
 	return true;
 }
 

@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "effects": [
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050110",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050110.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050150",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050150.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050220",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050190",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050190.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050200",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050200.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050510",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050510.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.effect.json"
+    }
+  ]
+}
+
+

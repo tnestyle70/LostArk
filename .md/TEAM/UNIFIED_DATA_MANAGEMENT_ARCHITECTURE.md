@@ -114,7 +114,6 @@ flowchart LR
 | `Data/Navigation` | nav source/paint/blocker 또는 uniform grid | `CURRENT` |
 | `Data/UI` | HUD/Screen/Loading layout | `CURRENT`; runtime skill binding과 방사형 cooldown은 미구현 |
 | `Data/Worlds` | playerSpawn/NPC/Boss gameplay placement schema | playerSpawn/Boss `CURRENT`; NPC는 admitted actor가 없어 `PARTIAL` |
-| `Data/AssetPacks.lock.json`, `Data/AssetManifests` | immutable Resources pack 버전 | `CURRENT` |
 
 ### 5.2 실제 요구가 생길 때 추가할 목표 루트
 
@@ -690,29 +689,33 @@ flowchart TD
 
 ### 14.2 현재 gameplay kind
 
-현재 `lostark.world-gameplay` authoring은 formatVersion 2다. 제품 publisher/runtime admission은
-`playerSpawn`, `npc`, `boss`만 지원한다.
+현재 `lostark.world-gameplay` authoring은 formatVersion 4다. 제품 publisher/runtime admission은
+`playerSpawn`, `npc`, `boss`, 단일 typed action의 `triggerBox`, 정적 `collisionBox`를 지원한다.
 
-- `playerSpawn`: class-neutral transform, `archetypeId: null`
-- `npc`: NpcCatalog archetype 참조. 현재 제품 presentation은 미완료
+- `playerSpawn`: class-neutral transform, `archetypeId: null`, `encounterId: null`
+- `npc`: NpcCatalog archetype 참조. 현재 `NPC_BEDA` 한 presentation 지원
 - `boss`: BossCatalog/BossProfile/Encounter 참조
 - disabled boss placement는 Character Select lazy Valtan template처럼 Server 명령으로 활성화 가능
 
-### 14.3 승인된 target: triggerBox와 destroyable
+### 14.3 승인된 target: triggerBox, collisionBox와 destroyable
 
-별도 trigger 파일을 만들지 않고 `Gameplay.world.json` formatVersion 2의 authoring 구조로 kind를 확장한다.
+별도 trigger/collision 파일을 만들지 않고 `Gameplay.world.json` formatVersion 4의 authoring 구조로 kind를 확장한다.
 
 | kind | 핵심 필드 | authority |
 |---|---|---|
 | `triggerBox` | placementId, transform, halfExtents, triggerOnce, typed events | Server 진입 판정 |
+| `collisionBox` | placementId, transform, halfExtents, enabled | Server player 이동 차단 |
 | `destroyable` | placementId, `deployRuntimePlacementId`, initialState | Server 상태, Client deploy presentation |
 
-trigger event는 다음 typed command부터 시작한다.
+제품 trigger event는 다음 typed command를 지원한다.
 
 ```text
-SET_CONDITION(conditionId, bool)
-SET_DESTROYABLE_STATE(destroyablePlacementId, state)
+MOVE_PLAYER(targetPosition, durationSeconds, arcHeight)
+CHANGE_LEVEL(targetWorldId)
 ```
+
+`CHANGE_LEVEL` target은 Bern과 Valtan Arena만 허용하며 Server room transfer와 새
+`S2C_ENTER_ACCEPTED` 뒤 Client typed transition으로 실행한다. 일반 Monster spawn event는 아직 추가하지 않는다.
 
 함수명이나 animation clip 문자열을 저장하지 않는다. destroyable 시각 transform은 deploy placement가
 소유하고 gameplay row는 stable `deployRuntimePlacementId`를 참조한다. publisher는 두 anchor 위치의 오차를
@@ -722,13 +725,13 @@ SET_DESTROYABLE_STATE(destroyablePlacementId, state)
 참조하는 gameplay field 이름이다. 기존 08-05 TARGET PLAN의 `deployPlacementId` 명칭은 구현 전에 이 이름으로
 교정해 `placementId` domain과 혼동을 없앤다.
 
-`CWorldGameplayDocument`는 formatVersion 2의 `triggerBox`와 `destroyable`을 strict parse/validate/atomic
-save할 수 있고 네 Area authoring 문서도 v2로 이관됐다. uint64 deploy identity는 JSON double 손실을
+`CWorldGameplayDocument`는 formatVersion 4의 `triggerBox`, `collisionBox`, `destroyable`을 strict parse/validate/atomic
+save할 수 있고 네 Area authoring 문서도 v4로 이관됐다. uint64 deploy identity는 JSON double 손실을
 막기 위해 decimal string으로 저장한다. Debug Development MapTool은 action이 없는 `triggerBox`를
 disabled draft로 배치·선택·크기 편집·저장/재로드하며 3D wire OBB로 표시한다. 다만 publisher,
-Server trigger authority, dynamic navigation, Shared replication, Client deploy presentation이 한 수직
-슬라이스로 닫히지 않았으므로 제품 publisher는 두 kind를 fail-closed로 거부한다. actor-only 기존
-문서는 정상 publish된다.
+Server trigger authority까지 닫힌 `triggerBox`와 Server 이동 차단까지 닫힌 `collisionBox`만 제품
+publisher가 admission한다. `destroyable`은 dynamic navigation, Shared replication, Client deploy
+presentation이 한 수직 슬라이스로 닫히지 않았으므로 계속 fail-closed다.
 
 ### 14.4 Monster와 wave 확장
 
@@ -847,7 +850,6 @@ Publish-WorldGameplay.ps1
 Publish-BalanceRuntimeSet.ps1   # 위 두 domain의 Server output 5종 통합 promotion
 Publish-ServerNavigation.ps1
 Publish-MapAuthoring.ps1
-Manage-ResourcePack.ps1
 ```
 
 각 publisher의 domain parser는 유지한다. 현재 `Publish-BalanceRuntimeSet.ps1`은 gameplay bootstrap 1종과

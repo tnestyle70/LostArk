@@ -192,3 +192,77 @@ follow하므로 원점 spawn을 유지한 채 Client 카메라만 강제로 도�
 - `Publish-WorldGameplay.ps1`로 Server `BERN.worldbootstrap`을 재생성한다. 생성물을 직접 편집하지 않는다.
 - Server 재시작 뒤 Lobby Bern 진입으로 character와 follow camera가 베른 중심 바닥에서 시작하는지
   확인한다.
+## G00. 2026-08-05 Area 전환 회귀 수정
+
+### 목표와 종료 증거
+
+Map Tool이 기본 Character Select Area를 연 뒤 Valtan을 선택해도 기존 prototype tag 충돌로
+stage가 rollback되지 않아야 한다. `MapCatalog.json`의 Data authoring source와 새 navigation
+v2 문서를 그대로 사용하며, 이전 Valtan visual placement를 되돌리지 않는다.
+
+### 원인
+
+8월 4일 `dc6ed57`에서 여러 Area를 하나의 `LEVEL::DEVELOPMENT` 안에서 전환하도록
+`CMapAssetCatalog::Load_Source`와 `CMapTool::Switch_EditorArea`가 추가됐다. 그러나 source catalog의
+serialized prototype tag는 Area namespace를 포함하지 않는다. Character Select와 Valtan은 3개의
+동일 tag를 서로 다른 Resources-relative model path에 사용하므로, 첫 Area의 prototype이 남아 있는
+Development Level에서 Valtan admission이 `Prototype tag already belongs to another model`로 실패한다.
+
+8월 4일 `146369e`의 navigation publish는 Valtan navsource를 v1 `62x63`에서 v2 `392x312`로
+교체했지만 현재 navsource/navpaint/navblockers의 grid identity는 모두 일치한다. 이전 13,115개
+visual placement도 삭제·변경 없이 유지됐고 navigation bake용 editor placement 77개만 추가됐다.
+
+### 수정 파일
+
+| 구분 | 절대 경로 | 역할 |
+|---|---|---|
+| 함수 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/MapAssetCatalog.cpp` | source catalog의 runtime-only prototype tag를 Area 범위로 격리 |
+| 값 교체 | `C:/Users/user/Desktop/LostArk/Data/Maps/MapCatalog.json` | 실제 Valtan authoring placement count 13,192 반영 |
+
+### `CMapAssetCatalog::Load_Source` 교체 코드
+
+```cpp
+bool_t CMapAssetCatalog::Load_Source(
+	const std::filesystem::path& catalogPath,
+	const std::filesystem::path& placementPath,
+	const std::string& expectedAreaId)
+{
+	const std::filesystem::path normalizedCatalog =
+		catalogPath.lexically_normal();
+	const std::filesystem::path normalizedPlacements =
+		placementPath.lexically_normal();
+	if (normalizedCatalog.empty() || normalizedCatalog.is_relative() ||
+		normalizedPlacements.empty() || normalizedPlacements.is_relative() ||
+		(normalizedCatalog.extension() != L".mapassets" &&
+			normalizedCatalog.extension() != L".mapset") ||
+		normalizedPlacements.extension() != L".mapplacements")
+	{
+		m_Status = "Authoring source paths are invalid";
+		return false;
+	}
+
+	m_SourceCatalogOverride = normalizedCatalog;
+	m_SourcePlacementOverride = normalizedPlacements;
+	if (!Load_Area(expectedAreaId))
+		return false;
+
+	/* Map Editor keeps several Areas in one DEVELOPMENT Level. The source
+	   catalogs may use the same serialized prototype tag for Area-specific
+	   model payloads, so authoring prototypes need an Area-local namespace. */
+	const std::wstring areaScope(
+		expectedAreaId.begin(), expectedAreaId.end());
+	for (MAP_ASSET_ENTRY& entry : m_Entries)
+	{
+		entry.prototypeTag =
+			L"MapEditorArea:" + areaScope + L":" + entry.prototypeTag;
+	}
+	return true;
+}
+```
+
+### 적용과 검증
+
+1. `Load_Source` 성공 뒤에만 runtime-only Area scope를 prototype tag에 붙인다.
+2. map/placement/nav/gameplay parse와 stage 순서는 바꾸지 않는다.
+3. 네 editor Area의 asset/placement 참조와 scoped tag 교차 충돌 0개를 검사한다.
+4. Client x64 Debug 빌드, ProjectAudit, 실제 Character Select → Valtan UI 전환을 확인한다.

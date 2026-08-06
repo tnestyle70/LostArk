@@ -249,3 +249,38 @@ party04 = (144.8, 42.7, -71.3)
 - ProjectAudit 전체 결과: 기존 무관 항목 4건만 실패
   (`asset-lock.inventory`, `effect.g1-document-boundary`, DimensionMaster asset/runtime-animation 2건)
 - Server와 Client를 완전히 재시작한 뒤 Lobby의 Bern 명령으로 진입하는 수동 smoke: 사용자 실행 확인 대기
+## 8. 2026-08-05 Valtan Area 전환 회귀 수정
+
+### 원인과 데이터 보존 확인
+
+- `dc6ed57`에서 네 Area를 하나의 Development Level에서 stage하도록 바뀌었지만 source catalog의
+  prototype tag는 Area 범위로 격리되지 않았다.
+- 기본 Character Select와 Valtan은 동일 prototype tag 3개를 서로 다른 model path로 사용한다.
+  Character Select prototype이 남은 상태에서 Valtan을 선택하면 fingerprint 검증이 올바르게 충돌을
+  감지했지만, editor 전환에 필요한 Area-local tag가 없어 전체 stage가 rollback됐다.
+- Valtan navsource v2는 `392x312`, cell size `0.5`, origin `(-6, -165)`이며 navpaint와
+  navblockers도 같은 identity다. source 122,304셀은 중복·범위 오류가 없고 25,593셀에 surface가 있다.
+- 이전 Valtan placement LFS object의 13,115행과 현재 13,192행을 stable sourcePlacementId로 비교했다.
+  삭제 0, 변경 0이며 navigation bake용 `editor` placement 77행만 추가됐다. 원본 visual map을
+  복구하거나 nav v1으로 되돌릴 필요가 없다.
+
+### 반영
+
+- `CMapAssetCatalog::Load_Source`가 parse/validate 성공 후 runtime-only prototype tag에
+  `MapEditorArea:<AreaId>:` namespace를 붙인다.
+- 제품 `Load_Area`와 serialized catalog는 바꾸지 않았다.
+- `MapCatalog.json`의 Valtan `placementCount`를 실제 authoring header와 같은 13,192로 교정했다.
+
+### 검증
+
+- 네 editor Area source 검증 통과:
+  - Character Select: 55 assets / 803 placements
+  - Bern: 1,003 unique assets / 50,017 placements
+  - Valtan: 275 assets / 13,192 placements
+  - Training Map: 302 assets / 7,856 placements
+- 모든 placement의 asset 참조, placement ID/source ID 중복 검증 통과
+- Area-scoped prototype tag의 교차 Area 충돌 0개
+- Client x64 Debug build 성공, `MapAssetCatalog.cpp` 컴파일과 Client 링크 성공
+- ProjectAudit의 gameplay balance와 세 navigation validate 성공
+- 전체 ProjectAudit은 이번 변경과 무관한 기존 `asset-lock.inventory`, 미완성 Effect G4 경계 2건으로 실패
+- 실제 Debug UI의 Character Select → Valtan selector smoke는 미실행

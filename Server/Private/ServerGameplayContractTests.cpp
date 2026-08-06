@@ -3,6 +3,7 @@
 #include "GameplayCatalog.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
 #include "ValtanBrain.h"
 #include "WorldBootstrap.h"
@@ -202,8 +203,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Resolve playable skill binding");
 		tests.Require(
 			nullptr != skill &&
-			0u != catalog.Find_DamageRatePercent(skill->strDamageProfileId),
-			"Resolve playable skill damage rate");
+			(skill->strDamageProfileId.empty() ?
+				0u == catalog.Find_DamageRatePercent(skill->strDamageProfileId) :
+				0u != catalog.Find_DamageRatePercent(skill->strDamageProfileId)),
+			"Resolve playable skill damage policy");
 
 		SERVER_PLAYER quickPlayer{};
 		quickPlayer.eCharacterClass = contract.characterClass;
@@ -349,6 +352,84 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
 		"Reject navigation point outside projection radius");
+
+	CWorldBootstrap bernWorld;
+	const bool bernLoaded = bernWorld.Load(WORLD_ID::BERN);
+	const auto& bernPlacements = bernWorld.Get_Placements();
+	const auto bernNpc = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.beda.guide";
+		});
+	const auto bernCollision = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId ==
+				"collision.bern.editor-proof";
+		});
+	tests.Require(
+		bernLoaded && bernPlacements.size() == 7u &&
+		4u == static_cast<size_t>(std::count_if(
+			bernPlacements.begin(), bernPlacements.end(),
+			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.isEnabled;
+			})) &&
+		bernNpc != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::NPC == bernNpc->eKind &&
+		bernNpc->strArchetypeId == "NPC_BEDA" &&
+		bernCollision != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
+		"Load Bern spawns, NPC_BEDA, trigger, and collision box");
+	CServerCollisionSystem bernCollisionSystem;
+	std::string bernCollisionStatus;
+	tests.Require(
+		bernCollisionSystem.Initialize(bernPlacements, bernCollisionStatus) &&
+		1u == bernCollisionSystem.Get_CollisionBoxCount() &&
+		std::all_of(
+			bernPlacements.begin(), bernPlacements.end(),
+			[&bernCollisionSystem](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+			{
+				return WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != placement.eKind ||
+					bernCollisionSystem.Is_PlayerSpawnClear(placement);
+			}),
+		"Stage Bern collision box without overlapping player spawns");
+	SERVER_PLAYER collisionPlayer{};
+	collisionPlayer.fPositionX = 138.f;
+	collisionPlayer.fPositionY = 42.7f;
+	collisionPlayer.fPositionZ = -65.3f;
+	float resolvedX = 0.f;
+	float resolvedY = 0.f;
+	float resolvedZ = 0.f;
+	bool wasBlocked = false;
+	tests.Require(
+		bernCollisionSystem.Resolve_PlayerMove(
+			collisionPlayer,
+			143.f,
+			42.7f,
+			-65.3f,
+			resolvedX,
+			resolvedY,
+			resolvedZ,
+			wasBlocked) &&
+		wasBlocked && resolvedX < 139.851f && resolvedX > 138.f,
+		"Stop a fast player sweep before the Bern collision box");
+	collisionPlayer.fPositionZ = -60.f;
+	tests.Require(
+		bernCollisionSystem.Resolve_PlayerMove(
+			collisionPlayer,
+			143.f,
+			42.7f,
+			-60.f,
+			resolvedX,
+			resolvedY,
+			resolvedZ,
+			wasBlocked) &&
+		!wasBlocked && std::abs(resolvedX - 143.f) < 0.001f,
+		"Preserve movement that passes outside the collision box");
 
 	CWorldBootstrap trainingWorld;
 	CServerNavigation trainingNavigation;
@@ -754,13 +835,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			{
 				std::ofstream bootstrap(bootstrapPath, std::ios::binary);
 				bootstrap <<
-					"LOSTARK_WORLD_BOOTSTRAP\t3\tVALTAN_ARENA"
-					"\tLV_LUT_HEARTRB_ED\t3\t2\n"
+					"LOSTARK_WORLD_BOOTSTRAP\t5\tVALTAN_ARENA"
+					"\tLV_LUT_HEARTRB_ED\t3\t3\n"
 					"player.spawn.contract\tplayerSpawn\t-\t-\t0\t0\t0\t0\t1"
 					"\t-\t-\t0\t0\t0\t0\t0\t-\n"
 					"trigger.contract.jump\ttriggerBox\t-\t-\t0\t0\t0\t0\t1"
-					"\t2\t2\t2\t0\t1\tmovePlayer\t10\t0\t0\t"
-					<< durationSeconds << "\t4\n";
+					"\t2\t2\t2\t0\t1\tmovePlayer\t5\t10\t0\t0\t"
+					<< durationSeconds << "\t4\n"
+					"collision.contract.wall\tcollisionBox\t-\t-\t4\t1\t0\t0\t1"
+					"\t0.5\t1\t2\n";
 			};
 		writeTriggerBootstrap(1.f);
 
@@ -775,16 +858,18 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			WORLD_ID::VALTAN_ARENA);
 		tests.Require(
 			loadedTriggerBootstrap &&
-			2u == triggerBootstrap.Get_Placements().size() &&
+			3u == triggerBootstrap.Get_Placements().size() &&
 			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ==
 				triggerBootstrap.Get_Placements()[1].eKind &&
+			WORLD_BOOTSTRAP_KIND::COLLISION_BOX ==
+				triggerBootstrap.Get_Placements()[2].eKind &&
 			1u == triggerBootstrap.Get_Placements()[1].TriggerActions.size(),
-			"Parse movePlayer trigger from world bootstrap v3");
+			"Parse trigger and collision box from world bootstrap v5");
 
 		writeTriggerBootstrap(-1.f);
 		tests.Require(
 			!triggerBootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
-			2u == triggerBootstrap.Get_Placements().size(),
+			3u == triggerBootstrap.Get_Placements().size(),
 			"Reject invalid trigger bootstrap without replacing committed world");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
@@ -820,10 +905,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		std::map<PLAYER_ID, SERVER_PLAYER> triggerPlayers;
 		SERVER_PLAYER triggerPlayer{};
 		triggerPlayer.iPlayerId = 1;
+		triggerPlayer.fPositionX = 2.4f;
 		triggerPlayer.iCurrentHp = 100;
 		triggerPlayer.iMaximumHp = 100;
 		triggerPlayers.emplace(1, triggerPlayer);
-		triggerSystem.Evaluate_Entries(triggerPlayers, 10);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		triggerSystem.Evaluate_Entries(triggerPlayers, 10, transfers);
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
@@ -832,7 +919,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Fire trigger on OBB entry");
 		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
 		tests.Require(
-			std::abs(triggerPlayers.begin()->second.fPositionX - 5.f) < 0.001f &&
+			std::abs(triggerPlayers.begin()->second.fPositionX - 6.2f) < 0.001f &&
 			std::abs(triggerPlayers.begin()->second.fPositionY - 4.f) < 0.001f,
 			"Advance movePlayer with authored parabolic arc");
 		triggerSystem.Update_PlayerMotion(triggerPlayers.begin()->second, 0.5f);
@@ -842,14 +929,58 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			PLAYER_ACTION_STATE::NONE == triggerPlayers.begin()->second.eAction &&
 			!triggerPlayers.begin()->second.TriggerMove.isActive,
 			"Complete movePlayer at exact authored destination");
-		triggerSystem.Evaluate_Entries(triggerPlayers, 11);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 11, transfers);
 		triggerPlayers.begin()->second.fPositionX = 0.f;
-		triggerSystem.Evaluate_Entries(triggerPlayers, 12);
+		triggerSystem.Evaluate_Entries(triggerPlayers, 12, transfers);
 		tests.Require(
 			PLAYER_ACTION_STATE::TRIGGER_MOVE ==
 				triggerPlayers.begin()->second.eAction &&
 			12u == triggerPlayers.begin()->second.iActionStartTick,
 			"Rearm non-once trigger after player exits");
+	}
+
+	{
+		WORLD_BOOTSTRAP_PLACEMENT trigger{};
+		trigger.strPlacementId = "trigger.contract.change-level";
+		trigger.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		trigger.isEnabled = true;
+		trigger.fHalfExtentX = 2.f;
+		trigger.fHalfExtentY = 2.f;
+		trigger.fHalfExtentZ = 2.f;
+		trigger.isTriggerOnce = true;
+		WORLD_TRIGGER_ACTION changeLevel{};
+		changeLevel.eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
+		changeLevel.eTargetWorldId = WORLD_ID::VALTAN_ARENA;
+		trigger.TriggerActions.push_back(changeLevel);
+
+		CServerTriggerSystem triggerSystem;
+		std::string triggerStatus;
+		tests.Require(
+			triggerSystem.Initialize({ trigger }, triggerStatus),
+			"Initialize enabled changeLevel trigger");
+		std::map<PLAYER_ID, SERVER_PLAYER> players;
+		SERVER_PLAYER player{};
+		player.iSessionId = 7;
+		player.iPlayerId = 3;
+		player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		player.strNickName = "TriggerTransfer";
+		player.iCurrentHp = 100;
+		player.iMaximumHp = 100;
+		players.emplace(player.iPlayerId, player);
+		std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+		triggerSystem.Evaluate_Entries(players, 20, transfers);
+		tests.Require(
+			1u == transfers.size() &&
+			7u == transfers.front().iSessionId &&
+			WORLD_ID::VALTAN_ARENA == transfers.front().eTargetWorldId &&
+			CHARACTER_CLASS_ID::LANCE_MASTER ==
+				transfers.front().eCharacterClass &&
+			"TriggerTransfer" == transfers.front().strNickName,
+			"Emit one typed Server world transfer request on OBB entry");
+		triggerSystem.Evaluate_Entries(players, 21, transfers);
+		tests.Require(
+			transfers.empty(),
+			"Do not repeat a triggerOnce world transfer while occupied");
 	}
 
 	{

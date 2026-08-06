@@ -12,6 +12,16 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_WORLD_TRANSFER_REQUEST final
+	{
+		SESSION_ID iSessionId = INVALID_SESSION_ID;
+		LostArk::Shared::WORLD_ID eTargetWorldId =
+			LostArk::Shared::WORLD_ID::END;
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		std::string strNickName;
+	};
+
 	class CServerTriggerSystem final
 	{
 	public:
@@ -23,7 +33,8 @@ namespace LostArk::Server
 			float fixedDeltaSeconds) const;
 		void Evaluate_Entries(
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
-			std::uint32_t actionStartTick);
+			std::uint32_t actionStartTick,
+			std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers);
 		void Remove_Player(LostArk::Shared::PLAYER_ID playerId);
 
 		[[nodiscard]] std::size_t Get_TriggerCount() const
@@ -46,6 +57,10 @@ namespace LostArk::Server
 			SERVER_PLAYER& player,
 			const WORLD_TRIGGER_ACTION& action,
 			std::uint32_t actionStartTick);
+		static bool Build_WorldTransfer(
+			const SERVER_PLAYER& player,
+			const WORLD_TRIGGER_ACTION& action,
+			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
 
 	private:
 		std::vector<RUNTIME_TRIGGER> m_Triggers;

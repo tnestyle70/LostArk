@@ -145,6 +145,7 @@ void LostArk::Server::CServerApp::Room_Loop()
 		{
 			(void)worldId;
 			room->Tick(FIXED_DELTA_SECONDS);
+			Handle_WorldTransfers(*room);
 		}
 		Reap_ClosedSessions();
 		std::this_thread::sleep_until(nextTick);
@@ -155,6 +156,7 @@ void LostArk::Server::CServerApp::Room_Loop()
 	{
 		(void)worldId;
 		room->Tick(FIXED_DELTA_SECONDS);
+		Handle_WorldTransfers(*room);
 	}
 	Reap_ClosedSessions();
 }
@@ -336,6 +338,64 @@ bool LostArk::Server::CServerApp::Bind_SessionWorld(
 		return false;
 	const auto [iter, inserted] = m_WorldBySessionId.emplace(sessionId, worldId);
 	return inserted || iter->second == worldId;
+}
+
+void LostArk::Server::CServerApp::Handle_WorldTransfers(
+	CGameRoom& sourceRoom)
+{
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	while (sourceRoom.Try_DequeueWorldTransfer(transfer))
+	{
+		if (!Transfer_SessionWorld(sourceRoom.Get_WorldId(), transfer))
+			Request_SessionClose(transfer.iSessionId);
+	}
+}
+
+bool LostArk::Server::CServerApp::Transfer_SessionWorld(
+	const LostArk::Shared::WORLD_ID sourceWorldId,
+	const SERVER_WORLD_TRANSFER_REQUEST& transfer)
+{
+	using namespace LostArk::Shared;
+	CGameRoom* targetRoom = Find_Room(transfer.eTargetWorldId);
+	if (nullptr == targetRoom || sourceWorldId == transfer.eTargetWorldId ||
+		CHARACTER_CLASS_ID::END == transfer.eCharacterClass ||
+		transfer.strNickName.empty())
+	{
+		return false;
+	}
+
+	std::shared_ptr<CClientSession> session;
+	{
+		std::scoped_lock lock{ m_SessionsMutex };
+		const auto sessionIter = m_Sessions.find(transfer.iSessionId);
+		const auto worldIter = m_WorldBySessionId.find(transfer.iSessionId);
+		if (sessionIter == m_Sessions.end() ||
+			worldIter == m_WorldBySessionId.end() ||
+			worldIter->second != sourceWorldId)
+		{
+			return false;
+		}
+		session = sessionIter->second;
+		worldIter->second = transfer.eTargetWorldId;
+	}
+
+	ROOM_COMMAND registerCommand{};
+	registerCommand.eType = ROOM_COMMAND_TYPE::REGISTER_SESSION;
+	registerCommand.iSessionId = transfer.iSessionId;
+	registerCommand.pSession = session;
+	if (!targetRoom->Enqueue(std::move(registerCommand)))
+		return false;
+
+	C2S_ENTER_WORLD enterWorld{};
+	enterWorld.iProtocolVersion = NETWORK_PROTOCOL_VERSION;
+	enterWorld.eWorldId = transfer.eTargetWorldId;
+	enterWorld.eCharacterClass = transfer.eCharacterClass;
+	enterWorld.strNickName = transfer.strNickName;
+	ROOM_COMMAND enterCommand{};
+	enterCommand.eType = ROOM_COMMAND_TYPE::ENTER_WORLD;
+	enterCommand.iSessionId = transfer.iSessionId;
+	enterCommand.EnterWorld = std::move(enterWorld);
+	return targetRoom->Enqueue(std::move(enterCommand));
 }
 
 void LostArk::Server::CServerApp::Unbind_SessionWorld(const SESSION_ID sessionId)

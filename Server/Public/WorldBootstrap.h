@@ -15,12 +15,14 @@ namespace LostArk::Server
 		NPC,
 		BOSS,
 		TRIGGER_BOX,
+		COLLISION_BOX,
 		END
 	};
 
 	enum class WORLD_TRIGGER_ACTION_KIND
 	{
 		MOVE_PLAYER,
+		CHANGE_LEVEL,
 		END
 	};
 
@@ -32,6 +34,8 @@ namespace LostArk::Server
 		float fTargetZ = 0.f;
 		float fDurationSeconds = 0.f;
 		float fArcHeight = 0.f;
+		LostArk::Shared::WORLD_ID eTargetWorldId =
+			LostArk::Shared::WORLD_ID::END;
 	};
 
 	struct WORLD_BOOTSTRAP_PLACEMENT

@@ -1,0 +1,106 @@
+# LostArk merge 회귀 방지 정본
+
+이 문서는 merge, pull, rebase와 충돌 해결에서 이미 닫힌 다른 작성자의 계약을 되살리거나
+지우는 회귀를 막는 공용 체크리스트다. 날짜별 실패 로그는 대응 RESULT에 기록한다.
+
+## 1. 동기화 전 상태 고정
+
+다음 증거를 먼저 남긴다.
+
+```text
+git status --short
+git diff --name-only --diff-filter=U
+git branch --show-current
+git rev-parse HEAD
+git fetch --prune
+git rev-list --left-right --count HEAD...origin/main
+```
+
+- dirty worktree를 정리한다는 이유로 다른 작성자의 변경을 reset, checkout, clean하지 않는다.
+- 동기화가 필요하면 추적·미추적 파일을 포함한 이름 있는 safety stash를 만들고, 원격 반영 후
+  같은 stash를 복원한다. stash 적용 충돌도 아래 파일 역할 기준으로 다시 해결한다.
+- `ours` 또는 `theirs`를 파일 전체에 일괄 적용하지 않는다. 실제 소유자, 호출자, 데이터 정본,
+  실패 소비자와 대응 PLAN/RESULT를 읽고 계약별로 합친다.
+
+## 2. 충돌 해결 불변식
+
+### DimensionMaster 이름과 런타임 계약
+
+- 활성 코드·공유 enum·catalog·Loader·HUD·Server profile·spawn·Animation Tool의 class 이름은
+  `DimensionMaster`/`DIMENSIONMASTER` 계약을 유지한다.
+- 이전 `Dimensionist` 이름은 명시적으로 보존한 역사 문서나 외부 원본 식별자가 아니면 되살리지 않는다.
+- 이름 불일치를 임시 fallback으로 숨기지 않는다. 정의와 실제 소비 경로를 같은 변경에서 맞춘다.
+- DimensionMaster의 Server skill 계약은 `Q W E R A S D F T V`와 LMB 4단 콤보로 닫혔고
+  `ALT_V`는 없다. merge에서 이전 candidate-only `2050550` 또는 Z/ALT_V 슬롯을 되살리지 않는다.
+  candidate-only Effect는 별도의 admitted effect 계약 없이 제품 런타임에 활성화하지 않는다.
+
+### 공용 Character Preview
+
+- Model Preview, Animation Tool, Effect Tool이 공유하는 Character Preview Panel 계약을 유지한다.
+- 충돌 해결 과정에서 툴별 두 번째 character loader, pivot owner, preview runtime을 만들지 않는다.
+- project와 filters 등록, 실제 include/caller, 모델·무기 part 경로를 함께 확인한다.
+
+### Effect Tool 재작성 경계
+
+- Effect Tool reboot의 정본은 G0/G1에서 승인한 `Effect_AuthoringDocument`와 최소 ImGui document
+  경계다. 현재 G 계획이 삭제한 레거시 `Effect_AssetIO`, `Effect_Runtime`,
+  `Effect_ParticleSimulator`, `Effect_ResourceCatalog`, `Effect_Types`, 전용 Effect shader와
+  생성된 `.effect` 후보 파일을 merge가 다시 살리지 않게 한다.
+- 추출 원본과 증거 자료는 저작 데이터와 구분한다. Source Catalog/Extracted/참고 PNG처럼 계획이
+  보존하기로 한 원본은 레거시 런타임 삭제와 함께 지우지 않는다.
+- G1 Active Document는 메모리 저작 단위이며, Element 종류 radio 선택만으로 Document를 변경하지 않는다.
+  G2의 Add Element 이후에만 Element가 Document에 들어간다.
+- Effect asset ID와 resource ID는 `Client/Bin/Resources` 기준 상대 안정 ID다. 절대 경로,
+  drive-qualified 경로, `..` 탈출 경로를 저장 계약으로 되살리지 않는다.
+
+### Debug Client `abort()` 팝업
+
+- `Client/Bin/Debug/Client.exe` 실행 직후 Microsoft Visual C++ Runtime Library의
+  `abort() has been called`가 발생하면 창 핸들이나 흰 배경의 Win32 창이 존재한다는 이유로
+  시작 성공으로 처리하지 않는다. Lobby 첫 렌더 프레임이 보여야 시작 smoke 성공이다.
+- 확인된 사례에서는 `CMainApp::Ready_Fonts()`가
+  `Client/Bin/Resources/Fonts/161ex.spritefont`를 요구했지만 실제 파일이
+  `Client/Bin/Resources/Fonts/Fonts/161ex.spritefont`에 있어 한 단계 중첩돼 있었다.
+  DirectXTK `BinaryReader`가 `0x80070002` 파일 없음 오류를 기록한 뒤 `SpriteFont` 생성자에서
+  C++ 예외 `0xE06D7363`을 던졌고, 처리되지 않은 예외가 `std::terminate()`와 `abort()`로 끝났다.
+- `CCustomFont::Initialize()`의 `make_unique<SpriteFont>()`는 실패 시 `HRESULT`를 반환하기 전에
+  예외를 던질 수 있다. 이 경계는 2026-08-05에 `std::exception`과 알 수 없는 예외를 포착하고
+  생성 중 객체를 정리한 뒤 `E_FAIL`을 반환하도록 수정됐다. merge에서 이 catch를 제거하면
+  `CCustomFont::Create()`의 `FAILED(Initialize())` 경계를 건너뛰고 `abort()`가 재발한다.
+- 복구 전에는 `Fonts/Fonts` 중첩 여부와 다음 필수 파일이 `Resources/Fonts` 바로 아래에 있는지
+  확인한다: `161ex.spritefont`, `YG760.spritefont`, `YG330.spritefont`,
+  `YoonGasiIIM.spritefont`, `BMKkubulim.spritefont`. 임의 fallback 경로를 추가하지 않고
+  immutable resource pack의 올바른 구조로 Hydrate한다.
+- 제품 오류 표시는 font 생성 예외를 파일별 로드 경계에서 포착해 실패 경로를 보존하고 기존
+  Client 초기화 실패 메시지 경계로 전달한다. `catch (...)`는 C++ 표준 예외가 아닌 DirectX 경계도
+  process abort로 빠지지 않게 하는 마지막 변환이며 성공으로 삼지 않고 반드시 `E_FAIL`을 반환한다.
+  기본 폰트나 다른 디렉터리로 자동 fallback해 정상 시작으로 위장하지 않는다.
+- 수정 후에는 Debug Client를 다시 빌드하고 아무 입력 없이 실행해 Lobby 렌더, `abort()` 부재,
+  종료 후 잔류 Client process 부재를 확인한다. resource pack의 `Verify` 결과도 별도로 확인한다.
+
+### 프로젝트·데이터 등록
+
+- 물리 C++ 파일, `.vcxproj`, `.vcxproj.filters`의 등록을 세트로 비교한다.
+- 삭제한 manifest나 생성물을 project가 계속 등록하지 않는지 확인한다.
+- Git 관리 `Data` 원본은 Client 프로젝트의 `96.DataFiles` 아래 `None`으로만 노출한다.
+- `Data/AssetPacks.lock.json`과 immutable manifest SHA 계약을 임의로 우회하지 않는다.
+
+## 3. 병합 후 필수 감사
+
+실행하지 않은 항목을 PASS로 쓰지 않는다.
+
+```text
+1. conflict marker와 unmerged path 0개
+2. Dimensionist/DimensionMaster 잔류를 활성 코드·데이터와 역사/원본 자료로 분류
+3. Effect 레거시 파일·symbol·project 등록 0개, G1 파일·등록 존재
+4. Character Preview 공용 경로와 project/filter 등록 확인
+5. 변경 JSON과 XML parse
+6. 관련 focused harness와 Debug build
+7. 실제 Character Select 재진입 또는 Effect Tool 수동 smoke
+8. Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+9. git diff --check
+10. 잔류 Client/Server process와 listener 확인
+```
+
+개인 PC 경로, 실행 중인 세션 메모, 임시 예외는 `.md/GB/gotchas.local.md`에만 기록하고
+Git에 커밋하지 않는다.

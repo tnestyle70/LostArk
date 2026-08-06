@@ -10,6 +10,9 @@
 #include "Part_Body.h"
 #include "Transform.h"
 
+#include <algorithm>
+#include <utility>
+
 Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
 {
 	/* The owning tool may outlive the level the body was staged into, so the
@@ -22,6 +25,8 @@ void Client::CCharacterPreviewPanel::Refresh_Level()
 	const shared_ptr<CPart_Body> previewBody = m_pPreviewBody.lock();
 	if (nullptr == previewBody)
 	{
+		if (nullptr != m_pPreviewAsset || UINT32_MAX != m_iPreviewLevelIndex)
+			CAnimationTargetService::Clear_Preview();
 		m_pPreviewBody.reset();
 		m_pPreviewAsset = nullptr;
 		m_iPreviewLevelIndex = UINT32_MAX;
@@ -39,11 +44,54 @@ void Client::CCharacterPreviewPanel::Refresh_Level()
 	m_iPreviewLevelIndex = UINT32_MAX;
 }
 
+void Client::CCharacterPreviewPanel::Set_SessionLock(
+	const CHARACTER_PREVIEW_LOCK_OWNER eOwner,
+	const bool_t isLocked,
+	string strReason)
+{
+	if (eOwner >= CHARACTER_PREVIEW_LOCK_OWNER::END)
+		return;
+	const size_t index = ETOI(eOwner);
+	m_SessionLocks[index] = isLocked;
+	m_SessionLockReasons[index] = isLocked ? std::move(strReason) : string{};
+}
+
+bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
+	const string& strAnimationAssetName)
+{
+	if (strAnimationAssetName.empty())
+	{
+		m_Status = "Preview target asset name is empty.";
+		return false;
+	}
+	if (nullptr != m_pPreviewAsset &&
+		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
+		!m_pPreviewBody.expired())
+	{
+		return true;
+	}
+
+	const auto asset = std::find_if(
+		ANIMATION_PREVIEW_ASSETS.begin(), ANIMATION_PREVIEW_ASSETS.end(),
+		[&strAnimationAssetName](const ANIMATION_PREVIEW_ASSET& candidate)
+		{
+			return strAnimationAssetName == candidate.pAssetName;
+		});
+	if (asset == ANIMATION_PREVIEW_ASSETS.end())
+	{
+		m_Status = "Preview target is not admitted: " + strAnimationAssetName;
+		return false;
+	}
+	return Select_Asset(*asset);
+}
+
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 {
 	const shared_ptr<CPart_Body> previewBody = m_pPreviewBody.lock();
 	if (nullptr == previewBody)
 	{
+		if (nullptr != m_pPreviewAsset || UINT32_MAX != m_iPreviewLevelIndex)
+			CAnimationTargetService::Clear_Preview();
 		m_pPreviewBody.reset();
 		m_pPreviewAsset = nullptr;
 		m_iPreviewLevelIndex = UINT32_MAX;
@@ -143,16 +191,32 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 
 void Client::CCharacterPreviewPanel::Render_Selector(
 	const bool_t isLocked,
-	const string& strLockReason)
+	const string& strLockReason,
+	const bool_t includePreviewOnlyTargets)
 {
 	ImGui::SeparatorText("Target");
-	ImGui::BeginDisabled(isLocked);
+	bool_t isSessionLocked = false;
+	const string* pSessionLockReason = nullptr;
+	for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
+	{
+		if (!m_SessionLocks[i])
+			continue;
+		isSessionLocked = true;
+		if (nullptr == pSessionLockReason)
+			pSessionLockReason = &m_SessionLockReasons[i];
+	}
+	const bool_t isSelectionLocked = isLocked || isSessionLocked;
+	const string& effectiveLockReason = nullptr != pSessionLockReason ?
+		*pSessionLockReason : strLockReason;
+	ImGui::BeginDisabled(isSelectionLocked);
 	const bool_t sceneSelected = m_pPreviewBody.expired();
 	if (ImGui::Selectable("Scene Character", sceneSelected))
 		Release(true);
 
 	for (const ANIMATION_PREVIEW_ASSET& asset : ANIMATION_PREVIEW_ASSETS)
 	{
+		if (!includePreviewOnlyTargets && !asset.bPlayableClassBody)
+			continue;
 		ImGui::PushID(asset.pId);
 		const bool_t isSelected =
 			!m_pPreviewBody.expired() && m_pPreviewAsset == &asset;
@@ -161,8 +225,8 @@ void Client::CCharacterPreviewPanel::Render_Selector(
 		ImGui::PopID();
 	}
 	ImGui::EndDisabled();
-	if (isLocked && !strLockReason.empty())
-		ImGui::TextDisabled("%s", strLockReason.c_str());
+	if (isSelectionLocked && !effectiveLockReason.empty())
+		ImGui::TextDisabled("%s", effectiveLockReason.c_str());
 	if (!m_Status.empty())
 		ImGui::TextWrapped("%s", m_Status.c_str());
 	ImGui::Separator();

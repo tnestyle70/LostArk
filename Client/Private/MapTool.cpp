@@ -89,6 +89,38 @@ namespace
 		return true;
 	}
 
+	bool_t TryBuildGameplaySpawnFrame(
+		const CWorldGameplayDocument& document,
+		const std::string& preferredPlacementId,
+		float3_t& outCenter,
+		f32_t& outRadius)
+	{
+		const WORLD_GAMEPLAY_PLACEMENT* spawn =
+			document.Find(preferredPlacementId);
+		if (nullptr == spawn ||
+			WORLD_PLACEMENT_KIND::PLAYER_SPAWN != spawn->eKind ||
+			!spawn->isEnabled || !IsFinite(spawn->position))
+		{
+			spawn = nullptr;
+			for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+				document.Get_Placements())
+			{
+				if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind &&
+					placement.isEnabled && IsFinite(placement.position))
+				{
+					spawn = &placement;
+					break;
+				}
+			}
+		}
+		if (nullptr == spawn)
+			return false;
+
+		outCenter = spawn->position;
+		outRadius = 35.f;
+		return true;
+	}
+
 	bool_t IsBernLandscapePlacement(
 		const CMapAssetCatalog& catalog,
 		const MAP_PLACEMENT_RECORD& record)
@@ -575,7 +607,9 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 {
 	ImGui::TextUnformatted("World Gameplay Authoring");
 	ImGui::TextDisabled(
-		"Trigger Box entry and movePlayer execution are server-authoritative.");
+		"Player spawn, Trigger Box actions, and Collision Boxes are Server authority.");
+	ImGui::TextDisabled(
+		"Options: Player Spawn, NPC, Boss, Trigger Box, Collision Box.");
 	ImGui::TextWrapped("%s", m_WorldGameplayStatus.c_str());
 	ImGui::Separator();
 	const EDITOR_AREA_DESCRIPTOR* active = Get_ActiveEditorArea();
@@ -615,31 +649,61 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 	if (ImGui::RadioButton("Trigger Box",
 		WORLD_PLACEMENT_KIND::TRIGGER_BOX == m_eWorldPlacementKind))
 		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::TRIGGER_BOX;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Collision Box",
+		WORLD_PLACEMENT_KIND::COLLISION_BOX == m_eWorldPlacementKind))
+		m_eWorldPlacementKind = WORLD_PLACEMENT_KIND::COLLISION_BOX;
 
 	ImGui::InputText("Placement ID", m_WorldPlacementId,
 		std::size(m_WorldPlacementId));
 	const bool_t isTriggerPlacement =
 		WORLD_PLACEMENT_KIND::TRIGGER_BOX == m_eWorldPlacementKind;
-	if (isTriggerPlacement)
+	const bool_t isCollisionPlacement =
+		WORLD_PLACEMENT_KIND::COLLISION_BOX == m_eWorldPlacementKind;
+	if (isTriggerPlacement || isCollisionPlacement)
 	{
 		ImGui::DragFloat3(
-			"Default Half Extents",
+			"Default Box Scale (Half Extents)",
 			&m_WorldTriggerHalfExtents.x,
 			0.1f,
 			0.1f,
 			1000.f,
 			"%.2f",
 			ImGuiSliderFlags_AlwaysClamp);
-		ImGui::Checkbox("Trigger Once", &m_bWorldTriggerOnce);
-		ImGui::TextDisabled(
-			"Place the box first, then select it and author its move target below.");
+		if (isTriggerPlacement)
+		{
+			ImGui::Checkbox("Trigger Once", &m_bWorldTriggerOnce);
+			ImGui::TextDisabled(
+				"Place the box first, then select it and choose one typed action below.");
+		}
+		else
+		{
+			ImGui::TextDisabled(
+				"Collision Box blocks Server-authoritative player walking.");
+		}
 	}
 	else
 	{
-		ImGui::InputText("Archetype ID", m_WorldArchetypeId,
-			std::size(m_WorldArchetypeId));
-		ImGui::InputText("Encounter ID (optional)", m_WorldEncounterId,
-			std::size(m_WorldEncounterId));
+		if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == m_eWorldPlacementKind)
+		{
+			ImGui::TextDisabled(
+				"Player Spawn owns position/yaw only; class is selected by the session.");
+		}
+		else if (WORLD_PLACEMENT_KIND::NPC == m_eWorldPlacementKind)
+		{
+			strcpy_s(m_WorldArchetypeId, "NPC_BEDA");
+			m_WorldEncounterId[0] = '\0';
+			ImGui::TextUnformatted("Archetype: NPC_BEDA (Npc_Beda)");
+			ImGui::TextDisabled(
+				"The current product path supports this one NpcCatalog presentation.");
+		}
+		else
+		{
+			ImGui::InputText("Archetype ID", m_WorldArchetypeId,
+				std::size(m_WorldArchetypeId));
+			ImGui::InputText("Encounter ID (optional)", m_WorldEncounterId,
+				std::size(m_WorldEncounterId));
+		}
 	}
 	if (ImGui::Button(m_bWorldGameplayPlacementArmed ?
 		"Cancel World Placement" : "Arm World Placement"))
@@ -680,6 +744,7 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				ImGuiSelectableFlags_SpanAllColumns))
 			{
 				m_SelectedWorldPlacementId = placement.placementId;
+				m_WorldPlacementPositionDelta = {};
 			}
 			ImGui::TableSetColumnIndex(1);
 			ImGui::TextUnformatted(
@@ -706,6 +771,27 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 			0.1f, -100000.f, 100000.f, "%.3f");
 		edited |= ImGui::DragFloat("Yaw Degrees", &staged.yawDegrees,
 			0.5f, -360.f, 360.f, "%.2f");
+		if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == staged.eKind)
+		{
+			ImGui::SeparatorText("Player Spawn Position Offset");
+			ImGui::DragFloat3(
+				"Position Delta",
+				&m_WorldPlacementPositionDelta.x,
+				0.1f,
+				-100000.f,
+				100000.f,
+				"%+.3f");
+			if (ImGui::Button("Apply Delta To Spawn Position"))
+			{
+				staged.position.x += m_WorldPlacementPositionDelta.x;
+				staged.position.y += m_WorldPlacementPositionDelta.y;
+				staged.position.z += m_WorldPlacementPositionDelta.z;
+				m_WorldPlacementPositionDelta = {};
+				edited = true;
+			}
+			ImGui::TextDisabled(
+				"Example: +50, 0, 0 resolves and saves Position.x + 50; Server uses the saved result.");
+		}
 		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == staged.eKind)
 		{
 			edited |= ImGui::DragFloat3(
@@ -718,23 +804,56 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 				ImGuiSliderFlags_AlwaysClamp);
 			edited |= ImGui::Checkbox("Trigger Once", &staged.isTriggerOnce);
 
-			bool_t hasMoveAction = 1u == staged.triggerEvents.size() &&
-				WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER == staged.triggerEvents.front().eKind;
-			if (!hasMoveAction)
+			int actionOption = 0;
+			if (1u == staged.triggerEvents.size())
 			{
-				if (ImGui::Button(staged.triggerEvents.empty() ?
-					"Add Move Player Action" : "Replace With Move Player Action"))
+				switch (staged.triggerEvents.front().eKind)
 				{
-					WORLD_TRIGGER_EVENT action{};
-					action.eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
-					action.targetPosition = staged.position;
-					action.durationSeconds = 0.8f;
-					action.arcHeight = 0.f;
-					staged.triggerEvents.assign(1u, action);
-					hasMoveAction = true;
-					edited = true;
+				case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER:
+					actionOption = 1;
+					break;
+				case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL:
+					actionOption = 2;
+					break;
+				default:
+					break;
 				}
 			}
+			const char_t* actionOptions[] =
+			{
+				"None", "Move Player", "Change Level"
+			};
+			if (ImGui::Combo("Action", &actionOption,
+				actionOptions, static_cast<int>(std::size(actionOptions))))
+			{
+				m_bWorldTriggerTargetPickArmed = false;
+				if (0 == actionOption)
+				{
+					staged.triggerEvents.clear();
+					staged.isEnabled = false;
+				}
+				else
+				{
+					WORLD_TRIGGER_EVENT action{};
+					if (1 == actionOption)
+					{
+						action.eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+						action.targetPosition = staged.position;
+					}
+					else
+					{
+						action.eKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
+						action.eTargetWorldId =
+							LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+					}
+					staged.triggerEvents.assign(1u, action);
+				}
+				edited = true;
+			}
+			const bool_t hasMoveAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER ==
+					staged.triggerEvents.front().eKind;
 			if (hasMoveAction)
 			{
 				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
@@ -760,26 +879,53 @@ void Client::CMapTool::Render_WorldGameplayPanel(bool_t isAssetTest)
 						"Move target armed: click the destination surface; Esc cancels" :
 						"Move target pick cancelled";
 				}
-				ImGui::SameLine();
-				if (ImGui::Button("Remove Move Action"))
+			}
+			const bool_t hasChangeLevelAction =
+				1u == staged.triggerEvents.size() &&
+				WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL ==
+					staged.triggerEvents.front().eKind;
+			if (hasChangeLevelAction)
+			{
+				WORLD_TRIGGER_EVENT& action = staged.triggerEvents.front();
+				ImGui::SeparatorText("Change Level Action");
+				int targetOption =
+					LostArk::Shared::WORLD_ID::BERN == action.eTargetWorldId ? 0 : 1;
+				const char_t* targetOptions[] = { "BERN", "VALTAN_ARENA" };
+				if (ImGui::Combo("Target World", &targetOption,
+					targetOptions, static_cast<int>(std::size(targetOptions))))
 				{
-					staged.triggerEvents.clear();
-					staged.isEnabled = false;
-					m_bWorldTriggerTargetPickArmed = false;
-					hasMoveAction = false;
+					action.eTargetWorldId = 0 == targetOption ?
+						LostArk::Shared::WORLD_ID::BERN :
+						LostArk::Shared::WORLD_ID::VALTAN_ARENA;
 					edited = true;
 				}
+				ImGui::TextDisabled(
+					"The Server changes rooms first; Client consumes S2C_ENTER_ACCEPTED.");
 			}
 
-			ImGui::BeginDisabled(!hasMoveAction);
+			const bool_t hasSupportedAction =
+				hasMoveAction || hasChangeLevelAction;
+			ImGui::BeginDisabled(!hasSupportedAction);
 			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 			ImGui::EndDisabled();
-			if (!hasMoveAction)
+			if (!hasSupportedAction)
 			{
 				staged.isEnabled = false;
 				ImGui::TextDisabled(
-					"A Trigger Box needs one movePlayer action before it can be enabled.");
+					"A Trigger Box needs exactly one supported action before it can be enabled.");
 			}
+		}
+		else if (WORLD_PLACEMENT_KIND::COLLISION_BOX == staged.eKind)
+		{
+			edited |= ImGui::DragFloat3(
+				"Half Extents",
+				&staged.halfExtents.x,
+				0.1f,
+				0.1f,
+				1000.f,
+				"%.2f",
+				ImGuiSliderFlags_AlwaysClamp);
+			edited |= ImGui::Checkbox("Enabled", &staged.isEnabled);
 		}
 		else
 		{
@@ -914,6 +1060,11 @@ bool_t Client::CMapTool::Try_PlaceWorldGameplay()
 		placement.halfExtents = m_WorldTriggerHalfExtents;
 		placement.isTriggerOnce = m_bWorldTriggerOnce;
 	}
+	else if (WORLD_PLACEMENT_KIND::COLLISION_BOX == placement.eKind)
+	{
+		placement.isEnabled = true;
+		placement.halfExtents = m_WorldTriggerHalfExtents;
+	}
 	else
 	{
 		placement.archetypeId = m_WorldArchetypeId;
@@ -990,7 +1141,8 @@ bool_t Client::CMapTool::Stage_WorldTriggerBoxes(
 	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
 		document.Get_Placements())
 	{
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind)
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX != placement.eKind &&
+			WORLD_PLACEMENT_KIND::COLLISION_BOX != placement.eKind)
 			continue;
 
 		CTrigger_Box::TRIGGER_BOX_DESC desc{};
@@ -999,6 +1151,8 @@ bool_t Client::CMapTool::Stage_WorldTriggerBoxes(
 		desc.halfExtents = placement.halfExtents;
 		desc.yawDegrees = placement.yawDegrees;
 		desc.isEnabled = placement.isEnabled;
+		desc.isCollisionBox =
+			WORLD_PLACEMENT_KIND::COLLISION_BOX == placement.eKind;
 		shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
 			m_iAuthoringLevelIndex,
@@ -1081,7 +1235,8 @@ bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 
 	return TOOL_MODE::NAVIGATION == m_eToolMode ||
 		(TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode &&
-			m_bWorldGameplayPlacementArmed) ||
+			(m_bWorldGameplayPlacementArmed ||
+				m_bWorldTriggerTargetPickArmed)) ||
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
@@ -1611,25 +1766,23 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 			(minimum.z + maximum.z) * 0.5f);
 		f32_t radius = (std::max)(50.f,
 			(std::max)(maximum.x - minimum.x, maximum.z - minimum.z) * 0.35f);
-		/* Bern has distant backdrop and event placements, while its authored
-		   player spawns are still placeholders around the origin. Use the dense
-		   placement centre and central 90 percent span for the editor camera. */
+		/* Product spawn data is the most useful authoring focus. Distant backdrop
+		   meshes must not pull the editor camera away from the playable entry. */
 		if ("LV_BER_BERNCASTLE" == descriptor.areaId)
 		{
-			vector<float3_t> positions;
-			positions.reserve(m_Placements.size());
-			for (const PLACED_ENTRY& entry : m_Placements)
-				positions.push_back(entry.record.position);
-			TryBuildCentralEditorFrame(positions, center, radius);
+			TryBuildGameplaySpawnFrame(
+				m_WorldGameplayDocument,
+				"player.spawn.bern.entry",
+				center,
+				radius);
 		}
-		/* Valtan authoring keeps distant backdrop meshes whose positions reach
-		   X 1026 and Z -1367, so the bounds centre lands about 600 m away from
-		   the playable map. Frame the playable centre instead. Replace this with
-		   a gameplay spawn target once the editor consumes player placements. */
 		if ("LV_LUT_HEARTRB_ED" == descriptor.areaId)
 		{
-			center = float3_t(92.f, 15.f, -87.f);
-			radius = 100.f;
+			TryBuildGameplaySpawnFrame(
+				m_WorldGameplayDocument,
+				"player.spawn.valtan.entry",
+				center,
+				radius);
 		}
 		if (const shared_ptr<CCamera_Free> camera = m_pAssetTestCamera.lock())
 			camera->Frame_Area(center, radius);
@@ -2160,42 +2313,12 @@ bool_t Client::CMapTool::Try_PaintNavigation()
 bool_t Client::CMapTool::Try_PickPlacementPosition(float3_t& outPosition) const
 {
 	float4_t picked{};
-	if (CGameInstance::Get().Picking(picked))
-	{
-		outPosition = float3_t(picked.x, picked.y, picked.z);
-		return IsFinite(outPosition);
-	}
-
-	::POINT cursor{};
-	if (!GetCursorPos(&cursor) || !ScreenToClient(g_hWnd, &cursor))
+	if (!CGameInstance::Get().Picking(picked))
 		return false;
 
-	const float2_t viewport = CGameInstance::Get().Get_ViewportSize();
-	if (cursor.x < 0 || cursor.y < 0 || cursor.x >= static_cast<LONG>(viewport.x) ||
-		cursor.y >= static_cast<LONG>(viewport.y))
-		return false;
-
-	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
-	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	const vector_t nearPoint = XMVector3Unproject(
-		XMVectorSet(static_cast<float>(cursor.x), static_cast<float>(cursor.y), 0.f, 1.f),
-		0.f, 0.f, viewport.x, viewport.y, 0.f, 1.f,
-		projection, view, XMMatrixIdentity());
-	const vector_t farPoint = XMVector3Unproject(
-		XMVectorSet(static_cast<float>(cursor.x), static_cast<float>(cursor.y), 1.f, 1.f),
-		0.f, 0.f, viewport.x, viewport.y, 0.f, 1.f,
-		projection, view, XMMatrixIdentity());
-	const vector_t direction = farPoint - nearPoint;
-	const float directionY = XMVectorGetY(direction);
-	if (std::abs(directionY) < 0.00001f)
-		return false;
-
-	const float distance = -XMVectorGetY(nearPoint) / directionY;
-	if (distance < 0.f)
-		return false;
-
-	XMStoreFloat3(&outPosition, nearPoint + direction * distance);
-	outPosition.y = 0.f;
+	/* Target_PickPos is written by the first depth-tested rendered triangle at
+	   the cursor. Do not invent a Y=0 fallback when the view ray misses. */
+	outPosition = float3_t(picked.x, picked.y, picked.z);
 	return IsFinite(outPosition);
 }
 
@@ -3513,7 +3636,7 @@ void Client::CMapTool::Arm_SelectedAsset()
 
 	m_ePlacementState = PLACEMENT_STATE::ARMED;
 	m_Status = "Placement armed for " + pAsset->label +
-		"; click the rendered surface or Y=0 plane.";
+		"; click the first rendered triangle surface.";
 }
 
 bool_t Client::CMapTool::Try_PlaceNavigationBounds()

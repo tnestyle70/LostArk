@@ -1,8 +1,8 @@
 {
   "schema": "lostark.world-gameplay",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "areaId": "LV_DEV_TRAINING_GROUND",
-  "revision": 1,
+  "revision": 2,
   "placements": [
     {
       "placementId": "player.spawn.training.party01",

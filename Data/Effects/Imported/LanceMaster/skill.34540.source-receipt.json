@@ -1,0 +1,5371 @@
+{
+  "schema": "lostark.effect-source-receipt",
+  "schemaVersion": 1,
+  "characterClass": "LANCEMASTER",
+  "inputSlot": "Q_SHORT",
+  "skillId": 34540,
+  "animationAssetId": "LanceMaster",
+  "animationVisualContract": {
+    "combinedMeshAnimationStatus": "UNVERIFIED",
+    "combinedMeshAnimationOwner": "Animation/CModel",
+    "reconstructCombinedMeshAsEffectElement": false,
+    "effectExtractionScope": [
+      "particle",
+      "texture_or_sprite",
+      "trail",
+      "distortion",
+      "post_effect",
+      "particle_owned_mesh_emitter"
+    ]
+  },
+  "timeline": {
+    "durationSeconds": 1.9,
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "flm_sk_stab",
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.2,
+        "sourceLine": 3361
+      },
+      {
+        "sequenceIndex": 1,
+        "clip": "flm_sk_stab_custom_3_01",
+        "offsetSeconds": 1.2,
+        "lengthSeconds": 0.7,
+        "sourceLine": 3421
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "sourceLine": 3369,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_01_1"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 3370,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "sourceLine": 3371,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_01_1"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 3372,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "sourceLine": 3373,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_edgeatk_01_1"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "sourceLine": 3374,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_03_1"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 3375,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "sourceLine": 3376,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_edgeatk_01_1"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "sourceLine": 3377,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_03_1"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 3378,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 3379,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 3380,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 3381,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4,
+        "globalTimeSeconds": 0.4,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 3382,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4001,
+        "globalTimeSeconds": 0.4001,
+        "durationSeconds": 0.1039,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 3383,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.4001,
+        "globalTimeSeconds": 0.4001,
+        "durationSeconds": 0.1039,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 3384,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-017",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.42,
+        "globalTimeSeconds": 0.42,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "sourceLine": 3385,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_dust_01_1"
+      },
+      {
+        "eventId": "source-event-018",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.42,
+        "globalTimeSeconds": 0.42,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "sourceLine": 3386,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_dust_01_1"
+      },
+      {
+        "eventId": "source-event-019",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.42,
+        "globalTimeSeconds": 0.42,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "sourceLine": 3387,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_dust_01_1"
+      },
+      {
+        "eventId": "source-event-020",
+        "clip": "flm_sk_stab",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.42,
+        "globalTimeSeconds": 0.42,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "sourceLine": 3388,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_dust_01_1"
+      },
+      {
+        "eventId": "source-event-021",
+        "clip": "flm_sk_stab_custom_3_01",
+        "clipSequenceIndex": 1,
+        "localTimeSeconds": 0.1694,
+        "globalTimeSeconds": 1.3694,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1",
+        "sourceLine": 3425,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_06.par_v_flm_stab_shoulder_01_1"
+      },
+      {
+        "eventId": "source-event-022",
+        "clip": "flm_sk_stab_custom_3_01",
+        "clipSequenceIndex": 1,
+        "localTimeSeconds": 0.25,
+        "globalTimeSeconds": 1.45,
+        "durationSeconds": 0.1,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 3429,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-023",
+        "clip": "flm_sk_stab_custom_3_01",
+        "clipSequenceIndex": 1,
+        "localTimeSeconds": 0.25,
+        "globalTimeSeconds": 1.45,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "sourceLine": 3430,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_shoulder_01_1"
+      },
+      {
+        "eventId": "source-event-024",
+        "clip": "flm_sk_stab_custom_3_01",
+        "clipSequenceIndex": 1,
+        "localTimeSeconds": 0.25,
+        "globalTimeSeconds": 1.45,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 3431,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-025",
+        "clip": "flm_sk_stab_custom_3_01",
+        "clipSequenceIndex": 1,
+        "localTimeSeconds": 0.25,
+        "globalTimeSeconds": 1.45,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 3432,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      }
+    ]
+  },
+  "sourcePackages": [
+    {
+      "logicalPackage": "FX_BS_04",
+      "physicalPackage": "XFH2R5G2R0SF0Z4E90GX0TSQ.upk",
+      "graphSha256": "82c807e60c9cf19f94a48685e73ff95e8e8b8bbccca7a791e0910927832e4ff2",
+      "graphSummary": {
+        "graphObjectCount": 14096,
+        "particleSystemCount": 354,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 2093,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 11653,
+        "decodedInterpCurveCount": 84,
+        "decodedInterpCurvePointCount": 355,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 578407,
+      "sourcePackageSha256": "3a1a33ad616d9004528982579aef5366664bcbd48faa9af93918269789864db6"
+    },
+    {
+      "logicalPackage": "FX_BS_06",
+      "physicalPackage": "XFH2R5G2R06F0Z4E906X0TSQ.upk",
+      "graphSha256": "8ae504d8c0691684b05353a94801391766d46d46388dead4753c95204f3966bb",
+      "graphSummary": {
+        "graphObjectCount": 2686,
+        "particleSystemCount": 112,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 381,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2079,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 2,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 113467,
+      "sourcePackageSha256": "649bb8734a118342c682112d1846df86f791dc870c2b4914c2da4de222f37865"
+    },
+    {
+      "logicalPackage": "FX_CM_00",
+      "physicalPackage": "XFH2RCA2R00F0CYE900X0CMQ.upk",
+      "graphSha256": "95be290581fa3488edddb9ff6cdcb5aeac46283b7390f4782d03baeae48f929f",
+      "graphSummary": {
+        "graphObjectCount": 8460,
+        "particleSystemCount": 200,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 796,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 8886,
+        "decodedInterpCurveCount": 18,
+        "decodedInterpCurvePointCount": 55,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 320473,
+      "sourcePackageSha256": "204a39e53c2735c5f7ef7eca25d55b3b341f31dd003737b48a117884fc39bfdd"
+    },
+    {
+      "logicalPackage": "FX_CM_01",
+      "physicalPackage": "XFH2RCA2R07F0CYE90DX0CMQ.upk",
+      "graphSha256": "052ca991225f6543a31204e9ee18dff4e5edc1c36c260b9f108831678f3cbe13",
+      "graphSummary": {
+        "graphObjectCount": 25035,
+        "particleSystemCount": 417,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 2841,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 23856,
+        "decodedInterpCurveCount": 85,
+        "decodedInterpCurvePointCount": 237,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 923880,
+      "sourcePackageSha256": "b11ab557cc8f3c87d1525c0ff9d237aed62f3d49e3394a810d9204066a7bca5b"
+    },
+    {
+      "logicalPackage": "FX_CM_02",
+      "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
+      "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
+      "graphSummary": {
+        "graphObjectCount": 7014,
+        "particleSystemCount": 194,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 636,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 6908,
+        "decodedInterpCurveCount": 47,
+        "decodedInterpCurvePointCount": 151,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 255488,
+      "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
+    },
+    {
+      "logicalPackage": "FX_CM_03",
+      "physicalPackage": "XFH2RCA2R0LF0CYE903X0CMQ.upk",
+      "graphSha256": "e5994c7915fcc9ed5f0f12d539ab9cd0fb72e638f00cbf552bf4669aac079841",
+      "graphSummary": {
+        "graphObjectCount": 8835,
+        "particleSystemCount": 204,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 851,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 8669,
+        "decodedInterpCurveCount": 31,
+        "decodedInterpCurvePointCount": 85,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 346063,
+      "sourcePackageSha256": "75775cec7dedf4cef23da836fc774176aa40e630a98f8b7b0acb19f4a4a8b3a2"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_00",
+      "physicalPackage": "YGI3SWD3SY4B3D11G9KMHNT6M.upk",
+      "graphSha256": "40ca25dd97d6ca435dd3f0f463ad4804e60c2d3ea264f9493532224c4cb1d4d2",
+      "graphSummary": {
+        "graphObjectCount": 4170,
+        "particleSystemCount": 83,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 660,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2885,
+        "decodedInterpCurveCount": 23,
+        "decodedInterpCurvePointCount": 65,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 159088,
+      "sourcePackageSha256": "ac52281e6f26efec3d0c76c390fdcd3760f81b497092ec79b78ec0a0bd5e16b7"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_01",
+      "physicalPackage": "YGI3SWD3SY4B3D18G9KMHNT6M.upk",
+      "graphSha256": "e41f5aed862bc798ed95225b4a0f39808e7b6eca2b89e552dfe6972078fb7482",
+      "graphSummary": {
+        "graphObjectCount": 7125,
+        "particleSystemCount": 134,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 902,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 6469,
+        "decodedInterpCurveCount": 6,
+        "decodedInterpCurvePointCount": 18,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 338457,
+      "sourcePackageSha256": "90983f7b0f6362d0faa25c3c7226083350302f5b282ff302531042a4a55c945c"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_02",
+      "physicalPackage": "YGI3SWD3SY4B3D1FG9KMHNT6M.upk",
+      "graphSha256": "643c26c82a590b995cf299a574d4180fe73e3dee1129f5b4114e6640e975c0fc",
+      "graphSummary": {
+        "graphObjectCount": 4200,
+        "particleSystemCount": 79,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 583,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 3394,
+        "decodedInterpCurveCount": 41,
+        "decodedInterpCurvePointCount": 106,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 168619,
+      "sourcePackageSha256": "0b46af805acff4448d981d476670f05aaeb7fcf5335ad4c97950b9a3253f6549"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_03",
+      "physicalPackage": "YGI3SWD3SY4B3D1MG9KMHNT6M.upk",
+      "graphSha256": "d92badbd0f640f6a07352e2244bd8b10febf0defe36230912fe8924e1fffc9c7",
+      "graphSummary": {
+        "graphObjectCount": 7309,
+        "particleSystemCount": 124,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 1020,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 5744,
+        "decodedInterpCurveCount": 34,
+        "decodedInterpCurvePointCount": 92,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 259439,
+      "sourcePackageSha256": "3a929e601c0690c0d248bb26a305f99f4a8a2039d47b0a876c1bb870151082f0"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_04",
+      "physicalPackage": "YGI3SWD3SY4B3D1TG9KMHNT6M.upk",
+      "graphSha256": "0a889a992547d2077944efa947598534b32499fd928e842f7c17190020aa9dfd",
+      "graphSummary": {
+        "graphObjectCount": 5792,
+        "particleSystemCount": 111,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 807,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 4623,
+        "decodedInterpCurveCount": 57,
+        "decodedInterpCurvePointCount": 176,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 225493,
+      "sourcePackageSha256": "e2b3e9861737fd4a714c8bbd14c2c45dc6e39ff52bd1fced5b7fbed5205a8856"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_05",
+      "physicalPackage": "YGI3SWD3SY4B3D10G9KMHNT6M.upk",
+      "graphSha256": "674539429ba95b60bf9692835b8ae08bfc3d677728dd49ee2d557a9265cb7dd8",
+      "graphSummary": {
+        "graphObjectCount": 169,
+        "particleSystemCount": 8,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 27,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 115,
+        "decodedInterpCurveCount": 0,
+        "decodedInterpCurvePointCount": 0,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 16232,
+      "sourcePackageSha256": "792aaeae59facb411623ff76d5388b523d03fa6fe9620880e17b5a50d33a21f1"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_06",
+      "physicalPackage": "YGI3SWD3SY4B3D17G9KMHNT6M.upk",
+      "graphSha256": "4ad580abe97d7870d5ce0d5f46689c275d60743b665ffd95b7733aab626b823d",
+      "graphSummary": {
+        "graphObjectCount": 4727,
+        "particleSystemCount": 79,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 899,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2340,
+        "decodedInterpCurveCount": 18,
+        "decodedInterpCurvePointCount": 57,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 183572,
+      "sourcePackageSha256": "a5fe7839e3c429c8839b418eab27bff9eb6af2aaa7aee8455311fdee6d1dc19e"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_07",
+      "physicalPackage": "YGI3SWD3SY4B3D1EG9KMHNT6M.upk",
+      "graphSha256": "eb392eab97c374026fcb62fa1ed03d702a5598e121e7d25d2f00aebfb7e2c526",
+      "graphSummary": {
+        "graphObjectCount": 3263,
+        "particleSystemCount": 76,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 425,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2934,
+        "decodedInterpCurveCount": 9,
+        "decodedInterpCurvePointCount": 24,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 173588,
+      "sourcePackageSha256": "2ced4f75c1cc5b738cb95c1eb7f91eb9f7258ae566efeb00a501b6a0fbee245b"
+    },
+    {
+      "logicalPackage": "FX_PC_WGL_07",
+      "physicalPackage": "YGI3SWD3S9543D1EG9KMHS0TM.upk",
+      "graphSha256": "b6b053dc7b6ab7ebdc26505d9ac98ffc68217d83c1887bc499925b1b64fb4342",
+      "graphSummary": {
+        "graphObjectCount": 2138,
+        "particleSystemCount": 36,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 405,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 1423,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 2,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 114987,
+      "sourcePackageSha256": "5add81554b3b10b976523fb185b47c7216f90beac04a1868c1a96efdd01c7182"
+    },
+    {
+      "logicalPackage": "FX_POST",
+      "physicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "graphSha256": "7b0572546d3aab789d288c10e42c1854c0dd8701ba133869013d359cd171caa3",
+      "graphSummary": {
+        "graphObjectCount": 659,
+        "particleSystemCount": 61,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 78,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 503,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 3,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 91566,
+      "sourcePackageSha256": "cd538c071af21b171aabeb7cb3ac95e789a50b6fa6cc1f811b5c35e172df3c99"
+    }
+  ],
+  "sourceSystems": [
+    {
+      "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
+      "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+      "logicalPackage": "FX_CM_02",
+      "objectName": "par_mp_light_01",
+      "objectPath": "light.par_mp_light_01",
+      "rootNodeId": "FX_CM_02:export:7013",
+      "summary": {
+        "nodeCount": 11,
+        "edgeCount": 14,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 4,
+        "distributionCount": 3,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 9,
+        "featureClasses": [
+          "efparticlemoduletypedatalight"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_CM_02:export:4127",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -78,
+          "objectPath": "enginematerials.defaultparticle",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_01_1",
+      "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+      "logicalPackage": "FX_PC_FLM_04",
+      "objectName": "par_s_flm_stab_atk_01_1",
+      "objectPath": "par_s_flm_stab_atk_01_1",
+      "rootNodeId": "FX_PC_FLM_04:export:5807",
+      "summary": {
+        "nodeCount": 94,
+        "edgeCount": 186,
+        "emitterCount": 13,
+        "lodLevelCount": 26,
+        "moduleCount": 53,
+        "distributionCount": 1,
+        "resourceBindingCount": 18,
+        "unresolvedExternalReferenceCount": 160,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3586",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -193,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_me_watertrail_01_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4693",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1995,
+          "objectPath": "fx_sm_00.fm_b_sphere_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3589",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -193,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_me_watertrail_01_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3591",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -171,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_watertrail_01_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3581",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -170,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4688",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2001,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3582",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -195,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_10_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3590",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -129,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3587",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -129,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3584",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -149,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_08_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4691",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2005,
+          "objectPath": "fx_sm_00.fm_f_cylinder_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3585",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -149,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_08_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4692",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2005,
+          "objectPath": "fx_sm_00.fm_f_cylinder_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3588",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4689",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3583",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4690",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3592",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -108,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_atk_03_1",
+      "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+      "logicalPackage": "FX_PC_FLM_04",
+      "objectName": "par_s_flm_stab_atk_03_1",
+      "objectPath": "par_s_flm_stab_atk_03_1",
+      "rootNodeId": "FX_PC_FLM_04:export:5810",
+      "summary": {
+        "nodeCount": 122,
+        "edgeCount": 233,
+        "emitterCount": 16,
+        "lodLevelCount": 32,
+        "moduleCount": 72,
+        "distributionCount": 1,
+        "resourceBindingCount": 27,
+        "unresolvedExternalReferenceCount": 216,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3611",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -193,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_me_watertrail_01_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4701",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1995,
+          "objectPath": "fx_sm_00.fm_b_sphere_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3623",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -193,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_me_watertrail_01_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4704",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1995,
+          "objectPath": "fx_sm_00.fm_b_sphere_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3625",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -171,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_watertrail_01_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3626",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -170,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4706",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2001,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3612",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -170,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4707",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2001,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3613",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -195,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_10_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3614",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -129,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3615",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -129,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3616",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -149,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_08_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4708",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2005,
+          "objectPath": "fx_sm_00.fm_f_cylinder_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3617",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -149,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_08_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4709",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2005,
+          "objectPath": "fx_sm_00.fm_f_cylinder_001",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3618",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4710",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3619",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4711",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3620",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -108,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3621",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4702",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3622",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4703",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2008,
+          "objectPath": "fx_sm_00.fm_k_tornado_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3624",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_o_me_ringrainbow_01_15_ts_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4705",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1999,
+          "objectPath": "fx_sm_00.fm_d_helix_015",
+          "role": "mesh"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_dust_01_1",
+      "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+      "logicalPackage": "FX_PC_FLM_04",
+      "objectName": "par_s_flm_stab_dust_01_1",
+      "objectPath": "par_s_flm_stab_dust_01_1",
+      "rootNodeId": "FX_PC_FLM_04:export:5820",
+      "summary": {
+        "nodeCount": 20,
+        "edgeCount": 43,
+        "emitterCount": 2,
+        "lodLevelCount": 4,
+        "moduleCount": 12,
+        "distributionCount": 1,
+        "resourceBindingCount": 2,
+        "unresolvedExternalReferenceCount": 20,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3721",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -98,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3722",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -98,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_edgeatk_01_1",
+      "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+      "logicalPackage": "FX_PC_FLM_04",
+      "objectName": "par_s_flm_stab_edgeatk_01_1",
+      "objectPath": "par_s_flm_stab_edgeatk_01_1",
+      "rootNodeId": "FX_PC_FLM_04:export:5823",
+      "summary": {
+        "nodeCount": 33,
+        "edgeCount": 56,
+        "emitterCount": 6,
+        "lodLevelCount": 12,
+        "moduleCount": 14,
+        "distributionCount": 0,
+        "resourceBindingCount": 8,
+        "unresolvedExternalReferenceCount": 74,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3730",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -119,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3728",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -118,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3729",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -93,
+          "objectPath": "fx_m_mi_02.fx_m.fx_k_swipemirr_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4747",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1997,
+          "objectPath": "fx_sm_00.fm_c_square_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3726",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -93,
+          "objectPath": "fx_m_mi_02.fx_m.fx_k_swipemirr_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4748",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1997,
+          "objectPath": "fx_sm_00.fm_c_square_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3727",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -93,
+          "objectPath": "fx_m_mi_02.fx_m.fx_k_swipemirr_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4746",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1997,
+          "objectPath": "fx_sm_00.fm_c_square_003",
+          "role": "mesh"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_04.par_s_flm_stab_shoulder_01_1",
+      "sourceAsset": "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+      "logicalPackage": "FX_PC_FLM_04",
+      "objectName": "par_s_flm_stab_shoulder_01_1",
+      "objectPath": "par_s_flm_stab_shoulder_01_1",
+      "rootNodeId": "FX_PC_FLM_04:export:5826",
+      "summary": {
+        "nodeCount": 85,
+        "edgeCount": 128,
+        "emitterCount": 14,
+        "lodLevelCount": 28,
+        "moduleCount": 42,
+        "distributionCount": 0,
+        "resourceBindingCount": 17,
+        "unresolvedExternalReferenceCount": 194,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3754",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -98,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3746",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -96,
+          "objectPath": "fx_m_mi_05.fx_m.fx_a_me_panning_02_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4752",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1992,
+          "objectPath": "fx_sm_00.fm_a_hemisphere_012",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3753",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -206,
+          "objectPath": "fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4754",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2000,
+          "objectPath": "fx_sm_00.fm_d_hemisphere_002",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3756",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -121,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_060_ds_dt_ts_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:4753",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2003,
+          "objectPath": "fx_sm_00.fm_d_torus_002",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3751",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -177,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_m_pa_shine_02_2_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3757",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -175,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_l_pa_ap_23_1_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3747",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -112,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_2_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3749",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -133,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3759",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -115,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_02_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3748",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -143,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_h_pa_ht_01_1_ad_ts",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3758",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -165,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3752",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_2_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3755",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -108,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_04:export:3750",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -232,
+          "objectPath": "fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_06.par_v_flm_stab_shoulder_01_1",
+      "sourceAsset": "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1",
+      "logicalPackage": "FX_PC_FLM_06",
+      "objectName": "par_v_flm_stab_shoulder_01_1",
+      "objectPath": "par_v_flm_stab_shoulder_01_1",
+      "rootNodeId": "FX_PC_FLM_06:export:4720",
+      "summary": {
+        "nodeCount": 68,
+        "edgeCount": 110,
+        "emitterCount": 8,
+        "lodLevelCount": 16,
+        "moduleCount": 41,
+        "distributionCount": 2,
+        "resourceBindingCount": 13,
+        "unresolvedExternalReferenceCount": 106,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3281",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -108,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3279",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -190,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_m_pa_trail_01_13_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3284",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -172,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3713",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2442,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3285",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -172,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3714",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2442,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3278",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -203,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3717",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2431,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3280",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -131,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_060_ds_dt_ts_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3715",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2432,
+          "objectPath": "fx_sm_00.fm_d_torus_002",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3282",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -170,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3716",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -2431,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_06:export:3283",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -140,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+          "role": "material"
+        }
+      ]
+    }
+  ],
+  "materialParameterBindings": [
+    {
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "sourceLogicalPackage": "enginematerials",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+      "candidateCount": 0,
+      "candidates": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_01_1_ad",
+      "objectName": "fx_a_pa_db_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_007"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_2_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_01_2_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_01_2_ad",
+      "objectName": "fx_a_pa_db_01_2_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_007"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_2_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_gl_01_2_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_gl_01_2_ad",
+      "objectName": "fx_a_pa_gl_01_2_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_00.fx_a_glow_003"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_02_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_ht_02_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_ht_02_1_ad",
+      "objectName": "fx_a_pa_ht_02_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_00.fx_a_hit_005"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "depth_alpha_bias",
+          "value": -30.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "objectName": "fx_c_pa_lensflare_01_03_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_pa_lensflare_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "lensflaretexture",
+          "texture": "fx_tex_high_00.fx_c_glow_007"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "select texture(0 or 0.5)",
+          "value": 0.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_lensflare_01_05_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_c_pa_lensflare_01_05_ad",
+      "objectName": "fx_c_pa_lensflare_01_05_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_pa_lensflare_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "lensflaretexture",
+          "texture": "fx_tex_high_00.fx_c_glow_008"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "select texture(0 or 0.5)",
+          "value": 0.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_060_ds_dt_ts_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_me_master_01_060_ds_dt_ts_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_me_master_01_060_ds_dt_ts_ad",
+      "objectName": "fx_d_me_master_01_060_ds_dt_ts_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_master_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_atypical_055_ycl"
+        },
+        {
+          "name": "11.map_b",
+          "texture": "fx_tex_04.fx_j_mirnoise_01"
+        },
+        {
+          "name": "02.map_e",
+          "texture": "fx_tex_04.fx_h_atypical_01_1"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "12.map_b_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "13.map_b_uvscale_g",
+          "value": 3.0
+        },
+        {
+          "name": "14.map_b_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "15.map_b_panning_y",
+          "value": 0.25
+        },
+        {
+          "name": "36.str",
+          "value": 10.0
+        },
+        {
+          "name": "37.power",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "04.map_e_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "05.map_e_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "06.map_e_panning_y",
+          "value": 0.4000000059604645
+        },
+        {
+          "name": "01.depthbiasdalpha_bias",
+          "value": 40.0
+        },
+        {
+          "name": "32.fresnal_power",
+          "value": 2.0
+        },
+        {
+          "name": "33.fresnal_str",
+          "value": 1.0
+        },
+        {
+          "name": "05.distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "07.map_d_uvscale_r",
+          "value": 3.0
+        },
+        {
+          "name": "08.map_d_uvscale_g",
+          "value": 1.5
+        },
+        {
+          "name": "09.map_d_panning_x",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "10.map_d_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "05.distortion_str",
+          "value": 50.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_shine_01_10_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_d_pa_shine_01_10_ad",
+      "objectName": "fx_d_pa_shine_01_10_ad",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m_mi_00.bfx_m.bfx_d_pa_shine_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_noise_031"
+        },
+        {
+          "name": "14.map_d",
+          "texture": "fx_tex_02.fx_d_noise_009"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.range",
+          "value": 6.0
+        },
+        {
+          "name": "02.power",
+          "value": 3.0
+        },
+        {
+          "name": "00.noisepower",
+          "value": 1.0
+        },
+        {
+          "name": "00.noisestr",
+          "value": 5.0
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 3.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 2.0
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": -4.0
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 4.0
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 2.5999999046325684
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": -3.75
+        },
+        {
+          "name": "13.distortstr",
+          "value": 0.0
+        },
+        {
+          "name": "15.map_d_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "16.map_d_uvscale_g",
+          "value": 3.0
+        },
+        {
+          "name": "17.map_d_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "18.map_d_panning_y",
+          "value": -0.5
+        },
+        {
+          "name": "power",
+          "value": 3.0
+        },
+        {
+          "name": "str",
+          "value": 0.4000000059604645
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_07_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_e_pa_fd_07_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_e_pa_fd_07_1_ad",
+      "objectName": "fx_e_pa_fd_07_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_e_pa_twinkle_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "add_emissive_tex",
+          "texture": null
+        },
+        {
+          "name": "mask_tex",
+          "texture": "fx_tex_03.fx_e_fluid_006"
+        },
+        {
+          "name": "twinkle_tex",
+          "texture": "fx_tex_02.fx_d_noise_003"
+        },
+        {
+          "name": "twinkle_tex_01",
+          "texture": "fx_tex_02.fx_d_noise_003"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "add_emissive_intensity",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "emissive_paning",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tiling",
+          "value": 1.0
+        },
+        {
+          "name": "twinkle_intensity",
+          "value": 30.0
+        },
+        {
+          "name": "twinkle_paning",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "twinkle_tiling",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_h_pa_ht_01_1_ad_ts",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_h_pa_ht_01_1_ad_ts",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_h_pa_ht_01_1_ad_ts",
+      "objectName": "fx_h_pa_ht_01_1_ad_ts",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_03.fx_e_ring_001"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "distortion_intensity",
+          "value": 15.0
+        },
+        {
+          "name": "emissive_desaturation",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        },
+        {
+          "name": "uv_scale",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_me_floorstrm_08_ad",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_floorstrm_08_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_k_me_floorstrm_08_ad",
+      "objectName": "fx_k_me_floorstrm_08_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_04.fx_i_noise_04"
+        },
+        {
+          "name": "21.map_c",
+          "texture": "fx_tex_04.fx_i_noise_02_ycl"
+        },
+        {
+          "name": "02.map_e",
+          "texture": "fx_tex_02.fx_d_atypical_028"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 2.0
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": -0.75
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "21.uvscale.x",
+          "value": 1.0
+        },
+        {
+          "name": "22.uvscale.y",
+          "value": 1.0
+        },
+        {
+          "name": "29.cmap.direct",
+          "value": 0.0
+        },
+        {
+          "name": "36.str",
+          "value": 5.0
+        },
+        {
+          "name": "37.power",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "04.map_e_uvscale_g",
+          "value": 3.5
+        },
+        {
+          "name": "05.map_e_panning_x",
+          "value": 0.5
+        },
+        {
+          "name": "06.map_e_panning_y",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "91.desaturation",
+          "value": 0.5
+        },
+        {
+          "name": "92.emissiion_power",
+          "value": 1.5
+        },
+        {
+          "name": "05.distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "07.map_d_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "08.map_d_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "09.map_d_panning_x",
+          "value": -0.5
+        },
+        {
+          "name": "10.map_d_panning_y",
+          "value": 0.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "93.emissiion_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_o_me_flowtrail_01_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_me_flowtrail_01_01_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_o_me_flowtrail_01_01_tr",
+      "objectName": "fx_o_me_flowtrail_01_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex",
+          "texture": "fx_tex_05.fx_l_environment_001"
+        },
+        {
+          "name": "noise_tex",
+          "texture": "fx_tex_05.fx_m_flow_02_n"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_04.fx_j_mirnoise_02"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff_desturation",
+          "value": 0.8999999761581421
+        },
+        {
+          "name": "diff_pow",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "diff_rotation",
+          "value": 0.0
+        },
+        {
+          "name": "diff_str",
+          "value": 1.0
+        },
+        {
+          "name": "diff_u_center",
+          "value": 0.0
+        },
+        {
+          "name": "diff_u_tile",
+          "value": 3.0
+        },
+        {
+          "name": "diff_v_tile",
+          "value": 1.0
+        },
+        {
+          "name": "distortion_str",
+          "value": 1.0
+        },
+        {
+          "name": "noise_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "noise_u_tile",
+          "value": 5.0
+        },
+        {
+          "name": "noise_v_pan",
+          "value": -0.5
+        },
+        {
+          "name": "noise_v_tile",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_rotation",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 8.0
+        },
+        {
+          "name": "opacity_u_center",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_u_tile",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_v_tile",
+          "value": 1.0
+        },
+        {
+          "name": "wave_noise_str",
+          "value": 1.0
+        },
+        {
+          "name": "wave_str",
+          "value": 0.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "diff_high_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        },
+        {
+          "name": "diff_low_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.5,
+            "b": 1.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_o_me_ringrainbow_01_15_ts_tr",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_me_ringrainbow_01_15_ts_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_o_me_ringrainbow_01_15_ts_tr",
+      "objectName": "fx_o_me_ringrainbow_01_15_ts_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_00.fx_a_glow_05_cl"
+        },
+        {
+          "name": "11.map_b",
+          "texture": "fx_tex_02.fx_d_atypical_028"
+        },
+        {
+          "name": "02.map_e",
+          "texture": "fx_tex_02.fx_d_atypical_043"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "12.map_b_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "13.map_b_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "36.str",
+          "value": 7.5
+        },
+        {
+          "name": "37.power",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_r",
+          "value": 2.3299999237060547
+        },
+        {
+          "name": "04.map_e_uvscale_g",
+          "value": 0.5
+        },
+        {
+          "name": "91.desaturation",
+          "value": 1.0
+        },
+        {
+          "name": "92.emissiion_power",
+          "value": 4.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "93.emissiion_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 15.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_k_swipemirr_01_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_k_swipemirr_01_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_m.fx_k_swipemirr_01_ad",
+      "objectName": "fx_k_swipemirr_01_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_j_rgbsplit_01_2_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_j_rgbsplit_01_2_ad",
+      "objectName": "fx_j_rgbsplit_01_2_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_j_rgbsplit_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "main_tex",
+          "texture": "fx_tex_03.fx_e_atypical_028"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "desaturation",
+          "value": -1.5
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "catalogKey": "fx_mi.fx_k_me_makeflow_02_38_tr",
+          "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m.fx_k_me_makeflow_02_tr"
+        },
+        {
+          "catalogKey": "fx_mi.fx_k_me_makeflow_02_38_tr",
+          "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m_mi_02.fx_m.fx_k_me_makeflow_02_tr"
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_makeflow_02_42_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_me_makeflow_02_42_tr",
+      "objectName": "fx_k_me_makeflow_02_42_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_me_makeflow_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex1",
+          "texture": "fx_tex_05.fx_k_auraline_02"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_05.fx_k_caustictile_01"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_002"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_00.fx_a_line_010"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff1_tile_u",
+          "value": 2.0
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 0.6000000238418579
+        },
+        {
+          "name": "diff2_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff_des",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "diff_pow",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "diff_str",
+          "value": 20.0
+        },
+        {
+          "name": "flow_bias",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_pan_v",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "flow_tile_u",
+          "value": 5.0
+        },
+        {
+          "name": "flow_tile_v",
+          "value": 0.5
+        },
+        {
+          "name": "gra_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "opacity_pow",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "opacity_rot",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_v",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "cameravec_pow",
+          "value": 2.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_watertrail_01_03_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_watertrail_01_03_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_me_watertrail_01_03_tr",
+      "objectName": "fx_k_me_watertrail_01_03_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_03.fx_m.fx_m_me_watertrail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "maintex",
+          "texture": "fx_tex_05.fx_m_wave_001_ycl"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_strength",
+          "value": 10.0
+        },
+        {
+          "name": "outalpha_falloff_velue",
+          "value": 1.0
+        },
+        {
+          "name": "disslove_hardness",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_pan_u_speed",
+          "value": 0.0
+        },
+        {
+          "name": "dissolve_pan_u_time",
+          "value": 0.0
+        },
+        {
+          "name": "dissolve_pan_v_speed",
+          "value": 0.0
+        },
+        {
+          "name": "dissolve_pan_v_time",
+          "value": 0.0
+        },
+        {
+          "name": "dissolve_texcoord_u",
+          "value": 2.0
+        },
+        {
+          "name": "dissolve_texcoord_v",
+          "value": 2.0
+        },
+        {
+          "name": "main_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "name": "main_panspeed_v",
+          "value": 0.0
+        },
+        {
+          "name": "main_tex_background_velue",
+          "value": 1.0
+        },
+        {
+          "name": "main_tex_power",
+          "value": 2.5
+        },
+        {
+          "name": "main_tex_power_multiply",
+          "value": 20.0
+        },
+        {
+          "name": "maintex_desaturation",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "maintex_move_u",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "maintex_move_v",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_pan_u_time",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_pan_v_time",
+          "value": 1.0
+        },
+        {
+          "name": "maintex_rotator",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_texcoord_u",
+          "value": 1.0
+        },
+        {
+          "name": "maintex_texcoord_v",
+          "value": 1.5
+        },
+        {
+          "name": "uv_noise_pan_u",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_pan_v",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "uv_noise_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_panspeed_v",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_texcoord_u",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_texcoord_v",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_velue",
+          "value": 0.30000001192092896
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_l_pa_ap_23_1_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_l_pa_ap_23_1_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_l_pa_ap_23_1_tr",
+      "objectName": "fx_l_pa_ap_23_1_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_shine_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_atypical_028"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_atypical_060_cl"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.height.power",
+          "value": 3.0
+        },
+        {
+          "name": "02.height.strength",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "11.width.power",
+          "value": 6.0
+        },
+        {
+          "name": "12.width.strength",
+          "value": 1.0
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "31.noisepower",
+          "value": 3.0
+        },
+        {
+          "name": "32.noisestr",
+          "value": 1.0
+        },
+        {
+          "name": "01.depthbiasdalpha_bias",
+          "value": 50.0
+        },
+        {
+          "name": "11.range",
+          "value": 8.0
+        },
+        {
+          "name": "13.distortstr",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "15.map_d_uvscale_r",
+          "value": 1.5
+        },
+        {
+          "name": "16.map_d_uvscale_g",
+          "value": 2.0
+        },
+        {
+          "name": "17.map_d_panning_x",
+          "value": 0.11999999731779099
+        },
+        {
+          "name": "18.map_d_panning_y",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_m_pa_shine_02_2_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_pa_shine_02_2_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_m_pa_shine_02_2_ad",
+      "objectName": "fx_m_pa_shine_02_2_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_shine_02_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_atypical_006_1"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_atypical_028"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.height.power",
+          "value": 2.0
+        },
+        {
+          "name": "02.height.strength",
+          "value": 3.0
+        },
+        {
+          "name": "11.width.power",
+          "value": 2.0
+        },
+        {
+          "name": "12.width.strength",
+          "value": 0.5
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 0.4000000059604645
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": 0.029999999329447746
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "31.noisepower",
+          "value": 1.0
+        },
+        {
+          "name": "32.noisestr",
+          "value": 6.0
+        },
+        {
+          "name": "11.range",
+          "value": 2.0
+        },
+        {
+          "name": "13.distortstr",
+          "value": 0.5
+        },
+        {
+          "name": "15.map_d_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "16.map_d_uvscale_g",
+          "value": 1.5
+        },
+        {
+          "name": "17.map_d_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "18.map_d_panning_y",
+          "value": 0.25
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_me_watertrail_01_43_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_me_watertrail_01_43_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_m_me_watertrail_01_43_tr",
+      "objectName": "fx_m_me_watertrail_01_43_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_m_me_watertrail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "maintex",
+          "texture": "fx_tex_02.fx_d_atypical_002_1_ycl"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_030"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_strength",
+          "value": 500.0
+        },
+        {
+          "name": "disslove_hardness",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_pan_u_speed",
+          "value": -0.5
+        },
+        {
+          "name": "dissolve_pan_v_speed",
+          "value": 0.0
+        },
+        {
+          "name": "dissolve_texcoord_u",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_texcoord_v",
+          "value": 3.0
+        },
+        {
+          "name": "disto_power",
+          "value": 5.0
+        },
+        {
+          "name": "camera_vector_fresnel_velue",
+          "value": 3.0
+        },
+        {
+          "name": "main_panspeed_u",
+          "value": -1.0
+        },
+        {
+          "name": "main_panspeed_v",
+          "value": 0.0
+        },
+        {
+          "name": "main_tex_background_velue",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "main_tex_power",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "main_tex_power_multiply",
+          "value": 0.5
+        },
+        {
+          "name": "maintex_desaturation",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_move_u",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_move_v",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "maintex_pan_u_time",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_pan_v_time",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "maintex_rotator",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_texcoord_u",
+          "value": 1.0
+        },
+        {
+          "name": "maintex_texcoord_v",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_pan_u",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_panspeed_u",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_panspeed_v",
+          "value": 0.5
+        },
+        {
+          "name": "uv_noise_texcoord_u",
+          "value": 0.5
+        },
+        {
+          "name": "uv_noise_texcoord_v",
+          "value": 5.0
+        },
+        {
+          "name": "uv_noise_velue",
+          "value": 0.4000000059604645
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_missiletrail_01_10_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "catalogKey": "fx_mi.fx_m_pa_missiletrail_01_10_tr",
+          "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m.fx_m_pa_missiletrail_01_tr"
+        },
+        {
+          "catalogKey": "fx_mi.fx_m_pa_missiletrail_01_10_tr",
+          "sourcePhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr"
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_m_pa_trail_01_13_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_pa_trail_01_13_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_m_pa_trail_01_13_tr",
+      "objectName": "fx_m_pa_trail_01_13_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mi.fx_m_pa_trail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "tex_alpha_01",
+          "texture": "fx_tex_05.fx_m_trail_001_cl"
+        },
+        {
+          "name": "tex_alpha_02",
+          "texture": "fx_tex_04.fx_j_mirnoise_01"
+        },
+        {
+          "name": "tex_uvnoise_01",
+          "texture": "fx_tex_04.fx_j_risingcolor_01"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "tex_alpha_01_g_tile",
+          "value": 1.5
+        },
+        {
+          "name": "tex_alpha_01_r_tile",
+          "value": 1.0
+        },
+        {
+          "name": "tex_alpha_backvelue",
+          "value": 0.5
+        },
+        {
+          "name": "tex_alpha_multiply",
+          "value": 500.0
+        },
+        {
+          "name": "tex_alpha_power",
+          "value": 1.5
+        },
+        {
+          "name": "tex_flow_g_tile",
+          "value": 6.0
+        },
+        {
+          "name": "tex_flow_r_tile",
+          "value": 1.0
+        },
+        {
+          "name": "center_hole_hardness",
+          "value": 0.0
+        },
+        {
+          "name": "center_hole_power",
+          "value": 2.0
+        },
+        {
+          "name": "center_hole_size",
+          "value": 0.5
+        },
+        {
+          "name": "tex_alpha_move_u",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "tex_alpha_move_v",
+          "value": 0.5
+        },
+        {
+          "name": "tex_noise_velue",
+          "value": 0.10000000149011612
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_a_me_panning_02_ad",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_a_me_panning_02_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_a_me_panning_02_ad",
+      "objectName": "fx_a_me_panning_02_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_c_pa_aura_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_c_pa_aura_02_tr",
+      "objectName": "fx_c_pa_aura_02_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "AMBIGUOUS_MATERIAL_PATH",
+      "candidateCount": 2,
+      "candidates": [
+        {
+          "catalogKey": "fx_mi.fx_k_me_makeflow_02_25_tr",
+          "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m.fx_k_me_makeflow_02_tr"
+        },
+        {
+          "catalogKey": "fx_mi.fx_k_me_makeflow_02_25_tr",
+          "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "className": "materialinstanceconstant",
+          "parent": "fx_m_mi_02.fx_m.fx_k_me_makeflow_02_tr"
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_spritewave_01_3_tr",
+      "sourceLogicalPackage": "fx_m_mi_m_00",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_m_me_spritewave_01_3_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+      "materialPath": "fx_mi.fx_m_me_spritewave_01_3_tr",
+      "objectName": "fx_m_me_spritewave_01_3_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_m_pa_spritewave_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_tex_01",
+          "texture": "fx_tex_05.fx_m_caustic_001"
+        },
+        {
+          "name": "maintex",
+          "texture": "fx_tex_02.fx_d_atypical_006_ycl"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_009"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "disslovetex_01_panspeed_x",
+          "value": 0.0
+        },
+        {
+          "name": "disslovetex_01_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "disslovetex_01_tile_x",
+          "value": 1.0
+        },
+        {
+          "name": "disslovetex_01_tile_y",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_hardness",
+          "value": 5.0
+        },
+        {
+          "name": "edge_thin",
+          "value": 1.100000023841858
+        },
+        {
+          "name": "noisedissolvetex_strength",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "noisetodisslovetex_01_panspeed_x",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "noisetodisslovetex_01_panspeed_y",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "noisetodisslovetex_01_tile_x",
+          "value": 3.0
+        },
+        {
+          "name": "noisetodisslovetex_01_tile_y",
+          "value": 3.0
+        },
+        {
+          "name": "emissive_base",
+          "value": 5.0
+        },
+        {
+          "name": "emissive_core_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_core_strength",
+          "value": 3.0
+        },
+        {
+          "name": "maintex_alpha_strength",
+          "value": 25.0
+        },
+        {
+          "name": "maintex_move_x",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_move_y",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "maintex_panspeed_x",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_tile_x",
+          "value": 1.0
+        },
+        {
+          "name": "maintex_tile_y",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_velue",
+          "value": -1.0
+        },
+        {
+          "name": "uv_noisetex_pan_x",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noisetex_pan_y",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "uv_noisetex_tile_x",
+          "value": 3.0
+        },
+        {
+          "name": "uv_noisetex_tile_y",
+          "value": 2.0
+        },
+        {
+          "name": "uvnoise_move_x",
+          "value": 0.0
+        },
+        {
+          "name": "uvnoise_move_y",
+          "value": 0.0
+        },
+        {
+          "name": "maintex_rotator",
+          "value": 0.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "edge_color",
+          "value": {
+            "r": 15.0,
+            "g": 15.0,
+            "b": 20.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad",
+      "sourceLogicalPackage": "fx_mastermaterial",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_dist_05_ad",
+      "sourcePhysicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk",
+      "materialPath": "fx_mi.fx_c_pa_dist_05_ad",
+      "objectName": "fx_c_pa_dist_05_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mm.fx_mm_distortion_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "detail texture",
+          "texture": "fx_tex_00.fx_a_noise_002"
+        },
+        {
+          "name": "center texture",
+          "texture": "fx_tex_00.fx_b_glow_001_cl"
+        },
+        {
+          "name": "spread texture",
+          "texture": "fx_tex_00.fx_a_ring_001_cl"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "detail texture tiling",
+          "value": 2.0
+        },
+        {
+          "name": "scale",
+          "value": 1.7000000476837158
+        }
+      ],
+      "vectors": []
+    }
+  ],
+  "runtimeResourceBindings": [
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_a_hemisphere_012",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_a_hemisphere_012.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_b_sphere_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_b_sphere_001.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_c_square_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_c_square_003.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_helix_015",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_helix_015.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_hemisphere_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_hemisphere_002.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_plane_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_plane_003.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_torus_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_torus_002.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_f_cylinder_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_f_cylinder_001.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_k_tornado_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_k_tornado_01.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_01.fm_k_halfcylinder_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_k_halfcylinder_01.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_glow_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_glow_003.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_glow_05_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_glow_05_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_hit_005",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_hit_005.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_line_010",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_line_010.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_noise_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_noise_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_ring_001_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_ring_001_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_b_glow_001_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_b_glow_001_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_002_1_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_002_1_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_006_1",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_006_1.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_006_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_006_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_028",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_028.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_043",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_043.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_055_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_055_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_060_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_060_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_003.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_009.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_030",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_030.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_031",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_031.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_atypical_028",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_e_atypical_028.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_fluid_006",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_e_fluid_006.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_ring_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_e_ring_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_h_atypical_01_1.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_noise_02_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_i_noise_02_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_noise_04",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_i_noise_04.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_mirnoise_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_02",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_mirnoise_02.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_risingcolor_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_risingcolor_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_02",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_02.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_caustictile_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_caustictile_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_l_environment_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_l_environment_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_caustic_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_caustic_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_flow_02_n",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_flow_02_n.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_trail_001_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_trail_001_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_wave_001_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_wave_001_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_00.fx_c_glow_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_c_glow_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_00.fx_c_glow_008",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_c_glow_008.dds",
+      "candidateCount": 1
+    }
+  ],
+  "unsupportedUnresolved": [
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 18,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 84,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesubuv_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulerotation_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesize_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulespawn_25",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulecolor_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_03.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_h_cuttree_01.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_h_cuttree_02.particlemodulespawn_21",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_l_dustbust_01.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_13.light.par_d_unseallight_start_01.particlemodulecoloroverlife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_14.portal.par_d_portal_local_001.particlemoduleorientationaxislock_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulelocation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishhook_03.particlemodulelocation_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishhook_03.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishing_s_01.particlemodulecolorscaleoverlife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishing_s_01.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishing_s_01.particlemodulesize_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_attnormal_mg_01.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 34,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_hit_ballista_001_2_loc_int.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulespawn_4",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_prjpoison_exp_01.particlemodulelifetime_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulelocation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitdefault2_01_loc_int.particlemodulevelocity_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_hitdefault_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesize_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulespawn_17",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_dbl_defaultcri_01.particlemodulecolorscaleoverlife_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_pppp_hit_01.particlemodulevelocity_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_wbk_hit_backcri_01.particlemodulerotation_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_wbk_hit_backcri_01.particlemodulerotation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulelocation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkbo_hit_04.particlemodulemeshrotation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_counter_hit_02.particlemodulemeshrotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemodulecoloroverlife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemoduleparameterdynamic_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemoduleparameterdynamic_20",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemodulesizemultiplylife_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_bard_01.particlemodulesizemultiplylife_22",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_m_hitdefault_wand_01.particlemodulespawn_1",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_v_rlct_skhit_exp_01.particlemodulelifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulelifetime_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_y_snowflowerwand_hit_01.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_y_snowflowerwand_hit_01.particlemodulesizemultiplylife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_y_snowflowerwand_hit_01.particlemodulesizemultiplylife_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_01.trail.par_b_wglatt_002.particlemodulemeshrotation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_c_it_epic_003.particlemodulesizemultiplylife_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulespawn_16",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_bi_holyamul_01.particlemodulemeshrotation_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_carve_01.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_carve_01.particlemodulelifetime_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_wind_prj_01.particlemodulesubuv_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_02484_exp_01.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_chasebomb_prj_001.particlemodulelocation_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_rocket_mk-9_01.particlemodulevelocity_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_u_trinity_prj_01.particlemodulevelocity_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_u_trinity_prj_02.particlemodulevelocity_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_condenser_sk_01_1.particlemodulemeshrotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 26,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemodulecolorscaleoverlife_56",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemodulemeshrotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_34",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemodulerotationratemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_gadget_arrow_cast_01.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_gadget_arrow_prj_01.particlemodulelocation_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_rifle_prj_exp_02.particlemoduleorbit_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_v_naul_sk1_01.particlemodulelocation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_s_pc_blessing_001.particlemodulesizemultiplylife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_u_event_winter_hotspring_dock02_02.particlemodulelocation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_w_egblessing_04.particlemodulelifetime_26",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_w_vehicle_snowpp.particlemodulelocation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_y_prison_04loop_pp.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.item.par_l_machete_e_01.particlemodulemeshrotationrate_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.par_v_queen_heal_exp_02.particlemoduleparameterdynamic_33",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_18.buff.par_l_eadalin_pcshield_end_01.particlemodulesize_30",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_18.buff.par_y_urnujan_weather_02_2.particlemodulespawn_74",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_dpwi_00.par_n_dpwi_handhit_03.particlemoduleparameterdynamic_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_dpwi_00.par_n_dpwi_handhit_03.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_ppnn_00.par_d_skhit_01.particlemodulelocation_28",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_03_2.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_03_3.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_03_4.particlemodulesizemultiplylife_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_gibs_00.par.fx_par_gibsnormal_flesh_003.particlemodulespawn_29",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02612.par_w_dash.particlemodulelocation_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02721.par_g_windgun01_sk_01.particlemodulelocation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulemeshrotation_25",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulemeshrotation_26",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boss_07.cuco.par_l_cuco_atk_08.particlemodulevelocity_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boss_13.rpbu.par_k_rpbu_magciprj_prj_01_loc_int.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkbo_00.par_u_cdkbo_kamen_normal_trophy_01.particlemodulesizemultiplylife_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkch_00_l.par_l_cdkch_sk_01_prj_01.particlemodulelocation_37",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_00_v.par_v_cdkcn_hit_bk_00.particlemodulecolor_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_00_v.par_v_cdkcn_wp_cast_00.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_full_buff_00.efparticlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_sting_01.particlemoduleparameterdynamic_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_04_n.par_n_cdkcn_handswing_01.particlemodulecolorscaleoverlife_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_t.par_t_cnbg_00_skl_03_prj_01_exp_01.particlemodulelocation_92",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_t.par_t_cnbg_00_skl_22_prj_01.particlemodulesizemultiplylife_83",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_t.par_t_cnbg_00_skl_25_prj_01_cast_01.particlemodulesize_78",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cncs_00_k.par_k_cncs_sk15_07.particlemodulespawn_5",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnct_00_s.par_s_cnct_sk41_prj_02_b.particlemodulemeshrotation_62",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnct_00_x.par_x_cnct_wp_fire_loop_16_01.particlemodulecolor_40",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_01_w.par_w_cuas_01_atk_03_03_loc_int.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_istm_00-45.par_m_istm_tornado_blow_01.particlemoduleparameterdynamic_23",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kzcg_00_k.par_k_kzcg_sk_01_prj_2.particlemoduleparameterdynamic_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_lwdr_01.par_g_pprl_prj_02_2.particlemodulesizemultiplylife_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_mvsf_00.par_h_mvsf_02_2.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rlab_00_t.par_t_rlab_skl_30_prj_01.particlemodulesize_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rluz_00.par_n_rluz_exp_04_02_01.particlemodulecolorscaleoverlife_45",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rluz_00.par_n_rluz_impact_03_07.particlemodulesizemultiplylife_29",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_earthslash_dash_03.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_earthslash_dash_03.particlemodulevelocity_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_earthslash_dash_43.particlemodulelocationprimitivecylinder_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_maelstrom_atk_01.particlemodulecolorscaleoverlife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_exp_s_01.particlemodulelocation_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_move_00.particlemodulelocation_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_move_00.particlemoduleparameterdynamic_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_move_00.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulelocationprimitivecylinder_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulelocationprimitivecylinder_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_03.par_s_ddk_wildupper_00_01.particlemodulesize_50",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddk_04.par_m_ddk_etherdivide_dust_01.particlemodulevelocity_44",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_02.par_m_ddm_arm_pi_02_loc_int.particlemodulemeshrotationratemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_05.par_s_ddm_ruinrush_trail_01_01_loc_int.particlemodulesize_29",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_07.par_t_ddm_wildslash_00_03.particlemodulesize_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_13.par_s_ddm_bloodvortex_atk_01_loc_int.particlemoduleparameterdynamic_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_13.par_s_ddm_bloodvortex_atk_01_loc_int.particlemodulesize_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_ddm_13.par_s_ddm_bloodvortex_atk_01_success_loc_int.particlemodulemeshrotationrateoverlife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_slash_01_01.particlemodulesizemultiplylife_55",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1",
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_slash_01_01.particlemodulesizemultiplylife_56",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_04.par_u_drp_bsfinish_exp_03.particlemodulecolor_72",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dse_03.par_y_dse_fortunespin_03_1.particlemodulesizemultiplylife_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_00.par_k_fbm_myriadofblow_dust_02.particlemodulevelocityoverlifetime_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_05.par_v_fbm_finblow_00_01.particlemodulesizemultiplylife_42",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_05.par_v_fbm_myriadofblow_prj_02.particlemodulesize_33",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_05.par_k_fbmm_hypertiger_head_02.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_05.par_k_fbmm_hypertiger_sonic_01.particlemodulecolorscaleoverlife_37",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_05.par_k_fbmm_hypertiger_sonic_01.particlemodulesizemultiplylife_51",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_12.par_j_fif_ragebomb_atk_01.particlemodulesizemultiplylife_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fifm_03.par_y_fifm_ap43_01_2.particlemodulesize_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fifm_03.par_y_fifm_atk_01_2.particlemodulesizemultiplylife_36",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_01_1",
+        "FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fifm_06.ironrain.par_s_fifm_ironrain_atk_085.particlemodulevelocity_36",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_06.Par_V_FLM_Stab_Shoulder_01_1"
+      ]
+    },
+    {
+      "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+      "property": "pointlightcomponent",
+      "reason": "local_reference_is_not_a_decoded_particle_graph_node",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceEventId": "source-event-015",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-016",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    },
+    {
+      "sourceEventId": "source-event-022",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    }
+  ],
+  "conversionState": {
+    "normalizedSourceGraph": "EXTRACTED",
+    "materialInstanceParameterBindings": "PARTIAL",
+    "runtimeElementMapping": "PENDING",
+    "importedEffectDocument": "PENDING"
+  },
+  "summary": {
+    "sourceSystemCount": 7,
+    "effectEventCount": 20,
+    "resolvedParticleEventCount": 17,
+    "unsupportedNotifyCount": 3,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 5,
+    "unsupportedUnresolvedUniqueCount": 176,
+    "uniqueMaterialBindingCount": 29,
+    "resolvedMaterialBindingCount": 25,
+    "runtimeResourceBindingCount": 48,
+    "resolvedRuntimeResourceBindingCount": 48
+  }
+}

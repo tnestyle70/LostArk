@@ -1,11 +1,15 @@
 #include "Character.h"
 
 #include "AnimationSkillBindingDocument.h"
+#include "Collider.h"
+#include "Effect_Catalog.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "Navigation.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayerSkillCatalog.h"
+#include "Gameplay/WorldCollisionContract.h"
 
 #include <algorithm>
 #include <cmath>
@@ -81,6 +85,7 @@ HRESULT CCharacter::Initialize(void* pArg)
 	actions remain valid network state even when their optional clip mapping is
 	unavailable. */
 	Load_ClipChains();
+	Load_EffectCues();
 
 	// Remote Character는 local keyboard logic를 만들지 않는다.
 	if (m_isLocallyControlled &&
@@ -150,6 +155,132 @@ bool_t CCharacter::Load_ClipChains()
 bool_t CCharacter::Reload_SkillAnimationBindings()
 {
 	return Load_ClipChains();
+}
+
+bool_t CCharacter::Load_EffectCues()
+{
+	if (nullptr == m_pSpec || nullptr == m_pSpec->pAssetName ||
+		nullptr == m_pBodyModel)
+		return false;
+	std::vector<std::string> clips;
+	clips.reserve(m_pBodyModel->Get_NumAnimations());
+	for (uint32_t index = 0u; index < m_pBodyModel->Get_NumAnimations(); ++index)
+	{
+		const char_t* pName = m_pBodyModel->Get_AnimationName(index);
+		if (nullptr != pName)
+			clips.emplace_back(pName);
+	}
+	ANIMATION_EFFECT_CUE_DOCUMENT staged;
+	std::string status;
+	if (!CAnimationEffectCueDocument::Load(
+		m_pSpec->pAssetName, clips, staged, status))
+	{
+		OutputDebugStringA(("Character Effect cue load isolated: " +
+			status + "\n").c_str());
+		return false;
+	}
+	for (const ANIMATION_EFFECT_CUE& cue : staged.Cues)
+	{
+		if ("root" != cue.strAnchorSlotId &&
+			!m_pBodyModel->Has_Bone(cue.strAnchorSlotId.c_str()))
+		{
+			OutputDebugStringA(("Character Effect cue anchor rejected: " +
+				cue.strAnchorSlotId + "\n").c_str());
+			return false;
+		}
+	}
+	m_EffectCueDocument = std::move(staged);
+	return true;
+}
+
+void CCharacter::Reset_EffectCueCursor(
+	const std::uint32_t iActionStartTick)
+{
+	m_strEffectCueClip.clear();
+	m_iPreviousEffectCueTimeMs = UINT32_MAX;
+	m_iEffectActionStartTick = iActionStartTick;
+}
+
+void CCharacter::Spawn_FallbackEffect(
+	const LostArk::Shared::SKILL_ID iSkillId)
+{
+	const PLAYER_SKILL_DEFINITION* pDefinition =
+		CPlayerSkillCatalog::Find_ById(iSkillId);
+	if (nullptr == pDefinition || pDefinition->strEffectId.empty() ||
+		!CEffectCatalog::Contains(pDefinition->strEffectId) ||
+		nullptr == m_pBodyModel)
+		return;
+	const char_t* pClipName = m_pBodyModel->Get_AnimationName(
+		m_pBodyModel->Get_CurrentAnimIndex());
+	if (nullptr != pClipName && std::any_of(
+		m_EffectCueDocument.Cues.begin(), m_EffectCueDocument.Cues.end(),
+		[pClipName](const ANIMATION_EFFECT_CUE& Cue)
+		{
+			return Cue.strClipName == pClipName;
+		}))
+	{
+		return;
+	}
+	EFFECT_SPAWN_DESC Desc;
+	Desc.strEffectAssetId = pDefinition->strEffectId;
+	Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+	Desc.strAnchorSlotId = "root";
+	Desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	Desc.iActionStartTick = m_iEffectActionStartTick;
+	Desc.iCueStartMs = 0u;
+	std::string status;
+	CEffectPresentationService::Spawn(Desc, status);
+}
+
+void CCharacter::Update_EffectCues()
+{
+	if (nullptr == m_pBodyModel || 0u == m_iEffectActionStartTick)
+		return;
+	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
+	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	if (nullptr == pClipName || !m_pBodyModel->Get_AnimationProgress(
+		iAnimation, fPosition, fDuration))
+		return;
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+	if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
+		return;
+	const uint32_t iCurrentMs = static_cast<uint32_t>((std::max)(
+		0.f, fPosition / fTicksPerSecond * 1000.f));
+	if (m_strEffectCueClip != pClipName ||
+		(UINT32_MAX != m_iPreviousEffectCueTimeMs &&
+			iCurrentMs < m_iPreviousEffectCueTimeMs))
+	{
+		m_strEffectCueClip = pClipName;
+		m_iPreviousEffectCueTimeMs = UINT32_MAX;
+	}
+	for (const ANIMATION_EFFECT_CUE& Cue : m_EffectCueDocument.Cues)
+	{
+		if (Cue.strClipName != m_strEffectCueClip)
+			continue;
+		const bool_t bCrossed = UINT32_MAX == m_iPreviousEffectCueTimeMs ?
+			Cue.iStartMs <= iCurrentMs :
+			Cue.iStartMs > m_iPreviousEffectCueTimeMs &&
+				Cue.iStartMs <= iCurrentMs;
+		if (!bCrossed)
+			continue;
+		EFFECT_SPAWN_DESC Desc;
+		Desc.strEffectAssetId = Cue.strEffectAssetId;
+		Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
+		Desc.strAnchorSlotId = Cue.strAnchorSlotId;
+		Desc.LocalTransform = Cue.LocalTransform;
+		Desc.eFollowPolicy = Cue.eFollowPolicy;
+		Desc.eStopPolicy = Cue.eStopPolicy;
+		Desc.iCueDurationMs = Cue.iEndMs - Cue.iStartMs;
+		Desc.iActionStartTick = m_iEffectActionStartTick;
+		Desc.iCueStartMs = Cue.iStartMs;
+		std::string status;
+		CEffectPresentationService::Spawn(Desc, status);
+	}
+	m_iPreviousEffectCueTimeMs = iCurrentMs;
 }
 
 void CCharacter::Commit_PendingClipChains()
@@ -343,6 +474,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_pChain = nullptr;
 		m_iChainStep = 0;
 		Commit_PendingClipChains();
+		m_iCurrentEffectSkillId = skillId;
+		Reset_EffectCueCursor(actionStartTick);
 
 		bool_t presented = Play_Skill(
 			static_cast<int32_t>(skillId),
@@ -363,6 +496,7 @@ bool_t CCharacter::Apply_NetworkAction(
 				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 				true);
 		}
+		Spawn_FallbackEffect(skillId);
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::TRIGGER_MOVE == action)
@@ -389,6 +523,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iChainStep = 0;
 		Commit_PendingClipChains();
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
 	}
 	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 	{
@@ -398,6 +534,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Set_Animation(
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 			true);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
 	}
 	m_eNetworkAction = action;
 	return true;
@@ -498,6 +636,10 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
+	if (nullptr != m_pColliderCom)
+		m_pColliderCom->Update(XMLoadFloat4x4(
+			m_pTransformCom->Get_WorldMatrixPtr()));
+	Update_EffectCues();
 }
 
 void CCharacter::Late_Update(f32_t fTimeDelta)
@@ -507,6 +649,8 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
+	if (m_isNavigationDebugVisible && nullptr != m_pColliderCom)
+		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 #endif
 }
 
@@ -517,6 +661,25 @@ HRESULT CCharacter::Render()
 
 HRESULT CCharacter::Ready_Components()
 {
+	using namespace LostArk::Shared::WorldCollision;
+	CBounding_OBB::BOUNDING_OBB_DESC colliderDesc{};
+	colliderDesc.vCenter = float3_t(0.f, PLAYER_CENTER_OFFSET_Y, 0.f);
+	colliderDesc.vSize = float3_t(
+		PLAYER_HALF_EXTENT_X * 2.f,
+		PLAYER_HALF_EXTENT_Y * 2.f,
+		PLAYER_HALF_EXTENT_Z * 2.f);
+	if (FAILED(__super::Add_Component(
+		m_iPrototypeLevelIndex,
+		TEXT("Prototype_Component_Collider_Player"),
+		TEXT("Com_Collider"),
+		m_pColliderCom,
+		&colliderDesc)))
+	{
+		return E_FAIL;
+	}
+	m_pColliderCom->Update(XMLoadFloat4x4(
+		m_pTransformCom->Get_WorldMatrixPtr()));
+
 	if (m_strNavigationPrototypeTag.empty())
 		return S_OK;
 

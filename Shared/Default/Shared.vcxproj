@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h" />
     <ClInclude Include="..\Public\Network\NetworkIds.h" />
     <ClInclude Include="..\Public\Network\PacketFrame.h" />
     <ClInclude Include="..\Public\Network\PacketMessages.h" />

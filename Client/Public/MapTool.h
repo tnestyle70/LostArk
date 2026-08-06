@@ -280,13 +280,14 @@ private:
 	bool_t m_bWorldGameplayPlacementArmed = false;
 	bool_t m_bWorldTriggerTargetPickArmed = false;
 	WORLD_PLACEMENT_KIND m_eWorldPlacementKind =
-		WORLD_PLACEMENT_KIND::BOSS;
+		WORLD_PLACEMENT_KIND::PLAYER_SPAWN;
 	std::string m_SelectedWorldPlacementId;
 	std::string m_WorldGameplayStatus =
 		"Open Map Tool from F1 Developer Tools";
-	char m_WorldPlacementId[128] = "boss.valtan.center";
-	char m_WorldArchetypeId[128] = "BOSS_VALTAN";
-	char m_WorldEncounterId[128] = "ENCOUNTER_VALTAN";
+	char m_WorldPlacementId[128] = "player.spawn.editor";
+	char m_WorldArchetypeId[128] = "";
+	char m_WorldEncounterId[128] = "";
+	float3_t m_WorldPlacementPositionDelta = {};
 	float3_t m_WorldTriggerHalfExtents = float3_t(2.f, 1.f, 2.f);
 	bool_t m_bWorldTriggerOnce = true;
 

@@ -90,11 +90,6 @@ private:
 #ifdef _DEBUG
 private:
 	shared_ptr<class CShader>				m_pShader = { nullptr };
-	shared_ptr<PrimitiveBatch<VertexPositionColor>> m_pBatch = { nullptr };
-	shared_ptr<BasicEffect>					m_pEffect = { nullptr };
-	ComPtr<ID3D11InputLayout>				m_pInputLayout = { nullptr };
-	vector<f32_t>							m_DebugCellHeights;
-	vector<float3_t>						m_DebugPath;
 #endif
 
 public:

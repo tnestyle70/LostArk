@@ -230,6 +230,8 @@
     <ClInclude Include="..\Public\VIBuffer_Cell.h" />
     <ClInclude Include="..\public\VIBuffer_Instance.h" />
     <ClInclude Include="..\Public\VIBuffer_Rect.h" />
+    <ClInclude Include="..\Public\VIBuffer_ParticleRect.h" />
+    <ClInclude Include="..\Public\VIBuffer_DynamicTrail.h" />
     <ClInclude Include="..\Public\Sound\Sound_Manager.h" />
   </ItemGroup>
   <ItemGroup>
@@ -300,6 +302,8 @@
     <ClCompile Include="..\Private\VIBuffer_Cell.cpp" />
     <ClCompile Include="..\private\VIBuffer_Instance.cpp" />
     <ClCompile Include="..\Private\VIBuffer_Rect.cpp" />
+    <ClCompile Include="..\Private\VIBuffer_ParticleRect.cpp" />
+    <ClCompile Include="..\Private\VIBuffer_DynamicTrail.cpp" />
     <ClCompile Include="..\Private\NavGrid.cpp" />
     <ClCompile Include="..\Private\NavPathFollower.cpp" />
     <ClCompile Include="..\Private\PathFinder.cpp" />

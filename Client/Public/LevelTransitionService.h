@@ -23,6 +23,13 @@ struct LEVEL_TRANSITION_REQUEST final
 		INVALID_LOBBY_COMMAND_TOKEN;
 };
 
+enum class SERVER_WORLD_TRANSFER_PUMP_RESULT
+{
+	NONE,
+	REQUESTED,
+	RECOVERY_REQUESTED
+};
+
 class CLevelTransitionService final
 {
 public:
@@ -41,6 +48,8 @@ public:
 	static std::string Get_Status();
 	static void Report_LoadFailure(HRESULT result);
 	static bool_t Try_ConsumeLoadFailure(HRESULT& outResult);
+	static SERVER_WORLD_TRANSFER_PUMP_RESULT
+		Pump_ServerApprovedWorldTransfer(LEVEL currentLevel);
 
 private:
 	static bool_t Request(

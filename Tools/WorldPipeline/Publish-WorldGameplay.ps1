@@ -84,7 +84,9 @@ function Get-ActorIds {
             Where-Object runtimeStatus -eq 'supported' |
             ForEach-Object archetypeId)
         boss = @($bossCatalog.bosses | ForEach-Object archetypeId)
-        npc = @($npcCatalog.npcs | ForEach-Object archetypeId)
+        npc = @($npcCatalog.npcs |
+			Where-Object runtimeStatus -eq 'supported' |
+			ForEach-Object archetypeId)
     }
     return $idsByKind
 }
@@ -178,11 +180,11 @@ function Convert-WorldDocument {
     $document = Read-ProjectJson $relativePath
     Assert-ExactProperties $document @('schema','formatVersion','areaId','revision','placements') $relativePath
 	Assert-JsonString $document.schema "$relativePath schema"
-	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 2 2
+	Assert-JsonInteger $document.formatVersion "$relativePath formatVersion" 4 4
 	Assert-JsonString $document.areaId "$relativePath areaId"
 	Assert-JsonInteger $document.revision "$relativePath revision" 1 ([uint32]::MaxValue)
     if ($document.schema -ne 'lostark.world-gameplay' -or
-        $document.formatVersion -ne 2 -or
+		$document.formatVersion -ne 4 -or
         $document.areaId -ne $AreaId -or
         $document.revision -lt 1) {
         throw "World gameplay header is invalid: $relativePath"
@@ -200,7 +202,7 @@ function Convert-WorldDocument {
         if (-not $ids.Add([string]$placement.placementId)) {
             throw "Duplicate world placement ID: $($placement.placementId)"
         }
-		if ($placement.kind -notin @('playerSpawn','npc','boss','triggerBox')) {
+		if ($placement.kind -notin @('playerSpawn','npc','boss','triggerBox','collisionBox')) {
 			throw "Unknown world placement kind: $($placement.kind)"
 		}
         if (@($placement.position).Count -ne 3) {
@@ -222,6 +224,25 @@ function Convert-WorldDocument {
 			(Format-InvariantFloat $placement.position[2]),
 			(Format-InvariantFloat $placement.yawDegrees),
 			$enabled)
+		if ($placement.kind -eq 'collisionBox') {
+			Assert-ExactProperties $placement @(
+				'placementId','kind','position','yawDegrees','enabled',
+				'halfExtents') "$relativePath collisionBox"
+			if (@($placement.halfExtents).Count -ne 3) {
+				throw "Collision Box halfExtents must contain exactly three numbers: $($placement.placementId)"
+			}
+			$collisionFields = @()
+			for ($extentIndex = 0; $extentIndex -lt 3; $extentIndex++) {
+				Assert-JsonNumber $placement.halfExtents[$extentIndex] "$relativePath halfExtents[$extentIndex]"
+				$extent = [double]$placement.halfExtents[$extentIndex]
+				if ($extent -le 0.0 -or $extent -gt 1000.0) {
+					throw "Collision Box half extent is out of range: $($placement.placementId)"
+				}
+				$collisionFields += Format-InvariantFloat $extent
+			}
+			$rows.Add((($commonFields + $collisionFields) -join "`t"))
+			continue
+		}
 		if ($placement.kind -eq 'triggerBox') {
 			Assert-ExactProperties $placement @(
 				'placementId','kind','position','yawDegrees','enabled',
@@ -241,7 +262,7 @@ function Convert-WorldDocument {
 			}
 			$events = @($placement.events)
 			if ($events.Count -gt 1 -or ($placement.enabled -and $events.Count -ne 1)) {
-				throw "movePlayer trigger requires exactly one event when enabled: $($placement.placementId)"
+				throw "Trigger Box requires exactly one event when enabled: $($placement.placementId)"
 			}
 			$triggerFields = @(
 				(Format-InvariantFloat $placement.halfExtents[0]),
@@ -250,29 +271,46 @@ function Convert-WorldDocument {
 				$(if ($placement.triggerOnce) { '1' } else { '0' }),
 				[string]$events.Count)
 			foreach ($event in $events) {
-				Assert-ExactProperties $event @(
-					'type','targetPosition','durationSeconds','arcHeight') "$relativePath movePlayer event"
-				if ($event.type -ne 'movePlayer' -or @($event.targetPosition).Count -ne 3) {
-					throw "Only movePlayer trigger events are admitted: $($placement.placementId)"
+				if ($event.type -eq 'movePlayer') {
+					Assert-ExactProperties $event @(
+						'type','targetPosition','durationSeconds','arcHeight') "$relativePath movePlayer event"
+					if (@($event.targetPosition).Count -ne 3) {
+						throw "movePlayer target requires three coordinates: $($placement.placementId)"
+					}
+					for ($targetIndex = 0; $targetIndex -lt 3; $targetIndex++) {
+						Assert-JsonNumber $event.targetPosition[$targetIndex] "$relativePath targetPosition[$targetIndex]"
+					}
+					Assert-JsonNumber $event.durationSeconds "$relativePath durationSeconds"
+					Assert-JsonNumber $event.arcHeight "$relativePath arcHeight"
+					$duration = [double]$event.durationSeconds
+					$arcHeight = [double]$event.arcHeight
+					if ($duration -lt 0.05 -or $duration -gt 10.0 -or
+						$arcHeight -lt 0.0 -or $arcHeight -gt 1000.0) {
+						throw "movePlayer timing or arc is out of range: $($placement.placementId)"
+					}
+					$triggerFields += @(
+						'movePlayer', '5',
+						(Format-InvariantFloat $event.targetPosition[0]),
+						(Format-InvariantFloat $event.targetPosition[1]),
+						(Format-InvariantFloat $event.targetPosition[2]),
+						(Format-InvariantFloat $duration),
+						(Format-InvariantFloat $arcHeight))
 				}
-				for ($targetIndex = 0; $targetIndex -lt 3; $targetIndex++) {
-					Assert-JsonNumber $event.targetPosition[$targetIndex] "$relativePath targetPosition[$targetIndex]"
+				elseif ($event.type -eq 'changeLevel') {
+					Assert-ExactProperties $event @('type','targetWorldId') "$relativePath changeLevel event"
+					Assert-JsonString $event.targetWorldId "$relativePath changeLevel targetWorldId"
+					if ($event.targetWorldId -notin @('BERN','VALTAN_ARENA') -or
+						[string]$event.targetWorldId -eq $WorldId) {
+						throw "changeLevel target is unknown or equals the source world: $($placement.placementId)"
+					}
+					if ($WorldId -notin @('BERN','VALTAN_ARENA')) {
+						throw "changeLevel is only supported between Bern and Valtan Arena."
+					}
+					$triggerFields += @('changeLevel', '1', [string]$event.targetWorldId)
 				}
-				Assert-JsonNumber $event.durationSeconds "$relativePath durationSeconds"
-				Assert-JsonNumber $event.arcHeight "$relativePath arcHeight"
-				$duration = [double]$event.durationSeconds
-				$arcHeight = [double]$event.arcHeight
-				if ($duration -lt 0.05 -or $duration -gt 10.0 -or
-					$arcHeight -lt 0.0 -or $arcHeight -gt 1000.0) {
-					throw "movePlayer timing or arc is out of range: $($placement.placementId)"
+				else {
+					throw "Unsupported product trigger event: $($event.type)"
 				}
-				$triggerFields += @(
-					'movePlayer',
-					(Format-InvariantFloat $event.targetPosition[0]),
-					(Format-InvariantFloat $event.targetPosition[1]),
-					(Format-InvariantFloat $event.targetPosition[2]),
-					(Format-InvariantFloat $duration),
-					(Format-InvariantFloat $arcHeight))
 			}
 			$rows.Add((($commonFields + $triggerFields) -join "`t"))
 			continue
@@ -287,6 +325,10 @@ function Convert-WorldDocument {
 			if ($null -ne $placement.archetypeId -and
 				-not [string]::IsNullOrEmpty([string]$placement.archetypeId)) {
 				throw "Player spawn must not own a character archetype: $($placement.placementId)"
+			}
+			if ($null -ne $placement.encounterId -and
+				-not [string]::IsNullOrEmpty([string]$placement.encounterId)) {
+				throw "Player spawn must not own an encounter: $($placement.placementId)"
 			}
 		}
 		else {
@@ -331,7 +373,7 @@ function Convert-WorldDocument {
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t5`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }

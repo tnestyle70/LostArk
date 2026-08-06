@@ -1,8 +1,8 @@
 {
   "schema": "lostark.world-gameplay",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 3,
+  "revision": 5,
   "placements": [
     {
       "placementId": "player.spawn.bern.entry",
@@ -39,6 +39,38 @@
       "position": [144.8, 42.7, -71.3],
       "yawDegrees": 180.0,
       "enabled": true
+    },
+    {
+      "placementId": "npc.bern.beda.guide",
+      "kind": "npc",
+      "archetypeId": "NPC_BEDA",
+      "encounterId": null,
+      "position": [149.0, 42.7, -66.0],
+      "yawDegrees": 225.0,
+      "enabled": true
+    },
+    {
+      "placementId": "collision.bern.editor-proof",
+      "kind": "collisionBox",
+      "position": [140.8, 43.7, -65.3],
+      "yawDegrees": 0.0,
+      "enabled": true,
+      "halfExtents": [0.5, 1.0, 3.0]
+    },
+    {
+      "placementId": "trigger.bern.to-valtan",
+      "kind": "triggerBox",
+      "position": [144.8, 42.7, -60.3],
+      "yawDegrees": 0.0,
+      "enabled": true,
+      "halfExtents": [2.0, 2.0, 2.0],
+      "triggerOnce": true,
+      "events": [
+        {
+          "type": "changeLevel",
+          "targetWorldId": "VALTAN_ARENA"
+        }
+      ]
     }
   ]
 }

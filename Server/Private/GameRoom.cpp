@@ -95,6 +95,23 @@ LostArk::Server::CGameRoom::CGameRoom(
 	{
 		return;
 	}
+	if (!m_ServerCollisionSystem.Initialize(
+		m_WorldBootstrap.Get_Placements(), m_strStatus))
+	{
+		return;
+	}
+	for (const WORLD_BOOTSTRAP_PLACEMENT& placement :
+		m_WorldBootstrap.Get_Placements())
+	{
+		if (placement.isEnabled &&
+			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+			!m_ServerCollisionSystem.Is_PlayerSpawnClear(placement))
+		{
+			m_strStatus = "Player spawn overlaps a collision box: " +
+				placement.strPlacementId;
+			return;
+		}
+	}
 	if (!Initialize_WorldEntities())
 		return;
 	if (nullptr == Find_AvailablePlayerSpawn())
@@ -120,6 +137,16 @@ bool LostArk::Server::CGameRoom::Enqueue(ROOM_COMMAND command)
 
 	std::scoped_lock lock{ m_CommandMutex };
 	m_InboundCommands.push_back(std::move(command));
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Try_DequeueWorldTransfer(
+	SERVER_WORLD_TRANSFER_REQUEST& outTransfer)
+{
+	if (m_PendingWorldTransfers.empty())
+		return false;
+	outTransfer = std::move(m_PendingWorldTransfers.front());
+	m_PendingWorldTransfers.pop_front();
 	return true;
 }
 
@@ -169,7 +196,17 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
-	m_ServerTriggerSystem.Evaluate_Entries(m_Players, updateTick);
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
+	m_ServerTriggerSystem.Evaluate_Entries(m_Players, updateTick, transfers);
+	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
+	{
+		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
+			continue;
+		Leave(
+			transfer.iSessionId,
+			LostArk::Shared::PLAYER_DESPAWN_REASON::LEVEL_CHANGED);
+		m_PendingWorldTransfers.push_back(std::move(transfer));
+	}
 	Update_WorldEntities(fixedDeltaSeconds);
 	++m_iServerTick;
 	if (0u == m_iServerTick)
@@ -784,6 +821,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 	if (LostArk::Shared::INVALID_NET_ENTITY_ID == netEntityId ||
 		WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind ||
+		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == placement.eKind ||
 		WORLD_BOOTSTRAP_KIND::END == placement.eKind)
 	{
 		m_strStatus = "World entity placement is invalid";
@@ -853,7 +891,8 @@ bool LostArk::Server::CGameRoom::Initialize_WorldEntities()
 	{
 		if (!placement.isEnabled ||
 			placement.eKind == WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN ||
-			placement.eKind == WORLD_BOOTSTRAP_KIND::TRIGGER_BOX)
+			placement.eKind == WORLD_BOOTSTRAP_KIND::TRIGGER_BOX ||
+			placement.eKind == WORLD_BOOTSTRAP_KIND::COLLISION_BOX)
 		{
 			continue;
 		}
@@ -910,11 +949,54 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		const float deltaX = targetX - player.fPositionX;
 		const float deltaZ = targetZ - player.fPositionZ;
 		const float distance = std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
-		if (distance <= MOVE_STOP_DISTANCE)
+		const bool reachedPathPoint = distance <= MOVE_STOP_DISTANCE;
+		float proposedX = targetX;
+		float proposedY = targetY;
+		float proposedZ = targetZ;
+		if (!reachedPathPoint)
 		{
-			player.fPositionX = targetX;
-			player.fPositionY = targetY;
-			player.fPositionZ = targetZ;
+			player.fYawDegrees =
+				std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
+			const float moveDistance = (std::min)(
+				player.fMoveSpeed * fixedDeltaSeconds, distance);
+			const float moveRatio = moveDistance / distance;
+			proposedX = player.fPositionX + deltaX * moveRatio;
+			proposedY = player.fPositionY +
+				(targetY - player.fPositionY) * moveRatio;
+			proposedZ = player.fPositionZ + deltaZ * moveRatio;
+		}
+
+		float resolvedX = player.fPositionX;
+		float resolvedY = player.fPositionY;
+		float resolvedZ = player.fPositionZ;
+		bool wasBlocked = false;
+		if (!m_ServerCollisionSystem.Resolve_PlayerMove(
+			player,
+			proposedX,
+			proposedY,
+			proposedZ,
+			resolvedX,
+			resolvedY,
+			resolvedZ,
+			wasBlocked))
+		{
+			player.hasMoveGoal = false;
+			player.MovePath.clear();
+			player.iMovePathIndex = 0;
+			continue;
+		}
+		player.fPositionX = resolvedX;
+		player.fPositionY = resolvedY;
+		player.fPositionZ = resolvedZ;
+		if (wasBlocked)
+		{
+			player.hasMoveGoal = false;
+			player.MovePath.clear();
+			player.iMovePathIndex = 0;
+			continue;
+		}
+		if (reachedPathPoint)
+		{
 			if (player.iMovePathIndex < player.MovePath.size())
 				++player.iMovePathIndex;
 			if (player.iMovePathIndex >= player.MovePath.size())
@@ -925,11 +1007,6 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 			continue;
 		}
-		player.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
-		const float moveDistance = (std::min)(
-			player.fMoveSpeed * fixedDeltaSeconds, distance);
-		player.fPositionX += deltaX / distance * moveDistance;
-		player.fPositionZ += deltaZ / distance * moveDistance;
 	}
 }
 

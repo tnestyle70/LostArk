@@ -91,6 +91,21 @@ namespace
 			outKind = WORLD_BOOTSTRAP_KIND::BOSS;
 		else if ("triggerBox" == value)
 			outKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
+		else if ("collisionBox" == value)
+			outKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseTriggerTargetWorld(
+		const std::string_view value,
+		WORLD_ID& outWorldId)
+	{
+		if ("BERN" == value)
+			outWorldId = WORLD_ID::BERN;
+		else if ("VALTAN_ARENA" == value)
+			outWorldId = WORLD_ID::VALTAN_ARENA;
 		else
 			return false;
 		return true;
@@ -144,7 +159,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t count = 0;
 	if (6u != header.size() ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 3u != version ||
+		!ParseNumber(header[1], version) || 5u != version ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -190,7 +205,25 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		placement.strPlacementId = fields[0];
 		placement.isEnabled = 1 == enabled;
-		if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind)
+		if (WORLD_BOOTSTRAP_KIND::COLLISION_BOX == placement.eKind)
+		{
+			if (12u != fields.size() || "-" != fields[2] || "-" != fields[3] ||
+				!ParseNumber(fields[9], placement.fHalfExtentX) ||
+				!ParseNumber(fields[10], placement.fHalfExtentY) ||
+				!ParseNumber(fields[11], placement.fHalfExtentZ) ||
+				!std::isfinite(placement.fHalfExtentX) ||
+				!std::isfinite(placement.fHalfExtentY) ||
+				!std::isfinite(placement.fHalfExtentZ) ||
+				placement.fHalfExtentX <= 0.f || placement.fHalfExtentX > 1000.f ||
+				placement.fHalfExtentY <= 0.f || placement.fHalfExtentY > 1000.f ||
+				placement.fHalfExtentZ <= 0.f || placement.fHalfExtentZ > 1000.f)
+			{
+				m_strStatus = "World collision shape is invalid at row " +
+					std::to_string(index);
+				return false;
+			}
+		}
+		else if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind)
 		{
 			int triggerOnce = 0;
 			std::uint32_t actionCount = 0;
@@ -201,7 +234,6 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				!ParseNumber(fields[12], triggerOnce) ||
 				(0 != triggerOnce && 1 != triggerOnce) ||
 				!ParseNumber(fields[13], actionCount) || actionCount > 1u ||
-				fields.size() != 14u + static_cast<std::size_t>(actionCount) * 6u ||
 				(placement.isEnabled && 1u != actionCount) ||
 				!std::isfinite(placement.fHalfExtentX) ||
 				!std::isfinite(placement.fHalfExtentY) ||
@@ -215,32 +247,71 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				return false;
 			}
 			placement.isTriggerOnce = 1 == triggerOnce;
+			std::size_t actionCursor = 14u;
 			for (std::uint32_t actionIndex = 0; actionIndex < actionCount; ++actionIndex)
 			{
-				const std::size_t base = 14u + static_cast<std::size_t>(actionIndex) * 6u;
-				WORLD_TRIGGER_ACTION action{};
-				if ("movePlayer" != fields[base] ||
-					!ParseNumber(fields[base + 1u], action.fTargetX) ||
-					!ParseNumber(fields[base + 2u], action.fTargetY) ||
-					!ParseNumber(fields[base + 3u], action.fTargetZ) ||
-					!ParseNumber(fields[base + 4u], action.fDurationSeconds) ||
-					!ParseNumber(fields[base + 5u], action.fArcHeight) ||
-					!std::isfinite(action.fTargetX) || !std::isfinite(action.fTargetY) ||
-					!std::isfinite(action.fTargetZ) ||
-					!std::isfinite(action.fDurationSeconds) ||
-					!std::isfinite(action.fArcHeight) ||
-					std::abs(action.fTargetX) > 100000.f ||
-					std::abs(action.fTargetY) > 100000.f ||
-					std::abs(action.fTargetZ) > 100000.f ||
-					action.fDurationSeconds < 0.05f || action.fDurationSeconds > 10.f ||
-					action.fArcHeight < 0.f || action.fArcHeight > 1000.f)
+				std::uint32_t payloadCount = 0;
+				if (actionCursor + 2u > fields.size() ||
+					!ParseNumber(fields[actionCursor + 1u], payloadCount) ||
+					actionCursor + 2u + payloadCount > fields.size())
 				{
-					m_strStatus = "World trigger action is invalid at row " +
+					m_strStatus = "World trigger action payload is invalid at row " +
 						std::to_string(index);
 					return false;
 				}
-				action.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+				WORLD_TRIGGER_ACTION action{};
+				if ("movePlayer" == fields[actionCursor])
+				{
+					if (5u != payloadCount ||
+						!ParseNumber(fields[actionCursor + 2u], action.fTargetX) ||
+						!ParseNumber(fields[actionCursor + 3u], action.fTargetY) ||
+						!ParseNumber(fields[actionCursor + 4u], action.fTargetZ) ||
+						!ParseNumber(fields[actionCursor + 5u], action.fDurationSeconds) ||
+						!ParseNumber(fields[actionCursor + 6u], action.fArcHeight) ||
+						!std::isfinite(action.fTargetX) || !std::isfinite(action.fTargetY) ||
+						!std::isfinite(action.fTargetZ) ||
+						!std::isfinite(action.fDurationSeconds) ||
+						!std::isfinite(action.fArcHeight) ||
+						std::abs(action.fTargetX) > 100000.f ||
+						std::abs(action.fTargetY) > 100000.f ||
+						std::abs(action.fTargetZ) > 100000.f ||
+						action.fDurationSeconds < 0.05f ||
+						action.fDurationSeconds > 10.f ||
+						action.fArcHeight < 0.f || action.fArcHeight > 1000.f)
+					{
+						m_strStatus = "World movePlayer action is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					action.eKind = WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER;
+				}
+				else if ("changeLevel" == fields[actionCursor])
+				{
+					if (1u != payloadCount ||
+						!ParseTriggerTargetWorld(
+							fields[actionCursor + 2u], action.eTargetWorldId) ||
+						action.eTargetWorldId == worldId)
+					{
+						m_strStatus = "World changeLevel action is invalid at row " +
+							std::to_string(index);
+						return false;
+					}
+					action.eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
+				}
+				else
+				{
+					m_strStatus = "Unknown world trigger action at row " +
+						std::to_string(index);
+					return false;
+				}
 				placement.TriggerActions.push_back(action);
+				actionCursor += 2u + payloadCount;
+			}
+			if (actionCursor != fields.size())
+			{
+				m_strStatus = "World trigger row has trailing action fields at row " +
+					std::to_string(index);
+				return false;
 			}
 		}
 		else
@@ -273,9 +344,12 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind;
 		const bool isTrigger =
 			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind;
+		const bool isCollision =
+			WORLD_BOOTSTRAP_KIND::COLLISION_BOX == placement.eKind;
 		if ((isPlayerSpawn && !placement.strArchetypeId.empty()) ||
-			(!isPlayerSpawn && !isTrigger && placement.strArchetypeId.empty()) ||
-			(isTrigger && (!placement.strArchetypeId.empty() ||
+			(!isPlayerSpawn && !isTrigger && !isCollision &&
+				placement.strArchetypeId.empty()) ||
+			((isTrigger || isCollision) && (!placement.strArchetypeId.empty() ||
 				!placement.strEncounterId.empty())))
 		{
 			m_strStatus = "World bootstrap archetype contract is invalid at row " +

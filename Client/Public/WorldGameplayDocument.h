@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "Network/PacketType.h"
 
 #include <filesystem>
 #include <string>
@@ -15,6 +16,7 @@ enum class WORLD_PLACEMENT_KIND
 	NPC,
 	BOSS,
 	TRIGGER_BOX,
+	COLLISION_BOX,
 	DESTROYABLE,
 	END
 };
@@ -22,6 +24,7 @@ enum class WORLD_PLACEMENT_KIND
 enum class WORLD_TRIGGER_EVENT_KIND
 {
 	MOVE_PLAYER,
+	CHANGE_LEVEL,
 	SET_CONDITION,
 	SET_DESTROYABLE_STATE,
 	END
@@ -41,6 +44,8 @@ struct WORLD_TRIGGER_EVENT
 	float3_t targetPosition = {};
 	f32_t durationSeconds = 0.8f;
 	f32_t arcHeight = 0.f;
+	LostArk::Shared::WORLD_ID eTargetWorldId =
+		LostArk::Shared::WORLD_ID::END;
 	std::string targetId;
 	bool_t conditionValue = false;
 	WORLD_DESTROYABLE_STATE eDestroyableState = WORLD_DESTROYABLE_STATE::FRACTURED;
@@ -101,6 +106,11 @@ public:
 	static const char_t* TriggerEventKind_ToString(WORLD_TRIGGER_EVENT_KIND kind);
 	static bool_t Try_ParseTriggerEventKind(const std::string& value,
 		WORLD_TRIGGER_EVENT_KIND& outKind);
+	static const char_t* WorldId_ToString(
+		LostArk::Shared::WORLD_ID worldId);
+	static bool_t Try_ParseWorldId(
+		const std::string& value,
+		LostArk::Shared::WORLD_ID& outWorldId);
 	static const char_t* DestroyableState_ToString(WORLD_DESTROYABLE_STATE state);
 	static bool_t Try_ParseDestroyableState(const std::string& value,
 		WORLD_DESTROYABLE_STATE& outState);

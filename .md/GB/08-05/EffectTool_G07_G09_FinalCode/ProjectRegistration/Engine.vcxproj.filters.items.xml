@@ -1,0 +1,10 @@
+<!-- Paste these entries into Engine/Default/Engine.vcxproj.filters. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\Public\VIBuffer_ParticleRect.h"><Filter>02.Utility\04.Component\VIBuffer\Rect</Filter></ClInclude>
+    <ClInclude Include="..\Public\VIBuffer_DynamicTrail.h"><Filter>02.Utility\04.Component\VIBuffer\Rect</Filter></ClInclude>
+    <ClCompile Include="..\Private\VIBuffer_ParticleRect.cpp"><Filter>02.Utility\04.Component\VIBuffer\Rect</Filter></ClCompile>
+    <ClCompile Include="..\Private\VIBuffer_DynamicTrail.cpp"><Filter>02.Utility\04.Component\VIBuffer\Rect</Filter></ClCompile>
+  </ItemGroup>
+</Project>
+

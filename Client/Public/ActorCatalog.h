@@ -46,6 +46,15 @@ struct BOSS_ACTOR_ENTRY final
 	PRESENTATION_CLIPS presentationClips;
 };
 
+struct NPC_ACTOR_ENTRY final
+{
+	std::string archetypeId;
+	std::string clientPresentationId;
+	std::string modelAssetId;
+	std::string idleClip;
+	std::string runtimeStatus;
+};
+
 class CActorCatalog final
 {
 public:
@@ -53,6 +62,7 @@ public:
 	static const CHARACTER_ACTOR_ENTRY* Find_Character(
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
+	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
 	static const std::string& Get_Status();
 };
 

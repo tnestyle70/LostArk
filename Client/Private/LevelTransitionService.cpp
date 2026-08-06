@@ -1,6 +1,7 @@
 #include "LevelTransitionService.h"
 
 #include "LevelRegistry.h"
+#include "NetworkManager.h"
 
 #include <mutex>
 #include <optional>
@@ -81,6 +82,45 @@ bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 	outResult = *g_LoadFailure;
 	g_LoadFailure.reset();
 	return true;
+}
+
+Client::SERVER_WORLD_TRANSFER_PUMP_RESULT
+Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
+	const LEVEL currentLevel)
+{
+	using namespace LostArk::Shared;
+	CNetworkManager& networkManager = CNetworkManager::Get();
+	S2C_ENTER_ACCEPTED accepted{};
+	if (!networkManager.Try_Consume_EnterAccepted(accepted))
+		return SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE;
+
+	LEVEL targetLevel = LEVEL::END;
+	if (NETWORK_PROTOCOL_VERSION == accepted.iProtocolVersion &&
+		INVALID_PLAYER_ID != accepted.iPlayerId &&
+		INVALID_NET_ENTITY_ID != accepted.iNetEntityId)
+	{
+		switch (accepted.eWorldId)
+		{
+		case WORLD_ID::BERN:
+			targetLevel = LEVEL::BERN;
+			break;
+		case WORLD_ID::VALTAN_ARENA:
+			targetLevel = LEVEL::VALTAN_ARENA;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (LEVEL::END != targetLevel && targetLevel != currentLevel &&
+		Request_Load(targetLevel, "server.trigger.change-level"))
+	{
+		return SERVER_WORLD_TRANSFER_PUMP_RESULT::REQUESTED;
+	}
+
+	networkManager.Close_ServerConnection();
+	Request_Load(LEVEL::LOBBY, "server.trigger.change-level-recovery");
+	return SERVER_WORLD_TRANSFER_PUMP_RESULT::RECOVERY_REQUESTED;
 }
 
 bool_t Client::CLevelTransitionService::Request(

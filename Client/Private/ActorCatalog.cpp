@@ -12,6 +12,7 @@ namespace
 
 	std::vector<CHARACTER_ACTOR_ENTRY> g_Characters;
 	std::vector<BOSS_ACTOR_ENTRY> g_Bosses;
+	std::vector<NPC_ACTOR_ENTRY> g_Npcs;
 	std::string g_Status = "Actor catalog is not initialized.";
 	bool_t g_isInitialized = false;
 
@@ -205,6 +206,47 @@ namespace
 		g_Bosses = std::move(staged);
 		return !g_Bosses.empty();
 	}
+
+	bool_t ParseNpcs(const DATA_JSON_VALUE& root)
+	{
+		const DATA_JSON_VALUE* pSchema = root.Find("schema");
+		const DATA_JSON_VALUE* pVersion = root.Find("formatVersion");
+		const DATA_JSON_VALUE* pEntries = root.Find("npcs");
+		if (nullptr == pSchema || !pSchema->Is_String() ||
+			pSchema->Get_String() != "lostark.npc-catalog" ||
+			nullptr == pVersion || !pVersion->Is_Number() ||
+			pVersion->Get_Number() != 1.0 ||
+			nullptr == pEntries || !pEntries->Is_Array())
+		{
+			return false;
+		}
+
+		std::set<std::string> archetypes;
+		std::set<std::string> presentations;
+		std::vector<NPC_ACTOR_ENTRY> staged;
+		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
+		{
+			if (!value.Is_Object() || 5u != value.Get_Object().size())
+				return false;
+			NPC_ACTOR_ENTRY entry;
+			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
+				!ReadRequiredString(value, "clientPresentationId",
+					entry.clientPresentationId) ||
+				!ReadRequiredString(value, "modelAssetId", entry.modelAssetId) ||
+				!ReadRequiredString(value, "idleClip", entry.idleClip) ||
+				!ReadRequiredString(value, "runtimeStatus", entry.runtimeStatus) ||
+				!IsResourceId(entry.modelAssetId) ||
+				entry.runtimeStatus != "supported" ||
+				!archetypes.insert(entry.archetypeId).second ||
+				!presentations.insert(entry.clientPresentationId).second)
+			{
+				return false;
+			}
+			staged.push_back(std::move(entry));
+		}
+		g_Npcs = std::move(staged);
+		return !g_Npcs.empty();
+	}
 }
 
 bool_t Client::CActorCatalog::Initialize()
@@ -213,18 +255,33 @@ bool_t Client::CActorCatalog::Initialize()
 		return true;
 	DATA_JSON_VALUE characters;
 	DATA_JSON_VALUE bosses;
+	DATA_JSON_VALUE npcs;
 	if (!ReadDocument(L"Actors/CharacterCatalog.json", characters) ||
 		!ReadDocument(L"Actors/BossCatalog.json", bosses) ||
-		!ParseCharacters(characters) || !ParseBosses(bosses))
+		!ReadDocument(L"Actors/NpcCatalog.json", npcs) ||
+		!ParseCharacters(characters) || !ParseBosses(bosses) ||
+		!ParseNpcs(npcs))
 	{
 		g_Characters.clear();
 		g_Bosses.clear();
+		g_Npcs.clear();
 		g_Status = "Actor catalog contract mismatch.";
 		return false;
 	}
 	g_isInitialized = true;
 	g_Status = "Actor catalogs ready.";
 	return true;
+}
+
+const Client::NPC_ACTOR_ENTRY* Client::CActorCatalog::Find_Npc(
+	const std::string_view archetypeId)
+{
+	if (!Initialize())
+		return nullptr;
+	for (const NPC_ACTOR_ENTRY& entry : g_Npcs)
+		if (entry.archetypeId == archetypeId)
+			return &entry;
+	return nullptr;
 }
 
 const Client::CHARACTER_ACTOR_ENTRY* Client::CActorCatalog::Find_Character(

@@ -1,8 +1,8 @@
 {
   "schema": "lostark.world-gameplay",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "areaId": "LV_LOBBY_CLASSSELECT_SL00",
-  "revision": 2,
+  "revision": 3,
   "placements": [
     {
       "placementId": "player.spawn.character-select.party01",

@@ -110,9 +110,13 @@ HRESULT CTrigger_Box::Render()
 
 	const vector_t color = m_isSelected ?
 		XMVectorSet(1.f, 0.85f, 0.1f, 1.f) :
+		(m_Desc.isCollisionBox ?
+			(m_Desc.isEnabled ?
+				XMVectorSet(0.15f, 0.55f, 1.f, 1.f) :
+				XMVectorSet(0.25f, 0.35f, 0.55f, 1.f)) :
 		(m_Desc.isEnabled ?
 			XMVectorSet(0.1f, 1.f, 0.35f, 1.f) :
-			XMVectorSet(1.f, 0.45f, 0.1f, 1.f));
+			XMVectorSet(1.f, 0.45f, 0.1f, 1.f)));
 	m_pBatch->Begin();
 	Draw_WireOrientedBox(m_pBatch.get(), m_Bounds, color);
 	m_pBatch->End();

@@ -35,6 +35,7 @@
 	<ClInclude Include="..\Public\ValtanBrain.h" />
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h" />
 	<ClInclude Include="..\Public\ServerTriggerSystem.h" />
+	<ClInclude Include="..\Public\ServerCollisionSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
@@ -50,6 +51,7 @@
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp" />
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp" />
+	<ClCompile Include="..\Private\ServerCollisionSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">

@@ -12,6 +12,7 @@ struct ANIMATION_PREVIEW_ASSET final
 	const char* pAssetName = nullptr;
 	const char* pModelAssetId = nullptr;
 	const wchar_t* pPrototypeTag = nullptr;
+	bool bPlayableClassBody = false;
 };
 
 // Debug authoring targets reuse the same CModel path as the playable
@@ -21,11 +22,48 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 {
 	ANIMATION_PREVIEW_ASSET
 	{
+		"lancemaster.character",
+		"LanceMaster Character",
+		"LanceMaster",
+		"Character/LanceMaster/LanceMaster.wmodel",
+		L"Prototype_Component_Model_LanceMaster",
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"gunslinger.character",
+		"Gunslinger Character",
+		"GunSlinger",
+		"Character/GunSlinger/GunSlinger.wmodel",
+		L"Prototype_Component_Model_GunSlinger",
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"slayer.character",
+		"Slayer Character",
+		"Slayer",
+		"Character/Slayer/Slayer.wmodel",
+		L"Prototype_Component_Model_Slayer",
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"artist.character",
+		"Artist Character",
+		"Artist",
+		"Character/Artist/Artist.wmodel",
+		L"Prototype_Component_Model_Artist",
+		true
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
 		"dimensionmaster.character",
 		"DimensionMaster Character (154 clips)",
 		"DimensionMaster",
 		"Character/DimensionMaster/DimensionMaster_Character.wmodel",
-		L"Prototype_Component_Model_DimensionMaster"
+		L"Prototype_Component_Model_DimensionMaster",
+		true
 	},
 	ANIMATION_PREVIEW_ASSET
 	{

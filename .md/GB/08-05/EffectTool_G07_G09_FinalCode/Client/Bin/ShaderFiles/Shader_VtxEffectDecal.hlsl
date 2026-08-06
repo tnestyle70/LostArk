@@ -1,0 +1,87 @@
+#include "Shader_EffectCommon.hlsli"
+
+float4x4 g_ViewMatrixInverse;
+float4x4 g_ProjMatrixInverse;
+float4x4 g_DecalWorldInverse;
+Texture2D g_DepthTexture;
+float2 g_DecalSize = float2(1.f, 1.f);
+float g_DecalDepth = 1.f;
+
+struct VS_IN
+{
+    float3 position : POSITION;
+    float2 uv : TEXCOORD0;
+};
+
+struct VS_OUT
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD0;
+};
+
+VS_OUT VS_MAIN(VS_IN input)
+{
+    VS_OUT output;
+    output.position = float4(input.position.x * 2.f, input.position.y * 2.f, 0.f, 1.f);
+    output.uv = input.uv;
+    return output;
+}
+
+EFFECT_PS_OUT PS_MAIN(VS_OUT input)
+{
+    const float4 depth = g_DepthTexture.Sample(LinearSampler, input.uv);
+    const float viewZ = depth.y * 1000.f;
+    float4 worldPosition;
+    worldPosition.x = input.uv.x * 2.f - 1.f;
+    worldPosition.y = input.uv.y * -2.f + 1.f;
+    worldPosition.z = depth.x;
+    worldPosition.w = 1.f;
+    worldPosition *= viewZ;
+    worldPosition = mul(worldPosition, g_ProjMatrixInverse);
+    worldPosition = mul(worldPosition, g_ViewMatrixInverse);
+
+    const float3 local = mul(worldPosition, g_DecalWorldInverse).xyz;
+    const float2 halfSize = g_DecalSize * 0.5f;
+    clip(halfSize.x - abs(local.x));
+    clip(halfSize.y - abs(local.z));
+    clip(g_DecalDepth * 0.5f - abs(local.y));
+
+    const float2 decalUV = float2(
+        local.x / g_DecalSize.x + 0.5f,
+        0.5f - local.z / g_DecalSize.y);
+    return Shade_Effect(
+        decalUV * g_UVScale + g_UVOffset,
+        float3(1.f, 1.f, 1.f),
+        float4(1.f, 1.f, 1.f, 1.f));
+}
+
+technique11 DefaultTechnique
+{
+    pass OpaqueBackDepthWrite
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_EffectOpaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    pass AlphaTwoSidedDepthRead
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    pass AdditiveTwoSidedDepthRead
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
+    }
+}

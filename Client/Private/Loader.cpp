@@ -6,6 +6,7 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterSelectionState.h"
+#include "Collider.h"
 #include "DeployPropCatalog.h"
 #include "DeployPropObject.h"
 #include "GameInstance.h"
@@ -18,6 +19,7 @@
 #include "MapStaticBatchObject.h"
 #include "Navigation.h"
 #include "NetworkManager.h"
+#include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "Part_Equipment.h"
 #include "PlayableCharacterAssetService.h"
@@ -281,6 +283,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 
 HRESULT CLoader::Ready_For_Bern()
 {
+	CNpcPresentationAssetService::Begin_LevelLoad(ETOUI(LEVEL::BERN));
 	CLevelResourceRollbackScope rollback(ETOUI(LEVEL::BERN));
 	Set_Status(TEXT("BERN: world catalog and placements"));
 
@@ -799,9 +802,13 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 			TEXT("Prototype_GameObject_Part_Body"),
 			CPart_Body::Create(m_pDevice, m_pContext))) ||
 		FAILED(CGameInstance::Get().Add_Prototype(
-			iLevelIndex,
-			TEXT("Prototype_GameObject_Character"),
-			CCharacter::Create(m_pDevice, m_pContext))))
+		iLevelIndex,
+		TEXT("Prototype_GameObject_Character"),
+		CCharacter::Create(m_pDevice, m_pContext))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Collider_Player"),
+		CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))))
 	{
 		return E_FAIL;
 	}
@@ -819,20 +826,40 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		return E_INVALIDARG;
 	}
 	using LostArk::Shared::CHARACTER_CLASS_ID;
-	if (!CPlayableCharacterAssetService::Is_Ready(
-			iLevelIndex, CHARACTER_CLASS_ID::DIMENSIONMASTER))
+	constexpr std::array previewClasses =
 	{
-		Set_Status(TEXT("Animation preview: DimensionMaster character"));
+		CHARACTER_CLASS_ID::LANCE_MASTER,
+		CHARACTER_CLASS_ID::GUNSLINGER,
+		CHARACTER_CLASS_ID::SLAYER,
+		CHARACTER_CLASS_ID::ARTIST,
+		CHARACTER_CLASS_ID::DIMENSIONMASTER
+	};
+	for (const CHARACTER_CLASS_ID characterClass : previewClasses)
+	{
+		if (CPlayableCharacterAssetService::Is_Ready(
+			iLevelIndex, characterClass))
+		{
+			continue;
+		}
+		Set_Status(TEXT("Animation preview: playable character"));
 		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
 			m_pDevice,
 			m_pContext,
 			iLevelIndex,
-			CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			characterClass,
 			&m_isCancellationRequested)))
 		{
 			return E_FAIL;
 		}
 	}
+	constexpr std::array playablePrototypeTags =
+	{
+		TEXT("Prototype_Component_Model_LanceMaster"),
+		TEXT("Prototype_Component_Model_GunSlinger"),
+		TEXT("Prototype_Component_Model_Slayer"),
+		TEXT("Prototype_Component_Model_Artist"),
+		TEXT("Prototype_Component_Model_DimensionMaster")
+	};
 
 	// Core and summon use the same ActorX Blender unit contract as the playable
 	// DimensionMaster body, not the older UModel character-pack scale.
@@ -842,11 +869,18 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 	for (const ANIMATION_PREVIEW_ASSET& asset :
 		ANIMATION_PREVIEW_ASSETS)
 	{
-		// The main body is the playable DimensionMaster prototype admitted above.
-		// Loading it again under a debug-only tag doubled a 154-clip decode.
-		if (0 == wcscmp(
-			asset.pPrototypeTag,
-			TEXT("Prototype_Component_Model_DimensionMaster")))
+		bool_t bPlayablePrototype = false;
+		for (const wchar_t* pPlayableTag : playablePrototypeTags)
+		{
+			if (0 == wcscmp(asset.pPrototypeTag, pPlayableTag))
+			{
+				bPlayablePrototype = true;
+				break;
+			}
+		}
+		// Playable models keep their class-specific transform and registration
+		// contract. This direct path is only for optional Core/Summon previews.
+		if (bPlayablePrototype)
 		{
 			continue;
 		}

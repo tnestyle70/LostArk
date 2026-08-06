@@ -7,6 +7,9 @@
     <Filter Include="Public\Network">
       <UniqueIdentifier>{FA7865EE-9C52-4D8B-9165-A21FB39F70E1}</UniqueIdentifier>
     </Filter>
+	<Filter Include="Public\Gameplay">
+	  <UniqueIdentifier>{2EFBFD79-7C18-4DFC-AD54-D73A710BD66C}</UniqueIdentifier>
+	</Filter>
     <Filter Include="Private">
       <UniqueIdentifier>{A16AD881-5291-4B14-934F-F578E797EF72}</UniqueIdentifier>
     </Filter>
@@ -15,6 +18,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h">
+	  <Filter>Public\Gameplay</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\Network\PacketWriter.h">
       <Filter>Public\Network</Filter>
     </ClInclude>
