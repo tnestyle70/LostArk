@@ -19,6 +19,11 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t actionStartTick) const;
 
+		void Release(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_RELEASE_SKILL& command,
+			const CGameplayCatalog& catalog);
+
 		/* outDamageEvents collects every hit this call resolves so the room can
 		ship the amounts in the same tick's snapshot. The room owns the vector's
 		lifetime; a combo emits once per stage that lands. */

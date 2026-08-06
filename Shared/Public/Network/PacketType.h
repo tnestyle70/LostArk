@@ -33,6 +33,7 @@ namespace LostArk::Shared
 		ARTIST = 3,
 		DESTROYER = 4,
 		DIMENSIONMASTER = 5,
+		WARLORD = 6,
 		END
 	};
 
@@ -40,6 +41,7 @@ namespace LostArk::Shared
 	{
 		ACTIVE = 0,
 		COMBO = 1,
+		HOLD = 2,
 		END
 	};
 
@@ -53,7 +55,8 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::GUNSLINGER == characterClass ||
 			CHARACTER_CLASS_ID::SLAYER == characterClass ||
 			CHARACTER_CLASS_ID::ARTIST == characterClass ||
-			CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass;
+			CHARACTER_CLASS_ID::DIMENSIONMASTER == characterClass ||
+			CHARACTER_CLASS_ID::WARLORD == characterClass;
 	}
 
 	enum class PACKET_TYPE : std::uint16_t
@@ -69,6 +72,7 @@ namespace LostArk::Shared
 
 		C2S_MOVE,
 		C2S_USE_SKILL,
+		C2S_RELEASE_SKILL,
 		S2C_WORLD_SNAPSHOT,
 
 		C2S_CHAT,
@@ -103,6 +107,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
 		case PACKET_TYPE::C2S_MOVE:
 		case PACKET_TYPE::C2S_USE_SKILL:
+		case PACKET_TYPE::C2S_RELEASE_SKILL:
 		case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
 		case PACKET_TYPE::C2S_CHAT:
 		case PACKET_TYPE::S2C_CHAT:

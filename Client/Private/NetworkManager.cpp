@@ -9,9 +9,9 @@
 #include <array>
 #include <utility>
 
-//Socket worker thread¿Í client main thread¸¦ ºÐ¸®ÇÏ±â À§ÇØ¼­ Á¸ÀçÇÑ´Ù.
-//workter thread -> byte ¼ö½Å°ú frame Á¶¸³¸¸ ¼öÇà
-//main thread -> frame ÇØ¼®°ú replication event »ý¼º
+//Socket worker threadï¿½ï¿½ client main threadï¿½ï¿½ ï¿½Ð¸ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
+//workter thread -> byte ï¿½ï¿½ï¿½Å°ï¿½ frame ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+//main thread -> frame ï¿½Ø¼ï¿½ï¿½ï¿½ replication event ï¿½ï¿½ï¿½ï¿½
 
 CNetworkManager& CNetworkManager::Get()
 {
@@ -76,22 +76,22 @@ void CNetworkManager::Shutdown()
 	::WSACleanup();
 	m_isWinSocketInitialized = false;
 }
-//¸Å ÇÁ·¹ÀÓ¸¶´Ù main thread¿¡¼­ È£Ãâ
+//ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½ main threadï¿½ï¿½ï¿½ï¿½ È£ï¿½ï¿½
 void CNetworkManager::Update()
 {
-	//Inbound mutex Àá±Ý -> Worker°¡ ³ÖÀº raw frame queue¸¦ Áö¿ª queue¿Í swap
-	//mutex ÇØÁ¦ -> frameÀ» µµÂø ¼ø¼­´ë·Î handle_frame¿¡ Àü´Þ
+	//Inbound mutex ï¿½ï¿½ï¿½ -> Workerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ raw frame queueï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ queueï¿½ï¿½ swap
+	//mutex ï¿½ï¿½ï¿½ï¿½ -> frameï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ handle_frameï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 	std::deque<LostArk::Shared::PACKET_FRAME> receivedFrames;
-	// Worker°¡ ¿Ï¼ºÇÑ FrameÀ» Main Thread·Î ¿Å°Ü Packet ¸Þ½ÃÁö¿Í
-	// Replication Event·Î ¹ø¿ªÇÑ´Ù. Engine °´Ã¼´Â ¿©±â¼­ Á÷Á¢ »ý¼ºÇÏÁö ¾Ê´Â´Ù.
+	// Workerï¿½ï¿½ ï¿½Ï¼ï¿½ï¿½ï¿½ Frameï¿½ï¿½ Main Threadï¿½ï¿½ ï¿½Å°ï¿½ Packet ï¿½Þ½ï¿½ï¿½ï¿½ï¿½ï¿½
+	// Replication Eventï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½. Engine ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½â¼­ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê´Â´ï¿½.
 	{
 		std::scoped_lock lock
 		{
 			m_InboundMutex
 		};
-		//swapÀ» ÅëÇØ¼­ frameÀ» ÇØ¼®ÇÏ´Â µ¿¾È network workter°¡ °è¼Ó
-		//»õ frameÀ» ³ÖÀ» ¼ö ÀÖ´Ù.
+		//swapï¿½ï¿½ ï¿½ï¿½ï¿½Ø¼ï¿½ frameï¿½ï¿½ ï¿½Ø¼ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ network workterï¿½ï¿½ ï¿½ï¿½ï¿½
+		//ï¿½ï¿½ frameï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½.
 		receivedFrames.swap(m_InboundFrames);
 	}
 	
@@ -119,8 +119,8 @@ bool CNetworkManager::Connect_To_Server(
 		return false;
 	}
 
-	// »ó´ë°¡ ¸ÕÀú ¿¬°áÀ» ´ÝÀ¸¸é Receive Thread´Â ³¡³µ¾îµµ joinable »óÅÂÀÏ ¼ö ÀÖ´Ù.
-	// »õ Socket°ú Thread¸¦ ¸¸µé±â Àü¿¡ ÀÌÀü ¿¬°á ÀÚ¿øÀ» ¿ÏÀüÈ÷ È¸¼öÇÑ´Ù.
+	// ï¿½ï¿½ë°¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Receive Threadï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½îµµ joinable ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½.
+	// ï¿½ï¿½ Socketï¿½ï¿½ Threadï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ú¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È¸ï¿½ï¿½ï¿½Ñ´ï¿½.
 	if (INVALID_SOCKET != m_hServerSocket ||
 		m_ReceiveThread.joinable())
 	{
@@ -283,10 +283,10 @@ bool CNetworkManager::Send_EnterWorld(
 
 bool CNetworkManager::Send_MoveGoal(std::uint32_t clientSequence, float goalX, float goalZ)
 {
-	//¿¬°á »óÅÂ °Ë»ç -> C2S_MOVE °ª ±¸Á¶Ã¼ »ý¼º -> sequence¿Í goal XZ ÀúÀå
-	//packetwriter·Î payload Á÷·ÄÈ­ -> C2S_MOVE frame »ý¼º -> send_all
-	//client sequence°¡ animationÀÇ Á¤º¸¸¦ ´ã°í ÀÖ´Â °Ç°¡? ¾Ö´Ï¸ÞÀÌ¼Ç 1 2 3 4 ÇüÅÂÀÇ Á¤¼ö¸¦ ´ã°í ÀÖ´Ù?
-	//ÀÌ ¾Ö´Ï¸ÞÀÌ¼Ç¿¡ ´ëÇÑ ºÎºÐÀº ¾î¶»°Ô Ã³¸®ÇØ¾ß ÇÒ±î?
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ë»ï¿½ -> C2S_MOVE ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½ -> sequenceï¿½ï¿½ goal XZ ï¿½ï¿½ï¿½ï¿½
+	//packetwriterï¿½ï¿½ payload ï¿½ï¿½ï¿½ï¿½È­ -> C2S_MOVE frame ï¿½ï¿½ï¿½ï¿½ -> send_all
+	//client sequenceï¿½ï¿½ animationï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½Ç°ï¿½? ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½ 1 2 3 4 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½?
+	//ï¿½ï¿½ ï¿½Ö´Ï¸ï¿½ï¿½Ì¼Ç¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Îºï¿½ï¿½ï¿½ ï¿½î¶»ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½Ø¾ï¿½ ï¿½Ò±ï¿½?
 	using namespace LostArk::Shared;
 
 	if (!Is_Connected())
@@ -337,6 +337,26 @@ bool CNetworkManager::Send_UseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ReleaseSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_RELEASE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_RELEASE_SKILL,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_SpawnWorldEntity(
 	const std::string_view placementId)
 {
@@ -359,7 +379,7 @@ bool CNetworkManager::Send_SpawnWorldEntity(
 
 bool CNetworkManager::Try_Consume_EnterAccepted(LostArk::Shared::S2C_ENTER_ACCEPTED& message)
 {
-	// ½ÂÀÎ ÇÏ³ª¸¦ ÇÑ ¹ø¸¸ ¼ÒºñÇÏ¿© Lobby°¡ °°Àº ½ÂÀÎÀ¸·Î LevelÀ» Áßº¹ ÀüÈ¯ÇÏÁö ¾Ê°Ô ÇÑ´Ù.
+	// ï¿½ï¿½ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Òºï¿½ï¿½Ï¿ï¿½ Lobbyï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Levelï¿½ï¿½ ï¿½ßºï¿½ ï¿½ï¿½È¯ï¿½ï¿½ï¿½ï¿½ ï¿½Ê°ï¿½ ï¿½Ñ´ï¿½.
 	if (!m_hasPendingEnterAccepted)
 		return false;
 
@@ -454,18 +474,18 @@ CNetworkManager::Get_LocalCharacterClass() const
 
 void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 {
-	//recv()·Î server°¡ º¸³½ ¹ÙÀÌÆ®¸¦ ¹Þ´Â´Ù
-	//¹ÞÀº ¹ÙÀÌÆ®¸¦ PacketStreamParser¿¡ Ãß°¡ÇÑ´Ù.
-	//parser¿¡¼­ ¿Ï¼ºµÈ ÇÁ·¹ÀÓÀ» °¡´ÉÇÑ¸¸Å­ ²¨³½´Ù.
-	//¿Ï¼ºµÈ ÇÁ·¹ÀÓÀ» inbound queue¿¡ ³Ö´Â´Ù.
+	//recv()ï¿½ï¿½ serverï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Þ´Â´ï¿½
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ PacketStreamParserï¿½ï¿½ ï¿½ß°ï¿½ï¿½Ñ´ï¿½.
+	//parserï¿½ï¿½ï¿½ï¿½ ï¿½Ï¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¸ï¿½Å­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
+	//ï¿½Ï¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ inbound queueï¿½ï¿½ ï¿½Ö´Â´ï¿½.
 	using namespace LostArk::Shared;
 
 	std::array<std::uint8_t, 4096> receiveBuffer{};
 
-	// Main ThreadÀÇ Connect/Close°¡ °ªÀ» ¹Ù²Ù°í Receive Worker°¡ ¹Ýº¹ Á¶°ÇÀ¸·Î ÀÐ´Â´Ù.
+	// Main Threadï¿½ï¿½ Connect/Closeï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²Ù°ï¿½ Receive Workerï¿½ï¿½ ï¿½Ýºï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð´Â´ï¿½.
 	while (m_isReceiveRunning.load())
 	{
-		//serversocket¿¡ ÀÖ´Â data recv·Î ÀÐ±â
+		//serversocketï¿½ï¿½ ï¿½Ö´ï¿½ data recvï¿½ï¿½ ï¿½Ð±ï¿½
 		const int receiveByteCount = ::recv(
 			serverSocket,
 			reinterpret_cast<char*>(
@@ -473,58 +493,58 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 			static_cast<int>(
 				receiveBuffer.size()),
 			0);
-		//ByteCount¸¦ ÅëÇØ¼­ ¿À·ù ¹× ¿¬°á ¿©ºÎ ÆÇ´Ü
+		//ByteCountï¿½ï¿½ ï¿½ï¿½ï¿½Ø¼ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ç´ï¿½
 
-		//»ó´ë°¡ Á¤»óÀûÀ¸·Î ¿¬°áÀ» Á¾·áÇÞ´Ù.
+		//ï¿½ï¿½ë°¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Þ´ï¿½.
 		if (0 == receiveByteCount)
 			break;
 
-		//socket I/O ¿À·ù ¶Ç´Â shutdownÀ¸·Î recv°¡ ÇØÁ¦µÆ´Ù.
+		//socket I/O ï¿½ï¿½ï¿½ï¿½ ï¿½Ç´ï¿½ shutdownï¿½ï¿½ï¿½ï¿½ recvï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Æ´ï¿½.
 		if (SOCKET_ERROR == receiveByteCount)
 		{
 			const int errorCode = ::WSAGetLastError();
 
-			//»ç¿ëÀÚ°¡ Á¾·áÇÑ °æ¿ìÀÇ ¿À·ù´Â ½ÇÁ¦ Åë½Å ¿À·ù·Î ±â·Ï X
+			//ï¿½ï¿½ï¿½ï¿½Ú°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ X
 			if (m_isReceiveRunning.load())
 				m_iLastErrorCode.store(errorCode);
 
 			break;
 		}
 
-		// recv °á°ú´Â Header¿Í Payload °æ°è¸¦ º¸ÀåÇÏÁö ¾Ê´Â TCP ¹ÙÀÌÆ® Á¶°¢ÀÌ´Ù.
-		// Parser°¡ ¿©·¯ recv Á¶°¢À» ´©ÀûÇÏ¿© ¿Ï¼ºµÈ FrameÀ¸·Î º¹¿øÇÑ´Ù.
+		// recv ï¿½ï¿½ï¿½ï¿½ï¿½ Headerï¿½ï¿½ Payload ï¿½ï¿½è¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê´ï¿½ TCP ï¿½ï¿½ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
+		// Parserï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ recv ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¿ï¿½ ï¿½Ï¼ï¿½ï¿½ï¿½ Frameï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
 		const std::span<const std::uint8_t> receiveBytes
 		{
 			receiveBuffer.data(), static_cast<std::size_t>(receiveByteCount)
 		};
-		//TCP¿¡¼­ ¹ÞÀº ¹ÙÀÌÆ®¸¦ ParserÀÇ ´©Àû ¹öÆÛ¿¡ ºÙÀÎ´Ù.
+		//TCPï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ Parserï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½Î´ï¿½.
 		if (!m_StreamParser.Append(receiveBytes))
 		{
 			m_iLastErrorCode.store(WSAEMSGSIZE);
 			break;
 		}
-		//ÀÌ¹ø recv¿¡ ¿Ï¼ºµÈ ÇÁ·¹ÀÓÀÌ ¿©·¯ °³ µé¾î¿ÔÀ» ¼ö ÀÖ´Ù. ;; ¹«ÇÑ ·çÇÁ µ¹¸é¼­ ÆÄ¾Ç
+		//ï¿½Ì¹ï¿½ recvï¿½ï¿½ ï¿½Ï¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½. ;; ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½é¼­ ï¿½Ä¾ï¿½
 		for (;;)
 		{
-			// PACKET_FRAMEÀº Header¿¡¼­ º¹¿øÇÑ PacketType°ú Payload¸¦ °¡Áø ÀÇ¹Ì ´ÜÀ§´Ù.
+			// PACKET_FRAMEï¿½ï¿½ Headerï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ PacketTypeï¿½ï¿½ Payloadï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ç¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
 			PACKET_FRAME frame{};
 
 			const PACKET_PARSE_RESULT parseResult = m_StreamParser.Try_Pop(frame);
 
 			if (PACKET_PARSE_RESULT::NEED_MORE_DATA == parseResult)
 			{
-				//¾ÆÁ÷ ÇÁ·¹ÀÓ ÇÏ³ª°¡ ¿Ï¼ºµÇÁö ¾Ê¾Ò±â ¶§¹®¿¡, ´ÙÀ½ °á°ú¸¦ ±â´Ù¸°´Ù.
+				//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½Ï¼ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¾Ò±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ù¸ï¿½ï¿½ï¿½.
 				break;
 			}
 			if (PACKET_PARSE_RESULT::INVALID_FRAME == parseResult)
 			{
-				//Àß¸øµÈ Å©±â ¶Ç´Â ÆÐÅ¶ Å¸ÀÔÀÌ ¹ß°ß‰Ñ´Ù.
+				//ï¿½ß¸ï¿½ï¿½ï¿½ Å©ï¿½ï¿½ ï¿½Ç´ï¿½ ï¿½ï¿½Å¶ Å¸ï¿½ï¿½ï¿½ï¿½ ï¿½ß°ß‰Ñ´ï¿½.
 				m_iLastErrorCode.store(WSAEPROTONOSUPPORT);
 				
 				m_isReceiveRunning.store(false);
 				return;
 			}
-			//FRAME_READYÀÎ °æ¿ì¿¡¸¸ main thread Àü´Þ Å¥¿¡ ³Ö´Â´Ù.
+			//FRAME_READYï¿½ï¿½ ï¿½ï¿½ì¿¡ï¿½ï¿½ main thread ï¿½ï¿½ï¿½ï¿½ Å¥ï¿½ï¿½ ï¿½Ö´Â´ï¿½.
 			{
 				std::scoped_lock lock{
 				   m_InboundMutex
@@ -542,7 +562,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 {
 	using namespace LostArk::Shared;
 
-	//frameÀÇ payload Á¤º¸¸¦ ÀÐ´Â´Ù. packet - Á¤º¸¸¦ ´ã´Â header¿Í payload - class,strName ÀÌ·¸°Ô 2°³·Î ³ª´¶´Ù
+	//frameï¿½ï¿½ payload ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ð´Â´ï¿½. packet - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ headerï¿½ï¿½ payload - class,strName ï¿½Ì·ï¿½ï¿½ï¿½ 2ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	CPacketReader reader{ frame.Payload };
 
 	switch (frame.ePacketType)
@@ -577,7 +597,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
 		}
-		//Client Replication Event »ý¼º
+		//Client Replication Event ï¿½ï¿½ï¿½ï¿½
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
 		event.PlayerSpawned = std::move(spawned);
@@ -631,7 +651,7 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 	//snapshot
 	case PACKET_TYPE::S2C_WORLD_SNAPSHOT:
 	{
-		//worldÀÇ snapshot¿¡ ´ëÇÑ ±¸Á¶Ã¼ »ý¼º
+		//worldï¿½ï¿½ snapshotï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½
 		S2C_WORLD_SNAPSHOT snapshot{};
 
 		if (!Read_Message(reader, snapshot) ||

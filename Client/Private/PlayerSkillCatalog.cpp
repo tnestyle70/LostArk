@@ -56,6 +56,7 @@ namespace
 		if (value == "SLAYER") return CHARACTER_CLASS_ID::SLAYER;
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		if (value == "WARLORD") return CHARACTER_CLASS_ID::WARLORD;
 		return CHARACTER_CLASS_ID::END;
 	}
 
@@ -69,6 +70,10 @@ namespace
 			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		else if (value == "LANCE_MASTER_SHORT_SPEAR")
 			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else if (value == "WARLORD_NORMAL")
+			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
+		else if (value == "WARLORD_DEFENSE")
+			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
 		else
 			return false;
 		return true;
@@ -210,6 +215,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
 		else if ("COMBO" == kindText)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
+		else if ("HOLD" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::HOLD;
 		else
 		{
 			outStatus = "PlayerSkills.json has an unknown skillKind";
@@ -232,7 +239,10 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 				(0u == definition.iCooldownMs || 0u != definition.iComboStageCount)) ||
 			(LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind &&
 				(definition.iComboStageCount < 2u ||
-					definition.iComboStageCount > 8u)))
+					definition.iComboStageCount > 8u)) ||
+			(LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind &&
+				(0u == definition.iCooldownMs ||
+					3u != definition.iComboStageCount)))
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;

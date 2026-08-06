@@ -940,12 +940,13 @@ try {
 	$playableRoster = @($characterCatalog.characters | ForEach-Object networkClassId) -join ','
 	$rosterStatus = @($characterCatalog.characters | ForEach-Object runtimeStatus) -join ','
 	Add-Check 'actors.playable-roster' (
-		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONMASTER' -and
-		$rosterStatus -eq 'supported,supported,supported,supported,supported' -and
+		$playableRoster -eq 'LANCE_MASTER,GUNSLINGER,SLAYER,ARTIST,DIMENSIONMASTER,WARLORD' -and
+		$rosterStatus -eq 'supported,supported,supported,supported,supported,supported' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::LANCE_MASTER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::GUNSLINGER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::SLAYER' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::ARTIST' -and
+		$lobbySource -match 'CHARACTER_CLASS_ID::WARLORD' -and
 		$lobbySource -match 'CHARACTER_CLASS_ID::DIMENSIONMASTER' -and
 		$lobbySource -notmatch 'CHARACTER_CLASS_ID::DESTROYER' -and
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
@@ -1012,8 +1013,9 @@ try {
 		'LANCE_MASTER' = @('Q','W','E','R','A','S','D','F','Z','SPACE','T','V','ALT_V','LMB')
 		'GUNSLINGER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','LMB')
 		'SLAYER' = @('Q','W','E','R','A','S','D','F','V','ALT_V','LMB')
-		'ARTIST' = @('Q','W','E','R','A','S','V','ALT_V','LMB')
-		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','LMB')
+		'ARTIST' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
+		'DIMENSIONMASTER' = @('Q','W','E','R','A','S','D','F','T','V','ALT_V','SPACE','LMB')
+		'WARLORD' = @('Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB')
 	}
 	foreach ($className in $classQuickSlotContracts.Keys) {
 		foreach ($slotName in $classQuickSlotContracts[$className]) {
@@ -1030,7 +1032,7 @@ try {
 		Where-Object characterClass -eq 'DIMENSIONMASTER')
 	Add-Check 'gameplay.playable-qw-contract' (
 		$missingQuickSlots.Count -eq 0 -and
-		$dimensionmasterSkillRows.Count -eq 11) "missing=$($missingQuickSlots -join ',') dimensionmasterRows=$($dimensionmasterSkillRows.Count)"
+		$dimensionmasterSkillRows.Count -eq 13) "missing=$($missingQuickSlots -join ',') dimensionmasterRows=$($dimensionmasterSkillRows.Count)"
 
 	$skillBindingOwners = [ordered]@{
 		'LANCE_MASTER' = 'LanceMaster'
@@ -1038,6 +1040,7 @@ try {
 		'SLAYER' = 'Slayer'
 		'ARTIST' = 'Artist'
 		'DIMENSIONMASTER' = 'DimensionMaster'
+		'WARLORD' = 'Warlord'
 	}
 	$quickSkillAnimationErrors = [Collections.Generic.List[string]]::new()
 	$totalAuthoredBindings = 0
@@ -1056,7 +1059,7 @@ try {
 			continue
 		}
 		if ($bindingDocument.schema -ne 'lostark.animation-skill-bindings' -or
-			[int]$bindingDocument.formatVersion -ne 1 -or
+			[int]$bindingDocument.formatVersion -ne 2 -or
 			$bindingDocument.animationAssetId -ne $assetName -or
 			$bindingDocument.characterClass -ne $className) {
 			$quickSkillAnimationErrors.Add("${className}:owner/schema mismatch")
@@ -1075,14 +1078,28 @@ try {
 			}
 			$skillRows = @($classSkills | Where-Object skillId -eq $binding.skillId)
 			$clips = @($binding.clips)
+			$clipNames = @($clips | ForEach-Object {
+				if ($_ -is [string]) { $_ } else { [string]$_.clip } })
+			$invalidClipRows = @($clips | Where-Object {
+				$_ -isnot [string] -and (
+					$null -eq $_.clip -or
+					($null -eq $_.playMs -and $null -eq $_.playRate) -or
+					($null -ne $_.playMs -and
+						([int]$_.playMs -lt 1 -or [int]$_.playMs -gt 60000)) -or
+					($null -ne $_.playRate -and
+						([double]$_.playRate -lt 0.05 -or [double]$_.playRate -gt 16))) })
 			if ($skillRows.Count -ne 1 -or $clips.Count -lt 1 -or $clips.Count -gt 16 -or
-				@($clips | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
+				$invalidClipRows.Count -ne 0 -or
+				@($clipNames | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) invalid row")
 				continue
 			}
 			if ($skillRows[0].skillKind -eq 'COMBO' -and
 				$clips.Count -ne @($skillRows[0].comboStages).Count) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo clip count")
+			}
+			if ($skillRows[0].skillKind -eq 'HOLD' -and $clips.Count -ne 3) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) hold needs start/loop/end")
 			}
 		}
 		foreach ($skill in $classSkills) {

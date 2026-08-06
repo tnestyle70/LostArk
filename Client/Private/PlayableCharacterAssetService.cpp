@@ -17,7 +17,9 @@ namespace
 	struct CHARACTER_PROTOTYPE_TAGS final
 	{
 		const tchar_t* pBody = nullptr;
-		std::array<const tchar_t*, 5> Equipment{};
+		/* Six, not five: Warlord's body does not draw hair, so its hair rides
+		along as an equipment part next to the five armour pieces. */
+		std::array<const tchar_t*, 6> Equipment{};
 		size_t iEquipmentCount = 0;
 		std::array<const tchar_t*, 4> Weapons{};
 		size_t iWeaponCount = 0;
@@ -101,6 +103,23 @@ namespace
 			4u
 		};
 
+		static const CHARACTER_PROTOTYPE_TAGS WARLORD
+		{
+			TEXT("Prototype_Component_Model_Warlord"),
+			{
+				TEXT("Prototype_Component_Model_Warlord_Upper"),
+				TEXT("Prototype_Component_Model_Warlord_Lower"),
+				TEXT("Prototype_Component_Model_Warlord_Arm"),
+				TEXT("Prototype_Component_Model_Warlord_Shoulder"),
+				TEXT("Prototype_Component_Model_Warlord_Helmet"),
+				TEXT("Prototype_Component_Model_Warlord_Hair")
+			},
+			6u,
+			{ TEXT("Prototype_Component_Model_Warlord_Weapon"),
+			  TEXT("Prototype_Component_Model_Warlord_Shield") },
+			2u
+		};
+
 		switch (characterClass)
 		{
 		case LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER:
@@ -113,6 +132,8 @@ namespace
 			return &ARTIST;
 		case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return &DIMENSIONMASTER;
+		case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD:
+			return &WARLORD;
 		default:
 			return nullptr;
 		}

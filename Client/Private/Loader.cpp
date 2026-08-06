@@ -116,6 +116,8 @@ namespace
 			return TEXT("Artist");
 		case CHARACTER_CLASS_ID::DIMENSIONMASTER:
 			return TEXT("DimensionMaster");
+		case CHARACTER_CLASS_ID::WARLORD:
+			return TEXT("Warlord");
 		default:
 			return TEXT("Unknown");
 		}
@@ -829,13 +831,44 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 	{
 		return E_INVALIDARG;
 	}
+
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	constexpr std::array previewClasses =
+	{
+		CHARACTER_CLASS_ID::LANCE_MASTER,
+		CHARACTER_CLASS_ID::GUNSLINGER,
+		CHARACTER_CLASS_ID::SLAYER,
+		CHARACTER_CLASS_ID::ARTIST,
+		CHARACTER_CLASS_ID::DIMENSIONMASTER,
+		CHARACTER_CLASS_ID::WARLORD
+	};
+	for (const CHARACTER_CLASS_ID characterClass : previewClasses)
+	{
+		if (CPlayableCharacterAssetService::Is_Ready(
+			iLevelIndex, characterClass))
+		{
+			continue;
+		}
+		Set_Status(TEXT("Animation preview: playable character"));
+		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			iLevelIndex,
+			characterClass,
+			&m_isCancellationRequested)))
+		{
+			return E_FAIL;
+		}
+	}
+
 	constexpr std::array playablePrototypeTags =
 	{
 		TEXT("Prototype_Component_Model_LanceMaster"),
 		TEXT("Prototype_Component_Model_GunSlinger"),
 		TEXT("Prototype_Component_Model_Slayer"),
 		TEXT("Prototype_Component_Model_Artist"),
-		TEXT("Prototype_Component_Model_DimensionMaster")
+		TEXT("Prototype_Component_Model_DimensionMaster"),
+		TEXT("Prototype_Component_Model_Warlord")
 	};
 
 	for (const ANIMATION_PREVIEW_ASSET& asset :

@@ -86,6 +86,8 @@ namespace
 			output = PLAYER_SKILL_KIND::ACTIVE;
 		else if ("COMBO" == value)
 			output = PLAYER_SKILL_KIND::COMBO;
+		else if ("HOLD" == value)
+			output = PLAYER_SKILL_KIND::HOLD;
 		else
 			return false;
 		return true;
@@ -106,6 +108,8 @@ namespace
 			output = CHARACTER_CLASS_ID::ARTIST;
 		else if ("DIMENSIONMASTER" == value)
 			output = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		else if ("WARLORD" == value)
+			output = CHARACTER_CLASS_ID::WARLORD;
 		else
 			return false;
 		return true;
@@ -122,6 +126,10 @@ namespace
 			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
 		else if ("LANCE_MASTER_SHORT_SPEAR" == value)
 			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else if ("WARLORD_NORMAL" == value)
+			output = PLAYER_STANCE_ID::WARLORD_NORMAL;
+		else if ("WARLORD_DEFENSE" == value)
+			output = PLAYER_STANCE_ID::WARLORD_DEFENSE;
 		else
 			return false;
 		return true;
@@ -254,14 +262,74 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			// unknown skill or skips an index is a corrupt bootstrap, not a
 			// tolerable gap.
 			if (owner == m_Skills.end() ||
-				LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
-					owner->second.eSkillKind ||
+				(LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
+					owner->second.eSkillKind &&
+					LostArk::Shared::PLAYER_SKILL_KIND::HOLD !=
+						owner->second.eSkillKind) ||
 				stageIndex != owner->second.ComboStages.size())
 			{
 				m_strStatus = "Combo stage does not follow its skill";
 				return false;
 			}
 			owner->second.ComboStages.push_back(stage);
+		}
+		else if (!fields.empty() && "SKILLROOTMOTION" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t sampleCount = 0;
+			if (4u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], sampleCount) ||
+				sampleCount < 2u || sampleCount > 512u)
+			{
+				m_strStatus = "Root motion row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() || !owner->second.RootMotion.empty())
+			{
+				m_strStatus = "Root motion does not follow its skill";
+				return false;
+			}
+			std::vector<PLAYER_ROOT_MOTION_SAMPLE> samples;
+			samples.reserve(sampleCount);
+			std::string packed{ fields[3] };
+			std::size_t cursor = 0;
+			while (cursor <= packed.size())
+			{
+				const std::size_t comma = packed.find(',', cursor);
+				const std::string_view token{
+					packed.data() + cursor,
+					(std::string::npos == comma ? packed.size() : comma) - cursor };
+				const std::size_t first = token.find(':');
+				const std::size_t second = std::string_view::npos == first ?
+					std::string_view::npos : token.find(':', first + 1);
+				PLAYER_ROOT_MOTION_SAMPLE sample{};
+				if (std::string_view::npos == second ||
+					!ParseNumber(token.substr(0, first), sample.iTimeMs) ||
+					!ParseNumber(token.substr(first + 1, second - first - 1),
+						sample.fForward) ||
+					!ParseNumber(token.substr(second + 1), sample.fLateral) ||
+					!std::isfinite(sample.fForward) ||
+					!std::isfinite(sample.fLateral) ||
+					sample.iTimeMs > owner->second.iActionDurationMs ||
+					(!samples.empty() && sample.iTimeMs <= samples.back().iTimeMs))
+				{
+					m_strStatus = "Root motion sample is invalid";
+					return false;
+				}
+				samples.push_back(sample);
+				if (std::string::npos == comma)
+					break;
+				cursor = comma + 1;
+			}
+			if (samples.size() != sampleCount)
+			{
+				m_strStatus = "Root motion sample count does not match";
+				return false;
+			}
+			owner->second.RootMotion = std::move(samples);
 		}
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{

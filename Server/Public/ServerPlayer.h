@@ -79,6 +79,8 @@ namespace LostArk::Server
 		std::uint8_t iComboStage = 0;
 		// Set by a press inside the open window, consumed when the stage ends.
 		bool hasBufferedComboInput = false;
+		// Set when a HOLD skill's key is let go, consumed when its loop ends.
+		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
 			CooldownEndTickBySkillId;
 	};

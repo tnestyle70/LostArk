@@ -14,11 +14,20 @@ namespace Client
 	/* Presentation-only mapping. PlayerSkills.json still owns key -> skillId and
 	Server timing; this document owns only which authored body clips present an
 	approved skill and which clip corresponds to each Server combo stage. */
+	struct ANIMATION_SKILL_CLIP
+	{
+		std::string strClipName;
+		uint32_t iPlayMs = 0u;
+		f32_t fPlayRate = 1.f;
+
+		bool operator==(const ANIMATION_SKILL_CLIP&) const = default;
+	};
+
 	struct ANIMATION_SKILL_BINDING
 	{
 		LostArk::Shared::SKILL_ID iSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
-		std::vector<std::string> Clips;
+		std::vector<ANIMATION_SKILL_CLIP> Clips;
 	};
 
 	struct ANIMATION_SKILL_BINDING_DOCUMENT

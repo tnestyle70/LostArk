@@ -1,85 +1,31 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
   "bindings": [
     {
-      "skillId": 34120,
+      "skillId": 34650,
       "clips": [
-        "flm_sk_threetalonstrike_01",
-        "flm_sk_threetalonstrike_02",
-        "flm_sk_threetalonstrike_03"
+        "flm_sk_dragoncleave_01",
+        "flm_sk_dragoncleave_03"
       ]
     },
     {
-      "skillId": 34080,
+      "skillId": 34610,
       "clips": [
-        "flm_sk_assault"
+        "flm_sk_squalllance_01",
+        "flm_sk_squalllance_02",
+        "flm_sk_squalllance_03"
       ]
     },
     {
-      "skillId": 34070,
+      "skillId": 34630,
       "clips": [
-        "flm_sk_downwardhit"
-      ]
-    },
-    {
-      "skillId": 34150,
-      "clips": [
-        "flm_sk_crushingblow"
-      ]
-    },
-    {
-      "skillId": 34110,
-      "clips": [
-        "flm_sk_crescentsweep"
-      ]
-    },
-    {
-      "skillId": 34090,
-      "clips": [
-        "flm_sk_dragonkick"
-      ]
-    },
-    {
-      "skillId": 34050,
-      "clips": [
-        "flm_sk_hurricaneswing_01",
-        "flm_sk_hurricaneswing_02"
-      ]
-    },
-    {
-      "skillId": 34170,
-      "clips": [
-        "flm_sk_pulverize"
-      ]
-    },
-    {
-      "skillId": 34020,
-      "clips": [
-        "flm_sk_moving_normal_1"
-      ]
-    },
-    {
-      "skillId": 34640,
-      "clips": [
-        "flm_sk_dragonsweep_01",
-        "flm_sk_dragonsweep_02"
-      ]
-    },
-    {
-      "skillId": 34600,
-      "clips": [
-        "flm_sk_gaebolg"
-      ]
-    },
-    {
-      "skillId": 34620,
-      "clips": [
-        "flm_sk_super_gabolg_01_re",
-        "flm_sk_super_gabolg_02_re",
-        "flm_sk_super_gabolg_03"
+        "flm_sk_super_squalllance_01",
+        "flm_sk_super_squalllance_02",
+        "flm_sk_super_squalllance_03",
+        "flm_sk_super_squalllance_04"
       ]
     },
     {
@@ -92,15 +38,74 @@
       ]
     },
     {
-      "skillId": 34000,
+      "skillId": 34040,
       "clips": [
-        "flm_mode_identity1"
+        "flm_sk_sharpswing_01",
+        "flm_sk_sharpswing_02"
       ]
     },
     {
-      "skillId": 34500,
+      "skillId": 34090,
       "clips": [
-        "flm_mode_identity2"
+        { "clip": "flm_sk_dragonkick", "playRate": 1.4 }
+      ]
+    },
+    {
+      "skillId": 34100,
+      "clips": [
+        "flm_sk_cycloinclance_01",
+        "flm_sk_cycloinclance_02",
+        "flm_sk_cycloinclance_03_re"
+      ]
+    },
+    {
+      "skillId": 34160,
+      "clips": [
+        "flm_sk_riseup_01",
+        "flm_sk_riseup_02",
+        "flm_sk_riseup_custom_6"
+      ]
+    },
+    {
+      "skillId": 34140,
+      "clips": [
+        "flm_sk_chestdestruction_01",
+        "flm_sk_chestdestruction_02",
+        "flm_sk_chestdestruction_03",
+        "flm_sk_chestdestruction_04"
+      ]
+    },
+    {
+      "skillId": 34120,
+      "clips": [
+        { "clip": "flm_sk_threetalonstrike_01", "playMs": 900, "playRate": 1.2 },
+        { "clip": "flm_sk_threetalonstrike_02", "playMs": 582 },
+        { "clip": "flm_sk_threetalonstrike_03", "playRate": 1.1 }
+      ]
+    },
+    {
+      "skillId": 34110,
+      "clips": [
+        { "clip": "flm_sk_crescentsweep", "playRate": 1.2 },
+        { "clip": "flm_sk_crescentsweep_custom_5", "playRate": 1.2 }
+      ]
+    },
+    {
+      "skillId": 34150,
+      "clips": [
+        { "clip": "flm_sk_crushingblow", "playRate": 1.2 }
+      ]
+    },
+    {
+      "skillId": 34000,
+      "clips": [
+        { "clip": "flm_mode_identity1", "playRate": 1.2 }
+      ]
+    },
+    {
+      "skillId": 34020,
+      "clips": [
+        "flm_sk_moving_normal_1"
       ]
     },
     {
@@ -112,16 +117,10 @@
       ]
     },
     {
-      "skillId": 34520,
-      "clips": [
-        "flm_sk_moving_normal_2"
-      ]
-    },
-    {
       "skillId": 34540,
       "clips": [
-        "flm_sk_stab",
-        "flm_sk_stab_custom_3_01"
+        { "clip": "flm_sk_stab", "playMs": 700, "playRate": 1.15 },
+        { "clip": "flm_sk_stab_custom_3_01", "playRate": 1.2 }
       ]
     },
     {
@@ -133,10 +132,10 @@
     {
       "skillId": 34560,
       "clips": [
-        "flm_sk_penetrationlunge_01",
-        "flm_sk_penetrationlunge_02",
-        "flm_sk_penetrationlunge_03",
-        "flm_sk_penetrationlunge_04"
+        { "clip": "flm_sk_penetrationlunge_01", "playMs": 699, "playRate": 1.2 },
+        { "clip": "flm_sk_penetrationlunge_02", "playMs": 200, "playRate": 1.2 },
+        { "clip": "flm_sk_penetrationlunge_03", "playMs": 800, "playRate": 1.2 },
+        { "clip": "flm_sk_penetrationlunge_04", "playRate": 1.2 }
       ]
     },
     {
@@ -150,6 +149,7 @@
     {
       "skillId": 34580,
       "clips": [
+        "flm_sk_counterattack_01",
         "flm_sk_counterattack_02"
       ]
     },
@@ -159,6 +159,18 @@
         "flm_sk_lastwhisper_start",
         "flm_sk_lastwhisper_loop",
         "flm_sk_lastwhisper_end"
+      ]
+    },
+    {
+      "skillId": 34500,
+      "clips": [
+        { "clip": "flm_mode_identity2", "playRate": 1.2 }
+      ]
+    },
+    {
+      "skillId": 34520,
+      "clips": [
+        { "clip": "flm_sk_moving_normal_2", "playRate": 1.2 }
       ]
     }
   ]

@@ -5,6 +5,7 @@
 #include "Logic_GunSlinger.h"
 #include "Logic_LanceMaster.h"
 #include "Logic_Slayer.h"
+#include "Logic_Warlord.h"
 
 const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 	LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -24,6 +25,8 @@ const CHARACTER_SPEC* Client::CCharacterCatalog::Find_Spec(
 		return &Spec_Artist;
 	case LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER:
 		return &Spec_DimensionMaster;
+	case LostArk::Shared::CHARACTER_CLASS_ID::WARLORD:
+		return &Spec_Warlord;
 	//case LostArk::Shared::CHARACTER_CLASS_ID::DESTROYER:
 	//	break;
 	case LostArk::Shared::CHARACTER_CLASS_ID::END:

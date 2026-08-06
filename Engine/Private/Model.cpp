@@ -34,6 +34,9 @@ CModel::CModel(const CModel& Prototype)
     , m_isAnimLoop { Prototype.m_isAnimLoop }
 	, m_isAnimPaused { Prototype.m_isAnimPaused }
 	, m_fAnimationSpeed { Prototype.m_fAnimationSpeed }
+	, m_iRootMotionBoneIndex { Prototype.m_iRootMotionBoneIndex }
+	, m_iRootMotionVerticalAxis { Prototype.m_iRootMotionVerticalAxis }
+	, m_vRootMotionRestTranslation { Prototype.m_vRootMotionRestTranslation }
 	, m_bHasLocalBounds { Prototype.m_bHasLocalBounds }
 	, m_vLocalBoundsMin { Prototype.m_vLocalBoundsMin }
 	, m_vLocalBoundsMax { Prototype.m_vLocalBoundsMax }
@@ -135,6 +138,28 @@ bool_t CModel::Has_Bone(const char_t* pBoneName)
         {
             return nullptr != pBone && pBone->Compare_Name(pBoneName);
         });
+}
+
+bool_t CModel::Enable_RootMotionSuppression(
+    const char_t* pBoneName, const int32_t iVerticalAxis)
+{
+    if (nullptr == pBoneName || '\0' == pBoneName[0] ||
+        iVerticalAxis < -1 || iVerticalAxis > 2)
+        return false;
+
+    for (size_t i = 0; i < m_Bones.size(); ++i)
+    {
+        if (nullptr == m_Bones[i] || !m_Bones[i]->Compare_Name(pBoneName))
+            continue;
+
+        float4x4_t rest{};
+        XMStoreFloat4x4(&rest, m_Bones[i]->Get_TransformationMatrix());
+        m_vRootMotionRestTranslation = { rest._41, rest._42, rest._43 };
+        m_iRootMotionBoneIndex = static_cast<int32_t>(i);
+        m_iRootMotionVerticalAxis = iVerticalAxis;
+        return true;
+    }
+    return false;
 }
 
 bool_t CModel::Start_Animation(
@@ -312,6 +337,24 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
         m_isAnimPaused ? 0.f : fTimeDelta, m_Bones, m_isAnimLoop);
 
     Update_AnimBlend(m_isAnimPaused ? 0.f : fTimeDelta);
+
+    if (m_iRootMotionBoneIndex >= 0 &&
+        static_cast<size_t>(m_iRootMotionBoneIndex) < m_Bones.size())
+    {
+        const shared_ptr<CBone>& pRoot = m_Bones[m_iRootMotionBoneIndex];
+        if (nullptr != pRoot)
+        {
+            float4x4_t local{};
+            XMStoreFloat4x4(&local, pRoot->Get_TransformationMatrix());
+            if (0 != m_iRootMotionVerticalAxis)
+                local._41 = m_vRootMotionRestTranslation.x;
+            if (1 != m_iRootMotionVerticalAxis)
+                local._42 = m_vRootMotionRestTranslation.y;
+            if (2 != m_iRootMotionVerticalAxis)
+                local._43 = m_vRootMotionRestTranslation.z;
+            pRoot->Update_TransformationMatrix(XMLoadFloat4x4(&local));
+        }
+    }
 
     /* 뼈들 자체 행렬은 갱신이 됐지만, 최종행렬은 아직 미완성(m_Transformation * Parent`s CombinedTransfor4mationMatrix). */
     for (auto& pBone : m_Bones)

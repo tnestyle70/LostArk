@@ -1,0 +1,121 @@
+{
+  "schema": "lostark.animation-skill-bindings",
+  "formatVersion": 2,
+  "animationAssetId": "Warlord",
+  "characterClass": "WARLORD",
+  "bindings": [
+    {
+      "skillId": 17000,
+      "clips": [
+        "wgl_att_battle_1_01",
+        "wgl_att_battle_1_02",
+        "wgl_att_battle_1_03"
+      ]
+    },
+    {
+      "skillId": 17020,
+      "clips": [
+        "wgl_sk_frontdash"
+      ]
+    },
+    {
+      "skillId": 17030,
+      "clips": [
+        "wgl_sk_pierceingspear"
+      ]
+    },
+    {
+      "skillId": 17040,
+      "clips": [
+        "wgl_sk_bash"
+      ]
+    },
+    {
+      "skillId": 17060,
+      "clips": [
+        "wgl_sk_firebullet"
+      ]
+    },
+    {
+      "skillId": 17080,
+      "clips": [
+        "wgl_sk_dashupperfire_01",
+        "wgl_sk_dashupperfire_02"
+      ]
+    },
+    {
+      "skillId": 17090,
+      "clips": [
+        "wgl_sk_hookchain"
+      ]
+    },
+    {
+      "skillId": 17100,
+      "clips": [
+        "wgl_sk_shieldstamp"
+      ]
+    },
+    {
+      "skillId": 17110,
+      "clips": [
+        "wgl_sk_leap_start",
+        "wgl_sk_leap_jump",
+        "wgl_sk_leap_attack_01"
+      ]
+    },
+    {
+      "skillId": 17140,
+      "clips": [
+        "wgl_sk_thunderbolt"
+      ]
+    },
+    {
+      "skillId": 17170,
+      "clips": [
+        "wgl_sk_guardianofprotection_start",
+        "wgl_sk_guardianofprotection_loop",
+        "wgl_sk_guardianofprotection_attack"
+      ]
+    },
+    {
+      "skillId": 17240,
+      "clips": [
+        "wgl_sk_eternalcyclone_01",
+        "wgl_sk_eternalcyclone_02",
+        "wgl_sk_eternalcyclone_07"
+      ]
+    },
+    {
+      "skillId": 17250,
+      "clips": [
+        "wgl_sk_super_guardianofprotection_01",
+        "wgl_sk_super_guardianofprotection_02"
+      ]
+    },
+    {
+      "skillId": 17800,
+      "clips": [
+        "wgl_sk_defence_start"
+      ]
+    },
+    {
+      "skillId": 17810,
+      "clips": [
+        "wgl_sk_defence_end"
+      ]
+    },
+    {
+      "skillId": 17820,
+      "clips": [
+        "wgl_sk_shieldofbattlefield_01",
+        "wgl_sk_shieldofbattlefield_02",
+        "wgl_sk_shieldofbattlefield_03_re",
+        "wgl_sk_shieldofbattlefield_04_re",
+        "wgl_sk_shieldofbattlefield_03",
+        "wgl_sk_shieldofbattlefield_04_1",
+        "wgl_sk_shieldofbattlefield_04_2",
+        "wgl_sk_shieldofbattlefield_04_3"
+      ]
+    }
+  ]
+}

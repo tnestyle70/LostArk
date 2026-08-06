@@ -79,6 +79,9 @@
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Animation\RootMotion">
+      <UniqueIdentifier>{2f6a1c94-3d58-49b1-9a07-6c1d8b4e7f30}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Balance">
       <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
     </Filter>
@@ -123,6 +126,9 @@
     </Filter>
     <Filter Include="02.GameObjects\00. Character\04. DimensionMaster">
       <UniqueIdentifier>{34e43f1d-330a-473a-a21f-b446190b9a05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="02.GameObjects\00. Character\05. Warlord">
+      <UniqueIdentifier>{7b3c1d68-9f24-4a51-8e07-2c9d61af5d34}</UniqueIdentifier>
     </Filter>
     <Filter Include="02.GameObjects\01. Npc">
       <UniqueIdentifier>{52dc0b5e-f812-4835-a4c9-d7896396ef00}</UniqueIdentifier>
@@ -338,6 +344,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\Logic_Slayer.cpp">
       <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Logic_Warlord.cpp">
+      <Filter>02.GameObjects\00. Character\05. Warlord</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Npc.cpp">
       <Filter>02.GameObjects\01. Npc</Filter>
@@ -580,6 +589,9 @@
     <ClInclude Include="..\Public\Logic_Slayer.h">
       <Filter>02.GameObjects\00. Character\03. Slayer</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Logic_Warlord.h">
+      <Filter>02.GameObjects\00. Character\05. Warlord</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Npc.h">
       <Filter>02.GameObjects\01. Npc</Filter>
     </ClInclude>
@@ -738,6 +750,36 @@
     </None>
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.animevents">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.skillbindings.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.animnotify">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipmap">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipseq">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\DimensionMaster.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
     </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>

@@ -26,11 +26,19 @@ class CCharacter final : public CContainerObject
 public:
 	/* One approved skill's authored presentation chain. ACTIVE runs every clip in
 	order; COMBO advances only when the replicated Server comboStage changes. */
+	struct CLIP_STEP
+	{
+		std::string clip;
+		uint32_t playMs = 0u;
+		f32_t playRate = 1.f;
+		bool_t loop = false;
+	};
+
 	struct CLIP_CHAIN
 	{
 		int32_t iSkillId = {};
-		bool_t isCombo = false;
-		std::vector<std::string> clips;
+		bool_t isServerStaged = false;
+		std::vector<CLIP_STEP> clips;
 	};
 
 public:
@@ -178,7 +186,7 @@ private:
 	/* Plays a clip from its first frame. Set_Animation alone only switches the
 	index, so a clip that already ran would resume at its end -- which chains
 	that repeat a clip do hit. */
-	bool_t Start_Clip(const char_t* pClipName);
+	bool_t Start_Clip(const CLIP_STEP& Step);
 	void Set_PartVisible(const tchar_t* pPartTag, bool_t isVisible);
 	/* Jumps the running chain to the server's stage. Fails when no chain runs or
 	the stage is past its end, so the caller keeps the pose it had. */

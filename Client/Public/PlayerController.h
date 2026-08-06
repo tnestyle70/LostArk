@@ -45,7 +45,8 @@ namespace Client
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard,
 			const shared_ptr<CCharacter>& character,
-			LostArk::Shared::SKILL_ID& outSkillId);
+			LostArk::Shared::SKILL_ID& outSkillId,
+			LostArk::Shared::SKILL_ID& outReleaseSkillId);
 
 		/* Left mouse is not a key code, so it is polled after the slot table and
 		only fills a slot the keyboard left empty. */
@@ -66,6 +67,9 @@ namespace Client
 		slot that is later re-pointed at another skill must not make a key that is
 		already held read as a fresh press. */
 		std::array<bool_t, 256> m_wasKeyDown{};
+		LostArk::Shared::SKILL_ID m_iHeldSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+		uint8_t m_byHeldKeyCode = 0;
 		/* A held basic attack has to keep asking: the combo buffer only takes a
 		press inside a window the server owns and the client is not told about, so
 		the press is repeated at a fixed rate instead of being predicted. */

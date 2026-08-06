@@ -62,6 +62,9 @@ namespace LostArk::Server
 		void Handle_UseSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_SKILL& useSkill);
+		void Handle_ReleaseSkill(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_RELEASE_SKILL& releaseSkill);
 		void Handle_SpawnWorldEntity(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request);

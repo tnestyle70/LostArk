@@ -590,7 +590,8 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 	const auto isKnownStance = [](const std::string& value)
 	{
 		return value == "NONE" || value == "LANCE_MASTER_LONG_SPEAR" ||
-			value == "LANCE_MASTER_SHORT_SPEAR";
+			value == "LANCE_MASTER_SHORT_SPEAR" || value == "WARLORD_NORMAL" ||
+			value == "WARLORD_DEFENSE";
 	};
 	for (const PLAYER_EDIT& player : m_players)
 	{

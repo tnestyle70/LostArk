@@ -9,6 +9,43 @@ namespace
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
 	constexpr std::uint32_t SERVER_TICK_HZ = 30;
 
+	void Sample_RootMotion(
+		const std::vector<LostArk::Server::PLAYER_ROOT_MOTION_SAMPLE>& samples,
+		const float elapsedSeconds,
+		float& outForward,
+		float& outLateral)
+	{
+		outForward = 0.f;
+		outLateral = 0.f;
+		if (samples.empty())
+			return;
+		const float elapsedMs = elapsedSeconds * 1000.f;
+		if (elapsedMs <= static_cast<float>(samples.front().iTimeMs))
+		{
+			outForward = samples.front().fForward;
+			outLateral = samples.front().fLateral;
+			return;
+		}
+		for (std::size_t index = 1; index < samples.size(); ++index)
+		{
+			const auto& previous = samples[index - 1];
+			const auto& current = samples[index];
+			if (elapsedMs > static_cast<float>(current.iTimeMs))
+				continue;
+			const float span = static_cast<float>(current.iTimeMs) -
+				static_cast<float>(previous.iTimeMs);
+			const float alpha = span <= 0.f ? 0.f :
+				(elapsedMs - static_cast<float>(previous.iTimeMs)) / span;
+			outForward = previous.fForward +
+				(current.fForward - previous.fForward) * alpha;
+			outLateral = previous.fLateral +
+				(current.fLateral - previous.fLateral) * alpha;
+			return;
+		}
+		outForward = samples.back().fForward;
+		outLateral = samples.back().fLateral;
+	}
+
 	bool IsNewerSequence(
 		const std::uint32_t candidate,
 		const std::uint32_t previous)
@@ -121,8 +158,9 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.iMovePathIndex = 0;
 	player.fYawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 	player.iComboStage =
-		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind ? 1u : 0u;
+		PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind ? 0u : 1u;
 	player.hasBufferedComboInput = false;
+	player.hasReleasedHold = false;
 	return true;
 }
 
@@ -185,8 +223,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	carries stage one so a non-combo path reads the same as before. */
 	const std::size_t stageIndex =
 		0u == player.iComboStage ? 0u : player.iComboStage - 1u;
+	const bool isHold = PLAYER_SKILL_KIND::HOLD == skill->eSkillKind;
 	const bool hasStage =
-		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
+		(PLAYER_SKILL_KIND::COMBO == skill->eSkillKind || isHold) &&
 		stageIndex < skill->ComboStages.size();
 	const std::uint32_t durationMs = hasStage ?
 		skill->ComboStages[stageIndex].iActionDurationMs :
@@ -196,20 +235,45 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		skill->iHitTimeMs;
 	const float durationSeconds =
 		static_cast<float>(durationMs) * MILLISECONDS_TO_SECONDS;
-	if (skill->fMovementDistance > 0.f && durationSeconds > 0.f)
+	float stepForward = 0.f;
+	float stepLateral = 0.f;
+	if (!skill->RootMotion.empty())
 	{
-		const float step = skill->fMovementDistance /
+		const float previousSeconds =
+			(std::max)(0.f, player.fActionElapsedSeconds - fixedDeltaSeconds);
+		float previousForward = 0.f;
+		float previousLateral = 0.f;
+		float currentForward = 0.f;
+		float currentLateral = 0.f;
+		Sample_RootMotion(skill->RootMotion, previousSeconds,
+			previousForward, previousLateral);
+		Sample_RootMotion(skill->RootMotion, player.fActionElapsedSeconds,
+			currentForward, currentLateral);
+		stepForward = currentForward - previousForward;
+		stepLateral = currentLateral - previousLateral;
+	}
+	else if (skill->fMovementDistance > 0.f && durationSeconds > 0.f)
+	{
+		stepForward = skill->fMovementDistance /
 			durationSeconds * fixedDeltaSeconds;
-		const float nextX = player.fPositionX + player.fSkillAimDirectionX * step;
-		const float nextZ = player.fPositionZ + player.fSkillAimDirectionZ * step;
+	}
+
+	if (0.f != stepForward || 0.f != stepLateral)
+	{
+		const float rightX = player.fSkillAimDirectionZ;
+		const float rightZ = -player.fSkillAimDirectionX;
+		const float nextX = player.fPositionX +
+			player.fSkillAimDirectionX * stepForward + rightX * stepLateral;
+		const float nextZ = player.fPositionZ +
+			player.fSkillAimDirectionZ * stepForward + rightZ * stepLateral;
 		SERVER_NAV_POINT projected{};
 		if (nullptr != navigation && navigation->Is_Loaded())
 		{
 			if (navigation->Project_Point(nextX, nextZ, projected))
 			{
-				player.fPositionX = projected.x;
+				player.fPositionX = nextX;
 				player.fPositionY = projected.y;
-				player.fPositionZ = projected.z;
+				player.fPositionZ = nextZ;
 			}
 		}
 		else
@@ -221,7 +285,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	const float hitSeconds =
 		static_cast<float>(hitMs) * MILLISECONDS_TO_SECONDS;
-	if (!skill->strDamageProfileId.empty() &&
+	const bool holdWithoutDamage = isHold && 3u != player.iComboStage;
+	if (!skill->strDamageProfileId.empty() && !holdWithoutDamage &&
 		!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
@@ -288,21 +353,31 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasAppliedSkillDamage = true;
 	}
 
+	const bool holdLeavesLoop = isHold && 2u == player.iComboStage &&
+		player.hasReleasedHold;
+	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+		player.hasReleasedHold &&
+		player.fActionElapsedSeconds >= durationSeconds;
+
 	const bool hasNextStage = hasStage &&
-		player.hasBufferedComboInput &&
-		static_cast<std::size_t>(player.iComboStage) <
-			skill->ComboStages.size();
+		(isHold ? static_cast<std::size_t>(player.iComboStage) <
+				skill->ComboStages.size()
+			: player.hasBufferedComboInput &&
+				static_cast<std::size_t>(player.iComboStage) <
+					skill->ComboStages.size());
 	/* A buffered press cancels the rest of the clip once the hit has landed,
 	which is what makes a combo read as fast. Every stage's hit time is inside
 	its own input window, so cutting here never drops damage. */
 	const bool cancelsIntoNextStage =
-		hasNextStage && player.hasAppliedSkillDamage;
+		!isHold && hasNextStage && player.hasAppliedSkillDamage;
 
-	if (cancelsIntoNextStage || player.fActionElapsedSeconds >= durationSeconds)
+	if (cancelsIntoNextStage || holdLeavesLoop ||
+		player.fActionElapsedSeconds >= durationSeconds)
 	{
 		if (hasNextStage)
 		{
-			++player.iComboStage;
+			player.iComboStage = holdSkipsLoop || holdLeavesLoop ?
+				3u : player.iComboStage + 1u;
 			player.hasBufferedComboInput = false;
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
@@ -321,6 +396,25 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.hasAppliedSkillDamage = false;
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
+			player.hasReleasedHold = false;
 		}
 	}
+}
+
+void LostArk::Server::CPlayerSkillSystem::Release(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_RELEASE_SKILL& command,
+	const CGameplayCatalog& catalog)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		player.iCurrentSkillId != command.iSkillId)
+	{
+		return;
+	}
+	const PLAYER_SKILL_DEFINITION* skill =
+		catalog.Find_Skill(player.iCurrentSkillId);
+	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind)
+		return;
+	player.hasReleasedHold = true;
 }

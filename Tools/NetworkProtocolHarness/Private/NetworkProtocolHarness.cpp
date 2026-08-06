@@ -1158,6 +1158,54 @@ namespace
 			"Reject Truncated Skill Without Mutation");
 	}
 
+	void Test_ReleaseSkillRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_RELEASE_SKILL source{};
+		source.iClientSequence = 12;
+		source.iSkillId = 34590;
+
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source),
+			"Writer Release Skill");
+		std::vector<std::uint8_t> payload = writer.Get_Buffer();
+		testRunner.Require(
+			8 == payload.size(),
+			"Release Skill Payload Size");
+
+		CPacketReader reader{ payload };
+		C2S_RELEASE_SKILL decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			decoded.iSkillId == source.iSkillId &&
+			0 == reader.Get_RemainingSize(),
+			"Release Skill Round Trip");
+
+		C2S_RELEASE_SKILL invalidSkill = source;
+		invalidSkill.iSkillId = INVALID_SKILL_ID;
+		CPacketWriter invalidSkillWriter;
+		testRunner.Require(
+			!Write_Message(invalidSkillWriter, invalidSkill),
+			"Reject Release Without Skill ID");
+
+		C2S_RELEASE_SKILL invalidSequence = source;
+		invalidSequence.iClientSequence = 0;
+		CPacketWriter invalidSequenceWriter;
+		testRunner.Require(
+			!Write_Message(invalidSequenceWriter, invalidSequence),
+			"Reject Release Without Sequence");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		C2S_RELEASE_SKILL unchanged{};
+		unchanged.iClientSequence = 55;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			55 == unchanged.iClientSequence,
+			"Failed Release Does Not Mutate");
+	}
+
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -1422,6 +1470,7 @@ int main()
 	//Move, Snapshot roundtrip
 	Test_MoveRoundTrip(testRunner);
 	Test_UseSkillRoundTrip(testRunner);
+	Test_ReleaseSkillRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 

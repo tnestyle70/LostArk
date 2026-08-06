@@ -9,10 +9,10 @@
 #include "Network/PacketMessages.h"
 #include "Network/PacketStreamParser.h"
 
-//race¸¦ ¹æÁöÇÏ±â À§ÇØ¼­ atomic header¸¦ Ãß°¡
+//raceï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½Ø¼ï¿½ atomic headerï¿½ï¿½ ï¿½ß°ï¿½
 #include <atomic>
 #include <deque>
-//µ¿±â Á¢±Ù race¸¦ ¸·±â À§ÇØ¼­ mutex ¼±¾ð ÈÄ »ç¿ë
+//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ raceï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ø¼ï¿½ mutex ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
 #include <mutex>
 #include <thread>
 #include <cstdint>
@@ -51,7 +51,7 @@ public:
 		LostArk::Shared::WORLD_ID worldId,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 		std::string_view nickName);
-	//playercontroller°¡ ¸ñÇ¥ XZ¸¦ Àü¼ÛÇÏ´Â public °æ°è
+	//playercontrollerï¿½ï¿½ ï¿½ï¿½Ç¥ XZï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ public ï¿½ï¿½ï¿½
 	bool Send_MoveGoal(
 		std::uint32_t clientSequence,
 		float goalX,
@@ -61,6 +61,9 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ);
+	bool Send_ReleaseSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
 
 	bool Try_Consume_EnterAccepted(
@@ -83,13 +86,13 @@ public:
 
 private:
 	bool Send_All(std::span<const std::uint8_t> bytes);
-	//¼ö½Å worker ÇÏ³ª°¡ 4096-byte Áö¿ª ¹öÆÛ·Î ServerÀÇ TCP byte streamÀ» ÀÐ´Â´Ù.
+	//ï¿½ï¿½ï¿½ï¿½ worker ï¿½Ï³ï¿½ï¿½ï¿½ 4096-byte ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Û·ï¿½ Serverï¿½ï¿½ TCP byte streamï¿½ï¿½ ï¿½Ð´Â´ï¿½.
 	void Receive_Loop(SOCKET serverSocket);
 	void Handle_Frame(const LostArk::Shared::PACKET_FRAME& frame);
 
 private:
 	SOCKET m_hServerSocket = INVALID_SOCKET;
-	//main thread¿Í Receive worker°¡ ¿À·ù ÄÚµå¸¦ ÇÔ²² ÀÐ°í ¾²¹Ç·Î atomicÀ¸·Î º¸È£ÇÑ´Ù.
+	//main threadï¿½ï¿½ Receive workerï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Úµå¸¦ ï¿½Ô²ï¿½ ï¿½Ð°ï¿½ ï¿½ï¿½ï¿½Ç·ï¿½ atomicï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ï¿½Ñ´ï¿½.
 	std::atomic<int> m_iLastErrorCode{ 0 };
 	bool m_isWinSocketInitialized = false;
 
@@ -102,7 +105,7 @@ private:
 	std::mutex m_InboundMutex;
 	std::deque<LostArk::Shared::PACKET_FRAME> m_InboundFrames;
 
-	//Handle Frame°ú ¼ÒºñÀÚ ¸ðµÎ main threadÀÌ´Ù.
+	//Handle Frameï¿½ï¿½ ï¿½Òºï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ main threadï¿½Ì´ï¿½.
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;

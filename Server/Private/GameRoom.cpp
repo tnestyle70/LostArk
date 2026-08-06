@@ -185,6 +185,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::USE_SKILL:
 			Handle_UseSkill(command.iSessionId, command.UseSkill);
 			break;
+		case ROOM_COMMAND_TYPE::RELEASE_SKILL:
+			Handle_ReleaseSkill(command.iSessionId, command.ReleaseSkill);
+			break;
 		case ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY:
 			Handle_SpawnWorldEntity(
 				command.iSessionId,
@@ -487,6 +490,27 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		useSkill,
 		m_GameplayCatalog,
 		actionStartTick);
+}
+
+void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_RELEASE_SKILL& releaseSkill)
+{
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+	{
+		if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
+			session->Request_Close();
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	m_PlayerSkillSystem.Release(
+		playerIter->second,
+		releaseSkill,
+		m_GameplayCatalog);
 }
 
 void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(

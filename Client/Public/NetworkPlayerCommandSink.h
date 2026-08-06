@@ -28,6 +28,9 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ) override;
+	bool Request_ReleaseSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId) override;
 
 private:
 	static std::atomic_uint32_t s_iLiveInstanceCount;

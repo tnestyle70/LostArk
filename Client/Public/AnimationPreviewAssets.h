@@ -85,6 +85,15 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel",
 		L"Prototype_Component_Model_AnimationPreview_DimensionSummon"
 	},
+		ANIMATION_PREVIEW_ASSET
+	{
+		"warlord.character",
+		"Warlord Character (193 clips)",
+		"Warlord",
+		"Character/Warlord/Warlord.wmodel",
+		L"Prototype_Component_Model_Warlord",
+		true
+	},
 	ANIMATION_PREVIEW_ASSET
 	{
 		"monster.480001.mn-padd-01",
