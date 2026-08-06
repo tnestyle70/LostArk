@@ -188,7 +188,7 @@ void Client::CSkillWindowView::Render(
 
 	constexpr float iconSize = 64.f; // matches the skill icon PNGs' native 64x64 pixels
 
-	ImGui::BeginChild("##SkillList", ImVec2(400.f, -8.f), true);
+	ImGui::BeginChild("##SkillList", ImVec2(650.f, -8.f), true);
 	ImGui::TextDisabled("Skill List (%d)", static_cast<int32_t>(pRoster->size()));
 	ImGui::Separator();
 	for (const char* stanceFilter : { "LONG", "SHORT", "NONE" })
@@ -213,20 +213,19 @@ void Client::CSkillWindowView::Render(
 				m_pTextureCache->Get_Or_Load(entry.strIconPath);
 			const bool_t isSelected = m_SelectedSkillId == entry.iSkillId;
 
-			/* Row background art (user-cut from the game's own skill window atlas) draws
-			first; the selected-row overlay draws on top of that when this row is the current
-			selection. Both keep SkillPanel.png's own aspect ratio (scaled to the row height,
-			not stretched to whatever width the row happens to be) so the bar does not warp --
-			it just does not reach the row's full width. Neither participates in hit-testing --
-			the ImageButton drawn afterward still owns the click. */
+			/* Row background art (user-cut from the game's own skill window atlas) draws at
+			its native 622x62 pixel size -- no scaling, up or down. These pieces were cropped
+			out of one shared atlas, so their sizes are already proportioned to each other and
+			to the icons; resizing one independently of the rest breaks that (a circle warps
+			into an ellipse). If native size does not fit the row, the layout around it should
+			grow or scroll, not the image. The selected-row overlay draws on top at the same
+			native rect. Neither participates in hit-testing -- the ImageButton drawn afterward
+			still owns the click. */
 			{
 				ID3D11ShaderResourceView* pRowBg =
 					m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
 				const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-				const float rowBarWidth = iconSize * (622.f / 62.f);
-				const ImVec2 rowMax(
-					rowMin.x + (min)(rowBarWidth, ImGui::GetContentRegionAvail().x),
-					rowMin.y + iconSize);
+				const ImVec2 rowMax(rowMin.x + 622.f, rowMin.y + 62.f);
 				if (nullptr != pRowBg)
 					ImGui::GetWindowDrawList()->AddImage(pRowBg, rowMin, rowMax);
 				if (isSelected)
