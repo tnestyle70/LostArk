@@ -16,6 +16,13 @@ namespace LostArk::Server
 		std::uint32_t iInputCloseMs = 0;
 	};
 
+	struct PLAYER_ROOT_MOTION_SAMPLE
+	{
+		std::uint32_t iTimeMs = 0;
+		float fForward = 0.f;
+		float fLateral = 0.f;
+	};
+
 	struct PLAYER_SKILL_DEFINITION
 	{
 		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -37,6 +44,7 @@ namespace LostArk::Server
 		LostArk::Shared::PLAYER_STANCE_ID eSetsStance =
 			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
+		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
 	};
 
 	struct BOSS_RUNTIME_PROFILE

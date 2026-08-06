@@ -17,6 +17,8 @@
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
+	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 }
 
 CCharacter::CCharacter(ComPtr<ID3D11Device> pDevice,
@@ -737,6 +739,9 @@ HRESULT CCharacter::Ready_PartObjects()
 		__super::Get_Component(TEXT("Part_00_Body"), TEXT("Com_Model")));
 	if (nullptr == m_pBodyModel)
 		return E_FAIL;
+
+	m_pBodyModel->Enable_RootMotionSuppression(
+		ROOT_MOTION_BONE, ROOT_MOTION_VERTICAL_AXIS);
 
 	/* Skinned equipment: no socket, it borrows the body's bone palette. */
 	for (uint32_t i = 0; i < m_pSpec->iNumEquipment; ++i)

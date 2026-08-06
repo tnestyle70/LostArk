@@ -46,7 +46,7 @@
       "skillId": 34050,
       "clips": [
         { "clip": "flm_sk_hurricaneswing_01", "playRate": 1.2 },
-        { "clip": "flm_sk_hurricaneswing_02", "playRate": 1.2 }
+        { "clip": "flm_sk_hurricaneswing_02", "playMs": 800, "playRate": 1.2 }
       ]
     },
     {

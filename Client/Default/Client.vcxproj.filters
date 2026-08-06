@@ -79,6 +79,9 @@
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Animation\RootMotion">
+      <UniqueIdentifier>{2f6a1c94-3d58-49b1-9a07-6c1d8b4e7f30}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Balance">
       <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
     </Filter>
@@ -723,6 +726,9 @@
     </None>
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json">
+      <Filter>96.DataFiles\Animation\RootMotion</Filter>
     </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>

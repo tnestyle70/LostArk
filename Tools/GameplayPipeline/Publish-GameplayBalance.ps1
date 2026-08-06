@@ -34,6 +34,14 @@ function Format-InvariantFloat([double]$Value, [string]$Context) {
     return $Value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
 }
 
+function Format-InvariantSignedFloat([double]$Value, [string]$Context) {
+    if ([double]::IsNaN($Value) -or [double]::IsInfinity($Value) -or
+        $Value -lt -100000.0 -or $Value -gt 100000.0) {
+        throw "$Context is invalid: $Value"
+    }
+    return $Value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Assert-JsonInteger(
     [object]$Value,
     [string]$Context,
@@ -535,7 +543,53 @@ foreach ($boss in @($bossDocument.bosses)) {
 
 Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument $bossDocument
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows | Sort-Object)
+$skillDurationById = @{}
+foreach ($skill in @($skillDocument.skills)) {
+    $skillDurationById[[string]$skill.skillId] = [uint32]$skill.actionDurationMs
+}
+$rootMotionRows = [Collections.Generic.List[string]]::new()
+$rootMotionSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\RootMotion') `
+        -Filter '*.rootmotion.json' -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+    $document = Read-JsonDocument ('Data/Animation/RootMotion/' + $path.Name)
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','animationAssetId','characterClass','skills') 'root motion document'
+    if ($document.schema -ne 'lostark.animation-root-motion' -or
+        [uint32]$document.formatVersion -ne 1) {
+        throw "Root motion header is invalid: $($path.Name)"
+    }
+    foreach ($entry in @($document.skills)) {
+        Assert-ExactProperties $entry @('skillId','durationMs','samples') 'root motion skill'
+        $id = [string]$entry.skillId
+        if (-not $skillDurationById.ContainsKey($id)) {
+            throw "Root motion targets an unknown skill: $id"
+        }
+        if (-not $rootMotionSeen.Add($id)) {
+            throw "Duplicate root motion entry: $id"
+        }
+        $samples = @($entry.samples)
+        if ($samples.Count -lt 2 -or $samples.Count -gt 512) {
+            throw "Root motion sample count is invalid: $id"
+        }
+        $packed = [Collections.Generic.List[string]]::new()
+        $previousMs = -1
+        foreach ($sample in $samples) {
+            Assert-ExactProperties $sample @('timeMs','forward','lateral','up') 'root motion sample'
+            $timeMs = [int]$sample.timeMs
+            if ($timeMs -le $previousMs -or $timeMs -gt $skillDurationById[$id]) {
+                throw "Root motion sample time is out of order or past the action: $id"
+            }
+            $previousMs = $timeMs
+            $packed.Add(('{0}:{1}:{2}' -f $timeMs,
+                (Format-InvariantSignedFloat $sample.forward "root motion $id forward"),
+                (Format-InvariantSignedFloat $sample.lateral "root motion $id lateral")))
+        }
+        $rootMotionRows.Add((@(
+            'SKILLROOTMOTION', $id, $samples.Count, ($packed -join ',')) -join "`t"))
+    }
+}
+
+$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows | Sort-Object)
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t1`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {

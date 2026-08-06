@@ -52,6 +52,8 @@ public:
 
 	matrix_t Get_BoneMatrix(const char_t* pBoneName);
 	bool_t Has_Bone(const char_t* pBoneName);
+	bool_t Enable_RootMotionSuppression(
+		const char_t* pBoneName, int32_t iVerticalAxis);
 
 	void Set_Animation(uint32_t iAnimIndex, bool_t isLoop = false,
 		f32_t fBlendSeconds = 0.f) {
@@ -116,6 +118,9 @@ private:
 	bool_t									m_isAnimLoop = { false };
 	bool_t									m_isAnimPaused = { false };
 	f32_t									m_fAnimationSpeed = { 1.f };
+	int32_t									m_iRootMotionBoneIndex = { -1 };
+	int32_t									m_iRootMotionVerticalAxis = { -1 };
+	float3_t								m_vRootMotionRestTranslation = {};
 	vector<float4x4_t>						m_BlendFromPose;
 	f32_t									m_fBlendElapsed = {};
 	f32_t									m_fBlendDuration = {};

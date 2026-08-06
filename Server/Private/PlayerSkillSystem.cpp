@@ -9,6 +9,43 @@ namespace
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
 	constexpr std::uint32_t SERVER_TICK_HZ = 30;
 
+	void Sample_RootMotion(
+		const std::vector<LostArk::Server::PLAYER_ROOT_MOTION_SAMPLE>& samples,
+		const float elapsedSeconds,
+		float& outForward,
+		float& outLateral)
+	{
+		outForward = 0.f;
+		outLateral = 0.f;
+		if (samples.empty())
+			return;
+		const float elapsedMs = elapsedSeconds * 1000.f;
+		if (elapsedMs <= static_cast<float>(samples.front().iTimeMs))
+		{
+			outForward = samples.front().fForward;
+			outLateral = samples.front().fLateral;
+			return;
+		}
+		for (std::size_t index = 1; index < samples.size(); ++index)
+		{
+			const auto& previous = samples[index - 1];
+			const auto& current = samples[index];
+			if (elapsedMs > static_cast<float>(current.iTimeMs))
+				continue;
+			const float span = static_cast<float>(current.iTimeMs) -
+				static_cast<float>(previous.iTimeMs);
+			const float alpha = span <= 0.f ? 0.f :
+				(elapsedMs - static_cast<float>(previous.iTimeMs)) / span;
+			outForward = previous.fForward +
+				(current.fForward - previous.fForward) * alpha;
+			outLateral = previous.fLateral +
+				(current.fLateral - previous.fLateral) * alpha;
+			return;
+		}
+		outForward = samples.back().fForward;
+		outLateral = samples.back().fLateral;
+	}
+
 	bool IsNewerSequence(
 		const std::uint32_t candidate,
 		const std::uint32_t previous)
@@ -196,20 +233,45 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		skill->iHitTimeMs;
 	const float durationSeconds =
 		static_cast<float>(durationMs) * MILLISECONDS_TO_SECONDS;
-	if (skill->fMovementDistance > 0.f && durationSeconds > 0.f)
+	float stepForward = 0.f;
+	float stepLateral = 0.f;
+	if (!skill->RootMotion.empty())
 	{
-		const float step = skill->fMovementDistance /
+		const float previousSeconds =
+			(std::max)(0.f, player.fActionElapsedSeconds - fixedDeltaSeconds);
+		float previousForward = 0.f;
+		float previousLateral = 0.f;
+		float currentForward = 0.f;
+		float currentLateral = 0.f;
+		Sample_RootMotion(skill->RootMotion, previousSeconds,
+			previousForward, previousLateral);
+		Sample_RootMotion(skill->RootMotion, player.fActionElapsedSeconds,
+			currentForward, currentLateral);
+		stepForward = currentForward - previousForward;
+		stepLateral = currentLateral - previousLateral;
+	}
+	else if (skill->fMovementDistance > 0.f && durationSeconds > 0.f)
+	{
+		stepForward = skill->fMovementDistance /
 			durationSeconds * fixedDeltaSeconds;
-		const float nextX = player.fPositionX + player.fSkillAimDirectionX * step;
-		const float nextZ = player.fPositionZ + player.fSkillAimDirectionZ * step;
+	}
+
+	if (0.f != stepForward || 0.f != stepLateral)
+	{
+		const float rightX = player.fSkillAimDirectionZ;
+		const float rightZ = -player.fSkillAimDirectionX;
+		const float nextX = player.fPositionX +
+			player.fSkillAimDirectionX * stepForward + rightX * stepLateral;
+		const float nextZ = player.fPositionZ +
+			player.fSkillAimDirectionZ * stepForward + rightZ * stepLateral;
 		SERVER_NAV_POINT projected{};
 		if (nullptr != navigation && navigation->Is_Loaded())
 		{
 			if (navigation->Project_Point(nextX, nextZ, projected))
 			{
-				player.fPositionX = projected.x;
+				player.fPositionX = nextX;
 				player.fPositionY = projected.y;
-				player.fPositionZ = projected.z;
+				player.fPositionZ = nextZ;
 			}
 		}
 		else

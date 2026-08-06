@@ -218,6 +218,7 @@
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
+    <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipmap" />
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.clipseq" />
