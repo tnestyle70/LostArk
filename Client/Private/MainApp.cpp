@@ -399,7 +399,13 @@ void CMainApp::RenderCombatHUD()
 	}
 	ImGui::End();
 
-	if (nullptr != m_pHUDRuntimeView)
+	/* The Combat HUD draws to the always-on-top foreground layer, so it would otherwise show
+	through around/behind the Skill Window (which does not necessarily cover every pixel of the
+	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. */
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+
+	if (!skillWindowOpen && nullptr != m_pHUDRuntimeView)
 	{
 		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
