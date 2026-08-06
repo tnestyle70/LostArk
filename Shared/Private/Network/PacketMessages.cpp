@@ -28,6 +28,14 @@ namespace
 				LostArk::Shared::PLAYER_ACTION_STATE::END);
 	}
 
+	bool Is_Valid_Stance(
+		const LostArk::Shared::PLAYER_STANCE_ID stance)
+	{
+		return static_cast<std::uint8_t>(stance) <
+			static_cast<std::uint8_t>(
+				LostArk::Shared::PLAYER_STANCE_ID::END);
+	}
+
 	bool Is_Valid_Cooldowns(
 		const std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT>& cooldowns)
 	{
@@ -60,6 +68,7 @@ namespace
             std::isfinite(snapshot.fYawDegrees) &&
             Is_Valid_Locomotion(snapshot.eLocomotionState) &&
 			Is_Valid_PlayerAction(snapshot.eAction) &&
+			Is_Valid_Stance(snapshot.eStance) &&
 			0 != snapshot.iMaximumHp &&
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
 			0 != snapshot.iMaximumResource &&
@@ -71,7 +80,11 @@ namespace
 			((LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction &&
 				snapshot.iSkillId != LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
-			 (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
+			 (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == snapshot.eAction &&
+				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
+				0 != snapshot.iActionStartTick) ||
+			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
     }
 
@@ -770,6 +783,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
             static_cast<std::uint8_t>(
                 player.eLocomotionState));
 		writer.Write_U8(static_cast<std::uint8_t>(player.eAction));
+		writer.Write_U8(static_cast<std::uint8_t>(player.eStance));
 		writer.Write_U32(player.iSkillId);
 		writer.Write_U32(player.iActionStartTick);
 		writer.Write_U32(player.iCurrentHp);
@@ -854,6 +868,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         PLAYER_SNAPSHOT player{};
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
+		std::uint8_t rawStance = 0;
 		std::uint8_t cooldownCount = 0;
 
         if (!reader.Read_U32(player.iNetEntityId) ||
@@ -863,6 +878,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
             !reader.Read_F32(player.fYawDegrees) ||
             !reader.Read_U8(rawLocomotion) ||
 			!reader.Read_U8(rawAction) ||
+			!reader.Read_U8(rawStance) ||
 			!reader.Read_U32(player.iSkillId) ||
 			!reader.Read_U32(player.iActionStartTick) ||
 			!reader.Read_U32(player.iCurrentHp) ||
@@ -881,6 +897,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
             static_cast<PLAYER_LOCOMOTION_STATE>(
                 rawLocomotion);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
+		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;
 			cooldownIndex < cooldownCount;

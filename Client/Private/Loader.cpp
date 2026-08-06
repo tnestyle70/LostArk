@@ -6,6 +6,8 @@
 #include "Body_Valtan.h"
 #include "Character.h"
 #include "CharacterSelectionState.h"
+#include "DeployPropCatalog.h"
+#include "DeployPropObject.h"
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "MapAssetCatalog.h"
@@ -20,6 +22,7 @@
 #include "Part_Equipment.h"
 #include "PlayableCharacterAssetService.h"
 #include "RuntimeAssetRoot.h"
+#include "Trigger_Box.h"
 #include "Valtan.h"
 #include "ValtanPresentationAssetService.h"
 
@@ -342,6 +345,13 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	{
 		return E_FAIL;
 	}
+	Set_Status(TEXT("VALTAN: deploy environment prototypes"));
+	if (FAILED(Ready_DeployPropArea(
+		ETOUI(LEVEL::VALTAN_ARENA),
+		pEntry->pMapAreaId)))
+	{
+		return E_FAIL;
+	}
 
 	Set_Status(TEXT("Valtan arena loading complete"));
 	rollback.Commit();
@@ -358,6 +368,12 @@ HRESULT CLoader::Ready_For_Development()
 	{
 		Set_Status(TEXT("MAP EDITOR: core rendering resources"));
 		if (FAILED(Ready_MapAuthoringCore(ETOUI(LEVEL::DEVELOPMENT))))
+		{
+			CMapEditorWorkspaceService::Cancel();
+			return E_FAIL;
+		}
+		if (FAILED(Ready_AnimatedMeshShader(ETOUI(LEVEL::DEVELOPMENT))) ||
+			FAILED(Ready_DeployPropCore(ETOUI(LEVEL::DEVELOPMENT))))
 		{
 			CMapEditorWorkspaceService::Cancel();
 			return E_FAIL;
@@ -579,6 +595,17 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 		return E_FAIL;
 	}
 
+#ifdef _DEBUG
+	if (iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) &&
+		FAILED(CGameInstance::Get().Add_Prototype(
+			iLevelIndex,
+			TEXT("Prototype_GameObject_TriggerBox"),
+			CTrigger_Box::Create(m_pDevice, m_pContext))))
+	{
+		return E_FAIL;
+	}
+#endif
+
 	return S_OK;
 }
 
@@ -605,6 +632,90 @@ HRESULT CLoader::Ready_StaticMeshShader(
 			VTXMESH::iNumElements));
 }
 
+HRESULT CLoader::Ready_AnimatedMeshShader(
+	const uint32_t iLevelIndex)
+{
+	return CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+			VTXANIMMESH::Elements,
+			VTXANIMMESH::iNumElements));
+}
+
+HRESULT CLoader::Ready_DeployPropCore(const uint32_t iLevelIndex)
+{
+	if (iLevelIndex >= ETOUI(LEVEL::END))
+		return E_INVALIDARG;
+	return CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_GameObject_DeployProp"),
+		CDeployPropObject::Create(m_pDevice, m_pContext));
+}
+
+HRESULT CLoader::Ready_DeployPropArea(
+	const uint32_t iLevelIndex,
+	const std::string& areaId)
+{
+	if (iLevelIndex >= ETOUI(LEVEL::END) || areaId.empty())
+		return E_INVALIDARG;
+
+	CDeployPropCatalog catalog;
+	if (!catalog.Load_Default(areaId))
+	{
+		OutputDebugStringA(("[Loader][DeployProp] " +
+			catalog.Get_Status() + "\n").c_str());
+		return E_FAIL;
+	}
+
+	const matrix_t modelTransform =
+		XMMatrixScaling(0.01f, 0.01f, 0.01f);
+	for (const DEPLOY_PROP_ASSET_ENTRY& asset : catalog.Get_Assets())
+	{
+		if (m_isCancellationRequested.load(std::memory_order_acquire))
+			return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+
+		const MODEL modelKind =
+			DEPLOY_PROP_MODEL_KIND::ANIM == asset.kind ?
+			MODEL::ANIM : MODEL::NONANIM;
+		auto intactModel = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			modelKind,
+			asset.intactResolvedPath.string().c_str(),
+			modelTransform);
+		if (nullptr == intactModel ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				asset.intactPrototypeTag,
+				std::move(intactModel))))
+		{
+			return E_FAIL;
+		}
+
+		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind)
+			continue;
+		auto fracturedModel = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::NONANIM,
+			asset.fracturedResolvedPath.string().c_str(),
+			modelTransform);
+		if (nullptr == fracturedModel ||
+			FAILED(CGameInstance::Get().Add_Prototype(
+				iLevelIndex,
+				asset.fracturedPrototypeTag,
+				std::move(fracturedModel))))
+		{
+			return E_FAIL;
+		}
+	}
+	return Ready_DeployPropCore(iLevelIndex);
+}
+
 HRESULT CLoader::Ready_Character_Rendering(
 	const uint32_t iLevelIndex,
 	const std::span<const LostArk::Shared::CHARACTER_CLASS_ID>
@@ -625,15 +736,7 @@ HRESULT CLoader::Ready_Character_Rendering(
 
 	CPlayableCharacterAssetService::Begin_LevelLoad(iLevelIndex);
 
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		iLevelIndex,
-		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
-		CShader::Create(
-			m_pDevice,
-			m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
-			VTXANIMMESH::Elements,
-			VTXANIMMESH::iNumElements))) ||
+	if (FAILED(Ready_AnimatedMeshShader(iLevelIndex)) ||
 		FAILED(Ready_Character_Shared_Prototypes(iLevelIndex)))
 	{
 		return E_FAIL;

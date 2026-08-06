@@ -3,6 +3,7 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <fstream>
 #include <unordered_map>
 
@@ -44,6 +45,21 @@ namespace
 		if (value == "ARTIST") return CHARACTER_CLASS_ID::ARTIST;
 		if (value == "DIMENSIONMASTER") return CHARACTER_CLASS_ID::DIMENSIONMASTER;
 		return CHARACTER_CLASS_ID::END;
+	}
+
+	bool ParseStance(
+		const std::string& value,
+		LostArk::Shared::PLAYER_STANCE_ID& output)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		if (value == "NONE") output = PLAYER_STANCE_ID::NONE;
+		else if (value == "LANCE_MASTER_LONG_SPEAR")
+			output = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		else if (value == "LANCE_MASTER_SHORT_SPEAR")
+			output = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		else
+			return false;
+		return true;
 	}
 
 	/* A stale document must fail on its version, not on whichever field the new
@@ -104,7 +120,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 	/* Staged into a local first: a document that fails halfway must leave the
 	catalog on its previous contents rather than half of the new ones. */
 	std::vector<PLAYER_SKILL_DEFINITION> skills;
-	std::unordered_map<std::string, std::string> claimedSlots;
+	std::unordered_map<std::string, std::vector<LostArk::Shared::PLAYER_STANCE_ID>>
+		claimedSlots;
 	const DATA_JSON_VALUE* skillValues =
 		Required(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
 	if (nullptr == skillValues)
@@ -126,13 +143,19 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		const DATA_JSON_VALUE* damageId = Required(
 			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* kind = Required(value, "skillKind", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* requiredStance = Required(
+			value, "requiredStance", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* setsStance = Required(
+			value, "setsStance", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* comboStages = Required(
 			value, "comboStages", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
 			nullptr == name || nullptr == action ||
 			nullptr == cooldown || nullptr == resourceCost ||
 			resourceCost->Get_Number() < 0.0 ||
-			nullptr == damageId || nullptr == kind || nullptr == comboStages)
+			nullptr == damageId || nullptr == kind ||
+			nullptr == requiredStance || nullptr == setsStance ||
+			nullptr == comboStages)
 		{
 			outStatus = "PlayerSkills.json is missing a required skill field";
 			return false;
@@ -147,13 +170,16 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
 		definition.iResourceCost =
 			static_cast<std::uint32_t>(resourceCost->Get_Number());
-		const auto damage = damages.find(damageId->Get_String());
-		if (damages.end() == damage)
+		if (!damageId->Get_String().empty())
 		{
-			outStatus = "PlayerSkills.json references an unknown damage profile";
-			return false;
+			const auto damage = damages.find(damageId->Get_String());
+			if (damages.end() == damage)
+			{
+				outStatus = "PlayerSkills.json references an unknown damage profile";
+				return false;
+			}
+			definition.iDamageRatePercent = damage->second;
 		}
-		definition.iDamageRatePercent = damage->second;
 
 		const std::string& kindText = kind->Get_String();
 		if ("ACTIVE" == kindText)
@@ -163,6 +189,12 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		else
 		{
 			outStatus = "PlayerSkills.json has an unknown skillKind";
+			return false;
+		}
+		if (!ParseStance(requiredStance->Get_String(), definition.eRequiredStance) ||
+			!ParseStance(setsStance->Get_String(), definition.eSetsStance))
+		{
+			outStatus = "PlayerSkills.json has an unknown stance";
 			return false;
 		}
 		definition.iComboStageCount = comboStages->Get_Array().size();
@@ -182,17 +214,31 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			return false;
 		}
 
-		/* One class cannot bind two skills to the same slot: the input controller
-		resolves a key press through exactly one skill, so a duplicate would make
-		the winner depend on document order. */
+		/* One class cannot bind two skills to the same slot in the same stance:
+		the input controller resolves a key press through exactly one skill, so a
+		duplicate would make the winner depend on document order. A stance-free
+		(NONE) binding claims the whole slot since nothing then distinguishes it
+		from a stance-specific one at resolve time. */
 		const std::string slotKey =
 			std::to_string(static_cast<std::uint32_t>(definition.eCharacterClass)) +
 			":" + definition.strInputSlot;
-		if (!claimedSlots.emplace(slotKey, definition.strDisplayName).second)
+		std::vector<LostArk::Shared::PLAYER_STANCE_ID>& claimedStances =
+			claimedSlots[slotKey];
+		const bool slotConflicts = std::any_of(
+			claimedStances.begin(), claimedStances.end(),
+			[&definition](const LostArk::Shared::PLAYER_STANCE_ID claimed)
+			{
+				return claimed == definition.eRequiredStance ||
+					LostArk::Shared::PLAYER_STANCE_ID::NONE == claimed ||
+					LostArk::Shared::PLAYER_STANCE_ID::NONE ==
+						definition.eRequiredStance;
+			});
+		if (slotConflicts)
 		{
 			outStatus = "PlayerSkills.json binds one class slot twice: " + slotKey;
 			return false;
 		}
+		claimedStances.push_back(definition.eRequiredStance);
 		for (const PLAYER_SKILL_DEFINITION& existing : skills)
 		{
 			if (existing.iSkillId == definition.iSkillId)
@@ -218,12 +264,16 @@ Client::CPlayerSkillCatalog::Get_Skills()
 
 const Client::PLAYER_SKILL_DEFINITION* Client::CPlayerSkillCatalog::Find_BySlot(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const std::string& inputSlot)
+	const std::string& inputSlot,
+	const LostArk::Shared::PLAYER_STANCE_ID stance)
 {
 	for (const PLAYER_SKILL_DEFINITION& definition : g_Skills)
 	{
 		if (definition.eCharacterClass == characterClass &&
-			definition.strInputSlot == inputSlot)
+			definition.strInputSlot == inputSlot &&
+			(LostArk::Shared::PLAYER_STANCE_ID::NONE ==
+				definition.eRequiredStance ||
+				definition.eRequiredStance == stance))
 		{
 			return &definition;
 		}

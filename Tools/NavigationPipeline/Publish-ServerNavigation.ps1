@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Validate', 'Publish')]
+    [ValidateSet('Validate', 'Publish', 'ContractTest')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles/Navigation'
 )
@@ -72,10 +72,11 @@ function Convert-NavigationAuthoringGrid {
         [string]$RelativeSourcePath,
         [string]$RelativePaintPath,
         [single]$MaximumStepHeight = 0.0,
-        [switch]$RequireSingleComponent
+        [switch]$RequireSingleComponent,
+        [string]$AuthoringRoot = $repoRoot
     )
 
-    $sourcePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativeSourcePath))
+    $sourcePath = [IO.Path]::GetFullPath((Join-Path $AuthoringRoot $RelativeSourcePath))
     if (-not [IO.File]::Exists($sourcePath)) {
         throw "Navigation authoring source is missing: $sourcePath"
     }
@@ -151,15 +152,17 @@ function Convert-NavigationAuthoringGrid {
         $heights[$index] = if ($surface -eq 0) { [single]0 } else { $cellHeight }
     }
 
-    $blocked = [byte[]]::new([int]$cellCount)
-    $paintPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePaintPath))
+    # 0 = inherit baked state, 1 = force blocked, 2 = force walkable.
+    $overrides = [byte[]]::new([int]$cellCount)
+    $paintPath = [IO.Path]::GetFullPath((Join-Path $AuthoringRoot $RelativePaintPath))
     if ([IO.File]::Exists($paintPath)) {
         $paintLines = @([IO.File]::ReadAllLines($paintPath, [Text.Encoding]::UTF8))
         if ($paintLines.Count -lt 1) { throw "Navigation paint is empty: $paintPath" }
         $paintHeader = @(Split-NavigationTokens $paintLines[0])
         if ($paintHeader.Count -ne 9 -or
             $paintHeader[0] -ne 'LOSTARK_NAVGRID_PAINT' -or
-            $paintHeader[1] -ne '1' -or $paintHeader[2] -ne $areaId -or
+            $paintHeader[1] -notin @('1', '2') -or
+            $paintHeader[2] -ne $areaId -or
             [uint32]$paintHeader[3] -ne $width -or
             [uint32]$paintHeader[4] -ne $height -or
             [single]$paintHeader[5] -ne $cellSize -or
@@ -167,13 +170,18 @@ function Convert-NavigationAuthoringGrid {
             [single]$paintHeader[7] -ne $originZ) {
             throw "Navigation paint header does not match source: $paintPath"
         }
-        $blockedCount = [uint32]::Parse($paintHeader[8], $culture)
-        if ($paintLines.Count -ne 1 + $blockedCount) {
+        $paintVersion = [uint32]::Parse($paintHeader[1], $culture)
+        $overrideCount = [uint32]::Parse($paintHeader[8], $culture)
+        if ($overrideCount -gt $cellCount -or
+            $paintLines.Count -ne 1 + $overrideCount) {
             throw "Navigation paint count is invalid: $paintPath"
         }
-        for ($row = 0; $row -lt $blockedCount; ++$row) {
+        for ($row = 0; $row -lt $overrideCount; ++$row) {
             $tokens = @(Split-NavigationTokens $paintLines[$row + 1])
-            if ($tokens.Count -ne 2) { throw "Navigation paint row is invalid: $paintPath" }
+            $expectedPaintRowCount = if ($paintVersion -eq 1) { 2 } else { 3 }
+            if ($tokens.Count -ne $expectedPaintRowCount) {
+                throw "Navigation paint row is invalid: $paintPath"
+            }
             $cellX = [int32]::Parse($tokens[0], $culture)
             $cellZ = [int32]::Parse($tokens[1], $culture)
             if ($cellX -lt 0 -or $cellZ -lt 0 -or
@@ -181,8 +189,22 @@ function Convert-NavigationAuthoringGrid {
                 throw "Navigation paint cell is outside the grid: $paintPath"
             }
             $index = $cellZ * $width + $cellX
-            if ($blocked[$index] -ne 0) { throw "Navigation paint has duplicate cells: $paintPath" }
-            $blocked[$index] = 1
+            if ($overrides[$index] -ne 0) {
+                throw "Navigation paint has duplicate cells: $paintPath"
+            }
+            if ($resolved[$index] -eq 0) {
+                throw "Navigation paint targets an unresolved cell: $paintPath"
+            }
+
+            if ($paintVersion -eq 1 -or $tokens[2] -eq 'BLOCKED') {
+                $overrides[$index] = 1
+            }
+            elseif ($tokens[2] -eq 'WALKABLE') {
+                $overrides[$index] = 2
+            }
+            else {
+                throw "Navigation paint override is invalid: $paintPath"
+            }
         }
     }
 
@@ -195,8 +217,15 @@ function Convert-NavigationAuthoringGrid {
         $writer.Write($originX)
         $writer.Write($originZ)
         for ($index = 0; $index -lt $cellCount; ++$index) {
-            $isWalkable = $resolved[$index] -ne 0 -and
-                $baseWalkable[$index] -ne 0 -and $blocked[$index] -eq 0
+            $isWalkable = $false
+            if ($resolved[$index] -ne 0) {
+                if ($overrides[$index] -eq 2) {
+                    $isWalkable = $true
+                }
+                elseif ($overrides[$index] -eq 0) {
+                    $isWalkable = $baseWalkable[$index] -ne 0
+                }
+            }
             $walkableByte = if ($isWalkable) { [byte]1 } else { [byte]0 }
             $writer.Write($walkableByte)
         }
@@ -328,6 +357,80 @@ function Assert-NavigationGrid {
         }
     }
     return "${width}x${height}, cellSize=$cellSize, walkable=$walkableCount, maxStep=$maximumObservedStep"
+}
+
+function Invoke-NavigationPaintContractTest {
+    $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) (
+        'lostark-navpaint-contract-' + [Guid]::NewGuid().ToString('N'))
+    $navigationRoot = Join-Path $fixtureRoot 'Data/Navigation'
+    [IO.Directory]::CreateDirectory($navigationRoot) | Out-Null
+    $sourcePath = Join-Path $navigationRoot 'TEST_NAV_PAINT.navsource'
+    $paintPath = Join-Path $navigationRoot 'TEST_NAV_PAINT.navpaint'
+    $sourceText = @(
+        'LOSTARK_NAVGRID_SOURCE 2 "TEST_NAV_PAINT" 2 1 1 0 0 0 0 0 2 2 2 0 50 1 2',
+        '0 0 1 1 0',
+        '1 0 1 0 0'
+    ) -join "`n"
+    $validPaint = @(
+        'LOSTARK_NAVGRID_PAINT 2 "TEST_NAV_PAINT" 2 1 1 0 0 2',
+        '0 0 BLOCKED',
+        '1 0 WALKABLE'
+    ) -join "`n"
+
+    try {
+        [IO.File]::WriteAllText($sourcePath, $sourceText, [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText($paintPath, $validPaint, [Text.Encoding]::UTF8)
+        $grid = Convert-NavigationAuthoringGrid `
+            -RelativeSourcePath 'Data/Navigation/TEST_NAV_PAINT.navsource' `
+            -RelativePaintPath 'Data/Navigation/TEST_NAV_PAINT.navpaint' `
+            -AuthoringRoot $fixtureRoot
+        if ($grid.Bytes[20] -ne 0 -or $grid.Bytes[21] -ne 1) {
+            throw 'Navigation paint v2 did not override baked walkability'
+        }
+
+        $invalidCases = @(
+            @(
+                'LOSTARK_NAVGRID_PAINT 3 "TEST_NAV_PAINT" 2 1 1 0 0 1',
+                '0 0 WALKABLE'),
+            @(
+                'LOSTARK_NAVGRID_PAINT 2 "TEST_NAV_PAINT" 2 1 1 0 0 2',
+                '0 0 WALKABLE',
+                '0 0 BLOCKED'),
+            @(
+                'LOSTARK_NAVGRID_PAINT 2 "WRONG_AREA" 2 1 1 0 0 1',
+                '0 0 WALKABLE')
+        )
+        foreach ($invalidCase in $invalidCases) {
+            [IO.File]::WriteAllText(
+                $paintPath,
+                ($invalidCase -join "`n"),
+                [Text.Encoding]::UTF8)
+            $rejected = $false
+            try {
+                Convert-NavigationAuthoringGrid `
+                    -RelativeSourcePath 'Data/Navigation/TEST_NAV_PAINT.navsource' `
+                    -RelativePaintPath 'Data/Navigation/TEST_NAV_PAINT.navpaint' `
+                    -AuthoringRoot $fixtureRoot | Out-Null
+            }
+            catch {
+                $rejected = $true
+            }
+            if (-not $rejected) {
+                throw 'Navigation paint invalid contract was accepted'
+            }
+        }
+    }
+    finally {
+        if ([IO.Directory]::Exists($fixtureRoot)) {
+            [IO.Directory]::Delete($fixtureRoot, $true)
+        }
+    }
+}
+
+if ($Mode -eq 'ContractTest') {
+    Invoke-NavigationPaintContractTest
+    Write-Host 'Server navigation ContractTest succeeded: navpaint v2 overrides and rejection cases.'
+    return
 }
 
 $grids = @(

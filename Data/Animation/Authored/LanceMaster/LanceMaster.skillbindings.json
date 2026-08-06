@@ -7,7 +7,9 @@
     {
       "skillId": 34120,
       "clips": [
-        "flm_sk_threetalonstrike_01"
+        "flm_sk_threetalonstrike_01",
+        "flm_sk_threetalonstrike_02",
+        "flm_sk_threetalonstrike_03"
       ]
     },
     {
@@ -31,14 +33,32 @@
     {
       "skillId": 34110,
       "clips": [
-        "flm_sk_crescentsweep",
-        "flm_sk_crescentsweep_custom_5"
+        "flm_sk_crescentsweep"
       ]
     },
     {
       "skillId": 34090,
       "clips": [
         "flm_sk_dragonkick"
+      ]
+    },
+    {
+      "skillId": 34050,
+      "clips": [
+        "flm_sk_hurricaneswing_01",
+        "flm_sk_hurricaneswing_02"
+      ]
+    },
+    {
+      "skillId": 34170,
+      "clips": [
+        "flm_sk_pulverize"
+      ]
+    },
+    {
+      "skillId": 34020,
+      "clips": [
+        "flm_sk_moving_normal_1"
       ]
     },
     {
@@ -69,6 +89,76 @@
         "flm_att_identity1_1_02",
         "flm_att_identity1_1_03",
         "flm_att_identity1_1_04"
+      ]
+    },
+    {
+      "skillId": 34000,
+      "clips": [
+        "flm_mode_identity1"
+      ]
+    },
+    {
+      "skillId": 34500,
+      "clips": [
+        "flm_mode_identity2"
+      ]
+    },
+    {
+      "skillId": 34510,
+      "clips": [
+        "flm_att_identity2_1_01",
+        "flm_att_identity2_1_02",
+        "flm_att_identity2_1_03"
+      ]
+    },
+    {
+      "skillId": 34520,
+      "clips": [
+        "flm_sk_moving_normal_2"
+      ]
+    },
+    {
+      "skillId": 34540,
+      "clips": [
+        "flm_sk_stab",
+        "flm_sk_stab_custom_3_01"
+      ]
+    },
+    {
+      "skillId": 34550,
+      "clips": [
+        "flm_sk_talonstrike"
+      ]
+    },
+    {
+      "skillId": 34560,
+      "clips": [
+        "flm_sk_penetrationlunge_01",
+        "flm_sk_penetrationlunge_02",
+        "flm_sk_penetrationlunge_03",
+        "flm_sk_penetrationlunge_04"
+      ]
+    },
+    {
+      "skillId": 34570,
+      "clips": [
+        "flm_sk_dragonupfly_01",
+        "flm_sk_dragonupfly_02_re",
+        "flm_sk_dragonupfly_03_re"
+      ]
+    },
+    {
+      "skillId": 34580,
+      "clips": [
+        "flm_sk_counterattack_02"
+      ]
+    },
+    {
+      "skillId": 34590,
+      "clips": [
+        "flm_sk_lastwhisper_start",
+        "flm_sk_lastwhisper_loop",
+        "flm_sk_lastwhisper_end"
       ]
     }
   ]

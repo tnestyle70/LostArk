@@ -32,6 +32,10 @@ namespace LostArk::Server
 		float fMaximumRange = 0.f;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
 			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
+		LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
+		LostArk::Shared::PLAYER_STANCE_ID eSetsStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
 	};
 
@@ -62,6 +66,8 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		float fMoveSpeed = 0.f;
+		LostArk::Shared::PLAYER_STANCE_ID eDefaultStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	};
 
 	class CGameplayCatalog final

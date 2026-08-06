@@ -7,11 +7,15 @@ namespace
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
-		  TEXT("Prototype_Component_Model_LanceMaster_Weapon"), "b_weapon_rhand" },
+		  TEXT("Prototype_Component_Model_LanceMaster_Weapon"), "b_weapon_rhand", 0.f,
+		  LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR },
+		{ TEXT("Part_91_Weapon_R_Short"),
+		  TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short"), "b_weapon_rhand", 0.f,
+		  LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR },
 	};
 
 	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before "Part_90_Weapon_R". */
+	first, and before "Part_90_Weapon_R". */	
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_LanceMaster_Arm") },

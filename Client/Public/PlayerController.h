@@ -51,6 +51,7 @@ namespace Client
 		only fills a slot the keyboard left empty. */
 		void Poll_BasicAttack(
 			const CHARACTER_SPEC* pSpec,
+			LostArk::Shared::PLAYER_STANCE_ID stance,
 			LostArk::Shared::SKILL_ID& outSkillId,
 			bool_t commandSuppressed);
 

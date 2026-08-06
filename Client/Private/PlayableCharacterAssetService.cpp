@@ -41,8 +41,9 @@ namespace
 				TEXT("Prototype_Component_Model_LanceMaster_Helmet")
 			},
 			5u,
-			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon") },
-			1u
+			{ TEXT("Prototype_Component_Model_LanceMaster_Weapon"),
+			  TEXT("Prototype_Component_Model_LanceMaster_Weapon_Short") },
+			2u
 		};
 		static const CHARACTER_PROTOTYPE_TAGS GUNSLINGER
 		{

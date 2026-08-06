@@ -73,6 +73,8 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 
 void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 {
+	if (!m_isVisible)
+		return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));

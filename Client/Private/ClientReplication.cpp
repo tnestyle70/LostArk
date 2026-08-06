@@ -477,6 +477,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		{
 			allSucceeded = false;
 		}
+		character->Apply_NetworkStance(player.eStance);
 		if (player.iNetEntityId ==
 			CNetworkManager::Get().Get_LocalEntityId())
 		{

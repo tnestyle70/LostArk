@@ -243,7 +243,16 @@ namespace LostArk::Shared
 	{
 		NONE,
 		SKILL,
+		TRIGGER_MOVE,
 		DEAD,
+		END
+	};
+
+	enum class PLAYER_STANCE_ID : std::uint8_t
+	{
+		NONE,
+		LANCE_MASTER_LONG_SPEAR,
+		LANCE_MASTER_SHORT_SPEAR,
 		END
 	};
 
@@ -268,6 +277,7 @@ namespace LostArk::Shared
 			PLAYER_LOCOMOTION_STATE::IDLE;
 
 		PLAYER_ACTION_STATE eAction = PLAYER_ACTION_STATE::NONE;
+		PLAYER_STANCE_ID eStance = PLAYER_STANCE_ID::NONE;
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;

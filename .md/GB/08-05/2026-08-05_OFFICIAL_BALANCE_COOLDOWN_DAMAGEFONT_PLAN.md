@@ -738,6 +738,47 @@ foreach ($profile in @($damageDocument.profiles)) {
 }
 ```
 
+### G01.7b provenance 추출기 해시의 LF/CRLF 독립성
+
+`extractorSha256`은 Python 소스의 의미를 식별하는 값이므로 Windows checkout의 CRLF와 Git 정본의
+LF가 같은 코드에 서로 다른 영수증을 만들면 안 된다. 영수증은 기존 LF 기준 값을 유지하고 publisher가
+UTF-8 텍스트의 `CRLF`와 단독 `CR`을 `LF`로 정규화한 뒤 SHA-256을 계산한다.
+
+`Publish-GameplayBalance.ps1`에 다음 함수를 추가한다.
+
+```powershell
+function Get-CanonicalTextFileSha256([string]$Path) {
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $text = [IO.File]::ReadAllText($Path, $strictUtf8)
+    $canonicalText = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $canonicalBytes = [Text.UTF8Encoding]::new($false).GetBytes($canonicalText)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash($canonicalBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+```
+
+기존 raw 파일 해시 계산은 다음 한 줄로 교체한다.
+
+```powershell
+$currentExtractorHash = Get-CanonicalTextFileSha256 $extractorPath
+```
+
+새 checkout과 공식 receipt 재생성에서도 extractor가 LF로 유지되도록 `.gitattributes`에 정확한 한 경로만
+고정한다.
+
+```gitattributes
+/Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py text eol=lf
+```
+
+검증은 CRLF working copy의 정규화 해시가 기존 receipt 해시와 일치하는지 확인하고, Python compile,
+`Publish-GameplayBalance.ps1 -Mode Validate`, `-Mode Publish`를 순서대로 실행한다. Publish 실패 전후의
+기존 `Gameplay.bootstrap`은 publisher의 stage/rollback 계약으로 보존한다.
+
 skill/player 문서 헤더의 `formatVersion -ne 1`을 `-ne 2`로 바꾼다(현재 55행, 61행).
 
 player 프로필 루프를 교체한다. 삽입 위치는 현재 73~85행이다.

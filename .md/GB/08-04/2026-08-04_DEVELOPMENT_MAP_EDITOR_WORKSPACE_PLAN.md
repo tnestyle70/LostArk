@@ -133,3 +133,62 @@ git diff --check
 Debug smoke는 Lobby Test 승인 후 editor 진입, F1만으로 전환되지 않음, 네 Area의
 load/unload, dirty gate 세 동작, policy별 disabled panel을 확인한다. Release에서는 Debug
 Map Editor를 PASS로 기록하지 않고 제품 Lobby/Test/Bern/Valtan 회귀만 기록한다.
+
+## 9. Bern 최초 카메라 프레이밍 교정
+
+Bern의 50,017개 visual placement 전체 min/max에는 도시 본체에서 멀리 떨어진 배경·이벤트
+오브젝트가 포함된다. 전체 bounds의 중점을 최초 카메라 target으로 사용하면 도시가 화면에서
+작게 보이고 free camera가 검은 공간에서 시작한다. `Gameplay.world.json`의 `playerSpawn`은
+현재 원점 주변의 placeholder이므로 카메라 정본으로 사용하지 않는다.
+
+`CMapTool::Switch_EditorArea`의 transaction과 Area 데이터는 유지하고, Bern commit 직후에만
+finite placement position의 축별 5%, 50%, 95% 분위수를 계산한다.
+
+- center: X/Y/Z의 50% 중앙값
+- radius: X/Z 중앙 90% span의 큰 값에 0.35를 곱하고 최소 75로 제한
+- 표본이 없거나 계산 결과가 유효하지 않으면 기존 full-bounds frame을 유지
+- Valtan의 기존 playable-center override는 변경하지 않음
+- placement, catalog, gameplay, navigation 문서는 수정하지 않음
+
+이 변경은 editor free camera의 최초 위치만 바꾸며 저장 데이터와 제품 Bern Level의 spawn에는
+영향을 주지 않는다. Client Debug build와 Bern 수동 진입에서 도시 중앙 프레이밍을 확인한다.
+
+## 10. Map Editor와 제품 Bern/Valtan visual parity
+
+2026-08-05 실측에서 Map Editor Source와 제품 publish 파일은 같은 데이터를 갖고 있었다.
+Bern mapset과 13개 shard의 catalog/placement는 byte hash까지 같고, Valtan catalog는 같으며
+placement는 줄바꿈을 정규화하면 13,192행 전체가 같다. 화면 차이의 직접 원인은 제품
+`CLevelRegistry`의 좁은 `MAP_LOAD_SCOPE`다.
+
+제품 Level이 `Data/Maps/Authoring`을 직접 읽게 하지 않는다. `Publish-MapAuthoring.ps1`이 만든
+`Client/Bin/DataFiles/Map`만 제품 정본으로 유지하면서 다음처럼 scope를 선언한다.
+
+- Bern: 전체 좌표 범위를 load하되 asset group `landscape`는 임시 제외
+- Valtan: 전체 좌표 범위를 load
+- Character Select와 Development: 기존 scope 유지
+- Loader와 `CMapPlacementRuntime`: 같은 scope와 제외 group을 소비
+- MapTool: 기존 Bern Landscape 기본 숨김과 동일한 화면 결과 유지
+
+`MAP_LOAD_SCOPE`에는 optional excluded asset group ID를 추가한다. scope 적용은 asset을 먼저
+resolve하고 excluded group을 제거한 뒤 좌표/background 규칙을 적용한다. cache key 비교에도
+excluded group을 포함해 다른 scope의 staged records를 재사용하지 않는다.
+
+이 연결 후 현재 제품 예상 배치는 Bern 49,975개, Valtan 13,192개다. 이후 MapTool 편집은
+`Save → Publish-MapAuthoring.ps1 -AreaId <Area>`를 거쳐야 제품에 반영된다. MapTool 저장이
+runtime 파일을 직접 교체하거나 제품 Level이 Authoring 문서를 직접 읽는 우회는 추가하지 않는다.
+
+## 11. 제품 Bern 진입 위치를 Map Editor 중심 구역에 연결
+
+Map Editor와 제품 runtime의 Bern placement 50,017개는 행 단위로 일치한다. 제품 Bern만 다른
+장소처럼 보이는 원인은 visual map 문서가 아니라 `Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json`의
+네 `playerSpawn`이 원점 주변 placeholder인 점이다. 제품 카메라는 Server가 생성한 local character를
+follow하므로 원점 spawn을 유지한 채 Client 카메라만 강제로 도시 중앙으로 옮기지 않는다.
+
+- Bern `playerSpawn` 네 개를 SL00의 실제 Bern Castle floor 배치가 존재하는 중앙 구역으로 옮긴다.
+- 기준 floor는 `bg_ber_berncastle_floor02d_sm_ksr`, 원본 배치 좌표는 대략
+  `(144.818887, 42.56, -70.3215674)`이다.
+- entry와 party spawn은 같은 연속 바닥 위에 1m 안팎으로 분리한다.
+- gameplay document revision을 증가시킨다.
+- `Publish-WorldGameplay.ps1`로 Server `BERN.worldbootstrap`을 재생성한다. 생성물을 직접 편집하지 않는다.
+- Server 재시작 뒤 Lobby Bern 진입으로 character와 follow camera가 베른 중심 바닥에서 시작하는지
+  확인한다.

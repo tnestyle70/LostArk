@@ -39,6 +39,8 @@ namespace Client
 		std::uint32_t iMaximumResource = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		LostArk::Shared::PLAYER_STANCE_ID eStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		std::vector<HUD_SKILL_STATE> Skills;
 	};
 
@@ -97,6 +99,8 @@ namespace Client
 			/* Display-only multiplicand for skill damage rates. The server keeps
 			its own copy in the gameplay bootstrap and is the only authority. */
 			std::uint32_t iAttackPower = 0;
+			LostArk::Shared::PLAYER_STANCE_ID eDefaultStance =
+				LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		};
 
 		void Build_PlayerSkills(

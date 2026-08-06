@@ -1136,6 +1136,7 @@ namespace
 		first.eLocomotionState =
 			PLAYER_LOCOMOTION_STATE::MOVING;
 		first.eAction = PLAYER_ACTION_STATE::SKILL;
+		first.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
 		first.iSkillId = 34060;
 		first.iActionStartTick = 25;
 		first.iCurrentHp = 875;
@@ -1152,7 +1153,9 @@ namespace
 		second.fPositionZ = 4.f;
 		second.fYawDegrees = 180.f;
 		second.eLocomotionState =
-			PLAYER_LOCOMOTION_STATE::IDLE;
+			PLAYER_LOCOMOTION_STATE::MOVING;
+		second.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
+		second.iActionStartTick = 29;
 
 		source.Players.push_back(first);
 		source.Players.push_back(second);
@@ -1179,7 +1182,7 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1;
 		constexpr std::size_t playerFixedBytes =
-			4 + (4 * 4) + 1 + 1 + (4 * 6) + 1 + 1;
+			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		constexpr std::size_t emptyActionEntityBytes =
 			4 + 1 + 2 + (4 * 4) + (4 * 3) + 1;
@@ -1214,6 +1217,8 @@ namespace
 			decoded.Players[0].eLocomotionState ==
 			PLAYER_LOCOMOTION_STATE::MOVING &&
 			decoded.Players[0].eAction == PLAYER_ACTION_STATE::SKILL &&
+			decoded.Players[0].eStance ==
+			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR &&
 			decoded.Players[0].iSkillId == 34060 &&
 			decoded.Players[0].iActionStartTick == 25 &&
 			decoded.Players[0].iCurrentHp == 875 &&
@@ -1225,7 +1230,10 @@ namespace
 			decoded.Players[1].fPositionX == 3.f &&
 			decoded.Players[1].fPositionZ == 4.f &&
 			decoded.Players[1].eLocomotionState ==
-			PLAYER_LOCOMOTION_STATE::IDLE,
+			PLAYER_LOCOMOTION_STATE::MOVING &&
+			decoded.Players[1].eAction ==
+			PLAYER_ACTION_STATE::TRIGGER_MOVE &&
+			decoded.Players[1].iActionStartTick == 29,
 			"World Snapshot Players Round Trip");
 
 		testRunner.Require(
@@ -1272,6 +1280,13 @@ namespace
 			testRunner.Require(
 				!Write_Message(idleComboWriter, idleCombo),
 				"Reject Combo Stage Without Skill Action");
+
+			S2C_WORLD_SNAPSHOT triggerWithoutTick = source;
+			triggerWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter triggerWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(triggerWithoutTickWriter, triggerWithoutTick),
+				"Reject Trigger Move Without Action Tick");
 		}
 
 		payload.pop_back();

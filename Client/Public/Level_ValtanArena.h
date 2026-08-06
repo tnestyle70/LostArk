@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "ClientReplication.h"
+#include "DeployPropRuntime.h"
 #include "Level.h"
 #include "MapPlacementRuntime.h"
 #include "PlayerController.h"
@@ -32,6 +33,7 @@ private:
 
 private:
 	CMapPlacementRuntime m_MapRuntime;
+	CDeployPropRuntime m_DeployRuntime;
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;

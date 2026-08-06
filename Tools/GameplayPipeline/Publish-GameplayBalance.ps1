@@ -70,6 +70,20 @@ function ConvertTo-ReceiptValue([object]$Value) {
     return ($Value | ConvertTo-Json -Compress -Depth 32)
 }
 
+function Get-CanonicalTextFileSha256([string]$Path) {
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $text = [IO.File]::ReadAllText($Path, $strictUtf8)
+    $canonicalText = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $canonicalBytes = [Text.UTF8Encoding]::new($false).GetBytes($canonicalText)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash($canonicalBytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Assert-BalanceProvenance(
     [object]$PlayerDocument,
     [object]$SkillDocument,
@@ -87,7 +101,7 @@ function Assert-BalanceProvenance(
         throw 'Balance provenance receipt header is invalid.'
     }
     $extractorPath = Join-Path $repoRoot 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py'
-    $currentExtractorHash = (Get-FileHash -LiteralPath $extractorPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $currentExtractorHash = Get-CanonicalTextFileSha256 $extractorPath
     if ([string]$receipt.extractorSha256 -cne $currentExtractorHash) {
         throw 'Balance provenance receipt is stale for the current extractor.'
     }
@@ -304,10 +318,15 @@ $supportedPlayerClasses = @(
 	'ARTIST',
 	'DIMENSIONMASTER'
 )
+$knownStances = @('NONE', 'LANCE_MASTER_LONG_SPEAR', 'LANCE_MASTER_SHORT_SPEAR')
 foreach ($player in @($playerDocument.players)) {
 	Assert-ExactProperties $player @(
 		'characterClass','maximumHp','maximumResource','resourceRegenPerSecond',
-		'attackPower','defense','moveSpeed') 'player profile'
+		'attackPower','defense','moveSpeed','defaultStance') 'player profile'
+	Assert-JsonString $player.defaultStance 'player defaultStance'
+	if ($player.defaultStance -notin $knownStances) {
+		throw "Player defaultStance is unknown: $($player.characterClass) $($player.defaultStance)"
+	}
 	Assert-JsonString $player.characterClass 'player characterClass'
 	Assert-JsonInteger $player.maximumHp 'player maximumHp' 1 ([uint32]::MaxValue)
 	Assert-JsonInteger $player.maximumResource 'player maximumResource' 1 ([uint32]::MaxValue)
@@ -331,7 +350,8 @@ foreach ($player in @($playerDocument.players)) {
 		'PLAYER', $player.characterClass, [uint32]$player.maximumHp,
 		[uint32]$player.maximumResource, [uint32]$player.resourceRegenPerSecond,
 		[uint32]$player.attackPower, [uint32]$player.defense,
-		(Format-InvariantFloat $player.moveSpeed 'player moveSpeed')) -join "`t"))
+		(Format-InvariantFloat $player.moveSpeed 'player moveSpeed'),
+		$player.defaultStance) -join "`t"))
 }
 if ($playerClasses.Count -ne $supportedPlayerClasses.Count) {
 	$missingClasses = @($supportedPlayerClasses | Where-Object { -not $playerClasses.Contains($_) })
@@ -346,15 +366,20 @@ $maximumPlayerResource = (@($playerDocument.players) |
 $playerSkillSlots = @(
 	'Q','W','E','R','A','S','D','F','T','Z','V','ALT_V','SPACE','LMB','RMB')
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
-$inputSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$claimedSlotStances = @{}
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
-		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','cooldownMs','actionDurationMs',
+		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','requiredStance','setsStance',
+		'cooldownMs','actionDurationMs',
         'hitTimeMs','resourceCost','movementDistance','maximumRange','serverDamageProfileId','effectId','comboStages') 'player skill'
 	Assert-JsonInteger $skill.skillId 'skillId' 1 ([uint32]::MaxValue)
-	foreach ($stringField in @('characterClass','inputSlot','displayName','actionId','skillKind','serverDamageProfileId','effectId')) {
+	foreach ($stringField in @('characterClass','inputSlot','displayName','actionId','skillKind','serverDamageProfileId',
+		'effectId','requiredStance','setsStance')) {
 		Assert-JsonString $skill.$stringField "skill $($skill.skillId) $stringField"
+	}
+	if ($skill.requiredStance -notin $knownStances -or $skill.setsStance -notin $knownStances) {
+		throw "Skill stance is unknown: $($skill.skillId)"
 	}
 	foreach ($integerField in @('cooldownMs','actionDurationMs','hitTimeMs','resourceCost')) {
 		Assert-JsonInteger $skill.$integerField "skill $($skill.skillId) $integerField" 0 ([uint32]::MaxValue)
@@ -364,7 +389,13 @@ foreach ($skill in @($skillDocument.skills)) {
     Assert-StableId $skill.characterClass 'characterClass'
     Assert-StableId $skill.inputSlot 'inputSlot'
     Assert-StableId $skill.actionId 'actionId'
-    Assert-StableId $skill.serverDamageProfileId 'serverDamageProfileId'
+	# Empty means the skill never resolves a hit, so hitTimeMs and maximumRange,
+	# which exist only to describe that hit, have to be zero as well.
+	$damageProfileId = [string]$skill.serverDamageProfileId
+	$dealsDamage = $damageProfileId.Length -gt 0
+	if ($dealsDamage) {
+		Assert-StableId $damageProfileId 'serverDamageProfileId'
+	}
 	if ([string]::IsNullOrWhiteSpace([string]$skill.displayName) -or ([string]$skill.displayName).Length -gt 64) {
 		throw "Skill displayName is invalid: $($skill.skillId)"
 	}
@@ -376,16 +407,27 @@ foreach ($skill in @($skillDocument.skills)) {
 		Assert-StableId $effectId 'effectId'
 	}
     $id = [uint32]$skill.skillId
-    if ($id -eq 0 -or -not $skillIds.Add($id) -or
-        -not $inputSlots.Add("$($skill.characterClass):$($skill.inputSlot)")) {
+    $slotKey = "$($skill.characterClass):$($skill.inputSlot)"
+    $claimedStances = $claimedSlotStances[$slotKey]
+    if ($null -eq $claimedStances) {
+        $claimedStances = [Collections.Generic.List[string]]::new()
+        $claimedSlotStances[$slotKey] = $claimedStances
+    }
+    $slotConflicts = $claimedStances | Where-Object {
+        $_ -eq $skill.requiredStance -or $_ -eq 'NONE' -or $skill.requiredStance -eq 'NONE'
+    }
+    if ($id -eq 0 -or -not $skillIds.Add($id) -or $null -ne $slotConflicts) {
         throw "Duplicate skill ID or input slot: $id"
     }
+    $claimedStances.Add([string]$skill.requiredStance)
     if ($skill.characterClass -notin $supportedPlayerClasses -or $skill.inputSlot -notin $playerSkillSlots -or
         [uint32]$skill.actionDurationMs -eq 0 -or
         [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
         [uint32]$skill.resourceCost -gt $maximumPlayerResource -or
-		[double]$skill.maximumRange -le 0.0 -or
-        -not $damageIds.Contains([string]$skill.serverDamageProfileId)) {
+		($dealsDamage -and ([double]$skill.maximumRange -le 0.0 -or
+			-not $damageIds.Contains($damageProfileId))) -or
+		(-not $dealsDamage -and ([double]$skill.maximumRange -ne 0.0 -or
+			[uint32]$skill.hitTimeMs -ne 0))) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
@@ -434,7 +476,9 @@ foreach ($skill in @($skillDocument.skills)) {
         (Format-InvariantFloat $skill.movementDistance "skill $id movementDistance"),
         (Format-InvariantFloat $skill.maximumRange "skill $id maximumRange"),
         $skill.serverDamageProfileId,
-        $skillKind) -join "`t"))
+        $skillKind,
+        $skill.requiredStance,
+        $skill.setsStance) -join "`t"))
 	for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
 		$stage = $stages[$stageIndex]
 		$skillRows.Add((@(

@@ -237,6 +237,9 @@
     <ClCompile Include="..\Private\DeployPropObject.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\DeployPropRuntime.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\MapAssetPreview.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -321,12 +324,6 @@
     <ClCompile Include="..\Private\PlayableCharacterAssetService.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
-    <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp">
-      <Filter>01.Sources\System</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp">
-      <Filter>01.Sources\System</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
@@ -359,6 +356,11 @@
     </ClCompile>
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
+    <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
+    <ClCompile Include="..\Private\Trigger_Box.cpp">
+      <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -453,6 +455,9 @@
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\DeployPropObject.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DeployPropRuntime.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\MapAssetPreview.h">
@@ -554,15 +559,6 @@
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h">
       <Filter>04. Network</Filter>
     </ClInclude>
-    <ClInclude Include="..\Public\ValtanPresentationAssetService.h">
-      <Filter>02.Headers\System</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\WorldEntityCommandSink.h">
-      <Filter>02.Headers\System</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h">
-      <Filter>02.Headers\System</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
@@ -601,6 +597,12 @@
     </ClInclude>
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
+    <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
+    <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
+    <ClInclude Include="..\Public\Trigger_Box.h">
+      <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

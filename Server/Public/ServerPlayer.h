@@ -14,6 +14,20 @@
 
 namespace LostArk::Server
 {
+	struct SERVER_TRIGGER_MOVE
+	{
+		float fStartX = 0.f;
+		float fStartY = 0.f;
+		float fStartZ = 0.f;
+		float fTargetX = 0.f;
+		float fTargetY = 0.f;
+		float fTargetZ = 0.f;
+		float fDurationSeconds = 0.f;
+		float fElapsedSeconds = 0.f;
+		float fArcHeight = 0.f;
+		bool isActive = false;
+	};
+
 	struct SERVER_PLAYER
 	{
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -50,9 +64,12 @@ namespace LostArk::Server
 		std::uint32_t iResourceAccumulator = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		LostArk::Shared::PLAYER_STANCE_ID eStance =
+			LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		SERVER_TRIGGER_MOVE TriggerMove;
 		std::uint32_t iLastSkillSequence = 0;
 		float fActionElapsedSeconds = 0.f;
 		float fSkillAimDirectionX = 0.f;

@@ -16,6 +16,13 @@ enum class NAVGRID_AUTHORING_CELL_STATE : uint8_t
 	NO_SURFACE,
 };
 
+enum class NAVGRID_PAINT_OVERRIDE : uint8_t
+{
+	INHERIT,
+	FORCE_BLOCKED,
+	FORCE_WALKABLE,
+};
+
 struct NAVGRID_BAKE_DESC final
 {
 	float3_t position = {};
@@ -59,7 +66,7 @@ public:
 		int32_t cellX,
 		int32_t cellZ,
 		uint32_t brushRadius,
-		bool_t walkable);
+		NAVGRID_PAINT_OVERRIDE overrideState);
 	bool_t Save_Paint(
 		const std::filesystem::path& paintPath,
 		std::string& outStatus);
@@ -81,6 +88,7 @@ public:
 	f32_t Get_CellHeight(uint32_t index) const;
 	uint32_t Get_CellCount() const;
 	uint32_t Get_BlockedCount() const;
+	uint32_t Get_ForcedWalkableCount() const;
 	uint32_t Get_ResolvedHeightCount() const;
 	const NAVGRID_AUTHORING_DESC& Get_Desc() const { return m_Desc; }
 	const NAVGRID_BAKE_DESC& Get_BakeDesc() const { return m_Desc.bake; }
@@ -88,7 +96,7 @@ public:
 private:
 	NAVGRID_AUTHORING_DESC m_Desc;
 	std::vector<NAV_SOURCE_CELL> m_SourceCells;
-	std::vector<uint8_t> m_BlockedCells;
+	std::vector<NAVGRID_PAINT_OVERRIDE> m_CellOverrides;
 	bool_t m_isReady = false;
 	bool_t m_isDirty = false;
 };

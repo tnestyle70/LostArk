@@ -5,12 +5,14 @@
     { "damageProfileId": "damage.player.31210", "damageRatePercent": 1301 },
     { "damageProfileId": "damage.player.31230", "damageRatePercent": 152 },
     { "damageProfileId": "damage.player.34010", "damageRatePercent": 100 },
+    { "damageProfileId": "damage.player.34050", "damageRatePercent": 380 },
     { "damageProfileId": "damage.player.34070", "damageRatePercent": 459 },
     { "damageProfileId": "damage.player.34080", "damageRatePercent": 261 },
     { "damageProfileId": "damage.player.34090", "damageRatePercent": 1050 },
     { "damageProfileId": "damage.player.34110", "damageRatePercent": 499 },
     { "damageProfileId": "damage.player.34120", "damageRatePercent": 361 },
     { "damageProfileId": "damage.player.34150", "damageRatePercent": 3839 },
+    { "damageProfileId": "damage.player.34170", "damageRatePercent": 700 },
     { "damageProfileId": "damage.player.34600", "damageRatePercent": 5034 },
     { "damageProfileId": "damage.player.34620", "damageRatePercent": 15102 },
     { "damageProfileId": "damage.player.34640", "damageRatePercent": 1530 },
@@ -55,6 +57,13 @@
     { "damageProfileId": "damage.player.2050500", "damageRatePercent": 100 },
     { "damageProfileId": "damage.player.2050510", "damageRatePercent": 100 },
     { "damageProfileId": "damage.player.2050540", "damageRatePercent": 100 },
-    { "damageProfileId": "damage.player.2050010", "damageRatePercent": 100 }
+    { "damageProfileId": "damage.player.2050010", "damageRatePercent": 100 },
+    { "damageProfileId": "damage.player.34510", "damageRatePercent": 100 },
+    { "damageProfileId": "damage.player.34540", "damageRatePercent": 396 },
+    { "damageProfileId": "damage.player.34550", "damageRatePercent": 298 },
+    { "damageProfileId": "damage.player.34560", "damageRatePercent": 873 },
+    { "damageProfileId": "damage.player.34570", "damageRatePercent": 3441 },
+    { "damageProfileId": "damage.player.34580", "damageRatePercent": 1882 },
+    { "damageProfileId": "damage.player.34590", "damageRatePercent": 4274 }
   ]
 }

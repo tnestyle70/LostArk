@@ -91,3 +91,19 @@ py_compile + unit test
 
 ProjectAudit가 다른 담당 데이터나 locked resource payload 때문에 실패하면 원인을
 분리 기록하며, 그 파일을 이번 변경에 섞거나 임의로 새 asset pack을 발급하지 않는다.
+
+## 5. 수동 smoke 실패 후 Map Editor 격리
+
+2026-08-05 수동 smoke에서 42개 Landscape의 초록색 수직 늘어짐이 계속 확인됐다.
+원본 placement, imported shard, `.wmodel`을 삭제하거나 50,017개 정본 문서를 재작성하지
+않는다. 대신 `CMapTool`의 Bern editor view에서만 catalog `groupId == "landscape"`인
+placement를 기본 비표시한다.
+
+- 기본값: Bern Landscape 숨김
+- Map Tool 상단 `Show Bern Landscape` 체크로 세션 중 즉시 재표시 가능
+- `record.visible`, dirty 상태, Save/Publish 입력은 변경하지 않음
+- Bern 제품 Level과 `CMapPlacementRuntime` 공용 경로는 변경하지 않음
+- Character Select, Valtan, Training Map 가시성은 변경하지 않음
+
+이 격리는 잘못된 시각 리소스가 마을 확인을 막지 않도록 하는 authoring/debug 조치다.
+Landscape 원상 복구 완료를 의미하지 않으며, 42개 리소스는 후속 교정을 위해 보존한다.

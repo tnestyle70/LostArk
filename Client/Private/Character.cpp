@@ -365,6 +365,24 @@ bool_t CCharacter::Apply_NetworkAction(
 		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+	else if (PLAYER_ACTION_STATE::TRIGGER_MOVE == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
+		{
+			m_pChain = nullptr;
+			m_iChainStep = 0;
+			Commit_PendingClipChains();
+			Set_Animation(CHARACTER_ANIM::RUN, true);
+		}
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
 	{
 		m_pChain = nullptr;
@@ -383,6 +401,27 @@ bool_t CCharacter::Apply_NetworkAction(
 	}
 	m_eNetworkAction = action;
 	return true;
+}
+
+void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
+{
+	m_eStance = stance;
+	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
+	{
+		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
+		Set_PartVisible(
+			weapon.pPartTag,
+			LostArk::Shared::PLAYER_STANCE_ID::NONE == weapon.eRequiredStance ||
+				weapon.eRequiredStance == stance);
+	}
+}
+
+void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible)
+{
+	const auto pPart = dynamic_cast<CPart_Equipment*>(
+		__super::Find_PartObject(pPartTag));
+	if (nullptr != pPart)
+		pPart->Set_Visible(isVisible);
 }
 
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)

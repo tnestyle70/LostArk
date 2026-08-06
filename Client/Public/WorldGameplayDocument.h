@@ -21,6 +21,7 @@ enum class WORLD_PLACEMENT_KIND
 
 enum class WORLD_TRIGGER_EVENT_KIND
 {
+	MOVE_PLAYER,
 	SET_CONDITION,
 	SET_DESTROYABLE_STATE,
 	END
@@ -36,7 +37,10 @@ enum class WORLD_DESTROYABLE_STATE
 
 struct WORLD_TRIGGER_EVENT
 {
-	WORLD_TRIGGER_EVENT_KIND eKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
+	WORLD_TRIGGER_EVENT_KIND eKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+	float3_t targetPosition = {};
+	f32_t durationSeconds = 0.8f;
+	f32_t arcHeight = 0.f;
 	std::string targetId;
 	bool_t conditionValue = false;
 	WORLD_DESTROYABLE_STATE eDestroyableState = WORLD_DESTROYABLE_STATE::FRACTURED;

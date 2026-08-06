@@ -14,7 +14,24 @@ namespace LostArk::Server
 		PLAYER_SPAWN,
 		NPC,
 		BOSS,
+		TRIGGER_BOX,
 		END
+	};
+
+	enum class WORLD_TRIGGER_ACTION_KIND
+	{
+		MOVE_PLAYER,
+		END
+	};
+
+	struct WORLD_TRIGGER_ACTION
+	{
+		WORLD_TRIGGER_ACTION_KIND eKind = WORLD_TRIGGER_ACTION_KIND::END;
+		float fTargetX = 0.f;
+		float fTargetY = 0.f;
+		float fTargetZ = 0.f;
+		float fDurationSeconds = 0.f;
+		float fArcHeight = 0.f;
 	};
 
 	struct WORLD_BOOTSTRAP_PLACEMENT
@@ -35,6 +52,11 @@ namespace LostArk::Server
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
+		float fHalfExtentX = 0.f;
+		float fHalfExtentY = 0.f;
+		float fHalfExtentZ = 0.f;
+		bool isTriggerOnce = true;
+		std::vector<WORLD_TRIGGER_ACTION> TriggerActions;
 		bool isEnabled = true;
 	};
 
