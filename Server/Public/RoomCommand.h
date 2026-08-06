@@ -17,6 +17,7 @@ namespace LostArk::Server
 		ENTER_WORLD,
 		MOVE,
 		USE_SKILL,
+		RELEASE_SKILL,
 		SPAWN_WORLD_ENTITY,
 		LEAVE
 	};
@@ -35,6 +36,8 @@ namespace LostArk::Server
 		LostArk::Shared::C2S_MOVE Move;
 
 		LostArk::Shared::C2S_USE_SKILL UseSkill;
+
+		LostArk::Shared::C2S_RELEASE_SKILL ReleaseSkill;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;
 

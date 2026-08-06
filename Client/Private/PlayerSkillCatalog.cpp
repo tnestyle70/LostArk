@@ -210,6 +210,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
 		else if ("COMBO" == kindText)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
+		else if ("HOLD" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::HOLD;
 		else
 		{
 			outStatus = "PlayerSkills.json has an unknown skillKind";
@@ -232,7 +234,10 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 				(0u == definition.iCooldownMs || 0u != definition.iComboStageCount)) ||
 			(LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition.eSkillKind &&
 				(definition.iComboStageCount < 2u ||
-					definition.iComboStageCount > 8u)))
+					definition.iComboStageCount > 8u)) ||
+			(LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind &&
+				(0u == definition.iCooldownMs ||
+					3u != definition.iComboStageCount)))
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;

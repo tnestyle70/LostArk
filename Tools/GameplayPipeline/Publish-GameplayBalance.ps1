@@ -439,11 +439,40 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
-	if ($skillKind -notin @('ACTIVE','COMBO')) {
+	if ($skillKind -notin @('ACTIVE','COMBO','HOLD')) {
 		throw "Unknown skillKind: $id $skillKind"
 	}
 	$stages = @($skill.comboStages)
-	if ($skillKind -eq 'ACTIVE') {
+	if ($skillKind -eq 'HOLD') {
+		if ($stages.Count -ne 3) {
+			throw "HOLD skill needs exactly 3 stages: $id"
+		}
+		if ([uint32]$skill.cooldownMs -eq 0) {
+			throw "HOLD skill needs a cooldown: $id"
+		}
+		$holdTotal = 0
+		for ($stageIndex = 0; $stageIndex -lt 3; $stageIndex++) {
+			$stage = $stages[$stageIndex]
+			Assert-ExactProperties $stage @(
+				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'hold stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
+			}
+			if ([uint32]$stage.actionDurationMs -eq 0 -or
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs -or
+				[uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
+				throw "Hold stage timing is invalid: $id stage $stageIndex"
+			}
+			if (($stageIndex -ne 2) -ne ([uint32]$stage.hitTimeMs -eq 0)) {
+				throw "A hold skill lands its damage in the end stage only: $id"
+			}
+			$holdTotal += [uint32]$stage.actionDurationMs
+		}
+		if ($holdTotal -ne [uint32]$skill.actionDurationMs) {
+			throw "Hold stage durations must sum to actionDurationMs: $id"
+		}
+	}
+	elseif ($skillKind -eq 'ACTIVE') {
 		if ($stages.Count -ne 0) {
 			throw "ACTIVE skill must not carry comboStages: $id"
 		}

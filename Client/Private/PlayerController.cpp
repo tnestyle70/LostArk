@@ -114,11 +114,24 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 
 	LostArk::Shared::SKILL_ID requestedSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
+	LostArk::Shared::SKILL_ID releasedSkillId =
+		LostArk::Shared::INVALID_SKILL_ID;
 	Poll_SkillSlots(
 		suppressKeyboard || !gameplayCommandsEnabled,
 		useRawKeyboard,
 		character,
-		requestedSkillId);
+		requestedSkillId,
+		releasedSkillId);
+
+	if (LostArk::Shared::INVALID_SKILL_ID != releasedSkillId &&
+		nullptr != commandSink &&
+		commandSink->Request_ReleaseSkill(
+			m_iNextActionSequence, releasedSkillId))
+	{
+		++m_iNextActionSequence;
+		if (0 == m_iNextActionSequence)
+			m_iNextActionSequence = 1;
+	}
 
 	if (LostArk::Shared::INVALID_SKILL_ID != requestedSkillId &&
 		nullptr != character && nullptr != commandSink)
@@ -157,7 +170,8 @@ void Client::CPlayerController::Poll_SkillSlots(
 	const bool_t isKeyboardBlocked,
 	const bool_t useRawKeyboard,
 	const shared_ptr<CCharacter>& character,
-	LostArk::Shared::SKILL_ID& outSkillId)
+	LostArk::Shared::SKILL_ID& outSkillId,
+	LostArk::Shared::SKILL_ID& outReleaseSkillId)
 {
 	const auto readKeyState = [useRawKeyboard](const uint8_t keyCode)
 	{
@@ -200,7 +214,30 @@ void Client::CPlayerController::Poll_SkillSlots(
 		const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 			pSpec->eCharacterClass, slot.pInputSlot, stance);
 		if (nullptr != pSkill)
+		{
 			outSkillId = pSkill->iSkillId;
+			if (LostArk::Shared::PLAYER_SKILL_KIND::HOLD == pSkill->eSkillKind)
+			{
+				m_iHeldSkillId = pSkill->iSkillId;
+				m_byHeldKeyCode = slot.byKeyCode;
+			}
+		}
+	}
+
+	if (LostArk::Shared::INVALID_SKILL_ID != m_iHeldSkillId)
+	{
+		bool_t stillDown = false;
+		for (size_t index = 0; index < SlotKeyCount; ++index)
+		{
+			if (SlotKeys[index].byKeyCode == m_byHeldKeyCode && isDown[index])
+				stillDown = true;
+		}
+		if (isKeyboardBlocked || !stillDown)
+		{
+			outReleaseSkillId = m_iHeldSkillId;
+			m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			m_byHeldKeyCode = 0;
+		}
 	}
 
 	/* Committed for every slot, including ones the modifier ruled out, so

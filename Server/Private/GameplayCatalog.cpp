@@ -86,6 +86,8 @@ namespace
 			output = PLAYER_SKILL_KIND::ACTIVE;
 		else if ("COMBO" == value)
 			output = PLAYER_SKILL_KIND::COMBO;
+		else if ("HOLD" == value)
+			output = PLAYER_SKILL_KIND::HOLD;
 		else
 			return false;
 		return true;
@@ -254,8 +256,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			// unknown skill or skips an index is a corrupt bootstrap, not a
 			// tolerable gap.
 			if (owner == m_Skills.end() ||
-				LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
-					owner->second.eSkillKind ||
+				(LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
+					owner->second.eSkillKind &&
+					LostArk::Shared::PLAYER_SKILL_KIND::HOLD !=
+						owner->second.eSkillKind) ||
 				stageIndex != owner->second.ComboStages.size())
 			{
 				m_strStatus = "Combo stage does not follow its skill";

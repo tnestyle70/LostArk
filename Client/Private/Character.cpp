@@ -140,12 +140,18 @@ bool_t CCharacter::Load_ClipChains()
 			return false;
 		CLIP_CHAIN chain{};
 		chain.iSkillId = static_cast<int32_t>(binding.iSkillId);
-		chain.isCombo =
+		const bool_t isHold =
+			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition->eSkillKind;
+		chain.isServerStaged = isHold ||
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition->eSkillKind;
 		chain.clips.reserve(binding.Clips.size());
 		for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
+		{
+			const bool_t isHoldLoop =
+				isHold && 1u == chain.clips.size() && 3u == binding.Clips.size();
 			chain.clips.push_back(
-				{ clip.strClipName, clip.iPlayMs, clip.fPlayRate });
+				{ clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop });
+		}
 		stagedChains.push_back(std::move(chain));
 	}
 	if (stagedChains.empty())
@@ -297,7 +303,7 @@ void CCharacter::Commit_PendingClipChains()
 
 bool_t CCharacter::Start_Clip(const CLIP_STEP& Step)
 {
-	if (!Set_Animation(Step.clip.c_str(), false))
+	if (!Set_Animation(Step.clip.c_str(), Step.loop))
 		return false;
 
 	m_pBodyModel->Set_AnimTrackPosition(m_pBodyModel->Get_CurrentAnimIndex(), 0.f);
@@ -351,7 +357,7 @@ bool_t CCharacter::Play_Skill(
 	const CLIP_CHAIN* pPick = nullptr;
 	for (const CLIP_CHAIN& chain : m_Chains)
 	{
-		if (chain.iSkillId != iSkillId || chain.isCombo != isCombo)
+		if (chain.iSkillId != iSkillId || chain.isServerStaged != isCombo)
 			continue;
 		pPick = &chain;
 		break;
@@ -372,7 +378,7 @@ void CCharacter::Update_Chain()
 
 	/* A combo holds on its last clip until the server confirms the next stage.
 	Every other mode keeps running to the end by itself. */
-	if (m_pChain->isCombo)
+	if (m_pChain->isServerStaged)
 		return;
 
 	/* A user-authored presentation clip can be shorter than the Server action.

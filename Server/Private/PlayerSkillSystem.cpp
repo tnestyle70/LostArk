@@ -158,8 +158,9 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.iMovePathIndex = 0;
 	player.fYawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 	player.iComboStage =
-		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind ? 1u : 0u;
+		PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind ? 0u : 1u;
 	player.hasBufferedComboInput = false;
+	player.hasReleasedHold = false;
 	return true;
 }
 
@@ -222,8 +223,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	carries stage one so a non-combo path reads the same as before. */
 	const std::size_t stageIndex =
 		0u == player.iComboStage ? 0u : player.iComboStage - 1u;
+	const bool isHold = PLAYER_SKILL_KIND::HOLD == skill->eSkillKind;
 	const bool hasStage =
-		PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
+		(PLAYER_SKILL_KIND::COMBO == skill->eSkillKind || isHold) &&
 		stageIndex < skill->ComboStages.size();
 	const std::uint32_t durationMs = hasStage ?
 		skill->ComboStages[stageIndex].iActionDurationMs :
@@ -283,7 +285,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 
 	const float hitSeconds =
 		static_cast<float>(hitMs) * MILLISECONDS_TO_SECONDS;
-	if (!skill->strDamageProfileId.empty() &&
+	const bool holdWithoutDamage = isHold && 3u != player.iComboStage;
+	if (!skill->strDamageProfileId.empty() && !holdWithoutDamage &&
 		!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
@@ -345,21 +348,31 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasAppliedSkillDamage = true;
 	}
 
+	const bool holdLeavesLoop = isHold && 2u == player.iComboStage &&
+		player.hasReleasedHold;
+	const bool holdSkipsLoop = isHold && 1u == player.iComboStage &&
+		player.hasReleasedHold &&
+		player.fActionElapsedSeconds >= durationSeconds;
+
 	const bool hasNextStage = hasStage &&
-		player.hasBufferedComboInput &&
-		static_cast<std::size_t>(player.iComboStage) <
-			skill->ComboStages.size();
+		(isHold ? static_cast<std::size_t>(player.iComboStage) <
+				skill->ComboStages.size()
+			: player.hasBufferedComboInput &&
+				static_cast<std::size_t>(player.iComboStage) <
+					skill->ComboStages.size());
 	/* A buffered press cancels the rest of the clip once the hit has landed,
 	which is what makes a combo read as fast. Every stage's hit time is inside
 	its own input window, so cutting here never drops damage. */
 	const bool cancelsIntoNextStage =
-		hasNextStage && player.hasAppliedSkillDamage;
+		!isHold && hasNextStage && player.hasAppliedSkillDamage;
 
-	if (cancelsIntoNextStage || player.fActionElapsedSeconds >= durationSeconds)
+	if (cancelsIntoNextStage || holdLeavesLoop ||
+		player.fActionElapsedSeconds >= durationSeconds)
 	{
 		if (hasNextStage)
 		{
-			++player.iComboStage;
+			player.iComboStage = holdSkipsLoop || holdLeavesLoop ?
+				3u : player.iComboStage + 1u;
 			player.hasBufferedComboInput = false;
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
@@ -378,6 +391,25 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.hasAppliedSkillDamage = false;
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
+			player.hasReleasedHold = false;
 		}
 	}
+}
+
+void LostArk::Server::CPlayerSkillSystem::Release(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_RELEASE_SKILL& command,
+	const CGameplayCatalog& catalog)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		player.iCurrentSkillId != command.iSkillId)
+	{
+		return;
+	}
+	const PLAYER_SKILL_DEFINITION* skill =
+		catalog.Find_Skill(player.iCurrentSkillId);
+	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind)
+		return;
+	player.hasReleasedHold = true;
 }

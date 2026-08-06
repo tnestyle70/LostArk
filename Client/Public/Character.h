@@ -31,12 +31,13 @@ public:
 		std::string clip;
 		uint32_t playMs = 0u;
 		f32_t playRate = 1.f;
+		bool_t loop = false;
 	};
 
 	struct CLIP_CHAIN
 	{
 		int32_t iSkillId = {};
-		bool_t isCombo = false;
+		bool_t isServerStaged = false;
 		std::vector<CLIP_STEP> clips;
 	};
 

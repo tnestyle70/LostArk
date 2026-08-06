@@ -1381,18 +1381,37 @@
       "inputSlot": "S",
       "displayName": "적룡포",
       "actionId": "lancemaster.skill.34590",
-      "skillKind": "ACTIVE",
+      "skillKind": "HOLD",
       "requiredStance": "LANCE_MASTER_SHORT_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 24000,
-      "actionDurationMs": 4100,
-      "hitTimeMs": 1595,
+      "actionDurationMs": 2900,
+      "hitTimeMs": 0,
       "resourceCost": 88,
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.34590",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 700,
+          "hitTimeMs": 0,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        },
+        {
+          "actionDurationMs": 1000,
+          "hitTimeMs": 0,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        },
+        {
+          "actionDurationMs": 1200,
+          "hitTimeMs": 600,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     }
   ]
 }

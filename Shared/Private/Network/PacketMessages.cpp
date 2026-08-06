@@ -730,6 +730,38 @@ bool LostArk::Shared::Read_Message(
 	return true;
 }
 
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_RELEASE_SKILL& message)
+{
+	if (0 == message.iClientSequence ||
+		INVALID_SKILL_ID == message.iSkillId)
+	{
+		return false;
+	}
+
+	writer.Write_U32(message.iClientSequence);
+	writer.Write_U32(message.iSkillId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_RELEASE_SKILL& message)
+{
+	C2S_RELEASE_SKILL decoded{};
+	if (!reader.Read_U32(decoded.iClientSequence) ||
+		!reader.Read_U32(decoded.iSkillId) ||
+		0 == decoded.iClientSequence ||
+		INVALID_SKILL_ID == decoded.iSkillId)
+	{
+		return false;
+	}
+
+	message = decoded;
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPSHOT& message)
 {
     //world의 snapshot write, servertick과 player 정보

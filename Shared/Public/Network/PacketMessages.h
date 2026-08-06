@@ -239,6 +239,22 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_USE_SKILL& message);
 
+	// A HOLD skill leaves its loop when the player lets the key go. The server
+	// still owns when the action ends; this only reports the input edge.
+	struct C2S_RELEASE_SKILL
+	{
+		std::uint32_t iClientSequence = 0;
+		SKILL_ID iSkillId = INVALID_SKILL_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_RELEASE_SKILL& message);
+
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_RELEASE_SKILL& message);
+
 	enum class PLAYER_ACTION_STATE : std::uint8_t
 	{
 		NONE,
@@ -284,8 +300,9 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
-		// 0 outside a combo, 1-based stage index while one runs. The server owns
-		// it; the client must not count stages itself.
+		// 0 outside a staged action, 1-based stage index while one runs: combo
+		// stages, and start/loop/end for a HOLD skill. The server owns it; the
+		// client must not count stages itself.
 		std::uint8_t iComboStage = 0;
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
