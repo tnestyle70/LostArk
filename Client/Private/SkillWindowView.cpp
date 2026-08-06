@@ -199,7 +199,13 @@ void Client::CSkillWindowView::Render(
 	height is the icon's sizing authority, not its own native 64. */
 	constexpr float iconSize = rowBgHeight;
 
+	/* ImGuiCol_ChildBg is fully transparent by default, so without an explicit opaque fill
+	here the tripod background art (drawn earlier, straight to this window's own draw list,
+	before any child) shows through this child's empty space instead of being covered by it --
+	that was the faint tripod ghost bleeding into the skill list. */
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.06f, 0.08f, 1.f));
 	ImGui::BeginChild("##SkillList", ImVec2(rowBgWidth + 30.f, -8.f), true);
+	ImGui::PopStyleColor();
 	ImGui::TextDisabled("Skill List (%d)", static_cast<int32_t>(pRoster->size()));
 	ImGui::Separator();
 	for (const char* stanceFilter : { "LONG", "SHORT", "NONE" })
@@ -301,7 +307,9 @@ void Client::CSkillWindowView::Render(
 
 	ImGui::SameLine();
 
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.06f, 0.08f, 1.f));
 	ImGui::BeginChild("##RunePanel", ImVec2(0.f, -8.f), true);
+	ImGui::PopStyleColor();
 	ImGui::TextDisabled("Rune (display only, not applied yet)");
 	ImGui::Separator();
 	ImGui::BeginDisabled();
