@@ -29,6 +29,7 @@ namespace
 		{ "Screen UI",      "UI/ScreenUI/ScreenUI.json",        "UI/ScreenUI/", false },
 		{ "Loading Screen", "UI/Loading/LoadingLayout.json", "UI/Loading/",  false },
 		{ "Skill Window",   "UI/SkillWindow/SkillWindow_Layout.json", "UI/SkillWindow/", false },
+		{ "Lobby",          "UI/Lobby/Lobby_Layout.json", "UI/Lobby/TitleBackground/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

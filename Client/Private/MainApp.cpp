@@ -169,6 +169,9 @@ HRESULT CMainApp::Initialize()
 	CEffectCatalog::Load(effectCatalogStatus);
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
+	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
+		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
 	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
@@ -259,6 +262,11 @@ HRESULT CMainApp::Render()
 
 	if (nullptr != m_pImGuiLayer)
 	{
+		if (nullptr != m_pLobbyBackgroundView &&
+			ETOUI(LEVEL::LOBBY) == CGameInstance::Get().Get_CurrentLevelID())
+		{
+			m_pLobbyBackgroundView->Render("", 0);
+		}
 	#ifdef _DEBUG
 		const HUD_PLAYER_STATE& hudPlayer =
 			CCombatHUDViewModel::Get().Get_Player();

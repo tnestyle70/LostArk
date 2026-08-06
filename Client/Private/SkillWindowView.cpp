@@ -55,7 +55,8 @@ namespace
 Client::CSkillWindowView::CSkillWindowView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: m_pTextureCache{ make_unique<CUITextureCache>(pDevice) }
 	, m_pBackgroundView{ make_unique<CHUDRuntimeView>(
-		pDevice, pContext, L"UI/SkillWindow/SkillWindow_Layout.json", true) }
+		pDevice, pContext, L"UI/SkillWindow/SkillWindow_Layout.json",
+		CHUDRuntimeView::DRAW_TARGET::CURRENT_WINDOW) }
 {
 }
 
