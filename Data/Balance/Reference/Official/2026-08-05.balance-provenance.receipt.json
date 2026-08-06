@@ -8760,11 +8760,11 @@
             "basis": "PROJECT_TUNED",
             "source": {
                 "type": "project-policy",
-                "policyId": "lancemaster-long-spear-df-space-v1"
+                "policyId": "animation-reference-timing-v1"
             },
-            "sourceValue": 6.0,
+            "sourceValue": 0.0,
             "transform": "identity",
-            "resultValue": 6.0,
+            "resultValue": 0.0,
             "note": "Long-spear D/F/SPACE loadout: clip length is measured from LanceMaster.animnotify; cooldown, cost, range, damage rate and movement are project decisions because EFTable_SkillEffect has no row for 34050/34170/34020."
         },
         {
@@ -11502,11 +11502,11 @@
             "basis": "PROJECT_TUNED",
             "source": {
                 "type": "project-policy",
-                "policyId": "lancemaster-short-spear-binding-v1"
+                "policyId": "animation-reference-timing-v1"
             },
-            "sourceValue": 6.0,
+            "sourceValue": 0.0,
             "transform": "identity",
-            "resultValue": 6.0
+            "resultValue": 0.0
         },
         {
             "targetDocument": "Data/Balance/PlayerSkills.json",
@@ -11944,11 +11944,11 @@
             "basis": "PROJECT_TUNED",
             "source": {
                 "type": "project-policy",
-                "policyId": "lancemaster-short-spear-binding-v1"
+                "policyId": "animation-reference-timing-v1"
             },
-            "sourceValue": 0.8,
+            "sourceValue": 0.0,
             "transform": "identity",
-            "resultValue": 0.8
+            "resultValue": 0.0
         },
         {
             "targetDocument": "Data/Balance/PlayerSkills.json",

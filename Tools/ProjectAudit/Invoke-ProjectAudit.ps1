@@ -1092,6 +1092,9 @@ try {
 				$clips.Count -ne @($skillRows[0].comboStages).Count) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo clip count")
 			}
+			if ($skillRows[0].skillKind -eq 'HOLD' -and $clips.Count -ne 3) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) hold needs start/loop/end")
+			}
 		}
 		foreach ($skill in $classSkills) {
 			if (@($bindings | Where-Object skillId -eq $skill.skillId).Count -ne 1) {
