@@ -1,0 +1,694 @@
+{
+  "schema": "lostark.imported-effect-document-draft",
+  "formatVersion": 1,
+  "characterClass": "ARTIST",
+  "skillId": 31230,
+  "inputSlot": "W",
+  "effectAssetIdCandidate": "effect.artist.skill.31230",
+  "runtimeDocumentStatus": "NOT_PUBLISHABLE_SOURCE_CONVERSION_DRAFT",
+  "animationVisualContract": {
+    "combinedMeshAnimationStatus": "UNVERIFIED",
+    "combinedMeshAnimationOwner": "Animation/CModel",
+    "reconstructCombinedMeshAsEffectElement": false,
+    "effectExtractionScope": [
+      "particle",
+      "texture_or_sprite",
+      "trail",
+      "distortion",
+      "post_effect",
+      "particle_owned_mesh_emitter"
+    ]
+  },
+  "timeline": {
+    "durationSeconds": 1.5,
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "sdm_sk_pondofyin",
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 1.5,
+        "sourceLine": 939
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.13,
+        "globalTimeSeconds": 0.13,
+        "durationSeconds": 0.5,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_cm_03.Trail.Par_D_mpTrail_03",
+        "sourceLine": 943,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_03.trail.par_d_mptrail_03"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.13,
+        "globalTimeSeconds": 0.13,
+        "durationSeconds": 0.5,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "fx_cm_03.Trail.Par_D_mpTrail_03",
+        "sourceLine": 944,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_03.trail.par_d_mptrail_03"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.595,
+        "globalTimeSeconds": 0.595,
+        "durationSeconds": 0.037,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 948,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5971,
+        "globalTimeSeconds": 0.5971,
+        "durationSeconds": 0.4006,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 949,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5971,
+        "globalTimeSeconds": 0.5971,
+        "durationSeconds": 0.4006,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 950,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 951,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 952,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 953,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 954,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 955,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.5995,
+        "globalTimeSeconds": 0.5995,
+        "durationSeconds": 0.0954,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 956,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.6,
+        "globalTimeSeconds": 0.6,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SDM_06.Par_D_SDM_Pond_03",
+        "sourceLine": 957,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_sdm_06.par_d_sdm_pond_03"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "sdm_sk_pondofyin",
+        "clipSequenceIndex": 0,
+        "localTimeSeconds": 0.6,
+        "globalTimeSeconds": 0.6,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SDM_06.Par_D_SDM_Pond_47",
+        "sourceLine": 958,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_sdm_06.par_d_sdm_pond_47"
+      }
+    ]
+  },
+  "sourceSystems": [
+    {
+      "sourceSystemId": "fx_cm_03.trail.par_d_mptrail_03",
+      "sourceAsset": "fx_cm_03.Trail.Par_D_mpTrail_03",
+      "logicalPackage": "FX_CM_03",
+      "candidateKinds": [
+        "particle",
+        "trail"
+      ],
+      "sourceGraphSummary": {
+        "nodeCount": 11,
+        "edgeCount": 10,
+        "emitterCount": 1,
+        "lodLevelCount": 1,
+        "moduleCount": 8,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 1,
+        "featureClasses": [
+          "particlemoduletypedataribbon"
+        ]
+      },
+      "resourceCandidates": [],
+      "conversionStatus": "NEEDS_EMITTER_PARTITION_AND_PARAMETER_MAPPING"
+    },
+    {
+      "sourceSystemId": "fx_pc_sdm_06.par_d_sdm_pond_03",
+      "sourceAsset": "FX_PC_SDM_06.Par_D_SDM_Pond_03",
+      "logicalPackage": "FX_PC_SDM_06",
+      "candidateKinds": [
+        "mesh",
+        "particle",
+        "decal"
+      ],
+      "sourceGraphSummary": {
+        "nodeCount": 36,
+        "edgeCount": 58,
+        "emitterCount": 6,
+        "lodLevelCount": 12,
+        "moduleCount": 17,
+        "distributionCount": 0,
+        "resourceBindingCount": 6,
+        "unresolvedExternalReferenceCount": 86,
+        "featureClasses": [
+          "efparticlemoduletypedatadecal",
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceCandidates": [
+        {
+          "sourceObjectPath": "fx_tex_01.fx_c_water_001",
+          "sourceRole": "texture",
+          "parameterName": "12.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_c_water_001.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_c_water_001.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_ycl",
+          "sourceRole": "texture",
+          "parameterName": "22.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_ycl",
+          "sourceRole": "texture",
+          "parameterName": "02.map_e",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_01.fx_c_line_004_ycl",
+          "sourceRole": "texture",
+          "parameterName": "01.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_c_line_004_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_c_line_004_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_1_ycl",
+          "sourceRole": "texture",
+          "parameterName": "21.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_002_2_ycl",
+          "sourceRole": "texture",
+          "parameterName": "02.map_e",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_002_2_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_002_2_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_1_ycl",
+          "sourceRole": "texture",
+          "parameterName": "42.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+          "sourceRole": "texture",
+          "parameterName": "01.specmap",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_009.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_noise_009.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_01.fx_d_normal_085",
+          "sourceRole": "texture",
+          "parameterName": "06.map",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_normal_085.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_sm_00.fm_d_torus_002",
+          "sourceRole": "mesh",
+          "parameterName": "mesh",
+          "suggestedSlot": "mesh_model",
+          "slotMappingStatus": "SOURCE_ROLE_EXACT",
+          "runtimeAssetId": "Effect/Artist/Meshes/fm_d_torus_002.wmodel",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Meshes/fm_d_torus_002.wmodel"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_environ_017",
+          "sourceRole": "texture",
+          "parameterName": "emissive_tex",
+          "suggestedSlot": "emissive",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_environ_017.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_environ_017.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_05.fx_k_smoke_02",
+          "sourceRole": "texture",
+          "parameterName": "01.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_k_smoke_02.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_k_smoke_02.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_00.fx_a_environ_002_n",
+          "sourceRole": "texture",
+          "parameterName": "01.map.n",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_a_environ_002_n.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_a_environ_002_n.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_00.fx_a_fluid_003",
+          "sourceRole": "texture",
+          "parameterName": "01.specmap",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_a_fluid_003.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_a_fluid_003.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        }
+      ],
+      "conversionStatus": "NEEDS_EMITTER_PARTITION_AND_PARAMETER_MAPPING"
+    },
+    {
+      "sourceSystemId": "fx_pc_sdm_06.par_d_sdm_pond_47",
+      "sourceAsset": "FX_PC_SDM_06.Par_D_SDM_Pond_47",
+      "logicalPackage": "FX_PC_SDM_06",
+      "candidateKinds": [
+        "mesh",
+        "particle",
+        "decal"
+      ],
+      "sourceGraphSummary": {
+        "nodeCount": 50,
+        "edgeCount": 79,
+        "emitterCount": 7,
+        "lodLevelCount": 14,
+        "moduleCount": 28,
+        "distributionCount": 0,
+        "resourceBindingCount": 9,
+        "unresolvedExternalReferenceCount": 90,
+        "featureClasses": [
+          "efparticlemoduletypedatadecal",
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceCandidates": [
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_002_ycl",
+          "sourceRole": "texture",
+          "parameterName": "22.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_002_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_002_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_environ_067",
+          "sourceRole": "texture",
+          "parameterName": "02.map_e",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_environ_067.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_environ_067.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_environ_068",
+          "sourceRole": "texture",
+          "parameterName": "12.map_f",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_environ_068.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_environ_068.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_environ_001",
+          "sourceRole": "texture",
+          "parameterName": "01.specmap",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_environ_001.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_environ_001.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_normal_001_n",
+          "sourceRole": "texture",
+          "parameterName": "06.map",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_normal_001_n.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_normal_001_n.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_01.fx_c_water_001",
+          "sourceRole": "texture",
+          "parameterName": "12.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_c_water_001.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_c_water_001.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_ycl",
+          "sourceRole": "texture",
+          "parameterName": "22.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_ycl",
+          "sourceRole": "texture",
+          "parameterName": "02.map_e",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_01.fx_c_line_004_ycl",
+          "sourceRole": "texture",
+          "parameterName": "01.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_c_line_004_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_c_line_004_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_1_ycl",
+          "sourceRole": "texture",
+          "parameterName": "21.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_002_2_ycl",
+          "sourceRole": "texture",
+          "parameterName": "02.map_e",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_002_2_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_002_2_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_shockwave_006_1_ycl",
+          "sourceRole": "texture",
+          "parameterName": "42.map_c",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_shockwave_006_1_ycl.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+          "sourceRole": "texture",
+          "parameterName": "01.specmap",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_noise_009.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_noise_009.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_01.fx_d_normal_085",
+          "sourceRole": "texture",
+          "parameterName": "06.map",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_d_normal_085.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_sm_00.fm_d_torus_002",
+          "sourceRole": "mesh",
+          "parameterName": "mesh",
+          "suggestedSlot": "mesh_model",
+          "slotMappingStatus": "SOURCE_ROLE_EXACT",
+          "runtimeAssetId": "Effect/Artist/Meshes/fm_d_torus_002.wmodel",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Meshes/fm_d_torus_002.wmodel"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_05.fx_k_smoke_02",
+          "sourceRole": "texture",
+          "parameterName": "01.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_k_smoke_02.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_k_smoke_02.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_00.fx_a_environ_002_n",
+          "sourceRole": "texture",
+          "parameterName": "01.map.n",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_a_environ_002_n.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_a_environ_002_n.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_00.fx_a_fluid_003",
+          "sourceRole": "texture",
+          "parameterName": "01.specmap",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_a_fluid_003.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_a_fluid_003.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        },
+        {
+          "sourceObjectPath": "fx_tex_05.fx_m_w_watertex_02",
+          "sourceRole": "texture",
+          "parameterName": "01.map_a",
+          "suggestedSlot": "unclassified",
+          "slotMappingStatus": "SOURCE_PARAMETER_HEURISTIC_NEEDS_REVIEW",
+          "runtimeAssetId": "Effect/Artist/Textures/fx_m_w_watertex_02.dds",
+          "runtimeCandidateAssetIds": [
+            "Effect/Artist/Textures/fx_m_w_watertex_02.dds"
+          ],
+          "resolutionStatus": "RESOLVED_RUNTIME_ASSET"
+        }
+      ],
+      "conversionStatus": "NEEDS_EMITTER_PARTITION_AND_PARAMETER_MAPPING"
+    }
+  ],
+  "unsupportedOrUnresolved": [],
+  "summary": {
+    "sourceSystemCount": 3,
+    "sourceEventCount": 13,
+    "resolvedParticleEventCount": 4,
+    "unsupportedSourceEventCount": 7,
+    "candidateElementPartitionCount": 8,
+    "missingOrAmbiguousRuntimeResourceCount": 0
+  }
+}

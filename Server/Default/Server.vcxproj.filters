@@ -45,6 +45,7 @@
 	<ClInclude Include="..\Public\ValtanBrain.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerGameplayContractTests.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerTriggerSystem.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\ServerCollisionSystem.h"><Filter>Public</Filter></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\Main.cpp">
@@ -74,5 +75,6 @@
 	<ClCompile Include="..\Private\ValtanBrain.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerGameplayContractTests.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerTriggerSystem.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\ServerCollisionSystem.cpp"><Filter>Private</Filter></ClCompile>
   </ItemGroup>
 </Project>

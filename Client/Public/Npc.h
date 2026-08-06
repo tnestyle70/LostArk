@@ -50,6 +50,9 @@ public:
 		return m_pModelCom;
 	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
+	bool_t Apply_NetworkState(
+		const float3_t& position,
+		f32_t yawDegrees);
 
 public:
 	virtual HRESULT Initialize_Prototype() override;

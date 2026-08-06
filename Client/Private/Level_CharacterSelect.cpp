@@ -26,6 +26,12 @@ namespace
 	constexpr f32_t PREVIEW_POSITION_X = -772.017f;
 	constexpr f32_t PREVIEW_POSITION_Y = -142.55f;
 	constexpr f32_t PREVIEW_POSITION_Z = 197.538f;
+	constexpr f32_t PREVIEW_CAMERA_HEIGHT = 1.9f;
+	constexpr f32_t PREVIEW_CAMERA_DISTANCE = 3.8f;
+	constexpr f32_t PREVIEW_CAMERA_LOOK_HEIGHT = 1.05f;
+	constexpr f32_t SERVER_CAMERA_SIDE = 0.4f;
+	constexpr f32_t SERVER_CAMERA_HEIGHT = 4.f;
+	constexpr f32_t SERVER_CAMERA_DISTANCE = 3.8f;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
 	constexpr std::chrono::seconds VALTAN_REQUEST_TIMEOUT{ 5 };
 	constexpr char_t PLAYER_NICKNAME[] = "Player";
@@ -195,11 +201,11 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 	CCamera_Free::CAMERA_FREE_DESC desc{};
 	desc.vEye = float3_t(
 		PREVIEW_POSITION_X,
-		PREVIEW_POSITION_Y + 2.4f,
-		PREVIEW_POSITION_Z - 6.f);
+		PREVIEW_POSITION_Y + PREVIEW_CAMERA_HEIGHT,
+		PREVIEW_POSITION_Z - PREVIEW_CAMERA_DISTANCE);
 	desc.vAt = float3_t(
 		PREVIEW_POSITION_X,
-		PREVIEW_POSITION_Y + 1.f,
+		PREVIEW_POSITION_Y + PREVIEW_CAMERA_LOOK_HEIGHT,
 		PREVIEW_POSITION_Z);
 	desc.fFovy = 45.f;
 	desc.fNear = 0.1f;
@@ -208,8 +214,14 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 	desc.fRotationPerSec = 90.f;
 	desc.fMouseSensor = 0.1f;
 	desc.pFollowTarget = m_pPreviewCharacter->Get_Transform();
-	desc.vPositionOffset = float3_t(0.f, 2.4f, -6.f);
-	desc.vLookOffset = float3_t(0.f, 1.f, 0.f);
+	desc.vPositionOffset = float3_t(
+		0.f,
+		PREVIEW_CAMERA_HEIGHT,
+		-PREVIEW_CAMERA_DISTANCE);
+	desc.vLookOffset = float3_t(
+		0.f,
+		PREVIEW_CAMERA_LOOK_HEIGHT,
+		0.f);
 	desc.fFollowResponse = 18.f;
 	desc.isFollowEnabled = true;
 	desc.allowCapturedKeyboardInput = true;
@@ -365,7 +377,10 @@ HRESULT CLevel_CharacterSelect::Commit_Preview(
 	{
 		Bind_CameraTarget(
 			m_pPreviewCharacter,
-			float3_t(0.f, 2.4f, -6.f));
+			float3_t(
+				0.f,
+				PREVIEW_CAMERA_HEIGHT,
+				-PREVIEW_CAMERA_DISTANCE));
 	}
 	if (nullptr != previous)
 	{
@@ -439,7 +454,10 @@ bool_t CLevel_CharacterSelect::Commit_ServerArena()
 	if (nullptr == localCharacter ||
 		!Bind_CameraTarget(
 			localCharacter,
-			float3_t(0.4f, 7.5f, 4.5f)))
+			float3_t(
+				SERVER_CAMERA_SIDE,
+				SERVER_CAMERA_HEIGHT,
+				SERVER_CAMERA_DISTANCE)))
 	{
 		return false;
 	}

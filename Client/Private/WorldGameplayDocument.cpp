@@ -16,7 +16,7 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.world-gameplay";
-	constexpr uint32_t FORMAT_VERSION = 2;
+	constexpr uint32_t FORMAT_VERSION = 4;
 
 	bool_t Is_IntegerNumber(const DATA_JSON_VALUE* value)
 	{
@@ -177,6 +177,8 @@ bool_t Client::CWorldGameplayDocument::Load(
 			WORLD_PLACEMENT_KIND::BOSS == record.eKind;
 		const bool_t triggerPlacement =
 			WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind;
+		const bool_t collisionPlacement =
+			WORLD_PLACEMENT_KIND::COLLISION_BOX == record.eKind;
 		const bool_t destroyablePlacement =
 			WORLD_PLACEMENT_KIND::DESTROYABLE == record.eKind;
 		if ((actorPlacement && !Is_ExactObject(value,
@@ -185,6 +187,9 @@ bool_t Client::CWorldGameplayDocument::Load(
 			(triggerPlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
 			  "halfExtents", "triggerOnce", "events" })) ||
+			(collisionPlacement && !Is_ExactObject(value,
+			{ "placementId", "kind", "position", "yawDegrees", "enabled",
+			  "halfExtents" })) ||
 			(destroyablePlacement && !Is_ExactObject(value,
 			{ "placementId", "kind", "position", "yawDegrees", "enabled",
 			  "deployRuntimePlacementId", "initialState" })))
@@ -265,6 +270,23 @@ bool_t Client::CWorldGameplayDocument::Load(
 					event.durationSeconds = static_cast<f32_t>(duration->Get_Number());
 					event.arcHeight = static_cast<f32_t>(arcHeight->Get_Number());
 				}
+				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
+				{
+					if (!Is_ExactObject(eventValue, { "type", "targetWorldId" }))
+					{
+						outStatus = "Gameplay changeLevel event has invalid fields";
+						return false;
+					}
+					const DATA_JSON_VALUE* targetWorldId =
+						eventValue.Find("targetWorldId");
+					if (nullptr == targetWorldId || !targetWorldId->Is_String() ||
+						!Try_ParseWorldId(
+							targetWorldId->Get_String(), event.eTargetWorldId))
+					{
+						outStatus = "Gameplay changeLevel target world is invalid";
+						return false;
+					}
+				}
 				else
 				{
 					if (!Is_ExactObject(eventValue, { "type", "targetId", "value" }))
@@ -291,6 +313,15 @@ bool_t Client::CWorldGameplayDocument::Load(
 					}
 				}
 				record.triggerEvents.push_back(std::move(event));
+			}
+		}
+		else if (collisionPlacement)
+		{
+			if (!Read_PositiveExtents(
+				value.Find("halfExtents"), record.halfExtents))
+			{
+				outStatus = "Gameplay collision shape is invalid";
+				return false;
 			}
 		}
 		else
@@ -461,11 +492,16 @@ bool_t Client::CWorldGameplayDocument::Save(
 			<< "      \"yawDegrees\": " << record.yawDegrees << ",\n"
 			<< "      \"enabled\": " <<
 				(record.isEnabled ? "true" : "false");
-		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind)
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind ||
+			WORLD_PLACEMENT_KIND::COLLISION_BOX == record.eKind)
 		{
 			output << ",\n      \"halfExtents\": [" << record.halfExtents.x << ", "
-				<< record.halfExtents.y << ", " << record.halfExtents.z << "],\n"
-				<< "      \"triggerOnce\": " << (record.isTriggerOnce ? "true" : "false")
+				<< record.halfExtents.y << ", " << record.halfExtents.z << "]";
+		}
+		if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == record.eKind)
+		{
+			output << ",\n      \"triggerOnce\": "
+				<< (record.isTriggerOnce ? "true" : "false")
 				<< ",\n      \"events\": [";
 			for (size_t eventIndex = 0; eventIndex < record.triggerEvents.size(); ++eventIndex)
 			{
@@ -478,6 +514,11 @@ bool_t Client::CWorldGameplayDocument::Save(
 						<< event.targetPosition.y << ", " << event.targetPosition.z << "], "
 						<< "\"durationSeconds\": " << event.durationSeconds << ", "
 						<< "\"arcHeight\": " << event.arcHeight;
+				}
+				else if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
+				{
+					output << ", \"targetWorldId\": \""
+						<< WorldId_ToString(event.eTargetWorldId) << '"';
 				}
 				else
 				{
@@ -523,8 +564,12 @@ bool_t Client::CWorldGameplayDocument::Add(
 {
 	WORLD_GAMEPLAY_PLACEMENT normalized = placement;
 	if (WORLD_PLACEMENT_KIND::PLAYER_SPAWN == normalized.eKind)
+	{
 		normalized.archetypeId.clear();
+		normalized.encounterId.clear();
+	}
 	if (WORLD_PLACEMENT_KIND::TRIGGER_BOX == normalized.eKind ||
+		WORLD_PLACEMENT_KIND::COLLISION_BOX == normalized.eKind ||
 		WORLD_PLACEMENT_KIND::DESTROYABLE == normalized.eKind)
 	{
 		normalized.archetypeId.clear();
@@ -591,7 +636,8 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 		WORLD_PLACEMENT_KIND::BOSS == placement.eKind;
 	const bool_t hasValidActorReference = !actorPlacement ||
 		(WORLD_PLACEMENT_KIND::PLAYER_SPAWN == placement.eKind ?
-			placement.archetypeId.empty() : Is_ValidStableId(placement.archetypeId));
+			placement.archetypeId.empty() && placement.encounterId.empty() :
+			Is_ValidStableId(placement.archetypeId));
 	const bool_t hasValidTriggerEvents =
 		(!placement.isEnabled && placement.triggerEvents.empty()) ||
 		(!placement.triggerEvents.empty() &&
@@ -612,6 +658,13 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 							std::isfinite(event.arcHeight) &&
 							event.arcHeight >= 0.f && event.arcHeight <= 1000.f;
 					}
+					if (WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL == event.eKind)
+					{
+						return LostArk::Shared::WORLD_ID::BERN ==
+								event.eTargetWorldId ||
+							LostArk::Shared::WORLD_ID::VALTAN_ARENA ==
+								event.eTargetWorldId;
+					}
 					return WORLD_TRIGGER_EVENT_KIND::END != event.eKind &&
 						Is_ValidStableId(event.targetId) &&
 						(WORLD_TRIGGER_EVENT_KIND::SET_CONDITION == event.eKind ||
@@ -626,13 +679,23 @@ bool_t Client::CWorldGameplayDocument::Is_Valid(
 			placement.halfExtents.y > 0.f && placement.halfExtents.y <= 1000.f &&
 			placement.halfExtents.z > 0.f && placement.halfExtents.z <= 1000.f &&
 			hasValidTriggerEvents);
+	const bool_t hasValidCollision =
+		WORLD_PLACEMENT_KIND::COLLISION_BOX != placement.eKind ||
+		(std::isfinite(placement.halfExtents.x) &&
+			std::isfinite(placement.halfExtents.y) &&
+			std::isfinite(placement.halfExtents.z) &&
+			placement.halfExtents.x > 0.f && placement.halfExtents.x <= 1000.f &&
+			placement.halfExtents.y > 0.f && placement.halfExtents.y <= 1000.f &&
+			placement.halfExtents.z > 0.f && placement.halfExtents.z <= 1000.f &&
+			placement.triggerEvents.empty());
 	const bool_t hasValidDestroyable =
 		WORLD_PLACEMENT_KIND::DESTROYABLE != placement.eKind ||
 		(0u != placement.deployRuntimePlacementId &&
 			WORLD_DESTROYABLE_STATE::END != placement.eInitialState);
 	return WORLD_PLACEMENT_KIND::END != placement.eKind &&
 		Is_ValidStableId(placement.placementId) &&
-		hasValidActorReference && hasValidTrigger && hasValidDestroyable &&
+		hasValidActorReference && hasValidTrigger && hasValidCollision &&
+		hasValidDestroyable &&
 		(!actorPlacement || placement.encounterId.empty() ||
 			Is_ValidStableId(placement.encounterId)) &&
 		std::isfinite(placement.position.x) &&
@@ -654,6 +717,7 @@ const char_t* Client::CWorldGameplayDocument::Kind_ToString(
 	case WORLD_PLACEMENT_KIND::NPC: return "npc";
 	case WORLD_PLACEMENT_KIND::BOSS: return "boss";
 	case WORLD_PLACEMENT_KIND::TRIGGER_BOX: return "triggerBox";
+	case WORLD_PLACEMENT_KIND::COLLISION_BOX: return "collisionBox";
 	case WORLD_PLACEMENT_KIND::DESTROYABLE: return "destroyable";
 	default: return "invalid";
 	}
@@ -671,6 +735,8 @@ bool_t Client::CWorldGameplayDocument::Try_ParseKind(
 		outKind = WORLD_PLACEMENT_KIND::BOSS;
 	else if ("triggerBox" == value)
 		outKind = WORLD_PLACEMENT_KIND::TRIGGER_BOX;
+	else if ("collisionBox" == value)
+		outKind = WORLD_PLACEMENT_KIND::COLLISION_BOX;
 	else if ("destroyable" == value)
 		outKind = WORLD_PLACEMENT_KIND::DESTROYABLE;
 	else
@@ -684,6 +750,7 @@ const char_t* Client::CWorldGameplayDocument::TriggerEventKind_ToString(
 	switch (kind)
 	{
 	case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER: return "movePlayer";
+	case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL: return "changeLevel";
 	case WORLD_TRIGGER_EVENT_KIND::SET_CONDITION: return "setCondition";
 	case WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE: return "setDestroyableState";
 	default: return "invalid";
@@ -695,10 +762,38 @@ bool_t Client::CWorldGameplayDocument::Try_ParseTriggerEventKind(
 {
 	if ("movePlayer" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER;
+	else if ("changeLevel" == value)
+		outKind = WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL;
 	else if ("setCondition" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_CONDITION;
 	else if ("setDestroyableState" == value)
 		outKind = WORLD_TRIGGER_EVENT_KIND::SET_DESTROYABLE_STATE;
+	else
+		return false;
+	return true;
+}
+
+const char_t* Client::CWorldGameplayDocument::WorldId_ToString(
+	const LostArk::Shared::WORLD_ID worldId)
+{
+	using LostArk::Shared::WORLD_ID;
+	switch (worldId)
+	{
+	case WORLD_ID::BERN: return "BERN";
+	case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
+	default: return "invalid";
+	}
+}
+
+bool_t Client::CWorldGameplayDocument::Try_ParseWorldId(
+	const std::string& value,
+	LostArk::Shared::WORLD_ID& outWorldId)
+{
+	using LostArk::Shared::WORLD_ID;
+	if ("BERN" == value)
+		outWorldId = WORLD_ID::BERN;
+	else if ("VALTAN_ARENA" == value)
+		outWorldId = WORLD_ID::VALTAN_ARENA;
 	else
 		return false;
 	return true;

@@ -96,3 +96,28 @@ NetworkProtocolHarness, ClientFrontendHarness, Server contract가 모두 통과�
 계약도 통과했으며 전체 종료 코드는 기존 `asset-lock.inventory`, 작업 중인
 `effect.g4-typed-resource-boundary` 두 항목 때문에 실패다. 최종 radio 클릭과 왕복 화면은 사용자의 최신 EXE
 수동 smoke 대상으로 남긴다.
+
+## 8. 2026-08-06 Character Select 근접 카메라 교정
+
+실제 화면에서 캐릭터보다 Arena 전경이 과도하게 크게 보이는 문제를 재확인했다. Preview 초기 follow
+offset은 `(0, 2.4, -6.0)`이었고 Server Play의 replicated character commit 시에는 범용 gameplay 값
+`(0.4, 7.5, 4.5)`로 교체되어 더 높은 원거리 시점으로 전환됐다.
+
+Character Select 전용 framing을 다음처럼 교정했다.
+
+```text
+Preview position offset: (0.0, 1.9, -3.8)
+Preview look offset:     (0.0, 1.05, 0.0)
+Server Play offset:      (0.4, 4.0, 3.8)
+```
+
+Preview는 class 교체 뒤에도 같은 근접 전신 framing을 다시 적용한다. Server Play는 조작 방향을 위해 기존
+후방 isometric 방향은 보존하되 높이와 거리를 줄였다. target 교체는 기존 `follow requested` 상태를 계속
+보존하므로 F6 free/follow 계약은 바뀌지 않는다.
+
+ProjectAudit에 `levels.character-select-camera-framing`을 추가해 기존 `(0, 2.4, -6)` 및
+`(0.4, 7.5, 4.5)` 값의 복귀를 거부한다. 실제 화면의 캐릭터 크기와 UI 비가림 여부는 최신 Client의 Preview
+및 Server Play 왕복에서 수동 확인한다.
+
+자동 검증은 Client x64 Debug/Release build와 ProjectAudit 71 checks를 통과했다. 기존 code-page 및
+DirectXTK PDB warning 외 신규 compile/link 오류는 없다.

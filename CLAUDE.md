@@ -22,23 +22,15 @@ git lfs install
 git clone <repository-url>
 Set-Location LostArk
 git lfs pull
-
-# 팀 Drive에서 lock과 같은 버전의 ZIP을 받은 뒤 외부 pack root에 압축 해제
-tar.exe -xf <lostark-resources-version.zip> -C <external-pack-root>
-
-powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
-  -Mode Hydrate -PackRoot <external-pack-root>
-powershell -ExecutionPolicy Bypass -File Tools/AssetPipeline/Manage-ResourcePack.ps1 `
-  -Mode Verify
 ```
 
-ZIP은 `<external-pack-root>/lostark-resources/<version>/{READY,manifest.json,payload}` 구조로 풀려야 한다. `Data/AssetPacks.lock.json`의 version, manifest hash, content hash와 다르면 사용하지 않는다. ZIP을 저장소 안에 풀거나 `Client/Bin/Resources`에 직접 덮어쓰지 않는다.
+팀장이 전달한 runtime 리소스를 `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` 물리 폴더에 둔다. 별도 asset-pack lock, ZIP hash, publish/hydrate/verify 절차는 사용하지 않는다.
 
 세팅 후 Debug 정본 회귀를 한 번 실행한다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 `
-  -Configuration Debug -DeepAssetHash
+  -Configuration Debug
 ```
 
 팀 문서의 단일 입구는 `.md/TEAM/README.md`다. 역할별 시작 파일과 금지 경계는 그 폴더의 `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`, Area별 optional layer와 MapTool 지원 범위는 `AREA_DATA_LAYER_GUIDE.md`를 따른다.
@@ -103,12 +95,11 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 프로젝트 데이터 정본 | `Data/`의 catalog, imported, authoring, reference JSON/문서 | Git 일반 추적; 대용량 map 문서는 Git LFS |
 | 필수 바이너리 입력 | `Engine/ThirdPartyLib/` | **Git LFS** (`.gitattributes` 패턴) |
 | 실행 데이터 생성물 | `Client/Bin/DataFiles/`, `Server/Bin/DataFiles/` | `Data/`에서 publisher가 생성; 직접 편집 금지 |
-| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 버전 고정 외부 팩 (`Data/AssetPacks.lock.json`) |
+| 런타임 리소스 · 쿠킹 산출물 | `Client/Bin/Resources/{Fonts,Character,Deploy,Effect,Map,UI}` | 팀장 관리 물리 폴더 |
 
 - clone 시 `git lfs install` 후 clone하거나, 이미 받았다면 `git lfs pull`을 실행해야 lib/DLL/DDS가 포인터가 아닌 실물이 된다.
 - `Client/Bin/Resources/` 최상위에는 위 여섯 폴더만 허용한다. `Resources/LostArk`, `Models`, `Textures`, `SourceData`, `Sound` 래퍼를 다시 만들지 않는다.
-- raw 추출물과 SourceData는 런타임 팩에 넣지 않는다. `Tools/AssetPipeline/Manage-ResourcePack.ps1`로 publish/hydrate/verify한다.
-- 리소스 팩의 Snapshot은 manifest와 lock을 한 트랜잭션으로 취급하며 lock commit 전 실패한 orphan manifest를 제거한다. 상세 운영 순서는 `Tools/AssetPipeline/README.md`를 따른다.
+- raw 추출물과 SourceData는 runtime Resources에 넣지 않는다. 팀장이 채택한 쿠킹 결과만 물리 폴더에 둔다.
 - UI와 gameplay 설정 정본은 JSON이다. `.cfg`를 새로 만들거나 Resources에서 직접 읽지 않는다.
 - 빌드 산출물(`exe/dll/lib/pdb/cso`), `.vs`, `EngineSDK`, `_work`, `out`, `imgui.ini`는 전부 ignore 대상이다. **커밋에 섞여 들어가지 않게 할 것.**
 - 새 바이너리 자산을 추가할 때는 LFS 대상인지 Drive 팩 대상인지 먼저 판단하고, 애매하면 커밋하지 말고 물어본다.
@@ -208,7 +199,7 @@ Level 전환 요청은 `CLevelTransitionService`에 제출한다. `CMainApp`은 
 
 ### 서버 권위 월드 파이프라인
 
-MapTool의 현재 지원 범위인 player spawn/NPC/boss 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
+MapTool의 현재 지원 범위인 player spawn/NPC/boss/triggerBox/collisionBox 배치는 `Data/Worlds/<AreaId>/Gameplay.world.json`에 stable placement ID로 저장한다. `Tools/WorldPipeline/Publish-WorldGameplay.ps1`이 actor/encounter/shape 참조를 검증한 뒤 `Server/Bin/DataFiles/World/*.worldbootstrap`을 원자적으로 생성하며 Server pre-build가 이 publish를 강제한다. 수업용 Monster 경로와 빈 미래용 Monster catalog/schema는 이 계약에 포함하지 않는다.
 
 Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 소유하고 Shared protocol v6 snapshot으로 보낸다. Client의 `CClientReplication`과 `CValtan`은 표현만 담당한다. UI·MapTool·Client GameObject가 제품 보스 판정을 직접 결정하지 않는다.
 
@@ -228,7 +219,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
-Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot이 보이며 다섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 `Data/AssetPacks.lock.json`이 가리키는 정확한 immutable pack을 Hydrate/Verify해야 하며 다른 버전 payload를 fallback으로 섞지 않는다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, 나머지 네 class는 body/equipment/weapon 형식이다. 다섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V`이며, DimensionMaster에는 `ALT_V`가 없다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot이 보이며 다섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, 나머지 네 class는 body/equipment/weapon 형식이다. 다섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V`이며, DimensionMaster에는 `ALT_V`가 없다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
 
 Area Loader는 다섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
@@ -255,11 +246,27 @@ Area Loader는 다섯 class binary를 전부 선로드하지 않는다. `CPlayab
 ### 디버그 툴 (ImGui / MapTool)
 
 `_DEBUG`에서 `CMainApp`이 전역 Developer Tools 허브를 소유하고 F1로 토글한다. F6는 gameplay camera의 follow/free mode를 전환한다. Free camera는 WASD 이동, Tab mouse-look 전환을 사용하며 그동안 `CPlayerController`는 물리 key/mouse edge만 동기화하고 gameplay command는 제출하지 않는다. follow 복귀 뒤 새 press부터 제출한다. F2~F5와 F7~F12를 레벨/도구 전환에 사용하지 않는다. ImGui가 입력을 가져갈 때는 `CGameInstance::SetInputBlocked()`로 DirectInput 폴링을 막되 Character Select Server gameplay는 text input이 아닐 때만 명시적 keyboard passthrough를 사용한다. Client 실행 인자와 `CMainApp` 내부 runtime harness를 검증 경로로 다시 만들지 않는다.
+F1 허브의 Diagnostics는 profiler 활성화와 무관하게 smoothed FPS와 최근 frame time을 항상 표시하며,
+Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성화한다.
 
 F1의 `Balance Tool`은 five-class/boss selector, stats·movement·skill/combo·pattern authoring과 Server
 snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encounters` 원본만 교체하고 변경
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
+
+F1의 `Effect Tool`은 `Data/Balance/PlayerSkills.json`의 class/input slot/effectId와
+`Data/Effects/Authored/<effectId>.effect.json`을 결합해 All Effects 트리를 만든다. 저작 문서는
+`lostark.effect-authoring` v6으로 저장하며 Element display/group/source/visible, Material Template ID,
+stable resource slot ID를 소유한다. v5 문서는 호환 load 뒤 다음 Save에서 v6으로 승격한다. 현재 등록된
+Template은 실제 Effect HLSL에 대응하는 `effect.standard` 하나이고 Base/Noise/Mask/Emissive/Dissolve
+다섯 input을 제공한다. 원본 추출 근거와 HLSL 구현이 없는 custom Template/slot은 등록하지 않는다.
+All Effects의 스킬 행과 Data Files의 Authored 행은 같은 완성 Effect Document를 여는 두 진입점이며,
+스킬 행은 현재 문서와 같아도 Complete Effect를 0초부터 다시 재생한다. 여러 시각 파츠의 조합 단위는
+별도 Effect 중첩이 아니라 한 Document 안의 Mesh/Sprite/Particle/Decal/Trail Element다. Effect Detail의
+연속 수치는 drag 중 local draft만 world preview에 live-stage하고 Apply에서만 active Document에 commit한다.
+저작 UI는 runtime Published 목록을 편집하지 않으며, 제품 재생은 계속 `CEffectCatalog ->
+CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
+`Tools/EffectPipeline/Publish-Effects.ps1`만 수행한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 
@@ -382,8 +389,8 @@ snapshot까지 직접 구현해야 하며, Server 담당 파일이라는 이유�
 - `ICharacterLogic::Update_Presentation`은 표현 전용이다. `Logic_*`에서 `Play_Skill`을 직접 호출하지 않는다.
 - quick slot → skill ID는 `Data/Balance/PlayerSkills.json`의 `inputSlot`이 정본이고 `CPlayerSkillCatalog`가 파싱해 `CPlayerController`와 `CCombatHUDViewModel`이 함께 읽는다. Controller는 슬롯 이름과 물리 키만 알고 skill ID를 하드코딩하지 않으므로, 다른 class의 스킬을 JSON에 추가하면 코드 변경 없이 바인딩된다. 제출 경로는 `C2S_USE_SKILL -> GameRoom -> CPlayerSkillSystem -> S2C_WORLD_SNAPSHOT`이다. 새 스킬은 balance 정의, Shared/Server 계약, presentation, harness를 함께 추가할 때만 활성화하고 로컬 우회 재생하지 않는다.
 - UI는 `CCombatHUDViewModel`에서 server tick, HP/resource, action, cooldown end tick, boss HP/phase/action을 읽는다. UI가 cooldown이나 damage를 자체 판정하지 않는다.
-- 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 그리고 단일 `movePlayer` action을 가진 `triggerBox`다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
-- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`를 배치하고 목적지·이동시간·포물선 높이를 저장하면 publisher가 bootstrap v3으로 변환하고 Server가 OBB 진입과 이동을 판정한다. `destroyable`, 파티 대기, 컷신, spawn wave/증분 spawn, Area별 balance override, 제품 NPC presentation은 아직 지원하지 않는다.
+- 현재 World Gameplay 제품 kind는 `playerSpawn`, `npc`, `boss`, 단일 `movePlayer`/`changeLevel` action의 `triggerBox`, 정적 `collisionBox`다. NPC presentation은 `NPC_BEDA` 한 archetype을 지원한다. 수업용 Monster 구현과 빈 미래용 Monster 계약은 포함하지 않는다.
+- Area별 레이어 보유 현황과 생략 규칙은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`가 정본이다. Debug Development MapTool에서 `triggerBox`와 `collisionBox`를 배치하면 publisher가 bootstrap v5로 변환하고 Server가 player OBB 기준 진입과 swept 이동 차단을 판정한다. `destroyable`, 파티 대기, 컷신, spawn wave/증분 spawn, Area별 balance override는 아직 지원하지 않는다.
 
 ## 작업 방식 지침
 

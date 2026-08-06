@@ -36,7 +36,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 2. 바뀐 public 계약만 `AGENTS.md`, `CLAUDE.md`, 팀 사용서에 반영한다.
 3. 구현 완료와 미완료를 RESULT에서 분리하고 실행한 검증만 기록한다.
 4. 관련 harness와 `ProjectAudit`을 실행하고 `git diff --check`를 확인한다.
-5. Resources payload와 빌드·중간 산출물을 제외한 하나의 검증 단위만 commit/push한다.
+5. 빌드·중간 산출물을 제외한 하나의 검증 단위만 commit/push한다.
 
 날짜별 진행 로그나 일시적인 오류를 `AGENTS.md`와 `CLAUDE.md`에 누적하지 않는다. 그런 정보는 해당 RESULT에 기록한다. 문서와 코드가 다르면 코드·데이터·실행 결과를 먼저 조사하고 같은 변경에서 문서를 교정한다.
 
@@ -148,9 +148,9 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - playable skill의 Server 수치 정본은 `Data/Balance/PlayerSkills.json`과 `DamageProfiles.json`, presentation 정본은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`이다. Animation Tool은 Scene Character의 실제 model clip만 현재 class의 skillId에 순서대로 연결해 저장한다. ACTIVE는 하나 이상의 순차 clip, COMBO는 `comboStages`와 정확히 같은 BA 단계 수를 요구한다. `inputSlot`, `skillId`, `skillKind`, timing, damage는 Animation Tool에서 편집하지 않는다. missing/corrupt presentation 문서는 spawn과 Server gameplay를 막지 않고 해당 action 표현만 격리한다. `.skilltiming/.clipmap/.animnotify/.clipseq`와 `Data/Animation/Reference`는 read-only 저작 참고 자료이며 제품 runtime 정본이 아니다. 이동기·스탠스 전환은 아직 별도 수직 슬라이스 범위다.
 - Server 담당자는 `Shared` message와 stable world/entity/archetype ID를 경계로 사용한다. Client GameObject, Prototype tag, asset path를 Server에 전달하지 않는다.
 - 플레이어·스킬·damage·boss 수치 정본은 각각 `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이다. Server pre-build가 `Publish-GameplayBalance.ps1`로 검증·publish하며 생성된 bootstrap을 직접 편집하지 않는다.
-- field-level 공식 근거 정본은 `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`이다. publisher는 5 profile, 53 skill definition, 54 damage profile과 Valtan encounter의 모든 저작 field coverage/result 일치를 검사한다. F1 Balance Tool에서 바뀐 field는 receipt 동기화 단계에서 `PROJECT_TUNED`로 분류하며 공식 basis를 수동 유지하지 않는다. Publish 뒤 Server 재시작 전에는 적용 완료가 아니다.
+- field-level 공식 근거 정본은 `Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json`이다. publisher는 5 profile, 88 skill definition, 63 damage profile과 Valtan encounter의 모든 저작 field coverage/result 일치를 검사한다. F1 Balance Tool에서 바뀐 field는 receipt 동기화 단계에서 `PROJECT_TUNED`로 분류하며 공식 basis를 수동 유지하지 않는다. Publish 뒤 Server 재시작 전에는 적용 완료가 아니다.
 - 제품 이동과 스킬 이동 보정, Valtan 추적은 `Data/Navigation` authoring에서 publisher가 생성한 Server runtime `.navgrid`를 소비한다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 정본으로 사용한다. Client Navigation 결과나 transform을 서버 정답으로 보내지 않는다.
-- Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. `Gameplay.world.json` authoring은 formatVersion 2이며 actor placement와 gated `triggerBox`/`destroyable` 구조를 구분한다. 제품 publisher/runtime는 player spawn/NPC/boss와 정확히 하나의 `movePlayer` action을 가진 triggerBox만 지원한다. movePlayer의 OBB 진입·이동은 Server authority이고 Shared player snapshot으로 표현한다. destroyable과 다른 trigger action은 dynamic navigation·replication·Client presentation이 닫히기 전까지 publisher가 거부하며 authoring parser 존재만으로 제품 지원 완료 처리하지 않는다.
+- Map/Encounter 담당자는 catalog 정의와 placement instance를 분리한다. `Gameplay.world.json` authoring은 formatVersion 4이며 actor placement, `triggerBox`, `collisionBox`, gated `destroyable` 구조를 구분한다. 제품 publisher/runtime는 player spawn/NPC/boss, 정확히 하나의 `movePlayer` 또는 `changeLevel` action을 가진 triggerBox, Server 권위 정적 collisionBox를 지원한다. NPC 제품 presentation은 현재 `NPC_BEDA` 한 archetype만 지원한다. movePlayer와 changeLevel의 OBB 진입, player collider와 collisionBox의 swept 이동 차단은 Server authority이고 Shared player snapshot으로 표현한다. changeLevel은 Bern과 Valtan Arena 사이에서만 Server가 source room leave와 target room enter를 확정하고 Client는 `S2C_ENTER_ACCEPTED` 뒤 typed level transition을 제출한다. destroyable과 다른 trigger action은 dynamic navigation·replication·Client presentation이 닫히기 전까지 publisher가 거부하며 authoring parser 존재만으로 제품 지원 완료 처리하지 않는다.
 - 수업용 `CMonster`와 그 전제를 새 월드 계약으로 승격하지 않는다. Monster runtime/catalog/schema는 현재 통합 범위 밖이며, 실제 요구와 별도 계획·하네스가 승인되기 전에는 placeholder enum이나 빈 catalog도 추가하지 않는다.
 - Valtan 제품 경로의 transform, action, phase, damage 판정은 Server authority다. Client `CValtan`의 로컬 AI는 Development preview 외에 사용하지 않는다.
 - MapTool gameplay 저장은 `Data/Worlds/<AreaId>/Gameplay.world.json`이 정본이다. `Publish-WorldGameplay.ps1`이 Server bootstrap을 생성하며 생성물을 직접 편집하지 않는다.
@@ -164,19 +164,19 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 - 파일/네트워크/레벨 로드는 실패 이유를 보존한다. 무한 대기, 부분 commit, silent identity fallback을 금지한다.
 - 새 public 계약에는 정상 사례, 잘못된 version/ID/path, 중복, 중간 실패 rollback을 검증하는 harness 또는 audit check를 함께 추가한다.
 - 밸런스 파일을 매 프레임 읽거나 Client만 reload하지 않는다. runtime Hot Reload는 revision, Server stage, room tick commit, 진행 중 action 정책, snapshot revision, Client 동기화와 rollback harness가 한 수직 슬라이스로 닫힐 때만 활성화한다.
-- 완료 전 `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`을 실행한다. 리소스 변경이면 `-DeepAssetHash`를 추가한다.
+- 완료 전 `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`을 실행한다.
 
 ## Git·문서·완료 보고 계약
 
 - `main`에 직접 작업하지 않는다. 사람 작업 브랜치는 팀 명명 규칙을 따르고 Codex 작업 브랜치는 `codex/<topic>`을 사용한다.
 - 작업을 시작할 때 `git status --short`로 다른 담당자의 변경과 생성물을 구분한다. 소유권이 불명확한 대규모 dirty worktree에서는 자동 stage/commit하지 않는다.
 - 하나의 커밋은 하나의 검증 가능한 계약만 담는다. 코드, 그 코드가 소비하는 JSON/schema, 필요한 project/filter 등록, 대응 harness, PLAN/RESULT 갱신은 같은 변경 단위로 묶는다.
-- `Client/Bin/Resources` payload와 build/intermediate 산출물은 커밋하지 않는다. 리소스 버전 변경은 `Data/AssetPacks.lock.json`, immutable manifest, 운영 문서만 Git에 둔다.
+- `Client/Bin/Resources`는 팀장이 직접 관리하는 runtime 입력이다. immutable pack, lock, manifest, hash publish를 완료 조건으로 두지 않는다. build/intermediate 산출물은 커밋하지 않는다.
 - 계획/결과 문서는 `.md/GB/<MM-DD>/`에 보관한다. `.md/계획서작성규칙.local.md`와 local gotcha는 개인 파일이므로 커밋하지 않는다.
 - 완료 보고 전에 `git diff --check`, JSON/XML parse, 관련 harness, 정본 build/regression을 실행한다. Release에서 의도적으로 제외된 Development tool smoke를 PASS로 기록하지 않는다.
 - 문서에 적었다는 이유로 구현을 완료 처리하지 않는다. 구현 상태, 자동 검증 상태, 수동 검증 상태, 다음 단계 항목을 분리해 기록한다.
 - 비평 에이전트의 지적은 그대로 결론으로 복사하지 않는다. 실제 코드와 데이터로 재현한 뒤 가능한 항목은 ProjectAudit, protocol harness, smoke의 실행 계약으로 바꾼다.
-- 팀원 인계는 Git commit만으로 끝나지 않는다. `Data/AssetPacks.lock.json`이 가리키는 immutable resource ZIP의 위치·SHA-256과 `Hydrate -> Verify` 결과를 함께 공유한다.
+- 팀원 인계에는 필요한 `Client/Bin/Resources` 상대 asset ID와 물리 폴더 위치를 함께 적는다. ZIP hash나 Hydrate/Verify 결과를 요구하지 않는다.
 
 ## 빌드·검증
 

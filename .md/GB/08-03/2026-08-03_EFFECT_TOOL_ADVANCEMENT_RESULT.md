@@ -173,3 +173,45 @@ paths=0 authored=0 intake=0 shaders=0 symbols=0 project=0 entry=False document=T
 사용자가 실제 Debug Client에서 F1 → Effect Tool 진입과 G1 화면 표시를 검증했다. 제공한 화면에서
 빈 Effect Asset ID가 거부되고, New Document 입력창, Create 버튼, Mesh 기본 선택, G2 전까지
 session-only라는 경계가 함께 확인됐다. 자동 입력이나 파일 저장은 G1 범위에 없다.
+
+## 7. G03·G04 Save/Load와 typed resource 입력
+
+2026-08-05에 사용자의 G03·G04 동시 반영 요청에 따라 본질만 남긴 저장과 리소스 입력 경계를 구현했다.
+
+- Effect document 저장 형식은 v2이며 `schema`, `version`, `effectAssetId`, `displayName`, `elements`를 저장한다.
+- Save는 `validate -> serialize -> temporary write -> atomic replace`까지만 수행한다.
+- Load는 JSON을 별도 문서에 `parse -> validate -> stage -> commit`하고 실패하면 기존 Active Document를 유지한다.
+- v1 문서는 resource가 비어 있는 v2 메모리 문서로 읽고, 다음 Save에서 v2로 저장한다.
+- Mesh는 `.wmodel`, Sprite/Decal/Trail은 `.dds`만 선택할 수 있다. Particle resource는 후속 G까지 비워 둔다.
+- catalog에는 `Client/Bin/Resources/Effect` 아래 실제 파일의 Resources-relative stable asset ID만 들어간다.
+- GPU preview, Material 편집, particle simulation, timeline과 graph는 추가하지 않았다.
+
+자동 검증 결과:
+
+```text
+Client.vcxproj / filters XML parse               PASS
+Effect C++ project/filter 등록 각 1건             PASS
+구 Effect symbol 잔류                            PASS, 0건
+Resources/Effect .wmodel                         139개
+Resources/Effect .dds                            694개
+invalid resource asset ID                        0개
+effect.g4-typed-resource-boundary                 PASS
+git diff --check                                 PASS
+Engine x64 Debug                                 PASS
+UpdateLib.bat Debug                              PASS
+Shared x64 Debug                                 PASS
+NetworkProtocolHarness                           PASS, failures 0
+ClientFrontendHarness                            PASS, failures 0
+Server x64 Debug + --contract-test               PASS, failures 0
+Client x64 Debug                                 PASS
+```
+
+정본 `Invoke-BuildAndRegression.ps1 -Configuration Debug`의 build와 harness는 모두 통과했지만 스크립트
+최종 종료는 기존 `asset-lock.inventory: files=10257 bytes=5507164291` 불일치 때문에 1이었다. 사용자의
+dirty resource pack/lock을 Effect 작업에서 임의로 갱신하지 않았다.
+
+수동 smoke는 PASS가 아니다. `Client/Default` 작업 디렉터리에서 Debug Client를 실행했을 때
+Microsoft Visual C++ Runtime Library의 `abort() has been called` 팝업이 발생했다. 호출 경계상 F1은
+Developer Tools 표시만 바꾸고 `CEffect_Tool`은 그 안의 `Effect Tool` 버튼을 선택할 때 처음 생성되므로,
+이 팝업을 G04 렌더 성공이나 G04 단독 원인으로 기록하지 않는다. Client 반복 실행은 중단했으며
+재현·판정 규칙은 `.md/GB/gotchas.md`에 추가했다.

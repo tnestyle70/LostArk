@@ -14,9 +14,29 @@ CCustomFont::~CCustomFont()
 
 HRESULT CCustomFont::Initialize(const tchar_t* pFontFilePath)
 {
-    m_pBatch = make_unique<SpriteBatch>(m_pContext.Get());
+	if (nullptr == pFontFilePath || nullptr == m_pDevice || nullptr == m_pContext)
+		return E_INVALIDARG;
 
-    m_pFont = make_unique<SpriteFont>(m_pDevice.Get(), pFontFilePath);
+	try
+	{
+		m_pBatch = make_unique<SpriteBatch>(m_pContext.Get());
+		m_pFont = make_unique<SpriteFont>(m_pDevice.Get(), pFontFilePath);
+	}
+	catch (const std::exception& exception)
+	{
+		OutputDebugStringA((std::string("Custom font creation failed: ") +
+			exception.what() + "\n").c_str());
+		m_pFont.reset();
+		m_pBatch.reset();
+		return E_FAIL;
+	}
+	catch (...)
+	{
+		OutputDebugStringA("Custom font creation failed with an unknown exception.\n");
+		m_pFont.reset();
+		m_pBatch.reset();
+		return E_FAIL;
+	}
 
 	return S_OK;
 }

@@ -16,6 +16,7 @@
 namespace Client
 {
 	class CCharacter;
+	class CNpc;
 	class CValtan;
 
 	class CClientReplication final
@@ -83,6 +84,7 @@ namespace Client
 				LostArk::Shared::WORLD_ENTITY_KIND::END;
 			std::string strArchetypeId;
 			std::string strEncounterId;
+			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;
 		};
 		std::unordered_map<

@@ -68,6 +68,10 @@ namespace LostArk::Server
 		bool Bind_SessionWorld(
 			SESSION_ID sessionId,
 			LostArk::Shared::WORLD_ID worldId);
+		void Handle_WorldTransfers(CGameRoom& sourceRoom);
+		bool Transfer_SessionWorld(
+			LostArk::Shared::WORLD_ID sourceWorldId,
+			const SERVER_WORLD_TRANSFER_REQUEST& transfer);
 		void Unbind_SessionWorld(SESSION_ID sessionId);
 		//서버 전체 종료 순서 한 곳으로 모아서 정리
 		void Shutdown();

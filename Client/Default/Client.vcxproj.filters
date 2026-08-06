@@ -79,11 +79,17 @@
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
-    <Filter Include="96.DataFiles\AssetPacks">
-      <UniqueIdentifier>{1d3cc5df-ce41-4c5b-87f8-b52a371b2e52}</UniqueIdentifier>
-    </Filter>
     <Filter Include="96.DataFiles\Balance">
       <UniqueIdentifier>{9c176e1d-aa38-4d80-80d6-eab54877c358}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects">
+      <UniqueIdentifier>{98a698a7-6755-4d8d-8795-c3c1ea0b6737}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Authored">
+      <UniqueIdentifier>{096fe528-80e6-47da-b169-96fb56a53729}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported">
+      <UniqueIdentifier>{94b89e0f-c55f-4f0d-8d90-a6bd2b7a3d8e}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Encounters">
       <UniqueIdentifier>{b09ba3ed-3f63-4c04-a1f7-05080a2f25e1}</UniqueIdentifier>
@@ -258,6 +264,30 @@
     <ClCompile Include="..\private\Effect_Tool.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentCodec.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Playback.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Object.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Catalog.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_PresentationService.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Animation_Tool.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -352,6 +382,9 @@
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\ValtanPresentationAssetService.cpp" />
+	<ClCompile Include="..\Private\NpcPresentationAssetService.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\Trigger_Box.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
@@ -586,11 +619,44 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Effect_MaterialTemplate.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
+	<ClInclude Include="..\Public\NpcPresentationAssetService.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\WorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\NetworkWorldEntityCommandSink.h" />
     <ClInclude Include="..\Public\Trigger_Box.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_DocumentCodec.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Playback.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_DocumentRenderer.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Object.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_ThumbnailCache.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Catalog.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EffectAuthoringTransfer.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\AnimationEffectCueDocument.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_PresentationService.h">
+      <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -712,21 +778,6 @@
     <None Include="..\..\Data\Animation\Reference\Slayer\Slayer.skilltiming">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>
-    <None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.1.manifest.json">
-      <Filter>96.DataFiles\AssetPacks</Filter>
-    </None>
-    <None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.2.manifest.json">
-      <Filter>96.DataFiles\AssetPacks</Filter>
-    </None>
-    <None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.03.3.manifest.json">
-      <Filter>96.DataFiles\AssetPacks</Filter>
-    </None>
-    <None Include="..\..\Data\AssetManifests\lostark-resources-2026.08.04.1.manifest.json">
-      <Filter>96.DataFiles\AssetPacks</Filter>
-    </None>
-    <None Include="..\..\Data\AssetPacks.lock.json">
-      <Filter>96.DataFiles\AssetPacks</Filter>
-    </None>
     <None Include="..\..\Data\Balance\BossProfiles.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
@@ -742,6 +793,125 @@
     <None Include="..\..\Data\Balance\PlayerSkills.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
+    <None Include="..\..\Data\Effects\EffectCatalog.json">
+      <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050150.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json"><Filter>96.DataFiles\Effects\Authored</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Artist.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Artist.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31000.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31210.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31230.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31410.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31490.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31900.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31920.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050010.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050110.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050150.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050190.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050200.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050210.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050220.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050540.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050500.external-module-closure.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050500.imported.effect.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34010.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34020.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34050.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34070.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34080.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34090.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34110.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34120.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34150.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34170.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34500.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34510.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34520.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34540.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34550.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34560.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34570.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34580.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34590.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34600.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34620.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-effect-draft-index.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\README.md"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.basebuff-effect-source.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.effect-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31000.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31210.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31230.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31410.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31470.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31490.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31900.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050010.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050110.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050150.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050190.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050200.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050210.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050220.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050240.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050500.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050540.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34010.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34020.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34050.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34070.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34080.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34090.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34110.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34120.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34150.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34170.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34500.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34510.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34520.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34540.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34550.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34560.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34570.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34580.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34590.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34600.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34620.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34640.imported-effect-draft.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.action-particle-resource-catalog.json"><Filter>96.DataFiles\Effects\Imported</Filter></None>
     <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
       <Filter>96.DataFiles\Encounters</Filter>
     </None>
@@ -942,5 +1112,23 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -5,6 +5,8 @@
 #include "Shader.h"
 #include "Transform.h"
 
+#include <cmath>
+
 CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CGameObject{ pDevice, pContext }
 {
@@ -57,6 +59,25 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
 	return m_pModelCom->Set_Animation(pClipName, isLoop);
+}
+
+bool_t CNpc::Apply_NetworkState(
+	const float3_t& position,
+	const f32_t yawDegrees)
+{
+	if (nullptr == m_pTransformCom ||
+		!std::isfinite(position.x) ||
+		!std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(yawDegrees))
+	{
+		return false;
+	}
+	m_pTransformCom->Set_State(
+		STATE::POSITION,
+		XMVectorSet(position.x, position.y, position.z, 1.f));
+	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	return true;
 }
 
 void CNpc::Priority_Update(f32_t fTimeDelta)

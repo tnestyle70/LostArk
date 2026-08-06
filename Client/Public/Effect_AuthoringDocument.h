@@ -9,11 +9,9 @@
 
 NS_BEGIN(Client)
 
-// Effect 제작 데이터의 저장 형식 버전이다.
-inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 1u;
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 6u;
+inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
 
-// 하나의 Effect Document를 구성할 수 있는 시각 요소 종류다.
-// END는 유효한 요소가 아니라 초기화 누락을 검출하기 위한 sentinel이다.
 enum class EFFECT_ELEMENT_KIND : uint8_t
 {
 	MESH,
@@ -24,29 +22,194 @@ enum class EFFECT_ELEMENT_KIND : uint8_t
 	END
 };
 
-// Effect Document 안에 들어가는 시각 요소 하나의 데이터다.
-// G1에서는 정체성만 정의하고 Transform과 렌더링 값은 이후 G에서 추가한다.
-struct EFFECT_ELEMENT_DESC final
+enum class EFFECT_RESOURCE_SLOT : uint8_t
 {
-	// Document 내부에서 Element를 구분하는 안정적인 고유 ID다.
-	std::string strElementId;
-	// Mesh, Sprite, Particle, Decal, Trail 중 어떤 종류인지 나타낸다.
-	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
-	// 절대 경로가 아닌 Resources 기준 상대 Asset ID다.
-	std::string strResourceId;
+	MESH_MODEL,
+	BASE_TEXTURE,
+	NOISE_TEXTURE,
+	MASK_TEXTURE,
+	EMISSIVE_TEXTURE,
+	DISSOLVE_TEXTURE,
+	END
 };
 
-// 메모리에서 제작 중인 재사용 가능한 Effect Asset 하나의 문서다.
-// ImGui, GPU, Character, Animation 객체를 소유하지 않는 순수 데이터다.
+enum class EFFECT_RESOURCE_FILE_KIND : uint8_t
+{
+	MODEL,
+	TEXTURE,
+	END
+};
+
+enum class EFFECT_RENDER_PROFILE : uint8_t
+{
+	OPAQUE_BACK_DEPTH_WRITE,
+	ALPHA_TWO_SIDED_DEPTH_READ,
+	ADDITIVE_TWO_SIDED_DEPTH_READ,
+	END
+};
+
+struct EFFECT_RESOURCE_BINDING_DESC final
+{
+	std::string strSlotId;
+	std::string strAssetId;
+};
+
+struct EFFECT_MATERIAL_DESC final
+{
+	std::string strTemplateId = "effect.standard";
+	EFFECT_RENDER_PROFILE eRenderProfile =
+		EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+};
+
+struct EFFECT_TRANSFORM_DESC final
+{
+	float3_t vPosition = { 0.f, 0.f, 0.f };
+	float3_t vRotationDegrees = { 0.f, 0.f, 0.f };
+	float3_t vRevolutionDegreesPerSecond = { 0.f, 0.f, 0.f };
+	float3_t vScale = { 1.f, 1.f, 1.f };
+	float3_t vVelocityPerSecond = { 0.f, 0.f, 0.f };
+};
+
+struct EFFECT_COLOR_DESC final
+{
+	float4_t vColorOffset = { 0.f, 0.f, 0.f, 0.f };
+	float4_t vColorMultiply = { 1.f, 1.f, 1.f, 1.f };
+	f32_t fColorClip = 0.f;
+	f32_t fEmissiveIntensity = 1.f;
+	f32_t fDistortionIntensity = 0.f;
+	bool_t bDistortionOnBaseMaterial = false;
+	f32_t fRadialTime = 0.f;
+	f32_t fRadialIntensity = 0.f;
+};
+
+struct EFFECT_UV_DESC final
+{
+	float2_t vStart = { 0.f, 0.f };
+	float2_t vSpeed = { 0.f, 0.f };
+	bool_t bWave = false;
+	float2_t vWaveAmplitude = { 0.f, 0.f };
+	f32_t fWaveFrequency = 1.f;
+	bool_t bSequence = false;
+	bool_t bLoop = false;
+	f32_t fSequenceTerm = 0.1f;
+	int32_t iTileColumns = 1;
+	int32_t iTileRows = 1;
+	int32_t iTileIndex = 0;
+};
+
+struct EFFECT_TIMING_DESC final
+{
+	f32_t fStartDelaySeconds = 0.f;
+	f32_t fLifeTimeSeconds = 1.f;
+	f32_t fAfterImageSeconds = 0.f;
+	f32_t fDissolveStartNormalized = 1.f;
+};
+
+struct EFFECT_MESH_DETAIL_DESC final
+{
+	bool_t bUseModelMaterial = true;
+};
+
+struct EFFECT_SPRITE_DETAIL_DESC final
+{
+	bool_t bBillboard = true;
+};
+
+struct EFFECT_DECAL_DETAIL_DESC final
+{
+	float2_t vSize = { 1.f, 1.f };
+	f32_t fDepth = 0.25f;
+};
+
+struct EFFECT_LINEAR_LERP_DESC final
+{
+	bool_t bPosition = false;
+	float3_t vEndPosition = { 0.f, 0.f, 0.f };
+	bool_t bRotation = false;
+	float3_t vEndRotationDegrees = { 0.f, 0.f, 0.f };
+	bool_t bRevolution = false;
+	float3_t vEndRevolutionDegreesPerSecond = { 0.f, 0.f, 0.f };
+	bool_t bScale = false;
+	float3_t vEndScale = { 1.f, 1.f, 1.f };
+	bool_t bVelocity = false;
+	float3_t vEndVelocityPerSecond = { 0.f, 0.f, 0.f };
+	bool_t bColorOffset = false;
+	float4_t vEndColorOffset = { 0.f, 0.f, 0.f, 0.f };
+	bool_t bColorMultiply = false;
+	float4_t vEndColorMultiply = { 1.f, 1.f, 1.f, 1.f };
+	bool_t bEmissiveIntensity = false;
+	f32_t fEndEmissiveIntensity = 1.f;
+};
+
+struct EFFECT_PARTICLE_DESC final
+{
+	uint32_t iMaxParticles = 256u;
+	f32_t fSpawnRatePerSecond = 20.f;
+	uint32_t iBurstCount = 0u;
+	uint32_t iRandomSeed = 1u;
+	float2_t vLifeTimeSeconds = { 0.5f, 1.f };
+	float3_t vInitialPositionMin = { 0.f, 0.f, 0.f };
+	float3_t vInitialPositionMax = { 0.f, 0.f, 0.f };
+	float3_t vInitialVelocityMin = { -0.5f, 1.f, -0.5f };
+	float3_t vInitialVelocityMax = { 0.5f, 2.f, 0.5f };
+	float3_t vAcceleration = { 0.f, -1.f, 0.f };
+	float2_t vStartSize = { 0.2f, 0.2f };
+	float2_t vEndSize = { 0.f, 0.f };
+	bool_t bLocalSpace = true;
+	bool_t bBillboard = true;
+};
+
+struct EFFECT_TRAIL_DESC final
+{
+	uint32_t iMaxPoints = 64u;
+	f32_t fPointLifeTimeSeconds = 0.35f;
+	f32_t fSampleIntervalSeconds = 1.f / 60.f;
+	f32_t fMinimumDistance = 0.01f;
+	f32_t fStartWidth = 0.2f;
+	f32_t fEndWidth = 0.f;
+	bool_t bFaceCamera = true;
+};
+
+struct EFFECT_AFTERIMAGE_DESC final
+{
+	f32_t fSampleIntervalSeconds = 0.05f;
+	uint32_t iMaxCopies = 16u;
+	f32_t fAlphaExponent = 1.f;
+};
+
+struct EFFECT_DETAIL_DESC final
+{
+	EFFECT_TRANSFORM_DESC Transform;
+	EFFECT_COLOR_DESC Color;
+	EFFECT_UV_DESC UV;
+	EFFECT_TIMING_DESC Timing;
+	EFFECT_MESH_DETAIL_DESC Mesh;
+	EFFECT_SPRITE_DETAIL_DESC Sprite;
+	EFFECT_DECAL_DETAIL_DESC Decal;
+	EFFECT_LINEAR_LERP_DESC LinearLerp;
+	EFFECT_PARTICLE_DESC Particle;
+	EFFECT_TRAIL_DESC Trail;
+	EFFECT_AFTERIMAGE_DESC AfterImage;
+};
+
+struct EFFECT_ELEMENT_DESC final
+{
+	std::string strElementId;
+	std::string strDisplayName;
+	std::string strGroupId;
+	std::string strSourceNode;
+	bool_t bVisible = true;
+	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
+	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
+	EFFECT_MATERIAL_DESC Material;
+	EFFECT_DETAIL_DESC Detail;
+};
+
 struct EFFECT_DOCUMENT_DESC final
 {
-	// 이후 파일을 읽을 때 호환성을 검증할 schema version이다.
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
-	// 저장과 런타임 연결에 사용하는 Effect Asset의 안정적인 ID다.
 	std::string strEffectAssetId;
-	// 제작자에게 표시하는 사람이 읽을 수 있는 이름이다.
 	std::string strDisplayName;
-	// 이 Effect Asset을 구성하는 시각 요소들을 순서대로 소유한다.
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };
 

@@ -15,6 +15,7 @@ public:
 		float3_t halfExtents = float3_t(1.f, 1.f, 1.f);
 		f32_t yawDegrees = {};
 		bool_t isEnabled = false;
+		bool_t isCollisionBox = false;
 	};
 
 private:

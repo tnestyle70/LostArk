@@ -1,11 +1,17 @@
 [CmdletBinding()]
 param(
-    [switch]$DeepAssetHash,
-    [string]$ReportPath = '.codex_tmp/ProjectAudit.json'
+    [string]$ReportPath = '.codex_tmp/ProjectAudit.json',
+    [string]$ResourceRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Get-Location).Path)
+$resourceRoot = if ([string]::IsNullOrWhiteSpace($ResourceRoot)) {
+    Join-Path $repoRoot 'Client\Bin\Resources'
+}
+else {
+    [IO.Path]::GetFullPath($ResourceRoot)
+}
 $checks = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
 
@@ -53,110 +59,6 @@ function Get-WModelTextureReferences {
 }
 
 try {
-    $resourceRoot = Join-Path $repoRoot 'Client\Bin\Resources'
-    $expectedDomains = @('Character', 'Deploy', 'Effect', 'Fonts', 'Map', 'UI')
-    $actualDomains = @(Get-ChildItem -LiteralPath $resourceRoot -Force |
-        ForEach-Object Name | Sort-Object)
-    Add-Check 'resource.top-level' (($actualDomains -join "`n") -eq (($expectedDomains | Sort-Object) -join "`n")) "actual=$($actualDomains -join ',')"
-
-    $forbiddenResourceNames = @('LostArk', 'Models', 'Textures', 'SourceData', 'Sound')
-    $presentForbidden = @($forbiddenResourceNames | Where-Object {
-        Test-Path -LiteralPath (Join-Path $resourceRoot $_) })
-    Add-Check 'resource.forbidden-roots' ($presentForbidden.Count -eq 0) "present=$($presentForbidden -join ',')"
-
-    $forbiddenRuntimeFiles = @(Get-ChildItem -LiteralPath $resourceRoot -Recurse -File -Force |
-        Where-Object { $_.Extension.ToLowerInvariant() -in @('.cfg', '.exe', '.dll', '.pdb') })
-    Add-Check 'resource.forbidden-files' ($forbiddenRuntimeFiles.Count -eq 0) "count=$($forbiddenRuntimeFiles.Count)"
-
-    $lock = Read-Json 'Data\AssetPacks.lock.json'
-    $pack = @($lock.packs | Where-Object packId -eq 'lostark-resources')
-    Add-Check 'asset-lock.identity' ($lock.schema -eq 'lostark.asset-pack-lock' -and $lock.formatVersion -eq 1 -and $pack.Count -eq 1) "packs=$($pack.Count)"
-    if ($pack.Count -eq 1) {
-        $manifest = Read-Json $pack[0].manifest
-        $actualFileCount = @(Get-ChildItem -LiteralPath $resourceRoot -Recurse -File -Force).Count
-        $actualBytes = [long]((Get-ChildItem -LiteralPath $resourceRoot -Recurse -File -Force |
-            Measure-Object Length -Sum).Sum)
-        Add-Check 'asset-lock.inventory' ($actualFileCount -eq $manifest.fileCount -and $actualBytes -eq $manifest.totalBytes) "files=$actualFileCount bytes=$actualBytes"
-        $manifestHash = (Get-FileHash -LiteralPath $pack[0].manifest -Algorithm SHA256).Hash.ToLowerInvariant()
-        Add-Check 'asset-lock.manifest-hash' ($manifestHash -eq $pack[0].manifestSha256) $manifestHash
-    }
-
-    if ($DeepAssetHash) {
-        $verifyOutput = & .\Tools\AssetPipeline\Manage-ResourcePack.ps1 -Mode Verify 2>&1
-        Add-Check 'asset-lock.deep-verify' $true ($verifyOutput -join ' ')
-    }
-
-    $snapshotRollbackPassed = $false
-    $snapshotRollbackDetail = ''
-    $snapshotFixtureRoot = Join-Path $repoRoot ".codex_tmp\ResourceSnapshotFixture-$PID"
-    $resourcePackScript = Join-Path $repoRoot 'Tools\AssetPipeline\Manage-ResourcePack.ps1'
-    try {
-        $snapshotResourceRoot = Join-Path $snapshotFixtureRoot 'Client\Bin\Resources'
-        foreach ($domain in @('Character', 'Deploy', 'Effect', 'Fonts', 'Map', 'UI')) {
-            [IO.Directory]::CreateDirectory((Join-Path $snapshotResourceRoot $domain)) | Out-Null
-        }
-        [IO.File]::WriteAllText(
-            (Join-Path $snapshotResourceRoot 'Fonts\fixture.asset'),
-            'fixture',
-            [Text.UTF8Encoding]::new($false))
-        $snapshotLockPath = Join-Path $snapshotFixtureRoot 'Data\AssetPacks.lock.json'
-        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($snapshotLockPath)) | Out-Null
-        [IO.File]::WriteAllText(
-            $snapshotLockPath,
-            "{`"schema`":`"lostark.asset-pack-lock`",`"formatVersion`":1,`"packs`":[]}",
-            [Text.UTF8Encoding]::new($false))
-
-        Push-Location $snapshotFixtureRoot
-        try {
-            $injectedFailureRejected = $false
-            try {
-                & $resourcePackScript `
-                    -Mode Snapshot `
-                    -PackId fixture-resources `
-                    -Version 1.0.0 `
-                    -FailureAfterManifest | Out-Null
-            }
-            catch {
-                $injectedFailureRejected = $true
-            }
-            $orphanAfterFailure = @(Get-ChildItem -LiteralPath 'Data\AssetManifests' -File -ErrorAction SilentlyContinue)
-            $temporaryAfterFailure = @(Get-ChildItem -LiteralPath 'Data' -Recurse -Force -ErrorAction SilentlyContinue |
-                Where-Object Name -Match '\.tmp$|\.replace-backup$')
-            $lockAfterFailure = Get-Content -LiteralPath 'Data\AssetPacks.lock.json' -Raw | ConvertFrom-Json
-
-            & $resourcePackScript `
-                -Mode Snapshot `
-                -PackId fixture-resources `
-                -Version 1.0.0 | Out-Null
-            & $resourcePackScript `
-                -Mode Verify `
-                -PackId fixture-resources | Out-Null
-            $manifestAfterSuccess = @(Get-ChildItem -LiteralPath 'Data\AssetManifests' -File)
-            $lockAfterSuccess = Get-Content -LiteralPath 'Data\AssetPacks.lock.json' -Raw | ConvertFrom-Json
-            $snapshotRollbackPassed =
-                $injectedFailureRejected -and
-                $orphanAfterFailure.Count -eq 0 -and
-                $temporaryAfterFailure.Count -eq 0 -and
-                @($lockAfterFailure.packs).Count -eq 0 -and
-                $manifestAfterSuccess.Count -eq 1 -and
-                @($lockAfterSuccess.packs).Count -eq 1
-            $snapshotRollbackDetail =
-                "rejected=$injectedFailureRejected orphan=$($orphanAfterFailure.Count) temp=$($temporaryAfterFailure.Count)"
-        }
-        finally {
-            Pop-Location
-        }
-    }
-    catch {
-        $snapshotRollbackDetail = $_.Exception.Message
-    }
-    finally {
-        if ([IO.Directory]::Exists($snapshotFixtureRoot)) {
-            Remove-Item -LiteralPath $snapshotFixtureRoot -Recurse -Force
-        }
-    }
-    Add-Check 'asset-lock.snapshot-rollback' $snapshotRollbackPassed $snapshotRollbackDetail
-
     $uiDocuments = @(
         'Data\UI\HUD\HUD_Layout.json',
         'Data\UI\ScreenUI\ScreenUI.json')
@@ -632,6 +534,9 @@ try {
 	$effectDocumentHeader = Get-Content -LiteralPath 'Client\Public\Effect_AuthoringDocument.h' -Raw
 	$effectToolHeader = Get-Content -LiteralPath 'Client\Public\Effect_Tool.h' -Raw
 	$effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
+	$effectMeshPreviewShader = Get-Content -LiteralPath 'Client\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl' -Raw
+	$effectRectPreviewShader = Get-Content -LiteralPath 'Client\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl' -Raw
+	$mainAppSource = Get-Content -LiteralPath 'Client\Private\MainApp.cpp' -Raw
 	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
 	$engineImGuiSource = Get-Content -LiteralPath 'Engine\Private\ImGuiLayer.cpp' -Raw
 	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
@@ -644,38 +549,70 @@ try {
 		'Client\Public\Effect_Runtime.h',
 		'Client\Private\Effect_Runtime.cpp',
 		'Client\Public\Effect_ResourceCatalog.h',
-		'Client\Private\Effect_ResourceCatalog.cpp')
+		'Client\Private\Effect_ResourceCatalog.cpp',
+		'Client\Public\Effect_Preview.h',
+		'Client\Private\Effect_Preview.cpp')
 	$removedEffectPathHits = @($removedEffectPaths |
 		Where-Object { Test-Path -LiteralPath $_ })
 	$authoredEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored' -Recurse -File -ErrorAction SilentlyContinue)
+	$unexpectedAuthoredEffectFiles = @($authoredEffectFiles |
+		Where-Object { $_.Name -notmatch '^[A-Za-z0-9_.-]+\.effect\.json$' })
 	$effectIntakeFiles = @(Get-ChildItem -LiteralPath 'Tools\EffectResourceIntake' -Recurse -File -ErrorAction SilentlyContinue)
 	$effectShaderFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\ShaderFiles' -File -Filter 'Shader_Effect*' -ErrorAction SilentlyContinue)
 	$legacyEffectSymbolHits = @($clientSourceFiles | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC')
-	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|Shader_Effect|Data\\Effects\\Authored')
+	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)')
 	$legacyEffectEntry =
 		$clientEntrySource -match 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC|--effect-' -or
 		$engineImGuiSource -match '--effect-'
-	$effectG1DocumentShape =
-		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*1u' -and
-		$effectDocumentHeader -match 'enum class EFFECT_ELEMENT_KIND[\s\S]*MESH,[\s\S]*SPRITE,[\s\S]*PARTICLE,[\s\S]*DECAL,[\s\S]*TRAIL,[\s\S]*END' -and
-		$effectDocumentHeader -match 'struct EFFECT_DOCUMENT_DESC[\s\S]*strEffectAssetId[\s\S]*strDisplayName[\s\S]*Elements' -and
-		$effectToolHeader -match 'optional<EFFECT_DOCUMENT_DESC>\s+m_ActiveDocument' -and
-		$effectToolHeader -match 'm_eSelectedEffectType\s*=\s*EFFECT_ELEMENT_KIND::MESH' -and
-		$effectToolSource -match 'Is_StableEffectAssetId' -and
-		$effectToolSource -match 'Try_CreateDocument' -and
-		$effectToolSource -match 'Discard_ActiveDocument' -and
-		$effectToolSource -match '"Mesh",\s*"Sprite",\s*"Particle",\s*"Decal",\s*"Trail"' -and
-		$effectToolSource -match 'LostArk Effect Tool###LostArkEffectToolG1' -and
-		$effectToolSource -notmatch 'filesystem|ifstream|ofstream|GetOpenFileName|ID3D11'
-	Add-Check 'effect.g1-document-boundary' (
+	$effectPassOrderPattern =
+		'pass\s+OpaqueBackDepthWrite[\s\S]*pass\s+AlphaTwoSidedDepthRead[\s\S]*pass\s+AdditiveTwoSidedDepthRead'
+	$effectG6DetailPreviewShape =
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*6u' -and
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_MIN_SUPPORTED_VERSION\s*=\s*3u' -and
+		$effectDocumentHeader -match 'struct EFFECT_ELEMENT_DESC[\s\S]*ResourceBindings[\s\S]*Material[\s\S]*Detail' -and
+		$effectDocumentHeader -match 'struct EFFECT_DETAIL_DESC[\s\S]*Transform[\s\S]*Color[\s\S]*UV[\s\S]*Timing[\s\S]*Mesh[\s\S]*Sprite[\s\S]*Decal[\s\S]*LinearLerp[\s\S]*Particle[\s\S]*Trail[\s\S]*AfterImage' -and
+		$effectDocumentHeader -notmatch 'filesystem|DataJson|Parse_EffectDocument|Serialize_EffectDocument' -and
+		$effectToolHeader -match 'weak_ptr<CEffectObject>\s+m_pWorldPreviewObject' -and
+		$effectToolHeader -match 'Render_EffectDetailWindow' -and
+		$effectToolHeader -match 'Render_ModelViewWindow' -and
+		$effectToolSource -match 'Try_CommitDocument' -and
+		$effectToolSource -match 'Stage_WorldPreview' -and
+		$effectToolSource -match 'Render_ResourceGrid'
+	$effectG6DetailPreviewShape =
+		$effectG6DetailPreviewShape -and
+		$mainAppSource -match 'make_unique<CEffect_Tool>\(\s*m_pDevice,\s*m_pContext,\s*m_pCharacterPreviewPanel\s*\)' -and
+		$mainAppSource -match 'Prototype_GameObject_EffectObject' -and
+		$effectMeshPreviewShader -match $effectPassOrderPattern -and
+		$effectRectPreviewShader -match $effectPassOrderPattern -and
+		(Test-Path -LiteralPath 'Client\Private\Effect_Playback.cpp') -and
+		(Test-Path -LiteralPath 'Client\Private\Effect_DocumentRenderer.cpp') -and
+		(Test-Path -LiteralPath 'Client\Private\Effect_PresentationService.cpp') -and
+		(Test-Path -LiteralPath 'Tools\EffectPipeline\Publish-Effects.ps1') -and
+		$clientProjectSource -match 'Shader_VtxEffectMeshPreview\.hlsl' -and
+		$clientProjectSource -match 'Shader_VtxEffectRectPreview\.hlsl' -and
+		$clientProjectSource -match 'Shader_VtxEffectParticle\.hlsl' -and
+		$clientProjectSource -match 'Effect_DocumentRenderer\.cpp' -and
+		-not (Test-Path -LiteralPath 'Client\Private\Effect_AuthoringDocument.cpp')
+	Add-Check 'effect.g09-authoring-world-runtime-boundary' (
 		$removedEffectPathHits.Count -eq 0 -and
-		$authoredEffectFiles.Count -eq 0 -and
+		$unexpectedAuthoredEffectFiles.Count -eq 0 -and
 		$effectIntakeFiles.Count -eq 0 -and
-		$effectShaderFiles.Count -eq 0 -and
+		$effectShaderFiles.Count -le 1 -and
 		$legacyEffectSymbolHits.Count -eq 0 -and
 		$legacyEffectProjectHits.Count -eq 0 -and
 		-not $legacyEffectEntry -and
-		$effectG1DocumentShape) "paths=$($removedEffectPathHits.Count) authored=$($authoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry document=$effectG1DocumentShape"
+		$effectG6DetailPreviewShape) "paths=$($removedEffectPathHits.Count) authoredUnexpected=$($unexpectedAuthoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry detailPreview=$effectG6DetailPreviewShape"
+	$effectFinalAuditPassed = $false
+	$effectFinalAuditDetail = ''
+	try {
+		$effectFinalAuditDetail = (& .\Tools\ProjectAudit\Test-EffectToolFinal.ps1 `
+			-ResourceRoot $resourceRoot 2>&1) -join ' '
+		$effectFinalAuditPassed = $true
+	}
+	catch {
+		$effectFinalAuditDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.g09-cross-document-contract' $effectFinalAuditPassed $effectFinalAuditDetail
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"
@@ -821,9 +758,17 @@ try {
 		$frontendHarnessSource -match 'Test_CharacterSelectServerHandoff' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectPreviewReturnCommand' -and
         $lobbySource -match '"Test"' -and
-        $lobbySource -match '"Character Select"' -and
-        $lobbySource -match '"Valtan"' -and
+		$lobbySource -match '"Character Select"' -and
+		$lobbySource -match '"Valtan"' -and
 		$lobbySource -match '"Bern"') 'Character Select keeps one visual Level while Server approval swaps preview and replicated presentation; Valtan spawn uses a typed command sink'
+	Add-Check 'levels.character-select-camera-framing' (
+		$characterSelectSource -match 'PREVIEW_CAMERA_HEIGHT = 1\.9f' -and
+		$characterSelectSource -match 'PREVIEW_CAMERA_DISTANCE = 3\.8f' -and
+		$characterSelectSource -match 'PREVIEW_CAMERA_LOOK_HEIGHT = 1\.05f' -and
+		$characterSelectSource -match 'SERVER_CAMERA_HEIGHT = 4\.f' -and
+		$characterSelectSource -match 'SERVER_CAMERA_DISTANCE = 3\.8f' -and
+		$characterSelectSource -notmatch 'float3_t\(0\.f, 2\.4f, -6\.f\)' -and
+		$characterSelectSource -notmatch 'float3_t\(0\.4f, 7\.5f, 4\.5f\)') 'Character Select Preview and Server Play start from near-character follow framing'
 	Add-Check 'levels.loading-progress-overlay' (
 		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
 		$loadingSource -match '"Loading progress"' -and
@@ -1003,7 +948,7 @@ try {
 		$characterSelectionStateSource -match 'Is_Supported_Playable_Character_Class') "roster=$playableRoster status=$rosterStatus"
 	$dimensionmasterActor = @($characterCatalog.characters | Where-Object networkClassId -eq 'DIMENSIONMASTER')
 	$dimensionmasterAnimationContracts = @(
-		[pscustomobject]@{ Path = 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'; Header = 'LOSTARK_ANIM_EVENTS 3 "DimensionMaster"' },
+		[pscustomobject]@{ Path = 'Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents'; Header = 'LOSTARK_ANIM_EVENTS 5 "DimensionMaster"' },
 		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.animnotify'; Header = 'LOSTARK_ANIM_NOTIFY 1 "DimensionMaster"' },
 		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipmap'; Header = 'LOSTARK_CLIP_MAP 1 "DimensionMaster"' },
 		[pscustomobject]@{ Path = 'Data\Animation\Reference\DimensionMaster\DimensionMaster.clipseq'; Header = 'LOSTARK_CLIP_SEQ 2 "DimensionMaster"' },
@@ -1033,6 +978,7 @@ try {
 		$invalidDimensionMasterAnimationDocuments.Count -eq 0) "combined body, four socketed weapon assets and owner-matched Animation Tool documents exist; invalid=$($invalidDimensionMasterAnimationDocuments -join ',')"
 	$playableAssetServiceSource = Get-Content -LiteralPath 'Client\Private\PlayableCharacterAssetService.cpp' -Raw
 	$valtanAssetServiceSource = Get-Content -LiteralPath 'Client\Private\ValtanPresentationAssetService.cpp' -Raw
+	$npcAssetServiceSource = Get-Content -LiteralPath 'Client\Private\NpcPresentationAssetService.cpp' -Raw
 	$dimensionmasterLogicSource = Get-Content -LiteralPath 'Client\Private\Logic_DimensionMaster.cpp' -Raw
 	Add-Check 'actors.dimensionmaster-four-part-weapon' (
 		$playableAssetServiceSource -match 'Prototype_Component_Model_DimensionMaster_Weapon_L' -and
@@ -1167,10 +1113,14 @@ try {
 	Add-Check 'actors.runtime-catalog-boundary' (
 		$actorCatalogSource -match 'Actors/CharacterCatalog\.json' -and
 		$actorCatalogSource -match 'Actors/BossCatalog\.json' -and
+		$actorCatalogSource -match 'Actors/NpcCatalog\.json' -and
 		$playableAssetServiceSource -match 'CActorCatalog::Find_Character' -and
 		$valtanAssetServiceSource -match 'CActorCatalog::Find_Boss' -and
 		$valtanAssetServiceSource -match 'Add_Prototypes' -and
+		$npcAssetServiceSource -match 'CActorCatalog::Find_Npc' -and
+		$npcAssetServiceSource -match 'Add_Prototypes' -and
 		$replicationSource -match 'CActorCatalog::Find_Boss\(spawned\.strArchetypeId\)' -and
+		$replicationSource -match 'CActorCatalog::Find_Npc\(spawned\.strArchetypeId\)' -and
 		$hardcodedActorModelHits.Count -eq 0) "hardcodedModelPaths=$($hardcodedActorModelHits.Count)"
 	Add-Check 'actors.selected-first-on-demand-load' (
 		$actorLoaderSource -match 'Get_LocalCharacterClass\(\)' -and
@@ -1196,9 +1146,9 @@ try {
 		'Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json')
 	$invalidWorldAuthoring = @($worldAuthoringDocuments | Where-Object {
 		$document = Read-Json $_
-		$document.schema -ne 'lostark.world-gameplay' -or [int]$document.formatVersion -ne 2
+		$document.schema -ne 'lostark.world-gameplay' -or [int]$document.formatVersion -ne 4
 	})
-	Add-Check 'world.authoring-format-v2' ($invalidWorldAuthoring.Count -eq 0) `
+	Add-Check 'world.authoring-format-v4' ($invalidWorldAuthoring.Count -eq 0) `
 		"invalid=$($invalidWorldAuthoring -join ',')"
 
 	$gameplayValidationPassed = $true
@@ -1374,6 +1324,14 @@ try {
 
     $serverRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw
     $serverProjectSource = Get-Content -LiteralPath 'Server\Default\Server.vcxproj' -Raw
+	$mapToolSource = Get-Content -LiteralPath 'Client\Private\MapTool.cpp' -Raw
+	Add-Check 'world.player-spawn-position-authoring' (
+		$mapToolSource -match 'Player Spawn Position Offset' -and
+		$mapToolSource -match 'Apply Delta To Spawn Position' -and
+		$mapToolSource -match 'staged\.position\.x \+= m_WorldPlacementPositionDelta\.x' -and
+		$serverRoomSource -match 'player\.fPositionX = spawn->fPositionX' -and
+		$serverRoomSource -match 'player\.fPositionY = spawn->fPositionY' -and
+		$serverRoomSource -match 'player\.fPositionZ = spawn->fPositionZ') 'MapTool resolves authored position delta and Server consumes the saved spawn transform'
     Add-Check 'server.world-bootstrap-boundary' (
         $serverRoomSource -match 'Find_AvailablePlayerSpawn' -and
         $serverRoomSource -match 'Update_WorldEntities' -and

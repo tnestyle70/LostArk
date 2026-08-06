@@ -76,6 +76,11 @@ HRESULT CLevel_Bern::Initialize()
 void CLevel_Bern::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
+		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(LEVEL::BERN))
+	{
+		return;
+	}
 
 	if (!m_Replication.Update())
 	{

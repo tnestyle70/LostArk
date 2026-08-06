@@ -41,6 +41,100 @@ namespace
 			desc.maxSlopeDegrees < 90.f;
 	}
 
+	bool_t BuildOverlayHeights(
+		const Client::NAVGRID_AUTHORING_DESC& desc,
+		const std::vector<Client::NAV_SOURCE_CELL>& sourceCells,
+		const std::vector<Client::NAVGRID_PAINT_OVERRIDE>& cellOverrides,
+		std::vector<f32_t>& outOverlayHeights)
+	{
+		const uint64_t expectedCellCount =
+			static_cast<uint64_t>(desc.width) * desc.height;
+		if (0 == expectedCellCount ||
+			expectedCellCount != sourceCells.size() ||
+			expectedCellCount != cellOverrides.size())
+		{
+			return false;
+		}
+
+		outOverlayHeights.assign(sourceCells.size(), 0.f);
+		std::vector<uint8_t> heightResolved(sourceCells.size(), 0);
+		std::vector<uint32_t> pendingCells;
+		pendingCells.reserve(sourceCells.size());
+
+		auto seedResolvedCells = [&](bool_t walkableOnly)
+		{
+			for (uint32_t index = 0; index < sourceCells.size(); ++index)
+			{
+				if (!sourceCells[index].surfaceResolved)
+					continue;
+
+				const bool_t isWalkable =
+					Client::NAVGRID_PAINT_OVERRIDE::FORCE_WALKABLE ==
+						cellOverrides[index] ||
+					(Client::NAVGRID_PAINT_OVERRIDE::FORCE_BLOCKED !=
+						cellOverrides[index] &&
+						sourceCells[index].baseWalkable);
+				if (walkableOnly && !isWalkable)
+					continue;
+
+				outOverlayHeights[index] = sourceCells[index].height;
+				heightResolved[index] = 1;
+				pendingCells.push_back(index);
+			}
+		};
+
+		seedResolvedCells(true);
+		if (pendingCells.empty())
+			seedResolvedCells(false);
+
+		if (pendingCells.empty())
+			return false;
+
+		constexpr int32_t NEIGHBOR_OFFSETS[8][2] =
+		{
+			{ -1, -1 }, { 0, -1 }, { 1, -1 },
+			{ -1,  0 },             { 1,  0 },
+			{ -1,  1 }, { 0,  1 }, { 1,  1 },
+		};
+
+		for (size_t readIndex = 0;
+			readIndex < pendingCells.size();
+			++readIndex)
+		{
+			const uint32_t sourceIndex = pendingCells[readIndex];
+			const int32_t sourceX = static_cast<int32_t>(
+				sourceIndex % desc.width);
+			const int32_t sourceZ = static_cast<int32_t>(
+				sourceIndex / desc.width);
+
+			for (const auto& offset : NEIGHBOR_OFFSETS)
+			{
+				const int32_t neighborX = sourceX + offset[0];
+				const int32_t neighborZ = sourceZ + offset[1];
+				if (neighborX < 0 ||
+					neighborZ < 0 ||
+					neighborX >= static_cast<int32_t>(desc.width) ||
+					neighborZ >= static_cast<int32_t>(desc.height))
+				{
+					continue;
+				}
+
+				const uint32_t neighborIndex =
+					static_cast<uint32_t>(neighborZ) * desc.width +
+					static_cast<uint32_t>(neighborX);
+				if (0 != heightResolved[neighborIndex])
+					continue;
+
+				heightResolved[neighborIndex] = 1;
+				outOverlayHeights[neighborIndex] =
+					outOverlayHeights[sourceIndex];
+				pendingCells.push_back(neighborIndex);
+			}
+		}
+
+		return pendingCells.size() == sourceCells.size();
+	}
+
 	bool_t CommitTemporaryFile(
 		const std::filesystem::path& destination,
 		const std::filesystem::path& temporary)
@@ -383,9 +477,21 @@ bool_t Client::CNavGridPaintDocument::Load(
 		return false;
 	}
 
+	std::vector<f32_t> stagedOverlayHeights;
+	if (!BuildOverlayHeights(
+		stagedDesc,
+		stagedSourceCells,
+		stagedCellOverrides,
+		stagedOverlayHeights))
+	{
+		outStatus = "NavGrid overlay height preparation failed";
+		return false;
+	}
+
 	m_Desc = std::move(stagedDesc);
 	m_SourceCells = std::move(stagedSourceCells);
 	m_CellOverrides = std::move(stagedCellOverrides);
+	m_OverlayHeights = std::move(stagedOverlayHeights);
 	m_isReady = true;
 	m_isDirty = false;
 	outStatus = paintExists
@@ -438,7 +544,18 @@ bool_t Client::CNavGridPaintDocument::Paint(
 	}
 
 	if (changed)
+	{
+		std::vector<f32_t> stagedOverlayHeights;
+		if (BuildOverlayHeights(
+			m_Desc,
+			m_SourceCells,
+			m_CellOverrides,
+			stagedOverlayHeights))
+		{
+			m_OverlayHeights = std::move(stagedOverlayHeights);
+		}
 		m_isDirty = true;
+	}
 	return changed;
 }
 
@@ -706,8 +823,8 @@ bool_t Client::CNavGridPaintDocument::Has_ResolvedHeight(
 f32_t Client::CNavGridPaintDocument::Get_CellHeight(
 	uint32_t index) const
 {
-	return Has_ResolvedHeight(index) ?
-		m_SourceCells[index].height :
+	return m_isReady && index < m_OverlayHeights.size() ?
+		m_OverlayHeights[index] :
 		0.f;
 }
 

@@ -42,10 +42,6 @@ CNavigation::CNavigation(const CNavigation& Prototype)
 	, m_pNavGrid { Prototype.m_pNavGrid }
 #ifdef _DEBUG
 	, m_pShader { Prototype.m_pShader }
-	, m_pBatch { Prototype.m_pBatch }
-	, m_pEffect { Prototype.m_pEffect }
-	, m_pInputLayout { Prototype.m_pInputLayout }
-	, m_DebugCellHeights { Prototype.m_DebugCellHeights }
 #endif
 {
 	if (MODE::NAVGRID_ASTAR == m_eMode && nullptr != m_pNavGrid)
@@ -135,93 +131,6 @@ HRESULT CNavigation::Initialize_NavGrid_Prototype(const tchar_t* pNavGridFilePat
 		return E_FAIL;
 
 	auto pStagedPathFinder = make_unique<CPathFinder>();
-	//Debug용 F5 NavGrid Cell 띄우기
-#ifdef _DEBUG
-	auto pStagedBatch =
-		make_shared<PrimitiveBatch<VertexPositionColor>>(m_pContext.Get());
-	auto pStagedEffect = make_shared<BasicEffect>(m_pDevice.Get());
-	pStagedEffect->SetVertexColorEnabled(true);
-
-	const void* pVertexShaderByteCode = { nullptr };
-	size_t iLength = {};
-	pStagedEffect->GetVertexShaderBytecode(
-		&pVertexShaderByteCode,
-		&iLength);
-
-	ComPtr<ID3D11InputLayout> pStagedInputLayout = { nullptr };
-	if (FAILED(m_pDevice->CreateInputLayout(
-		VertexPositionColor::InputElements,
-		VertexPositionColor::InputElementCount,
-		pVertexShaderByteCode,
-		iLength,
-		pStagedInputLayout.GetAddressOf())))
-		return E_FAIL;
-
-	vector<f32_t> StagedDebugCellHeights(
-		pStagedNavGrid->Get_NumCells(),
-		0.f);
-	const CNavGrid::NAVGRID_DESC& GridDesc = pStagedNavGrid->Get_Desc();
-	const int32_t iMaxRadius = static_cast<int32_t>((std::max)(
-		GridDesc.iWidth,
-		GridDesc.iHeight));
-
-	for (uint32_t iCellIndex = 0;
-		iCellIndex < pStagedNavGrid->Get_NumCells();
-		++iCellIndex)
-	{
-		if (pStagedNavGrid->Is_Walkable(iCellIndex))
-		{
-			StagedDebugCellHeights[iCellIndex] =
-				pStagedNavGrid->Get_Height(iCellIndex);
-			continue;
-		}
-
-		const int32_t iCellX = static_cast<int32_t>(
-			iCellIndex % GridDesc.iWidth);
-		const int32_t iCellZ = static_cast<int32_t>(
-			iCellIndex / GridDesc.iWidth);
-
-		for (int32_t iRadius = 1; iRadius <= iMaxRadius; ++iRadius)
-		{
-			f32_t fHeightSum = {};
-			uint32_t iHeightCount = {};
-			for (int32_t iOffsetZ = -iRadius;
-				iOffsetZ <= iRadius;
-				++iOffsetZ)
-			{
-				for (int32_t iOffsetX = -iRadius;
-					iOffsetX <= iRadius;
-					++iOffsetX)
-				{
-					if (iRadius != (std::max)(
-						std::abs(iOffsetX),
-						std::abs(iOffsetZ)))
-						continue;
-
-					const int32_t iNeighborX = iCellX + iOffsetX;
-					const int32_t iNeighborZ = iCellZ + iOffsetZ;
-					if (false == pStagedNavGrid->Is_Walkable(
-						iNeighborX,
-						iNeighborZ))
-						continue;
-
-					fHeightSum += pStagedNavGrid->Get_Height(
-						pStagedNavGrid->To_Index(
-							iNeighborX,
-							iNeighborZ));
-					++iHeightCount;
-				}
-			}
-
-			if (0 != iHeightCount)
-			{
-				StagedDebugCellHeights[iCellIndex] =
-					fHeightSum / static_cast<f32_t>(iHeightCount);
-				break;
-			}
-		}
-	}
-#endif
 
 	m_Cells.clear();
 	m_iCurrentCellIndex = -1;
@@ -229,14 +138,6 @@ HRESULT CNavigation::Initialize_NavGrid_Prototype(const tchar_t* pNavGridFilePat
 	m_pNavGrid = move(pStagedNavGrid);
 	m_pPathFinder = move(pStagedPathFinder);
 	m_eMode = MODE::NAVGRID_ASTAR;
-
-#ifdef _DEBUG
-	m_pBatch = move(pStagedBatch);
-	m_pEffect = move(pStagedEffect);
-	m_pInputLayout = move(pStagedInputLayout);
-	m_DebugCellHeights = move(StagedDebugCellHeights);
-	m_DebugPath.clear();
-#endif
 
 	return S_OK;
 }
@@ -476,11 +377,6 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 	Round_PathCorners(SimplifiedPath, fMaxStepHeight, StagedPath);
 	if (StagedPath.empty())
 		return PATH_RESULT_CODE::UNREACHABLE;
-
-#ifdef _DEBUG
-	m_DebugPath = StagedPath;
-#endif
-
 	OutPath = move(StagedPath);
 
 	return PATH_RESULT_CODE::SUCCESS;
@@ -695,74 +591,7 @@ void CNavigation::Round_PathCorners(
 HRESULT CNavigation::Render()
 {
 	if (MODE::NAVGRID_ASTAR == m_eMode)
-	{
-		if (nullptr == m_pNavGrid ||
-			nullptr == m_pBatch ||
-			nullptr == m_pEffect ||
-			nullptr == m_pInputLayout)
-			return E_FAIL;
-
-		m_pEffect->SetWorld(XMMatrixIdentity());
-		m_pEffect->SetView(XMLoadFloat4x4(
-			CGameInstance::Get().Get_Transform(D3DTS::VIEW)));
-		m_pEffect->SetProjection(XMLoadFloat4x4(
-			CGameInstance::Get().Get_Transform(D3DTS::PROJ)));
-		m_pContext->IASetInputLayout(m_pInputLayout.Get());
-		m_pEffect->Apply(m_pContext.Get());
-
-		const float4_t vWalkableColor =
-			float4_t(0.1f, 1.f, 0.2f, 1.f);
-		const float4_t vNonWalkableColor =
-			float4_t(1.f, 0.85f, 0.05f, 1.f);
-		const float4_t vPathColor =
-			float4_t(0.1f, 0.85f, 1.f, 1.f);
-		const f32_t fHalfCell =
-			m_pNavGrid->Get_Desc().fCellSize * 0.5f;
-
-		m_pBatch->Begin();
-		for (uint32_t i = 0; i < m_pNavGrid->Get_NumCells(); ++i)
-		{
-			const bool_t isWalkable = m_pNavGrid->Is_Walkable(i);
-			float3_t vCenter = m_pNavGrid->Cell_ToWorld(i);
-			if (m_DebugCellHeights.size() == m_pNavGrid->Get_NumCells())
-				vCenter.y = m_DebugCellHeights[i];
-			const float4_t& vCellColor = isWalkable ?
-				vWalkableColor :
-				vNonWalkableColor;
-			const f32_t fY = vCenter.y + 0.08f;
-			const VertexPositionColor vLT(
-				float3_t(vCenter.x - fHalfCell, fY, vCenter.z + fHalfCell),
-				vCellColor);
-			const VertexPositionColor vRT(
-				float3_t(vCenter.x + fHalfCell, fY, vCenter.z + fHalfCell),
-				vCellColor);
-			const VertexPositionColor vRB(
-				float3_t(vCenter.x + fHalfCell, fY, vCenter.z - fHalfCell),
-				vCellColor);
-			const VertexPositionColor vLB(
-				float3_t(vCenter.x - fHalfCell, fY, vCenter.z - fHalfCell),
-				vCellColor);
-
-			m_pBatch->DrawLine(vLT, vRT);
-			m_pBatch->DrawLine(vRT, vRB);
-			m_pBatch->DrawLine(vRB, vLB);
-			m_pBatch->DrawLine(vLB, vLT);
-		}
-
-		for (size_t i = 1; i < m_DebugPath.size(); ++i)
-		{
-			float3_t vFrom = m_DebugPath[i - 1];
-			float3_t vTo = m_DebugPath[i];
-			vFrom.y += 0.18f;
-			vTo.y += 0.18f;
-			m_pBatch->DrawLine(
-				VertexPositionColor(vFrom, vPathColor),
-				VertexPositionColor(vTo, vPathColor));
-		}
-		m_pBatch->End();
-
 		return S_OK;
-	}
 
 	if (nullptr == m_pShader)
 		return S_OK;

@@ -1,0 +1,210 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 5,
+  "effectAssetId": "effect.dimensionmaster.skill.2050220",
+  "displayName": "Point Pierce",
+  "elements": [
+    {
+      "id": "long_pierce",
+      "kind": "particle",
+      "resources": [
+        {
+          "slot": "base",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_001.dds"
+        }
+      ],
+      "material": {
+        "renderProfile": "additive_two_sided_depth_read"
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0.15,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            0.45,
+            0.3,
+            1,
+            1
+          ],
+          "clip": 0.02,
+          "emissiveIntensity": 3,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0.1,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0,
+          "lifeTimeSeconds": 1.6,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 0.75
+        },
+        "mesh": {
+          "useModelMaterial": true
+        },
+        "sprite": {
+          "billboard": true
+        },
+        "decal": {
+          "size": [
+            2,
+            2
+          ],
+          "depth": 0.5
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "scale": true,
+          "endScale": [
+            2,
+            2,
+            2
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": true,
+          "endColorMultiply": [
+            0.1,
+            0.05,
+            0.4,
+            0
+          ],
+          "emissiveIntensity": true,
+          "endEmissiveIntensity": 0.5
+        },
+        "particle": {
+          "maxParticles": 256,
+          "spawnRatePerSecond": 12,
+          "burstCount": 24,
+          "randomSeed": 2050220,
+          "lifeTimeSeconds": [
+            0.35,
+            0.8
+          ],
+          "initialVelocityMin": [
+            -0.15,
+            -0.15,
+            7
+          ],
+          "initialVelocityMax": [
+            0.15,
+            0.15,
+            12
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            0.35,
+            0.35
+          ],
+          "endSize": [
+            0,
+            0
+          ],
+          "localSpace": true,
+          "billboard": true
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.35,
+          "endWidth": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1.5
+        }
+      }
+    }
+  ]
+}
+
+

@@ -83,6 +83,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 {
 	__super::Update(fTimeDelta);
+	if (SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE !=
+		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
+			LEVEL::VALTAN_ARENA))
+	{
+		return;
+	}
 
 	if (!m_Replication.Update())
 	{

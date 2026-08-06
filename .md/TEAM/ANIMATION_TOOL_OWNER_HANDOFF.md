@@ -345,7 +345,7 @@ Character 생성 코드를 수정하지 않고 Effect와 anchor 동작을 독립
 | Runtime 등록 정본 | `Data/Actors/CharacterCatalog.json` | stable class ID와 Resources-relative model asset ID | 허용 |
 | Animation 저작 정본 | `Data/Animation/Authored/<AssetName>/<AssetName>.animevents` | 팀이 편집하는 animation event | 허용 |
 | Animation 원본 참조 | `Data/Animation/Reference/<AssetName>` | 추출된 notify/clip/skill timing reference | 허용 |
-| 팀 리소스 배포 | immutable Resources ZIP + `Data/AssetPacks.lock.json` | 다른 PC의 Hydrate/Verify 입력 | lock/manifest만 허용 |
+| 팀 리소스 관리 | `Client/Bin/Resources` 물리 폴더 | 팀장이 전달한 runtime 리소스 | payload는 Git 금지, 상대 asset ID만 허용 |
 
 `Client/Bin/Resources`에는 UPK, PSK, PSA, FBX, Blender 파일을 넣지 않는다. Runtime은 Assimp로 원본을
 읽지 않고 `ModelAssetConverter`가 미리 조리한 `.wmodel`만 `CModel` 경로로 읽는다. 절대 경로나 drive 경로는
@@ -627,7 +627,7 @@ AnimSet을 실제로 살릴 때는 animated weapon part와 preview target을 함
 -> 네 body socket 위치·회전 육안 확인
 -> Character Select Scene Character 표시
 -> Test/Bern/Valtan local/remote 표시
--> immutable Resources pack Hydrate/Verify
+-> 팀장이 관리하는 `Client/Bin/Resources`에서 모델·texture 실물 확인
 ```
 
 다음은 계속 미완료로 기록한다.

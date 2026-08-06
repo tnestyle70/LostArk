@@ -1,0 +1,5 @@
+LOSTARK_WORLD_BOOTSTRAP	4	TRAINING_GROUND	LV_DEV_TRAINING_GROUND	2	4
+player.spawn.training.party01	playerSpawn	-	-	0	0	-4	0	1	-	-	0	0	0	0	0	-
+player.spawn.training.party02	playerSpawn	-	-	2	0	-4	0	1	-	-	0	0	0	0	0	-
+player.spawn.training.party03	playerSpawn	-	-	-2	0	-4	0	1	-	-	0	0	0	0	0	-
+player.spawn.training.party04	playerSpawn	-	-	0	0	-2	0	1	-	-	0	0	0	0	0	-

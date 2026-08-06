@@ -4,6 +4,9 @@
 
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
+#include "Effect_Catalog.h"
+#include "Effect_Object.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
 #include "ImGuiLayer.h"
@@ -20,6 +23,7 @@
 #ifdef _DEBUG
 #include "Animation_Tool.h"
 #include "BalanceTool.h"
+#include "CharacterPreviewPanel.h"
 #include "Effect_Tool.h"
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
@@ -157,6 +161,9 @@ HRESULT CMainApp::Initialize()
 		return E_FAIL;
 	}
 
+	std::string effectCatalogStatus;
+	CEffectCatalog::Load(effectCatalogStatus);
+
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 
 	if (FAILED(Start_Level(LEVEL::LOBBY)))
@@ -199,11 +206,15 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		worldLeftMouseConsumed);
 
 	CNetworkManager::Get().Update();
+	CEffectPresentationService::Update(fTimeDelta);
 	CGameInstance::Get().Update_Engine(fTimeDelta);
+	CEffectPresentationService::Synchronize_FollowAnchors();
 
 #ifdef _DEBUG
 	if (nullptr != m_pMapTool)
 		m_pMapTool->Update(fTimeDelta);
+	if (nullptr != m_pEffectTool)
+		m_pEffectTool->Update(fTimeDelta);
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
@@ -428,6 +439,14 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
 		return E_FAIL;
 	}
 
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		ETOUI(LEVEL::STATIC),
+		TEXT("Prototype_GameObject_EffectObject"),
+		CEffectObject::Create(m_pDevice, m_pContext))))
+	{
+		return E_FAIL;
+	}
+
 	/* For.Prototype_GameObject_UI_Sprite */
 	if (FAILED(CGameInstance::Get().Add_Prototype(
 		ETOUI(LEVEL::STATIC),
@@ -529,6 +548,8 @@ void CMainApp::Apply_LevelRequest()
 	LEVEL_TRANSITION_REQUEST request{};
 	if (!CLevelTransitionService::Try_Consume(request))
 		return;
+	const uint32_t iPreviousLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
 
 	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
 	{
@@ -545,6 +566,10 @@ void CMainApp::Apply_LevelRequest()
 			}
 			CLevelTransitionService::Report_LoadFailure(result);
 		}
+		else
+		{
+			CEffectPresentationService::Clear_Level(iPreviousLevel);
+		}
 		return;
 	}
 
@@ -556,6 +581,7 @@ void CMainApp::Apply_LevelRequest()
 		ETOUI(request.eTargetLevel),
 		move(nextLevel))))
 	{
+		CEffectPresentationService::Clear_Level(iPreviousLevel);
 		return;
 	}
 
@@ -622,12 +648,21 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 		m_pMapTool->SetOpen(true);
 		break;
 	case DEBUG_TOOL::ANIMATION:
+		if (nullptr == m_pCharacterPreviewPanel)
+			m_pCharacterPreviewPanel =
+				make_shared<CCharacterPreviewPanel>();
 		if (nullptr == m_pAnimationTool)
-			m_pAnimationTool = make_unique<CAnimation_Tool>();
+			m_pAnimationTool = make_unique<CAnimation_Tool>(
+				m_pCharacterPreviewPanel);
 		break;
 	case DEBUG_TOOL::EFFECT:
+		if (nullptr == m_pCharacterPreviewPanel)
+			m_pCharacterPreviewPanel =
+				make_shared<CCharacterPreviewPanel>();
 		if (nullptr == m_pEffectTool)
-			m_pEffectTool = make_unique<CEffect_Tool>();
+			m_pEffectTool =
+				make_unique<CEffect_Tool>(
+					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
 		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
@@ -696,6 +731,13 @@ void CMainApp::RenderDeveloperTools()
 	ImGui::TextWrapped("%s", m_strToolStatus.c_str());
 
 	ImGui::SeparatorText("Diagnostics");
+	const ImGuiIO& io = ImGui::GetIO();
+	ImGui::Text("FPS: %.1f  |  Frame: %.2f ms",
+		io.Framerate,
+		io.DeltaTime > 0.f ? io.DeltaTime * 1000.f : 0.f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip(
+			"FPS is ImGui's rolling average; Frame is the latest frame time.");
 	bool_t profilerVisible = m_bProfilerVisible;
 	if (ImGui::Checkbox("Profiler", &profilerVisible))
 	{
@@ -820,6 +862,8 @@ unique_ptr<CMainApp> CMainApp::Create()
 
 void CMainApp::Free()
 {
+	CEffectPresentationService::Clear_All();
+	CEffectCatalog::Clear();
 	CNetworkManager::Get().Shutdown();
 	CGameInstance::Get().SetInputBlocked(false, false);
 
@@ -828,6 +872,9 @@ void CMainApp::Free()
 		pProfiler->Set_Enabled(false);
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
+	if (nullptr != m_pCharacterPreviewPanel)
+		m_pCharacterPreviewPanel->Release(true);
+	m_pCharacterPreviewPanel.reset();
 	m_pHUDLayoutTool.reset();
 	m_pBalanceTool.reset();
 	m_pMapTool.reset();

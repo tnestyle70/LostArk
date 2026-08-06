@@ -1,8 +1,8 @@
 {
   "schema": "lostark.world-gameplay",
-  "formatVersion": 2,
+  "formatVersion": 4,
   "areaId": "LV_LUT_HEARTRB_ED",
-  "revision": 2,
+  "revision": 3,
   "placements": [
     {
       "placementId": "player.spawn.valtan.entry",

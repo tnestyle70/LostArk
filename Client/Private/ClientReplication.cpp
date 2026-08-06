@@ -6,6 +6,8 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "NetworkManager.h"
+#include "Npc.h"
+#include "NpcPresentationAssetService.h"
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
 #include "Valtan.h"
@@ -162,8 +164,13 @@ bool Client::CClientReplication::Has_WorldEntity(
 	for (const auto& [entityId, presentation] : m_WorldEntities)
 	{
 		(void)entityId;
+		const bool_t hasLivePresentation =
+			(LostArk::Shared::WORLD_ENTITY_KIND::NPC == presentation.eKind &&
+				!presentation.pNpc.expired()) ||
+			(LostArk::Shared::WORLD_ENTITY_KIND::BOSS == presentation.eKind &&
+				!presentation.pValtan.expired());
 		if (presentation.strArchetypeId == archetypeId &&
-			!presentation.pValtan.expired())
+			hasLivePresentation)
 		{
 			return true;
 		}
@@ -339,11 +346,85 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 	const auto existing = m_WorldEntities.find(spawned.iNetEntityId);
 	if (existing != m_WorldEntities.end())
 	{
-		return existing->second.eKind == spawned.eKind &&
+		const bool_t hasLivePresentation =
+			(WORLD_ENTITY_KIND::NPC == existing->second.eKind &&
+				!existing->second.pNpc.expired()) ||
+			(WORLD_ENTITY_KIND::BOSS == existing->second.eKind &&
+				!existing->second.pValtan.expired());
+		return hasLivePresentation &&
+			existing->second.eKind == spawned.eKind &&
 			existing->second.strArchetypeId == spawned.strArchetypeId &&
-			existing->second.strEncounterId == spawned.strEncounterId &&
-			!existing->second.pValtan.expired();
+			existing->second.strEncounterId == spawned.strEncounterId;
 	}
+
+	if (WORLD_ENTITY_KIND::NPC == spawned.eKind)
+	{
+		const NPC_ACTOR_ENTRY* actor =
+			CActorCatalog::Find_Npc(spawned.strArchetypeId);
+		if (nullptr == actor ||
+			actor->clientPresentationId != "npc.beda.client.v1" ||
+			FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+				m_Desc.pDevice,
+				m_Desc.pContext,
+				m_Desc.iPrototypeLevelIndex,
+				spawned.strArchetypeId)))
+		{
+			return false;
+		}
+
+		CNpc::NPC_DESC desc{};
+		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
+		desc.strModelTag = TEXT("Prototype_Component_Model_Npc_Beda");
+		desc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.pIdleClip = actor->idleClip.c_str();
+		desc.vPosition = float3_t(
+			spawned.fPositionX,
+			spawned.fPositionY,
+			spawned.fPositionZ);
+		desc.fYawDegree = spawned.fYawDegrees;
+
+		std::shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_Desc.iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Npc"),
+			m_Desc.iLayerLevelIndex,
+			m_Desc.strWorldEntityLayerTag,
+			&desc,
+			&gameObject)))
+		{
+			return false;
+		}
+		const std::shared_ptr<CNpc> npc =
+			std::dynamic_pointer_cast<CNpc>(gameObject);
+		if (nullptr == npc || !npc->Apply_NetworkState(
+			desc.vPosition, spawned.fYawDegrees))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				gameObject);
+			return false;
+		}
+
+		WORLD_ENTITY_PRESENTATION presentation{};
+		presentation.eKind = spawned.eKind;
+		presentation.strArchetypeId = spawned.strArchetypeId;
+		presentation.strEncounterId = spawned.strEncounterId;
+		presentation.pNpc = npc;
+		const auto [iter, inserted] = m_WorldEntities.emplace(
+			spawned.iNetEntityId, std::move(presentation));
+		(void)iter;
+		if (!inserted)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				npc);
+		}
+		return inserted;
+	}
+
 	const BOSS_ACTOR_ENTRY* pBoss =
 		CActorCatalog::Find_Boss(spawned.strArchetypeId);
 	if (spawned.eKind != WORLD_ENTITY_KIND::BOSS ||
@@ -504,14 +585,31 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
-		const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock();
-		if (nullptr == valtan || !valtan->Apply_NetworkState(
-			float3_t(entity.fPositionX, entity.fPositionY, entity.fPositionZ),
-			entity.fYawDegrees,
-			entity.eAction,
-			entity.strActionId))
+		const float3_t position(
+			entity.fPositionX,
+			entity.fPositionY,
+			entity.fPositionZ);
+		if (WORLD_ENTITY_KIND::NPC == iter->second.eKind)
 		{
-			allSucceeded = false;
+			const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock();
+			if (nullptr == npc ||
+				!npc->Apply_NetworkState(position, entity.fYawDegrees))
+			{
+				allSucceeded = false;
+			}
+		}
+		else
+		{
+			const std::shared_ptr<CValtan> valtan =
+				iter->second.pValtan.lock();
+			if (nullptr == valtan || !valtan->Apply_NetworkState(
+				position,
+				entity.fYawDegrees,
+				entity.eAction,
+				entity.strActionId))
+			{
+				allSucceeded = false;
+			}
 		}
 		if (iter->second.eKind == WORLD_ENTITY_KIND::BOSS)
 		{
@@ -558,6 +656,13 @@ void Client::CClientReplication::Reset_World()
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,
 				valtan);
+		}
+		if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex,
+				m_Desc.strWorldEntityLayerTag,
+				npc);
 		}
 	}
 	m_WorldEntities.clear();

@@ -2,8 +2,7 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
-    [switch]$SkipBuild,
-    [switch]$DeepAssetHash
+    [switch]$SkipBuild
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,9 +96,21 @@ try {
 
     $frontendHarness = Join-Path $repoRoot `
         "Tools\ClientFrontendHarness\Bin\$Configuration\ClientFrontendHarness.exe"
-    & $frontendHarness
-    if ($LASTEXITCODE -ne 0) {
-        throw 'ClientFrontendHarness failed.'
+    $previousResourceRoot = [Environment]::GetEnvironmentVariable(
+        'LOSTARK_RESOURCE_ROOT', 'Process')
+    try {
+        [Environment]::SetEnvironmentVariable(
+            'LOSTARK_RESOURCE_ROOT',
+            (Join-Path $repoRoot 'Client\Bin\Resources'),
+            'Process')
+        & $frontendHarness
+        if ($LASTEXITCODE -ne 0) {
+            throw 'ClientFrontendHarness failed.'
+        }
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable(
+            'LOSTARK_RESOURCE_ROOT', $previousResourceRoot, 'Process')
     }
 
     & $serverExe --contract-test
@@ -107,14 +118,9 @@ try {
         throw 'Server gameplay contract tests failed.'
     }
 
-    $auditArguments = @{
-        ReportPath = (Join-Path $reportRoot 'ProjectAudit.json')
-    }
-    if ($DeepAssetHash) {
-        $auditArguments.DeepAssetHash = $true
-    }
     & (Join-Path $repoRoot `
-        'Tools\ProjectAudit\Invoke-ProjectAudit.ps1') @auditArguments
+        'Tools\ProjectAudit\Invoke-ProjectAudit.ps1') `
+        -ReportPath (Join-Path $reportRoot 'ProjectAudit.json')
     if ($LASTEXITCODE -ne 0) {
         throw 'Project audit failed.'
     }

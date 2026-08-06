@@ -608,10 +608,14 @@ def decode_property_value(
     payload: bytes,
     names: list[str],
     bool_value: bool | None,
+    property_name: str | None = None,
+    owner_struct_type: str | None = None,
 ) -> Any:
     reader = Reader(payload)
     kind = property_type.casefold()
     structure = (struct_type or "").casefold()
+    owner_structure = (owner_struct_type or "").casefold()
+    property_key = (property_name or "").casefold()
 
     if kind == "boolproperty":
         return bool_value
@@ -655,8 +659,84 @@ def decode_property_value(
         if structure == "color" and len(payload) >= 4:
             b, g, r, a = reader.unpack("<4B")
             return {"r": r, "g": g, "b": b, "a": a}
+        if structure in {
+            "rawdistributionfloat",
+            "rawdistributionvector",
+            "interpcurvefloat",
+            "interpcurvevector",
+        }:
+            try:
+                nested, nested_end = parse_tagged_properties_at(
+                    payload, names, 0, structure
+                )
+                if nested_end != len(payload):
+                    raise ExtractionError(
+                        f"{struct_type} left {len(payload) - nested_end} trailing bytes"
+                    )
+                return {"size": len(payload), "properties": nested}
+            except (ExtractionError, ValueError, struct.error) as error:
+                return {
+                    "size": len(payload),
+                    "hex": payload[:32].hex(),
+                    "decodeError": str(error),
+                }
     if kind == "arrayproperty" and len(payload) >= 4:
         count = reader.i32()
+        if (
+            owner_structure in {"rawdistributionfloat", "rawdistributionvector"}
+            and property_key == "lookuptable"
+            and count >= 0
+            and len(payload) == 4 + count * 4
+        ):
+            return [reader.f32() for _ in range(count)]
+        if (
+            owner_structure in {"interpcurvefloat", "interpcurvevector"}
+            and property_key == "points"
+            and count >= 0
+        ):
+            points = []
+            offset = reader.offset
+            try:
+                for _ in range(count):
+                    point, point_end = parse_tagged_properties_at(
+                        payload, names, offset
+                    )
+                    if point_end <= offset:
+                        raise ExtractionError("curve point parser did not advance")
+                    points.append(point)
+                    offset = point_end
+                if offset != len(payload):
+                    raise ExtractionError(
+                        f"curve points left {len(payload) - offset} trailing bytes"
+                    )
+                return points
+            except (ExtractionError, ValueError, struct.error):
+                pass
+        # UE3 arrays of script structs (for example ParticleBurst and
+        # EmitterDynamicParameter) store every entry as a tagged-property
+        # stream. Decode that common shape before falling back to a raw array.
+        if count > 0:
+            items = []
+            offset = reader.offset
+            try:
+                for _ in range(count):
+                    item, item_end = parse_tagged_properties_at(
+                        payload, names, offset, f"{property_key}item"
+                    )
+                    if item_end <= offset:
+                        raise ExtractionError(
+                            "tagged struct array parser did not advance"
+                        )
+                    items.append(item)
+                    offset = item_end
+                if offset != len(payload):
+                    raise ExtractionError(
+                        f"tagged struct array left {len(payload) - offset} "
+                        "trailing bytes"
+                    )
+                return items
+            except (ExtractionError, ValueError, struct.error):
+                pass
         if count >= 0 and len(payload) == 4 + count * 4:
             return [reader.i32() for _ in range(count)]
         return {"count": count, "size": len(payload)}
@@ -667,6 +747,7 @@ def parse_tagged_properties_at(
     serial_data: bytes,
     names: list[str],
     start_offset: int,
+    owner_struct_type: str | None = None,
 ) -> tuple[dict[str, Any], int]:
     reader = Reader(serial_data, start_offset)
     properties: dict[str, Any] = {}
@@ -701,7 +782,13 @@ def parse_tagged_properties_at(
             "type": property_type,
             "structType": struct_type,
             "value": decode_property_value(
-                property_type, struct_type, payload, names, bool_value
+                property_type,
+                struct_type,
+                payload,
+                names,
+                bool_value,
+                property_name,
+                owner_struct_type,
             ),
         }
 

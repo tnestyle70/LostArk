@@ -87,18 +87,27 @@ transactional stage와 save 계약을 한 번에 닫기 전까지 editor에서 l
 Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
 있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
 
-`NpcCatalog.json`은 현재 비어 있고 `CClientReplication`의 world entity presentation은 Valtan boss만 완성되어 있다. 따라서 NPC 버튼과 저장 형식은 있어도 제품 NPC의 catalog → Loader → replication → `CNpc` 표현은 아직 닫히지 않았다.
+`NpcCatalog.json`은 현재 `NPC_BEDA` 한 archetype을 지원한다. Bern의 enabled NPC placement는
+Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
+경로로 표현한다. 다른 NPC model은 catalog row와 검증을 추가하기 전까지 fail-closed다.
 
 일반 몬스터, spawn wave, 증분 생산은 저장 schema와 Server consumer가 없다. `triggerBox`는
-world formatVersion 2의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
+world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
 편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
-제품 publisher/runtime가 admission하는 action은 현재 정확히 하나의 `movePlayer`뿐이다. action은
+제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer` 또는 `changeLevel`이다. movePlayer는
 `targetPosition[3]`, `durationSeconds(0.05..10)`, `arcHeight(0..1000)`를 소유하며 Server가 yaw가 적용된
 OBB 진입과 포물선 이동을 판정하고 player snapshot으로 복제한다. `triggerOnce=true`는 room 전체에서
 첫 성공 진입 한 번, `false`는 player가 완전히 나간 뒤 다시 들어오는 edge마다 재실행한다. 저작용 wire
 box는 판정 권위가 아니다. `destroyable`, `setCondition`, `setDestroyableState`, 파티 대기, 컷신,
 몬스터 생성 event는 계속 publisher가 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나
 `npc`/`boss`로 위장하지 않는다.
+
+`collisionBox`는 transform, half extents, enabled만 저장한다. MapTool의 파란 wire box는 authoring
+표시이고 Server가 player OBB 크기를 포함한 swept OBB 판정으로 일반 보행을 차단한다. Client
+`CCharacter`의 같은 크기 `CCollider::OBB`는 presentation/debug이며 이동 정답을 만들지 않는다.
+
+`changeLevel`은 Bern과 Valtan Arena 사이에서만 허용한다. Server가 OBB enter edge에서 source room leave와
+target room enter를 처리하고 Client는 새 `S2C_ENTER_ACCEPTED`를 소비한 뒤에만 level transition을 요청한다.
 
 ## 5. Balance 소유권
 

@@ -1,5 +1,7 @@
 #include "ServerTriggerSystem.h"
 
+#include "Gameplay/WorldCollisionContract.h"
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -23,10 +25,12 @@ bool LostArk::Server::CServerTriggerSystem::Initialize(
 			continue;
 		}
 		if (1u != placement.TriggerActions.size() ||
-			WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER !=
-				placement.TriggerActions.front().eKind)
+			(WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER !=
+				placement.TriggerActions.front().eKind &&
+			WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL !=
+				placement.TriggerActions.front().eKind))
 		{
-			outStatus = "Enabled trigger requires one movePlayer action: " +
+			outStatus = "Enabled trigger requires one supported action: " +
 				placement.strPlacementId;
 			return false;
 		}
@@ -88,8 +92,10 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 
 void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
-	const std::uint32_t actionStartTick)
+	const std::uint32_t actionStartTick,
+	std::vector<SERVER_WORLD_TRANSFER_REQUEST>& outTransfers)
 {
+	outTransfers.clear();
 	for (RUNTIME_TRIGGER& trigger : m_Triggers)
 	{
 		std::unordered_set<LostArk::Shared::PLAYER_ID> currentInside;
@@ -103,10 +109,21 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 			{
 				continue;
 			}
-			if (Begin_MovePlayer(
-				player,
-				trigger.Definition.TriggerActions.front(),
-				actionStartTick) && trigger.Definition.isTriggerOnce)
+			const WORLD_TRIGGER_ACTION& action =
+				trigger.Definition.TriggerActions.front();
+			bool fired = false;
+			if (WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind)
+			{
+				fired = Begin_MovePlayer(player, action, actionStartTick);
+			}
+			else if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL == action.eKind)
+			{
+				SERVER_WORLD_TRANSFER_REQUEST transfer{};
+				fired = Build_WorldTransfer(player, action, transfer);
+				if (fired)
+					outTransfers.push_back(std::move(transfer));
+			}
+			if (fired && trigger.Definition.isTriggerOnce)
 			{
 				trigger.hasFired = true;
 			}
@@ -128,16 +145,20 @@ bool LostArk::Server::CServerTriggerSystem::Contains(
 {
 	const WORLD_BOOTSTRAP_PLACEMENT& box = trigger.Definition;
 	const float deltaX = player.fPositionX - box.fPositionX;
-	const float deltaY = player.fPositionY - box.fPositionY;
 	const float deltaZ = player.fPositionZ - box.fPositionZ;
 	const float yaw = box.fYawDegrees * DEGREES_TO_RADIANS;
 	const float cosine = std::cos(yaw);
 	const float sine = std::sin(yaw);
 	const float localX = cosine * deltaX - sine * deltaZ;
 	const float localZ = sine * deltaX + cosine * deltaZ;
-	return std::abs(localX) <= box.fHalfExtentX &&
-		std::abs(deltaY) <= box.fHalfExtentY &&
-		std::abs(localZ) <= box.fHalfExtentZ;
+	const float playerCenterY = player.fPositionY +
+		LostArk::Shared::WorldCollision::PLAYER_CENTER_OFFSET_Y;
+	return std::abs(localX) <= box.fHalfExtentX +
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X &&
+		std::abs(playerCenterY - box.fPositionY) <= box.fHalfExtentY +
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Y &&
+		std::abs(localZ) <= box.fHalfExtentZ +
+			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_Z;
 }
 
 bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
@@ -176,5 +197,29 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 		player.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	player.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
 	player.iActionStartTick = actionStartTick;
+	return true;
+}
+
+bool LostArk::Server::CServerTriggerSystem::Build_WorldTransfer(
+	const SERVER_PLAYER& player,
+	const WORLD_TRIGGER_ACTION& action,
+	SERVER_WORLD_TRANSFER_REQUEST& outTransfer)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL != action.eKind ||
+		(WORLD_ID::BERN != action.eTargetWorldId &&
+			WORLD_ID::VALTAN_ARENA != action.eTargetWorldId) ||
+		INVALID_SESSION_ID == player.iSessionId ||
+		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
+		player.strNickName.empty() || 0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::NONE != player.eAction)
+	{
+		return false;
+	}
+
+	outTransfer.iSessionId = player.iSessionId;
+	outTransfer.eTargetWorldId = action.eTargetWorldId;
+	outTransfer.eCharacterClass = player.eCharacterClass;
+	outTransfer.strNickName = player.strNickName;
 	return true;
 }

@@ -7,6 +7,7 @@
 #include "GameplayCatalog.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
+#include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
 #include "ValtanBrain.h"
 
@@ -30,6 +31,8 @@ namespace LostArk::Server
 
 		bool Enqueue(ROOM_COMMAND command);
 		void Tick(float fixedDeltaSeconds);
+		bool Try_DequeueWorldTransfer(
+			SERVER_WORLD_TRANSFER_REQUEST& outTransfer);
 
 		[[nodiscard]] LostArk::Shared::WORLD_ID Get_WorldId() const
 		{
@@ -105,6 +108,7 @@ namespace LostArk::Server
 	private:
 		mutable std::mutex m_CommandMutex;
 		std::deque<ROOM_COMMAND> m_InboundCommands;
+		std::deque<SERVER_WORLD_TRANSFER_REQUEST> m_PendingWorldTransfers;
 
 		std::unordered_map<SESSION_ID, std::weak_ptr<CClientSession>> m_Sessions;
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER> m_Players;
@@ -117,6 +121,7 @@ namespace LostArk::Server
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalog m_GameplayCatalog;
 		CServerNavigation m_ServerNavigation;
+		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;
 		CPlayerSkillSystem m_PlayerSkillSystem;
 		CValtanBrain m_ValtanBrain;

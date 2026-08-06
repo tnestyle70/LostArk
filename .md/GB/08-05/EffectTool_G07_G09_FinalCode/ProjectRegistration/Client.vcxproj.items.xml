@@ -1,0 +1,44 @@
+<!-- Paste these items into the matching ItemGroup of Client/Default/Client.vcxproj. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\Public\EffectAuthoringTransfer.h" />
+    <ClInclude Include="..\Public\Effect_DocumentCodec.h" />
+    <ClInclude Include="..\Public\Effect_Playback.h" />
+    <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
+    <ClInclude Include="..\Public\Effect_Object.h" />
+    <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
+    <ClInclude Include="..\Public\Effect_Catalog.h" />
+    <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
+    <ClInclude Include="..\Public\Effect_PresentationService.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
+    <ClCompile Include="..\Private\Effect_Playback.cpp" />
+    <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
+    <ClCompile Include="..\Private\Effect_Object.cpp" />
+    <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
+    <ClCompile Include="..\Private\Effect_Catalog.cpp" />
+    <ClCompile Include="..\Private\AnimationEffectCueDocument.cpp" />
+    <ClCompile Include="..\Private\Effect_PresentationService.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Data\Effects\EffectCatalog.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050150.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050510.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json" />
+  </ItemGroup>
+</Project>

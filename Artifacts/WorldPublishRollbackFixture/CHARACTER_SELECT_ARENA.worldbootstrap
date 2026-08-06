@@ -1,0 +1,6 @@
+LOSTARK_WORLD_BOOTSTRAP	4	CHARACTER_SELECT_ARENA	LV_LOBBY_CLASSSELECT_SL00	3	5
+boss.valtan.character-select.lazy	boss	BOSS_VALTAN	ENCOUNTER_VALTAN	-772	-142.55	207	180	0	VALTAN_BASIC_SWING	valtan.attack.basic-swing	0	8	800	300	1200	damage.valtan.basic-swing
+player.spawn.character-select.party01	playerSpawn	-	-	-772	-142.55	197	180	1	-	-	0	0	0	0	0	-
+player.spawn.character-select.party02	playerSpawn	-	-	-770	-142.55	197	180	1	-	-	0	0	0	0	0	-
+player.spawn.character-select.party03	playerSpawn	-	-	-774	-142.55	197	180	1	-	-	0	0	0	0	0	-
+player.spawn.character-select.party04	playerSpawn	-	-	-772	-142.55	199	180	1	-	-	0	0	0	0	0	-

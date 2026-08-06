@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "AnimationEffectCueDocument.h"
 #include "ContainerObject.h"
 #include "CharacterSpec.h"
 #include "NavPathFollower.h"
@@ -9,6 +10,7 @@
 NS_BEGIN(Engine)
 class CModel;
 class CNavigation;
+class CCollider;
 class CTransform;
 NS_END
 
@@ -130,6 +132,7 @@ private:
 	unique_ptr<ICharacterLogic> m_pLogic;
 	shared_ptr<Engine::CModel> m_pBodyModel = { nullptr };
 	shared_ptr<Engine::CNavigation> m_pNavigationCom = { nullptr };
+	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	f32_t m_fMoveSpeed = { 5.f };
@@ -156,6 +159,12 @@ private:
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
+	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
+	std::string m_strEffectCueClip;
+	std::uint32_t m_iPreviousEffectCueTimeMs = UINT32_MAX;
+	std::uint32_t m_iEffectActionStartTick = 0u;
+	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
+		LostArk::Shared::INVALID_SKILL_ID;
 	//next goal pos that server notice
 	float3_t m_vNetworkTargetPosition = {};
 	f32_t m_fNetworkTargetYawDegrees = { 0.f };
@@ -181,6 +190,10 @@ private:
 
 	//server snapshot interpolation
 	void Update_NetworkTransform(f32_t fTimeDelta);
+	bool_t Load_EffectCues();
+	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);
+	void Update_EffectCues();
+	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 
 public:
 	static unique_ptr<CCharacter> Create(ComPtr<ID3D11Device> pDevice,

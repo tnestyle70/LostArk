@@ -303,28 +303,37 @@ Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Ch
 원본 Training Map은 gameplay 문서를 만들지 않고, Bern/Training Map은 navigation 문서를
 추측 생성하지 않는다. Valtan DeployProp 편집은 현재 제외되어 있다.
 
-gameplay authoring은 formatVersion 2다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`와
-단일 `movePlayer` action을 가진 `triggerBox`를 admission한다. placement에는 stable placement ID, kind,
-encounter ID, position, yaw, enabled를 저장한다.
-NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`는 `null`이며 실제 class는
+gameplay authoring은 formatVersion 4다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`,
+단일 `movePlayer` 또는 `changeLevel` action을 가진 `triggerBox`, 정적 `collisionBox`를 admission한다.
+placement에는 stable placement ID, kind, encounter ID, position, yaw, enabled를 저장한다.
+NPC/boss는 stable archetype ID를 소유하지만 `playerSpawn`의 `archetypeId`와 `encounterId`는 `null`이며 실제 class는
 session/player selection이 소유한다. NetEntityId, pointer, Prototype tag, vector index, runtime HP/phase를
 저장하지 않는다.
 
-v2 `CWorldGameplayDocument`에서 `triggerBox`는 half extents, once 정책, typed event를 소유한다.
-현재 제품 event는 `movePlayer` 하나이며 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다.
+v4 `CWorldGameplayDocument`에서 `triggerBox`는 half extents, once 정책, typed event를 소유하고
+`collisionBox`는 transform, half extents, enabled만 소유한다.
+제품 event는 `movePlayer`와 `changeLevel`이다. movePlayer는 `targetPosition`, `durationSeconds`, `arcHeight`를 저장한다.
 Server는 yaw OBB enter edge를 판정하고 일반 이동/스킬을 중단한 뒤 30 Hz 직선·포물선 이동을 확정한다.
+일반 보행은 player OBB를 반영한 swept collision으로 정적 collisionBox 앞에서 정지한다.
 Shared `TRIGGER_MOVE` action과 player transform snapshot이 Client 표현의 유일한 입력이다. Client는 별도
 jump clip 계약이 생기기 전까지 RUN locomotion으로 이동을 표현한다. `destroyable`과 나머지 trigger event는
 여전히 publisher가 fail-closed로 거부하며, parser 존재만으로 제품 runtime 지원 완료라고 판단하지 않는다.
 
+`changeLevel`은 Bern과 Valtan Arena 사이 target world만 저장한다. Server가 source room leave와 target room
+enter를 처리하고 새 `S2C_ENTER_ACCEPTED`를 보낸 뒤에만 Client가 `CLevelTransitionService`로 전환한다.
+
 Debug Development MapTool은 action이 아직 없는 `triggerBox`를 disabled draft로 배치하고 position,
-yaw, half extents, once 정책을 편집한다. 선택한 box에 `movePlayer`를 추가하고 목적지를 맵에서 pick한 뒤
-duration/arc를 정해야 enabled로 저장할 수 있다. wire box는 저작용 presentation이며 overlap/action 권위는
+yaw, half extents, once 정책을 편집한다. 선택한 box에 `movePlayer` 또는 `changeLevel` 하나를 선택하고,
+movePlayer는 목적지를 맵에서 pick한 뒤 duration/arc를 정해야 enabled로 저장할 수 있다. wire box는 저작용 presentation이며 overlap/action 권위는
 Server에만 있다. Save 뒤 publisher와 Server 재시작 전에는 제품 월드에 적용된 것이 아니다.
+
+같은 panel의 `Collision Box` option은 표면 pick, position, yaw, half extents, enabled, 목록 선택과
+delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차단은 Server bootstrap을 읽은 뒤 적용된다.
+`NPC_BEDA`는 `NpcCatalog.json` → Server world entity → Client replication → `CNpc` 경로로 표시한다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
-Area별 optional layer, 현재 Bern/Valtan/Training 데이터 보유 현황, Monster/wave/trigger와 NPC presentation의 미지원 경계는 `AREA_DATA_LAYER_GUIDE.md`를 정본으로 사용한다.
+Area별 optional layer, 현재 Bern/Valtan/Training 데이터 보유 현황과 Monster/wave 미지원 경계는 `AREA_DATA_LAYER_GUIDE.md`를 정본으로 사용한다.
 
 ## 9. 데이터 변경 절차
 
@@ -351,35 +360,24 @@ powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-Server
 
 `Client/Bin/Resources`는 `Fonts, Character, Deploy, Effect, Map, UI` 여섯 root만 허용한다. asset ID는 Resources 상대 경로이며 절대 경로, drive-qualified 경로, `..` 탈출을 금지한다.
 
-대용량 runtime payload는 Git에 올리지 않는다. Drive의 immutable pack으로 배포하고 Git에는 다음만 올린다.
-
-- `Data/AssetPacks.lock.json`
-- `Data/AssetManifests/<immutable-pack>.manifest.json`
-- source/catalog/authoring JSON과 운영 문서
-
-팩을 바꿀 때는 `Tools/AssetPipeline/README.md`의 Snapshot → Verify → Publish → Hydrate 순서를 사용한다. 개별 파일 덮어쓰기나 팀원별 절대 경로 하드코딩을 금지한다.
+runtime payload는 팀장이 `Client/Bin/Resources` 물리 폴더로 관리한다. AssetPacks lock, immutable manifest, ZIP hash, Snapshot/Publish/Hydrate/Verify를 팀 완료 조건으로 사용하지 않는다. 코드와 데이터에는 Resources 상대 asset ID만 저장하고 팀원별 절대 경로 하드코딩은 금지한다.
 
 팀원이 branch를 pull한 뒤 최초 실행하는 순서는 다음과 같다.
 
 ```text
 git lfs pull
-→ lock과 같은 version의 Resource ZIP SHA-256 확인
-→ 외부 pack root에 압축 해제
-→ Manage-ResourcePack Hydrate
-→ Manage-ResourcePack Verify
+→ 팀장이 전달한 Resources 물리 폴더 확인
 → Debug 전체 회귀
 → 담당 public interface에서 작업 시작
 ```
-
-Git commit과 Resource ZIP은 한 쌍의 인계 단위다. commit은 `Data/AssetPacks.lock.json`으로 필요한 pack version을 선언하고, Drive에는 정확히 그 immutable version ZIP만 둔다.
 
 기능은 `main`이 아닌 별도 branch/PR로 전달한다. 코드, 소비 데이터, project/filter 등록, harness, RESULT를 같은 검증 단위로 묶는다. build output, `EngineSDK`, `.vs`, `.codex_tmp`, `_work`, `imgui.ini`, Resources payload를 stage하지 않는다.
 
 ## 11. 완료 검증
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -DeepAssetHash
-powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release -DeepAssetHash
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug
+powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Release
 ```
 
 자동화 순서는 Engine → UpdateLib → Shared/Protocol Harness → Server build/contract test → Client build → balance/world/navigation validate → ProjectAudit이다. 실제 Level 흐름은 `Framework.slnLaunch`로 Server와 Client를 함께 실행해 검증한다.
@@ -391,7 +389,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Debug/Release Client와 Server 빌드 성공
 - 실제 Server+Client에서 Lobby → Character Select → Lobby → Test/Bern/Valtan 진입 확인
 - 연결 실패 시 Lobby 유지와 제품 Level disconnect 후 Lobby 복귀 확인
-- ProjectAudit와 필요한 deep asset hash 성공
+- ProjectAudit 성공
 - `git diff --check` 성공
 - 잔류 Client/Server/7777 listener 없음
 
@@ -407,7 +405,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용한다. runtime payload는 `Data/AssetPacks.lock.json`의 정확한 pack만 Hydrate/Verify한다.
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
 
 별도 수직 슬라이스:
 

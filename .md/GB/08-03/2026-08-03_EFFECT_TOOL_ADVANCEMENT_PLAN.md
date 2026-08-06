@@ -672,3 +672,721 @@ Discard: no active document 복귀, 파일 변화 0건
 2. F1 -> Effect Tool.
 3. 위 invalid/valid ID와 radio/discard 흐름 재현.
 4. 실행 전후 `Data`, `Resources`, `Animation` 파일 변화 0건 확인.
+
+## 10. G2 — Effect Element 정체성과 원자적 추가
+
+### 10.1 목표와 종료 증거
+
+G2는 Active Effect Document 안에 stable Element ID와 `Mesh / Sprite / Particle / Decal / Trail`
+종류만 가진 Element 한 건을 추가한다. 기존 참고 툴의 Effect Type은 다음에 만들 Element의 제작 단위이며,
+Niagara의 Emitter/Renderer 분리는 Particle과 Trail 내부 동작이 실제로 열리는 이후 G에서 도입한다.
+
+```text
+입력
+  Next Element Type = Particle
+  Element ID        = portal_sparks
+
+Add Element
+  -> Active Document 전체를 local staging copy
+  -> portal_sparks + PARTICLE 추가
+  -> 중복과 kind 검증
+  -> 검증 성공 뒤 Active Document에 한 번만 commit
+
+종료 증거
+  선택만 함       -> Elements 0
+  정상 Add        -> Elements 1
+  같은 ID 재시도 -> 실패, Elements 1 유지
+  다른 ID Add     -> Elements 2
+  파일/GPU/Animation/Shader 변화 없음
+```
+
+G2는 Resource ID, Base/Noise/Mask/Emissive/Dissolve, Effect Detail, Preview Object, Particle Instance,
+Save/Load를 추가하지 않는다. 범용 `strResourceId` 한 개는 Mesh, Texture 다섯 슬롯, Particle Renderer의
+서로 다른 소유권을 표현하지 못하므로 G2 data-only Element에서 제거한다. 실제 Resource ID는 G4에서
+각 타입의 payload와 Material slot에 추가한다.
+
+### 10.2 C1~C8와 불변식
+
+```text
+C1 기준계          중요: Element ID는 한 Effect Document 안에서 유일한 stable ID다.
+C2 이동>계산       중요: Add는 CPU authoring data만 변경하고 GPU resource를 생성하지 않는다.
+C3 공유는 비싸다   Element는 Character, Animation, Shader pointer를 소유하지 않는다.
+C4 수명은 선언된다 Document가 Elements를 값으로 강하게 소유하고 Discard 때 함께 제거한다.
+C5 이산화와 오차   G2에는 time, transform, particle 수치가 없다.
+C6 가지치기        ID와 kind만 commit하고 Resource/Material의 미래 placeholder를 만들지 않는다.
+C7 권위와 정합성   중요: Active Document만 현재 authoring 정본이고 radio/input은 session draft다.
+C8 검증이 병목     중복·잘못된 ID·END kind 실패 후 기존 Document 불변을 수동 확인한다.
+```
+
+G2 불변식:
+
+- `m_eSelectedEffectType` 변경만으로 `Elements`가 변하지 않는다.
+- `m_NewElementId` 입력만으로 `Elements`가 변하지 않는다.
+- `Try_AddElement()` 성공 뒤에만 `Elements.size()`가 1 증가한다.
+- Element ID는 1~128 ASCII 영문, 숫자, `.`, `_`, `-`만 허용한다.
+- 같은 Document 안에서 Element ID는 중복될 수 없다.
+- `EFFECT_ELEMENT_KIND::END`는 commit할 수 없다.
+- `Elements`의 vector index는 저장 ID가 아니다.
+- Add 실패 시 Active Document, 입력 buffer, 기존 Element 목록을 그대로 유지한다.
+- Add 성공 시에만 Element ID 입력 buffer를 비운다.
+- G2에는 파일 IO, Resources scan, D3D/GPU, Preview, Animation 변경이 없다.
+
+### 10.3 Effect Element, Particle Emitter, Renderer의 층위
+
+```text
+EffectAsset
+  완성 이펙트 한 개. 예: dimensionmaster.altv.portal
+
+EffectElement
+  완성 이펙트를 구성하는 제작 단위.
+  예: portal_mesh, portal_sparks, portal_ground_decal
+
+Particle Emitter
+  Particle Element 내부에서 개수, 생성 시점, 위치, 속도, 방향, 수명을 계산한다.
+
+Particle Renderer
+  Emitter가 계산한 Particle 상태를 Sprite, Mesh, Ribbon과 Shader Pass로 화면에 그린다.
+```
+
+G2의 `EFFECT_ELEMENT_KIND`는 Niagara Renderer enum이 아니다. 기존 참고 툴과 같은 상위 제작 단위다.
+
+```text
+Mesh Element
+  이후 Mesh Resource + Material + Effect Detail + Mesh Preview를 소유
+
+Sprite Element
+  이후 Sprite Texture/Atlas + Billboard + Material + Sprite Preview를 소유
+
+Particle Element
+  이후 Emitter/Module + Particle Renderer + Material을 소유
+
+Decal Element
+  이후 Projection + Decal Material을 소유
+
+Trail Element
+  이후 Trail point 생성 + Ribbon Renderer + Material을 소유
+```
+
+### 10.4 Shader Technique/Pass 메모 — G5 계약
+
+현재 Engine `CShader`는 HLSL Effect를 compile한 뒤 `GetTechniqueByIndex(0)`의 Pass 수와 Input Layout을
+준비한다. Render 호출의 `CShader::Begin(iPassIndex)`는 첫 Technique 안의 지정 Pass를 적용한다.
+
+```text
+Technique
+  Shader가 제공하는 Pass 묶음. 현재 Engine은 index 0 하나만 소비한다.
+
+Pass
+  Rasterizer State
+  DepthStencil State
+  Blend State
+  Vertex Shader
+  Geometry Shader
+  Pixel Shader
+  위 상태와 프로그램 조합 한 건
+```
+
+기존 `Shader_VtxMeshBinary.hlsl`도 Opaque, Alpha, Additive와 Back/Front/TwoSided 조합을 서로 다른
+Pass로 제공한다. 숫자 Pass index는 HLSL 선언 순서가 바뀌면 의미가 달라질 수 있으므로 새 Effect 파일에
+raw index를 정본으로 저장하지 않는다. G5 Material 계약은 다음 stable profile을 저장하고 Runtime mapper가
+실제 Pass index를 결정한다.
+
+```text
+Blend Mode  = Opaque / AlphaBlend / Additive
+Cull Mode   = Back / Front / TwoSided
+Depth Mode  = Default / ReadOnly / Disabled
+Shader Profile ID
+```
+
+G5의 ImGui `Select Pass`는 사람이 읽는 Render Profile을 선택하는 UI로 만들고, 현재 Shader가 지원하지
+않는 조합은 validate에서 거부한다. G2에는 Pass, Shader, Texture, Material 필드를 추가하지 않는다.
+
+### 10.5 파일 목록
+
+| 구분 | 절대 경로 | 역할 |
+|---|---|---|
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_AuthoringDocument.h` | G2 Element identity와 Document 소유권 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h` | Element draft buffer, Add command, list UI 계약 선언 |
+| 전체 교체 | `C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp` | Element 검증, staging/commit, 목록 표시 구현 |
+| 블록 교체 | `C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1` | G1 check를 G2 Element boundary check로 승격 |
+
+새 C++ 파일은 없다. `Effect_AuthoringDocument.h`, `Effect_Tool.h`, `Effect_Tool.cpp`의 기존
+`.vcxproj`와 `.vcxproj.filters` 등록을 유지하며 새 project/filter item을 추가하지 않는다.
+
+### 10.6 C:/Users/user/Desktop/LostArk/Client/Public/Effect_AuthoringDocument.h
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+NS_BEGIN(Client)
+
+// Effect 제작 데이터의 저장 형식 버전이다.
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 1u;
+
+// 하나의 Effect Document를 구성하는 상위 시각 요소 종류다.
+// END는 유효한 요소가 아니라 초기화 누락을 검출하기 위한 sentinel이다.
+enum class EFFECT_ELEMENT_KIND : uint8_t
+{
+	MESH,
+	SPRITE,
+	PARTICLE,
+	DECAL,
+	TRAIL,
+	END
+};
+
+// Effect Document 안에 들어가는 시각 요소 한 건의 최소 정체성이다.
+// Resource, Material, Transform과 Runtime 객체는 이후 G의 타입별 payload가 소유한다.
+struct EFFECT_ELEMENT_DESC final
+{
+	// Document 내부에서 Element를 구분하는 안정적인 고유 ID다.
+	std::string strElementId;
+	// Mesh, Sprite, Particle, Decal, Trail 중 상위 제작 단위를 나타낸다.
+	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
+};
+
+// 메모리에서 제작 중인 재사용 가능한 Effect Asset 한 건의 문서다.
+// ImGui, GPU, Character, Animation과 Preview 객체를 소유하지 않는 순수 데이터다.
+struct EFFECT_DOCUMENT_DESC final
+{
+	// 이후 파일을 읽을 때 호환성을 검증할 schema version이다.
+	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	// 저장과 런타임 연결에 사용하는 Effect Asset의 안정적인 ID다.
+	std::string strEffectAssetId;
+	// 제작자에게 표시하는 사람이 읽을 수 있는 이름이다.
+	std::string strDisplayName;
+	// 이 Effect Asset을 구성하는 Element들을 값으로 강하게 소유한다.
+	std::vector<EFFECT_ELEMENT_DESC> Elements;
+};
+
+NS_END
+```
+
+### 10.7 C:/Users/user/Desktop/LostArk/Client/Public/Effect_Tool.h
+
+변경 종류: 전체 교체
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "Engine_Defines.h"
+#include "Effect_AuthoringDocument.h"
+
+#include <array>
+#include <optional>
+#include <string>
+
+NS_BEGIN(Client)
+
+class CEffect_Tool final
+{
+public:
+	CEffect_Tool() = default;
+	~CEffect_Tool() = default;
+
+	// Effect 제작 UI 한 프레임을 그린다.
+	void Render();
+
+private:
+	// Active Document가 없을 때 ID, 표시 이름 입력창과 Create 버튼을 그린다.
+	void Render_NewDocumentPanel();
+	// 메모리에 commit된 Active Document의 요약과 폐기 명령을 그린다.
+	void Render_ActiveDocumentPanel();
+	// Document를 변경하지 않고 다음에 추가할 Element 종류만 선택한다.
+	void Render_EffectTypeSelector();
+	// Active Document가 있을 때 Element ID 입력창과 Add 명령을 그린다.
+	void Render_AddElementPanel();
+	// Active Document가 소유한 Element ID와 종류를 읽기 전용 목록으로 그린다.
+	void Render_ElementList() const;
+	// Document 입력을 검증하고 local Document를 staging한 뒤 한 번에 commit한다.
+	bool_t Try_CreateDocument();
+	// Element 입력과 중복을 검증하고 Document copy에 추가한 뒤 한 번에 commit한다.
+	bool_t Try_AddElement();
+	// 파일이나 GPU 객체를 건드리지 않고 메모리 Document와 Element draft를 제거한다.
+	void Discard_ActiveDocument();
+
+private:
+	// 다음에 추가할 Element 종류인 ImGui session 상태다.
+	EFFECT_ELEMENT_KIND m_eSelectedEffectType =
+		EFFECT_ELEMENT_KIND::MESH;
+	// 최대 128바이트 Effect Asset ID와 문자열 종료 문자를 담는 편집 buffer다.
+	std::array<char_t, 129> m_NewAssetId{};
+	// 최대 64바이트 표시 이름과 문자열 종료 문자를 담는 편집 buffer다.
+	std::array<char_t, 65> m_NewDisplayName{};
+	// 최대 128바이트 Element ID와 문자열 종료 문자를 담는 편집 buffer다.
+	std::array<char_t, 129> m_NewElementId{};
+	// nullopt이면 New Document UI, 값이 있으면 Active Document UI를 그린다.
+	std::optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+	// 마지막 Document 생성·폐기 결과를 보여주는 session 상태 문구다.
+	std::string m_strDocumentStatus;
+	// 마지막 Element 추가 검증·commit 결과를 보여주는 session 상태 문구다.
+	std::string m_strElementStatus;
+};
+
+NS_END
+```
+
+### 10.8 C:/Users/user/Desktop/LostArk/Client/Private/Effect_Tool.cpp
+
+변경 종류: 전체 교체
+
+```cpp
+#include "imgui.h"
+
+#include "Effect_Tool.h"
+
+#include <algorithm>
+#include <cctype>
+#include <utility>
+
+namespace
+{
+	// EFFECT_ELEMENT_KIND 순서와 일치하며 END는 화면에 표시하지 않는다.
+	constexpr const char_t* EFFECT_TYPE_LABELS[] = {
+		"Mesh", "Sprite", "Particle", "Decal", "Trail"
+	};
+
+	// 다른 컴퓨터에서도 같은 값으로 사용할 수 있는 안정적인 ID 문법인지 검증한다.
+	bool_t Is_StableAuthoringId(const std::string& strValue)
+	{
+		if (strValue.empty() || strValue.size() > 128u)
+			return false;
+
+		return std::all_of(strValue.begin(), strValue.end(),
+			[](const char_t value)
+			{
+				const bool_t isUpper = value >= 'A' && value <= 'Z';
+				const bool_t isLower = value >= 'a' && value <= 'z';
+				const bool_t isDigit = value >= '0' && value <= '9';
+				return isUpper || isLower || isDigit ||
+					value == '_' || value == '.' || value == '-';
+			});
+	}
+
+	// 표시 이름이 빈 값이거나 공백만으로 이루어졌는지 검증한다.
+	bool_t Has_VisibleCharacter(const std::string& strValue)
+	{
+		return std::any_of(strValue.begin(), strValue.end(),
+			[](const char_t value)
+			{
+				return 0 == std::isspace(
+					static_cast<unsigned char>(value));
+			});
+	}
+
+	// 저장 enum을 ImGui와 Element 목록에 표시할 읽기 전용 문자열로 변환한다.
+	const char_t* To_EffectElementKindLabel(
+		const Client::EFFECT_ELEMENT_KIND eKind)
+	{
+		switch (eKind)
+		{
+		case Client::EFFECT_ELEMENT_KIND::MESH:
+			return "Mesh";
+		case Client::EFFECT_ELEMENT_KIND::SPRITE:
+			return "Sprite";
+		case Client::EFFECT_ELEMENT_KIND::PARTICLE:
+			return "Particle";
+		case Client::EFFECT_ELEMENT_KIND::DECAL:
+			return "Decal";
+		case Client::EFFECT_ELEMENT_KIND::TRAIL:
+			return "Trail";
+		case Client::EFFECT_ELEMENT_KIND::END:
+		default:
+			return "Invalid";
+		}
+	}
+}
+
+void Client::CEffect_Tool::Render()
+{
+	// ImGui 창이 접혀 Begin이 false를 반환해도 End는 반드시 호출한다.
+	ImGui::SetNextWindowSize(ImVec2(720.f, 520.f),
+		ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("LostArk Effect Tool###LostArkEffectToolG2"))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::TextWrapped(
+		"G2: add one identity-only Effect Element to the active in-memory "
+		"document. No file, resource, preview, GPU object, or Animation data "
+		"is changed.");
+
+	// optional에 Document가 있는지에 따라 두 패널 중 하나만 그린다.
+	if (m_ActiveDocument.has_value())
+		Render_ActiveDocumentPanel();
+	else
+		Render_NewDocumentPanel();
+
+	// Discard 버튼은 같은 frame에 optional을 reset할 수 있으므로 다시 존재 여부를 확인한다.
+	ImGui::Separator();
+	Render_EffectTypeSelector();
+	if (m_ActiveDocument.has_value())
+	{
+		Render_AddElementPanel();
+		Render_ElementList();
+	}
+	else
+	{
+		ImGui::TextDisabled(
+			"Create a document before adding the selected Element type.");
+	}
+
+	ImGui::End();
+}
+
+void Client::CEffect_Tool::Render_NewDocumentPanel()
+{
+	// InputText는 매 프레임 고정 크기 session buffer를 직접 편집한다.
+	ImGui::SeparatorText("Data File");
+	ImGui::InputText("Effect Asset ID", m_NewAssetId.data(),
+		m_NewAssetId.size());
+	ImGui::InputText("Display Name", m_NewDisplayName.data(),
+		m_NewDisplayName.size());
+
+	if (ImGui::Button("Create Document"))
+		Try_CreateDocument();
+
+	if (!m_strDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+}
+
+void Client::CEffect_Tool::Render_ActiveDocumentPanel()
+{
+	ImGui::SeparatorText("Active Document");
+	// optional이 Document를 소유할 때만 이 함수가 호출된다.
+	const EFFECT_DOCUMENT_DESC& Document = *m_ActiveDocument;
+	ImGui::Text("Format Version: %u", Document.iFormatVersion);
+	ImGui::Text("Effect Asset ID: %s",
+		Document.strEffectAssetId.c_str());
+	ImGui::Text("Display Name: %s", Document.strDisplayName.c_str());
+	ImGui::Text("Elements: %zu", Document.Elements.size());
+	ImGui::TextDisabled("Memory only. Save/Load starts in G3.");
+
+	if (ImGui::Button("Discard Active Document"))
+		Discard_ActiveDocument();
+
+	if (!m_strDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+}
+
+void Client::CEffect_Tool::Render_EffectTypeSelector()
+{
+	// radio 선택은 session 상태만 바꾸며 Add Element 전에는 Document가 변하지 않는다.
+	ImGui::TextUnformatted("Next Element Type");
+	for (int32_t iType = 0;
+		iType < static_cast<int32_t>(EFFECT_ELEMENT_KIND::END); ++iType)
+	{
+		ImGui::SameLine();
+		const EFFECT_ELEMENT_KIND eType =
+			static_cast<EFFECT_ELEMENT_KIND>(iType);
+		if (ImGui::RadioButton(EFFECT_TYPE_LABELS[iType],
+			m_eSelectedEffectType == eType))
+		{
+			m_eSelectedEffectType = eType;
+		}
+	}
+}
+
+void Client::CEffect_Tool::Render_AddElementPanel()
+{
+	ImGui::SeparatorText("Add Element");
+	ImGui::Text("Selected Type: %s",
+		To_EffectElementKindLabel(m_eSelectedEffectType));
+	ImGui::InputText("Element ID", m_NewElementId.data(),
+		m_NewElementId.size());
+
+	if (ImGui::Button("Add Element"))
+		Try_AddElement();
+
+	if (!m_strElementStatus.empty())
+		ImGui::TextWrapped("%s", m_strElementStatus.c_str());
+}
+
+void Client::CEffect_Tool::Render_ElementList() const
+{
+	ImGui::SeparatorText("Current Elements");
+	if (!m_ActiveDocument.has_value())
+	{
+		ImGui::TextDisabled("No active document.");
+		return;
+	}
+
+	const std::vector<EFFECT_ELEMENT_DESC>& Elements =
+		m_ActiveDocument->Elements;
+	if (Elements.empty())
+	{
+		ImGui::TextDisabled("No Elements have been added.");
+		return;
+	}
+
+	constexpr ImGuiTableFlags TABLE_FLAGS =
+		ImGuiTableFlags_Borders |
+		ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_SizingStretchProp;
+	if (!ImGui::BeginTable("EffectElementList", 2, TABLE_FLAGS))
+		return;
+
+	ImGui::TableSetupColumn("Element ID");
+	ImGui::TableSetupColumn("Kind");
+	ImGui::TableHeadersRow();
+	for (const EFFECT_ELEMENT_DESC& Element : Elements)
+	{
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextUnformatted(Element.strElementId.c_str());
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(
+			To_EffectElementKindLabel(Element.eKind));
+	}
+	ImGui::EndTable();
+}
+
+bool_t Client::CEffect_Tool::Try_CreateDocument()
+{
+	// 기존 메모리 Document를 암묵적으로 덮어쓰지 않는다.
+	if (m_ActiveDocument.has_value())
+	{
+		m_strDocumentStatus =
+			"Discard the active document before creating another one.";
+		return false;
+	}
+
+	// 부분적으로 Document를 수정하지 않도록 ImGui buffer를 먼저 문자열로 복사한다.
+	const std::string strAssetId = m_NewAssetId.data();
+	const std::string strDisplayName = m_NewDisplayName.data();
+	if (!Is_StableAuthoringId(strAssetId))
+	{
+		m_strDocumentStatus =
+			"Effect Asset ID must be 1-128 ASCII letters, digits, '.', '_' or '-'.";
+		return false;
+	}
+	if (!Has_VisibleCharacter(strDisplayName))
+	{
+		m_strDocumentStatus = "Display Name must not be blank.";
+		return false;
+	}
+
+	// 검증을 통과한 후보 Document를 local 값으로 staging한다.
+	EFFECT_DOCUMENT_DESC StagedDocument;
+	StagedDocument.strEffectAssetId = strAssetId;
+	StagedDocument.strDisplayName = strDisplayName;
+
+	// 모든 검증이 성공한 뒤 Active Document에 한 번만 commit한다.
+	m_ActiveDocument = std::move(StagedDocument);
+	m_NewAssetId.fill('\0');
+	m_NewDisplayName.fill('\0');
+	m_NewElementId.fill('\0');
+	m_strElementStatus.clear();
+	m_strDocumentStatus =
+		"Created in memory. This document has not been saved.";
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_AddElement()
+{
+	// Element는 반드시 현재 Active Document 한 건에만 추가한다.
+	if (!m_ActiveDocument.has_value())
+	{
+		m_strElementStatus =
+			"Create a document before adding an Element.";
+		return false;
+	}
+
+	// END는 UI에 표시하지 않으며 유효한 Element kind로 commit할 수 없다.
+	if (EFFECT_ELEMENT_KIND::END == m_eSelectedEffectType)
+	{
+		m_strElementStatus = "Select a valid Element type.";
+		return false;
+	}
+
+	// ImGui buffer를 local 문자열로 복사하고 stable ID 문법을 검증한다.
+	const std::string strElementId = m_NewElementId.data();
+	if (!Is_StableAuthoringId(strElementId))
+	{
+		m_strElementStatus =
+			"Element ID must be 1-128 ASCII letters, digits, '.', '_' or '-'.";
+		return false;
+	}
+
+	// 같은 Document 안에서는 stable Element ID가 중복될 수 없다.
+	const bool_t bDuplicate = std::any_of(
+		m_ActiveDocument->Elements.begin(),
+		m_ActiveDocument->Elements.end(),
+		[&strElementId](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId == strElementId;
+		});
+	if (bDuplicate)
+	{
+		m_strElementStatus =
+			"Element ID already exists in the active document.";
+		return false;
+	}
+
+	// 기존 Active Document를 직접 수정하지 않고 전체 후보를 local copy로 staging한다.
+	EFFECT_DOCUMENT_DESC StagedDocument = *m_ActiveDocument;
+	EFFECT_ELEMENT_DESC StagedElement;
+	StagedElement.strElementId = strElementId;
+	StagedElement.eKind = m_eSelectedEffectType;
+	StagedDocument.Elements.push_back(std::move(StagedElement));
+
+	// 모든 검증과 후보 구성이 성공한 뒤 optional의 현재 Document를 한 번에 교체한다.
+	m_ActiveDocument = std::move(StagedDocument);
+	m_NewElementId.fill('\0');
+	m_strElementStatus =
+		"Added to the in-memory document. Nothing has been saved or previewed.";
+	return true;
+}
+
+void Client::CEffect_Tool::Discard_ActiveDocument()
+{
+	// reset은 optional이 소유한 Document와 그 안의 Element 값만 제거한다.
+	m_ActiveDocument.reset();
+	m_NewElementId.fill('\0');
+	m_strElementStatus.clear();
+	m_strDocumentStatus =
+		"Discarded the in-memory document. No file was changed.";
+}
+```
+
+### 10.9 C:/Users/user/Desktop/LostArk/Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+
+변경 종류: 블록 교체
+
+적용 위치: 기존 `$effectDocumentHeader`부터 `effect.g1-document-boundary` `Add-Check`까지 전체를 교체한다.
+
+```powershell
+	$effectDocumentHeader = Get-Content -LiteralPath 'Client\Public\Effect_AuthoringDocument.h' -Raw
+	$effectToolHeader = Get-Content -LiteralPath 'Client\Public\Effect_Tool.h' -Raw
+	$effectToolSource = Get-Content -LiteralPath 'Client\Private\Effect_Tool.cpp' -Raw
+	$clientEntrySource = Get-Content -LiteralPath 'Client\Default\Client.cpp' -Raw
+	$engineImGuiSource = Get-Content -LiteralPath 'Engine\Private\ImGuiLayer.cpp' -Raw
+	$clientProjectSource = Get-Content -LiteralPath 'Client\Default\Client.vcxproj' -Raw
+	$removedEffectPaths = @(
+		'Client\Public\Effect_Types.h',
+		'Client\Public\Effect_AssetIO.h',
+		'Client\Private\Effect_AssetIO.cpp',
+		'Client\Public\Effect_ParticleSimulator.h',
+		'Client\Private\Effect_ParticleSimulator.cpp',
+		'Client\Public\Effect_Runtime.h',
+		'Client\Private\Effect_Runtime.cpp',
+		'Client\Public\Effect_ResourceCatalog.h',
+		'Client\Private\Effect_ResourceCatalog.cpp')
+	$removedEffectPathHits = @($removedEffectPaths |
+		Where-Object { Test-Path -LiteralPath $_ })
+	$authoredEffectFiles = @(Get-ChildItem -LiteralPath 'Data\Effects\Authored' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectIntakeFiles = @(Get-ChildItem -LiteralPath 'Tools\EffectResourceIntake' -Recurse -File -ErrorAction SilentlyContinue)
+	$effectShaderFiles = @(Get-ChildItem -LiteralPath 'Client\Bin\ShaderFiles' -File -Filter 'Shader_Effect*' -ErrorAction SilentlyContinue)
+	$legacyEffectSymbolHits = @($clientSourceFiles | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC')
+	$legacyEffectProjectHits = @($clientProjectSource | Select-String -Pattern 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|Shader_Effect|Data\\Effects\\Authored')
+	$legacyEffectEntry =
+		$clientEntrySource -match 'Effect_(AssetIO|ParticleSimulator|Runtime|ResourceCatalog|Types)|CEffect_Runtime|EFFECT_ASSET_DESC|--effect-' -or
+		$engineImGuiSource -match '--effect-'
+	$effectG2DocumentShape =
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*1u' -and
+		$effectDocumentHeader -match 'enum class EFFECT_ELEMENT_KIND[\s\S]*MESH,[\s\S]*SPRITE,[\s\S]*PARTICLE,[\s\S]*DECAL,[\s\S]*TRAIL,[\s\S]*END' -and
+		$effectDocumentHeader -match 'struct EFFECT_ELEMENT_DESC[\s\S]*strElementId[\s\S]*eKind' -and
+		$effectDocumentHeader -notmatch 'strResourceId' -and
+		$effectDocumentHeader -match 'struct EFFECT_DOCUMENT_DESC[\s\S]*strEffectAssetId[\s\S]*strDisplayName[\s\S]*Elements' -and
+		$effectToolHeader -match 'optional<EFFECT_DOCUMENT_DESC>\s+m_ActiveDocument' -and
+		$effectToolHeader -match 'm_eSelectedEffectType\s*=\s*EFFECT_ELEMENT_KIND::MESH' -and
+		$effectToolHeader -match 'array<char_t,\s*129>\s+m_NewElementId' -and
+		$effectToolHeader -match 'Try_AddElement' -and
+		$effectToolSource -match 'Is_StableAuthoringId' -and
+		$effectToolSource -match 'Try_CreateDocument' -and
+		$effectToolSource -match 'Try_AddElement' -and
+		$effectToolSource -match 'EFFECT_DOCUMENT_DESC\s+StagedDocument\s*=\s*\*m_ActiveDocument' -and
+		$effectToolSource -match 'Element\.strElementId\s*==\s*strElementId' -and
+		$effectToolSource -match '"Mesh",\s*"Sprite",\s*"Particle",\s*"Decal",\s*"Trail"' -and
+		$effectToolSource -match 'LostArk Effect Tool###LostArkEffectToolG2' -and
+		$effectToolSource -notmatch 'filesystem|ifstream|ofstream|GetOpenFileName|ID3D11'
+	Add-Check 'effect.g2-element-boundary' (
+		$removedEffectPathHits.Count -eq 0 -and
+		$authoredEffectFiles.Count -eq 0 -and
+		$effectIntakeFiles.Count -eq 0 -and
+		$effectShaderFiles.Count -eq 0 -and
+		$legacyEffectSymbolHits.Count -eq 0 -and
+		$legacyEffectProjectHits.Count -eq 0 -and
+		-not $legacyEffectEntry -and
+		$effectG2DocumentShape) "paths=$($removedEffectPathHits.Count) authored=$($authoredEffectFiles.Count) intake=$($effectIntakeFiles.Count) shaders=$($effectShaderFiles.Count) symbols=$($legacyEffectSymbolHits.Count) project=$($legacyEffectProjectHits.Count) entry=$legacyEffectEntry document=$effectG2DocumentShape"
+```
+
+### 10.10 사용자가 작성할 순서
+
+1. `Effect_AuthoringDocument.h`에서 범용 `strResourceId`를 제거하고 G2 identity-only Element를 확정한다.
+2. `Effect_Tool.h`에 Element ID buffer, Element status, Add/List 함수 선언을 추가한다.
+3. `Effect_Tool.cpp`의 stable ID helper를 Asset/Element 공용 `Is_StableAuthoringId`로 바꾼다.
+4. `Render()`를 G2 흐름으로 바꾸고 Discard 직후 optional을 다시 확인한다.
+5. `Render_AddElementPanel()`을 작성한다.
+6. `Render_ElementList()`를 작성한다.
+7. `Try_AddElement()`의 active/kind/ID/duplicate 검증을 작성한다.
+8. local Document copy에 staged Element를 넣고 optional에 한 번만 commit한다.
+9. 성공 시에만 Element ID buffer를 비우고 실패 시 입력과 기존 Document를 보존한다.
+10. Discard 때 Element draft와 Element status를 정리한다.
+11. ProjectAudit를 `effect.g2-element-boundary`로 승격한다.
+
+### 10.11 검증
+
+수동 검증:
+
+```text
+Document 없음 + Add UI: Add 버튼이 표시되지 않음
+정상 Document 생성: Elements 0
+Particle radio 선택만 함: Elements 0
+portal_sparks 입력만 함: Elements 0
+Add Element: portal_sparks / Particle, Elements 1
+같은 portal_sparks 재입력: 중복 실패, Elements 1 유지, 입력값 보존
+portal_mesh / Mesh 추가: Elements 2
+radio를 Trail로 변경: 기존 두 Element kind 불변
+잘못된 ID: 빈 값, slash, backslash, space, 129자 거부
+Discard: Document와 Elements 제거, Element draft 초기화
+실행 전후 Data/Resources/Animation/Shader 파일 변화 0건
+```
+
+자동 검증:
+
+1. `Client/Default/Client.vcxproj`, `.filters` XML parse.
+2. Client x64 Debug build.
+3. `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`의 `effect.g2-element-boundary` PASS.
+4. `git diff --check`.
+
+### 10.12 다음 G의 고정 경계
+
+```text
+G3 Save/Load v1
+  EffectAssetID, DisplayName, Element ID, Kind JSON
+  parse -> validate -> stage -> commit
+  잘못된 version/ID/kind/duplicate rollback
+
+G4 Asset Catalog와 타입별 Resource binding
+  Mesh Resource, Sprite Atlas, Decal Resource, Trail Resource
+  Resources-relative stable Asset ID
+
+G5 Material Input와 Shader Render Profile
+  Base, Noise, Mask, Emissive, Dissolve
+  Blend/Cull/Depth profile -> Technique 0의 실제 Pass mapping
+
+G6 Effect Detail과 Stateless Preview
+  Transform, Color, UV, Lifetime, Emissive, Dissolve
+  Mesh/Sprite/Decal Preview
+
+G7 Timeline과 Curve
+G8 Particle/Trail Module Stack
+G9 결정적 CPU Particle Simulation
+G10 GPU Particle, Distortion, HDR/Bloom, Profiler
+G11 Character/Weapon/Model Preview
+G12 Animation Cue와 제품 Runtime 연결
+G13 고급 Module Node Graph와 Compiler
+```
