@@ -192,9 +192,12 @@ void Client::CSkillWindowView::Render(
 	is what warped the row background's circle into an ellipse earlier. Change this one number
 	to resize everything together instead of touching any single element's size. */
 	constexpr float uiScale = 0.8f;
-	constexpr float iconSize = 64.f * uiScale;
 	constexpr float rowBgWidth = 622.f * uiScale;
 	constexpr float rowBgHeight = 62.f * uiScale;
+	/* The icon must not exceed the row's own height (the native art is 64x64 icon on a 62-tall
+	bar, a 2px mismatch that becomes visible once everything is scaled up together), so the row
+	height is the icon's sizing authority, not its own native 64. */
+	constexpr float iconSize = rowBgHeight;
 
 	ImGui::BeginChild("##SkillList", ImVec2(rowBgWidth + 30.f, -8.f), true);
 	ImGui::TextDisabled("Skill List (%d)", static_cast<int32_t>(pRoster->size()));
@@ -221,50 +224,56 @@ void Client::CSkillWindowView::Render(
 				m_pTextureCache->Get_Or_Load(entry.strIconPath);
 			const bool_t isSelected = m_SelectedSkillId == entry.iSkillId;
 
-			/* Row background art (user-cut from the game's own skill window atlas) draws at
-			its native 622x62 pixel size -- no scaling, up or down. These pieces were cropped
-			out of one shared atlas, so their sizes are already proportioned to each other and
-			to the icons; resizing one independently of the rest breaks that (a circle warps
-			into an ellipse). If native size does not fit the row, the layout around it should
-			grow or scroll, not the image. The selected-row overlay draws on top at the same
-			native rect. Neither participates in hit-testing -- the ImageButton drawn afterward
-			still owns the click. */
+			/* The whole row is one click target (not just the icon), matching the reference --
+			clicking the bar, the name, or the icon all select this skill. Everything below is
+			drawn straight to the draw list at fixed offsets from rowMin instead of through
+			separate ImGui widgets, so nothing here carries ImGui's own button frame/border
+			(that showed up as a blue outline around each icon that the reference does not have)
+			and nothing but this one InvisibleButton owns the click or the row's layout height. */
+			const ImVec2 rowMin = ImGui::GetCursorScreenPos();
+			ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+
+			ID3D11ShaderResourceView* pRowBg =
+				m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
+			if (nullptr != pRowBg)
 			{
-				ID3D11ShaderResourceView* pRowBg =
-					m_pTextureCache->Get_Or_Load("UI/SkillWindow/SkillPanel.png");
-				const ImVec2 rowMin = ImGui::GetCursorScreenPos();
-				const ImVec2 rowMax(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight);
-				if (nullptr != pRowBg)
-					ImGui::GetWindowDrawList()->AddImage(pRowBg, rowMin, rowMax);
-				if (isSelected)
+				pDrawList->AddImage(pRowBg, rowMin,
+					ImVec2(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight));
+			}
+			if (isSelected)
+			{
+				ID3D11ShaderResourceView* pRowSelected =
+					m_pTextureCache->Get_Or_Load("UI/SkillWindow/PanelSelected.png");
+				if (nullptr != pRowSelected)
 				{
-					ID3D11ShaderResourceView* pRowSelected =
-						m_pTextureCache->Get_Or_Load("UI/SkillWindow/PanelSelected.png");
-					if (nullptr != pRowSelected)
-						ImGui::GetWindowDrawList()->AddImage(pRowSelected, rowMin, rowMax);
+					pDrawList->AddImage(pRowSelected, rowMin,
+						ImVec2(rowMin.x + rowBgWidth, rowMin.y + rowBgHeight));
 				}
 			}
-
 			if (nullptr != pIcon)
 			{
-				if (ImGui::ImageButton("##icon", pIcon, ImVec2(iconSize, iconSize)))
-					m_SelectedSkillId = entry.iSkillId;
+				pDrawList->AddImage(pIcon, rowMin,
+					ImVec2(rowMin.x + iconSize, rowMin.y + iconSize));
 			}
-			else if (ImGui::Button("##icon", ImVec2(iconSize, iconSize)))
-			{
-				m_SelectedSkillId = entry.iSkillId;
-			}
-			ImGui::SameLine();
-			ImGui::TextUnformatted(entry.strDisplayName.c_str());
+			const ImU32 textColor = ImGui::GetColorU32(ImGuiCol_Text);
+			pDrawList->AddText(
+				ImVec2(rowMin.x + iconSize + 6.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				textColor, entry.strDisplayName.c_str());
 
 			/* Placeholder values -- this project has no skill-point investment system yet
 			(Data/Balance carries cooldown/damage/etc. but no point cost or level concept),
 			so these are display-only stand-ins, same as the tripod/rune panels, until that
 			system exists to source real numbers from. */
-			ImGui::SameLine(rowBgWidth - 90.f);
-			ImGui::TextDisabled("Req 1");
-			ImGui::SameLine(rowBgWidth - 40.f);
-			ImGui::TextDisabled("Lv 1");
+			const ImU32 disabledColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+			pDrawList->AddText(
+				ImVec2(rowMin.x + rowBgWidth - 90.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				disabledColor, "Req 1");
+			pDrawList->AddText(
+				ImVec2(rowMin.x + rowBgWidth - 40.f, rowMin.y + rowBgHeight * 0.5f - 7.f),
+				disabledColor, "Lv 1");
+
+			if (ImGui::InvisibleButton("##row", ImVec2(rowBgWidth, rowBgHeight)))
+				m_SelectedSkillId = entry.iSkillId;
 			ImGui::PopID();
 		}
 	}
