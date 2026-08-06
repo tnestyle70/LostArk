@@ -10,9 +10,6 @@
 
 namespace
 {
-	/* Reference resolution the layout was authored at (matches Data/UI/HUD/HUD_Layout.json). */
-	constexpr const wchar_t* HUD_LAYOUT_RELATIVE_PATH = L"UI/HUD/HUD_Layout.json";
-
 	void Get_Rotated_Rect_Corners(const ImVec2& vTopLeft, const ImVec2& vBotRight, float fDegrees, ImVec2 outCorners[4])
 	{
 		outCorners[0] = vTopLeft;
@@ -38,8 +35,11 @@ namespace
 	}
 }
 
-Client::CHUDRuntimeView::CHUDRuntimeView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
-	: m_pDevice{ pDevice }
+Client::CHUDRuntimeView::CHUDRuntimeView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
+	const wstring& strDocumentPath, const bool_t bUseCurrentWindowDrawList)
+	: m_strDocumentPath{ strDocumentPath }
+	, m_bUseCurrentWindowDrawList{ bUseCurrentWindowDrawList }
+	, m_pDevice{ pDevice }
 	, m_pContext{ pContext }
 {
 	/* Same additive blend state as CHUDLayoutTool, so glow/particle layers (bAdditive) read
@@ -64,7 +64,7 @@ Client::CHUDRuntimeView::~CHUDRuntimeView()
 
 HRESULT Client::CHUDRuntimeView::Load()
 {
-	const filesystem::path DataPath = CProjectDataRoot::Resolve(HUD_LAYOUT_RELATIVE_PATH);
+	const filesystem::path DataPath = CProjectDataRoot::Resolve(m_strDocumentPath);
 
 	ifstream Stream(DataPath, ios::binary);
 	if (!Stream.is_open())
@@ -247,7 +247,8 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 		return;
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+	ImDrawList* pDrawList = m_bUseCurrentWindowDrawList ?
+		ImGui::GetWindowDrawList() : ImGui::GetForegroundDrawList(pViewport);
 
 	const float fScaleX = pViewport->WorkSize.x / m_fResolutionWidth;
 	const float fScaleY = pViewport->WorkSize.y / m_fResolutionHeight;

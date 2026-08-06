@@ -1,0 +1,33 @@
+{
+  "schema": "lostark.skill-roster",
+  "formatVersion": 1,
+  "characterClass": "LANCE_MASTER",
+  "skills": [
+    { "skillId": 34120, "displayName": "연환섬", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34120_ChainSlash.png" },
+    { "skillId": 34080, "displayName": "일섬각", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34080_FlashKick.png" },
+    { "skillId": 34070, "displayName": "회선창", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34070_WheelOfBlades.png" },
+    { "skillId": 34150, "displayName": "맹룡열파", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34150_RagingDragonSlash.png" },
+    { "skillId": 34110, "displayName": "반월섬", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34110_HalfMoonSlash.png" },
+    { "skillId": 34090, "displayName": "철량추", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34090_ThornJab.png" },
+    { "skillId": 34060, "displayName": "열공참", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34060_StampedingSlash.png" },
+    { "skillId": 34050, "displayName": "풍진격", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34050_WindBlast.png" },
+    { "skillId": 34170, "displayName": "청룡진", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34170_ShacklingBlueDragon.png" },
+    { "skillId": 34040, "displayName": "이연격", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34040_DoubleStrike.png" },
+    { "skillId": 34130, "displayName": "질풍참", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34130_CuttingWind.png" },
+    { "skillId": 34140, "displayName": "선풍참혼", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34140_SoulCutter.png" },
+    { "skillId": 34160, "displayName": "공의연무", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34160_SpearDive.png" },
+    { "skillId": 34100, "displayName": "청룡출수", "stance": "LONG", "iconPath": "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png" },
+    { "skillId": 34540, "displayName": "나선창", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
+    { "skillId": 34550, "displayName": "사두룡격", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
+    { "skillId": 34560, "displayName": "굉열파", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34560_ThrustOfDestruction.png" },
+    { "skillId": 34570, "displayName": "유성강천", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
+    { "skillId": 34580, "displayName": "절룡세", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
+    { "skillId": 34590, "displayName": "적룡포", "stance": "SHORT", "iconPath": "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
+    { "skillId": 34640, "displayName": "맹룡난무", "stance": "NONE", "iconPath": "" },
+    { "skillId": 34600, "displayName": "연가창식: 은하유성탄", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34600_SpearMeteor.png" },
+    { "skillId": 34620, "displayName": "초각성기_연가창식: 은하비섬창", "stance": "NONE", "iconPath": "" },
+    { "skillId": 34610, "displayName": "연가창식: 적룡질풍격", "stance": "NONE", "iconPath": "UI/Skill/LanceMaster/34610_DeadlyRedDragon.png" },
+    { "skillId": 34630, "displayName": "초각성기_연가창식: 마룡합일섬", "stance": "NONE", "iconPath": "" },
+    { "skillId": 34650, "displayName": "초각성스킬_적룡필살", "stance": "NONE", "iconPath": "" }
+  ]
+}

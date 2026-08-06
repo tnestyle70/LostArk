@@ -22,7 +22,19 @@ visual rules) instead of inventing a second layout format. */
 class CHUDRuntimeView final
 {
 public:
-	CHUDRuntimeView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+	/* strDocumentPath: Data-root-relative layout JSON to load ("UI/HUD/HUD_Layout.json" if
+	omitted). CHUDLayoutTool authors any lostark.ui-layout document at any such path (Combat
+	HUD, Screen UI, Loading Screen, Skill Window, ...); a second CHUDRuntimeView instance
+	pointed at a different path is how a second document gets a runtime consumer without a
+	second copy of this parse/draw logic.
+	bUseCurrentWindowDrawList: false draws to the always-on-top foreground list (the combat
+	HUD's own use, independent of any ImGui window). true draws to the currently-open ImGui
+	window's draw list instead, so the art lands behind that window's own widgets instead of
+	over every window in the game -- for a document meant as one window's background, call
+	Render() between that window's Begin()/End() when this is true. */
+	CHUDRuntimeView(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
+		const wstring& strDocumentPath = L"UI/HUD/HUD_Layout.json",
+		bool_t bUseCurrentWindowDrawList = false);
 	~CHUDRuntimeView();
 
 public:
@@ -61,6 +73,8 @@ private:
 	static void Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd);
 
 private:
+	wstring							m_strDocumentPath;
+	bool_t							m_bUseCurrentWindowDrawList = false;
 	ComPtr<ID3D11Device>			m_pDevice;
 	ComPtr<ID3D11DeviceContext>		m_pContext;
 	ComPtr<ID3D11BlendState>		m_pAdditiveBlendState;
