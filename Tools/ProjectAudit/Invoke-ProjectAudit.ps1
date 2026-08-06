@@ -1213,6 +1213,26 @@ try {
 	Add-Check 'world.authoring-format-v4' ($invalidWorldAuthoring.Count -eq 0) `
 		"invalid=$($invalidWorldAuthoring -join ',')"
 
+	$bernWorldDocument = Read-Json 'Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json'
+	$bernChangeLevelTriggers = @($bernWorldDocument.placements | Where-Object {
+		$_.kind -eq 'triggerBox' -and
+		$_.enabled -eq $true -and
+		@($_.events).Count -eq 1 -and
+		$_.events[0].type -eq 'changeLevel' -and
+		$_.events[0].targetWorldId -eq 'VALTAN_ARENA'
+	})
+	$bernLevelSource = Get-Content -LiteralPath 'Client\Private\Level_Bern.cpp' -Raw
+	$loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
+	Add-Check 'world.debug-change-level-trigger-presentation' (
+		$bernChangeLevelTriggers.Count -eq 1 -and
+		$bernChangeLevelTriggers[0].placementId -eq 'trigger.bern.to-valtan' -and
+		$loaderSource -match 'LEVEL::DEVELOPMENT\)[\s\S]*LEVEL::BERN\)[\s\S]*Prototype_GameObject_TriggerBox' -and
+		$bernLevelSource -match 'Ready_DebugLevelChangeTriggers' -and
+		$bernLevelSource -match 'WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL' -and
+		$bernLevelSource -match 'Layer_DebugWorldGameplay' -and
+		$bernLevelSource -match 'rollback\(\)') `
+		"bernChangeLevelTriggers=$($bernChangeLevelTriggers.Count)"
+
 	$gameplayValidationPassed = $true
 	$gameplayValidationDetail = ''
 	try {
@@ -1406,10 +1426,11 @@ try {
 		$serverRoomSource -match 'player\.fPositionX = spawn->fPositionX' -and
 		$serverRoomSource -match 'player\.fPositionY = spawn->fPositionY' -and
 		$serverRoomSource -match 'player\.fPositionZ = spawn->fPositionZ') 'MapTool resolves authored position delta and Server consumes the saved spawn transform'
-    Add-Check 'server.world-bootstrap-boundary' (
-        $serverRoomSource -match 'Find_AvailablePlayerSpawn' -and
-        $serverRoomSource -match 'Update_WorldEntities' -and
-        $serverRoomSource -match 'iPatternTelegraphMs' -and
+	Add-Check 'server.world-bootstrap-boundary' (
+		$serverRoomSource -match 'Find_AvailablePlayerSpawn' -and
+		$serverRoomSource -match 'Update_WorldEntities' -and
+		$serverRoomSource -match 'Find_BossPatterns' -and
+		$serverRoomSource -notmatch 'placement\.iPatternTelegraphMs' -and
         $serverRoomSource -notmatch 'fActionElapsedSeconds >= 0\.8f' -and
         $serverRoomSource -notmatch 'm_Players\.size\(\)\) \* 2\.f' -and
         $serverProjectSource -match 'PublishWorldGameplay') 'MapTool world documents publish before Server compile'
@@ -1462,6 +1483,44 @@ try {
 		$gameplayCatalogSource -match 'Apply_Defense' -and
 		$valtanBrainSource -match 'playerProfile->iDefense') `
 		'player defense is consumed by the centralized incoming damage curve'
+	$bossProfileDocument = Read-Json 'Data\Balance\BossProfiles.json'
+	$valtanEncounterDocument = Read-Json 'Data\Encounters\Valtan\ValtanEncounter.json'
+	$valtanPatternIds = @($valtanEncounterDocument.patterns | ForEach-Object { [string]$_.patternId })
+	Add-Check 'gameplay.valtan-health-bar-pattern-contract' (
+		[int]$bossProfileDocument.formatVersion -eq 3 -and
+		[int]$bossProfileDocument.bosses[0].maximumHealthBars -eq 160 -and
+		[int]$valtanEncounterDocument.formatVersion -eq 3 -and
+		$valtanPatternIds.Count -eq 31 -and
+		$valtanPatternIds -contains 'VALTAN_FLOOR_WIPE_130' -and
+		$valtanPatternIds -contains 'VALTAN_FOUR_PILLARS_105' -and
+		$valtanPatternIds -contains 'VALTAN_ARENA_BREAK_80' -and
+		$valtanPatternIds -contains 'VALTAN_MAGIC_ORB_STAGGER_76' -and
+		$valtanPatternIds -contains 'VALTAN_CENTER_GRAB_COUNTER_64' -and
+		$valtanPatternIds -contains 'VALTAN_ARENA_BREAK_33' -and
+		$valtanPatternIds -contains 'VALTAN_GHOST_TRANSITION_15' -and
+		$gameplayCatalogSource -match 'PATTERNSTAGE' -and
+		$valtanBrainSource -match 'QueueCrossedHealthBarPatterns' -and
+		$valtanBrainSource -match 'BOSS_PATTERN_HIT_SHAPE::RING' -and
+		$valtanBrainSource -match 'BOSS_PATTERN_HIT_SHAPE::CONE' -and
+		$valtanBrainSource -match 'BOSS_PATTERN_HIT_SHAPE::BOX' -and
+		$valtanBrainSource -match 'BOSS_PATTERN_HIT_SHAPE::CROSS') `
+		'Valtan 160-bar authoring, 31 staged patterns, ordered thresholds, and Server collider hits share one runtime path'
+	$serverPlayerSource = Get-Content -LiteralPath 'Server\Public\ServerPlayer.h' -Raw
+	$gameRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw
+	Add-Check 'gameplay.valtan-entry-protection-revive-contract' (
+		$serverPlayerSource -match 'isCombatReady' -and
+		$gameRoomSource -match 'Handle_RevivePlayer' -and
+		$gameRoomSource -match 'WORLD_ID::VALTAN_ARENA' -and
+		$packetMessagesSource -match 'C2S_REVIVE_PLAYER' -and
+		$balanceToolSource -match 'Revive at death position') `
+		'Valtan entry protection and same-position revive remain Server-authoritative and Balance Tool-addressable'
+	Add-Check 'ui.combat-font-hud-contract' (
+		$mainAppSource -match 'RenderCombatHUDText' -and
+		$mainAppSource -match 'Font_YG330' -and
+		$mainAppSource -match 'iMaximumHealthBars' -and
+		$mainAppSource -notmatch 'ImGui::ProgressBar' -and
+		$mainAppSource -notmatch '##RuntimeCombatHUD') `
+		'player HP/Mana and Valtan HP/bar text use Font Manager after the authored HUD without the old ImGui meter window'
 
     $report = [ordered]@{
         schema = 'lostark.project-audit-report'

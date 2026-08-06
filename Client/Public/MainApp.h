@@ -57,6 +57,7 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	void RenderCombatHUDText();
 
 #ifdef _DEBUG
 	HRESULT ReadyDebugTools();

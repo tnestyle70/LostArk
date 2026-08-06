@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Network/NetworkIds.h"
+#include "GameplayCatalog.h"
 #include "WorldBootstrap.h"
 #include "ServerNavigation.h"
 
@@ -43,9 +44,23 @@ namespace LostArk::Server
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
+		std::uint32_t iPatternSequence = 0;
+		std::uint32_t iPatternStageIndex = 0;
+		std::uint32_t iPatternStageDurationMs = 0;
+		BOSS_PATTERN_HIT_SHAPE ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
+		float fPatternHitOuterRadius = 0.f;
+		float fPatternHitInnerRadius = 0.f;
+		float fPatternHitAngleDegrees = 0.f;
+		float fPatternHitLength = 0.f;
+		float fPatternHitHalfWidth = 0.f;
+		std::uint32_t iPatternHitCount = 0;
+		std::uint32_t iPatternHitIntervalMs = 0;
+		std::uint32_t iAppliedPatternHitCount = 0;
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
+		std::uint32_t iMaximumHealthBars = 1;
+		std::uint32_t iLastEvaluatedHealthBar = 1;
 		std::uint8_t iPhase = 1;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
@@ -57,6 +72,10 @@ namespace LostArk::Server
 		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		bool hasAppliedPatternDamage = false;
+		std::string strLastPatternId;
+		std::uint32_t iConsecutivePatternUses = 0;
+		std::vector<std::string> PendingPatternIds;
+		std::vector<std::string> TriggeredPatternIds;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		float fLastPathGoalX = 0.f;

@@ -31,6 +31,8 @@ public:
 	bool Request_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId) override;
+	bool Request_RevivePlayer(
+		std::uint32_t clientSequence) override;
 
 private:
 	static std::atomic_uint32_t s_iLiveInstanceCount;

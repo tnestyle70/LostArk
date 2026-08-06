@@ -16,6 +16,18 @@ function ConvertTo-Comparable([object]$value) {
     return ($value | ConvertTo-Json -Compress -Depth 32)
 }
 
+function Get-CanonicalTextSha256([string]$path) {
+	$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+	$text = [IO.File]::ReadAllText($path, $strictUtf8)
+	$bytes = [Text.UTF8Encoding]::new($false).GetBytes(
+		$text.Replace("`r`n", "`n").Replace("`r", "`n"))
+	$sha256 = [Security.Cryptography.SHA256]::Create()
+	try {
+		return ([BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+	}
+	finally { $sha256.Dispose() }
+}
+
 $playerDocument = Read-Json 'Data\Balance\PlayerProfiles.json'
 $skillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
 $damageDocument = Read-Json 'Data\Balance\DamageProfiles.json'
@@ -24,10 +36,16 @@ $encounter = Read-Json 'Data\Encounters\Valtan\ValtanEncounter.json'
 $receipt = Get-Content -LiteralPath $receiptPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 $current = @{}
+$currentMetadata = @{}
 function Add-Current([string]$document, [string]$targetId, [string]$field, [object]$value) {
     $key = "$document#$targetId.$field"
     if ($current.ContainsKey($key)) { throw "Duplicate authored field key: $key" }
     $current[$key] = $value
+	$currentMetadata[$key] = [pscustomobject]@{
+		document = $document
+		targetId = $targetId
+		field = $field
+	}
 }
 
 foreach ($player in @($playerDocument.players)) {
@@ -79,18 +97,40 @@ for ($index = 0; $index -lt @($encounter.patterns).Count; $index++) {
 }
 
 $entryByKey = @{}
+$retainedEntries = [Collections.Generic.List[object]]::new()
 foreach ($entry in @($receipt.entries)) {
     $key = "$($entry.targetDocument)#$($entry.targetId).$($entry.targetField)"
     if ($entryByKey.ContainsKey($key)) { throw "Duplicate receipt key: $key" }
+	if (-not $current.ContainsKey($key)) { continue }
     $entryByKey[$key] = $entry
+	$retainedEntries.Add($entry)
 }
-if ($entryByKey.Count -ne $current.Count) {
-    throw "Receipt coverage differs from authored fields. receipt=$($entryByKey.Count) authored=$($current.Count)"
-}
+$receipt.entries = @($retainedEntries)
 
 $changed = 0
 foreach ($key in $current.Keys) {
-    if (-not $entryByKey.ContainsKey($key)) { throw "Receipt is missing authored field: $key" }
+	if (-not $entryByKey.ContainsKey($key)) {
+		$value = $current[$key]
+		$metadata = $currentMetadata[$key]
+		$entry = [pscustomobject][ordered]@{
+			targetDocument = $metadata.document
+			targetId = $metadata.targetId
+			targetField = $metadata.field
+			basis = 'PROJECT_TUNED'
+			source = [pscustomobject]@{
+				type = 'project-policy'
+				policyId = 'balance-tool-authored-override-v1'
+			}
+			sourceValue = $value
+			transform = 'Balance Tool authored override'
+			resultValue = $value
+			note = 'Added through the F1 Balance Tool authoring contract; official source binding is not claimed.'
+		}
+		$entryByKey[$key] = $entry
+		$receipt.entries += $entry
+		++$changed
+		continue
+	}
     $entry = $entryByKey[$key]
     $value = $current[$key]
     if ((ConvertTo-Comparable $entry.resultValue) -cne (ConvertTo-Comparable $value)) {
@@ -113,6 +153,14 @@ foreach ($key in $current.Keys) {
     }
 }
 
+$receipt.entries = @($receipt.entries | Sort-Object targetDocument,targetId,targetField)
+$receipt.extractorSha256 = Get-CanonicalTextSha256 (
+	Join-Path $repoRoot 'Tools\GameplayPipeline\Export-OfficialBalanceReceipt.py')
+$receipt.coverage.playerProfileCount = @($playerDocument.players).Count
+$receipt.coverage.skillDefinitionCount = @($skillDocument.skills).Count
+$receipt.coverage.damageProfileCount = @($damageDocument.profiles).Count
+$receipt.coverage.bossProfileCount = @($bossDocument.bosses).Count
+$receipt.coverage.encounterPatternCount = @($encounter.patterns).Count
 $receipt.coverage.fieldEntryCount = $current.Count
 $serialized = $receipt | ConvertTo-Json -Depth 32
 $temporary = "$receiptPath.tmp.$PID"

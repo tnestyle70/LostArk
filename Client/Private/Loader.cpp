@@ -605,7 +605,8 @@ HRESULT CLoader::Ready_MapAuthoringCore(const uint32_t iLevelIndex)
 	}
 
 #ifdef _DEBUG
-	if (iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) &&
+	if ((iLevelIndex == ETOUI(LEVEL::DEVELOPMENT) ||
+		iLevelIndex == ETOUI(LEVEL::BERN)) &&
 		FAILED(CGameInstance::Get().Add_Prototype(
 			iLevelIndex,
 			TEXT("Prototype_GameObject_TriggerBox"),

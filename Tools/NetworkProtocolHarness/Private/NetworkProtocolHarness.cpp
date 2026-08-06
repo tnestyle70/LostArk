@@ -1206,6 +1206,36 @@ namespace
 			"Failed Release Does Not Mutate");
 	}
 
+	void Test_RevivePlayerRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_REVIVE_PLAYER source{};
+		source.iClientSequence = 17u;
+		CPacketWriter writer;
+		testRunner.Require(
+			Write_Message(writer, source) && 4u == writer.Get_Buffer().size(),
+			"Writer Revive Player");
+		CPacketReader reader{ writer.Get_Buffer() };
+		C2S_REVIVE_PLAYER decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			decoded.iClientSequence == source.iClientSequence &&
+			0u == reader.Get_RemainingSize(),
+			"Revive Player Round Trip");
+		C2S_REVIVE_PLAYER invalid{};
+		CPacketWriter invalidWriter;
+		testRunner.Require(!Write_Message(invalidWriter, invalid),
+			"Reject Zero Revive Sequence");
+		std::vector<std::uint8_t> truncated = writer.Get_Buffer();
+		truncated.pop_back();
+		CPacketReader truncatedReader{ truncated };
+		C2S_REVIVE_PLAYER unchanged{};
+		unchanged.iClientSequence = 99u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			99u == unchanged.iClientSequence,
+			"Reject Truncated Revive Without Mutation");
+	}
+
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -1241,13 +1271,18 @@ namespace
 			PLAYER_LOCOMOTION_STATE::MOVING;
 		second.eAction = PLAYER_ACTION_STATE::TRIGGER_MOVE;
 		second.iActionStartTick = 29;
+		second.isCombatReady = false;
 
 		source.Players.push_back(first);
 		source.Players.push_back(second);
 
 		WORLD_ENTITY_SNAPSHOT entity{};
 		entity.iNetEntityId = 900;
-		entity.eAction = WORLD_ENTITY_ACTION::CHASE;
+		entity.eAction = WORLD_ENTITY_ACTION::PATTERN_ACTIVE;
+		entity.strPatternId = "VALTAN_SWING";
+		entity.strActionId = "valtan.attack.swing.active";
+		entity.iPatternSequence = 7u;
+		entity.iPatternStageIndex = 1u;
 		entity.fPositionX = 150.f;
 		entity.fPositionY = 22.97f;
 		entity.fPositionZ = -122.f;
@@ -1267,15 +1302,16 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1;
 		constexpr std::size_t playerFixedBytes =
-			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1;
+			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
-		constexpr std::size_t emptyActionEntityBytes =
-			4 + 1 + 2 + (4 * 4) + (4 * 3) + 1;
-		constexpr std::size_t expectedPayloadBytes =
+		const std::size_t entityBytes =
+			4 + 1 + 2 + entity.strPatternId.size() + 2 +
+			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1;
+		const std::size_t expectedPayloadBytes =
 			snapshotHeaderBytes +
 			(playerFixedBytes * 2) +
 			cooldownBytes +
-			emptyActionEntityBytes;
+			entityBytes;
 
 		testRunner.Require(
 			expectedPayloadBytes == payload.size(),
@@ -1318,12 +1354,17 @@ namespace
 			PLAYER_LOCOMOTION_STATE::MOVING &&
 			decoded.Players[1].eAction ==
 			PLAYER_ACTION_STATE::TRIGGER_MOVE &&
-			decoded.Players[1].iActionStartTick == 29,
+			decoded.Players[1].iActionStartTick == 29 &&
+			!decoded.Players[1].isCombatReady,
 			"World Snapshot Players Round Trip");
 
 		testRunner.Require(
 			decoded.Entities[0].iNetEntityId == 900 &&
-			decoded.Entities[0].eAction == WORLD_ENTITY_ACTION::CHASE &&
+			decoded.Entities[0].eAction == WORLD_ENTITY_ACTION::PATTERN_ACTIVE &&
+			decoded.Entities[0].strPatternId == entity.strPatternId &&
+			decoded.Entities[0].strActionId == entity.strActionId &&
+			decoded.Entities[0].iPatternSequence == 7u &&
+			decoded.Entities[0].iPatternStageIndex == 1u &&
 			decoded.Entities[0].fPositionX == 150.f &&
 			decoded.Entities[0].iCurrentHp == 9500 &&
 			decoded.Entities[0].iMaximumHp == 10000 &&
@@ -1471,6 +1512,7 @@ int main()
 	Test_MoveRoundTrip(testRunner);
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
+	Test_RevivePlayerRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 

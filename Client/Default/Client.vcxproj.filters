@@ -1030,7 +1030,16 @@
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
+    <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json">

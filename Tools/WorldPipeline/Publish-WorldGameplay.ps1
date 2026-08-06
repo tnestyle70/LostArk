@@ -17,7 +17,7 @@ function Read-ProjectJson {
     if (-not [IO.File]::Exists($path)) {
         throw "Required JSON document is missing: $RelativePath"
     }
-    return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+	return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
 function Assert-ExactProperties {
@@ -112,12 +112,12 @@ function Get-EncounterProfiles {
         Assert-ExactProperties $document @(
             'schema','formatVersion','encounterId','bossArchetypeId',
             'authority','fixedTickHz','states','patterns') 'encounter profile'
-		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 1 1
+		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 3 3
 		Assert-JsonInteger $document.fixedTickHz "$($document.encounterId) fixedTickHz" 30 30
         Assert-StableId $document.encounterId 'encounterId'
         Assert-StableId $document.bossArchetypeId 'bossArchetypeId'
         if ($document.schema -ne 'lostark.encounter-profile' -or
-            $document.formatVersion -ne 1 -or
+			$document.formatVersion -ne 3 -or
             $document.authority -ne 'server' -or
             $document.fixedTickHz -ne 30) {
             throw "Encounter header is invalid: $($document.encounterId)"
@@ -144,29 +144,35 @@ function Get-EncounterProfiles {
         }
 
         $patterns = @($document.patterns)
-        if ($patterns.Count -ne 1) {
-            throw "Bootstrap v2 requires exactly one entry pattern: $($document.encounterId)"
+        if ($patterns.Count -eq 0) {
+            throw "Encounter requires at least one pattern: $($document.encounterId)"
         }
-        foreach ($pattern in $patterns) {
-            Assert-ExactProperties $pattern @(
-                'patternId','actionId','minimumRange','maximumRange',
-                'telegraphMs','activeMs','recoveryMs','serverDamageProfileId') "$($document.encounterId) pattern"
+		$patternIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+		foreach ($pattern in $patterns) {
+			Assert-ExactProperties $pattern @(
+				'patternId','displayName','actionId','sourceActionIds','selectionMode',
+				'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
+				'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
+				'stages') "$($document.encounterId) pattern"
 			Assert-JsonNumber $pattern.minimumRange "$($document.encounterId) minimumRange"
 			Assert-JsonNumber $pattern.maximumRange "$($document.encounterId) maximumRange"
-			Assert-JsonInteger $pattern.telegraphMs "$($document.encounterId) telegraphMs" 1 ([uint32]::MaxValue)
-			Assert-JsonInteger $pattern.activeMs "$($document.encounterId) activeMs" 1 ([uint32]::MaxValue)
-			Assert-JsonInteger $pattern.recoveryMs "$($document.encounterId) recoveryMs" 1 ([uint32]::MaxValue)
-            Assert-StableId $pattern.patternId "$($document.encounterId) patternId"
-            Assert-StableId $pattern.actionId "$($document.encounterId) actionId"
-            Assert-StableId $pattern.serverDamageProfileId "$($document.encounterId) damage profile"
-            if ([double]$pattern.minimumRange -lt 0.0 -or
-                [double]$pattern.maximumRange -le [double]$pattern.minimumRange -or
-                [uint32]$pattern.telegraphMs -eq 0 -or
-                [uint32]$pattern.activeMs -eq 0 -or
-                [uint32]$pattern.recoveryMs -eq 0) {
-                throw "Encounter pattern timing or range is invalid: $($pattern.patternId)"
-            }
-        }
+			Assert-StableId $pattern.patternId "$($document.encounterId) patternId"
+			Assert-StableId $pattern.actionId "$($document.encounterId) actionId"
+			if (-not $patternIds.Add([string]$pattern.patternId)) {
+				throw "Duplicate encounter pattern ID: $($pattern.patternId)"
+			}
+			if ([double]$pattern.minimumRange -lt 0.0 -or
+				[double]$pattern.maximumRange -le [double]$pattern.minimumRange -or
+				@($pattern.sourceActionIds).Count -eq 0 -or
+				@($pattern.stages).Count -eq 0) {
+				throw "Encounter pattern timing or range is invalid: $($pattern.patternId)"
+			}
+			foreach ($stage in @($pattern.stages)) {
+				Assert-StableId $stage.stageId "$($document.encounterId) stageId"
+				Assert-StableId $stage.actionId "$($document.encounterId) stage actionId"
+				Assert-JsonInteger $stage.durationMs "$($document.encounterId) stage durationMs" 1 ([uint32]::MaxValue)
+			}
+		}
         $profiles[[string]$document.encounterId] = $document
     }
     return $profiles
@@ -551,7 +557,6 @@ function Convert-WorldDocument {
 			throw "Placement references an unknown encounter: $encounterId"
 		}
         $serializedEncounterId = if ($encounterId) { $encounterId } else { '-' }
-        $patternFields = @('-', '-', '0', '0', '0', '0', '0', '-')
         if ($placement.kind -eq 'boss') {
             if (-not $encounterId) {
                 throw "Boss placement requires an encounter ID: $($placement.placementId)"
@@ -560,27 +565,17 @@ function Convert-WorldDocument {
             if ($profile.bossArchetypeId -ne $placement.archetypeId) {
                 throw "Boss placement archetype does not match encounter '$encounterId'."
             }
-            $pattern = @($profile.patterns)[0]
-            $patternFields = @(
-                [string]$pattern.patternId,
-                [string]$pattern.actionId,
-                (Format-InvariantFloat $pattern.minimumRange),
-                (Format-InvariantFloat $pattern.maximumRange),
-                [string][uint32]$pattern.telegraphMs,
-                [string][uint32]$pattern.activeMs,
-                [string][uint32]$pattern.recoveryMs,
-                [string]$pattern.serverDamageProfileId)
         }
         $serializedArchetypeId = if ($placement.kind -eq 'playerSpawn') { '-' } else { [string]$placement.archetypeId }
 		$commonFields[2] = $serializedArchetypeId
 		$commonFields[3] = $serializedEncounterId
-		$rowFields = $commonFields + $patternFields
+		$rowFields = $commonFields
         $rows.Add(($rowFields -join "`t"))
     }
 
     $sortedRows = @($rows | Sort-Object)
     $lines = [Collections.Generic.List[string]]::new()
-	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t5`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
+	$lines.Add("LOSTARK_WORLD_BOOTSTRAP`t6`t$WorldId`t$AreaId`t$($document.revision)`t$($sortedRows.Count)")
     foreach ($row in $sortedRows) {
         $lines.Add($row)
     }

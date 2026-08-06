@@ -37,6 +37,7 @@ namespace Client
 		std::uint32_t iMaximumHp = 0;
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 0;
+		bool isCombatReady = true;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
@@ -51,10 +52,14 @@ namespace Client
 		std::string strDisplayName;
 		std::uint32_t iCurrentHp = 0;
 		std::uint32_t iMaximumHp = 0;
+		std::uint32_t iMaximumHealthBars = 0;
 		std::uint8_t iPhase = 1;
 		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
 			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 		std::string strActionId;
+		std::string strPatternId;
+		std::uint32_t iPatternSequence = 0;
+		std::uint32_t iPatternStageIndex = 0;
 	};
 
 	struct HUD_DAMAGE_EVENT
@@ -103,6 +108,12 @@ namespace Client
 				LostArk::Shared::PLAYER_STANCE_ID::NONE;
 		};
 
+		struct BOSS_PROFILE_DEFINITION
+		{
+			std::string strDisplayName;
+			std::uint32_t iMaximumHealthBars = 0;
+		};
+
 		void Build_PlayerSkills(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			std::uint32_t serverTick,
@@ -112,7 +123,7 @@ namespace Client
 		controller reads the same rows; only the boss names are HUD-only. */
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_PROFILE_DEFINITION> m_PlayerProfiles;
-		std::unordered_map<std::string, std::string> m_BossDisplayNames;
+		std::unordered_map<std::string, BOSS_PROFILE_DEFINITION> m_BossProfiles;
 		HUD_PLAYER_STATE m_Player;
 		HUD_BOSS_STATE m_Boss;
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;

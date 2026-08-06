@@ -159,7 +159,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t count = 0;
 	if (6u != header.size() ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 5u != version ||
+		!ParseNumber(header[1], version) || 6u != version ||
 		header[2] != worldName || !IsStableId(header[3]) ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], count) || count > 4096u)
@@ -340,17 +340,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		else
 		{
-			if (17u != fields.size() ||
-				("-" != fields[9] && !IsStableId(fields[9])) ||
-				("-" != fields[10] && !IsStableId(fields[10])) ||
-				!ParseNumber(fields[11], placement.fPatternMinimumRange) ||
-				!ParseNumber(fields[12], placement.fPatternMaximumRange) ||
-				!ParseNumber(fields[13], placement.iPatternTelegraphMs) ||
-				!ParseNumber(fields[14], placement.iPatternActiveMs) ||
-				!ParseNumber(fields[15], placement.iPatternRecoveryMs) ||
-				("-" != fields[16] && !IsStableId(fields[16])) ||
-				!std::isfinite(placement.fPatternMinimumRange) ||
-				!std::isfinite(placement.fPatternMaximumRange))
+			if (9u != fields.size())
 			{
 				m_strStatus = "World actor placement is invalid at row " +
 					std::to_string(index);
@@ -359,9 +349,6 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			placement.strArchetypeId =
 				"-" == fields[2] ? "" : std::string(fields[2]);
 			placement.strEncounterId = "-" == fields[3] ? "" : std::string(fields[3]);
-			placement.strPatternId = "-" == fields[9] ? "" : std::string(fields[9]);
-			placement.strActionId = "-" == fields[10] ? "" : std::string(fields[10]);
-			placement.strDamageProfileId = "-" == fields[16] ? "" : std::string(fields[16]);
 		}
 		const bool isBoss = WORLD_BOOTSTRAP_KIND::BOSS == placement.eKind;
 		const bool isPlayerSpawn =
@@ -380,32 +367,9 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				std::to_string(index);
 			return false;
 		}
-		const bool hasValidBossPattern =
-			!placement.strEncounterId.empty() &&
-			!placement.strPatternId.empty() &&
-			!placement.strActionId.empty() &&
-			!placement.strDamageProfileId.empty() &&
-			placement.fPatternMinimumRange >= 0.f &&
-			placement.fPatternMaximumRange > placement.fPatternMinimumRange &&
-			placement.fPatternMaximumRange <= 100000.f &&
-			placement.iPatternTelegraphMs > 0u &&
-			placement.iPatternTelegraphMs <= 600000u &&
-			placement.iPatternActiveMs > 0u &&
-			placement.iPatternActiveMs <= 600000u &&
-			placement.iPatternRecoveryMs > 0u &&
-			placement.iPatternRecoveryMs <= 600000u;
-		const bool hasNoPattern =
-			placement.strPatternId.empty() &&
-			placement.strActionId.empty() &&
-			placement.strDamageProfileId.empty() &&
-			0.f == placement.fPatternMinimumRange &&
-			0.f == placement.fPatternMaximumRange &&
-			0u == placement.iPatternTelegraphMs &&
-			0u == placement.iPatternActiveMs &&
-			0u == placement.iPatternRecoveryMs;
-		if ((isBoss && !hasValidBossPattern) || (!isBoss && !hasNoPattern))
+		if (isBoss && placement.strEncounterId.empty())
 		{
-			m_strStatus = "World bootstrap pattern contract is invalid at row " +
+			m_strStatus = "World bootstrap boss encounter is missing at row " +
 				std::to_string(index);
 			return false;
 		}

@@ -319,7 +319,10 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
+    <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
     <None Include="..\..\Data\UI\ScreenUI\ScreenUI.json" />
+    <None Include="..\..\Data\UI\SkillWindow\LanceMaster.skillroster.json" />
+    <None Include="..\..\Data\UI\SkillWindow\SkillWindow_Layout.json" />
     <None Include="..\..\Data\Worlds\LV_BER_BERNCASTLE\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_DEV_TRAINING_GROUND\Gameplay.world.json" />
     <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json" />

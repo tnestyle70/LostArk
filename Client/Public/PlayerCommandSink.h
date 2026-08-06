@@ -29,6 +29,8 @@ public:
 	virtual bool Request_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId) = 0;
+	virtual bool Request_RevivePlayer(
+		std::uint32_t clientSequence) = 0;
 };
 
 }

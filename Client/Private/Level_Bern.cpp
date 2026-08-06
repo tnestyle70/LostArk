@@ -6,7 +6,10 @@
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "NetworkPlayerCommandSink.h"
+#include "ProjectDataRoot.h"
 #include "Transform.h"
+#include "Trigger_Box.h"
+#include "WorldGameplayDocument.h"
 
 #include <algorithm>
 
@@ -69,6 +72,14 @@ HRESULT CLevel_Bern::Initialize()
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+
+#ifdef _DEBUG
+	if (!Ready_DebugLevelChangeTriggers(pEntry->pMapAreaId))
+	{
+		OutputDebugStringA(
+			"[Level_Bern] Debug changeLevel Trigger Box presentation failed.\n");
+	}
+#endif
 
 	return S_OK;
 }
@@ -275,6 +286,112 @@ bool_t CLevel_Bern::Bind_CameraToLocalCharacter()
 
 	return true;
 }
+
+#ifdef _DEBUG
+bool_t CLevel_Bern::Ready_DebugLevelChangeTriggers(
+	const std::string& areaId)
+{
+	const std::filesystem::path documentPath = CProjectDataRoot::Resolve(
+		std::filesystem::path("Worlds") /
+		areaId /
+		"Gameplay.world.json");
+	std::error_code pathError;
+	if (documentPath.empty() ||
+		!std::filesystem::is_regular_file(documentPath, pathError) ||
+		pathError)
+	{
+		OutputDebugStringA((
+			"[Level_Bern] Debug gameplay document is unavailable: " +
+			documentPath.string() + "\n").c_str());
+		return false;
+	}
+
+	CWorldGameplayDocument document;
+	std::string status;
+	if (!document.Load(documentPath, areaId, status))
+	{
+		OutputDebugStringA((
+			"[Level_Bern] Debug gameplay document rejected: " +
+			status + "\n").c_str());
+		return false;
+	}
+
+	std::vector<shared_ptr<CTrigger_Box>> staged;
+	const auto rollback = [&staged]()
+	{
+		for (const shared_ptr<CTrigger_Box>& triggerBox : staged)
+		{
+			if (nullptr == triggerBox)
+				continue;
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::BERN),
+				TEXT("Layer_DebugWorldGameplay"),
+				static_pointer_cast<CGameObject>(triggerBox));
+		}
+		staged.clear();
+	};
+
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		document.Get_Placements())
+	{
+		const bool_t isLevelChangeTrigger =
+			placement.isEnabled &&
+			WORLD_PLACEMENT_KIND::TRIGGER_BOX == placement.eKind &&
+			1u == placement.triggerEvents.size() &&
+			WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL ==
+				placement.triggerEvents.front().eKind;
+		if (!isLevelChangeTrigger)
+			continue;
+
+		CTrigger_Box::TRIGGER_BOX_DESC desc{};
+		desc.placementId = placement.placementId;
+		desc.position = placement.position;
+		desc.halfExtents = placement.halfExtents;
+		desc.yawDegrees = placement.yawDegrees;
+		desc.isEnabled = true;
+
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			ETOUI(LEVEL::BERN),
+			TEXT("Prototype_GameObject_TriggerBox"),
+			ETOUI(LEVEL::BERN),
+			TEXT("Layer_DebugWorldGameplay"),
+			&desc,
+			&gameObject)))
+		{
+			rollback();
+			OutputDebugStringA((
+				"[Level_Bern] Debug Trigger Box clone failed: " +
+				placement.placementId + "\n").c_str());
+			return false;
+		}
+
+		shared_ptr<CTrigger_Box> triggerBox =
+			dynamic_pointer_cast<CTrigger_Box>(gameObject);
+		if (nullptr == triggerBox)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				ETOUI(LEVEL::BERN),
+				TEXT("Layer_DebugWorldGameplay"),
+				gameObject);
+			rollback();
+			OutputDebugStringA((
+				"[Level_Bern] Debug Trigger Box type mismatch: " +
+				placement.placementId + "\n").c_str());
+			return false;
+		}
+
+		triggerBox->Set_AuthoringVisible(true);
+		staged.push_back(std::move(triggerBox));
+	}
+
+	m_DebugLevelChangeTriggers = std::move(staged);
+	OutputDebugStringA((
+		"[Level_Bern] Debug changeLevel Trigger Boxes ready: " +
+		std::to_string(m_DebugLevelChangeTriggers.size()) + "\n").c_str());
+	return true;
+}
+#endif
 
 unique_ptr<CLevel_Bern> CLevel_Bern::Create(
 	ComPtr<ID3D11Device> pDevice,

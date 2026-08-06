@@ -82,3 +82,54 @@ Client build에는 기존 C4819 인코딩 경고와 DirectXTK PDB LNK4099 경고
 - NPC 제품 배치를 완료하려면 실제 NpcCatalog row, per-level model admission, `CNpc` replication presentation, NPC snapshot 처리와 smoke를 같은 변경 단위에서 구현해야 한다.
 - Monster spawn은 MonsterCatalog/Profile, SpawnGroups authoring, Server brain/entity authority, Shared replication, Client presentation이 승인될 때 typed trigger action으로 확장한다.
 - 실제 화면과 네트워크를 함께 실행하는 수동 Bern→Valtan smoke는 사용자가 수행한다.
+
+## 8. Debug Bern changeLevel Trigger Box 프리뷰 추가
+
+### 8.1 저장 데이터 확인
+
+`Data/Worlds/LV_BER_BERNCASTLE/Gameplay.world.json` revision 5에 다음 항목이 저장되어 있다.
+
+```text
+placementId: trigger.bern.to-valtan
+kind: triggerBox
+position: [144.8, 42.7, -60.3]
+halfExtents: [2.0, 2.0, 2.0]
+enabled: true
+event: changeLevel -> VALTAN_ARENA
+```
+
+### 8.2 구현 결과
+
+- Debug Bern Loader가 기존 `Prototype_GameObject_TriggerBox`를 Bern level에도 등록한다.
+- `CLevel_Bern`은 Project Data Root의 현재 Area `Gameplay.world.json`을 parse/validate한다.
+- enabled이고 event가 정확히 하나의 `changeLevel`인 Trigger Box만 `Layer_DebugWorldGameplay`에 stage한다.
+- position, yawDegrees, halfExtents는 저장 문서 값을 그대로 사용하며 별도 좌표를 하드코딩하지 않는다.
+- clone 또는 type 확인 실패 시 이번 stage에서 생성한 모든 Debug object를 제거한다.
+- Debug presentation 실패는 로그를 남기되 Server-authoritative Bern 입장은 막지 않는다.
+- Release build에서는 prototype 등록, 함수, owner vector가 `_DEBUG`로 제외된다.
+
+### 8.3 검증
+
+```text
+World Gameplay JSON parse: PASS
+Publish-WorldGameplay.ps1 -Mode Validate: PASS (Bern 7 / Valtan 5 / Training 4 / Character Select 5)
+Client x64 Debug build: PASS
+Client x64 Release build: PASS
+ProjectAudit: PASS, 74 checks
+git diff --check: PASS
+```
+
+수동 확인은 Debug Client에서 Server와 함께 Bern에 진입해
+`[144.8, 42.7, -60.3]` 부근에 `[2,2,2]` 녹색 와이어 OBB가 보이는지 확인하는 단계가 남아 있다.
+
+## 9. 2026-08-07 최신 main 재조정 검증
+
+- `Publish-WorldGameplay.ps1 -Mode Validate`: PASS
+- placement counts: Bern 7 / Valtan Arena 12 / Training Ground 4 / Character Select 5
+- Server Debug `--contract-test`: failures 0
+- 전체 Debug build/regression: PASS
+- 전체 Release build/regression: PASS
+- ProjectAudit: 76/76 PASS
+- UI·Player/Warlord·Monster/SpawnGroup·DimensionMaster Effect의 최신 main 계약 보존 확인
+
+동시 진행 중인 DimensionMaster D Effect 변경은 이 Bern/Valtan stage와 commit에 포함하지 않았다.

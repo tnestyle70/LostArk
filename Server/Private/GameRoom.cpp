@@ -188,6 +188,9 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::RELEASE_SKILL:
 			Handle_ReleaseSkill(command.iSessionId, command.ReleaseSkill);
 			break;
+		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
+			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
+			break;
 		case ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY:
 			Handle_SpawnWorldEntity(
 				command.iSessionId,
@@ -307,6 +310,7 @@ bool LostArk::Server::CGameRoom::Join(
 	player.iCurrentResource = playerProfile->iMaximumResource;
 	player.iMaximumResource = playerProfile->iMaximumResource;
 	player.fMoveSpeed = playerProfile->fMoveSpeed;
+	player.isCombatReady = WORLD_ID::VALTAN_ARENA != m_eWorldId;
 	if (m_ServerNavigation.Is_Loaded())
 	{
 		SERVER_NAV_POINT projected{};
@@ -463,6 +467,7 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		player.fMoveGoalZ = move.fGoalZ;
 	}
 	player.hasMoveGoal = true;
+	player.isCombatReady = true;
 }
 
 void LostArk::Server::CGameRoom::Handle_UseSkill(
@@ -485,11 +490,65 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		1u : m_iServerTick + 1u;
 	// A valid but currently unavailable skill is rejected as gameplay state;
 	// malformed payloads are already closed at the ServerApp packet boundary.
-	m_PlayerSkillSystem.Try_Start(
+	if (m_PlayerSkillSystem.Try_Start(
 		playerIter->second,
 		useSkill,
 		m_GameplayCatalog,
-		actionStartTick);
+		actionStartTick))
+	{
+		playerIter->second.isCombatReady = true;
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_RevivePlayer(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_REVIVE_PLAYER& revivePlayer)
+{
+	using namespace LostArk::Shared;
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		sessionIter == m_PlayerIdBySessionId.end())
+	{
+		return;
+	}
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	SERVER_PLAYER& player = playerIter->second;
+	if (!Is_NewerSequence(
+		revivePlayer.iClientSequence, player.iLastReviveSequence))
+	{
+		return;
+	}
+	player.iLastReviveSequence = revivePlayer.iClientSequence;
+	if (0u != player.iCurrentHp || PLAYER_ACTION_STATE::DEAD != player.eAction)
+		return;
+
+	const PLAYER_RUNTIME_PROFILE* profile =
+		m_GameplayCatalog.Find_Player(player.eCharacterClass);
+	if (nullptr == profile)
+		return;
+	player.iCurrentHp = player.iMaximumHp;
+	player.iCurrentResource = player.iMaximumResource;
+	player.iResourceAccumulator = 0u;
+	player.eAction = PLAYER_ACTION_STATE::NONE;
+	player.eStance = profile->eDefaultStance;
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.iActionStartTick = 0u;
+	player.fActionElapsedSeconds = 0.f;
+	player.fSkillAimDirectionX = 0.f;
+	player.fSkillAimDirectionZ = 1.f;
+	player.hasAppliedSkillDamage = false;
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.CooldownEndTickBySkillId.clear();
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	player.TriggerMove = {};
+	player.isCombatReady = false;
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 }
 
 void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
@@ -779,6 +838,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iMaximumHp = player.iMaximumHp;
 		snapshot.iCurrentResource = player.iCurrentResource;
 		snapshot.iMaximumResource = player.iMaximumResource;
+		snapshot.isCombatReady = player.isCombatReady;
 		snapshot.iComboStage = player.iComboStage;
 		/* Collect, sort, then truncate: cutting during unordered_map iteration
 		made the surviving cooldowns depend on hash order. Signed difference keeps
@@ -804,6 +864,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		WORLD_ENTITY_SNAPSHOT snapshot{};
 		snapshot.iNetEntityId = entity.iNetEntityId;
 		snapshot.eAction = To_NetworkAction(entity.eAction);
+		snapshot.strPatternId = entity.strPatternId;
 		if (entity.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP ||
 			entity.eAction == SERVER_ENTITY_ACTION::PATTERN_ACTIVE ||
 			entity.eAction == SERVER_ENTITY_ACTION::PATTERN_RECOVERY)
@@ -815,6 +876,8 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.fPositionZ = entity.fPositionZ;
 		snapshot.fYawDegrees = entity.fYawDegrees;
 		snapshot.iActionStartTick = entity.iActionStartTick;
+		snapshot.iPatternSequence = entity.iPatternSequence;
+		snapshot.iPatternStageIndex = entity.iPatternStageIndex;
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
 		snapshot.iPhase = entity.iPhase;
@@ -921,33 +984,28 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 	staged.strPlacementId = placement.strPlacementId;
 	staged.strArchetypeId = placement.strArchetypeId;
 	staged.strEncounterId = placement.strEncounterId;
-	staged.strPatternId = placement.strPatternId;
-	staged.strActionId = placement.strActionId;
-	staged.strDamageProfileId = placement.strDamageProfileId;
 	staged.eKind = placement.eKind;
 	staged.fPositionX = placement.fPositionX;
 	staged.fPositionY = placement.fPositionY;
 	staged.fPositionZ = placement.fPositionZ;
 	staged.fYawDegrees = placement.fYawDegrees;
-	staged.fPatternMinimumRange = placement.fPatternMinimumRange;
-	staged.fPatternMaximumRange = placement.fPatternMaximumRange;
-	staged.iPatternTelegraphMs = placement.iPatternTelegraphMs;
-	staged.iPatternActiveMs = placement.iPatternActiveMs;
-	staged.iPatternRecoveryMs = placement.iPatternRecoveryMs;
 	if (WORLD_BOOTSTRAP_KIND::BOSS == staged.eKind)
 	{
 		const BOSS_RUNTIME_PROFILE* profile =
 			m_GameplayCatalog.Find_Boss(staged.strArchetypeId);
+		const auto* patterns =
+			m_GameplayCatalog.Find_BossPatterns(staged.strEncounterId);
 		if (nullptr == profile ||
 			profile->strEncounterId != staged.strEncounterId ||
-			0u == m_GameplayCatalog.Find_DamageRatePercent(
-				staged.strDamageProfileId))
+			nullptr == patterns || patterns->empty())
 		{
 			m_strStatus = "Boss gameplay profile or damage profile is missing";
 			return false;
 		}
 		staged.iCurrentHp = profile->iMaximumHp;
 		staged.iMaximumHp = profile->iMaximumHp;
+		staged.iMaximumHealthBars = profile->iMaximumHealthBars;
+		staged.iLastEvaluatedHealthBar = profile->iMaximumHealthBars;
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
 		staged.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;

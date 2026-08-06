@@ -134,12 +134,117 @@ namespace
 			return false;
 		return true;
 	}
+
+	bool ParseBossPatternSelection(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_SELECTION& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_SELECTION;
+		if ("NORMAL" == value)
+			output = BOSS_PATTERN_SELECTION::NORMAL;
+		else if ("HEALTH_BAR" == value)
+			output = BOSS_PATTERN_SELECTION::HEALTH_BAR;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossPatternHitShape(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_HIT_SHAPE& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_HIT_SHAPE;
+		if ("NONE" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::NONE;
+		else if ("CIRCLE" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::CIRCLE;
+		else if ("RING" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::RING;
+		else if ("CONE" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::CONE;
+		else if ("BOX" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::BOX;
+		else if ("CROSS" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::CROSS;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossPatternStageKind(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_STAGE_KIND& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_STAGE_KIND;
+		if ("WINDUP" == value)
+			output = BOSS_PATTERN_STAGE_KIND::WINDUP;
+		else if ("ACTIVE" == value)
+			output = BOSS_PATTERN_STAGE_KIND::ACTIVE;
+		else if ("RECOVERY" == value)
+			output = BOSS_PATTERN_STAGE_KIND::RECOVERY;
+		else
+			return false;
+		return true;
+	}
 }
 
 bool LostArk::Server::CGameplayCatalog::Load()
 {
+	using SKILL_MAP = decltype(m_Skills);
+	using BOSS_MAP = decltype(m_Bosses);
+	using PATTERN_MAP = decltype(m_BossPatterns);
+	using PLAYER_MAP = decltype(m_Players);
+	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
+	struct LOAD_ROLLBACK final
+	{
+		SKILL_MAP& skills;
+		BOSS_MAP& bosses;
+		PATTERN_MAP& patterns;
+		PLAYER_MAP& players;
+		DAMAGE_MAP& damages;
+		SKILL_MAP previousSkills;
+		BOSS_MAP previousBosses;
+		PATTERN_MAP previousPatterns;
+		PLAYER_MAP previousPlayers;
+		DAMAGE_MAP previousDamages;
+		bool committed = false;
+
+		LOAD_ROLLBACK(
+			SKILL_MAP& skillTarget,
+			BOSS_MAP& bossTarget,
+			PATTERN_MAP& patternTarget,
+			PLAYER_MAP& playerTarget,
+			DAMAGE_MAP& damageTarget)
+			: skills(skillTarget)
+			, bosses(bossTarget)
+			, patterns(patternTarget)
+			, players(playerTarget)
+			, damages(damageTarget)
+			, previousSkills(std::move(skillTarget))
+			, previousBosses(std::move(bossTarget))
+			, previousPatterns(std::move(patternTarget))
+			, previousPlayers(std::move(playerTarget))
+			, previousDamages(std::move(damageTarget))
+		{
+		}
+
+		~LOAD_ROLLBACK()
+		{
+			if (committed)
+				return;
+			skills = std::move(previousSkills);
+			bosses = std::move(previousBosses);
+			patterns = std::move(previousPatterns);
+			players = std::move(previousPlayers);
+			damages = std::move(previousDamages);
+		}
+	};
+	LOAD_ROLLBACK rollback{
+		m_Skills, m_Bosses, m_BossPatterns, m_Players,
+		m_DamageRatePercentByProfileId };
 	m_Skills.clear();
 	m_Bosses.clear();
+	m_BossPatterns.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
 
@@ -163,7 +268,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 1u != version ||
+		!ParseNumber(header[1], version) || 3u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -334,15 +439,17 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{
 			BOSS_RUNTIME_PROFILE boss{};
-			if (9u != fields.size() || !IsStableId(fields[1]) ||
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], boss.iMaximumHp) ||
-				!ParseNumber(fields[4], boss.iAttackPower) ||
-				!ParseNumber(fields[5], boss.fCollisionRadius) ||
-				!ParseNumber(fields[6], boss.fEngageDistance) ||
-				!ParseNumber(fields[7], boss.fMoveSpeed) ||
-				!ParseNumber(fields[8], boss.iPhaseTwoHpPercent) ||
-				0u == boss.iMaximumHp || 0u == boss.iAttackPower ||
+				!ParseNumber(fields[4], boss.iMaximumHealthBars) ||
+				!ParseNumber(fields[5], boss.iAttackPower) ||
+				!ParseNumber(fields[6], boss.fCollisionRadius) ||
+				!ParseNumber(fields[7], boss.fEngageDistance) ||
+				!ParseNumber(fields[8], boss.fMoveSpeed) ||
+				!ParseNumber(fields[9], boss.iPhaseTwoHpPercent) ||
+				0u == boss.iMaximumHp || 0u == boss.iMaximumHealthBars ||
+				boss.iMaximumHealthBars > 1000u || 0u == boss.iAttackPower ||
 				!std::isfinite(boss.fCollisionRadius) ||
 				boss.fCollisionRadius <= 0.f ||
 				!std::isfinite(boss.fEngageDistance) ||
@@ -360,6 +467,99 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				m_strStatus = "Duplicate boss archetype ID";
 				return false;
 			}
+		}
+		else if (!fields.empty() && "PATTERN" == fields[0])
+		{
+			BOSS_PATTERN_DEFINITION pattern{};
+			if (14u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
+				!ParseBossPatternSelection(fields[4], pattern.eSelection) ||
+				!ParseNumber(fields[5], pattern.iMinimumHealthBar) ||
+				!ParseNumber(fields[6], pattern.iMaximumHealthBar) ||
+				!ParseNumber(fields[7], pattern.iTriggerHealthBar) ||
+				!ParseNumber(fields[8], pattern.iTriggerOrder) ||
+				!ParseNumber(fields[9], pattern.iSelectionWeight) ||
+				!ParseNumber(fields[10], pattern.iMaximumConsecutiveUses) ||
+				!ParseNumber(fields[11], pattern.fMinimumRange) ||
+				!ParseNumber(fields[12], pattern.fMaximumRange) ||
+				!ParseNumber(fields[13], pattern.iExpectedStageCount) ||
+				!std::isfinite(pattern.fMinimumRange) ||
+				!std::isfinite(pattern.fMaximumRange) ||
+				pattern.fMinimumRange < 0.f ||
+				pattern.fMaximumRange <= pattern.fMinimumRange ||
+				0u == pattern.iExpectedStageCount ||
+				pattern.iExpectedStageCount > 64u)
+			{
+				m_strStatus = "Boss pattern row is invalid";
+				return false;
+			}
+			pattern.strEncounterId = fields[1];
+			pattern.strPatternId = fields[2];
+			pattern.strActionId = fields[3];
+			auto& patterns = m_BossPatterns[pattern.strEncounterId];
+			if (std::any_of(patterns.begin(), patterns.end(),
+				[&pattern](const BOSS_PATTERN_DEFINITION& existing)
+				{
+					return existing.strPatternId == pattern.strPatternId ||
+						existing.strActionId == pattern.strActionId;
+				}))
+			{
+				m_strStatus = "Duplicate boss pattern or action ID";
+				return false;
+			}
+			patterns.push_back(std::move(pattern));
+		}
+		else if (!fields.empty() && "PATTERNSTAGE" == fields[0])
+		{
+			BOSS_PATTERN_STAGE_DEFINITION stage{};
+			std::uint32_t stageIndex = 0u;
+			if (17u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], stageIndex) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
+				!ParseBossPatternStageKind(fields[6], stage.eStageKind) ||
+				!ParseNumber(fields[7], stage.iDurationMs) ||
+				!ParseBossPatternHitShape(fields[8], stage.eHitShape) ||
+				!ParseNumber(fields[9], stage.fHitOuterRadius) ||
+				!ParseNumber(fields[10], stage.fHitInnerRadius) ||
+				!ParseNumber(fields[11], stage.fHitAngleDegrees) ||
+				!ParseNumber(fields[12], stage.fHitLength) ||
+				!ParseNumber(fields[13], stage.fHitHalfWidth) ||
+				!ParseNumber(fields[14], stage.iHitCount) ||
+				!ParseNumber(fields[15], stage.iHitIntervalMs) ||
+				("-" != fields[16] && !IsStableId(fields[16])) ||
+				0u == stage.iDurationMs ||
+				!std::isfinite(stage.fHitOuterRadius) ||
+				!std::isfinite(stage.fHitInnerRadius) ||
+				!std::isfinite(stage.fHitAngleDegrees) ||
+				!std::isfinite(stage.fHitLength) ||
+				!std::isfinite(stage.fHitHalfWidth))
+			{
+				m_strStatus = "Boss pattern stage row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern stage has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				stageIndex != owner->Stages.size() ||
+				stageIndex >= owner->iExpectedStageCount)
+			{
+				m_strStatus = "Boss pattern stage does not follow its pattern";
+				return false;
+			}
+			stage.strStageId = fields[4];
+			stage.strActionId = fields[5];
+			stage.strDamageProfileId =
+				"-" == fields[16] ? "" : std::string(fields[16]);
+			owner->Stages.push_back(std::move(stage));
 		}
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
@@ -392,7 +592,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	}
 
 	if (std::getline(input, line) || m_Skills.empty() || m_Players.empty() ||
-		m_Bosses.empty() || m_DamageRatePercentByProfileId.empty())
+		m_Bosses.empty() || m_BossPatterns.empty() ||
+		m_DamageRatePercentByProfileId.empty())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
 		return false;
@@ -422,7 +623,106 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			return false;
 		}
 	}
+	for (const auto& [archetypeId, boss] : m_Bosses)
+	{
+		(void)archetypeId;
+		const auto foundPatterns = m_BossPatterns.find(boss.strEncounterId);
+		if (m_BossPatterns.end() == foundPatterns || foundPatterns->second.empty())
+		{
+			m_strStatus = "Boss encounter has no runtime patterns";
+			return false;
+		}
+		for (const BOSS_PATTERN_DEFINITION& pattern : foundPatterns->second)
+		{
+			const bool isNormal = BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
+			const bool validSelection = isNormal ?
+				(pattern.iMinimumHealthBar >= 1u &&
+					pattern.iMaximumHealthBar >= pattern.iMinimumHealthBar &&
+					pattern.iMaximumHealthBar <= boss.iMaximumHealthBars &&
+					0u == pattern.iTriggerHealthBar && 0u == pattern.iTriggerOrder &&
+					pattern.iSelectionWeight > 0u &&
+					pattern.iMaximumConsecutiveUses > 0u) :
+				(0u == pattern.iMinimumHealthBar && 0u == pattern.iMaximumHealthBar &&
+					pattern.iTriggerHealthBar >= 1u &&
+					pattern.iTriggerHealthBar <= boss.iMaximumHealthBars &&
+					pattern.iTriggerOrder > 0u && 0u == pattern.iSelectionWeight &&
+					0u == pattern.iMaximumConsecutiveUses);
+			if (!validSelection ||
+				pattern.Stages.size() != pattern.iExpectedStageCount)
+			{
+				m_strStatus = "Boss pattern selection or stage count is invalid";
+				return false;
+			}
+			for (std::size_t stageIndex = 0u;
+				stageIndex < pattern.Stages.size(); ++stageIndex)
+			{
+				const BOSS_PATTERN_STAGE_DEFINITION& stage =
+					pattern.Stages[stageIndex];
+				const bool zeroShapeValues =
+					0.f == stage.fHitOuterRadius &&
+					0.f == stage.fHitInnerRadius &&
+					0.f == stage.fHitAngleDegrees &&
+					0.f == stage.fHitLength &&
+					0.f == stage.fHitHalfWidth;
+				bool validShape = false;
+				switch (stage.eHitShape)
+				{
+				case BOSS_PATTERN_HIT_SHAPE::NONE:
+					validShape = zeroShapeValues && 0u == stage.iHitCount &&
+						0u == stage.iHitIntervalMs &&
+						stage.strDamageProfileId.empty();
+					break;
+				case BOSS_PATTERN_HIT_SHAPE::CIRCLE:
+					validShape = stage.fHitOuterRadius > 0.f &&
+						0.f == stage.fHitInnerRadius &&
+						0.f == stage.fHitAngleDegrees &&
+						0.f == stage.fHitLength && 0.f == stage.fHitHalfWidth;
+					break;
+				case BOSS_PATTERN_HIT_SHAPE::RING:
+					validShape = stage.fHitOuterRadius > stage.fHitInnerRadius &&
+						stage.fHitInnerRadius > 0.f &&
+						0.f == stage.fHitAngleDegrees &&
+						0.f == stage.fHitLength && 0.f == stage.fHitHalfWidth;
+					break;
+				case BOSS_PATTERN_HIT_SHAPE::CONE:
+					validShape = stage.fHitAngleDegrees > 0.f &&
+						stage.fHitAngleDegrees <= 180.f && stage.fHitLength > 0.f &&
+						0.f == stage.fHitOuterRadius &&
+						0.f == stage.fHitInnerRadius && 0.f == stage.fHitHalfWidth;
+					break;
+				case BOSS_PATTERN_HIT_SHAPE::BOX:
+				case BOSS_PATTERN_HIT_SHAPE::CROSS:
+					validShape = stage.fHitLength > 0.f && stage.fHitHalfWidth > 0.f &&
+						0.f == stage.fHitOuterRadius &&
+						0.f == stage.fHitInnerRadius &&
+						0.f == stage.fHitAngleDegrees;
+					break;
+				}
+				if (BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape)
+				{
+					validShape = validShape && stage.iHitCount > 0u &&
+						(1u == stage.iHitCount ? 0u == stage.iHitIntervalMs :
+							stage.iHitIntervalMs > 0u) &&
+						static_cast<std::uint64_t>(stage.iHitCount - 1u) *
+							stage.iHitIntervalMs < stage.iDurationMs &&
+						0u != Find_DamageRatePercent(stage.strDamageProfileId);
+				}
+				if (!validShape ||
+					std::any_of(pattern.Stages.begin() + stageIndex + 1u,
+						pattern.Stages.end(),
+						[&stage](const BOSS_PATTERN_STAGE_DEFINITION& other)
+						{
+							return stage.strStageId == other.strStageId;
+						}))
+				{
+					m_strStatus = "Boss pattern stage hit contract is invalid";
+					return false;
+				}
+			}
+		}
+	}
 
+	rollback.committed = true;
 	m_strStatus = "Loaded gameplay bootstrap";
 	return true;
 }
@@ -449,6 +749,14 @@ LostArk::Server::CGameplayCatalog::Find_Boss(
 {
 	const auto iter = m_Bosses.find(archetypeId);
 	return m_Bosses.end() == iter ? nullptr : &iter->second;
+}
+
+const std::vector<LostArk::Server::BOSS_PATTERN_DEFINITION>*
+LostArk::Server::CGameplayCatalog::Find_BossPatterns(
+	const std::string& encounterId) const
+{
+	const auto iter = m_BossPatterns.find(encounterId);
+	return m_BossPatterns.end() == iter ? nullptr : &iter->second;
 }
 
 std::uint32_t LostArk::Server::CGameplayCatalog::Find_DamageRatePercent(
