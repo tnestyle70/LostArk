@@ -11,6 +11,7 @@ uint g_HasEmissiveTexture = 0;
 uint g_HasSpecularTexture = 0;
 uint g_HasOpacityTexture = 0;
 float g_EmissiveIntensity = 1.f;
+float4 g_EmissiveColor = 1.f;
 float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
 float2 g_UVScale = float2(1.f, 1.f);
@@ -129,7 +130,8 @@ PS_OUT PS_MAIN(VS_OUT input)
     {
         float3 emissive = g_EmissiveTexture.Sample(
             LinearSampler, input.vTexcoord).rgb;
-        output.vEmissive = float4(emissive * g_EmissiveIntensity, 0.f);
+        output.vEmissive = float4(
+            emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
     }
     return output;
 }

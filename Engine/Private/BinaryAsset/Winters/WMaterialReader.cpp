@@ -28,6 +28,15 @@ namespace
 		return 0 == memcmp(pValue, pMagic, 4);
 	}
 
+	template <size_t Size>
+	string ReadFixedString(const char_t (&value)[Size])
+	{
+		size_t length = {};
+		while (length < Size && '\0' != value[length])
+			++length;
+		return string(value, length);
+	}
+
 	filesystem::path ResolveBelowAssetRoot(const MODEL_ASSET_LOAD_DESC& desc,
 		const filesystem::path& storedPath)
 	{
@@ -180,6 +189,8 @@ bool_t CWMaterialReader::ReadMemory(const uint8_t* pData,
 					}
 
 					MODEL_MATERIAL_DATA& material = outMaterials[entry.materialIndex];
+					material.name = ReadFixedString(entry.name);
+					material.nameHash = entry.materialHash;
 					material.diffusePath = ResolveTexturePath(desc, containerPath, entry.baseColorPath);
 					material.normalPath = ResolveTexturePath(desc, containerPath, entry.normalPath);
 					material.specularPath = ResolveTexturePath(desc, containerPath, entry.specularPath);
@@ -199,8 +210,11 @@ bool_t CWMaterialReader::ReadMemory(const uint8_t* pData,
 						outReport.error = "WMAT contains an out-of-range material index.";
 						return false;
 					}
-					outMaterials[entry.materialIndex].diffusePath =
-						ResolveTexturePath(desc, containerPath, entry.diffusePath);
+					MODEL_MATERIAL_DATA& material = outMaterials[entry.materialIndex];
+					material.name = ReadFixedString(entry.name);
+					material.nameHash = entry.materialHash;
+					material.diffusePath = ResolveTexturePath(
+						desc, containerPath, entry.diffusePath);
 				}
 			}
 	}

@@ -3,7 +3,15 @@
 float4x4 g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 Texture2D g_DiffuseTexture;
 Texture2D g_NormalTexture;
+Texture2D g_SpecularTexture;
+Texture2D g_EmissiveTexture;
 uint g_HasNormalTexture = 0;
+uint g_HasSpecularTexture = 0;
+uint g_HasEmissiveTexture = 0;
+float g_SpecularIntensity = 1.f;
+float g_SpecularPower = 50.f;
+float4 g_EmissiveColor = 1.f;
+float g_EmissiveIntensity = 1.f;
 matrix g_BoneMatrices[512];
 
 struct VS_IN
@@ -90,14 +98,28 @@ PS_OUT PS_MAIN(VS_OUT input)
     }
 
     output.vDiffuse = diffuse;
-    output.vNormal = float4(normal * 0.5f + 0.5f, 1.f);
+    float specularMask = g_SpecularIntensity;
+    if (0 != g_HasSpecularTexture)
+    {
+        float3 specular = g_SpecularTexture.Sample(
+            LinearSampler, input.vTexcoord).rgb;
+        specularMask *= dot(specular, float3(0.299f, 0.587f, 0.114f));
+    }
+    output.vNormal = float4(normal * 0.5f + 0.5f, specularMask);
     output.vDepth = float4(
         input.vProjPos.z / input.vProjPos.w,
         input.vProjPos.w / 1000.f,
-        0.f,
+        g_SpecularPower,
         0.f);
     output.vPickPos = input.vWorldPos;
     output.vEmissive = 0.f;
+    if (0 != g_HasEmissiveTexture)
+    {
+        float3 emissive = g_EmissiveTexture.Sample(
+            LinearSampler, input.vTexcoord).rgb;
+        output.vEmissive = float4(
+            emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
+    }
     return output;
 }
 

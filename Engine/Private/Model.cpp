@@ -392,6 +392,25 @@ bool_t CModel::Has_MaterialTexture(uint32_t iMeshIndex,
         m_Materials[materialIndex]->Has_Texture(eType, iTextureIndex);
 }
 
+const string& CModel::Get_MaterialName(uint32_t iMeshIndex) const
+{
+	static const string Empty;
+	if (iMeshIndex >= m_Meshes.size())
+		return Empty;
+	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+	return materialIndex < m_Materials.size() ?
+		m_Materials[materialIndex]->Get_Name() : Empty;
+}
+
+uint64_t CModel::Get_MaterialNameHash(uint32_t iMeshIndex) const
+{
+	if (iMeshIndex >= m_Meshes.size())
+		return 0u;
+	const uint32_t materialIndex = m_Meshes[iMeshIndex]->Get_MaterialIndex();
+	return materialIndex < m_Materials.size() ?
+		m_Materials[materialIndex]->Get_NameHash() : 0u;
+}
+
 HRESULT CModel::Ready_Meshes()
 {
     m_iNumMeshes = m_pAIScene->mNumMeshes;

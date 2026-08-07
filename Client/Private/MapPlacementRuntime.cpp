@@ -251,25 +251,6 @@ bool_t CMapPlacementRuntime::Try_Get_PlacementBounds(
 	return true;
 }
 
-HRESULT CMapPlacementRuntime::Ensure_DefaultLight()
-{
-	static bool_t isStandaloneLightRegistered = false;
-	if (isStandaloneLightRegistered)
-		return S_OK;
-
-	LIGHT_DESC light{};
-	light.eType = LIGHT::DIRECTIONAL;
-	light.vDirection = float4_t(0.5f, -1.f, 0.5f, 0.f);
-	light.vDiffuse = float4_t(0.8f, 0.8f, 0.8f, 1.f);
-	light.vAmbient = float4_t(0.35f, 0.35f, 0.35f, 1.f);
-	light.vSpecular = float4_t(0.5f, 0.5f, 0.5f, 1.f);
-	if (FAILED(CGameInstance::Get().Add_Light(light)))
-		return E_FAIL;
-
-	isStandaloneLightRegistered = true;
-	return S_OK;
-}
-
 bool_t CMapPlacementRuntime::Read_Placements(
 	const CMapAssetCatalog& catalog,
 	std::vector<MAP_PLACEMENT_RECORD>& outRecords,

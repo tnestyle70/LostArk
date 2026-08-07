@@ -147,7 +147,7 @@ HRESULT CLevel_Development::Render()
 
 HRESULT CLevel_Development::Ready_Lights()
 {
-	return CMapPlacementRuntime::Ensure_DefaultLight();
+	return S_OK;
 }
 
 HRESULT CLevel_Development::Ready_Camera(

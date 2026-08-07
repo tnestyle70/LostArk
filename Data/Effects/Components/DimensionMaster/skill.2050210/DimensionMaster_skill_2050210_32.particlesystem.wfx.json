@@ -11,7 +11,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_rb_00_1|FX_PC_SWP_00.par_j_swp_willowrend_rb_00_1.particlespriteemitter_2",
       "fx_pc_swp_00.par_j_swp_willowrend_rb_00_1|FX_PC_SWP_00.par_j_swp_willowrend_rb_00_1.particlespriteemitter_5"
     ],
-    "sourceElementSha256": "34deac33a6fe46cdac80af18826b817e16cc065318790efed089355a38c3b8ab",
+    "sourceElementSha256": "eba66d5f32120fdb5d2bb49ede6ca9a2033fb1559c421af34ba0671a2f267202",
     "inputSlot": "A"
   },
   "emitters": [
@@ -36,7 +36,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050210.32",
     "displayName": "DimensionMaster_skill_2050210_32.particlesystem.wfx",
     "particleSystem": {
@@ -56,16 +56,16 @@
         "kind": "particle",
         "resources": [
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_17_ycl.dds"
-          },
-          {
             "slotId": "noise",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds"
           },
           {
-            "slotId": "mask",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds"
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds"
+          },
+          {
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
           }
         ],
         "material": {
@@ -74,106 +74,222 @@
           "renderProfile": "alpha_two_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.ribbonwave.02.tr.7eedea7b65b4",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_ribbonwave_02_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.ribbonwave.02.tr.778a2b3834cf",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_ribbonwave_02_tr",
             "semanticStatus": "reconstructed_profile",
+            "textures": [
+              {
+                "name": "tex_main",
+                "sourceObjectPath": "fx_tex_06.fx_j_auraline_17_ycl",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_17_ycl.dds",
+                "group": "maintex"
+              },
+              {
+                "name": "flowtex",
+                "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_10",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "group": "flow"
+              },
+              {
+                "name": "colormap",
+                "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds",
+                "group": "colormap"
+              },
+              {
+                "name": "dissolve_tex",
+                "sourceObjectPath": "fx_h_atypical_01_1",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "group": "dissolve"
+              },
+              {
+                "name": "umodel_dependency",
+                "sourceObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_flownoise_tile_04.dds",
+                "group": ""
+              }
+            ],
             "scalars": [
               {
-                "name": "colormap_coord_x",
-                "value": 1.0
+                "name": "distortion",
+                "value": 10.0,
+                "group": "opacity"
               },
               {
-                "name": "colormap_coord_y",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "colormap_desaturation",
-                "value": 1.0
-              },
-              {
-                "name": "colormap_pos_x",
-                "value": 0.0
-              },
-              {
-                "name": "colormap_pos_y",
-                "value": 0.0
-              },
-              {
-                "name": "colormap_power",
-                "value": 1.0
-              },
-              {
-                "name": "colormap_str",
-                "value": 3.0
-              },
-              {
-                "name": "flowtex_tileu",
-                "value": 1.0
-              },
-              {
-                "name": "maintex_pos_u",
-                "value": 0.5
-              },
-              {
-                "name": "maintex_pos_v",
-                "value": 0.0
-              },
-              {
-                "name": "maintex_pow",
-                "value": 1.0
-              },
-              {
-                "name": "maintex_str",
-                "value": 5.0
-              },
-              {
-                "name": "maintex_tile_u",
-                "value": 0.5
-              },
-              {
-                "name": "maintex_tile_v",
-                "value": 1.0
-              },
-              {
-                "name": "uv_xscale",
-                "value": 1.0
-              },
-              {
-                "name": "uv_yscale",
-                "value": 5.0
-              },
-              {
-                "name": "sphere_offset_x",
-                "value": 0.0
-              },
-              {
-                "name": "sphere_offset_y",
-                "value": 0.0
-              },
-              {
-                "name": "sphere_radius",
-                "value": -0.5
+                "name": "gra_pow",
+                "value": 1.5,
+                "group": "opacity"
               },
               {
                 "name": "sphere_str",
-                "value": 1.0
+                "value": 1.0,
+                "group": "opacity"
               },
               {
-                "name": "tail_range",
-                "value": 1.0
+                "name": "sphere_radius",
+                "value": -0.5,
+                "group": "opacity"
               },
               {
-                "name": "uvflow_speed",
-                "value": 1.0
+                "name": "sphere_offset_y",
+                "value": 0.0,
+                "group": "opacity"
               },
               {
-                "name": "uvflow_str",
-                "value": 0.30000001192092896
+                "name": "sphere_offset_x",
+                "value": 0.0,
+                "group": "opacity"
+              },
+              {
+                "name": "maintex_pow",
+                "value": 1.0,
+                "group": "maintex"
               },
               {
                 "name": "uvnoise_map_str",
-                "value": 0.5
+                "value": 0.5,
+                "group": "uvflowmap"
+              },
+              {
+                "name": "uvflow_str",
+                "value": 0.3,
+                "group": "uvflowmap"
+              },
+              {
+                "name": "uvflow_speed",
+                "value": 1.0,
+                "group": "uvflowmap"
+              },
+              {
+                "name": "tail_range",
+                "value": 1.0,
+                "group": "uvflowmap"
+              },
+              {
+                "name": "maintex_pos_v",
+                "value": 0.0,
+                "group": "maintex"
+              },
+              {
+                "name": "maintex_pos_u",
+                "value": 0.5,
+                "group": "maintex"
+              },
+              {
+                "name": "maintex_tile_v",
+                "value": 1.0,
+                "group": "maintex"
+              },
+              {
+                "name": "maintex_tile_u",
+                "value": 0.5,
+                "group": "maintex"
+              },
+              {
+                "name": "maintex_str",
+                "value": 5.0,
+                "group": "maintex"
+              },
+              {
+                "name": "colormap_str",
+                "value": 3.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_power",
+                "value": 1.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_desaturation",
+                "value": 1.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_pos_y",
+                "value": 0.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_pos_x",
+                "value": 0.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_coord_y",
+                "value": 0.2,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_coord_x",
+                "value": 1.0,
+                "group": "colormap"
+              },
+              {
+                "name": "colormap_speed",
+                "value": -0.5,
+                "group": "colormap"
+              },
+              {
+                "name": "dissolve_hardness",
+                "value": 5.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tension",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tile_y",
+                "value": 1.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tile_x",
+                "value": 1.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_pan_y",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_pan_x",
+                "value": -0.1,
+                "group": "dissolve"
+              },
+              {
+                "name": "flowtex_tileu",
+                "value": 1.0,
+                "group": "flow"
+              },
+              {
+                "name": "flowtex_tilev",
+                "value": 1.0,
+                "group": "flow"
+              },
+              {
+                "name": "flowtex_offsety",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "flowtex_offsetx",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "uv_xscale",
+                "value": 1.0,
+                "group": "maintex"
+              },
+              {
+                "name": "uv_yscale",
+                "value": 5.0,
+                "group": "maintex"
               }
             ],
             "vectors": [
@@ -184,12 +300,13 @@
                   10.0,
                   10.0,
                   1.0
-                ]
+                ],
+                "group": "colormap"
               }
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "opacity",
+              "unbound",
               "dissolve",
               "unbound",
               "uv_pan"
@@ -416,6 +533,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1246,6 +1398,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -1264,25 +1429,42 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_cubesample_01_01_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.me.cubesample.01.tr.3c66eff8d692",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_me_cubesample_01_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.me.cubesample.01.tr.18cdc7bb814f",
+            "runtimeShaderProfileId": "effect.ue3.fallback-blocked.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_me_cubesample_01_tr",
             "semanticStatus": "reconstructed_profile",
-            "scalars": [
+            "textures": [
               {
-                "name": "edge_line",
-                "value": 15.0
+                "name": "spec_texture",
+                "sourceObjectPath": "fx_j_caustic_tile_02",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "group": "None"
               },
               {
+                "name": "umodel_dependency",
+                "sourceObjectPath": "fx_tex_06.fx_j_caustic_tile_02",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "group": ""
+              }
+            ],
+            "scalars": [
+              {
                 "name": "edge_str",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "edge_line",
+                "value": 15.0,
+                "group": "None"
               },
               {
                 "name": "spec_str",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
               }
             ],
             "vectors": [
@@ -1293,7 +1475,8 @@
                   3.0,
                   4.0,
                   1.0
-                ]
+                ],
+                "group": "None"
               }
             ],
             "staticSwitches": [],
@@ -1407,7 +1590,7 @@
             "dissolveStartNormalized": 1.0
           },
           "mesh": {
-            "useModelMaterial": true
+            "useModelMaterial": false
           },
           "sprite": {
             "billboard": true
@@ -1525,6 +1708,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -2525,6 +2743,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       }
     ]

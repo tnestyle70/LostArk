@@ -48,8 +48,7 @@ HRESULT CLevel_ValtanArena::Initialize()
 		return E_FAIL;
 	}
 
-	if (FAILED(CMapPlacementRuntime::Ensure_DefaultLight()) ||
-		FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
+	if (FAILED(Ready_Layer_Camera(TEXT("Layer_Camera"))))
 	{
 		m_DeployRuntime.Clear();
 		m_MapRuntime.Clear();

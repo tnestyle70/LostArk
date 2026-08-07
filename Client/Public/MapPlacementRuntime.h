@@ -59,7 +59,6 @@ public:
 	bool_t Try_Get_PlacementBounds(
 		float3_t& outMinimum,
 		float3_t& outMaximum) const;
-	static HRESULT Ensure_DefaultLight();
 
 	static bool_t Read_Placements(
 		const CMapAssetCatalog& catalog,

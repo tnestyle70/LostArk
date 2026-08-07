@@ -315,6 +315,9 @@
     <ClCompile Include="..\Private\Part_Equipment.cpp">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClCompile>
@@ -565,6 +568,9 @@
     <ClInclude Include="..\Public\Part_Equipment.h">
       <Filter>02.GameObjects\00. Character</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h">
+	  <Filter>02.GameObjects\00. Character</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\MapAssetRenderUtils.h">
       <Filter>02.GameObjects\02. World\Map</Filter>
     </ClInclude>
@@ -2001,7 +2007,13 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.parent-material-graph-evidence.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.skeletal-mesh-sockets.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.source-material-evidence.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMasterBase.action-effects.json">
@@ -2178,6 +2190,12 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base-effect-materialization.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base11-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base11-promotion.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.character-animation-retime.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
@@ -2185,6 +2203,9 @@
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.model-cue-runtime-bindings.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.renderer-family-audit.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.resource-source-manifest.json">

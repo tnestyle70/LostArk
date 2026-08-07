@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <array>
+#include <cmath>
 #include <utility>
 
 //Socket worker thread�� client main thread�� �и��ϱ� ���ؼ� �����Ѵ�.
@@ -237,6 +238,8 @@ bool CNetworkManager::Connect_To_Server(
 	m_iLocalNetEntityId = LostArk::Shared::INVALID_NET_ENTITY_ID;
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
 	m_eLocalCharacterClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasLocalSpawn = false;
+	m_LocalSpawn = {};
 	m_iLastErrorCode.store(0);
 	m_isReceiveRunning.store(true);
 	m_ReceiveThread = std::thread(
@@ -460,6 +463,8 @@ void CNetworkManager::Close_ServerConnection()
 	m_eWorldId = LostArk::Shared::WORLD_ID::END;
 	m_eLocalCharacterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	m_hasLocalSpawn = false;
+	m_LocalSpawn = {};
 }
 
 bool CNetworkManager::Is_Connected() const
@@ -488,6 +493,16 @@ LostArk::Shared::CHARACTER_CLASS_ID
 CNetworkManager::Get_LocalCharacterClass() const
 {
 	return m_eLocalCharacterClass;
+}
+
+bool CNetworkManager::Try_Get_LocalSpawn(
+	LostArk::Shared::S2C_PLAYER_SPAWNED& outSpawn) const
+{
+	if (!m_hasLocalSpawn)
+		return false;
+
+	outSpawn = m_LocalSpawn;
+	return true;
 }
 
 void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
@@ -600,6 +615,8 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		m_iLocalPlayerId = accepted.iPlayerId;
 		m_iLocalNetEntityId = accepted.iNetEntityId;
 		m_eWorldId = accepted.eWorldId;
+		m_hasLocalSpawn = false;
+		m_LocalSpawn = {};
 		m_hasPendingEnterAccepted = true;
 		m_PendingEnterAccepted = accepted;
 		break;
@@ -616,6 +633,16 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		//Client Replication Event ����
+		if (spawned.iPlayerId == m_iLocalPlayerId &&
+			spawned.iNetEntityId == m_iLocalNetEntityId &&
+			std::isfinite(spawned.fPositionX) &&
+			std::isfinite(spawned.fPositionY) &&
+			std::isfinite(spawned.fPositionZ) &&
+			std::isfinite(spawned.fYawDegrees))
+		{
+			m_LocalSpawn = spawned;
+			m_hasLocalSpawn = true;
+		}
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_SPAWNED;
 		event.PlayerSpawned = std::move(spawned);
@@ -697,6 +724,11 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		{
 			m_iLastErrorCode.store(WSAEINVAL);
 			return;
+		}
+		if (despawned.iNetEntityId == m_iLocalNetEntityId)
+		{
+			m_hasLocalSpawn = false;
+			m_LocalSpawn = {};
 		}
 		Client::CLIENT_REPLICATION_EVENT event{};
 		event.eType = Client::CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED;

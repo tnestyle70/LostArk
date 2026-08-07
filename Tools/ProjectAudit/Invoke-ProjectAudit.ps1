@@ -570,7 +570,7 @@ try {
 	$effectPassOrderPattern =
 		'pass\s+OpaqueBackDepthWrite[\s\S]*pass\s+AlphaTwoSidedDepthRead[\s\S]*pass\s+AdditiveTwoSidedDepthRead'
 	$effectG6DetailPreviewShape =
-		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*11u' -and
+		$effectDocumentHeader -match 'EFFECT_AUTHORING_FORMAT_VERSION\s*=\s*12u' -and
 		$effectDocumentHeader -match 'struct EFFECT_SOURCE_MATERIAL_DESC[\s\S]*DynamicParameterSemantics[\s\S]*strSubUVMode' -and
 		$effectDocumentHeader -match 'struct EFFECT_PARTICLE_SYSTEM_DESC[\s\S]*fUniformScaleMultiplier[\s\S]*fDirectionYawDegrees[\s\S]*fInitialSpeedMultiplier' -and
 		$effectDocumentHeader -match 'EFFECT_AUTHORING_MIN_SUPPORTED_VERSION\s*=\s*3u' -and
@@ -757,7 +757,8 @@ try {
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Is_Ready' -and
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
 		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
-		$characterSelectSource -match 'CMapPlacementRuntime::Ensure_DefaultLight' -and
+		$mainAppSource -match 'scene\.character-select\.warm-high-key\.v1' -and
+		$mainAppSource -match 'ApplySceneRenderingProfile' -and
 		$characterSelectSource -match 'CCharacterSelectionState::Select' -and
 		$characterSelectSource -match 'MODE::CONNECTING' -and
 		$characterSelectSource -match 'Try_Consume_TestEntryMode' -and
@@ -898,6 +899,21 @@ try {
 		$developmentLevelSource -match 'camera->Is_FollowEnabled\(\)' -and
 		$characterSelectSource -match 'm_pCamera->Is_FollowEnabled\(\)') `
 		'free camera synchronizes physical edges but blocks move and skill command submission in every gameplay level'
+	$cameraFreeSource = Get-Content -LiteralPath 'Client\Private\Camera_Free.cpp' -Raw
+	$cameraBaseSource = Get-Content -LiteralPath 'Engine\Private\Camera.cpp' -Raw
+	$gameInstanceSource = Get-Content -LiteralPath 'Engine\Private\GameInstance.cpp' -Raw
+	Add-Check 'camera.follow-same-frame-transform' (
+		$cameraFreeSource -notmatch '(?s)Priority_Update\(f32_t fTimeDelta\).*?Update_FollowCamera\(fTimeDelta\).*?void CCamera_Free::Update\(' -and
+		$cameraFreeSource -match '(?s)Late_Update\(f32_t fTimeDelta\).*?Update_FollowCamera\(fTimeDelta\).*?Update_PipeLine' -and
+		$cameraFreeSource -match '(?s)Set_FollowEnabled\(bool_t isEnabled\).*?Update_FollowCamera\(0\.f\).*?Update_PipeLine' -and
+		$cameraBaseSource -match 'Refresh_CameraState\(\)' -and
+		$gameInstanceSource -match '(?s)Refresh_CameraState\(\).*?m_pPipeLine->Update\(\).*?m_pFrustum->Update_InWorldSpace\(\)' -and
+		$networkManagerSource -match 'Try_Get_LocalSpawn' -and
+		$networkManagerSource -match 'spawned\.iPlayerId == m_iLocalPlayerId' -and
+		([regex]::Matches($networkManagerSource, 'm_hasLocalSpawn = false').Count -ge 4) -and
+		$bernLevelSource -match 'Try_Get_LocalSpawn' -and
+		$bernLevelSource -match 'cameraDesc\.fFollowResponse = 0\.f') `
+		'follow camera commits the updated character transform and camera-derived state in the same frame; Bern starts from the approved local spawn when available'
 
     $characterLogicFiles = @(Get-ChildItem -LiteralPath 'Client\Private' -Filter 'Logic_*.cpp' -File)
     $characterLogicBoundaryHits = @($characterLogicFiles | Select-String -Pattern 'Get_DIKey|Get_DIMouse|NetworkManager|Play_Skill\(')

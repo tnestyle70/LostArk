@@ -205,6 +205,8 @@ bool_t Client::CEffectPresentationService::Spawn(
         CEffectCatalog::Find(Desc.strEffectAssetId);
     if (nullptr == pOwner || nullptr == pDocument ||
         Desc.strAnchorSlotId.empty() ||
+		!std::isfinite(Desc.fPlaybackRate) ||
+		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
@@ -243,6 +245,7 @@ bool_t Client::CEffectPresentationService::Spawn(
     ObjectDesc.pDocument = pDocument.get();
     ObjectDesc.RootWorld = Root;
     ObjectDesc.bAutoPlay = true;
+	ObjectDesc.fPlaybackRate = Desc.fPlaybackRate;
     const uint32_t iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
     std::shared_ptr<CGameObject> pGameObject;
     if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

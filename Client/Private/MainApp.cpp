@@ -16,6 +16,7 @@
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
 #include "Profiler.h"
+#include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "SkillWindowView.h"
@@ -38,6 +39,58 @@
 
 namespace
 {
+	const char_t* SceneRenderingProfileId(const LEVEL eLevel)
+	{
+		switch (eLevel)
+		{
+		case LEVEL::CHARACTER_SELECT: return "scene.character-select.warm-high-key.v1";
+		case LEVEL::VALTAN_ARENA: return "scene.valtan.cool-low-key.v1";
+		case LEVEL::BERN: return "scene.bern.neutral-day.v1";
+		case LEVEL::DEVELOPMENT: return "scene.development.neutral.v1";
+		case LEVEL::LOADING: return "scene.loading.neutral.v1";
+		case LEVEL::LOBBY: return "scene.lobby.neutral.v1";
+		default: return "scene.unknown";
+		}
+	}
+
+	LIGHT_DESC BuildSceneLight(const LEVEL eLevel)
+	{
+		LIGHT_DESC Light{};
+		Light.eType = LIGHT::DIRECTIONAL;
+		Light.vDirection = float4_t(0.5f, -1.f, 0.5f, 0.f);
+		Light.fRange = 1.f;
+		if (LEVEL::CHARACTER_SELECT == eLevel)
+		{
+			Light.vDiffuse = float4_t(0.85f, 0.80f, 0.72f, 1.f);
+			Light.vAmbient = float4_t(0.28f, 0.27f, 0.26f, 1.f);
+			Light.vSpecular = float4_t(0.55f, 0.52f, 0.50f, 1.f);
+		}
+		else if (LEVEL::VALTAN_ARENA == eLevel)
+		{
+			Light.vDiffuse = float4_t(0.48f, 0.54f, 0.58f, 1.f);
+			Light.vAmbient = float4_t(0.12f, 0.15f, 0.17f, 1.f);
+			Light.vSpecular = float4_t(0.35f, 0.45f, 0.50f, 1.f);
+		}
+		else if (LEVEL::LOADING == eLevel || LEVEL::LOBBY == eLevel)
+		{
+			Light.vDiffuse = float4_t{};
+			Light.vAmbient = float4_t{};
+			Light.vSpecular = float4_t{};
+		}
+		else
+		{
+			Light.vDiffuse = float4_t(0.8f, 0.8f, 0.8f, 1.f);
+			Light.vAmbient = float4_t(0.25f, 0.25f, 0.25f, 1.f);
+			Light.vSpecular = float4_t(0.5f, 0.5f, 0.5f, 1.f);
+		}
+		return Light;
+	}
+
+	HRESULT ApplySceneRenderingProfile(const LEVEL eLevel)
+	{
+		return CGameInstance::Get().Add_Light(BuildSceneLight(eLevel));
+	}
+
 	wstring Utf8ToWide(const string& value)
 	{
 		if (value.empty())
@@ -169,7 +222,17 @@ HRESULT CMainApp::Initialize()
 
 	std::string effectCatalogStatus;
 	if (!CEffectCatalog::Load(effectCatalogStatus))
+	{
+		const std::string diagnostic =
+			"[MainApp] Effect Catalog initialization failed: " +
+			effectCatalogStatus + "\n";
+		OutputDebugStringA(diagnostic.c_str());
+#ifdef _DEBUG
+		MessageBoxA(g_hWnd, effectCatalogStatus.c_str(),
+			"Effect Catalog Load Failed", MB_OK | MB_ICONERROR);
+#endif
 		return E_FAIL;
+	}
 
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
@@ -310,6 +373,9 @@ HRESULT CMainApp::Render()
 			case DEBUG_TOOL::EFFECT:
 				if (nullptr != m_pEffectTool)
 					m_pEffectTool->Render();
+				break;
+			case DEBUG_TOOL::RENDERING:
+				RenderRenderingWorkbench();
 				break;
 			case DEBUG_TOOL::UI:
 				/* Skill Window's slots (tripod plate, node glows, ...) are placed and dragged
@@ -590,9 +656,12 @@ HRESULT CMainApp::Start_Level(
 	if (nullptr == loading)
 		return E_FAIL;
 
-	return CGameInstance::Get().Change_Level(
+	const HRESULT hChange = CGameInstance::Get().Change_Level(
 		ETOUI(LEVEL::LOADING),
 		move(loading));
+	if (FAILED(hChange))
+		return hChange;
+	return ApplySceneRenderingProfile(LEVEL::LOADING);
 }
 
 void CMainApp::Apply_LevelRequest()
@@ -633,6 +702,11 @@ void CMainApp::Apply_LevelRequest()
 		ETOUI(request.eTargetLevel),
 		move(nextLevel))))
 	{
+		if (FAILED(ApplySceneRenderingProfile(request.eTargetLevel)))
+		{
+			OutputDebugStringA(
+				"[MainApp] Scene rendering profile apply failed; previous light preserved.\n");
+		}
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
 		return;
 	}
@@ -716,6 +790,14 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				make_unique<CEffect_Tool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
 		break;
+	case DEBUG_TOOL::RENDERING:
+		if (!m_bRenderQualityDraftInitialized)
+		{
+			m_RenderQualityDraft =
+				CGameInstance::Get().Get_RenderQualitySettings();
+			m_bRenderQualityDraftInitialized = true;
+		}
+		break;
 	case DEBUG_TOOL::UI:
 		if (nullptr == m_pHUDLayoutTool)
 			m_pHUDLayoutTool =
@@ -778,6 +860,8 @@ void CMainApp::RenderDeveloperTools()
 		true);
 	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
 	ImGui::SameLine();
+	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
+	ImGui::SameLine();
 	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
 	ImGui::SameLine();
 	toolButton("Balance Tool", DEBUG_TOOL::BALANCE, true);
@@ -804,6 +888,151 @@ void CMainApp::RenderDeveloperTools()
 		}
 	}
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
+	ImGui::End();
+}
+
+void CMainApp::RenderRenderingWorkbench()
+{
+	if (!m_bRenderQualityDraftInitialized)
+	{
+		m_RenderQualityDraft =
+			CGameInstance::Get().Get_RenderQualitySettings();
+		m_bRenderQualityDraftInitialized = true;
+	}
+
+	if (!ImGui::Begin(
+		"Rendering Workbench",
+		nullptr,
+		ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::End();
+		return;
+	}
+
+	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
+	const LEVEL eLevel = iLevel < ETOUI(LEVEL::END) ?
+		static_cast<LEVEL>(iLevel) : LEVEL::END;
+	ImGui::Text("Pipeline: legacy_deferred_v1");
+	ImGui::Text("Scene profile: %s", SceneRenderingProfileId(eLevel));
+	ImGui::Text("Viewport: %.0f x %.0f", viewportSize.x, viewportSize.y);
+	ImGui::TextDisabled(
+		"FP16 Light -> SceneHDR -> Screen Post -> half-res Bloom -> Hable/FXAA -> UI");
+	ImGui::TextDisabled(
+		"Quality controls are global; persistent scene light profiles are level-specific.");
+
+	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
+	ImGui::SeparatorText("Effect Presentation");
+	bool_t bEffectLights = Presentation.Are_TransientLightsEnabled();
+	if (ImGui::Checkbox("Typed Effect Lights", &bEffectLights))
+		Presentation.Set_TransientLightsEnabled(bEffectLights);
+	ImGui::SameLine();
+	bool_t bEffectPosts = Presentation.Are_ScreenPostsEnabled();
+	if (ImGui::Checkbox("Typed Effect Screen Posts", &bEffectPosts))
+		Presentation.Set_ScreenPostsEnabled(bEffectPosts);
+	ImGui::Text("Last submitted: Light %u | Screen Post %u",
+		Presentation.Get_LastTransientLightCount(),
+		Presentation.Get_LastScreenPostCount());
+	ImGui::TextDisabled(
+		"Effect Base/Mask/Dissolve/Distortion/Emissive enter SceneHDR before these posts and Bloom.");
+
+	const auto applyLive = [this]()
+	{
+		if (SUCCEEDED(CGameInstance::Get().Apply_RenderQualitySettings(
+			m_RenderQualityDraft)))
+		{
+			m_RenderQualityDraft =
+				CGameInstance::Get().Get_RenderQualitySettings();
+			m_strRenderingStatus =
+				"Applied. The world uses these values from the next frame.";
+		}
+		else
+		{
+			m_strRenderingStatus =
+				"Rejected invalid/non-finite settings; active rendering was preserved.";
+		}
+	};
+
+	bool_t changed = false;
+	ImGui::SeparatorText("Bloom");
+	changed |= ImGui::Checkbox(
+		"Enabled##Bloom", &m_RenderQualityDraft.bBloomEnabled);
+	ImGui::BeginDisabled(!m_RenderQualityDraft.bBloomEnabled);
+	changed |= ImGui::DragFloat(
+		"Threshold", &m_RenderQualityDraft.fBloomThreshold,
+		0.01f, 0.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"Soft Knee", &m_RenderQualityDraft.fBloomSoftKnee,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"Intensity", &m_RenderQualityDraft.fBloomIntensity,
+		0.01f, 0.f, 16.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"Scatter", &m_RenderQualityDraft.fBloomScatter,
+		0.01f, 0.25f, 4.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Bloom spreads pixels already above Threshold; it does not replace lighting or GI.");
+
+	ImGui::SeparatorText("Tone Mapping");
+	changed |= ImGui::DragFloat(
+		"Exposure", &m_RenderQualityDraft.fExposure,
+		0.01f, 0.01f, 32.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"Hable White Point", &m_RenderQualityDraft.fWhitePoint,
+		0.05f, 1.f, 64.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"Display Gamma", &m_RenderQualityDraft.fGamma,
+		0.005f, 1.f, 3.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+
+	ImGui::SeparatorText("Anti-Aliasing");
+	changed |= ImGui::Checkbox(
+		"FXAA Enabled", &m_RenderQualityDraft.bFXAAEnabled);
+	ImGui::BeginDisabled(!m_RenderQualityDraft.bFXAAEnabled);
+	changed |= ImGui::DragFloat(
+		"FXAA Blend", &m_RenderQualityDraft.fFXAASubpixel,
+		0.005f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"FXAA Edge Threshold", &m_RenderQualityDraft.fFXAAEdgeThreshold,
+		0.001f, 0.0312f, 0.333f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat(
+		"FXAA Edge Threshold Min", &m_RenderQualityDraft.fFXAAEdgeThresholdMin,
+		0.001f, 0.0156f, 0.0833f, "%.4f", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::EndDisabled();
+	ImGui::TextDisabled("FXAA is evaluated before display-space UI, so HUD text stays sharp.");
+
+	if (changed)
+		applyLive();
+
+	ImGui::SeparatorText("A/B Actions");
+	if (ImGui::Button("Reset Legacy Defaults"))
+	{
+		m_RenderQualityDraft = {};
+		applyLive();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Reference A/B Start"))
+	{
+		m_RenderQualityDraft = {};
+		m_RenderQualityDraft.fBloomThreshold = 1.4f;
+		m_RenderQualityDraft.fBloomSoftKnee = 0.45f;
+		m_RenderQualityDraft.fBloomIntensity = 0.2f;
+		m_RenderQualityDraft.fBloomScatter = 1.f;
+		m_RenderQualityDraft.fExposure = 1.2f;
+		m_RenderQualityDraft.bFXAAEnabled = true;
+		applyLive();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Active"))
+	{
+		m_RenderQualityDraft =
+			CGameInstance::Get().Get_RenderQualitySettings();
+		m_strRenderingStatus = "Draft reloaded from the active renderer.";
+	}
+
+	ImGui::TextWrapped("%s", m_strRenderingStatus.c_str());
+	ImGui::TextDisabled(
+		"Session-only in this slice. No authored/runtime JSON is changed automatically.");
 	ImGui::End();
 }
 

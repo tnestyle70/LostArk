@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050210",
   "displayName": "DIMENSIONMASTER A 2050210 Imported Cascade Draft",
-  "sourceAuthoringVersion": 11,
+  "sourceAuthoringVersion": 12,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -805,9 +805,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "e3cd3c56bd40af5b1a5602c5c7cf719de7f6a3e8f778d5ca008c492e00db37ab",
+  "sourceDocumentSha256": "e73bbb46b94f24e57a1ac41c3e7f249984bad85ea913d74909cf4bd5b501800a",
   "inputSlot": "A",
-  "sourceDocumentFileSha256": "b784394de46d9935230e1602eeb3f50edad80bfa0706c5080fe07d5da51b9313",
+  "sourceDocumentFileSha256": "d8d5c8ab6160de820a56019d6bc36c7dc95037391eed3821f4635b1c7b06cc76",
   "sourceActionCues": [
     {
       "cueId": "skill-2050210/clip-000/notify-005",

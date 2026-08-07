@@ -233,3 +233,11 @@ exit code만 1이며 이번 이펙트 실행기 실패는 아니다.
 방향, pivot, Color, SubUV가 정상인지 같은 장면으로 확인한다. 이 검증이 통과하면 남은 큰 화면 차이는
 21개 공유 `RECONSTRUCTED_PROFILE`의 Material 식으로 좁혀진다. 다만 Material을 닫은 뒤에도 A 전체
 완료에는 Light 2, Screen Post 3, profiler/3 FPS 원인 확인과 고정 카메라 A/B가 남는다.
+
+## 2026-08-07 current roster 교정
+
+이 문서의 파일명과 본문에 남은 `A 2050240`은 2026-08-06 작업 당시의 historical 표기다.
+현재 `PlayerSkills.json`과 `DimensionMaster.skillbindings.json`의 canonical roster는
+`A=2050210`, `D=2050240`이다. 2050240의 Particle 수치 복원 결과 자체는 유효하지만 이후 회귀
+검사와 수동 A/B에서는 D로 식별한다. Animation 작업자가 완료한 `b_wp_swm_m_2/follow` cue,
+clip 순서와 timing은 Material/renderer 복원에서 다시 조정하지 않는다.

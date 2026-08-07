@@ -43,6 +43,11 @@ public:
 		const std::filesystem::path& Path,
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	static bool_t Save_AtomicIfUnchanged(
+		const std::filesystem::path& Path,
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string_view strExpectedCanonicalDocument,
+		std::string& strOutError);
 
 	static void Collect_ResourceAssetIds(
 		const EFFECT_DOCUMENT_DESC& Document,

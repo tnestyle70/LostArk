@@ -5,6 +5,13 @@ Texture2D g_NoiseTexture;
 Texture2D g_MaskTexture;
 Texture2D g_EmissiveTexture;
 Texture2D g_DissolveTexture;
+Texture2D g_SourceTexture0;
+Texture2D g_SourceTexture1;
+Texture2D g_SourceTexture2;
+Texture2D g_SourceTexture3;
+Texture2D g_SourceTexture4;
+Texture2D g_SourceTexture5;
+Texture2D g_SourceTexture6;
 
 float2 g_UVScale = float2(1.f, 1.f);
 float2 g_UVOffset = float2(0.f, 0.f);
@@ -26,6 +33,16 @@ float4 g_SourceScalars0 = float4(0.f, 0.f, 0.f, 0.f);
 float4 g_SourceScalars1 = float4(0.f, 0.f, 0.f, 0.f);
 float4 g_SourceVector0 = float4(0.f, 0.f, 0.f, 0.f);
 float4 g_SourceVector1 = float4(0.f, 0.f, 0.f, 0.f);
+uint g_SourceTextureMask = 0;
+float4 g_LinearFlowParameters[16];
+float4 g_LinearFlowMaskAColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_LinearFlowMaskBColor = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_GroupedUVScalePan = float4(1.f, 1.f, 0.f, 0.f);
+float4 g_GroupedAlphaEmissive = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_GroupedNoiseDissolve = float4(0.f, 0.f, 0.f, 1.f);
+float4 g_GroupedTint = float4(1.f, 1.f, 1.f, 1.f);
+uint g_GroupedMaterialFlags = 0;
+float g_EffectLocalTime = 0.f;
 uint4 g_DynamicParameterSemantics = uint4(0, 0, 0, 0);
 
 struct EFFECT_PS_OUT
@@ -50,29 +67,33 @@ EFFECT_PS_OUT Shade_Effect(
 {
     EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
     const float2 uv = Apply_Radial_UV(sourceUV);
-    const float4 base = g_BaseTexture.Sample(LinearSampler, uv);
     const float4 noiseSample = 0 != g_HasNoise ?
         g_NoiseTexture.Sample(LinearSampler, uv) : float4(0.f, 0.f, 0.f, 0.f);
+    const float surfaceWarp = 0 != g_HasNoise ?
+        clamp(g_DistortionIntensity * 0.01f, -0.25f, 0.25f) : 0.f;
+    const float2 surfaceUV = uv +
+        (noiseSample.rg * 2.f - 1.f) * surfaceWarp;
+    const float4 base = g_BaseTexture.Sample(LinearSampler, surfaceUV);
     const float mask = 0 != g_HasMask ?
-        g_MaskTexture.Sample(LinearSampler, uv).r : 1.f;
+        g_MaskTexture.Sample(LinearSampler, surfaceUV).r : 1.f;
 
     if (0 != g_HasDissolve)
     {
         const float dissolve =
-            g_DissolveTexture.Sample(LinearSampler, uv).r + noiseSample.r * 0.1f;
+            g_DissolveTexture.Sample(LinearSampler, surfaceUV).r +
+            noiseSample.r * 0.1f;
         clip(dissolve - g_DissolveAmount);
     }
 
     float4 color = (base * g_ColorMultiply + g_ColorOffset) * vertexColor;
     color.rgb *= lighting;
-    color.rgb *= g_EmissiveIntensity;
     color.a *= mask;
     clip(color.a - g_ColorClip);
 
     if (0 != g_HasEmissive)
     {
         color.rgb += g_EmissiveTexture.Sample(
-            LinearSampler, uv).rgb * g_EmissiveIntensity;
+            LinearSampler, surfaceUV).rgb * g_EmissiveIntensity;
     }
 
     color.rgb = max(color.rgb, float3(0.f, 0.f, 0.f));
@@ -117,6 +138,140 @@ void Apply_DynamicParameter(
     }
 }
 
+float2 Rotate_LinearFlowUV(float2 uv, float angle)
+{
+    const float sine = sin(angle);
+    const float cosine = cos(angle);
+    const float2 centered = uv - float2(0.5f, 0.5f);
+    return float2(
+        centered.x * cosine - centered.y * sine,
+        centered.x * sine + centered.y * cosine) + float2(0.5f, 0.5f);
+}
+
+float2 Transform_LinearFlowUV(
+    float2 uv,
+    float2 tile,
+    float2 offset,
+    float2 pan,
+    float rotation,
+    float sizeControl)
+{
+    float2 result = (uv - float2(0.5f, 0.5f)) * tile /
+        max(abs(sizeControl), 0.0001f) + float2(0.5f, 0.5f);
+    result = Rotate_LinearFlowUV(result, rotation);
+    return result + offset + pan * g_EffectLocalTime;
+}
+
+float3 Desaturate_LinearFlow(float3 color, float amount)
+{
+    const float luminance = dot(color, float3(0.299f, 0.587f, 0.114f));
+    return lerp(color, luminance.xxx, saturate(amount));
+}
+
+EFFECT_PS_OUT Shade_GroupedTranslucent(
+    float2 sourceUV,
+    float3 lighting,
+    float4 vertexColor,
+    float opacity,
+    float emissive,
+    float distortionScale)
+{
+    const uint GROUPED_HAS_ALPHA = 1u << 0u;
+    const uint GROUPED_HAS_EMISSIVE = 1u << 1u;
+    const uint GROUPED_HAS_NOISE = 1u << 2u;
+    const uint GROUPED_HAS_DISTORTION = 1u << 3u;
+    const uint GROUPED_HAS_DISSOLVE = 1u << 4u;
+
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    float2 uv = sourceUV * g_GroupedUVScalePan.xy +
+        g_GroupedUVScalePan.zw * g_EffectLocalTime;
+    float4 noiseSample = float4(0.f, 0.f, 0.f, 0.f);
+    if (0 != g_HasNoise)
+    {
+        noiseSample = g_NoiseTexture.Sample(LinearSampler, uv);
+        if (0 != (g_GroupedMaterialFlags &
+            (GROUPED_HAS_NOISE | GROUPED_HAS_DISTORTION)))
+        {
+            const float noiseStrength = min(
+                abs(g_GroupedNoiseDissolve.x) * 0.01f, 0.25f);
+            uv += (noiseSample.rg * 2.f - 1.f) * noiseStrength;
+        }
+    }
+
+    const float4 base = g_BaseTexture.Sample(LinearSampler, uv);
+    const float4 emissiveSample = 0 != g_HasEmissive ?
+        g_EmissiveTexture.Sample(LinearSampler, uv) :
+        float4(0.f, 0.f, 0.f, 0.f);
+    float alpha = base.a;
+    if (0 != g_HasMask)
+        alpha *= g_MaskTexture.Sample(LinearSampler, uv).r;
+    else if (0 != g_HasEmissive)
+        alpha *= saturate(dot(
+            emissiveSample.rgb, float3(0.299f, 0.587f, 0.114f)));
+    else
+        alpha *= saturate(dot(
+            base.rgb, float3(0.299f, 0.587f, 0.114f)));
+
+    if (0 != g_HasDissolve &&
+        (0 != (g_GroupedMaterialFlags & GROUPED_HAS_DISSOLVE) ||
+            g_DissolveAmount > 0.f))
+    {
+        const float dissolve =
+            g_DissolveTexture.Sample(LinearSampler, uv).r +
+            noiseSample.r * 0.1f;
+        const float threshold = saturate(max(
+            g_DissolveAmount, g_GroupedNoiseDissolve.z));
+        const float softness = 1.f / max(
+            abs(g_GroupedNoiseDissolve.w), 1.f);
+        alpha *= smoothstep(
+            threshold - softness, threshold + softness, dissolve);
+    }
+
+    if (0 != (g_GroupedMaterialFlags & GROUPED_HAS_ALPHA))
+    {
+        alpha = pow(
+            saturate(alpha * max(g_GroupedAlphaEmissive.x, 0.f)),
+            max(abs(g_GroupedAlphaEmissive.y), 0.01f));
+    }
+
+    // A reconstructed profile must never expose the hard carrier quad edge.
+    // This guard only feathers the outer texel border; it does not invent the
+    // missing UE3 expression topology.
+    const float edgeDistance = min(
+        min(sourceUV.x, 1.f - sourceUV.x),
+        min(sourceUV.y, 1.f - sourceUV.y));
+    alpha *= saturate(edgeDistance * 128.f) * opacity;
+
+    float3 materialColor = base.rgb;
+    if (0 != g_HasEmissive)
+        materialColor += emissiveSample.rgb;
+    const float emissivePower = max(
+        abs(g_GroupedAlphaEmissive.w), 0.01f);
+    const float emissiveStrength = max(
+        g_GroupedAlphaEmissive.z, 0.f) * emissive;
+    materialColor = pow(saturate(materialColor), emissivePower) *
+        emissiveStrength;
+
+    const float4 color =
+        (g_ColorMultiply + g_ColorOffset) * vertexColor;
+    output.SceneColor.rgb = materialColor * g_GroupedTint.rgb *
+        color.rgb * lighting * g_EmissiveIntensity;
+    output.SceneColor.a = saturate(alpha * color.a);
+
+    if (0 != g_HasNoise &&
+        0 != (g_GroupedMaterialFlags & GROUPED_HAS_DISTORTION))
+    {
+        const float groupedDistortion = max(
+            abs(g_GroupedNoiseDissolve.y) * 0.01f,
+            max(g_DistortionIntensity, 0.f));
+        output.Distortion.xy = (noiseSample.rg * 2.f - 1.f) *
+            groupedDistortion * distortionScale * output.SceneColor.a;
+    }
+
+    clip(output.SceneColor.a - max(g_ColorClip, 1.f / 255.f));
+    return output;
+}
+
 EFFECT_PS_OUT Shade_EffectParticle(
     float2 sourceUV,
     float3 lighting,
@@ -142,6 +297,13 @@ EFFECT_PS_OUT Shade_EffectParticle(
         output.Distortion.xy *= distortionScale;
         clip(output.SceneColor.a - g_ColorClip);
         return output;
+    }
+
+    if (6 == g_SourceMaterialProfile)
+    {
+        return Shade_GroupedTranslucent(
+            uv, lighting, vertexColor, opacity, emissive,
+            distortionScale);
     }
 
     const float2 centered = (uv - float2(0.5f, 0.5f)) /
@@ -184,16 +346,191 @@ EFFECT_PS_OUT Shade_EffectParticle(
         const float4 noise = g_NoiseTexture.Sample(LinearSampler, uv);
         shape = saturate(noise.a + noise.r);
         output.Distortion.xy = (noise.rg * 2.f - 1.f) *
-            max(g_DistortionIntensity, 0.01f) * distortionScale;
+            max(g_DistortionIntensity, 0.f) * distortionScale;
+    }
+    else if (7 == g_SourceMaterialProfile)
+    {
+        const float4 shineBase = g_BaseTexture.Sample(LinearSampler, uv);
+        const float4 shineNoise = 0 != g_HasNoise ?
+            g_NoiseTexture.Sample(LinearSampler, uv) :
+            float4(0.f, 0.f, 0.f, 0.f);
+        const float shineMask = 0 != g_HasMask ?
+            g_MaskTexture.Sample(LinearSampler, uv).r :
+            saturate(dot(shineBase.rgb,
+                float3(0.299f, 0.587f, 0.114f)));
+        const float2 shineCentered =
+            (uv - float2(0.5f, 0.5f)) * float2(1.f, 2.f);
+        const float shineFeather = pow(
+            saturate(1.f - length(shineCentered) * 2.f),
+            max(abs(g_SourceScalars0.y), 1.f));
+        const float noisePower = max(abs(g_SourceScalars0.w), 0.01f);
+        const float noiseStrength = min(
+            abs(g_SourceScalars0.z) * 0.05f, 0.5f);
+        shape = pow(saturate(shineBase.a * shineMask), noisePower) *
+            shineFeather * max(abs(g_SourceScalars0.x), 0.01f);
+        output.SceneColor.rgb =
+            (shineBase.rgb + shineNoise.rgb * noiseStrength) *
+            max(g_SourceVector0.rgb, float3(0.01f, 0.01f, 0.01f));
+    }
+    else if (8 == g_SourceMaterialProfile)
+    {
+        const float4 auraBase = g_BaseTexture.Sample(LinearSampler, uv);
+        const float auraMask = 0 != g_HasMask ?
+            g_MaskTexture.Sample(LinearSampler, uv).r : 0.f;
+        float auraDissolve = 1.f;
+        if (0 != g_HasDissolve)
+        {
+            auraDissolve = g_DissolveTexture.Sample(LinearSampler, uv).r;
+            auraDissolve = smoothstep(
+                saturate(g_DissolveAmount) - 0.1f,
+                saturate(g_DissolveAmount) + 0.1f,
+                auraDissolve);
+        }
+        shape = pow(
+            saturate(auraMask),
+            max(abs(g_SourceScalars0.w), 0.01f)) * auraDissolve;
+        const float auraCarrier = 0.25f + 0.75f * saturate(dot(
+            auraBase.rgb, float3(0.299f, 0.587f, 0.114f)));
+        output.SceneColor.rgb = lerp(
+            g_SourceVector0.rgb, g_SourceVector1.rgb, auraMask) *
+            auraCarrier;
+    }
+    else if (9 == g_SourceMaterialProfile)
+    {
+        const float crackDissolve = 0 != g_HasDissolve ?
+            g_DissolveTexture.Sample(LinearSampler, uv).r : 0.f;
+        const float crackThreshold =
+            1.f - saturate(dynamicParameter.z);
+        shape = smoothstep(
+            crackThreshold - 0.1f,
+            crackThreshold + 0.1f,
+            crackDissolve);
+        output.SceneColor.rgb = lerp(
+            g_SourceVector0.rgb, g_SourceVector1.rgb, crackDissolve);
+    }
+    else if (10 == g_SourceMaterialProfile)
+    {
+        const float centeredGlow = pow(
+            saturate(1.f - radius),
+            max(abs(g_SourceScalars0.y), 1.f)) *
+            max(abs(g_SourceScalars0.x), 0.01f);
+        const float centerMask = pow(
+            saturate(1.f - radius),
+            max(abs(g_SourceScalars0.w), 1.f)) *
+            min(max(abs(g_SourceScalars0.z), 0.01f), 16.f) * 0.1f;
+        const float outerGlow = pow(
+            saturate(1.f - radius),
+            max(abs(g_SourceScalars1.y), 1.f)) *
+            max(abs(g_SourceScalars1.x), 0.01f);
+        shape = saturate(
+            (centeredGlow + outerGlow) * saturate(centerMask));
+    }
+    else if (11 == g_SourceMaterialProfile)
+    {
+        // Bounded reconstruction of fx_j_pa_linearflow_02_tr.  Texture names,
+        // groups, MI values, and timing are source-authored; the cooked parent
+        // no longer contains enough expression edges to claim graph exactness.
+        clip(g_SourceTextureMask == 0x7fu ? 1.f : -1.f);
+
+        const float2 diffuseUV = Transform_LinearFlowUV(
+            uv, g_LinearFlowParameters[0].xy,
+            g_LinearFlowParameters[1].xy,
+            g_LinearFlowParameters[0].zw,
+            g_LinearFlowParameters[1].z, 1.f);
+        const float2 diffuseNoiseUV =
+            uv * g_LinearFlowParameters[2].xy;
+        const float4 diffuseNoise = g_SourceTexture1.Sample(
+            LinearSampler, diffuseNoiseUV);
+        const float2 warpedDiffuseUV = diffuseUV +
+            (diffuseNoise.rg * 2.f - 1.f) *
+            g_LinearFlowParameters[1].w * 0.01f;
+        float3 diffuse = g_SourceTexture0.Sample(
+            LinearSampler, warpedDiffuseUV).rgb;
+        diffuse = Desaturate_LinearFlow(
+            diffuse, g_LinearFlowParameters[15].z);
+        diffuse = pow(saturate(diffuse),
+            max(abs(g_LinearFlowParameters[11].y), 0.01f)) *
+            max(g_LinearFlowParameters[11].x, 0.f);
+
+        const float2 maskAUV = Transform_LinearFlowUV(
+            uv, g_LinearFlowParameters[3].xy,
+            g_LinearFlowParameters[4].xy,
+            g_LinearFlowParameters[3].zw,
+            g_LinearFlowParameters[4].z,
+            g_LinearFlowParameters[4].w);
+        const float2 noiseAUV = Transform_LinearFlowUV(
+            uv, g_LinearFlowParameters[5].xy,
+            g_LinearFlowParameters[6].xy,
+            g_LinearFlowParameters[5].zw, 0.f, 1.f);
+        const float2 maskAWarp =
+            (g_SourceTexture3.Sample(LinearSampler, noiseAUV).rg * 2.f - 1.f) *
+            g_LinearFlowParameters[6].z * 0.01f;
+        float maskA = g_SourceTexture2.Sample(
+            LinearSampler, maskAUV + maskAWarp).r;
+        maskA = pow(saturate(maskA),
+            max(abs(g_LinearFlowParameters[11].w), 0.01f)) *
+            max(g_LinearFlowParameters[11].z, 0.f);
+
+        const float2 maskBUV = Transform_LinearFlowUV(
+            uv, g_LinearFlowParameters[7].xy,
+            g_LinearFlowParameters[8].xy,
+            g_LinearFlowParameters[7].zw,
+            g_LinearFlowParameters[8].z,
+            g_LinearFlowParameters[8].w);
+        const float2 noiseBUV = Transform_LinearFlowUV(
+            uv, g_LinearFlowParameters[9].xy,
+            g_LinearFlowParameters[10].xy,
+            g_LinearFlowParameters[9].zw, 0.f, 1.f);
+        const float2 maskBWarp =
+            (g_SourceTexture5.Sample(LinearSampler, noiseBUV).rg * 2.f - 1.f) *
+            g_LinearFlowParameters[10].z * 0.01f;
+        float maskB = g_SourceTexture4.Sample(
+            LinearSampler, maskBUV + maskBWarp).r;
+        maskB = pow(saturate(maskB),
+            max(abs(g_LinearFlowParameters[12].y), 0.01f)) *
+            max(g_LinearFlowParameters[12].x, 0.f);
+
+        const float radialMask = pow(
+            saturate(1.f - radius * max(g_LinearFlowParameters[13].y, 0.f)),
+            max(abs(g_LinearFlowParameters[13].w), 0.01f));
+        const float combinedMask = saturate(
+            (maskA + maskB * saturate(g_LinearFlowParameters[13].z)) *
+            max(g_LinearFlowParameters[13].x, 0.f) * radialMask);
+        const float2 dissolveUV = uv * g_LinearFlowParameters[14].xy +
+            g_LinearFlowParameters[14].zw * g_EffectLocalTime;
+        const float dissolveValue = g_SourceTexture6.Sample(
+            LinearSampler,
+            Rotate_LinearFlowUV(dissolveUV, g_SourceScalars0.x)).r;
+        const float dissolveFeather = rcp(
+            max(abs(g_SourceScalars0.y), 1.f));
+        const float dissolveGate = smoothstep(
+            saturate(g_DissolveAmount) - dissolveFeather,
+            saturate(g_DissolveAmount) + dissolveFeather,
+            dissolveValue);
+
+        shape = pow(combinedMask,
+            max(abs(g_LinearFlowParameters[12].w), 0.01f)) *
+            max(g_LinearFlowParameters[12].z, 0.f) * dissolveGate;
+        output.SceneColor.rgb = max(
+            diffuse * (
+                g_LinearFlowMaskAColor.rgb * maskA +
+                g_LinearFlowMaskBColor.rgb * maskB),
+            float3(0.f, 0.f, 0.f));
+        output.Distortion.xy =
+            (diffuseNoise.rg * 2.f - 1.f) *
+            max(g_SourceScalars0.w, 0.f) * shape * distortionScale;
     }
 
     float4 color = (g_ColorMultiply + g_ColorOffset) * vertexColor;
-    if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile)
+    if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile &&
+        7 != g_SourceMaterialProfile && 8 != g_SourceMaterialProfile &&
+        9 != g_SourceMaterialProfile && 11 != g_SourceMaterialProfile)
         output.SceneColor.rgb = color.rgb;
     else
         output.SceneColor.rgb *= color.rgb;
     output.SceneColor.rgb *= lighting * g_EmissiveIntensity * emissive;
-    output.SceneColor.a = saturate(color.a * shape * opacity);
+    const float profileOpacity = 9 == g_SourceMaterialProfile ? 1.f : opacity;
+    output.SceneColor.a = saturate(color.a * shape * profileOpacity);
     clip(output.SceneColor.a - g_ColorClip);
     return output;
 }

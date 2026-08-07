@@ -937,12 +937,17 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAACPwvU8j8L1PAAAAEAAAAAAAQAAAAAAAAAAAAAAAwAAAEZYAGQAAAABAAAAAAAAAAAAAAABAAAAAAAAAM3MzD4AAABAAAAAAM3MTL4AAAAAAAAAAAAAAAD/AAAAKQAAAA=="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": false,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": 160,
+        "sourceSha256": "2c4ef8f3096f250d939a94bff47b91e29fee408f2ec18fa94d54de2c684d861f"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-013",
@@ -1256,12 +1261,85 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1Bvc3RQcm9jZXNzQ2hhaW4AAAAAAAAAAAAAAAAAAQAAAM3MTD3NzEw9AAAAAAAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAEAAAAAAAAAAAAAAAAAAAAiAAAAQ0VGUG9zdFByb2Nlc3NNYXRlcmlhbEVmZmVjdFNraWxsACwAAABNYXRlcmlhbCdGWF9Qb3N0LkZYX00uRlhfSl9FeFBvc3RFZmZlY3RfMDEnAAkAAAAJAAAAQmx1cl9zdHIAmpkZPg0AAABEZXNhdHVyYXRpb24AAAAAAAwAAABNYXNrX1JhZGl1cwAzMzM/CAAAAE9wYWNpdHkAAACAPxIAAABSYWRpYWxfQ29vcmRpbmF0ZQAAAAAACwAAAFRpbWVfU3BlZWQAAAAAAAwAAABVVl9Ob2lzZVN0cgDNzMw9EAAAAFpvb21fQ29vcmRpbmF0ZQAAAABACwAAAFpvb21fUG93ZXIAAAAAAAEAAAAMAAAAZm9yY2VfQ29sb3IAAAAAAAAAAAAAAAAAAAAAAAMAAAANAAAAQmx1cl9UZXh0dXJlACcAAABUZXh0dXJlMkQnRlhfVGV4XzAyLkZYX0RfQXR5cGljYWxfMDQzJwAMAAAAU2hvY2tXdl9UZXgAKwAAAFRleHR1cmUyRCdGWF9UZXhfMDQuRlhfSV9TaG9ja3dhdmVfMDJfWUNMJwAMAAAAVVZOb2lzZV9URVgAJAAAAFRleHR1cmUyRCdGWF9UZXhfMDIuRlhfRF9Ob2lzZV8wMzMnAAMAAAAAAAAAAAAAAAAAAAAAAAA/mplZQAAAAAAAAIA/AAAAABgAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-post-process-chain",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": true,
+        "status": "SOURCE_EXPLICIT_PARAMETER_TABLES",
+        "effectType": "CEFPostProcessMaterialEffectSkill",
+        "sourceMaterial": "FX_Post.FX_M.FX_J_ExPostEffect_01",
+        "scalarParameters": [
+          {
+            "name": "Blur_str",
+            "value": 0.15000000596046448
+          },
+          {
+            "name": "Desaturation",
+            "value": 0.0
+          },
+          {
+            "name": "Mask_Radius",
+            "value": 0.699999988079071
+          },
+          {
+            "name": "Opacity",
+            "value": 1.0
+          },
+          {
+            "name": "Radial_Coordinate",
+            "value": 0.0
+          },
+          {
+            "name": "Time_Speed",
+            "value": 0.0
+          },
+          {
+            "name": "UV_NoiseStr",
+            "value": 0.10000000149011612
+          },
+          {
+            "name": "Zoom_Coordinate",
+            "value": 2.0
+          },
+          {
+            "name": "Zoom_Power",
+            "value": 0.0
+          }
+        ],
+        "vectorParameters": [
+          {
+            "name": "force_Color",
+            "value": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "textureParameters": [
+          {
+            "name": "Blur_Texture",
+            "sourceTexture": "FX_Tex_02.FX_D_Atypical_043"
+          },
+          {
+            "name": "ShockWv_Tex",
+            "sourceTexture": "FX_Tex_04.FX_I_Shockwave_02_YCL"
+          },
+          {
+            "name": "UVNoise_TEX",
+            "sourceTexture": "FX_Tex_02.FX_D_Noise_033"
+          }
+        ],
+        "sourceTableByteOffset": 104,
+        "unresolvedTrailingByteOffset": 595,
+        "unresolvedTrailingByteCount": 40,
+        "sourceByteSize": 635,
+        "sourceSha256": "99665bd2f32c286b91b76883865997957791bdcd75beaabc1de51f731fb75561"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_SCREEN_POST_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-018",
@@ -2572,9 +2650,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-038",
@@ -2602,9 +2681,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-039",
@@ -2632,9 +2712,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-040",
@@ -2662,9 +2743,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-041",
@@ -2692,9 +2774,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-042",
@@ -2722,9 +2805,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-043",
@@ -2752,9 +2836,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-044",
@@ -2782,9 +2867,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-045",
@@ -2812,9 +2898,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-046",
@@ -2842,9 +2929,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-047",
@@ -2872,9 +2960,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-048",
@@ -2902,9 +2991,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-049",
@@ -2932,9 +3022,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-050",
@@ -2963,9 +3054,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-051",
@@ -3570,12 +3662,40 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1Bvc3RQcm9jZXNzQ2hhaW4AAAAAAAAAAAAAAAAAAQAAAJqZaUCamWlAAAAAAAAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAEAAAAAAAAAAAAAAAAAAAAiAAAAQ0VGUG9zdFByb2Nlc3NNYXRlcmlhbEVmZmVjdFNraWxsACsAAABNYXRlcmlhbCdGWF9Qb3N0LkZYX00uRlhfSl9TY3JlZW5GbGFzaF8wMScAAQAAAAgAAABPcGFjaXR5AArXIzwBAAAABgAAAENvbG9yAAAAgD8AAIA/AADIQgAAgD8AAAAAAwAAAAAAAAAGAAAAZmxhc2gAAQAAAAAAAAAK1yM8mpkZPgrXozwAAAAAIwAAAA=="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-post-process-chain",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": true,
+        "status": "SOURCE_EXPLICIT_PARAMETER_TABLES",
+        "effectType": "CEFPostProcessMaterialEffectSkill",
+        "sourceMaterial": "FX_Post.FX_M.FX_J_ScreenFlash_01",
+        "scalarParameters": [
+          {
+            "name": "Opacity",
+            "value": 0.009999999776482582
+          }
+        ],
+        "vectorParameters": [
+          {
+            "name": "Color",
+            "value": [
+              1.0,
+              1.0,
+              100.0,
+              1.0
+            ]
+          }
+        ],
+        "textureParameters": [],
+        "sourceTableByteOffset": 104,
+        "unresolvedTrailingByteOffset": 243,
+        "unresolvedTrailingByteCount": 46,
+        "sourceByteSize": 289,
+        "sourceSha256": "1be64d37841f2150c678d79a162fec1b5d34a22169ac4c0b3d93c0736df0ffeb"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_SCREEN_POST_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-062",
@@ -3728,12 +3848,17 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAADNzGxAzcxsQM3MTD8AAAAAAAAAAAAAAAAAAAAAAwAAAEZYAGQAAAABAAAAAAAAAAAAAAABAAAAAAAAAArXIzwAAIA+AACAP83MzL4AAAAAAAAAAAAAAAAAAAAAKwAAAA=="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": false,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": 160,
+        "sourceSha256": "ca6f414d5da10289e6138e2ec3fa5591049e93b93dd75c49adff2da1424e358f"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-064",
@@ -4505,12 +4630,85 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1Bvc3RQcm9jZXNzQ2hhaW4AAAAAAAAAAAABAAAAAQAAAM3MfEDNzHxAMzOTPwAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAEAAAAAAAAAAAAAAAAAAAAiAAAAQ0VGUG9zdFByb2Nlc3NNYXRlcmlhbEVmZmVjdFNraWxsACwAAABNYXRlcmlhbCdGWF9Qb3N0LkZYX00uRlhfSl9FeFBvc3RFZmZlY3RfMDEnAAkAAAAJAAAAQmx1cl9zdHIAzczMPg0AAABEZXNhdHVyYXRpb24AAAAAAAwAAABNYXNrX1JhZGl1cwDNzEw/CAAAAE9wYWNpdHkAAACAPxIAAABSYWRpYWxfQ29vcmRpbmF0ZQAAAABACwAAAFRpbWVfU3BlZWQAAABAPwwAAABVVl9Ob2lzZVN0cgDNzMw9EAAAAFpvb21fQ29vcmRpbmF0ZQAAAABACwAAAFpvb21fUG93ZXIAAAAAAAEAAAAMAAAAZm9yY2VfQ29sb3IAAAAAAAAAAAAAAAAAAAAAAAMAAAANAAAAQmx1cl9UZXh0dXJlACcAAABUZXh0dXJlMkQnRlhfVGV4XzAyLkZYX0RfQXR5cGljYWxfMDQzJwAMAAAAU2hvY2tXdl9UZXgAKwAAAFRleHR1cmUyRCdGWF9UZXhfMDQuRlhfSV9TaG9ja3dhdmVfMDJfWUNMJwAMAAAAVVZOb2lzZV9URVgAJAAAAFRleHR1cmUyRCdGWF9UZXhfMDIuRlhfRF9Ob2lzZV8wMzMnAAMAAAAAAAAAAAAAAAAAAAAK1yM8zczMPQAAgD8AAIA/AAAAABoAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-post-process-chain",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": true,
+        "status": "SOURCE_EXPLICIT_PARAMETER_TABLES",
+        "effectType": "CEFPostProcessMaterialEffectSkill",
+        "sourceMaterial": "FX_Post.FX_M.FX_J_ExPostEffect_01",
+        "scalarParameters": [
+          {
+            "name": "Blur_str",
+            "value": 0.4000000059604645
+          },
+          {
+            "name": "Desaturation",
+            "value": 0.0
+          },
+          {
+            "name": "Mask_Radius",
+            "value": 0.800000011920929
+          },
+          {
+            "name": "Opacity",
+            "value": 1.0
+          },
+          {
+            "name": "Radial_Coordinate",
+            "value": 2.0
+          },
+          {
+            "name": "Time_Speed",
+            "value": 0.75
+          },
+          {
+            "name": "UV_NoiseStr",
+            "value": 0.10000000149011612
+          },
+          {
+            "name": "Zoom_Coordinate",
+            "value": 2.0
+          },
+          {
+            "name": "Zoom_Power",
+            "value": 0.0
+          }
+        ],
+        "vectorParameters": [
+          {
+            "name": "force_Color",
+            "value": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "textureParameters": [
+          {
+            "name": "Blur_Texture",
+            "sourceTexture": "FX_Tex_02.FX_D_Atypical_043"
+          },
+          {
+            "name": "ShockWv_Tex",
+            "sourceTexture": "FX_Tex_04.FX_I_Shockwave_02_YCL"
+          },
+          {
+            "name": "UVNoise_TEX",
+            "sourceTexture": "FX_Tex_02.FX_D_Noise_033"
+          }
+        ],
+        "sourceTableByteOffset": 104,
+        "unresolvedTrailingByteOffset": 595,
+        "unresolvedTrailingByteCount": 40,
+        "sourceByteSize": 635,
+        "sourceSha256": "c1cefe983741cc533ad39b0c6af2518f8e2f55792b9b9a824a181be711d99f3d"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_SCREEN_POST_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050540/clip-000/notify-076",

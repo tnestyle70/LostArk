@@ -3,14 +3,24 @@
 문서 유형: 구현 코드 정본 (설계와 결정 이유는 [PhysX 본질·세팅·활용 설계 PLAN](2026-08-05_PHYSX_ESSENCE_SETUP_UTILIZATION_DESIGN_PLAN.md)이 소유)
 목표: PhysX 5.6.1을 Engine의 빌드·배포·Git 계약에 배치하고(G00), `CPhysics_Manager` 고정 스텝 서브시스템과 첫 소비자인 F1 Physics Tool drop test를 실행 증거까지 닫는다(G01).
 
+2026-08-08 재개 실측: `Engine/ThirdPartyLib/PhysX`, `Engine/Public/Physics_Manager.h`, `Engine/Private/Physics_Manager.cpp`, `Client/Public/Physics_Tool.h`, `Client/Private/Physics_Tool.cpp`가 모두 없다. 따라서 이 문서는 **계획 상태**이고 현재 활성 단계는 G00이다. G00 검증 전에는 G01 C++를 반영하지 않는다.
+
 ## 0. 먼저 지키는 경계
 
-- `.gitignore`, `Client/Default/Client.vcxproj`, `Tools/ProjectAudit/Invoke-ProjectAudit.ps1`에는 다른 세션의 미커밋 변경이 있다. 이 계획서의 변경은 전부 **추가 전용**이며 기존 줄을 재배치·삭제하지 않는다.
+- 작업 트리에 PhysX와 무관한 대규모 미커밋 변경이 있다. 사용자는 매 G 시작에 `git status --short`와 대상 파일 diff를 다시 확인하고, 이 계획서가 지정한 파일·블록만 반영한다. 다른 변경을 stage, restore, 정리하지 않는다.
 - `Engine/Public/GameInstance.h`와 `Engine/Private/GameInstance.cpp`, `Client/Private/MainApp.cpp` 일부 구간에는 CP949 한국어 주석이 있다. 해당 파일은 **전체 교체를 금지**하고, 이 문서가 지정한 앵커에 ASCII 블록만 추가하거나 한국어 주석이 없는 함수만 전체 교체한다. 파일 인코딩을 변환하지 않는다.
 - `Engine/Public/Physics_Manager.h`는 `EngineSDK/inc`로 복사돼 Client가 본다. 이 헤더에 PhysX include를 넣지 않는다(physx 전방 선언 + 포인터만). PhysX 타입은 `Physics_Manager.cpp`에만 존재한다.
 - 새 전역 기능키는 없다. Physics Tool은 F1 Developer Tools 허브 안의 패널이다.
 
-### 0.1 비평 반영
+### 0.1 직접 반영 세션 계약
+
+1. 한 세션에는 G 하나만 활성화한다. 이번 활성 단계는 G00이다.
+2. 대화 설명은 `목표/종료 증거 → 수정 파일 → H 계약 → include·enum·struct·멤버 → CPP 함수 → 호출 흐름 → 작성 순서 → 검증` 순서를 지킨다.
+3. 사용자가 코드를 반영한 뒤 대상 파일 diff와 해당 G 검증을 먼저 통과시킨다. 실패한 상태에서 다음 G로 넘어가지 않는다.
+4. 새 파일은 디테일 PLAN의 전체 코드를 사용한다. 기존 파일은 반영 직전에 현재 앵커와 diff를 다시 대조한다. 특히 현재 `MainApp.h/.cpp`, `GameInstance.cpp`, project/filter, ProjectAudit에는 08-05 이후 변경이 있으므로 G01 진입 시 해당 전체 코드 section을 현재 코드로 재기준화한다.
+5. PLAN에 코드가 있다는 사실은 구현 완료가 아니다. 실제 파일 diff가 생기고 검증 증거가 기록된 뒤에만 RESULT를 작성한다.
+
+### 0.2 비평 반영
 
 4렌즈(코드 정합성 / 경계 위반 / 완전성 / PhysX 기술 정확성) 독립 비평과 실코드 재현 검증을 이 문서 작성 직후 수행한다. 재현 확인된 지적과 반영 내역을 이 절에 기록한다.
 
@@ -30,8 +40,8 @@
 | `Engine/Default/Engine.vcxproj.filters` | G01 | 필터 1개 + 항목 2개 추가 |
 | `Client/Public/Physics_Tool.h` | G01 | 새 파일 |
 | `Client/Private/Physics_Tool.cpp` | G01 | 새 파일 |
-| `Client/Public/MainApp.h` | G01 | 전체 교체 |
-| `Client/Private/MainApp.cpp` | G01 | include 1줄 + 함수 전체 교체 3개 + switch 블록 교체 1곳 |
+| `Client/Public/MainApp.h` | G01 | 현재 파일 기준 `CPhysics_Tool` 전방 선언, enum 값, 멤버만 추가(전체 교체 금지) |
+| `Client/Private/MainApp.cpp` | G01 | 현재 파일 기준 include·Ensure/render/free 분기만 추가(전체 교체 금지) |
 | `Client/Default/Client.vcxproj` | G01 | ClInclude/ClCompile 2항목 추가 |
 | `Client/Default/Client.vcxproj.filters` | G01 | 필터 1개 + 항목 2개 추가 |
 
@@ -82,7 +92,21 @@ Engine/ThirdPartyLib/PhysX/
 
 - Cooking·GPU DLL은 배치하지 않는다. 박스/구/캡슐/plane 지오메트리는 cooking이 필요 없고(`PxCooking` 클래스는 5.2에서 제거, convex/triangle mesh만 immediate cooking 함수 사용), CPU 전용 시뮬레이션은 `PhysXGpu_64.dll`이 필요 없다.
 - `PhysXExtensions_static_64.lib`/`PhysXPvdSDK_static_64.lib`는 static 전용이라 대응 DLL이 없다.
-- 팀 인계: 산출 zip의 SHA-256(`Get-FileHash`)과 SDK tag(`107.3-physx-5.6.1`), preset 수정 내용(NV_USE_STATIC_WINCRT=False)을 이 G의 RESULT에 기록한다. 라이선스는 BSD 3-Clause로 바이너리 재배포가 허용된다.
+- 팀 인계: SDK tag(`107.3-physx-5.6.1`)와 preset 수정 내용(`NV_USE_STATIC_WINCRT=False`), Resources와 무관한 물리 폴더 위치 `Engine/ThirdPartyLib/PhysX`를 G00 RESULT에 기록한다. ZIP hash나 별도 hydrate 절차를 완료 조건으로 요구하지 않는다.
+
+#### G00-3.1 헤더·라이브러리·DLL 역할
+
+| 종류 | 파일 | 이번 프로젝트에서의 책임 |
+|---|---|---|
+| aggregate header | `Inc/PxPhysicsAPI.h` | G01 `Physics_Manager.cpp`가 Foundation, Scene, Actor, Shape, Joint API를 한 진입점으로 사용한다. Client public header에는 포함하지 않는다. |
+| generated config | `Inc/PxConfig.h` | 선택한 preset/configuration의 compile 계약이다. `generate_projects` 전 원본 include만 복사하면 이 파일이 빠질 수 있으므로 audit 필수 항목이다. |
+| import lib + DLL | `PhysX_64.lib/.dll` | `PxCreatePhysics`, `PxScene`, rigid actor/shape 등 핵심 SDK 구현을 링크·실행한다. |
+| import lib + DLL | `PhysXCommon_64.lib/.dll` | PhysX 핵심 모듈들이 공유하는 common runtime 구현이다. `PhysX_64`와 같은 구성으로 배포한다. |
+| import lib + DLL | `PhysXFoundation_64.lib/.dll` | allocator, error callback, foundation 기반 서비스를 제공한다. 가장 먼저 생성되고 가장 나중에 해제된다. |
+| static lib | `PhysXExtensions_static_64.lib` | `PxRigidBodyExt`, 기본 plane/shape helper, D6/Spherical joint 생성 등 G01 이후 편의 API를 Engine DLL 안에 정적으로 링크한다. 대응 DLL은 없다. |
+| static lib | `PhysXPvdSDK_static_64.lib` | `_DEBUG`에서 PhysX Visual Debugger 연결을 지원한다. 연결 실패는 시뮬 초기화 실패가 아니다. 대응 DLL은 없다. |
+
+이번 범위에서 제외하는 라이브러리는 `PhysXGpu_64`, vehicle, character controller, cooking 전용 산출물이다. G00의 목적은 모든 PhysX 모듈을 복사하는 것이 아니라, G01~G05가 실제 소비할 최소 CPU rigid-body 집합을 고정하는 것이다.
 
 ### G00-4. `Engine/Default/Engine.vcxproj` — Debug|x64 / Release|x64 ItemDefinitionGroup 블록 전체 교체
 
@@ -251,12 +275,14 @@ exit /b 0
 
 ### G00-8. 직접 작성 순서
 
-1. G00-2 절차로 SDK를 1회 빌드한다 (또는 이미 빌드된 산출물 zip을 받는다).
-2. G00-3 트리로 `Engine/ThirdPartyLib/PhysX`를 배치한다.
-3. G00-6 `.gitignore` 블록을 추가한다.
-4. G00-4 vcxproj 두 블록을 교체한다.
-5. G00-5 `UpdateLib.bat`을 교체한다.
-6. G00-7 audit 블록을 추가한다.
+1. `git status --short`와 `git diff -- Engine/Default/Engine.vcxproj UpdateLib.bat .gitignore Tools/ProjectAudit/Invoke-ProjectAudit.ps1`로 다른 변경을 확인한다.
+2. G00-2 절차로 SDK를 1회 빌드한다(또는 같은 tag/preset으로 빌드된 산출물을 받는다).
+3. G00-3 트리로 `Engine/ThirdPartyLib/PhysX`를 배치한다.
+4. G00-6 `.gitignore` 블록을 추가하고 `git check-ignore`를 먼저 확인한다.
+5. G00-4 vcxproj의 x64 두 블록에 include/lib 계약을 반영한다.
+6. G00-5 `UpdateLib.bat`에 구성별 DLL 3종 배포를 반영한다.
+7. G00-7 audit 블록을 추가한다.
+8. G00-9를 Debug와 Release 모두 통과시킨다. 이 시점까지 C++ 헤더·함수·멤버 변수 추가는 0건이다.
 
 ### G00-9. 자동 검증
 
@@ -273,8 +299,13 @@ $lostArkMsBuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\
 
 .\UpdateLib.bat Debug
 Test-Path 'Client/Bin/Debug/PhysX_64.dll', 'Client/Bin/Debug/PhysXCommon_64.dll', 'Client/Bin/Debug/PhysXFoundation_64.dll'
+.\UpdateLib.bat Release
+Test-Path 'Client/Bin/Release/PhysX_64.dll', 'Client/Bin/Release/PhysXCommon_64.dll', 'Client/Bin/Release/PhysXFoundation_64.dll'
+
+git check-attr filter -- Engine/ThirdPartyLib/PhysX/Lib/Debug/PhysX_64.lib Engine/ThirdPartyLib/PhysX/Bin/Release/PhysX_64.dll
 
 powershell -ExecutionPolicy Bypass -File Tools/ProjectAudit/Invoke-ProjectAudit.ps1
+git diff --check -- Engine/Default/Engine.vcxproj UpdateLib.bat .gitignore Tools/ProjectAudit/Invoke-ProjectAudit.ps1
 ```
 
 기대 결과:
@@ -283,8 +314,10 @@ powershell -ExecutionPolicy Bypass -File Tools/ProjectAudit/Invoke-ProjectAudit.
 git check-ignore 두 건 모두 $LASTEXITCODE = 1  (ignore되지 않음 = 추적 대상)
 Engine.vcxproj XML parse                        PASS
 Engine x64 Debug/Release compile/link           PASS (PhysX 링크 오류 0)
-UpdateLib 후 Client/Bin/Debug의 PhysX DLL 3종   True True True
+UpdateLib 후 Client/Bin/Debug·Release DLL 각 3종 True True True
+lib/dll의 git attribute filter                    lfs
 physics.g0-sdk-layout                           PASS
+대상 파일 git diff --check                       PASS
 ```
 
 ---
@@ -317,11 +350,17 @@ CGameInstance::Initialize_Engine
   → createMaterial(0.5, 0.5, 0.2) → 레벨 버킷 할당 → (_DEBUG) DebugDraw 배치/이펙트/입력레이아웃
 → 실패 시 Release_PhysX로 부분 생성물 전부 해제 후 E_FAIL (엔진 초기화 실패로 전파)
 
-CGameInstance::Update_Engine (매 프레임, Late_Update 뒤 · Level_Manager->Update 앞)
+CGameInstance::Update_Engine (매 프레임, Object_Manager->Update 뒤 · Late_Update 앞)
 → CPhysics_Manager::Update(fTimeDelta)
 → accumulator += dt → while (accumulator ≥ 1/60 && steps < 4) simulate(1/60) + fetchResults(true)
 → 상한 초과 잔여분은 폐기 카운트 후 버림 (spiral-of-death 가드)
 → 통계 갱신 (steps, dropped, accumulator, simulate ms, actor 총계)
+
+G02에서 같은 seam을 다음 순서로 확장한다.
+→ Object Update가 animation pose와 kinematic target을 staging
+→ Physics Update가 simulate/fetch
+→ Object Manager `Post_Physics_Update`가 dynamic pose를 Transform/본에 commit
+→ Late_Update가 commit된 pose로 renderer group 제출
 
 CPhysics_Tool::Render (F1 허브가 활성 툴일 때 매 프레임)
 → CGameInstance::Get().Get_PhysicsManager() 파사드 획득 (null이면 안내 후 반환)
@@ -394,8 +433,8 @@ public:
 public:
 	/* Caller: CGameInstance::Initialize_Engine, once, main thread. */
 	HRESULT Initialize(uint32_t iNumLevels);
-	/* Caller: CGameInstance::Update_Engine, every frame after Late_Update so
-	G02 can inject animation poses before simulation. */
+	/* Caller: CGameInstance::Update_Engine, every frame after object Update
+	and before Late_Update. G02 inserts Post_Physics_Update after this call. */
 	void Update(f32_t fTimeDelta);
 	/* Caller: CGameInstance::Clear_Resources with the outgoing level index.
 	LEVEL::STATIC is never passed, so bucket 0 survives every transition. */
@@ -878,7 +917,7 @@ public: /* For.Physics */
 
 작업 3: 함수 전체 교체 — `Update_Engine` (기존 함수에 주석 없음, ASCII 안전)
 교체 범위: `void CGameInstance::Update_Engine(f32_t fTimeDelta)` 시작부터 닫는 `}`까지
-필요한 이유: 고정 스텝 펌프는 오브젝트 Update/Late_Update에서 애니메이션이 확정된 뒤, Level_Manager 갱신 앞에서 돈다. G02의 앵커 주입 → 시뮬 → 역주입이 같은 자리에서 닫힌다.
+필요한 이유: 고정 스텝 펌프는 오브젝트 Update가 애니메이션과 kinematic target을 확정한 뒤, Late_Update가 렌더 그룹을 제출하기 전에 돈다. G02는 물리 호출 직후 `Post_Physics_Update`를 추가해 같은 프레임에 결과를 역주입한다. 현재 코드의 `Refresh_CameraState()` 호출을 보존한다.
 
 ```cpp
 void CGameInstance::Update_Engine(f32_t fTimeDelta)
@@ -893,14 +932,13 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 
 	m_pObject_Manager->Priority_Update(fTimeDelta);
 
-	m_pPipeLine->Update();
-
-	m_pFrustum->Update_InWorldSpace();
+	Refresh_CameraState();
 
 	m_pObject_Manager->Update(fTimeDelta);
-	m_pObject_Manager->Late_Update(fTimeDelta);
 
 	m_pPhysics_Manager->Update(fTimeDelta);
+
+	m_pObject_Manager->Late_Update(fTimeDelta);
 
 	m_pLevel_Manager->Update(fTimeDelta);
 }
@@ -1043,7 +1081,9 @@ void CPhysics_Tool::Render()
 }
 ```
 
-### G01-10. `Client/Public/MainApp.h` 전체 코드 (전체 교체)
+### G01-10. `Client/Public/MainApp.h` 08-05 참고 스냅샷 (현재 파일 전체 교체 금지)
+
+> 2026-08-08 현재 `MainApp.h`에는 Release HUD/Lobby/SkillWindow와 Rendering Workbench 상태가 추가되어 아래 08-05 전문을 그대로 복사하면 회귀한다. 이 section은 G01의 `CPhysics_Tool` 전방 선언, `DEBUG_TOOL::PHYSICS`, `m_pPhysicsTool` 위치를 설명하는 참고 스냅샷으로만 사용한다. G01 착수 세션에서 현재 파일 전문에 세 delta를 합친 최종 전문으로 교체한 뒤 반영한다.
 
 ```cpp
 #pragma once
@@ -1142,7 +1182,9 @@ public:
 NS_END
 ```
 
-### G01-11. `Client/Private/MainApp.cpp` — include 1줄 + 함수 전체 교체 3개 + switch 블록 교체 1곳
+### G01-11. `Client/Private/MainApp.cpp` — 현재 함수 기준 delta 재기준화 필요
+
+> 2026-08-08 현재 `MainApp.cpp`에는 08-05 이후 Rendering/HUD/Effect Tool 분기가 추가되어 아래 함수 전문은 직접 반영 대상이 아니다. G01 착수 세션에서 현재 `EnsureDebugTool`, `RenderDeveloperTools`, render switch, `Free`를 읽고 Physics 분기만 합친 최종 함수 전문으로 갱신한다.
 
 작업 1: 추가 — include
 기준점: `#ifdef _DEBUG` include 블록의 `#include "MapTool.h"`
@@ -1435,7 +1477,7 @@ void CMainApp::Free()
 2. `GameInstance.h` 앵커 2곳, `GameInstance.cpp` include+앵커 2곳+함수 교체 2개를 반영한다 (G01-6, G01-7).
 3. Engine x64 Debug 빌드 → `UpdateLib.bat Debug` 실행 (`Engine/Public` 변경이므로 필수).
 4. `Client/Public/Physics_Tool.h`, `Client/Private/Physics_Tool.cpp`를 만들고 Client vcxproj/filters에 등록한다 (G01-8, G01-9, G01-12).
-5. `MainApp.h` 전체 교체, `MainApp.cpp` 5개 작업을 반영한다 (G01-10, G01-11).
+5. G01-10/G01-11을 현재 `MainApp.h/.cpp`에 재기준화한 뒤 `CPhysics_Tool` 전방 선언·enum·멤버와 include·ensure/render/free 분기만 반영한다. 08-05 참고 스냅샷을 그대로 복사하지 않는다.
 6. audit 블록을 추가한다 (G01-13).
 7. Client x64 Debug 빌드 → 자동 검증(G01-15) → runtime smoke(G01-16).
 
@@ -1502,7 +1544,9 @@ Lobby 복귀 → 다시 Test로 재진입
 
 ### G01-17. 이번 문서에서 의도적으로 남긴 다음 경계
 
-- G02 (본체인 secondary motion): `CModel::Play_Animation` 역주입 훅, branch solver, `Data/Animation/Authored/<AssetId>/physics.json` 로더, Animation Tool branch 저작 모드. 설계는 설계 PLAN §3.2가 정본이며 별도 코드 PLAN으로 닫는다.
-- G03 (발탄 debris 연출): DeployProp 재배선 슬라이스(prototype 등록 → `Load_DeployProps` 호출자 → Server 페이즈 소비자, 물리와 무관)가 선행돼야 하며, 그 뒤 `CDeployPropObject::Set_State`의 INTACT→FRACTURED one-shot 가드에서 파편을 스폰한다. 별도 코드 PLAN.
+- G02 (범용 rigid body bridge): stable handle, actor descriptor, `CRigidBody` 또는 동등한 Engine component, kinematic/dynamic 전환, gravity/velocity/pose API, `Post_Physics_Update`를 추가한다. G01의 raw `PxRigidActor*` level bucket을 Client에 노출하지 않는다.
+- G03 (본체인 secondary motion): `CModel::Play_Animation`/`Post_Physics_Update` 역주입 훅, branch solver, `Data/Animation/Authored/<AssetId>/physics.json` 로더, Animation Tool branch 저작 모드. 설계 PLAN §3.2가 정본이다.
+- G04 (플레이어 낙사): Server `fallVolume/VOID` 판정과 `FALLING` life state가 선행하고, Client가 G02 rigid body로 중력 낙하를 표현한다. 모든 `walkable=false`를 낙사로 해석하지 않는다.
+- G05 (발탄 debris): Server destroyable state와 one-shot event, 동적 navigation, Shared 복제가 닫힌 뒤 파편 actor를 스폰한다. 지속 `FRACTURED` 상태 적용만으로 debris를 재생하지 않는다.
 - Release 구성의 runtime smoke는 Developer Tools가 빠지므로 빌드/배포 검증까지만 수행한다 (Release에서 Physics Tool smoke를 PASS로 기록하지 않는다).
-- 캐릭터 이동·판정·boss 페이즈의 물리화는 범위 밖이다. Server 권위 계약이 그대로 유지된다.
+- 캐릭터 이동·판정·boss 페이즈의 물리화는 범위 밖이다. G04에서도 PhysX pose는 Client 표현이며 Server 권위 계약이 그대로 유지된다.

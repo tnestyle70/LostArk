@@ -1,0 +1,3263 @@
+{
+  "schema": "lostark.ue3-cooked-material-graph-evidence-set",
+  "formatVersion": 1,
+  "materials": [
+    {
+      "schema": "lostark.ue3-cooked-material-graph-evidence",
+      "formatVersion": 1,
+      "sourcePackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "sourcePackageVersion": 868,
+      "materialPath": "fx_m.fx_j_pa_linearflow_02_tr",
+      "materialExportIndex": 94,
+      "materialSerialSize": 3533,
+      "materialPropertyStreamEnd": 3433,
+      "materialTrailingByteCount": 100,
+      "outputs": {
+        "emissivecolor": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "opacity": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "distortion": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "worldpositionoffset": {
+          "packageIndex": 3910,
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_35"
+        }
+      },
+      "expressions": [
+        {
+          "sourceOrder": 0,
+          "exportIndex": 3909,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_35",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 3909,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_33"
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 2,
+          "exportIndex": 3908,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_33",
+          "parameterName": "mesh_billboard_use",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 8,
+          "exportIndex": 1786,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_101",
+          "parameterName": "distortion",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 120,
+          "propertyStreamEnd": 120
+        },
+        {
+          "sourceOrder": 10,
+          "exportIndex": 3889,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_12",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 4,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 4,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 529,
+          "propertyStreamEnd": 529
+        },
+        {
+          "sourceOrder": 13,
+          "exportIndex": 3892,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_16",
+          "parameterName": "depthalpha_use",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 15,
+          "exportIndex": 3890,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_13",
+          "parameterName": "meshedge_soft_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 3895,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_18"
+            },
+            {
+              "input": "b",
+              "packageIndex": 3887,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_1"
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 16,
+          "exportIndex": 3886,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_1",
+          "parameterName": "coresoft_use",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 281,
+          "propertyStreamEnd": 281
+        },
+        {
+          "sourceOrder": 18,
+          "exportIndex": 1812,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_3",
+          "parameterName": "mask_density",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 20,
+          "exportIndex": 1805,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_2",
+          "parameterName": "mask_radius",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 22,
+          "exportIndex": 1829,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_5",
+          "parameterName": "coresoft_str",
+          "group": null,
+          "defaultValue": 2.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 28,
+          "exportIndex": 3894,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_18",
+          "parameterName": "width_height_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 33,
+          "exportIndex": 1803,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_18",
+          "parameterName": "gra_pow",
+          "group": "mesh_control",
+          "defaultValue": 1.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 48,
+          "exportIndex": 1819,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_4",
+          "parameterName": "opacity_str",
+          "group": null,
+          "defaultValue": 20.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 50,
+          "exportIndex": 1837,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_6",
+          "parameterName": "opacity_pow",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 51,
+          "exportIndex": 3888,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_11",
+          "parameterName": "mask_compose",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 281,
+          "propertyStreamEnd": 281
+        },
+        {
+          "sourceOrder": 53,
+          "exportIndex": 1814,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_31",
+          "parameterName": "mask_linearalpha",
+          "group": null,
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 55,
+          "exportIndex": 1850,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_96",
+          "parameterName": "b_mask_pow",
+          "group": "mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 57,
+          "exportIndex": 1851,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_97",
+          "parameterName": "b_mask_str",
+          "group": "mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 60,
+          "exportIndex": 1800,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_15",
+          "parameterName": "a_mask_debug(0or1)",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 282,
+          "propertyStreamEnd": 282
+        },
+        {
+          "sourceOrder": 65,
+          "exportIndex": 3906,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_31",
+          "parameterName": "b_sizecontrol_dyuse",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 1829,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_48"
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 451,
+          "propertyStreamEnd": 451
+        },
+        {
+          "sourceOrder": 67,
+          "exportIndex": 3902,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_26",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 3,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 3,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 529,
+          "propertyStreamEnd": 529
+        },
+        {
+          "sourceOrder": 70,
+          "exportIndex": 1828,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_48",
+          "parameterName": "b_noise_01_str",
+          "group": "mask_b_noise",
+          "defaultValue": 0.20000000298023224,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 78,
+          "exportIndex": 4447,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_12",
+          "parameterName": "b_noise_01_tex",
+          "group": "mask_b_noise",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 82,
+          "exportIndex": 1827,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_47",
+          "parameterName": "b_noise_01_tile_v",
+          "group": "mask_b_noise",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 83,
+          "exportIndex": 1826,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_46",
+          "parameterName": "b_noise_01_tile_u",
+          "group": "mask_b_noise",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 91,
+          "exportIndex": 3905,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_3",
+          "parameterName": "nonpolar_mask_b",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 93,
+          "exportIndex": 1806,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_20",
+          "parameterName": "b_rotator",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 98,
+          "exportIndex": 3891,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_15",
+          "parameterName": "b_sizecontrol_dyuse",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 3903,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_26"
+            },
+            {
+              "input": "b",
+              "packageIndex": 1810,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_23"
+            }
+          ],
+          "serialSize": 451,
+          "propertyStreamEnd": 451
+        },
+        {
+          "sourceOrder": 99,
+          "exportIndex": 1809,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_23",
+          "parameterName": "b_sizecontrol",
+          "group": "mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 252,
+          "propertyStreamEnd": 252
+        },
+        {
+          "sourceOrder": 108,
+          "exportIndex": 3887,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_10",
+          "parameterName": "b_pan_y_use",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 3902,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_25"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 109,
+          "exportIndex": 3901,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_25",
+          "parameterName": "b_pan_x_dynuse",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 1826,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_45"
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 384,
+          "propertyStreamEnd": 384
+        },
+        {
+          "sourceOrder": 113,
+          "exportIndex": 3898,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_22",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 1,
+              "mask": 1,
+              "maskg": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 1,
+              "mask": 1,
+              "maskg": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 529,
+          "propertyStreamEnd": 529
+        },
+        {
+          "sourceOrder": 114,
+          "exportIndex": 1825,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_45",
+          "parameterName": "b_offset_y",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 117,
+          "exportIndex": 1839,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_69",
+          "parameterName": "b_pany_speed",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 119,
+          "exportIndex": 3916,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_9",
+          "parameterName": "b_pan_x_use",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 3900,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_23"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 120,
+          "exportIndex": 3899,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_23",
+          "parameterName": "b_pan_x_dynuse",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 1825,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_44"
+            }
+          ],
+          "serialSize": 384,
+          "propertyStreamEnd": 384
+        },
+        {
+          "sourceOrder": 121,
+          "exportIndex": 1824,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_44",
+          "parameterName": "b_offset_x",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 125,
+          "exportIndex": 1838,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_67",
+          "parameterName": "b_panx_speed",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 127,
+          "exportIndex": 1823,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_43",
+          "parameterName": "b_tile_v",
+          "group": "mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 128,
+          "exportIndex": 1822,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_42",
+          "parameterName": "b_tile_u",
+          "group": "mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 138,
+          "exportIndex": 4449,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_2",
+          "parameterName": "b_mask_tex",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_00.fx_a_line_010",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 140,
+          "exportIndex": 1848,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_93",
+          "parameterName": "a_mask_pow",
+          "group": "mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 142,
+          "exportIndex": 1847,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_91",
+          "parameterName": "a_mask_str",
+          "group": "mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 145,
+          "exportIndex": 1790,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_11",
+          "parameterName": "b_mask_debug(0or1)",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 282,
+          "propertyStreamEnd": 282
+        },
+        {
+          "sourceOrder": 150,
+          "exportIndex": 3896,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_20",
+          "parameterName": "a_sizecontrol_dyuse",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 1800,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_14"
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 451,
+          "propertyStreamEnd": 451
+        },
+        {
+          "sourceOrder": 152,
+          "exportIndex": 3900,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_24",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 2,
+              "mask": 1,
+              "maskb": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 2,
+              "mask": 1,
+              "maskb": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 529,
+          "propertyStreamEnd": 529
+        },
+        {
+          "sourceOrder": 153,
+          "exportIndex": 1799,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_14",
+          "parameterName": "a_noise_01_str",
+          "group": "mask_a_noise",
+          "defaultValue": 0.20000000298023224,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 161,
+          "exportIndex": 4446,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_10",
+          "parameterName": "a_noise_01_tex",
+          "group": "mask_a_noise",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 165,
+          "exportIndex": 1807,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_21",
+          "parameterName": "a_noise_01_tile_v",
+          "group": "mask_a_noise",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 166,
+          "exportIndex": 1808,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_22",
+          "parameterName": "a_noise_01_tile_u",
+          "group": "mask_a_noise",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 174,
+          "exportIndex": 3911,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_5",
+          "parameterName": "nonpolar_mask_a",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 176,
+          "exportIndex": 1801,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_16",
+          "parameterName": "a_rotator",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 181,
+          "exportIndex": 3912,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_7",
+          "parameterName": "a_sizecontrol_dyuse",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 3901,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_24"
+            },
+            {
+              "input": "b",
+              "packageIndex": 1805,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_19"
+            }
+          ],
+          "serialSize": 451,
+          "propertyStreamEnd": 451
+        },
+        {
+          "sourceOrder": 182,
+          "exportIndex": 1804,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_19",
+          "parameterName": "a_sizecontrol",
+          "group": "mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 252,
+          "propertyStreamEnd": 252
+        },
+        {
+          "sourceOrder": 191,
+          "exportIndex": 3885,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_0",
+          "parameterName": "a_pan_y_use",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 3905,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_29"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 192,
+          "exportIndex": 3904,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_29",
+          "parameterName": "a_pan_x_dynuse",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 1799,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_13"
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 384,
+          "propertyStreamEnd": 384
+        },
+        {
+          "sourceOrder": 196,
+          "exportIndex": 3893,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_17",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 457,
+          "propertyStreamEnd": 457
+        },
+        {
+          "sourceOrder": 197,
+          "exportIndex": 1798,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_13",
+          "parameterName": "a_offset_y",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 200,
+          "exportIndex": 1830,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_52",
+          "parameterName": "a_pany_speed",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 202,
+          "exportIndex": 3895,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_2",
+          "parameterName": "a_pan_x_use",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 3904,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_27"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 203,
+          "exportIndex": 3903,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_27",
+          "parameterName": "a_pan_x_dynuse",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 1792,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_12"
+            }
+          ],
+          "serialSize": 384,
+          "propertyStreamEnd": 384
+        },
+        {
+          "sourceOrder": 204,
+          "exportIndex": 1791,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_12",
+          "parameterName": "a_offset_x",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 208,
+          "exportIndex": 1831,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_54",
+          "parameterName": "a_panx_speed",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 210,
+          "exportIndex": 1846,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_9",
+          "parameterName": "a_tile_v",
+          "group": "mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 211,
+          "exportIndex": 1840,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_7",
+          "parameterName": "a_tile_u",
+          "group": "mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 221,
+          "exportIndex": 4444,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_0",
+          "parameterName": "a_mask_tex",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_auraline_03",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 225,
+          "exportIndex": 1787,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_102",
+          "parameterName": "depth",
+          "group": null,
+          "defaultValue": 0.30000001192092896,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 228,
+          "exportIndex": 3915,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_8",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "maskg": 1,
+              "maskb": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "maskg": 1,
+              "maskb": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 601,
+          "propertyStreamEnd": 601
+        },
+        {
+          "sourceOrder": 230,
+          "exportIndex": 1813,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_30",
+          "parameterName": "diff_pow",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 232,
+          "exportIndex": 1784,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_1",
+          "parameterName": "diff_str",
+          "group": "01_diffuse",
+          "defaultValue": 7.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 235,
+          "exportIndex": 5112,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionvectorparameter_3",
+          "parameterName": "b_mask_color",
+          "group": "01_diffuse",
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 200,
+          "propertyStreamEnd": 200
+        },
+        {
+          "sourceOrder": 238,
+          "exportIndex": 1783,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_0",
+          "parameterName": "diff_tex_desaturation",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 266,
+          "propertyStreamEnd": 266
+        },
+        {
+          "sourceOrder": 240,
+          "exportIndex": 3897,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_21",
+          "parameterName": "diff_polar_use",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 244,
+          "exportIndex": 1789,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_105",
+          "parameterName": "diff_tile_v",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 245,
+          "exportIndex": 1788,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_103",
+          "parameterName": "diff_tile_u",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 248,
+          "exportIndex": 1795,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_125",
+          "parameterName": "diff_noise_str",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 256,
+          "exportIndex": 4448,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_14",
+          "parameterName": "diff_noise_tex",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 260,
+          "exportIndex": 1794,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_124",
+          "parameterName": "diff_noise_tile_v",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 261,
+          "exportIndex": 1793,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_123",
+          "parameterName": "diff_noise_tile_u",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 270,
+          "exportIndex": 1792,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_120",
+          "parameterName": "diff_rotator",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 275,
+          "exportIndex": 3914,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_78",
+          "parameterName": "diff_pan_y_use",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 1845,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_79"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 276,
+          "exportIndex": 1844,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_79",
+          "parameterName": "diff_offset_y",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 279,
+          "exportIndex": 1843,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_78",
+          "parameterName": "diff_pany_speed",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 281,
+          "exportIndex": 3913,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_77",
+          "parameterName": "diff_pan_x_use",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 1843,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_77"
+            }
+          ],
+          "serialSize": 288,
+          "propertyStreamEnd": 288
+        },
+        {
+          "sourceOrder": 282,
+          "exportIndex": 1842,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_77",
+          "parameterName": "diff_offset_x",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 285,
+          "exportIndex": 1841,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_74",
+          "parameterName": "diff_panx_speed",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 287,
+          "exportIndex": 1797,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_129",
+          "parameterName": "diff_tile_v",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 288,
+          "exportIndex": 1796,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_128",
+          "parameterName": "diff_tile_u",
+          "group": "01_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 290,
+          "exportIndex": 4445,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_1",
+          "parameterName": "diff_tex",
+          "group": "01_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_noise_tile_08",
+          "inputs": [],
+          "serialSize": 205,
+          "propertyStreamEnd": 205
+        },
+        {
+          "sourceOrder": 293,
+          "exportIndex": 5111,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionvectorparameter_1",
+          "parameterName": "a_mask_color",
+          "group": "01_diffuse",
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 200,
+          "propertyStreamEnd": 200
+        },
+        {
+          "sourceOrder": 296,
+          "exportIndex": 1845,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_8",
+          "parameterName": "a_mask_desaturation",
+          "group": "mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 298,
+          "exportIndex": 1802,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_17",
+          "parameterName": "b_mask_desaturation",
+          "group": "mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 301,
+          "exportIndex": 1785,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_10",
+          "parameterName": "a_noise_01_pan_y",
+          "group": "mask_a_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 302,
+          "exportIndex": 1810,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_25",
+          "parameterName": "a_noise_01_pan_x",
+          "group": "mask_a_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 308,
+          "exportIndex": 1811,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_28",
+          "parameterName": "b_noise_01_pan_y",
+          "group": "mask_b_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 309,
+          "exportIndex": 1815,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_32",
+          "parameterName": "b_noise_01_pan_x",
+          "group": "mask_b_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 314,
+          "exportIndex": 1816,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_35",
+          "parameterName": "a_noise_01_offset_x",
+          "group": "mask_a_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 315,
+          "exportIndex": 1817,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_36",
+          "parameterName": "a_noise_01_offset_y",
+          "group": "mask_a_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 319,
+          "exportIndex": 1818,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_39",
+          "parameterName": "b_noise_01_offset_x",
+          "group": "mask_b_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 320,
+          "exportIndex": 1820,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_40",
+          "parameterName": "b_noise_01_offset_y",
+          "group": "mask_b_noise",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 322,
+          "exportIndex": 1821,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_41",
+          "parameterName": "dissolve_rot",
+          "group": "00_dissolve",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 323,
+          "exportIndex": 4781,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontexturesampleparameter2d_6",
+          "parameterName": "dissolve_tex",
+          "group": "00_dissolve",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_04.fx_h_atypical_01_1",
+          "inputs": [
+            {
+              "input": "coordinates",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 273,
+          "propertyStreamEnd": 273
+        },
+        {
+          "sourceOrder": 325,
+          "exportIndex": 1832,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_55",
+          "parameterName": "dissolve_pan_y",
+          "group": "00_dissolve",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 327,
+          "exportIndex": 1833,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_56",
+          "parameterName": "dissolve_tile_x",
+          "group": "00_dissolve",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 332,
+          "exportIndex": 1834,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_57",
+          "parameterName": "dissolve_tile_y",
+          "group": "00_dissolve",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 334,
+          "exportIndex": 1835,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_58",
+          "parameterName": "dissolve_hardness",
+          "group": "00_dissolve",
+          "defaultValue": 5.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 335,
+          "exportIndex": 1836,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_59",
+          "parameterName": "dissolve_pan_x",
+          "group": "00_dissolve",
+          "defaultValue": -0.10000000149011612,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 337,
+          "exportIndex": 3907,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_32",
+          "parameterName": "dissolve_use",
+          "group": "00_dissolve",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 3890,
+              "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_12"
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 341,
+          "exportIndex": 3910,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionstaticswitchparameter_37",
+          "parameterName": "meshtype_use",
+          "group": "mesh_control",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 343,
+          "exportIndex": 1849,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressionscalarparameter_94",
+          "parameterName": "meshedgefade",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 120,
+          "propertyStreamEnd": 120
+        }
+      ],
+      "namedTextures": [
+        {
+          "name": "b_noise_01_tex",
+          "group": "mask_b_noise",
+          "sourceObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_12"
+        },
+        {
+          "name": "b_mask_tex",
+          "group": "mask_b",
+          "sourceObjectPath": "fx_tex_00.fx_a_line_010",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_2"
+        },
+        {
+          "name": "a_noise_01_tex",
+          "group": "mask_a_noise",
+          "sourceObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_10"
+        },
+        {
+          "name": "a_mask_tex",
+          "group": "mask_a",
+          "sourceObjectPath": "fx_tex_06.fx_j_auraline_03",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_0"
+        },
+        {
+          "name": "diff_noise_tex",
+          "group": "01_diffuse",
+          "sourceObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_14"
+        },
+        {
+          "name": "diff_tex",
+          "group": "01_diffuse",
+          "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_08",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontextureobjectparameter_1"
+        },
+        {
+          "name": "dissolve_tex",
+          "group": "00_dissolve",
+          "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
+          "expressionObjectPath": "fx_m.fx_j_pa_linearflow_02_tr.materialexpressiontexturesampleparameter2d_6"
+        }
+      ],
+      "summary": {
+        "expressionEntryCount": 344,
+        "nonNullExpressionCount": 110,
+        "nullExpressionCount": 234,
+        "namedTextureCount": 7,
+        "unresolvedInputEdgeCount": 45,
+        "topologyStatus": "COOKED_PARTIAL",
+        "runtimeExactEligible": false
+      }
+    },
+    {
+      "schema": "lostark.ue3-cooked-material-graph-evidence",
+      "formatVersion": 1,
+      "sourcePackage": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "sourcePackageVersion": 868,
+      "materialPath": "fx_m.fx_j_pa_blacklineaura_01_tr",
+      "materialExportIndex": 51,
+      "materialSerialSize": 2802,
+      "materialPropertyStreamEnd": 2702,
+      "materialTrailingByteCount": 100,
+      "outputs": {
+        "emissivecolor": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "opacity": {
+          "packageIndex": 3690,
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_3"
+        }
+      },
+      "expressions": [
+        {
+          "sourceOrder": 2,
+          "exportIndex": 1114,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_79",
+          "parameterName": "mask_density",
+          "group": null,
+          "defaultValue": 10.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 4,
+          "exportIndex": 1113,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_78",
+          "parameterName": "mask_radius",
+          "group": null,
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 10,
+          "exportIndex": 1071,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_19",
+          "parameterName": "mask_b_str",
+          "group": "01_mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 12,
+          "exportIndex": 1073,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_20",
+          "parameterName": "mask_b_pow",
+          "group": "01_mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 22,
+          "exportIndex": 3686,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_24",
+          "parameterName": "99.use_flow02_radial",
+          "group": "99_flow",
+          "defaultValue": true,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 28,
+          "exportIndex": 1112,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_74",
+          "parameterName": "flow02_pan_y",
+          "group": "99_flow",
+          "defaultValue": 0.10000000149011612,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 30,
+          "exportIndex": 1111,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_72",
+          "parameterName": "flow02_pan_x",
+          "group": "99_flow",
+          "defaultValue": 0.15000000596046448,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 31,
+          "exportIndex": 1068,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_16",
+          "parameterName": "flow02_tile_y",
+          "group": "99_flow",
+          "defaultValue": 1.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 32,
+          "exportIndex": 1066,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_15",
+          "parameterName": "flow02_tile_x",
+          "group": "99_flow",
+          "defaultValue": 2.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 34,
+          "exportIndex": 4420,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_10",
+          "parameterName": "flow_tex",
+          "group": "99_flow",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_normal_02",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 38,
+          "exportIndex": 3687,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_26",
+          "parameterName": "99.use_flow01_radial",
+          "group": "99_flow",
+          "defaultValue": true,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 313,
+          "propertyStreamEnd": 313
+        },
+        {
+          "sourceOrder": 44,
+          "exportIndex": 1108,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_66",
+          "parameterName": "flow01_pan_y",
+          "group": "99_flow",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 46,
+          "exportIndex": 1109,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_67",
+          "parameterName": "flow01_pan_x",
+          "group": "99_flow",
+          "defaultValue": -0.05000000074505806,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 47,
+          "exportIndex": 1061,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_12",
+          "parameterName": "flow01_tile_y",
+          "group": "99_flow",
+          "defaultValue": 3.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 48,
+          "exportIndex": 1059,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_10",
+          "parameterName": "flow01_tile_x",
+          "group": "99_flow",
+          "defaultValue": 3.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 50,
+          "exportIndex": 3690,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_30",
+          "parameterName": "99.use_mask_b_radial",
+          "group": "01_mask_b",
+          "defaultValue": true,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 338,
+          "propertyStreamEnd": 338
+        },
+        {
+          "sourceOrder": 55,
+          "exportIndex": 1105,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_58",
+          "parameterName": "mask_b_pan_y",
+          "group": "01_mask_b",
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 57,
+          "exportIndex": 1106,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_59",
+          "parameterName": "mask_b_pan_x",
+          "group": "01_mask_b",
+          "defaultValue": -0.009999999776482582,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 58,
+          "exportIndex": 1079,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_26",
+          "parameterName": "mask_b_tile_y",
+          "group": "01_mask_b",
+          "defaultValue": 1.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 59,
+          "exportIndex": 1078,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_25",
+          "parameterName": "mask_b_tile_x",
+          "group": "01_mask_b",
+          "defaultValue": 2.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 61,
+          "exportIndex": 4422,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_6",
+          "parameterName": "mask_b_tex",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_04.fx_j_mirnoise_02",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 63,
+          "exportIndex": 1107,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_6",
+          "parameterName": "mask_a_str",
+          "group": "00_mask_a",
+          "defaultValue": 10.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 65,
+          "exportIndex": 1102,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_5",
+          "parameterName": "mask_a_pow",
+          "group": "00_mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 72,
+          "exportIndex": 1104,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_51",
+          "parameterName": "maska_dypan_y",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 74,
+          "exportIndex": 1103,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_50",
+          "parameterName": "maska_dypan_x",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 75,
+          "exportIndex": 3688,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_28",
+          "parameterName": "99.use_mask_a_radial",
+          "group": "00_mask_a",
+          "defaultValue": true,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 338,
+          "propertyStreamEnd": 338
+        },
+        {
+          "sourceOrder": 78,
+          "exportIndex": 1117,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_9",
+          "parameterName": "mask_a_tile_y",
+          "group": "00_mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 79,
+          "exportIndex": 1110,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_7",
+          "parameterName": "mask_a_tile_x",
+          "group": "00_mask_a",
+          "defaultValue": 3.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 81,
+          "exportIndex": 4421,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_4",
+          "parameterName": "mask_a_tex",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_auraline_16_ycl",
+          "inputs": [],
+          "serialSize": 205,
+          "propertyStreamEnd": 205
+        },
+        {
+          "sourceOrder": 88,
+          "exportIndex": 1116,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_80",
+          "parameterName": "emissive_pow",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 90,
+          "exportIndex": 1058,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_1",
+          "parameterName": "emissive_str",
+          "group": null,
+          "defaultValue": 2.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 99,
+          "exportIndex": 1074,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_21",
+          "parameterName": "diff_pow",
+          "group": "02_diffuse",
+          "defaultValue": 1.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 106,
+          "exportIndex": 1097,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_43",
+          "parameterName": "diff_dypan_y",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 108,
+          "exportIndex": 1096,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_42",
+          "parameterName": "diff_dypan_x",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 111,
+          "exportIndex": 1084,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_30",
+          "parameterName": "diff_tile_y",
+          "group": "02_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 112,
+          "exportIndex": 1082,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_29",
+          "parameterName": "diff_tile_x",
+          "group": "02_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 114,
+          "exportIndex": 1075,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_22",
+          "parameterName": "diff_flow_str",
+          "group": "02_diffuse",
+          "defaultValue": 0.10000000149011612,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 116,
+          "exportIndex": 4423,
+          "className": "materialexpressiontextureobjectparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_8",
+          "parameterName": "diffuse_tex",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_06.fx_j_noise_tile_04",
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 118,
+          "exportIndex": 3692,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_53",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "maskg": 1,
+              "maskb": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "maskg": 1,
+              "maskb": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 544,
+          "propertyStreamEnd": 544
+        },
+        {
+          "sourceOrder": 119,
+          "exportIndex": 3693,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_55",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 4,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 4,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 472,
+          "propertyStreamEnd": 472
+        },
+        {
+          "sourceOrder": 120,
+          "exportIndex": 3694,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_57",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "mask": 1,
+              "maskr": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 400,
+          "propertyStreamEnd": 400
+        },
+        {
+          "sourceOrder": 122,
+          "exportIndex": 3695,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_59",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 1,
+              "mask": 1,
+              "maskg": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 1,
+              "mask": 1,
+              "maskg": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 472,
+          "propertyStreamEnd": 472
+        },
+        {
+          "sourceOrder": 123,
+          "exportIndex": 3696,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_61",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 3,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 3,
+              "mask": 1,
+              "maska": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 472,
+          "propertyStreamEnd": 472
+        },
+        {
+          "sourceOrder": 124,
+          "exportIndex": 3697,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_63",
+          "parameterName": "99.use_diff_radial",
+          "group": "02_diffuse",
+          "defaultValue": true,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 338,
+          "propertyStreamEnd": 338
+        },
+        {
+          "sourceOrder": 127,
+          "exportIndex": 1064,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_147",
+          "parameterName": "desaturation",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 129,
+          "exportIndex": 1065,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_148",
+          "parameterName": "mask_a_rot",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 130,
+          "exportIndex": 1067,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_150",
+          "parameterName": "mask_b_rot",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 132,
+          "exportIndex": 3698,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_64",
+          "parameterName": "use_radialmask",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 134,
+          "exportIndex": 1072,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_2",
+          "parameterName": "mask_b_offset_x",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 135,
+          "exportIndex": 1115,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_8",
+          "parameterName": "mask_b_offset_y",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 139,
+          "exportIndex": 1060,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_11",
+          "parameterName": "flow01_str",
+          "group": "99_flow",
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 140,
+          "exportIndex": 1062,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_13",
+          "parameterName": "flow02_str",
+          "group": "99_flow",
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 143,
+          "exportIndex": 1069,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_17",
+          "parameterName": "diff_str",
+          "group": "02_diffuse",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 144,
+          "exportIndex": 1076,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_23",
+          "parameterName": "mask_radius",
+          "group": null,
+          "defaultValue": 0.5,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 146,
+          "exportIndex": 1080,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_27",
+          "parameterName": "spheremask_str_min",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 120,
+          "propertyStreamEnd": 120
+        },
+        {
+          "sourceOrder": 147,
+          "exportIndex": 1085,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_31",
+          "parameterName": "spheremask_str_max",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 148,
+          "exportIndex": 3684,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_1",
+          "parameterName": "use_mesh",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "outputindex": 2,
+              "mask": 1,
+              "maskb": 1,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "outputindex": 2,
+              "mask": 1,
+              "maskb": 1,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 472,
+          "propertyStreamEnd": 472
+        },
+        {
+          "sourceOrder": 152,
+          "exportIndex": 1088,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_34",
+          "parameterName": "maskb_dypan_x",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 154,
+          "exportIndex": 1089,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_35",
+          "parameterName": "maskb_dypan_y",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 157,
+          "exportIndex": 5058,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionvectorparameter_4",
+          "parameterName": "diff_color",
+          "group": "02_diffuse",
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 200,
+          "propertyStreamEnd": 200
+        },
+        {
+          "sourceOrder": 158,
+          "exportIndex": 1098,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_44",
+          "parameterName": "diff_offset_x",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 159,
+          "exportIndex": 1099,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_45",
+          "parameterName": "diff_offset_y",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 161,
+          "exportIndex": 5059,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionvectorparameter_6",
+          "parameterName": "mask_color",
+          "group": "02_diffuse",
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 200,
+          "propertyStreamEnd": 200
+        },
+        {
+          "sourceOrder": 163,
+          "exportIndex": 1083,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_3",
+          "parameterName": "maska_flow_strength",
+          "group": "00_mask_a",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 165,
+          "exportIndex": 1063,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_14",
+          "parameterName": "maskb_flow_strength",
+          "group": "01_mask_b",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 172,
+          "exportIndex": 3691,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_5",
+          "parameterName": "use_worldoffset",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 173,
+          "exportIndex": 1086,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_32",
+          "parameterName": "dissolve_pan_x",
+          "group": "dissolve",
+          "defaultValue": -0.10000000149011612,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 174,
+          "exportIndex": 1087,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_33",
+          "parameterName": "dissolve_pan_y",
+          "group": "dissolve",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 175,
+          "exportIndex": 4677,
+          "className": "materialexpressiontexturesampleparameter2d",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontexturesampleparameter2d_6",
+          "parameterName": "dissolve_tex",
+          "group": "dissolve",
+          "defaultValue": null,
+          "textureObjectPath": "fx_tex_04.fx_h_atypical_01_1",
+          "inputs": [
+            {
+              "input": "coordinates",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 248,
+          "propertyStreamEnd": 248
+        },
+        {
+          "sourceOrder": 178,
+          "exportIndex": 1090,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_36",
+          "parameterName": "dissolve_tile_x",
+          "group": "dissolve",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 183,
+          "exportIndex": 1091,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_37",
+          "parameterName": "dissolve_tile_y",
+          "group": "dissolve",
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 185,
+          "exportIndex": 1092,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_38",
+          "parameterName": "dissolve_hardness",
+          "group": "dissolve",
+          "defaultValue": 5.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 180,
+          "propertyStreamEnd": 180
+        },
+        {
+          "sourceOrder": 187,
+          "exportIndex": 3685,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_2",
+          "parameterName": "use_dissolve",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 190,
+          "exportIndex": 1077,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_24",
+          "parameterName": "mask_a_offset_x",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 191,
+          "exportIndex": 1081,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_28",
+          "parameterName": "mask_a_offset_y",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 192,
+          "exportIndex": 3689,
+          "className": "materialexpressionstaticswitchparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionstaticswitchparameter_3",
+          "parameterName": "use_depth",
+          "group": null,
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [
+            {
+              "input": "a",
+              "packageIndex": 0,
+              "objectPath": null
+            },
+            {
+              "input": "b",
+              "packageIndex": 0,
+              "objectPath": null
+            }
+          ],
+          "serialSize": 256,
+          "propertyStreamEnd": 256
+        },
+        {
+          "sourceOrder": 194,
+          "exportIndex": 1093,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_39",
+          "parameterName": "depth",
+          "group": null,
+          "defaultValue": 0.30000001192092896,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 196,
+          "exportIndex": 1094,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_4",
+          "parameterName": "diff_rot",
+          "group": "02_diffuse",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 197,
+          "exportIndex": 1070,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_18",
+          "parameterName": "01.uv_xscale",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 206,
+          "exportIndex": 1095,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_40",
+          "parameterName": "01.uv_yscale",
+          "group": "00_mask_a",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 216,
+          "exportIndex": 1100,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_46",
+          "parameterName": "02.uv_xscale",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        },
+        {
+          "sourceOrder": 226,
+          "exportIndex": 1101,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressionscalarparameter_47",
+          "parameterName": "02.uv_yscale",
+          "group": "01_mask_b",
+          "defaultValue": null,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 152,
+          "propertyStreamEnd": 152
+        }
+      ],
+      "namedTextures": [
+        {
+          "name": "flow_tex",
+          "group": "99_flow",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_02",
+          "expressionObjectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_10"
+        },
+        {
+          "name": "mask_b_tex",
+          "group": "01_mask_b",
+          "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_02",
+          "expressionObjectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_6"
+        },
+        {
+          "name": "mask_a_tex",
+          "group": "00_mask_a",
+          "sourceObjectPath": "fx_tex_06.fx_j_auraline_16_ycl",
+          "expressionObjectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_4"
+        },
+        {
+          "name": "diffuse_tex",
+          "group": "02_diffuse",
+          "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
+          "expressionObjectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontextureobjectparameter_8"
+        },
+        {
+          "name": "dissolve_tex",
+          "group": "dissolve",
+          "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
+          "expressionObjectPath": "fx_m.fx_j_pa_blacklineaura_01_tr.materialexpressiontexturesampleparameter2d_6"
+        }
+      ],
+      "summary": {
+        "expressionEntryCount": 235,
+        "nonNullExpressionCount": 82,
+        "nullExpressionCount": 153,
+        "namedTextureCount": 5,
+        "unresolvedInputEdgeCount": 31,
+        "topologyStatus": "COOKED_PARTIAL",
+        "runtimeExactEligible": false
+      }
+    }
+  ]
+}

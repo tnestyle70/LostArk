@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 import re
 from collections import Counter
 from pathlib import Path
@@ -17,6 +18,7 @@ from build_imported_effect_documents import read_json, write_json_atomic
 
 
 STABLE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+MAX_SOURCE_ACTION_CUE_SECONDS = 60.0
 
 
 def canonical_json(value: Any) -> str:
@@ -52,9 +54,22 @@ def renderer_kind(element: dict[str, Any]) -> str:
     if element["kind"] != "particle":
         return str(element["kind"])
     resources = element.get("resources", [])
-    if any(row.get("slotId") == "meshModel" for row in resources):
+    mesh_binding_count = sum(
+        1 for row in resources if row.get("slotId") == "meshModel"
+    )
+    source_recipe = element.get("sourceRecipe", {})
+    if not source_recipe.get("enabled"):
+        return "mesh" if mesh_binding_count == 1 else "sprite"
+    renderer_shape = str(source_recipe.get("rendererShape") or "")
+    if renderer_shape == "mesh" and mesh_binding_count == 1:
         return "mesh"
-    return str(element.get("sourceRecipe", {}).get("rendererShape") or "sprite")
+    if renderer_shape == "sprite" and mesh_binding_count == 0:
+        return "sprite"
+    raise ValueError(
+        "Cascade renderer shape/resource contradiction for "
+        f"{element.get('id')}: rendererShape={renderer_shape!r}, "
+        f"meshModelBindings={mesh_binding_count}"
+    )
 
 
 def effect_identity(effect_id: str, character_class: str) -> str:
@@ -259,7 +274,7 @@ def action_cues_for_effect(
     cues = copy.deepcopy(recipe.get("cues", []))
     marker = ".ba"
     if marker not in effect_id:
-        return cues
+        return fail_close_invalid_source_action_cue_times(cues)
     stage_number = int(effect_id.rsplit(marker, 1)[1])
     sequence_index = stage_number - 1
     stage = next(
@@ -282,7 +297,41 @@ def action_cues_for_effect(
             0.0, float(cue.get("globalTimeSeconds", 0.0)) - offset
         )
         selected.append(cue)
-    return selected
+    return fail_close_invalid_source_action_cue_times(selected)
+
+
+def fail_close_invalid_source_action_cue_times(
+    cues: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Disable decoded cues whose timing cannot be a gameplay presentation.
+
+    The byte-lossless payload and decoded numbers stay in the Assembly for a
+    future decoder correction.  Only the semantic execution bit is disabled,
+    preventing malformed float offsets from reaching typed presentation
+    channels.  The publisher independently enforces the same bound.
+    """
+    for cue in cues:
+        if not bool(cue.get("executionEnabled")):
+            continue
+        values = [
+            cue.get("localTimeSeconds"),
+            cue.get("globalTimeSeconds"),
+            cue.get("durationSeconds"),
+        ]
+        valid = all(
+            isinstance(value, (int, float))
+            and math.isfinite(float(value))
+            and 0.0 <= float(value) <= MAX_SOURCE_ACTION_CUE_SECONDS
+            for value in values
+        )
+        if valid:
+            continue
+        cue["executionEnabled"] = False
+        cue["sourceExecutionStatus"] = "INVALID_SOURCE_TIME_FAIL_CLOSED"
+        cue["executionDisabledReason"] = (
+            "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
+        )
+    return cues
 
 
 def remove_stale_generated_components(

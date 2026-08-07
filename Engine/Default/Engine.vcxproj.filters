@@ -273,6 +273,12 @@
     <ClInclude Include="..\public\Renderer.h">
       <Filter>02.Utility\03.Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\PresentationProvider.h">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Presentation_Manager.h">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="..\public\Component.h">
       <Filter>02.Utility\04.Component</Filter>
     </ClInclude>
@@ -474,6 +480,9 @@
       <Filter>02.Utility\02.GameObject\Manager\Layer</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Renderer.cpp">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Presentation_Manager.cpp">
       <Filter>02.Utility\03.Renderer</Filter>
     </ClCompile>
     <ClCompile Include="..\private\Component.cpp">

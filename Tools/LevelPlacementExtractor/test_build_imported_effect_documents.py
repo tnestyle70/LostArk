@@ -10,10 +10,15 @@ from build_imported_effect_documents import (
     SourceObject,
     build_distribution_recipe,
     build_document,
+    choose_resources,
+    default_detail,
     flatten_source_properties,
+    mesh_uses_model_material,
+    screen_post_presentation,
     promote_document,
     selected_lod_partitions,
     table_vector_samples,
+    texture_slot,
 )
 from extract_ue3_particle_module_closure import obfuscate_package_name
 
@@ -51,6 +56,63 @@ def raw_vector(*samples: float):
 
 
 class ImportedEffectDocumentTests(unittest.TestCase):
+    def test_texture_roles_do_not_promote_normal_or_alpha_to_base(self) -> None:
+        self.assertIsNone(texture_slot("normal_tex"))
+        self.assertIsNone(texture_slot("cracknormal_tex"))
+        self.assertEqual("mask", texture_slot("alpha_texture2"))
+        self.assertEqual("mask", texture_slot("opacity_tex"))
+        self.assertEqual("emissive", texture_slot("emissive_tex_02"))
+        self.assertEqual("base", texture_slot("refle_tex"))
+
+    def test_material_resources_keep_source_semantics_without_slot_spill(self) -> None:
+        material_path = "fx_m_mi_s_00.fx_mi.fx_s_me_localcrack_01_01_tr"
+        normal_path = "fx_tex_06.fx_j_normal_bc5_09"
+        reflection_path = "fx_tex_06.fx_s_atypical_006"
+        duplicate_normal_path = "fx_tex_06.fx_j_normal_bc5_10"
+        system = {
+            "resourceBindings": [{
+                "sourceNodeId": "required",
+                "role": "material",
+                "objectPath": material_path,
+            }],
+        }
+        graph = {
+            "materialParameterBindings": [{
+                "sourceMaterialPath": material_path,
+                "textures": [
+                    {"name": "normal_tex", "texture": normal_path},
+                    {"name": "refle_tex", "texture": reflection_path},
+                    {"name": "detail_normal", "texture": duplicate_normal_path},
+                ],
+            }],
+            "runtimeResourceBindings": [
+                {"resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                 "sourceObjectPath": normal_path,
+                 "assetId": "Effect/Test/normal.dds"},
+                {"resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                 "sourceObjectPath": reflection_path,
+                 "assetId": "Effect/Test/reflection.dds"},
+                {"resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+                 "sourceObjectPath": duplicate_normal_path,
+                 "assetId": "Effect/Test/detail-normal.dds"},
+            ],
+        }
+
+        resources, receipt, _materials = choose_resources(
+            system, {"required"}, graph
+        )
+        slots = {row["slotId"]: row["assetId"] for row in resources}
+        self.assertEqual("Effect/Test/reflection.dds", slots["base"])
+        self.assertNotIn("noise", slots)
+        self.assertNotIn("mask", slots)
+        self.assertNotIn("emissive", slots)
+        self.assertTrue(any(
+            row["parameterName"] == "normal_tex"
+            and row["status"]
+            == "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE"
+            for row in receipt
+        ))
+
     def test_reference_array_object_paths_keep_distinct_indices(self) -> None:
         index = SourceIndex({"nodes": [], "edges": []}, {"packages": []})
         module = SourceObject(
@@ -242,6 +304,32 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         self.assertEqual(obfuscate_package_name("FX_PC_SWP_01"), "YGI3SWD3SH9W3D18G9KMHCS9M")
         self.assertEqual(obfuscate_package_name("FX_CM_02"), "XFH2RCA2R0EF0CYE90QX0CMQ")
 
+    def test_mesh_model_material_follows_typedata_override(self) -> None:
+        override_module = SourceObject(
+            key="mesh-override",
+            source_id="mesh-override",
+            class_name="ParticleModuleTypeDataMesh",
+            object_path="FX_TEST.MeshOverride",
+            properties={
+                "boverridematerial": {"type": "boolean", "value": True},
+            },
+        )
+        mappings = []
+        self.assertFalse(mesh_uses_model_material([override_module], mappings))
+        self.assertEqual("EXACT", mappings[0]["status"])
+        self.assertIn("inverse", mappings[0]["note"])
+
+        model_module = SourceObject(
+            key="mesh-model",
+            source_id="mesh-model",
+            class_name="ParticleModuleTypeDataMesh",
+            object_path="FX_TEST.MeshModel",
+            properties={},
+        )
+        mappings = []
+        self.assertTrue(mesh_uses_model_material([model_module], mappings))
+        self.assertEqual("SOURCE_CLASS_DEFAULT", mappings[0]["status"])
+
     def test_emitter_partition_maps_particle_mesh_and_unsupported_light(self) -> None:
         nodes = []
         edges = []
@@ -363,6 +451,20 @@ class ImportedEffectDocumentTests(unittest.TestCase):
                             "role": "mesh",
                         }
                     )
+                if "typedatalight" in type_class.casefold():
+                    point_light = f"{prefix}:pointlight"
+                    add_node(
+                        point_light,
+                        "pointlightcomponent",
+                        f"{prefix}.pointlight",
+                        {"brightness": value("floatproperty", 10.0)},
+                    )
+                    add_edge(
+                        type_data,
+                        "pointlightcomponent",
+                        point_light,
+                        prefix,
+                    )
             systems.append(
                 {
                     "sourceSystemId": prefix,
@@ -381,6 +483,9 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         add_system("sprite_system", None, "texture", "test.texture.base")
         add_system("mesh_system", "particlemoduletypedatamesh", "mesh", "test.mesh.portal")
         add_system("light_system", "efparticlemoduletypedatalight", "none", "")
+        add_system(
+            "fx_post.fx_par.par_j_rgbnoise_01", None, "none", ""
+        )
         add_system("inactive_system", None, "texture", "test.texture.base")
 
         graph = {
@@ -446,7 +551,12 @@ class ImportedEffectDocumentTests(unittest.TestCase):
                             }
                         } if name == "sprite_system" else {}),
                     }
-                    for index, name in enumerate(("sprite_system", "mesh_system", "light_system"))
+                    for index, name in enumerate((
+                        "sprite_system",
+                        "mesh_system",
+                        "light_system",
+                        "fx_post.fx_par.par_j_rgbnoise_01",
+                    ))
                 ] + [
                     {
                         "eventId": "source-event-repeat",
@@ -485,7 +595,7 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         }
 
         document, conversion = build_document(receipt, graph, closure)
-        self.assertEqual(document["version"], 10)
+        self.assertEqual(document["version"], 12)
         self.assertEqual(document["particleSystem"], {
             "uniformScaleMultiplier": 1.0,
             "yawOffsetDegrees": 0.0,
@@ -494,15 +604,15 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         })
         self.assertEqual(document["modelCues"], [])
         self.assertIn("F 2050500", document["displayName"])
-        self.assertEqual(conversion["summary"]["sourceEmitterPartitionCount"], 3)
-        self.assertEqual(conversion["summary"]["graphEmitterPartitionCount"], 4)
+        self.assertEqual(conversion["summary"]["sourceEmitterPartitionCount"], 4)
+        self.assertEqual(conversion["summary"]["graphEmitterPartitionCount"], 5)
         self.assertEqual(
             conversion["summary"]["inactiveSourceSystemEmitterPartitionCount"],
             1,
         )
-        self.assertEqual(conversion["summary"]["convertedEmitterCount"], 3)
+        self.assertEqual(conversion["summary"]["convertedEmitterCount"], 4)
         self.assertEqual(conversion["summary"]["unsupportedEmitterCount"], 0)
-        self.assertEqual(len(document["elements"]), 4)
+        self.assertEqual(len(document["elements"]), 5)
         self.assertFalse(any(
             row["groupId"] == "inactive_system"
             for row in document["elements"]
@@ -513,6 +623,14 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             if row["groupId"] == "sprite_system.source-event-repeat"
         )
         mesh = next(row for row in document["elements"] if row["groupId"] == "mesh_system")
+        light = next(
+            row for row in document["elements"]
+            if row["groupId"] == "light_system"
+        )
+        screen_post = next(
+            row for row in document["elements"]
+            if row["groupId"] == "fx_post.fx_par.par_j_rgbnoise_01"
+        )
         self.assertEqual(sprite["kind"], "particle")
         self.assertTrue(sprite["sourceRecipe"]["enabled"])
         self.assertGreater(len(sprite["sourceRecipe"]["modules"]), 0)
@@ -542,9 +660,44 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             repeated_sprite["detail"]["transform"]["scale"],
             [3.0, 3.0, 3.0],
         )
+        self.assertFalse(sprite["sourcePresentation"]["enabled"])
+        self.assertEqual(
+            sprite["sourcePresentation"]["schema"],
+            "lostark.effect-source-presentation",
+        )
+        self.assertEqual(
+            repeated_sprite["sourcePresentation"]["sourceOccurrenceIndex"],
+            1,
+        )
+        self.assertEqual(
+            repeated_sprite["sourcePresentation"]["sourceEventId"],
+            "source-event-repeat",
+        )
         self.assertEqual(mesh["kind"], "particle")
         self.assertTrue(any(row["slotId"] == "meshModel" for row in mesh["resources"]))
         self.assertFalse(mesh["detail"]["particle"]["billboard"])
+        self.assertEqual(light["kind"], "light")
+        self.assertTrue(light["detail"]["light"]["enabled"])
+        self.assertEqual(light["detail"]["light"]["intensity"], 10.0)
+        self.assertEqual(
+            light["detail"]["light"]["profileId"],
+            "light.point.reconstructed.v1",
+        )
+        self.assertEqual(light["sourcePresentation"]["status"], "unresolved")
+        self.assertTrue(any(
+            row["name"] == "radiusUeUnits"
+            and row["status"] == "unresolved_class_default"
+            for row in light["sourcePresentation"]["parameters"]
+        ))
+        self.assertEqual(screen_post["kind"], "screenPost")
+        self.assertTrue(screen_post["detail"]["screenPost"]["enabled"])
+        self.assertEqual(
+            screen_post["detail"]["screenPost"]["profileId"],
+            "screen.rgb-noise.reconstructed.v1",
+        )
+        self.assertEqual(
+            screen_post["sourcePresentation"]["status"], "reconstructed"
+        )
         sprite_conversion = next(
             row for row in conversion["elementConversions"]
             if row.get("sourceSystemId") == "sprite_system"
@@ -553,6 +706,73 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             row["className"] == "particlemodulecameraoffset"
             for row in sprite_conversion["unrepresentedModules"]
         ))
+
+    def test_screen_post_preserves_dynamic_parameter_provenance(self) -> None:
+        detail = default_detail()
+        recipe = {
+            "modules": [{
+                "className": "particlemoduleparameterdynamic",
+                "objectPath": "FX_Post.ParameterDynamic_0",
+                "literals": [
+                    {
+                        "propertyPath": "dynamicparams[0].paramname",
+                        "value": "powerx",
+                    },
+                    {
+                        "propertyPath": "dynamicparams[1].paramname",
+                        "value": "rgb_str",
+                    },
+                ],
+                "distributions": [
+                    {
+                        "propertyPath": "dynamicparams[0].paramvalue",
+                        "lookupTable": [1.0, 5.0, 5.0, 1.0],
+                    },
+                    {
+                        "propertyPath": "dynamicparams[1].paramvalue",
+                        "lookupTable": [1.0, 1.0, 1.0, 1.0],
+                    },
+                ],
+            }],
+        }
+        source = screen_post_presentation(
+            "FX_Post.FX_Par.Par_J_RGBNoise_01",
+            recipe,
+            detail,
+            {
+                "sourceActionCueId": "cue-1",
+                "eventId": "event-1",
+                "globalTimeSeconds": 0.75,
+            },
+            "FX_Post.Emitter_0",
+        )
+        self.assertEqual(source["status"], "reconstructed")
+        self.assertEqual(source["sourceActionCueId"], "cue-1")
+        self.assertEqual(source["sourceTimeSeconds"], 0.75)
+        self.assertEqual(detail["screenPost"]["intensity"], 1.0)
+        self.assertEqual(detail["screenPost"]["secondaryIntensity"], 0.0)
+        by_name = {row["name"]: row for row in source["parameters"]}
+        self.assertEqual(by_name["powerx"]["status"], "source_distribution")
+        self.assertEqual(by_name["powerx"]["numberValue"], 5.0)
+
+    def test_film_noise_without_source_gain_is_fail_closed(self) -> None:
+        detail = default_detail()
+        source = screen_post_presentation(
+            "FX_Post.FX_Par.Par_J_FilmNoise_01",
+            {"modules": []},
+            detail,
+            {
+                "sourceActionCueId": "cue-film",
+                "eventId": "event-film",
+                "globalTimeSeconds": 1.0,
+            },
+            "FX_Post.FilmNoiseEmitter_0",
+        )
+        self.assertFalse(source["enabled"])
+        self.assertEqual(source["status"], "unresolved")
+        self.assertFalse(detail["screenPost"]["enabled"])
+        self.assertEqual(detail["screenPost"]["intensity"], 0.0)
+        self.assertEqual(detail["screenPost"]["secondaryIntensity"], 0.0)
 
     def test_promotion_requires_matching_skill_id_and_preserves_elements(self) -> None:
         imported = {
@@ -570,7 +790,7 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             "Boundary Break",
             [cue],
         )
-        self.assertEqual(promoted["version"], 10)
+        self.assertEqual(promoted["version"], 12)
         self.assertEqual(promoted["particleSystem"]["uniformScaleMultiplier"], 1.0)
         self.assertEqual(promoted["effectAssetId"],
                          "effect.dimensionmaster.skill.2050500")

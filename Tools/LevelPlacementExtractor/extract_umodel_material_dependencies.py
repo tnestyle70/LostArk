@@ -114,9 +114,61 @@ def parse_material_dump(text: str) -> dict[str, Any]:
     """Recover only explicit UModel Material evidence; never infer graph links."""
     folded = text.casefold()
 
+    def collected_entries(collection: str) -> list[dict[str, str]]:
+        """Read UModel's flattened parent parameter defaults and groups.
+
+        These are parent parameter semantics evidence only.  They do not
+        disclose a Material expression connection or evaluation order.
+        """
+        entry_re = re.compile(
+            rf"^\s*{re.escape(collection)}\[\d+\]\s*=\s*(.*?)"
+            rf"(?=^\s*{re.escape(collection)}\[\d+\]\s*=|"
+            r"^\s*Collected[A-Za-z]+Parameters\[\d+\]\s*=|\Z)",
+            re.IGNORECASE | re.MULTILINE | re.DOTALL,
+        )
+        field_re = re.compile(
+            r"(?:^|[,\{\r\n])\s*(Value|Name|Group)\s*=\s*(.*?)"
+            r"(?=(?:,\s*|\r?\n\s*)(?:Value|Name|Group)\s*=|\s*\}|\Z)",
+            re.IGNORECASE | re.DOTALL,
+        )
+        result = []
+        for match in entry_re.finditer(text):
+            fields = {
+                field.group(1).casefold(): field.group(2).strip().rstrip(",")
+                for field in field_re.finditer(match.group(1))
+            }
+            if fields.get("name") and fields.get("group") and "value" in fields:
+                fields["name"] = fields["name"].strip().strip("{}").strip()
+                fields["group"] = fields["group"].strip().strip("{}").strip()
+                result.append(fields)
+        return result
+
+    def scalar_value(value: str) -> float | None:
+        match = re.match(
+            r"\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)",
+            value,
+        )
+        return float(match.group(1)) if match else None
+
+    def vector_value(value: str) -> dict[str, float] | None:
+        normalized = value.strip()
+        # The generic field scanner stops at the vector's closing brace.
+        if normalized.startswith("{") and not normalized.endswith("}"):
+            normalized += " }"
+        match = VECTOR_RE.search(normalized)
+        if not match:
+            return None
+        return {
+            "r": float(match.group(1)),
+            "g": float(match.group(2)),
+            "b": float(match.group(3)),
+            "a": float(match.group(4)),
+        }
+
     def token(name: str) -> str | None:
         match = re.search(
-            rf"^\s*{re.escape(name)}\s*=\s*([^\s]+)\s*$",
+            rf"^\s*{re.escape(name)}\s*=\s*([^\s]+)"
+            rf"(?:\s+\([^)]*\))?\s*$",
             text,
             re.IGNORECASE | re.MULTILINE,
         )
@@ -149,10 +201,67 @@ def parse_material_dump(text: str) -> dict[str, Any]:
         match = EXPRESSION_ENTRY_RE.match(raw_line.strip())
         if not match:
             continue
-        expression_count += 1
         value = match.group(1).strip().casefold()
+        if not value:
+            # UModel prints ``Expressions[N] =`` as the collection header.
+            # It is capacity metadata, not an expression entry.
+            continue
+        expression_count += 1
         if value not in {"0", "none", "null", "<null>"}:
             expression_non_null_count += 1
+
+    collected_texture_parameters = []
+    for entry in re.finditer(
+        r"CollectedTextureParameters\[\d+\]\s*=\s*\{([^{}]*)\}",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    ):
+        fields = {}
+        for field in re.finditer(
+            r"(?:^|[,\r\n])\s*(Texture|Name|Group)\s*=\s*(.*?)"
+            r"(?=(?:,\s*|\r?\n\s*)(?:Texture|Name|Group)\s*=|$)",
+            entry.group(1),
+            re.IGNORECASE | re.DOTALL,
+        ):
+            fields[field.group(1).casefold()] = field.group(2).strip()
+        texture_value = fields.get("texture")
+        texture_match = (
+            TEXTURE_RE.search(texture_value) if texture_value else None
+        )
+        if not texture_match or not fields.get("name") or not fields.get("group"):
+            continue
+        collected_texture_parameters.append(
+            {
+                "texture": texture_match.group(1),
+                "name": fields["name"],
+                "group": fields["group"],
+            }
+        )
+
+    collected_scalar_parameters = []
+    for fields in collected_entries("CollectedScalarParameters"):
+        value = scalar_value(fields["value"])
+        if value is not None:
+            collected_scalar_parameters.append({
+                "name": fields["name"], "group": fields["group"],
+                "value": value,
+            })
+    collected_vector_parameters = []
+    for fields in collected_entries("CollectedVectorParameters"):
+        value = vector_value(fields["value"])
+        if value is not None:
+            collected_vector_parameters.append({
+                "name": fields["name"], "group": fields["group"],
+                "value": value,
+            })
+    collected_static_switch_parameters = []
+    for fields in collected_entries("CollectedStaticSwitchParameters"):
+        value = fields["value"].casefold()
+        if value in {"true", "false", "1", "0"}:
+            collected_static_switch_parameters.append({
+                "name": fields["name"], "group": fields["group"],
+                "value": value in {"true", "1"},
+            })
 
     parameters = parse_props(text)
     return {
@@ -160,6 +269,7 @@ def parse_material_dump(text: str) -> dict[str, Any]:
             "blendMode": token("BlendMode"),
             "lightingModel": token("LightingModel"),
             "twoSided": boolean("TwoSided"),
+            "disableDepthTest": boolean("bDisableDepthTest"),
             "usesDistortion": (
                 boolean("bUsesDistortion")
                 if "busesdistortion" in folded
@@ -167,6 +277,10 @@ def parse_material_dump(text: str) -> dict[str, Any]:
             ),
         },
         "referencedTextures": referenced_textures,
+        "collectedTextureParameters": collected_texture_parameters,
+        "collectedScalarParameters": collected_scalar_parameters,
+        "collectedVectorParameters": collected_vector_parameters,
+        "collectedStaticSwitchParameters": collected_static_switch_parameters,
         "scalars": parameters["scalar"],
         "vectors": parameters["vector"],
         "staticSwitches": parameters["static_switch"],
@@ -203,6 +317,54 @@ def texture_assets(root: Path) -> dict[str, list[dict[str, Any]]]:
         }
         rows.setdefault(path.stem.casefold(), []).append(row)
     return rows
+
+
+def select_material_evidence_props(
+    output_root: Path,
+    instance_props: Path,
+    parent_path: str | None,
+) -> tuple[Path | None, int]:
+    if not parent_path:
+        return (
+            (instance_props, 1)
+            if instance_props.parent.name.casefold() in {"material", "material3"}
+            else (None, 0)
+        )
+
+    visited = {instance_props.resolve()}
+    current_parent = str(parent_path)
+    while current_parent:
+        parent_name = current_parent.rsplit(".", 1)[-1]
+        parent_package = current_parent.split(".", 1)[0].casefold()
+        matches = [
+            path
+            for path in sorted(
+                output_root.rglob(f"{parent_name}.props.txt"),
+                key=lambda item: item.as_posix().casefold(),
+            )
+            if path.resolve() not in visited
+        ]
+        package_matches = [
+            path for path in matches
+            if path.relative_to(output_root).parts
+            and path.relative_to(output_root).parts[0].casefold()
+            == parent_package
+        ]
+        candidates = package_matches or matches
+        if len(candidates) != 1:
+            return None, len(candidates)
+        selected = candidates[0]
+        resolved = selected.resolve()
+        if resolved in visited:
+            return None, 0
+        visited.add(resolved)
+        if selected.parent.name.casefold() in {"material", "material3"}:
+            return selected, 1
+        if selected.parent.name.casefold() != "materialinstanceconstant":
+            return None, 1
+        current_props = parse_props(selected.read_text(encoding="utf-8-sig"))
+        current_parent = str(current_props["parent"] or "")
+    return None, 0
 
 
 def build_candidate(
@@ -287,6 +449,13 @@ def build_candidate(
                 textures.append(
                     {"name": "umodel_dependency", "texture": row["texturePath"]}
                 )
+    evidence_props, evidence_candidate_count = select_material_evidence_props(
+        output_root, props_matches[0], props["parent"]
+    )
+    material_evidence = parse_material_dump(
+        evidence_props.read_text(encoding="utf-8-sig")
+        if evidence_props is not None else ""
+    )
     return {
         "material_path": source_path,
         "object_name": object_name,
@@ -298,12 +467,98 @@ def build_candidate(
         "scalars": props["scalar"],
         "vectors": props["vector"],
         "static_switches": props["static_switch"],
-        "materialEvidence": parse_material_dump(umodel_log),
+        "materialEvidence": material_evidence,
+        "materialEvidenceStatus": (
+            "SOURCE_MATERIAL_PROPS"
+            if evidence_props is not None else
+            "MISSING_OR_AMBIGUOUS_SOURCE_MATERIAL_PROPS"
+        ),
+        "materialEvidencePropsFile": (
+            evidence_props.relative_to(output_root).as_posix()
+            if evidence_props is not None else None
+        ),
+        "materialEvidencePropsSha256": (
+            sha256_file(evidence_props) if evidence_props is not None else None
+        ),
+        "materialEvidencePropsCandidateCount": evidence_candidate_count,
         "resolutionStatus": "RESOLVED_UMODEL_EXPORT",
         "propsFile": props_matches[0].relative_to(output_root).as_posix(),
+        "propsFileSha256": sha256_file(props_matches[0]),
         "exportedTextures": [
             row for rows in textures_by_name.values() for row in rows
         ],
+    }
+
+
+def build_direct_material_dump_candidate(
+    source_path: str,
+    physical_package: str,
+    dump_path: Path,
+    dump_text: str,
+) -> dict[str, Any] | None:
+    """Build explicit evidence for a direct Material3 with no export props."""
+    object_name = source_path.rsplit(".", 1)[-1]
+    object_rows = re.findall(
+        r"^ClassName:\s*(\w+)\s+ObjectName:\s*(\S+)\s*$",
+        dump_text,
+        re.IGNORECASE | re.MULTILINE,
+    )
+    exact_rows = [
+        row for row in object_rows
+        if row[0].casefold() in {"material", "material3"}
+        and row[1].casefold() == object_name.casefold()
+    ]
+    if len(exact_rows) != 1 or len(object_rows) != 1 or not dump_path.is_file():
+        return None
+    evidence = parse_material_dump(dump_text)
+    scalars = [
+        {"name": row["name"], "value": row["value"]}
+        for row in evidence["collectedScalarParameters"]
+    ]
+    vectors = [
+        {"name": row["name"], "value": row["value"]}
+        for row in evidence["collectedVectorParameters"]
+    ]
+    static_switches = [
+        {"name": row["name"], "value": row["value"]}
+        for row in evidence["collectedStaticSwitchParameters"]
+    ]
+    textures = [
+        {"name": row["name"], "texture": row["texture"]}
+        for row in evidence["collectedTextureParameters"]
+    ]
+    collected_paths = {
+        row["texture"].casefold() for row in textures if row.get("texture")
+    }
+    textures.extend(
+        {"name": "umodel_dependency", "texture": texture}
+        for texture in evidence["referencedTextures"]
+        if texture.casefold() not in collected_paths
+    )
+    relative_dump = dump_path.name
+    dump_hash = sha256_file(dump_path)
+    return {
+        "material_path": source_path,
+        "object_name": object_name,
+        "class": "material",
+        "source_file": physical_package,
+        "parent": source_path,
+        "parent_source_file": physical_package,
+        "textures": textures,
+        "scalars": scalars,
+        "vectors": vectors,
+        "static_switches": static_switches,
+        "materialEvidence": evidence,
+        "materialEvidenceStatus": "SOURCE_MATERIAL_DUMP",
+        "materialEvidenceFile": relative_dump,
+        "materialEvidenceSha256": dump_hash,
+        "materialEvidencePropsCandidateCount": 1,
+        "sourceEvidenceFile": relative_dump,
+        "sourceEvidenceSha256": dump_hash,
+        "resolutionStatus": "RESOLVED_UMODEL_DUMP",
+        "propsFile": None,
+        "propsFileSha256": None,
+        "exportedTextures": [],
     }
 
 
@@ -378,8 +633,55 @@ def main() -> int:
         candidate = build_candidate(
             source_path, physical, output, umodel_log, inventory
         )
+        dump_exit_code = None
+        if candidate.get("resolutionStatus") == "MISSING_OR_AMBIGUOUS_PROPS" \
+                and int(candidate.get("propsCandidateCount", 0)) == 0:
+            dump_path = output / f"{object_name}.umodel-dump.txt"
+            dump_path.unlink(missing_ok=True)
+            dump_command = [
+                str(args.umodel),
+                "-dump",
+                "-game=lostark",
+                f"-{args.region}",
+                "-nameresolve",
+                f"-path={args.package_root}",
+                f"-log={dump_path}",
+                f"-obj={object_name}",
+                logical_package,
+            ]
+            dump_completed = subprocess.run(
+                dump_command,
+                cwd=args.umodel.parent,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                check=False,
+                creationflags=(
+                    subprocess.CREATE_NO_WINDOW
+                    if sys.platform == "win32" else 0
+                ),
+            )
+            dump_exit_code = dump_completed.returncode
+            dump_text = (
+                dump_path.read_text(encoding="utf-8-sig", errors="replace")
+                if dump_path.is_file()
+                else dump_completed.stdout + "\n" + dump_completed.stderr
+            )
+            dump_candidate = build_direct_material_dump_candidate(
+                source_path, physical, dump_path, dump_text
+            )
+            if dump_completed.returncode == 0 and dump_candidate is not None:
+                candidate = dump_candidate
+                relative_dump = dump_path.relative_to(
+                    args.output_root
+                ).as_posix()
+                candidate["materialEvidenceFile"] = relative_dump
+                candidate["sourceEvidenceFile"] = relative_dump
         candidate["exportRoot"] = output.relative_to(args.output_root).as_posix()
         candidate["umodelExitCode"] = completed.returncode
+        if dump_exit_code is not None:
+            candidate["umodelDumpExitCode"] = dump_exit_code
         candidates.append(candidate)
         invocation = {
             "sourceMaterialPath": source_path,
@@ -390,12 +692,17 @@ def main() -> int:
         }
         invocations.append(invocation)
         if completed.returncode != 0 or candidate.get("resolutionStatus") \
-                not in {"RESOLVED_UMODEL_EXPORT", "UNSUPPORTED_DECAL_MATERIAL"}:
+                not in {
+                    "RESOLVED_UMODEL_EXPORT", "RESOLVED_UMODEL_DUMP",
+                    "UNSUPPORTED_DECAL_MATERIAL",
+                }:
             failures.append(invocation)
 
     material_map: dict[str, list[dict[str, Any]]] = {}
     for candidate in candidates:
-        if candidate.get("resolutionStatus") != "RESOLVED_UMODEL_EXPORT":
+        if candidate.get("resolutionStatus") not in {
+            "RESOLVED_UMODEL_EXPORT", "RESOLVED_UMODEL_DUMP"
+        }:
             continue
         keys = {
             str(candidate["material_path"]).casefold(),
@@ -406,7 +713,10 @@ def main() -> int:
             keys.add(".".join(parts[1:]).casefold())
         clean = {
             key: value for key, value in candidate.items()
-            if key not in {"resolutionStatus", "exportedTextures", "exportRoot", "umodelExitCode"}
+            if key not in {
+                "resolutionStatus", "exportedTextures", "exportRoot",
+                "umodelExitCode", "umodelDumpExitCode",
+            }
         }
         for key in keys:
             material_map.setdefault(key, []).append(clean)
@@ -426,7 +736,9 @@ def main() -> int:
         "summary": {
             "requestedMaterialCount": len(unresolved),
             "resolvedMaterialCount": sum(
-                row.get("resolutionStatus") == "RESOLVED_UMODEL_EXPORT"
+                row.get("resolutionStatus") in {
+                    "RESOLVED_UMODEL_EXPORT", "RESOLVED_UMODEL_DUMP"
+                }
                 for row in candidates
             ),
             "unsupportedMaterialCount": sum(

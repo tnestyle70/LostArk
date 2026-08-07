@@ -29,6 +29,22 @@ namespace Engine
 		f32_t				fFovy, fNear, fFar;
 	}SHADOW_LIGHT_DESC;
 
+	typedef struct tagRenderQualitySettings
+	{
+		bool_t	bBloomEnabled = true;
+		f32_t	fBloomThreshold = 1.f;
+		f32_t	fBloomSoftKnee = 0.5f;
+		f32_t	fBloomIntensity = 0.8f;
+		f32_t	fBloomScatter = 1.f;
+		f32_t	fExposure = 2.f;
+		f32_t	fWhitePoint = 11.2f;
+		f32_t	fGamma = 2.2f;
+		bool_t	bFXAAEnabled = false;
+		f32_t	fFXAASubpixel = 0.75f;
+		f32_t	fFXAAEdgeThreshold = 0.166f;
+		f32_t	fFXAAEdgeThresholdMin = 0.0833f;
+	}RENDER_QUALITY_SETTINGS;
+
 	typedef struct tagKeyFrame
 	{
 		XMFLOAT3	vScale;

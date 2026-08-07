@@ -22,6 +22,7 @@ struct EFFECT_SPAWN_DESC final
     uint32_t iCueDurationMs = 0u;
     uint32_t iActionStartTick = 0u;
     uint32_t iCueStartMs = 0u;
+    f32_t fPlaybackRate = 1.f;
 };
 
 class CEffectPresentationService final

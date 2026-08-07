@@ -211,9 +211,11 @@ if ($effectToolSource -match 'ImVec2\(0\.f, 112\.f\)' -or
     throw 'All Effects must use a resizable, remaining-height tree instead of the fixed 112 px child.'
 }
 if ($effectToolSource -match '"CreateEffect"' -or
-    $effectToolSource -notmatch 'Load existing data in All Effects or Data Files' -or
+    $effectToolSource -notmatch 'Load Document' -or
+    $effectToolSource -notmatch 'Load / Play Complete Skill' -or
+    $effectToolSource -notmatch 'InputText\("Effect Name"' -or
     $effectToolSource -notmatch 'Start_WorldPreviewFromBeginning\(\)' -or
-    $effectToolSource -notmatch 'm_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;[\s\S]{0,900}?Start_WorldPreviewFromBeginning\(\);') {
+    $effectToolSource -notmatch 'Try_SetPreviewFilter\(EFFECT_PREVIEW_FILTER::COMPLETE\)[\s\S]{0,220}?Start_WorldPreviewFromBeginning\(\);') {
     throw 'Loading an existing Effect must be unambiguous and automatically restart complete world playback.'
 }
 if ($mainAppSource -notmatch 'FPS: %\.1f\s+\|\s+Frame: %\.2f ms' -or
@@ -234,6 +236,38 @@ if ($effectToolHeader -notmatch 'Stage_DetailDraftPreview' -or
     $effectToolSource -notmatch 'if \(bChanged\)[\s\S]{0,180}?Stage_DetailDraftPreview\(\)' -or
     $effectToolSource -notmatch 'Detail draft reverted to the active Document preview') {
     throw 'Effect Detail numeric drags must live-stage a draft while Apply/Revert retain the active Document boundary.'
+}
+$effectAuthoringDocumentHeader = Get-Content -LiteralPath (
+    Require-File 'Client\Public\Effect_AuthoringDocument.h') -Raw
+$detailApplyPreservesSourceRecipe =
+    $effectToolSource -match 'Element\.SourceRecipe\s*=\s*m_DetailDraft->SourceRecipe' -or
+    ($effectToolSource -match 'Apply_EffectElementDetailDraft\(Element, \*m_DetailDraft\)' -and
+     $effectAuthoringDocumentHeader -match 'Apply_EffectElementDetailDraft[\s\S]{0,800}?Target\.SourceRecipe\s*=\s*Draft\.SourceRecipe')
+if (-not $detailApplyPreservesSourceRecipe -or
+    $effectToolSource -notmatch 'Runtime Sample' -or
+    $effectToolSource -notmatch 'Copy Runtime Probe' -or
+    $effectToolSource -notmatch 'Query_ParticleRuntimeProbe') {
+    throw 'Effect Detail Apply must preserve SourceRecipe and expose the read-only evaluated runtime probe.'
+}
+if ($effectToolHeader -notmatch 'SKILL' -or
+    $effectToolHeader -notmatch 'Try_SelectFirstEmitter' -or
+    $effectToolSource -notmatch 'Imported Cascade Diagnostics \| Source Systems' -or
+    $effectToolSource -notmatch 'Open First Emitter' -or
+    $effectToolSource -notmatch 'Bound Resources' -or
+    $effectToolSource -notmatch 'Material Instance Parameters' -or
+    $effectToolSource -notmatch 'Velocity Over Life' -or
+    $effectToolSource -notmatch 'Sphere Surface' -or
+    $effectToolSource -notmatch 'SubUV Animation' -or
+    $effectToolSource -notmatch 'Vector Field') {
+    throw 'Effect Tool must expose the stable Skill/Particle System/Component/Emitter/Module path, dynamic Resource Set, and source-class-aware Module labels.'
+}
+$applyDetailMatch = [regex]::Match(
+    $effectToolSource,
+    'CEffect_Tool::Apply_DetailDraft[\s\S]*?\n\}')
+if (-not $applyDetailMatch.Success -or
+    $applyDetailMatch.Value -match 'Element\.ResourceBindings\s*=' -or
+    $applyDetailMatch.Value -match 'Element\.ActionCueAttachment\s*=') {
+    throw 'Effect Detail Apply must not overwrite ResourceBindings or ActionCueAttachment outside an editing contract.'
 }
 if ($effectToolHeader -notmatch 'IMPORTED_REFERENCE' -or
     $effectToolSource -notmatch '\.imported-effect-draft\.json' -or
@@ -270,6 +304,23 @@ if ($effectToolHeader -notmatch 'EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT' -or
     $previewPanelSource -notmatch 'Select_TargetAsset') {
     throw 'Loaded skill Effects must target the playable class root and replace a retained prop/T-animation preview.'
 }
+if ($effectToolHeader -notmatch 'Refresh_AnimationClipLabels' -or
+    $effectToolHeader -notmatch 'Restart_SynchronizedAnimationSequence' -or
+    $effectToolSource -notmatch 'Reload Skill Labels' -or
+    $effectToolSource -notmatch '\[Input\] Korean Skill Name \| Model Clip' -or
+    $effectToolSource -notmatch 'Skill->strDisplayName' -or
+    $effectToolSource -notmatch 'restoration-candidate' -or
+    $effectToolSource -notmatch 'Start_WorldPreviewFromBeginning\(\)[\s\S]{0,180}?Restart_SynchronizedAnimationSequence\(\)') {
+    throw 'Model View must label authored clips by input/Korean skill name and restart the bound skill animation with restoration preview playback.'
+}
+if ($effectToolHeader -notmatch 'Try_ResolveSynchronizedAnimationTime' -or
+    $effectToolSource -notmatch 'Animation source time owns this Effect timeline' -or
+    $effectToolSource -notmatch 'Try_ResolveSynchronizedAnimationTime\(fSynchronizedAnimationTime\)' -or
+    $effectToolSource -notmatch 'Seek_SynchronizedAnimationSequence\(m_fPreviewTimeSeconds\)' -or
+    $effectToolSource -notmatch 'Set_SynchronizedAnimationPaused\(true\)' -or
+    $effectToolSource -notmatch 'fPosition / fTicksPerSecond') {
+    throw 'Bound skill animation source time must own Effect play, pause, loop, and sample-time synchronization.'
+}
 if ($animationPreviewAssets -notmatch 'bPlayableClassBody' -or
     $effectToolSource -notmatch 'Render_Selector\(false, \{\}, false\)' -or
     $previewPanelSource -notmatch '!includePreviewOnlyTargets && !asset\.bPlayableClassBody' -or
@@ -284,11 +335,19 @@ if ($mainAppSource -notmatch 'Update_Engine\(fTimeDelta\);\s+CEffectPresentation
     $presentationSource -notmatch 'Set_Visible\(false\)') {
     throw 'Runtime FOLLOW anchors must resample after Character animation update and defer unsafe removal.'
 }
-if ($effectToolSource -notmatch 'Discard unsaved Effect changes\?' -or
+if ($effectToolSource -notmatch 'Unload Effect with unsaved changes\?' -or
     $effectToolSource -notmatch 'if \(Has_UnsavedWork\(\)\)' -or
     $effectToolSource -notmatch 'Has_UnappliedDetailDraft' -or
     $effectToolSource -notmatch 'Apply or Revert the open Detail draft before saving') {
-    throw 'Effect Create/Load/Discard/Save must preserve unsaved Document and Detail work.'
+    throw 'Effect Create/Load/Unload/Save must preserve unsaved Document and Detail work.'
+}
+if ($effectToolSource -notmatch 'Restoration Session' -or
+    $effectToolSource -notmatch 'Apply \+ Save Authored' -or
+    $effectToolSource -notmatch 'Try_ApplyDraftAndSave' -or
+    $effectToolSource -notmatch 'Assembly/WFX/Runtime Catalog publish pending' -or
+    $effectToolSource -notmatch 'Published Runtime Hierarchy \(diagnostic\)' -or
+    $effectToolSource -notmatch 'bHasPublishedAssembly && !bActiveSkill') {
+    throw 'Effect restoration authoring must expose one Apply/Save loop, explicit publish state, and the current Authored tree before stale runtime hierarchy.'
 }
 if ($effectToolSource -notmatch 'Loaded editable draft; preview is hidden' -or
     $effectToolSource -notmatch 'Load rejected; active Document and preview were preserved' -or
@@ -300,9 +359,31 @@ if ($effectToolSource -notmatch 'Loaded editable draft; preview is hidden' -or
 }
 $codecSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_DocumentCodec.cpp') -Raw -Encoding UTF8
+$codecHeader = Get-Content -LiteralPath (
+    Require-File 'Client\Public\Effect_DocumentCodec.h') -Raw -Encoding UTF8
 if ($codecSource -notmatch 'Authoring save preserves valid partial drafts' -or
-    $codecSource -notmatch 'Save_Atomic[\s\S]*?if \(!Validate\(Document, strOutError\)\)') {
+    $codecSource -notmatch 'Save_EffectDocumentAtomic[\s\S]*?Validate\(Document, strOutError\)') {
     throw 'Effect authoring save must preserve valid non-drawable drafts; publisher keeps the drawable gate.'
+}
+if ($codecHeader -notmatch 'Save_AtomicIfUnchanged' -or
+    $codecSource -notmatch 'Serialize\(RoundTrip\) != Json' -or
+    $codecSource -notmatch 'changed on disk after it was loaded' -or
+    $effectToolSource -notmatch 'm_strActiveDocumentBaselineCanonical' -or
+    $effectToolSource -notmatch 'partial draft; world preview is hidden') {
+    throw 'Effect authoring save must enforce canonical round-trip equality, reject stale writers, and distinguish partial-draft save from live preview.'
+}
+if ($effectToolSource -notmatch 'Finite Runtime Shader' -or
+    $effectToolSource -notmatch 'Authored Named Parameters' -or
+    $effectToolSource -notmatch 'EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS' -or
+    $effectToolSource -notmatch 'RECONSTRUCTED_PROFILE') {
+    throw 'Effect Detail must expose bounded runtime Material profile and named parameter tuning without claiming runtime exactness.'
+}
+if ($effectToolSource -notmatch 'Reference A/B Capture' -or
+    $effectToolSource -notmatch 'Copy A/B Metadata' -or
+    $effectToolSource -notmatch 'Screen Post: %s' -or
+    $effectToolSource -notmatch '!m_bPreviewScreenPostEnabled' -or
+    $effectToolSource -notmatch 'EFFECT_ELEMENT_KIND::SCREEN_POST') {
+    throw 'Effect reference A/B must expose active ID, sample time, selected emitter, and isolated Screen Post state.'
 }
 if ($effectObjectSource -notmatch 'Advance_Preview' -or
     $effectToolSource -notmatch 'fSequentialAdvance' -or
@@ -312,11 +393,17 @@ if ($effectObjectSource -notmatch 'Advance_Preview' -or
 if ($effectToolSource -notmatch 'm_bPreviewPlaying = false;\s+bSeekAfterLoop = true;' -or
     $effectToolSource -notmatch 'Refresh_AllEffects' -or
     $effectToolSource -notmatch 'CPlayerSkillCatalog::Get_Skills' -or
-    $effectToolSource -notmatch 'Material Inputs' -or
+    ($effectToolSource -notmatch 'Material Inputs' -and
+     $effectToolSource -notmatch 'Bound Resources') -or
     $effectToolSource -notmatch 'Mesh Shape' -or
     $effectToolSource -notmatch 'Complete Effect' -or
     $effectToolSource -notmatch 'Solo Element' -or
     $effectToolSource -notmatch 'Mute Element' -or
+    $effectToolSource -notmatch 'Element Groups' -or
+    $effectToolSource -notmatch 'Solo Group' -or
+    $effectToolSource -notmatch 'Mute Group' -or
+    $effectToolHeader -notmatch 'SOLO_SELECTED_GROUP' -or
+    $effectToolHeader -notmatch 'm_strSelectedElementGroupId' -or
     $effectToolSource -notmatch 'Save As' -or
     $effectToolSource -notmatch 'Try_ReloadActiveDocument' -or
     $effectToolSource -match 'Reload Published Effects' -or
@@ -342,6 +429,52 @@ if ($thumbnailSource -notmatch 'Create_ModelThumbnail' -or
     $materialTemplateSource -notmatch 'g_DissolveTexture') {
     throw 'DDS/CModel thumbnails and the explicit standard Material Template boundary are required.'
 }
+$createMeshMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Try_CreateMeshEffect\(\)[\s\S]*?bool_t Client::CEffect_Tool::Try_BindMeshAuthoringResource')
+$createDocumentMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Try_CreateDocument\(\)[\s\S]*?bool_t Client::CEffect_Tool::Try_CreateMeshEffect')
+if (-not $createMeshMatch.Success -or -not $createDocumentMatch.Success -or
+    $effectToolHeader -notmatch 'm_MeshAuthoringDraft' -or
+    $effectToolHeader -notmatch 'Try_CreateMeshEffect' -or
+    $effectToolSource -notmatch 'Mesh Effect Authoring' -or
+    $effectToolSource -notmatch 'Manual Particle authoring is excluded from this workbench' -or
+    $effectToolSource -notmatch 'InputText\("Effect Name"' -or
+    $effectToolSource -notmatch 'bCanCreate = Is_EffectManualMeshCreateReady' -or
+    $effectToolSource -notmatch 'Create Effect requires one WModel Mesh' -or
+    $effectToolSource -notmatch 'Detail\.Mesh\.bUseModelMaterial = false' -or
+    $effectToolSource -notmatch 'm_MeshAuthoringDraft\.Detail\.Transform\.vScale\s*=\s*\{[\s\S]{0,240}?EFFECT_MANUAL_MESH_DEFAULT_SCALE' -or
+    $effectToolSource -notmatch 'EFFECT_STANDARD_MATERIAL_TEMPLATE_ID' -or
+    $createMeshMatch.Value -notmatch 'Save_AtomicIfUnchanged' -or
+    $createMeshMatch.Value -notmatch 'Refresh_DataFiles\(\)' -or
+    $createMeshMatch.Value -notmatch 'Apply_DetailDraft\(Staged\)' -or
+    $createMeshMatch.Value -match 'Reset_MeshAuthoringDraft\(\)' -or
+    $createDocumentMatch.Value -match 'Reset_MeshAuthoringDraft\(\)' -or
+    $materialTemplateSource -notmatch 'EFFECT_MANUAL_MESH_DEFAULT_SCALE\s*=\s*0\.01f' -or
+    $materialTemplateSource -notmatch 'Is_EffectManualMeshCreateReady') {
+    throw 'Reference-parity Mesh authoring must create and atomically save a named Data File without discarding builder selections.'
+}
+foreach ($slotLabel in @('Base', 'Noise', 'Mask', 'Emissive', 'Dissolve')) {
+    if ($effectToolSource -notmatch ('"' + [regex]::Escape($slotLabel) + '"')) {
+        throw "Mesh authoring slot is missing: $slotLabel"
+    }
+}
+if ($commonShader -notmatch 'surfaceWarp' -or
+    $commonShader -notmatch 'noiseSample\.rg \* 2\.f - 1\.f' -or
+    $commonShader -notmatch 'Sample\(LinearSampler, surfaceUV\)' -or
+    $commonShader -notmatch 'g_MaskTexture\.Sample\(LinearSampler, surfaceUV\)\.r' -or
+    $commonShader -notmatch 'g_DissolveTexture\.Sample\(LinearSampler, surfaceUV\)\.r') {
+    throw 'Standard Effect Material must execute Noise RG surface warp and R-channel Mask/Dissolve sampling.'
+}
+$standardShade = [regex]::Match(
+    $commonShader,
+    'EFFECT_PS_OUT Shade_Effect\([\s\S]*?\r?\n\}')
+if (-not $standardShade.Success -or
+    $standardShade.Value -match 'color\.rgb \*= g_EmissiveIntensity' -or
+    $standardShade.Value -notmatch 'g_EmissiveTexture\.Sample\([\s\S]*?\)\.rgb \* g_EmissiveIntensity') {
+    throw 'Bloom Intensity must affect the selected Emissive texture, not Base-only color.'
+}
 if ($effectToolHeader -notmatch 'Rebuild_ResourceBrowserView' -or
     $effectToolHeader -notmatch 'm_iResourceCatalogRevision' -or
     $effectToolSource -notmatch 'm_iResourceViewRevision == m_iResourceCatalogRevision' -or
@@ -366,13 +499,32 @@ if ($effectToolHeader -notmatch 'EFFECT_RESOURCE_DOMAIN_CATALOG' -or
     $effectToolSource -notmatch 'Uncategorized') {
     throw 'Effect resources and Data Files must share a class/boss authoring-domain boundary.'
 }
+if ($effectToolSource -match 'bRefreshFilesAfterDomainSelection' -or
+    $effectToolSource -notmatch 'Category changes filter the cached index; Refresh Index rescans disk\.' -or
+    $effectToolSource -notmatch 'RecordRejectedDocument' -or
+    $effectToolSource -notmatch 'invalid/duplicate entries') {
+    throw 'Data Files category selection must use the cached index while explicit refresh isolates invalid documents per file.'
+}
+if ($effectToolHeader -notmatch 'Render_LoadedEffectContents' -or
+    $effectToolHeader -notmatch 'Try_SetPreviewFilter' -or
+    $effectToolHeader -notmatch 'Hide_WorldPreview' -or
+    $effectToolSource -notmatch 'Loaded Effect Contents' -or
+    $effectToolSource -notmatch 'Filter Effect Asset ID' -or
+    $effectToolSource -notmatch 'Unload Document' -or
+    $effectToolSource -notmatch 'saved Data File was preserved' -or
+    $effectToolSource -notmatch 'Play Complete Effect' -or
+    $effectToolSource -notmatch 'Play Group' -or
+    $effectToolSource -notmatch 'Solo##' -or
+    $effectToolSource -notmatch 'Hide Preview') {
+    throw 'Data Files must expose explicit load/unload/hide semantics and complete/group/Element playback.'
+}
 if ($effectToolHeader -notmatch 'm_eResourceLibraryFileKind' -or
     $effectToolSource -notmatch 'SeparatorText\("Resource Library"\)' -or
     $effectToolSource -notmatch 'RadioButton\("Meshes"' -or
     $effectToolSource -notmatch 'RadioButton\("Textures"' -or
     $effectToolSource -notmatch 'PARTICLE == pElement->eKind' -or
     $effectToolSource -notmatch 'ImVec2\(540\.f, 500\.f\)' -or
-    $effectToolSource -notmatch 'Promote to Authored Skill' -or
+    $effectToolSource -notmatch 'Promote Imported to Authored Skill' -or
     $effectToolSource -notmatch 'Try_PromoteImportedDocument') {
     throw 'Resource Library, mesh-backed Particle cards, larger All Effects, and Imported promotion are required.'
 }
@@ -390,8 +542,8 @@ if ($effectToolHeader -notmatch 'PENDING_DOCUMENT_LOAD' -or
     $effectToolSource -notmatch 'EFFECT_PREVIEW_FILTER::SOLO_SELECTED' -or
     $effectToolSource -notmatch 'Selected->Detail\.Timing\.fStartDelaySeconds' -or
     $effectToolSource -notmatch 'Applied to active Document memory; Save required to persist\.' -or
-    $effectToolSource -notmatch 'Particle System \| Source Systems ' -or
-    $effectToolSource -notmatch 'Mesh-backed ' -or
+    $effectToolSource -notmatch 'Cascade System \| Source Systems ' -or
+    $effectToolSource -notmatch 'Mesh %zu \| Sprite %zu \| Unresolved %zu' -or
     $effectToolSource -notmatch 'iParticleBudget') {
     throw 'Effect document switching, animation sequence, Element audition, Apply feedback, and Particle layer summary must remain explicit.'
 }
@@ -412,7 +564,7 @@ $rendererSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_DocumentRenderer.cpp') -Raw -Encoding UTF8
 $playbackSource = Get-Content -LiteralPath (
     Require-File 'Client\Private\Effect_Playback.cpp') -Raw -Encoding UTF8
-if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 11u' -or
+if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 12u' -or
 	$authoringHeader -notmatch 'struct EFFECT_SOURCE_MATERIAL_DESC' -or
 	$authoringHeader -notmatch 'DynamicParameterSemantics' -or
 	$codecSource -notmatch 'Read_SourceMaterialProfile' -or
@@ -460,6 +612,10 @@ foreach ($domainId in $effectAuthoringDomains) {
         -Filter '*.dds' -ErrorAction Stop)
     if ($models.Count -eq 0 -or $textures.Count -eq 0) {
         throw "Effect authoring domain must expose WModel and DDS resources: $domainId"
+    }
+    if ($domainId -eq 'DimensionMaster' -and
+        ($models.Count -ne 140 -or $textures.Count -ne 701)) {
+        throw "DimensionMaster Mesh workbench catalog changed: expected 140 WModel / 701 DDS, got $($models.Count) / $($textures.Count)"
     }
     $effectPaletteResourceCount += $models.Count + $textures.Count
 }
@@ -537,6 +693,22 @@ foreach ($skill in $boundSkillRows) {
 }
 $expectedEffectIds = @($expectedEffectIds)
 $expectedEffectCount = $expectedEffectIds.Count
+$canonicalR = @($boundSkillRows | Where-Object {
+    [string]$_.inputSlot -ceq 'R'
+})
+$canonicalA = @($boundSkillRows | Where-Object {
+    [string]$_.inputSlot -ceq 'A'
+})
+$canonicalD = @($boundSkillRows | Where-Object {
+    [string]$_.inputSlot -ceq 'D'
+})
+if ($canonicalR.Count -ne 1 -or [int64]$canonicalR[0].skillId -ne 2050180 -or
+    $canonicalA.Count -ne 1 -or [int64]$canonicalA[0].skillId -ne 2050210 -or
+    $canonicalD.Count -ne 1 -or [int64]$canonicalD[0].skillId -ne 2050240 -or
+    $expectedEffectIds -ccontains 'effect.dimensionmaster.skill.2050190' -or
+    $expectedEffectIds -ccontains 'effect.dimensionmaster.skill.2050550') {
+    throw 'DimensionMaster canonical R/A/D roster regressed or a stale candidate was admitted.'
+}
 
 $catalog = Read-JsonFile 'Data\Effects\EffectCatalog.json'
 if ($catalog.formatVersion -ne 1 -or
@@ -561,7 +733,7 @@ foreach ($entry in $catalog.effects) {
         throw "Unsafe catalog document path: $relativeDocument"
     }
     $document = Read-JsonFile (Join-Path 'Data' $relativeDocument)
-    if ($document.version -notin @(5, 6, 7, 8, 9, 10, 11) -or
+    if ($document.version -notin @(5, 6, 7, 8, 9, 10, 11, 12) -or
         $document.effectAssetId -cne $entry.effectAssetId -or
         @($document.elements).Count -eq 0) {
         throw "Effect document header/elements are invalid: $relativeDocument"
@@ -640,7 +812,7 @@ $completeT = Read-JsonFile `
     'Data\Effects\Authored\effect.dimensionmaster.skill.2050500.effect.json'
 $completeTReceipt = Read-JsonFile `
     'Data\Effects\Imported\DimensionMaster\Converted\skill.2050500.element-conversion-receipt.json'
-if ($completeT.version -notin @(10, 11) -or
+if ($completeT.version -notin @(10, 11, 12) -or
     @($completeT.elements).Count -ne
         [int]$completeTReceipt.summary.emittedElementCount -or
     [double]$completeT.particleSystem.uniformScaleMultiplier -ne 1.0 -or
@@ -651,6 +823,32 @@ if ($completeT.version -notin @(10, 11) -or
     [string]$completeT.modelCues[0].clipName -cne
         'sk_swp_dms_00_sk_sk_dimensionprison') {
     throw 'DimensionMaster T 2050500 must match its source-derived Element receipt and Summon cue.'
+}
+
+$completeD = Read-JsonFile `
+    'Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json'
+$dParticles = @($completeD.elements | Where-Object {
+    [string]$_.kind -ceq 'particle'
+})
+$dLights = @($completeD.elements | Where-Object {
+    [string]$_.kind -ceq 'light'
+})
+$dScreenPosts = @($completeD.elements | Where-Object {
+    [string]$_.kind -ceq 'screenPost'
+})
+$dRuntimeExactProfiles = @($dParticles | Where-Object {
+    [string]$_.material.sourceProfile.semanticStatus -ceq 'runtime_exact'
+})
+$dReconstructedProfileGroups = @($dParticles | Where-Object {
+    [string]$_.material.sourceProfile.semanticStatus -ceq 'reconstructed_profile'
+} | ForEach-Object {
+    [string]$_.material.sourceProfile.profileId
+} | Sort-Object -Unique)
+if (@($completeD.elements).Count -ne 51 -or $dParticles.Count -ne 46 -or
+    $dLights.Count -ne 2 -or $dScreenPosts.Count -ne 3 -or
+    $dRuntimeExactProfiles.Count -ne 0 -or
+    $dReconstructedProfileGroups.Count -ne 21) {
+    throw 'DimensionMaster D 2050240 execution coverage/material restoration boundary changed.'
 }
 
 $eventsPath = Require-File `
@@ -709,6 +907,14 @@ $tCue = @($admittedRows | Where-Object {
 if ($tCue.Count -ne 1) {
     throw 'DimensionMaster T 2050500 must start its Summon Effect once with dimensionprison.'
 }
+$dCue = @($admittedRows | Where-Object {
+    $_ -match '^"pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=0 ' -and
+    $_ -match ' payload="effect\.dimensionmaster\.skill\.2050240" ' -and
+    $_ -match ' anchor="b_wp_swm_m_2" follow=follow '
+})
+if ($dCue.Count -ne 1) {
+    throw 'DimensionMaster D 2050240 complete Effect must preserve the authored weapon anchor.'
+}
 $comboSkill = @($boundSkillRows | Where-Object skillKind -eq 'COMBO')
 if ($comboSkill.Count -ne 1) {
     throw 'DimensionMaster trial roster must have exactly one LMB combo Effect owner.'
@@ -738,6 +944,6 @@ for ($stage = 1; $stage -le @($comboBinding[0].clips).Count; ++$stage) {
     }
 }
 
-Write-Host ('PASS: final Effect Tool bundle; code={0}, documents={1}, resources={2}, palette={3}, cues={4}.' -f
+Write-Host ('PASS: final Effect Tool bundle; code={0}, documents={1}, resources={2}, palette={3}, cues={4}; D Particle=46, typed Light/Post=2/3, runtime-exact material=0, reconstructed groups=21.' -f
     $requiredCode.Count, $expectedEffectCount, $documentResourceIds.Count,
     $effectPaletteResourceCount, $admittedRows.Count)

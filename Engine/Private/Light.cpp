@@ -19,30 +19,40 @@ HRESULT CLight::Initialize(const LIGHT_DESC& LightDesc)
 
 HRESULT CLight::Render(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer)
 {
+	return Render_Desc(m_LightDesc, std::move(pShader), std::move(pVIBuffer));
+}
+
+HRESULT CLight::Render_Desc(
+	const LIGHT_DESC& LightDesc,
+	shared_ptr<class CShader> pShader,
+	shared_ptr<class CVIBuffer_Rect> pVIBuffer)
+{
     uint32_t            iPassIndex = {};
 
-    if (LIGHT::DIRECTIONAL == m_LightDesc.eType)
+    if (LIGHT::DIRECTIONAL == LightDesc.eType)
     {
-        if (FAILED(pShader->Bind_RawValue("g_vLightDir", &m_LightDesc.vDirection, sizeof m_LightDesc.vDirection)))
+        if (FAILED(pShader->Bind_RawValue("g_vLightDir", &LightDesc.vDirection, sizeof LightDesc.vDirection)))
             return E_FAIL;
 
         iPassIndex = ETOUI(DEFERRED::DIRECTIONAL);
     }
 
-    else if (LIGHT::POINT == m_LightDesc.eType)
+    else if (LIGHT::POINT == LightDesc.eType)
     {
-        if (FAILED(pShader->Bind_RawValue("g_vLightPos", &m_LightDesc.vPosition, sizeof m_LightDesc.vPosition)))
+        if (FAILED(pShader->Bind_RawValue("g_vLightPos", &LightDesc.vPosition, sizeof LightDesc.vPosition)))
             return E_FAIL;
-        if (FAILED(pShader->Bind_RawValue("g_fLightRange", &m_LightDesc.fRange, sizeof m_LightDesc.fRange)))
+        if (FAILED(pShader->Bind_RawValue("g_fLightRange", &LightDesc.fRange, sizeof LightDesc.fRange)))
             return E_FAIL;
 
         iPassIndex = ETOUI(DEFERRED::POINT);
     }
 
 
-    if (FAILED(pShader->Bind_RawValue("g_vLightDiffuse", &m_LightDesc.vDiffuse, sizeof m_LightDesc.vDiffuse)))
+    if (FAILED(pShader->Bind_RawValue("g_vLightDiffuse", &LightDesc.vDiffuse, sizeof LightDesc.vDiffuse)))
         return E_FAIL;
-    if (FAILED(pShader->Bind_RawValue("g_vLightAmbient", &m_LightDesc.vAmbient, sizeof m_LightDesc.vAmbient)))
+    if (FAILED(pShader->Bind_RawValue("g_vLightAmbient", &LightDesc.vAmbient, sizeof LightDesc.vAmbient)))
+        return E_FAIL;
+    if (FAILED(pShader->Bind_RawValue("g_vLightSpecular", &LightDesc.vSpecular, sizeof LightDesc.vSpecular)))
         return E_FAIL;
 
 

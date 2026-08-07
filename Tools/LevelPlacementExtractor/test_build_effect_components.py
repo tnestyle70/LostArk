@@ -9,11 +9,13 @@ import unittest
 from pathlib import Path
 
 from build_effect_components import (
+    action_cues_for_effect,
     component_directory,
     compile_assembly,
     remove_relocated_generated_components,
     remove_stale_generated_components,
     remove_unadmitted_generated_artifacts,
+    renderer_kind,
     split_document,
 )
 
@@ -38,6 +40,66 @@ def element(element_id: str, group_id: str, start: float) -> dict:
 
 
 class EffectComponentTests(unittest.TestCase):
+    def test_cascade_renderer_shape_and_mesh_binding_must_agree(self) -> None:
+        sprite = element("sprite", "group.a", 0.0)
+        sprite["sourceRecipe"]["enabled"] = True
+        self.assertEqual("sprite", renderer_kind(sprite))
+
+        mesh = copy.deepcopy(sprite)
+        mesh["id"] = "mesh"
+        mesh["sourceRecipe"]["rendererShape"] = "mesh"
+        mesh["resources"].append({
+            "slotId": "meshModel",
+            "assetId": "Effect/Test.wmodel",
+        })
+        self.assertEqual("mesh", renderer_kind(mesh))
+
+        contradictory = copy.deepcopy(mesh)
+        contradictory["sourceRecipe"]["rendererShape"] = "sprite"
+        with self.assertRaisesRegex(ValueError, "shape/resource contradiction"):
+            renderer_kind(contradictory)
+
+    def test_invalid_source_action_cue_time_is_preserved_but_fail_closed(self) -> None:
+        payload = {
+            "encoding": "base64",
+            "sha256": "a" * 64,
+            "data": "AA==",
+        }
+        recipe = {"cues": [{
+            "cueId": "skill-1/clip-000/notify-001",
+            "localTimeSeconds": 1.0e22,
+            "globalTimeSeconds": 1.0e22,
+            "durationSeconds": -3.0,
+            "runtimeChannel": "CHARACTER_MATERIAL",
+            "serializedPayload": payload,
+            "executionEnabled": True,
+            "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED",
+        }]}
+
+        cues = action_cues_for_effect(recipe, "effect.dimensionmaster.skill.1")
+
+        self.assertEqual(1.0e22, cues[0]["localTimeSeconds"])
+        self.assertEqual(payload, cues[0]["serializedPayload"])
+        self.assertFalse(cues[0]["executionEnabled"])
+        self.assertEqual(
+            "INVALID_SOURCE_TIME_FAIL_CLOSED",
+            cues[0]["sourceExecutionStatus"],
+        )
+        self.assertTrue(recipe["cues"][0]["executionEnabled"])
+
+    def test_finite_source_action_cue_time_remains_executable(self) -> None:
+        recipe = {"cues": [{
+            "cueId": "skill-1/clip-000/notify-001",
+            "localTimeSeconds": 1.25,
+            "globalTimeSeconds": 1.25,
+            "durationSeconds": 0.5,
+            "executionEnabled": True,
+            "sourceExecutionStatus": "RUNTIME_TYPED",
+        }]}
+        cues = action_cues_for_effect(recipe, "effect.dimensionmaster.skill.1")
+        self.assertTrue(cues[0]["executionEnabled"])
+        self.assertEqual("RUNTIME_TYPED", cues[0]["sourceExecutionStatus"])
+
     def test_component_identity_never_depends_on_input_slot(self) -> None:
         document = {
             "schema": "lostark.effect-authoring",

@@ -258,7 +258,7 @@
       "externalUnresolvedRequestCount": 0,
       "unsupportedEmitterCount": 0,
       "missingResourceEmitterCount": 0,
-      "sourceMaterialPendingEmitterCount": 10,
+      "sourceMaterialPendingEmitterCount": 14,
       "sourceActionCueCount": 49,
       "sourceActionPayloadBytes": 25034,
       "sourcePlayParticleEffectCount": 23,
@@ -321,8 +321,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "c86dad2f2fbcf3b3333ad6459fed8d1690cc5658a1a3c95b5250e0e9cdc7425f",
-      "actionCueSha256": "d092cb2474556a4c847ca41e5f8fd3c9d2f6b04306bd7b13d97ecbf461cd344e"
+      "documentSha256": "2ab049db7809df548e5df3bc69f38019d7188ed00dc8aab20e781228396a6eb0",
+      "actionCueSha256": "bd3b2b2005c5e2dd1d33074c0b4a3c2c1c9a07bf1177e7e563d3aab78874844f"
     },
     {
       "slot": "Q",
@@ -346,7 +346,7 @@
       "externalUnresolvedRequestCount": 0,
       "unsupportedEmitterCount": 0,
       "missingResourceEmitterCount": 0,
-      "sourceMaterialPendingEmitterCount": 1,
+      "sourceMaterialPendingEmitterCount": 2,
       "sourceActionCueCount": 15,
       "sourceActionPayloadBytes": 8660,
       "sourcePlayParticleEffectCount": 12,
@@ -396,8 +396,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "15917a9ee81a0035a28053825a2eac13dd581cdab447724fec45cb369af4d4c2",
-      "actionCueSha256": "e73a5c3db15c5b5063d82cbe895db19d72df15e5a09295f07da75340f114d0c5"
+      "documentSha256": "5441f84a4e8e5557b37d01d99b5337d3b13411c1f2fc697c02e1e8a1c31153bc",
+      "actionCueSha256": "bea9c40d7e93ef384375dafe238ff6f5c9ee6ebd82b5074f026f217738454ed6"
     },
     {
       "slot": "W",
@@ -487,8 +487,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "0309c799ae2ae53b55a5abb43c1e2deff9bda5f96ae3559370edd62222848841",
-      "actionCueSha256": "6dc7174caea20a6c4443dadf6c025ef4826b217d471038adb2caf54320b7ef1f"
+      "documentSha256": "d0df26d86c5d95e0461f3f17bfa13cfbed733033250671e2771baf0def500ce5",
+      "actionCueSha256": "4f0c4a0ce50a64492059606991aae0e0fb31ad09268841fb17b14d22bc32373b"
     },
     {
       "slot": "E",
@@ -560,8 +560,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "8d080f2a2e5f84075e5c007eda5896454205d155eeeb0c0e6e23d15f4a98e1dc",
-      "actionCueSha256": "33d6b537906faa1981f2ea9bd9035c5d01ce7d8a4e6dda56acbfbaedff7512af"
+      "documentSha256": "d46b0302cda802181672943c9d5f511ee566de37ee20ed0394b77f00bc6ed95a",
+      "actionCueSha256": "90628a880ce6c15349202f5c2d03dcaf28a452d8ca3e8cce9eecf22c1a699c32"
     },
     {
       "slot": "R",
@@ -642,8 +642,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_MODULE_EXECUTION",
-      "documentSha256": "a3f4126ec2c0b90e415784258bdf4ea76af62af429b2e4da6cf37c2d407b1501",
-      "actionCueSha256": "e379687fc7cf50998497faaf12de563d5d6801bced4514be9d947d9e3d5ae22e"
+      "documentSha256": "4335ea6f0bdd3d506fffe96c157edacde4a3af5fcd37373b97bffa6a245ba57f",
+      "actionCueSha256": "733fe8e94d3e2aa773d62466f609cce350dbddaf77b2b3a3d857a728e7c1fc6f"
     },
     {
       "slot": "A",
@@ -667,7 +667,7 @@
       "externalUnresolvedRequestCount": 0,
       "unsupportedEmitterCount": 0,
       "missingResourceEmitterCount": 0,
-      "sourceMaterialPendingEmitterCount": 5,
+      "sourceMaterialPendingEmitterCount": 7,
       "sourceActionCueCount": 80,
       "sourceActionPayloadBytes": 48799,
       "sourcePlayParticleEffectCount": 51,
@@ -743,8 +743,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "036b8f6bc4233e77664b137a817633afd1c2c6b9badb9abc9d1bba6b2544c988",
-      "actionCueSha256": "e47c32c61ae6de531d49a1b110298e3836fb711933e78d35e10c2fca9fc08a10"
+      "documentSha256": "57ed6a7afd8e5d2818e5221cf6bbb30f0ad79efab2b05247badaeef7b7839002",
+      "actionCueSha256": "e4e64c2a8cf8d0c69bf3a500f911aeb12a1d318a33c88694ace79aac1ad27cc8"
     },
     {
       "slot": "S",
@@ -827,8 +827,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_MODULE_EXECUTION",
-      "documentSha256": "7492b4cdb3673ca59fdca39065df1016e28f8a6da72a81776b6632332b1b488f",
-      "actionCueSha256": "4be6039d37d91ea952a726251e986791c2bd2fd2fdaca20fe52e95b504fc3fd6"
+      "documentSha256": "ae1cdcbb76033d7e2b5eeb78d85e2a431c5ae43b1a788be752f3e3251a5926cb",
+      "actionCueSha256": "55181abde8ce9d251050d234249021d7f6b6d2ee6df38e622935005180ad43fe"
     },
     {
       "slot": "F",
@@ -931,8 +931,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "5c6a99b27252d6353e003ca5f10630fec42adc8fd2c8655120249e4d2fe504e1",
-      "actionCueSha256": "f81ad1ba5fa9f63226a7c130e70f802747cacc14c860a1e077a6e3ee72847bcd"
+      "documentSha256": "5e63e7cccc2cf269a46d89c572c784f1153a09296367ac7127a5663faefc0782",
+      "actionCueSha256": "e07af6450210114aac533a121c48abaeb36c59b4e865b9827c0a5b86a3498301"
     },
     {
       "slot": "D",
@@ -1012,8 +1012,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "0138f3b5e515411178cc16b4bfa82d6fbf83f4ce1594ca7f0ffacfdd2a5066af",
-      "actionCueSha256": "1497eac3f3f9a7c654bc6dbf838a9a26f29ab794a3c4f4b0e05df6de043e5c2d"
+      "documentSha256": "b2ec639eca61edc7fbfa8e95275726e27b9950b581b7e2b5a0e7a00a9bd17b71",
+      "actionCueSha256": "caf66bfbe50ee2f96b7556698355e6c36c3831586037284df267d58304ac7065"
     },
     {
       "slot": "T",
@@ -1107,8 +1107,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_MODULE_EXECUTION",
-      "documentSha256": "7073074f26723de000d55c93fad5a1787a7d56fe6e0e91e8d5a41e78dd5acbad",
-      "actionCueSha256": "7dccd134211263a007958258361c2db1a8bdf4793b44702d0a8e8abda50401d6"
+      "documentSha256": "56f5211e8cd8ad6e4e0f0e53978f91eb831d54335323b22a0b608cc1a1015fd4",
+      "actionCueSha256": "d3f029d667904a3d75d9cd78b8894f27c69af355666480081cc30fed1476da75"
     },
     {
       "slot": "V",
@@ -1178,8 +1178,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_SOURCE_MATERIAL_EXECUTION",
-      "documentSha256": "288ec11d401c017e6e1e4eb5b2c8518164b84392b94fcf2a9036208960049c60",
-      "actionCueSha256": "5a31e1d94c42022b48f43ed38d46f3091842e92e9957b1b08871c1c42406eac4"
+      "documentSha256": "c53a6802f13f0e593f6ebde3d801e6a80726812f4d862ba048d2f46c62f78a6d",
+      "actionCueSha256": "10436920f0f0051178f04d376131ec6c7ca71ae81d5f66b690517c82d6bba089"
     },
     {
       "slot": "ALT_V",
@@ -1277,8 +1277,8 @@
       "actionPayloadCaptureComplete": true,
       "sourceExtractionStatus": "SEMANTIC_DECODERS_REQUIRED",
       "runtimeExecutionStatus": "UNSUPPORTED_MODULE_EXECUTION",
-      "documentSha256": "ce0149b0affce079c1722f098b12b5f2ae73f1d3c52a54a994ee8eae44a5c478",
-      "actionCueSha256": "fee39700f68ade93261bbfaf9d94205e639f77e702a3c3e39dfa0d0254f08768"
+      "documentSha256": "066b32f9b756a8588622d8c1e7fa43f3400b72ea5f00faa977e1e6f34f4a6e86",
+      "actionCueSha256": "14c0221d248c2b6823b84962d9c7ad08cdaf1a25fc6ec4b6791bf0ba7cd3909d"
     }
   ],
   "totals": {
@@ -1290,7 +1290,7 @@
     "sourceLiteralCount": 36694,
     "unsupportedEmitterCount": 0,
     "missingResourceEmitterCount": 0,
-    "sourceMaterialPendingEmitterCount": 59,
+    "sourceMaterialPendingEmitterCount": 66,
     "sourceActionCueCount": 477,
     "sourceActionPayloadBytes": 255432,
     "partialRuntimeModuleCount": 8290,
@@ -1301,7 +1301,7 @@
   "runtimeExecutionComplete": false,
   "inputs": {
     "playerSkills": "Data\\Balance\\PlayerSkills.json",
-    "playerSkillsSha256": "f1119d5ea1670ccd755e3aac6465076c30ff72615b8ca451fa71ec7f5307b86a",
+    "playerSkillsSha256": "d9becbaedd84b93fee4bdc6d5d0a4cc2eb07419b48cebe4f5c034d5b44919d08",
     "skillBindings": "Data\\Animation\\Authored\\DimensionMaster\\DimensionMaster.skillbindings.json",
     "skillBindingsSha256": "0e38227f1c1571fc84062736d1f0cc9929f42d850a40f9e03ebb51de57278f87",
     "resourceSourceManifest": "Data\\Effects\\Imported\\DimensionMaster\\DimensionMaster.resource-source-manifest.json",

@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
 
 #include <array>
@@ -27,6 +28,19 @@ private:
 	{
 		shared_ptr<Engine::CModel> pModel;
 		std::array<ComPtr<ID3D11ShaderResourceView>, 5> Textures;
+		std::array<ComPtr<ID3D11ShaderResourceView>, 7> SourceTextures;
+		uint32_t iSourceTextureMask = 0u;
+		uint32_t iSourceMaterialProfile = 0u;
+		float4_t vSourceScalars0{};
+		float4_t vSourceScalars1{};
+		float4_t vSourceVector0{};
+		float4_t vSourceVector1{};
+		std::array<float4_t, 16u> LinearFlowParameters{};
+		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
+		float4_t vLinearFlowMaskBColor{ 1.f, 1.f, 1.f, 1.f };
+		std::array<uint32_t, 4u> DynamicParameterSemantics{};
+		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
+		bool_t bSourceMaterialFallbackBlocked = false;
 	};
 	struct MODEL_CUE_RESOURCE final
 	{
@@ -90,7 +104,8 @@ private:
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fAlphaScale = 1.f,
-		const float4x4_t* pWorldOverride = nullptr);
+		const float4x4_t* pWorldOverride = nullptr,
+		const float4_t* pDynamicParameter = nullptr);
 	HRESULT Render_Rect(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,

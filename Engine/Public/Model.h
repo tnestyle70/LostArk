@@ -96,6 +96,8 @@ public:
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
+	const string& Get_MaterialName(uint32_t iMeshIndex) const;
+	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };

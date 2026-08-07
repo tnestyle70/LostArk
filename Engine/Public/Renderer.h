@@ -7,6 +7,8 @@
 
 NS_BEGIN(Engine)
 
+struct PRESENTATION_SCREEN_POST_DESC;
+
 class CRenderer final 
 {
 private:	
@@ -18,6 +20,8 @@ public:
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw();
+	const RENDER_QUALITY_SETTINGS& Get_RenderQualitySettings() const { return m_RenderQualitySettings; }
+	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 
 #ifdef _DEBUG
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
@@ -37,6 +41,13 @@ private:
 	uint32_t								m_iBloomWidth = {};
 	uint32_t								m_iBloomHeight = {};
 	float2_t								m_vBloomTexelSize = {};
+	ComPtr<ID3D11Texture2D>				m_pScenePostTextures[2];
+	ComPtr<ID3D11RenderTargetView>		m_pScenePostRTVs[2];
+	ComPtr<ID3D11ShaderResourceView>	m_pScenePostSRVs[2];
+	uint32_t								m_iScenePostWidth = {};
+	uint32_t								m_iScenePostHeight = {};
+	uint32_t								m_iScenePostFinalTarget = {};
+	RENDER_QUALITY_SETTINGS				m_RenderQualitySettings = {};
 
 #ifdef _DEBUG
 	list<shared_ptr<CComponent>>			m_DebugComponent;
@@ -50,15 +61,22 @@ private:
 	HRESULT Render_Combined();
 	HRESULT Render_NonLight();
 	HRESULT Render_Blend();
+	HRESULT Render_ScreenPosts();
+	HRESULT Render_ScreenPostPass(
+		ComPtr<ID3D11ShaderResourceView> pSourceSRV,
+		ComPtr<ID3D11RenderTargetView> pDestinationRTV,
+		uint32_t iPassIndex,
+		const PRESENTATION_SCREEN_POST_DESC* pPostDesc = nullptr);
 	HRESULT Render_Bloom();
 	HRESULT Render_BloomPass(const wstring_t& strMRTTag,
-		const wstring_t& strSourceTargetTag, DEFERRED ePass);
+		ComPtr<ID3D11ShaderResourceView> pSourceSRV, DEFERRED ePass);
 	HRESULT Render_Final();
 	HRESULT Render_UI();
 
 private:
 	HRESULT Ready_Shadow_DSV();
 	HRESULT Ready_Bloom_DSV();
+	HRESULT Ready_ScenePostTargets(uint32_t iWidth, uint32_t iHeight);
 	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
 
 #ifdef _DEBUG

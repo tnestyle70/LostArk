@@ -13,10 +13,14 @@ public:
 
 public:
 	HRESULT Add_Light(const LIGHT_DESC& LightDesc);
+	HRESULT Replace_SceneLights(vector<LIGHT_DESC> SceneLights);
 	HRESULT Render_Lights(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer);
+	uint32_t Get_SceneLightCount() const {
+		return static_cast<uint32_t>(m_SceneLights.size());
+	}
 
 private:
-	list<unique_ptr<class CLight>>			m_Lights;
+	vector<LIGHT_DESC>						m_SceneLights;
 
 public:
 	static unique_ptr<CLight_Manager> Create();

@@ -5,8 +5,10 @@
 #include "RuntimeAssetRoot.h"
 
 #include <algorithm>
+#include <atomic>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <cstdint>
@@ -31,6 +33,9 @@ namespace
 	constexpr size_t MAX_SOURCE_LITERALS_PER_MODULE = 1024u;
 	constexpr size_t MAX_SOURCE_DISTRIBUTIONS_PER_MODULE = 128u;
 	constexpr size_t MAX_SOURCE_BURSTS_PER_ELEMENT = 1024u;
+	constexpr size_t MAX_SOURCE_PRESENTATION_PARAMETERS = 256u;
+	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
+		"lostark.effect-source-presentation";
 
 	constexpr const char_t* KIND_TOKENS[] =
 	{
@@ -45,7 +50,9 @@ namespace
 	{
 		"opaque_back_depth_write",
 		"alpha_two_sided_depth_read",
-		"additive_two_sided_depth_read"
+		"additive_two_sided_depth_read",
+		"alpha_one_sided_depth_read",
+		"additive_one_sided_depth_read"
 	};
 	constexpr const char_t* SOURCE_MATERIAL_STATUS_TOKENS[] =
 	{
@@ -62,6 +69,33 @@ namespace
 	constexpr const char_t* DISTRIBUTION_INTERPOLATION_TOKENS[] =
 	{
 		"constant", "linear", "cubic"
+	};
+	constexpr const char_t* PRESENTATION_RUNTIME_STATUS_TOKENS[] =
+	{
+		"reconstructed_profile"
+	};
+	constexpr const char_t* LIGHT_PROFILE_TOKENS[] =
+	{
+		"light.point.reconstructed.v1"
+	};
+	constexpr const char_t* SCREEN_POST_PROFILE_TOKENS[] =
+	{
+		"screen.rgb-noise.reconstructed.v1",
+		"screen.zoom-blur.reconstructed.v1",
+		"screen.film-noise.reconstructed.v1"
+	};
+	constexpr const char_t* SOURCE_PRESENTATION_STATUS_TOKENS[] =
+	{
+		"source_exact", "reconstructed", "unresolved"
+	};
+	constexpr const char_t* SOURCE_PRESENTATION_PARAMETER_KIND_TOKENS[] =
+	{
+		"number", "boolean", "vector", "string"
+	};
+	constexpr const char_t* SOURCE_PRESENTATION_PARAMETER_STATUS_TOKENS[] =
+	{
+		"source_explicit", "source_distribution",
+		"unresolved_class_default"
 	};
 
 	bool_t Is_StableId(const std::string& Value)
@@ -294,6 +328,12 @@ namespace
 		}
 		if (!Out.bEnabled)
 			return true;
+		const Client::DATA_JSON_VALUE* pTextures = Value.Find("textures");
+		if (nullptr != pTextures && !pTextures->Is_Array())
+		{
+			strOutError = "Effect source Material textures must be an array.";
+			return false;
+		}
 		const Client::DATA_JSON_VALUE* pScalars = Find_Field(
 			Value, "scalars", Client::DATA_JSON_TYPE::ARRAY, strOutError);
 		const Client::DATA_JSON_VALUE* pVectors = Find_Field(
@@ -336,6 +376,29 @@ namespace
 			Out.DynamicParameterSemantics[iSemantic] =
 				Semantic.Get_String();
 		}
+		if (nullptr != pTextures)
+		{
+			for (const Client::DATA_JSON_VALUE& Item : pTextures->Get_Array())
+			{
+				Client::EFFECT_NAMED_TEXTURE_DESC Texture;
+				if (!Item.Is_Object() ||
+					!Read_String(Item, "name", Texture.strName, strOutError) ||
+					!Read_String(Item, "sourceObjectPath",
+						Texture.strSourceObjectPath, strOutError) ||
+					!Read_String(Item, "assetId", Texture.strAssetId,
+						strOutError))
+				{
+					return false;
+				}
+				if (const Client::DATA_JSON_VALUE* pGroup = Item.Find("group"))
+				{
+					if (!pGroup->Is_String())
+						return false;
+					Texture.strGroup = pGroup->Get_String();
+				}
+				Out.Textures.push_back(std::move(Texture));
+			}
+		}
 		for (const Client::DATA_JSON_VALUE& Item : pScalars->Get_Array())
 		{
 			Client::EFFECT_NAMED_FLOAT_DESC Scalar;
@@ -344,6 +407,12 @@ namespace
 				!Read_Float(Item, "value", Scalar.fValue, strOutError))
 			{
 				return false;
+			}
+			if (const Client::DATA_JSON_VALUE* pGroup = Item.Find("group"))
+			{
+				if (!pGroup->Is_String())
+					return false;
+				Scalar.strGroup = pGroup->Get_String();
 			}
 			Out.Scalars.push_back(std::move(Scalar));
 		}
@@ -357,6 +426,12 @@ namespace
 			{
 				return false;
 			}
+			if (const Client::DATA_JSON_VALUE* pGroup = Item.Find("group"))
+			{
+				if (!pGroup->Is_String())
+					return false;
+				Vector.strGroup = pGroup->Get_String();
+			}
 			Out.Vectors.push_back(std::move(Vector));
 		}
 		for (const Client::DATA_JSON_VALUE& Item : pSwitches->Get_Array())
@@ -367,6 +442,12 @@ namespace
 				!Read_Bool(Item, "value", Switch.bValue, strOutError))
 			{
 				return false;
+			}
+			if (const Client::DATA_JSON_VALUE* pGroup = Item.Find("group"))
+			{
+				if (!pGroup->Is_String())
+					return false;
+				Switch.strGroup = pGroup->Get_String();
 			}
 			Out.StaticSwitches.push_back(std::move(Switch));
 		}
@@ -400,14 +481,42 @@ namespace
 			<< Client::CDataJson::Escape(Source.strParentMaterialPath)
 			<< "\", \"semanticStatus\": \""
 			<< SourceMaterialStatusToken(Source.eStatus)
-			<< "\", \"scalars\": [";
+			<< "\", \"textures\": [";
+		for (size_t i = 0u; i < Source.Textures.size(); ++i)
+		{
+			if (0u != i)
+				Output << ", ";
+			Output << "{ \"name\": \""
+				<< Client::CDataJson::Escape(Source.Textures[i].strName)
+				<< '"';
+			if (!Source.Textures[i].strGroup.empty())
+			{
+				Output << ", \"group\": \""
+					<< Client::CDataJson::Escape(Source.Textures[i].strGroup)
+					<< '"';
+			}
+			Output << ", \"sourceObjectPath\": \""
+				<< Client::CDataJson::Escape(
+					Source.Textures[i].strSourceObjectPath)
+				<< "\", \"assetId\": \""
+				<< Client::CDataJson::Escape(Source.Textures[i].strAssetId)
+				<< "\" }";
+		}
+		Output << "], \"scalars\": [";
 		for (size_t i = 0u; i < Source.Scalars.size(); ++i)
 		{
 			if (0u != i)
 				Output << ", ";
 			Output << "{ \"name\": \""
 				<< Client::CDataJson::Escape(Source.Scalars[i].strName)
-				<< "\", \"value\": " << Source.Scalars[i].fValue << " }";
+				<< '"';
+			if (!Source.Scalars[i].strGroup.empty())
+			{
+				Output << ", \"group\": \""
+					<< Client::CDataJson::Escape(Source.Scalars[i].strGroup)
+					<< '"';
+			}
+			Output << ", \"value\": " << Source.Scalars[i].fValue << " }";
 		}
 		Output << "], \"vectors\": [";
 		for (size_t i = 0u; i < Source.Vectors.size(); ++i)
@@ -416,7 +525,14 @@ namespace
 				Output << ", ";
 			Output << "{ \"name\": \""
 				<< Client::CDataJson::Escape(Source.Vectors[i].strName)
-				<< "\", \"value\": ";
+				<< '"';
+			if (!Source.Vectors[i].strGroup.empty())
+			{
+				Output << ", \"group\": \""
+					<< Client::CDataJson::Escape(Source.Vectors[i].strGroup)
+					<< '"';
+			}
+			Output << ", \"value\": ";
 			Write_Float4(Output, Source.Vectors[i].vValue);
 			Output << " }";
 		}
@@ -428,7 +544,15 @@ namespace
 			Output << "{ \"name\": \""
 				<< Client::CDataJson::Escape(
 					Source.StaticSwitches[i].strName)
-				<< "\", \"value\": "
+				<< '"';
+			if (!Source.StaticSwitches[i].strGroup.empty())
+			{
+				Output << ", \"group\": \""
+					<< Client::CDataJson::Escape(
+						Source.StaticSwitches[i].strGroup)
+					<< '"';
+			}
+			Output << ", \"value\": "
 				<< (Source.StaticSwitches[i].bValue ? "true" : "false")
 				<< " }";
 		}
@@ -785,6 +909,285 @@ namespace
 		Output << "        ] }";
 	}
 
+	bool_t Read_PresentationDetail(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_DETAIL_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pLight = Find_Field(
+			Value, "light", Client::DATA_JSON_TYPE::OBJECT, strOutError);
+		const Client::DATA_JSON_VALUE* pScreenPost = Find_Field(
+			Value, "screenPost", Client::DATA_JSON_TYPE::OBJECT, strOutError);
+		if (nullptr == pLight || nullptr == pScreenPost ||
+			!Read_Bool(*pLight, "enabled", Out.Light.bEnabled, strOutError) ||
+			!Read_Bool(*pScreenPost, "enabled", Out.ScreenPost.bEnabled,
+				strOutError))
+		{
+			return false;
+		}
+
+		if (Out.Light.bEnabled)
+		{
+			const Client::DATA_JSON_VALUE* pProfile = Find_Field(
+				*pLight, "profileId", Client::DATA_JSON_TYPE::STRING,
+				strOutError);
+			const Client::DATA_JSON_VALUE* pStatus = Find_Field(
+				*pLight, "status", Client::DATA_JSON_TYPE::STRING,
+				strOutError);
+			if (nullptr == pProfile || nullptr == pStatus ||
+				!Parse_Token(pProfile->Get_String(), LIGHT_PROFILE_TOKENS,
+					std::size(LIGHT_PROFILE_TOKENS), Out.Light.eProfile) ||
+				!Parse_Token(pStatus->Get_String(),
+					PRESENTATION_RUNTIME_STATUS_TOKENS,
+					std::size(PRESENTATION_RUNTIME_STATUS_TOKENS),
+					Out.Light.eStatus) ||
+				!Read_Float(*pLight, "range", Out.Light.fRange, strOutError) ||
+				!Read_Float(*pLight, "intensity", Out.Light.fIntensity,
+					strOutError) ||
+				!Read_Array(*pLight, "color", &Out.Light.vColor.x, 4u,
+					strOutError) ||
+				!Read_Array(*pLight, "ambient", &Out.Light.vAmbient.x, 4u,
+					strOutError) ||
+				!Read_Float(*pLight, "falloffExponent",
+					Out.Light.fFalloffExponent, strOutError))
+			{
+				return false;
+			}
+		}
+
+		if (Out.ScreenPost.bEnabled)
+		{
+			const Client::DATA_JSON_VALUE* pProfile = Find_Field(
+				*pScreenPost, "profileId", Client::DATA_JSON_TYPE::STRING,
+				strOutError);
+			const Client::DATA_JSON_VALUE* pStatus = Find_Field(
+				*pScreenPost, "status", Client::DATA_JSON_TYPE::STRING,
+				strOutError);
+			if (nullptr == pProfile || nullptr == pStatus ||
+				!Parse_Token(pProfile->Get_String(), SCREEN_POST_PROFILE_TOKENS,
+					std::size(SCREEN_POST_PROFILE_TOKENS),
+					Out.ScreenPost.eProfile) ||
+				!Parse_Token(pStatus->Get_String(),
+					PRESENTATION_RUNTIME_STATUS_TOKENS,
+					std::size(PRESENTATION_RUNTIME_STATUS_TOKENS),
+					Out.ScreenPost.eStatus) ||
+				!Read_Float(*pScreenPost, "intensity",
+					Out.ScreenPost.fIntensity, strOutError) ||
+				!Read_Float(*pScreenPost, "secondaryIntensity",
+					Out.ScreenPost.fSecondaryIntensity, strOutError) ||
+				!Read_Float(*pScreenPost, "frequency",
+					Out.ScreenPost.fFrequency, strOutError) ||
+				!Read_Array(*pScreenPost, "tint",
+					&Out.ScreenPost.vTint.x, 4u, strOutError) ||
+				!Read_UInt(*pScreenPost, "randomSeed",
+					Out.ScreenPost.iRandomSeed, strOutError))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	const char_t* RuntimeStatusToken(
+		const Client::EFFECT_PRESENTATION_RUNTIME_STATUS eStatus)
+	{
+		const size_t iIndex = static_cast<size_t>(eStatus);
+		return iIndex < std::size(PRESENTATION_RUNTIME_STATUS_TOKENS) ?
+			PRESENTATION_RUNTIME_STATUS_TOKENS[iIndex] :
+			"reconstructed_profile";
+	}
+
+	void Write_PresentationDetail(
+		std::ostringstream& Output,
+		const Client::EFFECT_DETAIL_DESC& Detail)
+	{
+		Output << "        \"light\": { \"enabled\": "
+			<< (Detail.Light.bEnabled ? "true" : "false");
+		if (Detail.Light.bEnabled)
+		{
+			Output << ", \"profileId\": \""
+				<< LIGHT_PROFILE_TOKENS[static_cast<size_t>(
+					Detail.Light.eProfile)]
+				<< "\", \"status\": \""
+				<< RuntimeStatusToken(Detail.Light.eStatus)
+				<< "\", \"range\": " << Detail.Light.fRange
+				<< ", \"intensity\": " << Detail.Light.fIntensity
+				<< ", \"color\": ";
+			Write_Float4(Output, Detail.Light.vColor);
+			Output << ", \"ambient\": ";
+			Write_Float4(Output, Detail.Light.vAmbient);
+			Output << ", \"falloffExponent\": "
+				<< Detail.Light.fFalloffExponent;
+		}
+		Output << " },\n        \"screenPost\": { \"enabled\": "
+			<< (Detail.ScreenPost.bEnabled ? "true" : "false");
+		if (Detail.ScreenPost.bEnabled)
+		{
+			Output << ", \"profileId\": \""
+				<< SCREEN_POST_PROFILE_TOKENS[static_cast<size_t>(
+					Detail.ScreenPost.eProfile)]
+				<< "\", \"status\": \""
+				<< RuntimeStatusToken(Detail.ScreenPost.eStatus)
+				<< "\", \"intensity\": "
+				<< Detail.ScreenPost.fIntensity
+				<< ", \"secondaryIntensity\": "
+				<< Detail.ScreenPost.fSecondaryIntensity
+				<< ", \"frequency\": " << Detail.ScreenPost.fFrequency
+				<< ", \"tint\": ";
+			Write_Float4(Output, Detail.ScreenPost.vTint);
+			Output << ", \"randomSeed\": "
+				<< Detail.ScreenPost.iRandomSeed;
+		}
+		Output << " }\n";
+	}
+
+	bool_t Read_SourcePresentation(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_SOURCE_PRESENTATION_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Read_Bool(Value, "enabled", Out.bEnabled, strOutError))
+			return false;
+		if (!Out.bEnabled)
+			return true;
+
+		const Client::DATA_JSON_VALUE* pStatus = Find_Field(
+			Value, "status", Client::DATA_JSON_TYPE::STRING, strOutError);
+		const Client::DATA_JSON_VALUE* pParameters = Find_Field(
+			Value, "parameters", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		if (nullptr == pStatus || nullptr == pParameters ||
+			!Read_String(Value, "schema", Out.strSchema, strOutError) ||
+			!Read_UInt(Value, "version", Out.iVersion, strOutError) ||
+			!Read_String(Value, "profileId", Out.strProfileId, strOutError) ||
+			!Parse_Token(pStatus->Get_String(),
+				SOURCE_PRESENTATION_STATUS_TOKENS,
+				std::size(SOURCE_PRESENTATION_STATUS_TOKENS), Out.eStatus) ||
+			!Read_String(Value, "sourceObjectPath", Out.strSourceObjectPath,
+				strOutError) ||
+			!Read_String(Value, "sourceActionCueId", Out.strSourceActionCueId,
+				strOutError) ||
+			!Read_String(Value, "sourceEventId", Out.strSourceEventId,
+				strOutError) ||
+			!Read_UInt(Value, "sourceOccurrenceIndex",
+				Out.iSourceOccurrenceIndex, strOutError) ||
+			!Read_Float(Value, "sourceTimeSeconds", Out.fSourceTimeSeconds,
+				strOutError) ||
+			pParameters->Get_Array().size() >
+				MAX_SOURCE_PRESENTATION_PARAMETERS)
+		{
+			return false;
+		}
+
+		Out.Parameters.reserve(pParameters->Get_Array().size());
+		for (const Client::DATA_JSON_VALUE& ParameterValue :
+			pParameters->Get_Array())
+		{
+			const Client::DATA_JSON_VALUE* pKind = ParameterValue.Is_Object() ?
+				ParameterValue.Find("type") : nullptr;
+			const Client::DATA_JSON_VALUE* pParameterStatus =
+				ParameterValue.Is_Object() ? ParameterValue.Find("status") :
+				nullptr;
+			const Client::DATA_JSON_VALUE* pNumberValue =
+				ParameterValue.Is_Object() ?
+					ParameterValue.Find("numberValue") : nullptr;
+			Client::EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC Parameter;
+			if (nullptr == pKind || !pKind->Is_String() ||
+				nullptr == pParameterStatus || !pParameterStatus->Is_String() ||
+				nullptr == pNumberValue || !pNumberValue->Is_Number() ||
+				!std::isfinite(pNumberValue->Get_Number()) ||
+				!Read_String(ParameterValue, "name", Parameter.strName,
+					strOutError) ||
+				!Parse_Token(pKind->Get_String(),
+					SOURCE_PRESENTATION_PARAMETER_KIND_TOKENS,
+					std::size(SOURCE_PRESENTATION_PARAMETER_KIND_TOKENS),
+					Parameter.eKind) ||
+				!Parse_Token(pParameterStatus->Get_String(),
+					SOURCE_PRESENTATION_PARAMETER_STATUS_TOKENS,
+					std::size(SOURCE_PRESENTATION_PARAMETER_STATUS_TOKENS),
+					Parameter.eStatus) ||
+				!Read_String(ParameterValue, "sourcePropertyPath",
+					Parameter.strSourcePropertyPath, strOutError) ||
+				!Read_Bool(ParameterValue, "boolValue", Parameter.bBoolValue,
+					strOutError) ||
+				!Read_Array(ParameterValue, "vectorValue",
+					&Parameter.vVectorValue.x, 4u, strOutError) ||
+				!Read_String(ParameterValue, "stringValue",
+					Parameter.strStringValue, strOutError))
+			{
+				return false;
+			}
+			Parameter.fNumberValue = pNumberValue->Get_Number();
+			Out.Parameters.push_back(std::move(Parameter));
+		}
+		return true;
+	}
+
+	const char_t* SourcePresentationStatusToken(
+		const Client::EFFECT_SOURCE_PRESENTATION_STATUS eStatus)
+	{
+		const size_t iIndex = static_cast<size_t>(eStatus);
+		return iIndex < std::size(SOURCE_PRESENTATION_STATUS_TOKENS) ?
+			SOURCE_PRESENTATION_STATUS_TOKENS[iIndex] : "unresolved";
+	}
+
+	void Write_SourcePresentation(
+		std::ostringstream& Output,
+		const Client::EFFECT_SOURCE_PRESENTATION_DESC& Source)
+	{
+		Output << "      \"sourcePresentation\": { \"enabled\": "
+			<< (Source.bEnabled ? "true" : "false");
+		if (!Source.bEnabled)
+		{
+			Output << " }";
+			return;
+		}
+		Output << ", \"schema\": \""
+			<< Client::CDataJson::Escape(Source.strSchema)
+			<< "\", \"version\": " << Source.iVersion
+			<< ", \"profileId\": \""
+			<< Client::CDataJson::Escape(Source.strProfileId)
+			<< "\", \"status\": \""
+			<< SourcePresentationStatusToken(Source.eStatus)
+			<< "\", \"sourceObjectPath\": \""
+			<< Client::CDataJson::Escape(Source.strSourceObjectPath)
+			<< "\", \"sourceActionCueId\": \""
+			<< Client::CDataJson::Escape(Source.strSourceActionCueId)
+			<< "\", \"sourceEventId\": \""
+			<< Client::CDataJson::Escape(Source.strSourceEventId)
+			<< "\", \"sourceOccurrenceIndex\": "
+			<< Source.iSourceOccurrenceIndex
+			<< ", \"sourceTimeSeconds\": " << Source.fSourceTimeSeconds
+			<< ", \"parameters\": [";
+		for (size_t iParameter = 0u;
+			iParameter < Source.Parameters.size(); ++iParameter)
+		{
+			const Client::EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC& Parameter =
+				Source.Parameters[iParameter];
+			Output << (0u == iParameter ? "\n" : ",\n")
+				<< "        { \"name\": \""
+				<< Client::CDataJson::Escape(Parameter.strName)
+				<< "\", \"type\": \""
+				<< SOURCE_PRESENTATION_PARAMETER_KIND_TOKENS[
+					static_cast<size_t>(Parameter.eKind)]
+				<< "\", \"status\": \""
+				<< SOURCE_PRESENTATION_PARAMETER_STATUS_TOKENS[
+					static_cast<size_t>(Parameter.eStatus)]
+				<< "\", \"sourcePropertyPath\": \""
+				<< Client::CDataJson::Escape(Parameter.strSourcePropertyPath)
+				<< "\", \"numberValue\": " << Parameter.fNumberValue
+				<< ", \"boolValue\": "
+				<< (Parameter.bBoolValue ? "true" : "false")
+				<< ", \"vectorValue\": ";
+			Write_Float4(Output, Parameter.vVectorValue);
+			Output << ", \"stringValue\": \""
+				<< Client::CDataJson::Escape(Parameter.strStringValue)
+				<< "\" }";
+		}
+		if (!Source.Parameters.empty())
+			Output << '\n';
+		Output << "      ] }";
+	}
+
 	bool_t Read_ModelCueTransform(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_MODEL_CUE_DESC& Out,
@@ -1081,8 +1484,10 @@ namespace
 			<< ", \"faceCamera\": " << (Detail.Trail.bFaceCamera ? "true" : "false") << " },\n"
 			<< "        \"afterImage\": { \"sampleIntervalSeconds\": " << Detail.AfterImage.fSampleIntervalSeconds
 			<< ", \"maxCopies\": " << Detail.AfterImage.iMaxCopies
-			<< ", \"alphaExponent\": " << Detail.AfterImage.fAlphaExponent << " }\n"
-			<< "      }";
+			<< ", \"alphaExponent\": " << Detail.AfterImage.fAlphaExponent
+			<< " },\n";
+		Write_PresentationDetail(Output, Detail);
+		Output << "      }";
 	}
 }
 
@@ -1324,6 +1729,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		{
 			if (!Is_StableId(SourceMaterial.strProfileId) ||
 				!Is_StableId(SourceMaterial.strRuntimeShaderProfileId) ||
+				!Is_SupportedEffectSourceRuntimeShaderProfile(
+					SourceMaterial.strRuntimeShaderProfileId) ||
 				SourceMaterial.strParentMaterialPath.empty() ||
 				SourceMaterial.strParentMaterialPath.size() > 512u ||
 				!Has_VisibleCharacter(
@@ -1331,6 +1738,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				SourceMaterial.eStatus >=
 					EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED ||
 				!Is_StableId(SourceMaterial.strSubUVMode) ||
+				!Is_SupportedEffectSourceSubUVMode(
+					SourceMaterial.strSubUVMode) ||
+				SourceMaterial.Textures.size() > 32u ||
 				SourceMaterial.Scalars.size() > 128u ||
 				SourceMaterial.Vectors.size() > 128u ||
 				SourceMaterial.StaticSwitches.size() > 128u)
@@ -1338,12 +1748,41 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				strOutError = "Effect source Material profile metadata is invalid.";
 				return false;
 			}
+			std::unordered_set<std::string> TextureNames;
+			for (const EFFECT_NAMED_TEXTURE_DESC& Texture :
+				SourceMaterial.Textures)
+			{
+				EFFECT_RESOURCE_FILE_KIND eActualKind =
+					EFFECT_RESOURCE_FILE_KIND::END;
+				if (Texture.strName.empty() || Texture.strName.size() > 128u ||
+					!Has_VisibleCharacter(Texture.strName) ||
+					Texture.strGroup.size() > 128u ||
+					(!Texture.strGroup.empty() &&
+						!Has_VisibleCharacter(Texture.strGroup)) ||
+					Texture.strSourceObjectPath.size() > 512u ||
+					(!Texture.strSourceObjectPath.empty() &&
+						!Has_VisibleCharacter(Texture.strSourceObjectPath)) ||
+					(!Texture.strAssetId.empty() &&
+						Texture.strSourceObjectPath.empty()) ||
+					(!Texture.strAssetId.empty() &&
+						(!Is_SafeResourceAssetId(Texture.strAssetId, &eActualKind) ||
+							eActualKind != EFFECT_RESOURCE_FILE_KIND::TEXTURE)) ||
+					!TextureNames.insert(Texture.strName).second)
+				{
+					strOutError = "Effect source Material texture is invalid: " +
+						Texture.strName + " (" + Texture.strAssetId + ").";
+					return false;
+				}
+			}
 			std::unordered_set<std::string> ScalarNames;
 			for (const EFFECT_NAMED_FLOAT_DESC& Scalar :
 				SourceMaterial.Scalars)
 			{
 				if (Scalar.strName.empty() || Scalar.strName.size() > 128u ||
 					!Has_VisibleCharacter(Scalar.strName) ||
+					Scalar.strGroup.size() > 128u ||
+					(!Scalar.strGroup.empty() &&
+						!Has_VisibleCharacter(Scalar.strGroup)) ||
 					!std::isfinite(Scalar.fValue) ||
 					!ScalarNames.insert(Scalar.strName).second)
 				{
@@ -1357,6 +1796,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			{
 				if (Vector.strName.empty() || Vector.strName.size() > 128u ||
 					!Has_VisibleCharacter(Vector.strName) ||
+					Vector.strGroup.size() > 128u ||
+					(!Vector.strGroup.empty() &&
+						!Has_VisibleCharacter(Vector.strGroup)) ||
 					!Is_Finite(Vector.vValue) ||
 					!VectorNames.insert(Vector.strName).second)
 				{
@@ -1370,6 +1812,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			{
 				if (Switch.strName.empty() || Switch.strName.size() > 128u ||
 					!Has_VisibleCharacter(Switch.strName) ||
+					Switch.strGroup.size() > 128u ||
+					(!Switch.strGroup.empty() &&
+						!Has_VisibleCharacter(Switch.strGroup)) ||
 					!SwitchNames.insert(Switch.strName).second)
 				{
 					strOutError = "Effect source Material switch is invalid.";
@@ -1379,7 +1824,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			for (const std::string& Semantic :
 				SourceMaterial.DynamicParameterSemantics)
 			{
-				if (!Is_StableId(Semantic))
+				if (!Is_StableId(Semantic) ||
+					!Is_SupportedEffectSourceDynamicParameterSemantic(Semantic))
 				{
 					strOutError =
 						"Effect source Material Dynamic Parameter semantic is invalid.";
@@ -1499,6 +1945,60 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				}
 			}
 		}
+		const EFFECT_SOURCE_PRESENTATION_DESC& SourcePresentation =
+			Element.SourcePresentation;
+		if (SourcePresentation.bEnabled)
+		{
+			if (SourcePresentation.strSchema !=
+					EFFECT_SOURCE_PRESENTATION_SCHEMA ||
+				SourcePresentation.iVersion != 1u ||
+				!Is_StableId(SourcePresentation.strProfileId) ||
+				SourcePresentation.eStatus >=
+					EFFECT_SOURCE_PRESENTATION_STATUS::END ||
+				SourcePresentation.strSourceObjectPath.empty() ||
+				SourcePresentation.strSourceObjectPath.size() > 512u ||
+				!Has_VisibleCharacter(
+					SourcePresentation.strSourceObjectPath) ||
+				SourcePresentation.strSourceActionCueId.size() > 256u ||
+				(!SourcePresentation.strSourceActionCueId.empty() &&
+					!Has_VisibleCharacter(
+						SourcePresentation.strSourceActionCueId)) ||
+				SourcePresentation.strSourceEventId.empty() ||
+				SourcePresentation.strSourceEventId.size() > 256u ||
+				!Has_VisibleCharacter(
+					SourcePresentation.strSourceEventId) ||
+				!std::isfinite(SourcePresentation.fSourceTimeSeconds) ||
+				SourcePresentation.fSourceTimeSeconds < 0.f ||
+				SourcePresentation.Parameters.size() >
+					MAX_SOURCE_PRESENTATION_PARAMETERS)
+			{
+				strOutError =
+					"Effect source presentation metadata is invalid.";
+				return false;
+			}
+			std::unordered_set<std::string> ParameterNames;
+			for (const EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC& Parameter :
+				SourcePresentation.Parameters)
+			{
+				if (Parameter.strName.empty() ||
+					Parameter.strName.size() > 128u ||
+					!Has_VisibleCharacter(Parameter.strName) ||
+					!ParameterNames.insert(Parameter.strName).second ||
+					Parameter.eKind >=
+						EFFECT_SOURCE_PRESENTATION_PARAMETER_KIND::END ||
+					Parameter.eStatus >=
+						EFFECT_SOURCE_PRESENTATION_PARAMETER_STATUS::END ||
+					Parameter.strSourcePropertyPath.size() > 512u ||
+					!std::isfinite(Parameter.fNumberValue) ||
+					!Is_Finite(Parameter.vVectorValue) ||
+					Parameter.strStringValue.size() > 2048u)
+				{
+					strOutError =
+						"Effect source presentation parameter is invalid.";
+					return false;
+				}
+			}
+		}
 		const EFFECT_DETAIL_DESC& D = Element.Detail;
 		const int64_t iTileCount = static_cast<int64_t>(D.UV.iTileColumns) * D.UV.iTileRows;
 		const bool_t bCommonValid =
@@ -1557,8 +2057,37 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			D.AfterImage.iMaxCopies <= 32u && std::isfinite(D.AfterImage.fAlphaExponent) && D.AfterImage.fAlphaExponent > 0.f &&
 			(D.Timing.fAfterImageSeconds <= 0.f || D.AfterImage.iMaxCopies == 0u ||
 				Element.eKind == EFFECT_ELEMENT_KIND::MESH || Element.eKind == EFFECT_ELEMENT_KIND::SPRITE);
+		const bool_t bLightValid =
+			(EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+				!D.Light.bEnabled) &&
+			(!D.Light.bEnabled ||
+				(D.Light.eProfile < EFFECT_LIGHT_PROFILE::END &&
+					D.Light.eStatus ==
+						EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE &&
+					std::isfinite(D.Light.fRange) && D.Light.fRange > 0.f &&
+					std::isfinite(D.Light.fIntensity) &&
+					D.Light.fIntensity >= 0.f && Is_Finite(D.Light.vColor) &&
+					Is_Finite(D.Light.vAmbient) &&
+					std::isfinite(D.Light.fFalloffExponent) &&
+					D.Light.fFalloffExponent >= 0.f));
+		const bool_t bScreenPostValid =
+			(EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind ||
+				!D.ScreenPost.bEnabled) &&
+			(!D.ScreenPost.bEnabled ||
+				(D.ScreenPost.eProfile < EFFECT_SCREEN_POST_PROFILE::END &&
+					D.ScreenPost.eStatus ==
+						EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE &&
+					std::isfinite(D.ScreenPost.fIntensity) &&
+					D.ScreenPost.fIntensity >= 0.f &&
+					std::isfinite(D.ScreenPost.fSecondaryIntensity) &&
+					D.ScreenPost.fSecondaryIntensity >= 0.f &&
+					std::isfinite(D.ScreenPost.fFrequency) &&
+					D.ScreenPost.fFrequency >= 0.f &&
+					Is_Finite(D.ScreenPost.vTint) &&
+					0u != D.ScreenPost.iRandomSeed));
 		if (!bCommonValid || !bLerpValid || !bParticleValid ||
-			!bTrailValid || !bAfterImageValid)
+			!bTrailValid || !bAfterImageValid || !bLightValid ||
+			!bScreenPostValid)
 		{
 			strOutError = "Effect Detail contains an invalid number or range.";
 			return false;
@@ -1595,16 +2124,57 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		{
 			continue;
 		}
-		if (Element.Material.strTemplateId ==
-			EFFECT_SOURCE_MATERIAL_TEMPLATE_ID)
-		{
-			continue;
-		}
 		const EFFECT_MATERIAL_TEMPLATE_DESC* pTemplate =
 			Find_EffectMaterialTemplate(Element.Material.strTemplateId);
 		const EFFECT_MATERIAL_INPUT_SLOT_DESC* pBaseInput =
 			nullptr == pTemplate ? nullptr : Find_EffectMaterialInput(
 				*pTemplate, EFFECT_MATERIAL_INPUT_SEMANTIC::BASE);
+		const auto FindBinding = [&](const EFFECT_MATERIAL_INPUT_SEMANTIC eSemantic)
+			-> const EFFECT_RESOURCE_BINDING_DESC*
+		{
+			if (nullptr == pTemplate)
+				return nullptr;
+			const EFFECT_MATERIAL_INPUT_SLOT_DESC* pInput =
+				Find_EffectMaterialInput(*pTemplate, eSemantic);
+			if (nullptr == pInput)
+				return nullptr;
+			const auto Iterator = std::find_if(
+				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+				[pInput](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == pInput->strSlotId;
+				});
+			return Iterator == Element.ResourceBindings.end() ? nullptr : &*Iterator;
+		};
+		const EFFECT_RESOURCE_BINDING_DESC* pBaseBinding = FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::BASE);
+		const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+			Element.Material.SourceMaterial;
+		const bool_t bFallbackBlocked = SourceMaterial.bEnabled &&
+			SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.fallback-blocked.v1";
+		const bool_t bGroupedTranslucent = SourceMaterial.bEnabled &&
+			SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.grouped-translucent.v1" &&
+			Is_EffectGroupedTranslucentResourceContractSatisfied(
+				SourceMaterial,
+				nullptr != pBaseBinding &&
+					!Is_UnsafeEffectBaseTextureAssetId(pBaseBinding->strAssetId),
+				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
+				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::EMISSIVE),
+				nullptr != FindBinding(EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE));
+		const bool_t bFiniteProfile = SourceMaterial.bEnabled &&
+			(SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.shine.v1" ||
+			 SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.blackline-aura.v1" ||
+			 SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.local-crack.v1" ||
+			 SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.procedural-center-glow.v1");
+		const bool_t bMaterialOwnsDrawableContract =
+			Element.Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID ||
+			bFallbackBlocked || bGroupedTranslucent || bFiniteProfile;
 		const bool_t bParticleMesh =
 			EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind &&
 			std::any_of(Element.ResourceBindings.begin(),
@@ -1613,6 +2183,22 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 				{
 					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
 				});
+		if (bFiniteProfile &&
+			!Is_EffectFiniteProfileResourceContractSatisfied(
+				SourceMaterial.strRuntimeShaderProfileId,
+				nullptr != pBaseBinding &&
+					!Is_UnsafeEffectBaseTextureAssetId(
+						pBaseBinding->strAssetId),
+				nullptr != FindBinding(
+					EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
+				nullptr != FindBinding(
+					EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE),
+				bParticleMesh))
+		{
+			strOutError =
+				"Finite source Material profile resource contract is not satisfied.";
+			return false;
+		}
 		const std::string_view strRequiredSlotId =
 			EFFECT_ELEMENT_KIND::MESH == Element.eKind || bParticleMesh ?
 			EFFECT_MESH_SHAPE_SLOT_ID :
@@ -1624,24 +2210,20 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 			{
 				return Binding.strSlotId == strRequiredSlotId;
 			});
-		if (strRequiredSlotId.empty() || !bBound)
+		const bool_t bMeshElement =
+			EFFECT_ELEMENT_KIND::MESH == Element.eKind || bParticleMesh;
+		if ((strRequiredSlotId.empty() || !bBound) &&
+			!(!bMeshElement && bMaterialOwnsDrawableContract))
 		{
-			strOutError = EFFECT_ELEMENT_KIND::MESH == Element.eKind || bParticleMesh ?
+			strOutError = bMeshElement ?
 				"Mesh or mesh-backed Particle requires a Mesh Model binding." :
 				"Sprite/Particle/Decal/Trail Element requires a Base texture binding.";
 			return false;
 		}
-		if ((EFFECT_ELEMENT_KIND::MESH == Element.eKind || bParticleMesh) &&
+		if (bMeshElement &&
 			!Element.Detail.Mesh.bUseModelMaterial)
 		{
-			const bool_t bHasBaseOverride = std::any_of(
-				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
-				[pBaseInput](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return nullptr != pBaseInput &&
-						Binding.strSlotId == pBaseInput->strSlotId;
-				});
-			if (!bHasBaseOverride)
+			if (nullptr == pBaseBinding && !bMaterialOwnsDrawableContract)
 			{
 				strOutError = "Mesh Element with useModelMaterial=false requires a Base texture binding.";
 				return false;
@@ -1910,6 +2492,13 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			{
 				return false;
 			}
+			if (iSourceVersion >= 12u &&
+				!Read_PresentationDetail(*pDetail, Element.Detail, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect presentation Detail is invalid.";
+				return false;
+			}
 		}
 		if (iSourceVersion >= 9u)
 		{
@@ -1921,6 +2510,20 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			{
 				if (strOutError.empty())
 					strOutError = "Effect source recipe is invalid.";
+				return false;
+			}
+		}
+		if (iSourceVersion >= 12u)
+		{
+			const DATA_JSON_VALUE* pSourcePresentation =
+				ElementValue.Find("sourcePresentation");
+			if (nullptr == pSourcePresentation ||
+				!pSourcePresentation->Is_Object() ||
+				!Read_SourcePresentation(*pSourcePresentation,
+					Element.SourcePresentation, strOutError))
+			{
+				if (strOutError.empty())
+					strOutError = "Effect source presentation is invalid.";
 				return false;
 			}
 		}
@@ -2034,6 +2637,8 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		Write_Detail(Output, Element.Detail);
 		Output << ",\n";
 		Write_SourceRecipe(Output, Element.SourceRecipe);
+		Output << ",\n";
+		Write_SourcePresentation(Output, Element.SourcePresentation);
 		Output << "\n    }";
 	}
 	if (!Document.Elements.empty())
@@ -2063,68 +2668,156 @@ bool_t Client::CEffectDocumentCodec::Load(
 	return Parse(Buffer.str(), OutDocument, strOutError);
 }
 
+namespace
+{
+	std::filesystem::path Make_EffectSaveTransactionPath(
+		const std::filesystem::path& Destination,
+		const std::wstring_view strRole)
+	{
+		static std::atomic_uint64_t TransactionCounter = 0u;
+		const uint64_t iCounter = TransactionCounter.fetch_add(
+			1u, std::memory_order_relaxed);
+		const auto iClock = std::chrono::steady_clock::now()
+			.time_since_epoch().count();
+		return Destination.wstring() + L"." + std::wstring(strRole) + L"." +
+			std::to_wstring(iClock) + L"." + std::to_wstring(iCounter);
+	}
+
+	bool_t Save_EffectDocumentAtomic(
+		const std::filesystem::path& Path,
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const std::string_view* pExpectedCanonicalDocument,
+		std::string& strOutError)
+	{
+		using Client::CEffectDocumentCodec;
+
+		// Authoring save preserves valid partial drafts. The publisher/runtime gate
+		// still calls Validate_Drawable before a document can ship or render.
+		if (!CEffectDocumentCodec::Validate(Document, strOutError))
+			return false;
+		std::error_code Error;
+		std::filesystem::create_directories(Path.parent_path(), Error);
+		if (Error)
+		{
+			strOutError = "Effect authoring directory creation failed.";
+			return false;
+		}
+		const std::filesystem::path Temporary =
+			Make_EffectSaveTransactionPath(Path, L"tmp");
+		const std::filesystem::path Backup =
+			Make_EffectSaveTransactionPath(Path, L"bak");
+		const std::string Json = CEffectDocumentCodec::Serialize(Document);
+		{
+			std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
+			Output.write(Json.data(), static_cast<std::streamsize>(Json.size()));
+			Output.flush();
+			if (!Output)
+			{
+				strOutError = "Effect temporary write failed.";
+				std::filesystem::remove(Temporary, Error);
+				return false;
+			}
+		}
+		Client::EFFECT_DOCUMENT_DESC RoundTrip;
+		if (!CEffectDocumentCodec::Load(Temporary, RoundTrip, strOutError))
+		{
+			std::filesystem::remove(Temporary, Error);
+			return false;
+		}
+		if (CEffectDocumentCodec::Serialize(RoundTrip) != Json)
+		{
+			strOutError =
+				"Effect temporary round-trip changed the authoring document.";
+			std::filesystem::remove(Temporary, Error);
+			return false;
+		}
+
+		if (nullptr != pExpectedCanonicalDocument)
+		{
+			Error.clear();
+			const bool_t bDestinationExists =
+				std::filesystem::exists(Path, Error);
+			if (Error)
+			{
+				strOutError =
+					"Effect destination state could not be checked before save.";
+				std::filesystem::remove(Temporary, Error);
+				return false;
+			}
+			if (pExpectedCanonicalDocument->empty())
+			{
+				if (bDestinationExists)
+				{
+					strOutError =
+						"Effect destination appeared after this authoring session began; reload before saving.";
+					std::filesystem::remove(Temporary, Error);
+					return false;
+				}
+			}
+			else
+			{
+				Client::EFFECT_DOCUMENT_DESC Current;
+				std::string CurrentError;
+				if (!bDestinationExists ||
+					!CEffectDocumentCodec::Load(Path, Current, CurrentError) ||
+					CEffectDocumentCodec::Serialize(Current) !=
+						*pExpectedCanonicalDocument)
+				{
+					strOutError =
+						"Effect document changed on disk after it was loaded; Reload Saved before applying this draft.";
+					std::filesystem::remove(Temporary, Error);
+					return false;
+				}
+			}
+		}
+
+		Error.clear();
+		const bool_t bHadDestination =
+			std::filesystem::exists(Path, Error) && !Error;
+		if (bHadDestination)
+		{
+			std::filesystem::rename(Path, Backup, Error);
+			if (Error)
+			{
+				strOutError = "Effect destination backup failed.";
+				std::filesystem::remove(Temporary, Error);
+				return false;
+			}
+		}
+		std::filesystem::rename(Temporary, Path, Error);
+		if (Error)
+		{
+			std::error_code RestoreError;
+			if (bHadDestination)
+				std::filesystem::rename(Backup, Path, RestoreError);
+			std::filesystem::remove(Temporary, RestoreError);
+			strOutError = RestoreError ?
+				"Effect document promote and rollback failed." :
+				"Effect document promote failed.";
+			return false;
+		}
+		std::filesystem::remove(Backup, Error);
+		strOutError.clear();
+		return true;
+	}
+}
+
 bool_t Client::CEffectDocumentCodec::Save_Atomic(
 	const std::filesystem::path& Path,
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
 {
-	// Authoring save preserves valid partial drafts. The publisher/runtime gate
-	// still calls Validate_Drawable before a document can ship or render.
-	if (!Validate(Document, strOutError))
-		return false;
-	std::error_code Error;
-	std::filesystem::create_directories(Path.parent_path(), Error);
-	if (Error)
-	{
-		strOutError = "Effect authoring directory creation failed.";
-		return false;
-	}
-	const std::filesystem::path Temporary = Path.wstring() + L".tmp";
-	const std::filesystem::path Backup = Path.wstring() + L".bak";
-	{
-		std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
-		const std::string Json = Serialize(Document);
-		Output.write(Json.data(), static_cast<std::streamsize>(Json.size()));
-		Output.flush();
-		if (!Output)
-		{
-			strOutError = "Effect temporary write failed.";
-			std::filesystem::remove(Temporary, Error);
-			return false;
-		}
-	}
-	EFFECT_DOCUMENT_DESC RoundTrip;
-	if (!Load(Temporary, RoundTrip, strOutError))
-	{
-		std::filesystem::remove(Temporary, Error);
-		return false;
-	}
+	return Save_EffectDocumentAtomic(Path, Document, nullptr, strOutError);
+}
 
-	std::filesystem::remove(Backup, Error);
-	Error.clear();
-	const bool_t bHadDestination = std::filesystem::exists(Path, Error) && !Error;
-	if (bHadDestination)
-	{
-		std::filesystem::rename(Path, Backup, Error);
-		if (Error)
-		{
-			strOutError = "Effect destination backup failed.";
-			std::filesystem::remove(Temporary, Error);
-			return false;
-		}
-	}
-	std::filesystem::rename(Temporary, Path, Error);
-	if (Error)
-	{
-		std::error_code RestoreError;
-		if (bHadDestination)
-			std::filesystem::rename(Backup, Path, RestoreError);
-		strOutError = "Effect document promote failed.";
-		return false;
-	}
-	std::filesystem::remove(Backup, Error);
-	strOutError.clear();
-	return true;
+bool_t Client::CEffectDocumentCodec::Save_AtomicIfUnchanged(
+	const std::filesystem::path& Path,
+	const EFFECT_DOCUMENT_DESC& Document,
+	const std::string_view strExpectedCanonicalDocument,
+	std::string& strOutError)
+{
+	return Save_EffectDocumentAtomic(
+		Path, Document, &strExpectedCanonicalDocument, strOutError);
 }
 
 void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
@@ -2138,6 +2831,12 @@ void Client::CEffectDocumentCodec::Collect_ResourceAssetIds(
 	{
 		for (const EFFECT_RESOURCE_BINDING_DESC& Binding : Element.ResourceBindings)
 			Unique.insert(Binding.strAssetId);
+		for (const EFFECT_NAMED_TEXTURE_DESC& Texture :
+			Element.Material.SourceMaterial.Textures)
+		{
+			if (!Texture.strAssetId.empty())
+				Unique.insert(Texture.strAssetId);
+		}
 	}
 	OutAssetIds.assign(Unique.begin(), Unique.end());
 	std::sort(OutAssetIds.begin(), OutAssetIds.end());

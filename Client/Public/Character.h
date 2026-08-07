@@ -202,6 +202,7 @@ private:
 	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);
 	void Update_EffectCues();
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
+	f32_t Get_EffectPlaybackRate() const;
 
 public:
 	static unique_ptr<CCharacter> Create(ComPtr<ID3D11Device> pDevice,

@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -40,12 +41,15 @@ enum class EFFECT_PREVIEW_FILTER : uint8_t
     SOLO_PARTICLE_SYSTEM,
     SOLO_SELECTED,
     MUTE_SELECTED,
+    SOLO_SELECTED_GROUP,
+    MUTE_SELECTED_GROUP,
     END
 };
 
 enum class EFFECT_DETAIL_SELECTION : uint8_t
 {
     NONE,
+	SKILL,
     PARTICLE_SYSTEM,
     ELEMENT,
 	COMPONENT,
@@ -121,21 +125,32 @@ private:
     void Render_EffectToolWindow();
     void Render_ModelViewWindow();
     void Render_EffectDetailWindow();
+    void Render_AuthoringSessionBar();
     void Render_AllEffectsWindow();
+    void Render_LoadedEffectContents();
+    bool_t Render_ManualElementGroups(
+        const EFFECT_DOCUMENT_DESC& Document,
+        const std::string& strEffectAssetId,
+        bool_t bDefaultOpen);
     void Render_DataFilesWindow();
     void Render_PendingDocumentLoadModal();
     void Render_EffectTypeSelector();
+    void Render_MeshAuthoringWorkbench();
     void Render_ParticleSystemDetail();
-    void Render_ResourceSlots();
-    void Render_ResourceGrid();
+    void Render_ResourceSlots(bool_t bMeshAuthoringDraft);
+    void Render_ResourceGrid(bool_t bMeshAuthoringDraft);
     void Rebuild_ResourceBrowserView(
         EFFECT_RESOURCE_FILE_KIND eFileKind,
         const std::string& strFilter,
         const std::string& strDomainId,
-        const std::string& strCategory);
+        const std::string& strCategory,
+        const std::string& strShapeCategory);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
-    void Render_ColorDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+    void Render_ColorDetail(
+        EFFECT_DETAIL_DESC& Detail,
+        bool_t& bChanged,
+        bool_t bHasEmissiveTexture);
     void Render_UVDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TimingDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
@@ -145,10 +160,14 @@ private:
         bool_t& bChanged);
     void Render_SourceModuleDetail(
         EFFECT_SOURCE_MODULE_DESC& Module,
-        bool_t& bChanged);
+		bool_t& bChanged,
+		bool_t bDefaultOpen = false);
     void Render_SourceDistributionDetail(
         EFFECT_DISTRIBUTION_DESC& Distribution,
+		const std::string_view strModuleClassName,
         bool_t& bChanged);
+	void Render_SelectionPath() const;
+	void Render_SkillSelectionDetail();
 	void Render_AssemblyHierarchy(const std::string& strEffectAssetId);
 	void Render_ComponentSelectionDetail();
 	void Render_EmitterSelectionDetail();
@@ -156,11 +175,18 @@ private:
     void Render_LerpDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_AnimationControls(
         const std::shared_ptr<Engine::CModel>& pModel);
+    void Refresh_AnimationClipLabels(
+        const std::shared_ptr<Engine::CModel>& pModel,
+        bool_t bForce);
 
     bool_t Try_CreateDocument();
     bool_t Try_AddElement();
+    bool_t Try_CreateMeshEffect();
+    bool_t Try_BindMeshAuthoringResource(const std::string& strAssetId);
+    bool_t Try_ClearMeshAuthoringSlot();
     bool_t Try_DeleteSelectedElement();
     bool_t Try_ClearElements();
+    bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
     bool_t Try_PromoteImportedDocument();
@@ -185,6 +211,7 @@ private:
     bool_t Try_BindResource(const std::string& strAssetId);
     bool_t Try_ClearSelectedSlot();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
+    bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
     bool_t Stage_WorldPreview();
     bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document);
@@ -207,6 +234,9 @@ private:
 		const std::string& strComponentAssetId,
 		const std::string& strEmitterId,
 		const std::string& strModuleStableId);
+	bool_t Try_SelectFirstEmitter(
+		const std::string& strEffectAssetId,
+		const std::string& strComponentAssetId);
     bool_t Try_AuditionParticleSystem();
     bool_t Try_AuditionSelectedElement();
     bool_t Stage_ParticleSystemDraftPreview();
@@ -216,11 +246,17 @@ private:
     bool_t Resolve_PreviewRoot(float4x4_t& OutRoot);
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
+    void Restart_SynchronizedAnimationSequence();
+    void Seek_SynchronizedAnimationSequence(f32_t fTimeSeconds);
+    void Set_SynchronizedAnimationPaused(bool_t bPaused);
+    bool_t Try_ResolveSynchronizedAnimationTime(f32_t& fOutTimeSeconds) const;
     void Update_SynchronizedAnimationSequence();
     void Reset_SynchronizedAnimationSequence();
+    void Hide_WorldPreview();
     void Release_WorldPreview(bool_t bRemoveFromLayer);
     void Update_Picking();
     void Discard_ActiveDocument();
+    void Reset_MeshAuthoringDraft();
     void Reset_ParticleSystemDraft();
     void Reset_DetailDraft();
     void Recalculate_PreviewDuration();
@@ -240,6 +276,7 @@ private:
     uint32_t m_iWorldPreviewLevel = UINT32_MAX;
 
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
+    EFFECT_ELEMENT_DESC m_MeshAuthoringDraft;
     optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
     optional<EFFECT_ELEMENT_DESC> m_DetailDraft;
     optional<PENDING_DOCUMENT_LOAD> m_PendingDocumentLoad;
@@ -250,6 +287,7 @@ private:
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
+    vector<string> m_AnimationClipDisplayLabels;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
     EFFECT_DETAIL_SELECTION m_eDetailSelection =
         EFFECT_DETAIL_SELECTION::NONE;
@@ -261,8 +299,10 @@ private:
     EFFECT_PREVIEW_PIVOT_KIND m_ePreviewPivotKind =
         EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
     std::filesystem::path m_ActiveDocumentPath;
+	string m_strActiveDocumentBaselineCanonical;
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
+    string m_strSelectedElementGroupId;
 	string m_strSelectedComponentId;
 	string m_strSelectedEmitterId;
 	string m_strSelectedSourceModuleId;
@@ -274,6 +314,8 @@ private:
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;
+    string m_strResourceViewShapeCategory;
+    string m_strMeshShapeCategory = "All";
 
     array<char_t, 129> m_NewAssetId{};
     array<char_t, 65> m_NewDisplayName{};
@@ -281,6 +323,7 @@ private:
     array<char_t, 129> m_ResourceFilter{};
     array<char_t, 129> m_ResourceCategory{};
     array<char_t, 129> m_AllEffectsSearch{};
+    array<char_t, 129> m_DataFilesSearch{};
     array<char_t, 129> m_PreviewAnchorBuffer{};
 
     float4x4_t m_PreviewWorldRoot{};
@@ -295,6 +338,7 @@ private:
     f32_t m_fPreviewDurationSeconds = 1.f;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;
+	bool_t m_bPreviewScreenPostEnabled = true;
     bool_t m_bDocumentDirty = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
@@ -302,12 +346,14 @@ private:
     bool_t m_bDataFilesRefreshAttempted = false;
     bool_t m_bPendingWorldPivotPick = false;
     bool_t m_bParticleSystemDraftDirty = false;
+    bool_t m_bMeshAuthoringDraftInitialized = false;
     bool_t m_bDetailDraftDirty = false;
     bool_t m_bDiscardConfirmationRequested = false;
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
     uint64_t m_iFrameNumber = 0u;
     uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
+    uint64_t m_iAnimationClipLabelTargetGeneration = 0u;
     uint64_t m_iResourceCatalogRevision = 0u;
     uint64_t m_iResourceViewRevision = UINT64_MAX;
     EFFECT_RESOURCE_FILE_KIND m_eResourceViewFileKind =
@@ -323,6 +369,7 @@ private:
     string m_strResourceStatus;
     string m_strPreviewStatus;
     string m_strPreviewAnimationStatus;
+    string m_strAnimationClipLabelStatus;
 };
 
 NS_END

@@ -188,7 +188,7 @@ HRESULT CLevel_CharacterSelect::Render()
 
 HRESULT CLevel_CharacterSelect::Ready_Lights()
 {
-	return CMapPlacementRuntime::Ensure_DefaultLight();
+	return S_OK;
 }
 
 HRESULT CLevel_CharacterSelect::Ready_Camera()

@@ -44,7 +44,7 @@ materializer가 이전 Authored나 host-local Material map을 복사하지 않�
 conversion receipt, class resource manifest에서 profile을 다시 만든다. 현재 Authored 12개와 BA1~BA4는 모두
 v11이며 Particle `799/799`에 sourceProfile이 연결된다.
 
-A 2050240의 회귀 계약도 `46 Particle / 21 shared profile groups / specialized shader 14 /
+D 2050240의 회귀 계약도 `46 Particle / 21 shared profile groups / specialized shader 14 /
 Dynamic Parameter 32 / SubUV 2 / source Module occurrence 518`로 복구했다. 같은 Material object path가 여러
 physical package에 있을 때 `sourcePhysicalPackage`가 일치하는 행만 EXACT로 선택한다.
 

@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_pc_swp_00.par_j_swp_willowrend_swingdeco_00_2|FX_PC_SWP_00.par_j_swp_willowrend_swingdeco_00_2.particlespriteemitter_37"
     ],
-    "sourceElementSha256": "05d49a91e9ca68fce6ae31033f20eea6a27e2fce88f7b444a846a3f1f3bafc03",
+    "sourceElementSha256": "91fa8eb8ec3f9f604027606f88aaa752e3a56ffc32cd39cea02b986dbf69e823",
     "inputSlot": "A"
   },
   "emitters": [
@@ -26,7 +26,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050210.05",
     "displayName": "DimensionMaster_skill_2050210_05.particlesystem.wfx",
     "particleSystem": {
@@ -52,13 +52,15 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.bfx.m.mi.00.bfx.m.bfx.d.pa.circ.01.tr.f3e3bcf906f5",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.fallback-blocked.v1",
             "parentMaterialPath": "bfx_m_mi_00.bfx_m.bfx_d_pa_circ_01_tr",
             "semanticStatus": "reconstructed_profile",
+            "textures": [],
             "scalars": [
               {
                 "name": "03.spherepower",
-                "value": 6.0
+                "value": 6.0,
+                "group": ""
               }
             ],
             "vectors": [],
@@ -291,6 +293,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1141,6 +1178,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       }
     ]

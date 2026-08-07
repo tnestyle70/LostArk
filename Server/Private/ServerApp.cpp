@@ -55,7 +55,8 @@ int LostArk::Server::CServerApp::Run(
 	constexpr std::uint16_t SERVER_PORT = 7777;
 	if (!m_TcpListener.Open(bindAddress, SERVER_PORT))
 	{
-		std::cerr << "Failed to open TCP listener. Error="
+		std::cerr << "Failed to open TCP listener. Address="
+			<< bindAddress << ':' << SERVER_PORT << ", Error="
 			<< m_TcpListener.Get_LastErrorCode() << '\n';
 		return 1;
 	}
