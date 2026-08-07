@@ -207,6 +207,12 @@
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EncounterPatternReference.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\WorldDestructionDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\SpawnGroupDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -461,6 +467,12 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldGameplayDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EncounterPatternReference.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldDestructionDocument.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\SpawnGroupDocument.h">
@@ -1005,6 +1017,12 @@
     </None>
     <None Include="..\..\Data\Maps\MapCatalog.json">
       <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
     </None>
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json">
       <Filter>96.DataFiles\Navigation</Filter>
