@@ -28,6 +28,58 @@ def canonicalize(document: dict[str, Any], effect_id: str) -> dict[str, Any]:
     return result
 
 
+def restore_mesh_material_override_contract(
+    document: dict[str, Any],
+) -> int:
+    corrected = 0
+    for element in document.get("elements", []):
+        if str(element.get("kind") or "").casefold() != "particle":
+            continue
+        source_recipe = element.get("sourceRecipe") or {}
+        if str(source_recipe.get("rendererShape") or "").casefold() != "mesh":
+            continue
+        mesh_modules = [
+            module for module in source_recipe.get("modules", [])
+            if str(module.get("className") or "").casefold()
+            == "particlemoduletypedatamesh"
+        ]
+        if len(mesh_modules) != 1:
+            raise ValueError(
+                "Cascade mesh Element must preserve exactly one TypeDataMesh: "
+                f"{element.get('id')}"
+            )
+        override_values = []
+        for literal in mesh_modules[0].get("literals", []):
+            if str(literal.get("propertyPath") or "").casefold() != (
+                "boverridematerial"
+            ):
+                continue
+            value = literal.get("value")
+            if not isinstance(value, bool):
+                raise ValueError(
+                    "TypeDataMesh.bOverrideMaterial must be boolean: "
+                    f"{element.get('id')}"
+                )
+            override_values.append(value)
+        if any(value != override_values[0] for value in override_values[1:]):
+            raise ValueError(
+                "conflicting TypeDataMesh.bOverrideMaterial values: "
+                f"{element.get('id')}"
+            )
+        override_material = override_values[0] if override_values else False
+        use_model_material = not override_material
+        detail = element.get("detail") or {}
+        mesh_detail = detail.get("mesh")
+        if not isinstance(mesh_detail, dict):
+            raise ValueError(
+                f"Cascade mesh Element has no mesh Detail: {element.get('id')}"
+            )
+        if bool(mesh_detail.get("useModelMaterial")) != use_model_material:
+            mesh_detail["useModelMaterial"] = use_model_material
+            corrected += 1
+    return corrected
+
+
 def build_combo_stage_document(
     aggregate: dict[str, Any],
     effect_id: str,
@@ -184,13 +236,35 @@ def materializable_extraction_rows(
     return selected, missing
 
 
+def select_admitted_skills(
+    admitted_skills: list[dict[str, Any]],
+    requested_skill_ids: set[int] | None,
+) -> list[dict[str, Any]]:
+    """Restrict a materialization staging run without inventing new skills."""
+    if not requested_skill_ids:
+        return admitted_skills
+    admitted_ids = {int(row["skillId"]) for row in admitted_skills}
+    unknown = sorted(requested_skill_ids - admitted_ids)
+    if unknown:
+        raise ValueError(
+            "--skill-id is not an admitted DimensionMaster skill: "
+            f"{unknown}"
+        )
+    return [
+        row for row in admitted_skills
+        if int(row["skillId"]) in requested_skill_ids
+    ]
+
+
 def reconstruct_source_material_profiles(
     skill_id: int,
     imported_root: Path,
     imported_document: dict[str, Any],
     resource_manifest: dict[str, Any],
+    material_evidence_path: Path | None = None,
+    material_graph_evidence_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Rebuild v11 profiles from source evidence, never an old Authored file."""
+    """Rebuild v12 profiles from source evidence, never an old Authored file."""
     source_receipt = read_json(
         imported_root / f"skill.{skill_id}.source-receipt.json"
     )
@@ -207,16 +281,47 @@ def reconstruct_source_material_profiles(
         imported_root / "Converted" /
         f"skill.{skill_id}.element-conversion-receipt.json"
     )
-    # materialParameterBindings in the source receipt already contain the
-    # exact cooked package, parent, texture, scalar, vector, and switch rows.
-    # An empty material map deliberately prevents a host-local catalog or an
-    # old Authored document from becoming a fallback source of truth.
+    # The checked-in evidence map contains only UModel-exported parent props
+    # with hashes. It may refine a source receipt, while host-local catalogs
+    # and old Authored documents remain forbidden as fallback sources.
+    evidence_path = material_evidence_path or (
+        imported_root / "ActionSource" /
+        "DimensionMaster.source-material-evidence.json"
+    )
+    material_evidence = (
+        read_json(evidence_path) if evidence_path.is_file()
+        else {"materials": {}}
+    )
+    if material_evidence.get("schema") and (
+        material_evidence.get("schema")
+        != "lostark.effect-source-material-evidence"
+    ):
+        raise ValueError("DimensionMaster source Material evidence is invalid")
+    if material_evidence.get("schema") and str(
+        material_evidence.get("characterClass") or ""
+    ).upper() not in {"", "DIMENSIONMASTER"}:
+        raise ValueError("source Material evidence character class is invalid")
+    graph_evidence_path = material_graph_evidence_path or (
+        imported_root / "ActionSource" /
+        "DimensionMaster.parent-material-graph-evidence.json"
+    )
+    material_graph_evidence = (
+        read_json(graph_evidence_path) if graph_evidence_path.is_file() else {}
+    )
+    if material_graph_evidence and (
+        material_graph_evidence.get("schema")
+        != "lostark.ue3-cooked-material-graph-evidence-set"
+        or int(material_graph_evidence.get("formatVersion", 0)) != 1
+    ):
+        raise ValueError("DimensionMaster parent Material graph evidence is invalid")
     contract, receipt = build_source_material_contract(
         imported_document,
         source_receipt,
         conversion_receipt,
         resource_manifest,
-        {"materials": {}},
+        material_evidence,
+        Path(__file__).resolve().parents[2] / "Client" / "Bin" / "Resources",
+        material_graph_evidence,
     )
     if receipt.get("failures"):
         raise ValueError(
@@ -237,11 +342,11 @@ def reconstruct_source_material_profiles(
         )
     ]
     if (
-        int(upgraded.get("version", 0)) != 11
+        int(upgraded.get("version", 0)) != 12
         or len(enabled_profiles) != len(particle_elements)
     ):
         raise ValueError(
-            f"skill {skill_id} source material v11 coverage is incomplete"
+            f"skill {skill_id} source material v12 coverage is incomplete"
         )
     return upgraded, receipt
 
@@ -302,10 +407,16 @@ def materialize(
     ),
     catalog_path: Path | None = None,
     resource_manifest_path: Path | None = None,
+    material_evidence_path: Path | None = None,
+    material_graph_evidence_path: Path | None = None,
+    requested_skill_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     extraction = read_json(extraction_receipt_path)
-    admitted_skills = dimensionmaster_admitted_skills(
+    all_admitted_skills = dimensionmaster_admitted_skills(
         player_skills_path, skill_bindings_path
+    )
+    admitted_skills = select_admitted_skills(
+        all_admitted_skills, requested_skill_ids
     )
     selected_rows, missing_sources = materializable_extraction_rows(
         extraction, admitted_skills
@@ -358,7 +469,11 @@ def materialize(
         )
         imported = read_json(imported_path)
         imported, source_material_receipt = reconstruct_source_material_profiles(
-            skill_id, imported_root, imported, resource_manifest
+            skill_id, imported_root, imported, resource_manifest,
+            material_evidence_path, material_graph_evidence_path,
+        )
+        mesh_material_contract_correction_count = (
+            restore_mesh_material_override_contract(imported)
         )
         action = read_json(action_path)
         canonical_id = str(skill["effectAssetId"])
@@ -381,6 +496,9 @@ def materialize(
             "unsupportedModelMaterialCueIds": unsupported_model_material,
             "sourceMaterialProfileSummary": copy.deepcopy(
                 source_material_receipt["summary"]
+            ),
+            "meshMaterialContractCorrectionCount": (
+                mesh_material_contract_correction_count
             ),
             "role": "AGGREGATE",
         })
@@ -445,13 +563,15 @@ def materialize(
     )
     catalog_result = (
         synchronize_effect_catalog(catalog_path, written)
-        if catalog_path is not None else None
+        if catalog_path is not None and not requested_skill_ids else None
     )
     return {
         "schema": "lostark.dimensionmaster-base-effect-materialization-receipt",
         "formatVersion": 1,
         "variantContract": "BASE_NO_TIME_OR_SPACE_AXIS",
         "canonicalSkillCount": len(admitted_skills),
+        "admittedCanonicalSkillCount": len(all_admitted_skills),
+        "selectedSkillIds": sorted(requested_skill_ids or []),
         "aggregateSkillCount": len(aggregates),
         "comboStageDocumentCount": combo_stage_count,
         "missingCanonicalSources": missing_sources,
@@ -466,6 +586,9 @@ def materialize(
             for row in written if row.get("role") == "AGGREGATE"
         ),
         "catalogSynchronization": catalog_result,
+        "catalogSynchronizationSkippedForSelection": bool(
+            catalog_path is not None and requested_skill_ids
+        ),
         "runtimeExecutionComplete": bool(extraction.get("runtimeExecutionComplete")),
         "documents": written,
     }
@@ -531,13 +654,44 @@ def main() -> int:
             "DimensionMaster.resource-source-manifest.json"
         )
     )
+    parser.add_argument(
+        "--material-evidence", type=Path,
+        help=(
+            "Optional UModel parent-props evidence map. Use a staged path "
+            "with --skill-id; default is the checked-in ActionSource map."
+        ),
+    )
+    parser.add_argument(
+        "--material-graph-evidence", type=Path,
+        help=(
+            "Optional direct cooked-UPK parent graph evidence. The default "
+            "is the checked-in ActionSource evidence set."
+        ),
+    )
+    parser.add_argument(
+        "--skill-id", type=int, action="append", default=[],
+        help=(
+            "Materialize only admitted skill IDs for staging. Catalog "
+            "synchronization is skipped for a selected run."
+        ),
+    )
     args = parser.parse_args()
+    if args.skill_id:
+        if args.authored_root == Path("Data/Effects/Authored"):
+            parser.error("--skill-id staging requires a non-default --authored-root")
+        if args.receipt == Path(
+            "Data/Effects/Imported/DimensionMaster/"
+            "DimensionMaster.base-effect-materialization.receipt.json"
+        ):
+            parser.error("--skill-id staging requires a non-default --receipt")
     receipt = materialize(
         args.imported_root, args.authored_root,
         args.extraction_receipt, args.summon_retime,
         args.model_cue_bindings,
         args.player_skills, args.skill_bindings,
-        args.catalog, args.resource_manifest
+        args.catalog, args.resource_manifest,
+        args.material_evidence, args.material_graph_evidence,
+        set(args.skill_id) or None,
     )
     write_json_atomic(args.receipt, receipt)
     print(json.dumps({

@@ -113,14 +113,18 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 
 	m_pObject_Manager->Priority_Update(fTimeDelta);
 
-	m_pPipeLine->Update();
-
-	m_pFrustum->Update_InWorldSpace();
+	Refresh_CameraState();
 
 	m_pObject_Manager->Update(fTimeDelta);
 	m_pObject_Manager->Late_Update(fTimeDelta);
 
 	m_pLevel_Manager->Update(fTimeDelta);
+}
+
+void CGameInstance::Refresh_CameraState()
+{
+	m_pPipeLine->Update();
+	m_pFrustum->Update_InWorldSpace();
 }
 
 HRESULT CGameInstance::Render_Begin(const float4_t* pClearColor)
@@ -301,6 +305,17 @@ HRESULT CGameInstance::Remove_GameObject_from_Layer(uint32_t iLevelIndex, const 
 HRESULT CGameInstance::Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject)
 {
 	return m_pRenderer->Add_RenderObject(eRenderGroupID, pRenderObject);
+}
+
+RENDER_QUALITY_SETTINGS CGameInstance::Get_RenderQualitySettings() const
+{
+	return m_pRenderer->Get_RenderQualitySettings();
+}
+
+HRESULT CGameInstance::Apply_RenderQualitySettings(
+	const RENDER_QUALITY_SETTINGS& Settings)
+{
+	return m_pRenderer->Apply_RenderQualitySettings(Settings);
 }
 
 #ifdef _DEBUG

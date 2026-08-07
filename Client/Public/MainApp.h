@@ -30,6 +30,7 @@ private:
 		MAP,
 		ANIMATION,
 		EFFECT,
+		RENDERING,
 		UI,
 		BALANCE
 	};
@@ -64,6 +65,7 @@ private:
 	HRESULT EnsureDebugTool(DEBUG_TOOL eTool);
 	void UpdateDebugToolShortcut();
 	void RenderDeveloperTools();
+	void RenderRenderingWorkbench();
 	void RenderProfilerOverlay();
 	void RenderProfilerSettings();
 #endif
@@ -91,9 +93,13 @@ private:
 	bool_t m_bF1Down = false;
 	bool_t m_bDeveloperToolsVisible = false;
 	bool_t m_bProfilerVisible = false;
+	bool_t m_bRenderQualityDraftInitialized = false;
 	DEBUG_TOOL m_eActiveDebugTool = DEBUG_TOOL::NONE;
+	RENDER_QUALITY_SETTINGS m_RenderQualityDraft = {};
 	string m_strToolStatus =
 		"Select a tool. Map authoring targets the current level Area.";
+	string m_strRenderingStatus =
+		"Live values are session-only and apply on the next frame.";
 	string m_strProfilerCaptureStatus;
 #endif
 

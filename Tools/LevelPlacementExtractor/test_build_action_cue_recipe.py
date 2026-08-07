@@ -10,6 +10,13 @@ from build_action_cue_recipe import build_action_cue_recipe, decode_typed_payloa
 
 
 class ActionCueRecipeTests(unittest.TestCase):
+    @staticmethod
+    def _payload_string(value: str) -> bytes:
+        if not value:
+            return struct.pack("<i", 0)
+        encoded = value.encode("ascii") + b"\x00"
+        return struct.pack("<i", len(encoded)) + encoded
+
     def test_decodes_standalone_skeletal_model_transform_once(self) -> None:
         raw = bytearray(512)
         signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
@@ -57,6 +64,74 @@ class ActionCueRecipeTests(unittest.TestCase):
         )
         self.assertEqual(typed["sourceCueName"], "SK_DimensionPrison")
         self.assertFalse(typed["semanticDecoded"])
+
+    def test_directional_light_preserves_identity_without_guessing_fields(self) -> None:
+        raw = (
+            b"CEFActionNotify_DominantDirectionalLight_Control\x00"
+            + bytes(range(64))
+        )
+        typed = decode_typed_payload(
+            "DominantDirectionalLight_Control",
+            {"data": base64.b64encode(raw).decode("ascii")},
+        )
+        self.assertTrue(typed["enabled"])
+        self.assertFalse(typed["semanticDecoded"])
+        self.assertEqual(typed["status"], "UNRESOLVED_FIELD_LAYOUT")
+        self.assertEqual(typed["sourceByteSize"], len(raw))
+
+    def test_post_process_decodes_only_named_parameter_tables(self) -> None:
+        raw = bytearray(b"CEFActionNotify_PostProcessChain\x00" + bytes(19))
+        raw.extend(self._payload_string("CEFPostProcessMaterialEffectSkill"))
+        raw.extend(self._payload_string("Material'FX_Post.FX_M.Test'"))
+        raw.extend(struct.pack("<i", 2))
+        raw.extend(self._payload_string("Blur_str"))
+        raw.extend(struct.pack("<f", 0.25))
+        raw.extend(self._payload_string("Opacity"))
+        raw.extend(struct.pack("<f", 0.5))
+        raw.extend(struct.pack("<i", 1))
+        raw.extend(self._payload_string("force_Color"))
+        raw.extend(struct.pack("<ffff", 0.1, 0.2, 0.3, 1.0))
+        raw.extend(struct.pack("<i", 2))
+        raw.extend(self._payload_string("Blur_Texture"))
+        raw.extend(self._payload_string("Texture2D'FX_Tex.Blur'"))
+        raw.extend(self._payload_string("UVNoise_TEX"))
+        raw.extend(self._payload_string(""))
+        raw.extend(b"\x01\x02\x03")
+
+        typed = decode_typed_payload(
+            "PostProcessChain",
+            {"data": base64.b64encode(bytes(raw)).decode("ascii")},
+            asset_references=[{
+                "className": "Material",
+                "objectPath": "FX_Post.FX_M.Test",
+            }],
+        )
+        self.assertTrue(typed["semanticDecoded"])
+        self.assertEqual(typed["sourceMaterial"], "FX_Post.FX_M.Test")
+        self.assertEqual(
+            typed["scalarParameters"],
+            [
+                {"name": "Blur_str", "value": 0.25},
+                {"name": "Opacity", "value": 0.5},
+            ],
+        )
+        self.assertEqual(
+            typed["textureParameters"][1],
+            {"name": "UVNoise_TEX", "sourceTexture": ""},
+        )
+        self.assertEqual(typed["unresolvedTrailingByteCount"], 3)
+
+    def test_post_process_malformed_table_fails_closed(self) -> None:
+        raw = bytearray(b"CEFActionNotify_PostProcessChain\x00")
+        raw.extend(self._payload_string("CEFPostProcessMaterialEffectSkill"))
+        raw.extend(self._payload_string("Material'FX_Post.FX_M.Test'"))
+        raw.extend(struct.pack("<i", 1))
+        raw.extend(self._payload_string("Blur_str"))
+        with self.assertRaisesRegex(ValueError, "scalar value is truncated"):
+            decode_typed_payload(
+                "PostProcessChain",
+                {"data": base64.b64encode(bytes(raw)).decode("ascii")},
+            )
 
     def test_selects_lowest_base_stage_and_preserves_payload(self) -> None:
         payload = base64.b64encode(b"notify").decode("ascii")

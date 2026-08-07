@@ -215,6 +215,7 @@ HRESULT CValtan::Ready_PartObjects()
 
 	weaponDesc.pSocketRootMatrix =
 		pBodyVisualRoot->Get_WorldMatrixPtr();
+	weaponDesc.strMaterialProfileId = "material.valtan.monster-base.v1";
 
 	return __super::Add_PartObject(
 		m_iPrototypeLevelIndex,

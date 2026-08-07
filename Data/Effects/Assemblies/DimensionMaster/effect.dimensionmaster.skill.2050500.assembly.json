@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050500",
   "displayName": "DIMENSIONMASTER T 2050500 Imported Cascade Draft",
-  "sourceAuthoringVersion": 11,
+  "sourceAuthoringVersion": 12,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -368,9 +368,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "29cd25f3cd55792eddc468907e0f2457396c13822e69babb87aa7ab036403ac7",
+  "sourceDocumentSha256": "483c3e58e9ff74c30d6c808434e5f972d3ec76c249f19335185c150f726e5593",
   "inputSlot": "T",
-  "sourceDocumentFileSha256": "890557d378a1a2219692f67eabaf7e65d891de065a93e4ff26871651d751d1e9",
+  "sourceDocumentFileSha256": "be9669dd57d60353b7503f95002f23fad3c699377182ef95febed9a4de435d27",
   "sourceActionCues": [
     {
       "cueId": "skill-2050500/clip-000/notify-001",
@@ -617,12 +617,17 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAMqlOkAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLUV4bW92ZQBkAAAAAQAAAAAAAAABAAAAAQAAAAAAAACamRk/AACAQM3MTD6amZk+AAAAAAAAAAAAAAAAAAAAACMAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": false,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": 167,
+        "sourceSha256": "e04513a869f7f0ae40bb8903561d4e4ae810558c472db3e466afcd8898d8998c"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-004",
@@ -1130,9 +1135,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-012",
@@ -1160,9 +1166,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-013",
@@ -1190,9 +1197,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-014",
@@ -2000,12 +2008,85 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X1Bvc3RQcm9jZXNzQ2hhaW4AAAAAAAAAAAAAAAAAAQAAAFA2N0BQNjdAAAAAAAAAAAABAAAAAAAAAAAAAAADAAAARlgAZAAAAAEAAAAAAAAAAAAAAAAAAAAiAAAAQ0VGUG9zdFByb2Nlc3NNYXRlcmlhbEVmZmVjdFNraWxsACwAAABNYXRlcmlhbCdGWF9Qb3N0LkZYX00uRlhfSl9FeFBvc3RFZmZlY3RfMDEnAAkAAAAJAAAAQmx1cl9zdHIAmpmZPg0AAABEZXNhdHVyYXRpb24AAAAAAAwAAABNYXNrX1JhZGl1cwAAAIA/CAAAAE9wYWNpdHkAAAAAPxIAAABSYWRpYWxfQ29vcmRpbmF0ZQAAAABACwAAAFRpbWVfU3BlZWQAAACAPwwAAABVVl9Ob2lzZVN0cgDNzMw9EAAAAFpvb21fQ29vcmRpbmF0ZQAAAIA/CwAAAFpvb21fUG93ZXIAAACAPwEAAAAMAAAAZm9yY2VfQ29sb3IAEXMZPtkIED8AAIA/AACAPwMAAAANAAAAQmx1cl9UZXh0dXJlACcAAABUZXh0dXJlMkQnRlhfVGV4XzAyLkZYX0RfQXR5cGljYWxfMDQzJwAMAAAAU2hvY2tXdl9UZXgAKwAAAFRleHR1cmUyRCdGWF9UZXhfMDQuRlhfSV9TaG9ja3dhdmVfMDJfWUNMJwAMAAAAVVZOb2lzZV9URVgAAAAAAAMAAAAAAAAAAAAAAAAAAAAAAAAACtcjPAAAAD8AAIA/AAAAACMAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-post-process-chain",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": true,
+        "status": "SOURCE_EXPLICIT_PARAMETER_TABLES",
+        "effectType": "CEFPostProcessMaterialEffectSkill",
+        "sourceMaterial": "FX_Post.FX_M.FX_J_ExPostEffect_01",
+        "scalarParameters": [
+          {
+            "name": "Blur_str",
+            "value": 0.30000001192092896
+          },
+          {
+            "name": "Desaturation",
+            "value": 0.0
+          },
+          {
+            "name": "Mask_Radius",
+            "value": 1.0
+          },
+          {
+            "name": "Opacity",
+            "value": 0.5
+          },
+          {
+            "name": "Radial_Coordinate",
+            "value": 2.0
+          },
+          {
+            "name": "Time_Speed",
+            "value": 1.0
+          },
+          {
+            "name": "UV_NoiseStr",
+            "value": 0.10000000149011612
+          },
+          {
+            "name": "Zoom_Coordinate",
+            "value": 1.0
+          },
+          {
+            "name": "Zoom_Power",
+            "value": 1.0
+          }
+        ],
+        "vectorParameters": [
+          {
+            "name": "force_Color",
+            "value": [
+              0.14985300600528717,
+              0.5626350045204163,
+              1.0,
+              1.0
+            ]
+          }
+        ],
+        "textureParameters": [
+          {
+            "name": "Blur_Texture",
+            "sourceTexture": "FX_Tex_02.FX_D_Atypical_043"
+          },
+          {
+            "name": "ShockWv_Tex",
+            "sourceTexture": "FX_Tex_04.FX_I_Shockwave_02_YCL"
+          },
+          {
+            "name": "UVNoise_TEX",
+            "sourceTexture": ""
+          }
+        ],
+        "sourceTableByteOffset": 104,
+        "unresolvedTrailingByteOffset": 559,
+        "unresolvedTrailingByteCount": 40,
+        "sourceByteSize": 599,
+        "sourceSha256": "4821c4b68dbb2b4a7c89866e317f75d2890e052a38908954bc3e3ae2956b7cfc"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "RUNTIME_SCREEN_POST_BINDING_REQUIRED"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-035",
@@ -2354,9 +2435,10 @@
         "schema": "lostark.action-cue-payload",
         "enabled": true
       },
-      "executionEnabled": true,
+      "executionEnabled": false,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "INVALID_SOURCE_TIME_FAIL_CLOSED",
+      "executionDisabledReason": "SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS"
     },
     {
       "cueId": "skill-2050500/clip-000/notify-040",

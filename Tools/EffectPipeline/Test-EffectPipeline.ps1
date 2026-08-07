@@ -15,7 +15,10 @@ function Write-Utf8([string]$Path, [string]$Text) {
     [IO.File]::WriteAllText($Path, $Text, $utf8NoBom)
 }
 
-function Write-Fixture([object]$Document, [object]$Catalog) {
+function Write-Fixture(
+    [object]$Document,
+    [object]$Catalog,
+    [object[]]$SourceActionCues = @()) {
     $authoringPath = Join-Path $authored "$effectId.effect.json"
     Write-Utf8 $authoringPath (($Document | ConvertTo-Json -Depth 30) + "`n")
     Write-Utf8 (Join-Path $dataRoot 'Effects\EffectCatalog.json') `
@@ -84,6 +87,7 @@ function Write-Fixture([object]$Document, [object]$Catalog) {
                 scale = @(1.0, 1.0, 1.0)
             }
         })
+        sourceActionCues = @($SourceActionCues)
         sourceDocumentSha256 = ('1' * 64)
         sourceDocumentFileSha256 = (Get-FileHash -LiteralPath $authoringPath `
             -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -105,6 +109,20 @@ function Assert-PublishRejected([string]$Name, [byte[]]$Committed) {
     if ([Convert]::ToBase64String($Committed) -ne
         [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
         throw "$Name changed the committed runtime catalog."
+    }
+}
+
+function Assert-ValidateRejected([string]$Name, [byte[]]$Committed) {
+    $failed = $false
+    try {
+        & $publisher -Mode Validate -DataRoot $dataRoot `
+            -ResourceRoot $resourceRoot -OutputPath $output
+    }
+    catch { $failed = $true }
+    if (-not $failed) { throw "$Name was accepted by validation." }
+    if ([Convert]::ToBase64String($Committed) -ne
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
+        throw "$Name changed the committed runtime catalog during validation."
     }
 }
 
@@ -131,6 +149,7 @@ try {
     [IO.Directory]::CreateDirectory($authored) | Out-Null
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'mesh.wmodel'), [byte[]](5,6,7,8))
     $modelCueResource = Join-Path $resourceRoot 'Character\Test'
     [IO.Directory]::CreateDirectory($modelCueResource) | Out-Null
@@ -214,10 +233,165 @@ try {
     Assert-RuntimeResourceHashes $output $resourceRoot
     $modelCueBaseline = [IO.File]::ReadAllBytes($output)
 
+    $invalidSourceCue = [ordered]@{
+        cueId = 'skill-1/clip-000/notify-001'
+        localTimeSeconds = 1.0e22
+        globalTimeSeconds = 1.0e22
+        durationSeconds = -3.0
+        executionEnabled = $true
+    }
+    Write-Fixture $document $catalog @($invalidSourceCue)
+    Assert-PublishRejected 'Executable malformed Source Action cue time' `
+        $modelCueBaseline
+    $invalidSourceCue.executionEnabled = $false
+    $invalidSourceCue.sourceExecutionStatus = 'INVALID_SOURCE_TIME_FAIL_CLOSED'
+    $invalidSourceCue.executionDisabledReason =
+        'SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS'
+    Write-Fixture $document $catalog @($invalidSourceCue)
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Fail-closed malformed Source Action cue publish failed.' }
+    $modelCueBaseline = [IO.File]::ReadAllBytes($output)
+    Write-Fixture $document $catalog
+
     $document.particleSystem.uniformScaleMultiplier = 0.0
     Write-Fixture $document $catalog
     Assert-PublishRejected 'Invalid Particle System scale' $modelCueBaseline
     $document.particleSystem.uniformScaleMultiplier = 1.0
+
+    $version8Element = ($document.elements[0] | ConvertTo-Json -Depth 30) |
+        ConvertFrom-Json
+    $groupedElement = ($referenceDocument.elements[2] |
+        ConvertTo-Json -Depth 100) | ConvertFrom-Json
+    $groupedElement.id = 'grouped'
+    $groupedElement.displayName = 'Grouped Source Material'
+    $groupedElement.groupId = 'fixture_group'
+    $groupedElement.sourceNode = 'Fixture/Grouped/0'
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'base'
+        assetId = 'Effect/Test/base.dds'
+    })
+    $groupedElement.material.templateId = 'effect.source_material'
+    $groupedElement.material.sourceMaterialPath =
+        'fx_m_mi_00.fx_mi.fx_fixture_grouped_tr'
+    $groupedElement.material.sourceProfile.profileId =
+        'ue3.material.fixture.grouped'
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.grouped-translucent.v1'
+    $groupedElement.material.sourceProfile.parentMaterialPath =
+        'fx_m.fx_fixture_grouped_tr'
+    $groupedElement.material.sourceProfile.semanticStatus =
+        'reconstructed_profile'
+    $groupedElement.material.sourceProfile.scalars = @()
+    $groupedElement.material.sourceProfile.vectors = @()
+    $document.version = 12
+    $document.elements = @($groupedElement)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Validate -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v12 Grouped Source Material validation failed.' }
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v12 Grouped Source Material publish failed.' }
+    $groupedBaseline = [IO.File]::ReadAllBytes($output)
+
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'noise'
+        assetId = 'Effect/Test/base.dds'
+    })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Grouped profile without an alpha/color carrier' `
+        $groupedBaseline
+
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'mask'
+        assetId = 'Effect/Test/base.dds'
+    })
+    $groupedElement.material.sourceProfile.scalars = @([ordered]@{
+        name = 'emission_strength'
+        group = 'emission'
+        value = 1.0
+    })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Grouped emission profile without emission carrier' `
+        $groupedBaseline
+
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'emissive'
+        assetId = 'Effect/Test/base.dds'
+    })
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Grouped emission carrier publish failed.' }
+    $groupedElement.material.sourceProfile.scalars = @()
+
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.fallback-blocked.v1'
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Fail-closed Source Material publish failed.' }
+
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.one-layer-distortion.v1'
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'noise'
+        assetId = 'Effect/Test/base.dds'
+    })
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Noise-only finite profile publish failed.' }
+
+    $groupedElement.resources = @()
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.circle.v1'
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Procedural finite profile publish failed.' }
+
+    $finiteBaseline = [IO.File]::ReadAllBytes($output)
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.reconstructed-standard.v1'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Reconstructed standard profile without Base' `
+        $finiteBaseline
+
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'base'
+        assetId = 'Effect/Test/base.dds'
+    })
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.grouped-translucent.v1'
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Grouped Source Material restore failed.' }
+    $groupedBaseline = [IO.File]::ReadAllBytes($output)
+
+    $groupedElement.resources[0].assetId = 'Effect/Test/blankwhite.dds'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Grouped profile with unsafe blank-white Base only' `
+        $groupedBaseline
+    $groupedElement.resources[0].assetId = 'Effect/Test/base.dds'
+
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.unregistered.v1'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unregistered Source Material shader profile' `
+        $groupedBaseline
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.grouped-translucent.v1'
+
+    $document.version = 8
+    $document.elements = @($version8Element)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'v8 baseline restore failed.' }
+    $modelCueBaseline = [IO.File]::ReadAllBytes($output)
 
     $duplicateCue = ($document.modelCues[0] | ConvertTo-Json -Depth 10) |
         ConvertFrom-Json
@@ -269,6 +443,19 @@ try {
         -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Baseline restore publish failed.' }
     $baseline = [IO.File]::ReadAllBytes($output)
+
+    $componentPath = Join-Path $components `
+        'Fixture_00.particlesystem.wfx.json'
+    $mismatchedComponent = Get-Content -LiteralPath $componentPath `
+        -Raw -Encoding UTF8 | ConvertFrom-Json
+    $mismatchedComponent.document.elements[0].detail.transform.position[0] = 1.0
+    Write-Utf8 $componentPath `
+        (($mismatchedComponent | ConvertTo-Json -Depth 100) + "`n")
+    Assert-ValidateRejected `
+        'Same-count Component payload mismatch' $baseline
+    Assert-PublishRejected `
+        'Same-count Component payload mismatch' $baseline
+    Write-Fixture $document $catalog
 
     $catalog.formatVersion = 2
     Write-Fixture $document $catalog
@@ -382,7 +569,7 @@ try {
         [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
         throw 'Required binding failure changed the committed runtime catalog.'
     }
-    Write-Host 'PASS: Effect pipeline v8/particle-system/v7 model-cue/v6 compatibility/mesh-particle publish, version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
+    Write-Host 'PASS: Effect pipeline v12 grouped-source/v8 particle-system/v7 model-cue/v6 compatibility/mesh-particle publish, full Assembly identity, shader-profile/version/path/kind/duplicate/resource/hash/budget/binding/promote rejection, and rollback.'
 }
 finally {
     if (Test-Path -LiteralPath $fixture) {

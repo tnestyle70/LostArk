@@ -11,7 +11,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_core_00_1|FX_PC_SWP_00.par_j_swp_willowrend_core_00_1.particlespriteemitter_1|event:source-event-023",
       "fx_pc_swp_00.par_j_swp_willowrend_core_00_1|FX_PC_SWP_00.par_j_swp_willowrend_core_00_1.particlespriteemitter_23|event:source-event-023"
     ],
-    "sourceElementSha256": "358809d48f19d519355be33b7832fa3d2e3c1460674da53c33ae96ca0cc79eb3",
+    "sourceElementSha256": "da2840f3a517233553ac078372f3b57b1d698f0cb036a3b149415a61f22bdb85",
     "inputSlot": "A"
   },
   "emitters": [
@@ -36,7 +36,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050210.09",
     "displayName": "DimensionMaster_skill_2050210_09.particlesystem.wfx",
     "particleSystem": {
@@ -67,57 +67,123 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.pa.spriteinvert.01.tr.f8e2214b46d6",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_pa_spriteinvert_01_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.spriteinvert.01.tr.0f09ed5738d6",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_spriteinvert_01_tr",
             "semanticStatus": "reconstructed_profile",
+            "textures": [
+              {
+                "name": "alpha_texture",
+                "sourceObjectPath": "fx_tex_00.fx_a_electric_008",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_electric_008.dds",
+                "group": "alpha"
+              },
+              {
+                "name": "flow_texture",
+                "sourceObjectPath": "fx_tex_06.fx_j_caustic_tile_05",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds",
+                "group": "flow"
+              },
+              {
+                "name": "umodel_dependency",
+                "sourceObjectPath": "fx_tex_03.fx_e_noise_002",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_noise_002.dds",
+                "group": ""
+              }
+            ],
             "scalars": [
               {
-                "name": "alpha_pow",
-                "value": 2.0
-              },
-              {
-                "name": "alpha_str",
-                "value": 3.0
-              },
-              {
                 "name": "invert_maxstr",
-                "value": 10.0
+                "value": 10.0,
+                "group": "alpha"
               },
               {
                 "name": "invert_minstr",
-                "value": 9.0
-              },
-              {
-                "name": "flow_pany",
-                "value": 0.0
+                "value": 9.0,
+                "group": "alpha"
               },
               {
                 "name": "flow_str",
-                "value": 0.07000000029802322
+                "value": 0.07,
+                "group": "flow"
               },
               {
                 "name": "flow_tileu",
-                "value": 1.0
+                "value": 1.0,
+                "group": "flow"
               },
               {
                 "name": "flow_tilev",
-                "value": 1.0
+                "value": 1.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_pany",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_panx",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "alpha_tileu",
+                "value": 1.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_tilev",
+                "value": 1.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_offsety",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_offsetx",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_panx",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_pany",
+                "value": 0.0,
+                "group": "alpha"
               },
               {
                 "name": "emissive_pow",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
               },
               {
                 "name": "emissive_str",
-                "value": 15.0
+                "value": 15.0,
+                "group": "None"
+              },
+              {
+                "name": "alpha_str",
+                "value": 3.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_pow",
+                "value": 2.0,
+                "group": "alpha"
               },
               {
                 "name": "sinetime",
-                "value": 0.0
+                "value": 0.0,
+                "group": "None"
               }
             ],
             "vectors": [],
@@ -350,6 +416,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1303,6 +1404,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "skill-2050210/clip-000/notify-033",
+          "sourceEventId": "source-event-023",
+          "sourceOccurrenceIndex": 1,
+          "sourceTimeSeconds": 0.39,
+          "parameters": []
         }
       },
       {
@@ -1314,12 +1428,12 @@
         "kind": "particle",
         "resources": [
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_09.dds"
-          },
-          {
             "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_09.dds"
           },
           {
             "slotId": "dissolve",
@@ -1329,69 +1443,155 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_movedissolve_01_01_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.pa.movedissolve.01.tr.709615864b12",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_pa_movedissolve_01_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.movedissolve.01.tr.1684ec18e9f6",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_movedissolve_01_tr",
             "semanticStatus": "reconstructed_profile",
+            "textures": [
+              {
+                "name": "alpha_texture",
+                "sourceObjectPath": "fx_tex_06.fx_g_petds_cotton_01",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds",
+                "group": "alpha"
+              },
+              {
+                "name": "diff_texture",
+                "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_09",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_09.dds",
+                "group": "diffuse"
+              },
+              {
+                "name": "flow_texture",
+                "sourceObjectPath": "fx_j_normal_bc5_10",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "group": "alpha_flow"
+              },
+              {
+                "name": "dissolve_texture",
+                "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_07",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_07.dds",
+                "group": "dissolve"
+              },
+              {
+                "name": "umodel_dependency",
+                "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_10",
+                "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "group": ""
+              }
+            ],
             "scalars": [
               {
-                "name": "alpha_dy_offsety",
-                "value": 0.009999999776482582
+                "name": "desaturation",
+                "value": 0.0,
+                "group": "diffuse"
               },
               {
-                "name": "alpha_hardness",
-                "value": 1.0
-              },
-              {
-                "name": "alpha_str",
-                "value": 3.0
+                "name": "flow_panx",
+                "value": 0.0,
+                "group": "alpha_flow"
               },
               {
                 "name": "flow_pany",
-                "value": 0.0
+                "value": 0.0,
+                "group": "alpha_flow"
+              },
+              {
+                "name": "flow_tilex",
+                "value": 1.0,
+                "group": "alpha_flow"
+              },
+              {
+                "name": "flow_tiley",
+                "value": 1.0,
+                "group": "alpha_flow"
               },
               {
                 "name": "flow_str",
-                "value": 0.0
+                "value": 0.0,
+                "group": "alpha_flow"
               },
               {
-                "name": "desaturation",
-                "value": 0.0
+                "name": "alpha_hardness",
+                "value": 1.0,
+                "group": "alpha"
               },
               {
-                "name": "dissolve_offsetx",
-                "value": 0.0
+                "name": "alpha_str",
+                "value": 3.0,
+                "group": "alpha"
               },
               {
-                "name": "dissolve_offsety",
-                "value": 0.0
+                "name": "alpha_tilex",
+                "value": 1.0,
+                "group": "alpha"
               },
               {
-                "name": "dissolve_panning_x",
-                "value": 0.0
+                "name": "alpha_offsetx",
+                "value": 0.0,
+                "group": "alpha"
               },
               {
-                "name": "dissolve_panning_y",
-                "value": 0.0
+                "name": "alpha_tiley",
+                "value": 1.0,
+                "group": "alpha"
               },
               {
-                "name": "dissolve_str",
-                "value": 1.0
+                "name": "alpha_offsety",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_dy_offsetx",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_dy_offsety",
+                "value": 0.01,
+                "group": "alpha"
               },
               {
                 "name": "dissolve_tilex",
-                "value": 2.0
+                "value": 2.0,
+                "group": "dissolve"
               },
               {
                 "name": "dissolve_tiley",
-                "value": 1.0
+                "value": 1.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_offsetx",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_offsety",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_panning_x",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_panning_y",
+                "value": 0.0,
+                "group": "dissolve"
               },
               {
                 "name": "substep_str",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "dissolve_str",
+                "value": 1.0,
+                "group": "dissolve"
               }
             ],
             "vectors": [
@@ -1402,7 +1602,8 @@
                   1.0,
                   1.0,
                   1.0
-                ]
+                ],
+                "group": "diffuse"
               },
               {
                 "name": "dissolve_color",
@@ -1411,15 +1612,16 @@
                   1.0,
                   1.0,
                   1.0
-                ]
+                ],
+                "group": "None"
               }
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
               "unbound",
               "unbound",
-              "opacity",
-              "opacity"
+              "unbound",
+              "uv_pan"
             ],
             "subUVMode": "none"
           }
@@ -1643,6 +1845,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -2569,6 +2806,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "skill-2050210/clip-000/notify-033",
+          "sourceEventId": "source-event-023",
+          "sourceOccurrenceIndex": 1,
+          "sourceTimeSeconds": 0.39,
+          "parameters": []
         }
       }
     ]

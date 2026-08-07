@@ -1,5 +1,7 @@
 #include "Effect_DocumentRenderer.h"
 
+#include "DeferredMaterialRenderUtils.h"
+
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
@@ -18,6 +20,121 @@
 
 namespace
 {
+	inline constexpr std::array<std::string_view, 7u>
+		LINEARFLOW_SOURCE_TEXTURE_NAMES = {{
+			"diff_tex", "diff_noise_tex", "a_mask_tex", "a_noise_01_tex",
+			"b_mask_tex", "b_noise_01_tex", "dissolve_tex"
+		}};
+
+	int32_t LinearFlowSourceTextureIndex(const std::string_view strName)
+	{
+		const auto Iterator = std::find(
+			LINEARFLOW_SOURCE_TEXTURE_NAMES.begin(),
+			LINEARFLOW_SOURCE_TEXTURE_NAMES.end(), strName);
+		return Iterator == LINEARFLOW_SOURCE_TEXTURE_NAMES.end() ? -1 :
+			static_cast<int32_t>(std::distance(
+				LINEARFLOW_SOURCE_TEXTURE_NAMES.begin(), Iterator));
+	}
+
+	f32_t SourceScalar(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		const std::string_view strName,
+		const f32_t fFallback)
+	{
+		const auto Iterator = std::find_if(
+			Source.Scalars.begin(), Source.Scalars.end(),
+			[strName](const Client::EFFECT_NAMED_FLOAT_DESC& Row)
+			{
+				return Row.strName == strName;
+			});
+		return Iterator == Source.Scalars.end() ? fFallback : Iterator->fValue;
+	}
+
+	float4_t SourceVector(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		const std::string_view strName,
+		const float4_t& vFallback)
+	{
+		const auto Iterator = std::find_if(
+			Source.Vectors.begin(), Source.Vectors.end(),
+			[strName](const Client::EFFECT_NAMED_FLOAT4_DESC& Row)
+			{
+				return Row.strName == strName;
+			});
+		return Iterator == Source.Vectors.end() ? vFallback : Iterator->vValue;
+	}
+
+	void Build_LinearFlowConstants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		std::array<float4_t, 16u>& Parameters,
+		float4_t& vMaskAColor,
+		float4_t& vMaskBColor,
+		float4_t& vAuxiliary0,
+		float4_t& vAuxiliary1)
+	{
+		auto S = [&Source](const std::string_view strName, const f32_t fFallback)
+		{
+			return SourceScalar(Source, strName, fFallback);
+		};
+		Parameters[0] = { S("diff_tile_u", 1.f), S("diff_tile_v", 1.f),
+			S("diff_panx_speed", 0.f), S("diff_pany_speed", 0.f) };
+		Parameters[1] = { S("diff_offset_x", 0.f), S("diff_offset_y", 0.f),
+			S("diff_rotator", 0.f), S("diff_noise_str", 0.f) };
+		Parameters[2] = { S("diff_noise_tile_u", 1.f),
+			S("diff_noise_tile_v", 1.f), 0.f, 0.f };
+		Parameters[3] = { S("a_tile_u", 1.f), S("a_tile_v", 1.f),
+			S("a_panx_speed", 0.f), S("a_pany_speed", 0.f) };
+		Parameters[4] = { S("a_offset_x", 0.f), S("a_offset_y", 0.f),
+			S("a_rotator", 0.f), S("a_sizecontrol", 1.f) };
+		Parameters[5] = { S("a_noise_01_tile_u", 1.f),
+			S("a_noise_01_tile_v", 1.f), S("a_noise_01_pan_x", 0.f),
+			S("a_noise_01_pan_y", 0.f) };
+		Parameters[6] = { S("a_noise_01_offset_x", 0.f),
+			S("a_noise_01_offset_y", 0.f), S("a_noise_01_str", 0.f), 0.f };
+		Parameters[7] = { S("b_tile_u", 1.f), S("b_tile_v", 1.f),
+			S("b_panx_speed", 0.f), S("b_pany_speed", 0.f) };
+		Parameters[8] = { S("b_offset_x", 0.f), S("b_offset_y", 0.f),
+			S("b_rotator", 0.f), S("b_sizecontrol", 1.f) };
+		Parameters[9] = { S("b_noise_01_tile_u", 1.f),
+			S("b_noise_01_tile_v", 1.f), S("b_noise_01_pan_x", 0.f),
+			S("b_noise_01_pan_y", 0.f) };
+		Parameters[10] = { S("b_noise_01_offset_x", 0.f),
+			S("b_noise_01_offset_y", 0.f), S("b_noise_01_str", 0.f), 0.f };
+		Parameters[11] = { S("diff_str", 1.f), S("diff_pow", 1.f),
+			S("a_mask_str", 1.f), S("a_mask_pow", 1.f) };
+		Parameters[12] = { S("b_mask_str", 1.f), S("b_mask_pow", 1.f),
+			S("opacity_str", 1.f), S("opacity_pow", 1.f) };
+		Parameters[13] = { S("mask_density", 1.f), S("mask_radius", 1.f),
+			S("mask_linearalpha", 0.5f), S("coresoft_str", 1.f) };
+		Parameters[14] = { S("dissolve_tile_x", 1.f),
+			S("dissolve_tile_y", 1.f), S("dissolve_pan_x", 0.f),
+			S("dissolve_pan_y", 0.f) };
+		Parameters[15] = { S("a_mask_desaturation", 0.f),
+			S("b_mask_desaturation", 0.f), S("diff_tex_desaturation", 0.f),
+			S("gra_pow", 1.f) };
+		vAuxiliary0 = { S("dissolve_rot", 0.f),
+			S("dissolve_hardness", 5.f), S("meshedgefade", 0.f),
+			S("distortion", 0.f) };
+		vAuxiliary1 = { S("depth", 0.f), 0.f, 0.f, 0.f };
+		vMaskAColor = SourceVector(
+			Source, "a_mask_color", { 1.f, 1.f, 1.f, 1.f });
+		vMaskBColor = SourceVector(
+			Source, "b_mask_color", { 1.f, 1.f, 1.f, 1.f });
+	}
+
+	bool_t Has_LinearFlowSourceTextureContract(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	{
+		uint32_t iMask = 0u;
+		for (const Client::EFFECT_NAMED_TEXTURE_DESC& Texture : Source.Textures)
+		{
+			const int32_t iIndex = LinearFlowSourceTextureIndex(Texture.strName);
+			if (iIndex >= 0 && !Texture.strAssetId.empty())
+				iMask |= 1u << static_cast<uint32_t>(iIndex);
+		}
+		return iMask == (1u << LINEARFLOW_SOURCE_TEXTURE_NAMES.size()) - 1u;
+	}
+
 	size_t Texture_Index(const Client::EFFECT_RESOURCE_SLOT eSlot)
 	{
 		return static_cast<size_t>(eSlot) -
@@ -62,6 +179,76 @@ namespace
 		return Iterator == Element.ResourceBindings.end() ? nullptr : &*Iterator;
 	}
 
+	bool_t Is_SourceMaterialFallbackBlocked(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const Client::EFFECT_GROUPED_TRANSLUCENT_CONSTANTS& GroupedConstants)
+	{
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
+			Element.Material.SourceMaterial;
+		if (!Source.bEnabled)
+			return false;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.fallback-blocked.v1")
+		{
+			return true;
+		}
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.grouped-translucent.v1")
+		{
+			const Client::EFFECT_RESOURCE_BINDING_DESC* pBase =
+				Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+			const bool_t bSafeBase = nullptr != pBase &&
+				!Client::Is_UnsafeEffectBaseTextureAssetId(pBase->strAssetId);
+			return !Client::Is_EffectGroupedTranslucentResourceContractSatisfied(
+				GroupedConstants,
+				bSafeBase,
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE),
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE),
+					nullptr != Find_Binding(Element,
+						Client::EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE));
+		}
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.linearflow-02.v1")
+		{
+			return !Has_LinearFlowSourceTextureContract(Source);
+		}
+		if (Source.strRuntimeShaderProfileId == "effect.ue3.shine.v1" ||
+			Source.strRuntimeShaderProfileId ==
+				"effect.ue3.blackline-aura.v1" ||
+			Source.strRuntimeShaderProfileId ==
+				"effect.ue3.local-crack.v1" ||
+			Source.strRuntimeShaderProfileId ==
+				"effect.ue3.procedural-center-glow.v1")
+		{
+			const Client::EFFECT_RESOURCE_BINDING_DESC* pBase =
+				Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+			return !Client::Is_EffectFiniteProfileResourceContractSatisfied(
+				Source.strRuntimeShaderProfileId,
+				nullptr != pBase &&
+					!Client::Is_UnsafeEffectBaseTextureAssetId(
+						pBase->strAssetId),
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE),
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE),
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::MESH_MODEL));
+		}
+		if (Source.strRuntimeShaderProfileId !=
+			"effect.ue3.reconstructed-standard.v1")
+		{
+			return false;
+		}
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pBase =
+			Find_Binding(Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+		return nullptr == pBase ||
+			Client::Is_UnsafeEffectBaseTextureAssetId(pBase->strAssetId);
+	}
+
 	bool_t Resource_SignatureMatches(
 		const Client::EFFECT_DOCUMENT_DESC& Left,
 		const Client::EFFECT_DOCUMENT_DESC& Right)
@@ -92,6 +279,8 @@ namespace
 			const Client::EFFECT_ELEMENT_DESC& B = Right.Elements[i];
 			if (A.strElementId != B.strElementId || A.eKind != B.eKind ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
+				!Client::Is_EffectSourceMaterialStagingSignatureEqual(
+					A.Material.SourceMaterial, B.Material.SourceMaterial) ||
 				A.ResourceBindings.size() != B.ResourceBindings.size())
 				return false;
 			for (size_t j = 0u; j < A.ResourceBindings.size(); ++j)
@@ -363,6 +552,24 @@ namespace
 		if (Source.strRuntimeShaderProfileId ==
 			"effect.ue3.one-layer-distortion.v1")
 			return 5u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.grouped-translucent.v1")
+			return 6u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.shine.v1")
+			return 7u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.blackline-aura.v1")
+			return 8u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.local-crack.v1")
+			return 9u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.procedural-center-glow.v1")
+			return 10u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.linearflow-02.v1")
+			return 11u;
 		return UINT32_MAX;
 	}
 
@@ -527,10 +734,57 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 {
 	ELEMENT_RESOURCE Staged;
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
-		EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+	EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
 	{
 		OutResource = std::move(Staged);
 		return S_OK;
+	}
+	const EFFECT_SOURCE_MATERIAL_DESC& SourceMaterial =
+		Element.Material.SourceMaterial;
+	Staged.GroupedConstants =
+		Build_EffectGroupedTranslucentConstants(SourceMaterial);
+	Staged.iSourceMaterialProfile = SourceMaterialProfileIndex(SourceMaterial);
+	if (UINT32_MAX == Staged.iSourceMaterialProfile)
+	{
+		if (SourceMaterial.strRuntimeShaderProfileId ==
+			"effect.ue3.fallback-blocked.v1")
+		{
+			Staged.iSourceMaterialProfile = 0u;
+		}
+		else
+		{
+			strOutError = "Source Material runtime profile is not executable: " +
+				SourceMaterial.strRuntimeShaderProfileId;
+			return E_FAIL;
+		}
+	}
+	for (size_t iScalar = 0u;
+		iScalar < SourceMaterial.Scalars.size() && iScalar < 8u; ++iScalar)
+	{
+		if (iScalar < 4u)
+			(&Staged.vSourceScalars0.x)[iScalar] =
+				SourceMaterial.Scalars[iScalar].fValue;
+		else
+			(&Staged.vSourceScalars1.x)[iScalar - 4u] =
+				SourceMaterial.Scalars[iScalar].fValue;
+	}
+	if (!SourceMaterial.Vectors.empty())
+		Staged.vSourceVector0 = SourceMaterial.Vectors[0].vValue;
+	if (SourceMaterial.Vectors.size() > 1u)
+		Staged.vSourceVector1 = SourceMaterial.Vectors[1].vValue;
+	if (11u == Staged.iSourceMaterialProfile)
+	{
+		Build_LinearFlowConstants(
+			SourceMaterial, Staged.LinearFlowParameters,
+			Staged.vLinearFlowMaskAColor, Staged.vLinearFlowMaskBColor,
+			Staged.vSourceScalars0, Staged.vSourceScalars1);
+	}
+	for (size_t iSemantic = 0u;
+		iSemantic < Staged.DynamicParameterSemantics.size(); ++iSemantic)
+	{
+		Staged.DynamicParameterSemantics[iSemantic] =
+			DynamicParameterSemanticIndex(
+				SourceMaterial.DynamicParameterSemantics[iSemantic]);
 	}
 	const EFFECT_RESOURCE_BINDING_DESC* pModelBinding =
 		Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL);
@@ -570,6 +824,23 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		}
 		Staged.Textures[Texture_Index(pInput->eRuntimeSlot)] = std::move(Texture);
 	}
+	if (11u == Staged.iSourceMaterialProfile)
+	{
+		for (const EFFECT_NAMED_TEXTURE_DESC& TextureDesc : SourceMaterial.Textures)
+		{
+			const int32_t iIndex =
+				LinearFlowSourceTextureIndex(TextureDesc.strName);
+			if (iIndex < 0 || TextureDesc.strAssetId.empty())
+				continue;
+			ComPtr<ID3D11ShaderResourceView> Texture;
+			if (FAILED(Load_Texture(TextureDesc.strAssetId, Texture)))
+				continue;
+			Staged.SourceTextures[static_cast<size_t>(iIndex)] =
+				std::move(Texture);
+			Staged.iSourceTextureMask |=
+				1u << static_cast<uint32_t>(iIndex);
+		}
+	}
 
 	if (EFFECT_ELEMENT_KIND::MESH != Element.eKind &&
 		nullptr == Staged.pModel &&
@@ -580,6 +851,11 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			Element.strElementId;
 		return E_FAIL;
 	}
+	Staged.bSourceMaterialFallbackBlocked =
+		Is_SourceMaterialFallbackBlocked(Element, Staged.GroupedConstants) ||
+		(11u == Staged.iSourceMaterialProfile &&
+			Staged.iSourceTextureMask !=
+				(1u << LINEARFLOW_SOURCE_TEXTURE_NAMES.size()) - 1u);
 	OutResource = std::move(Staged);
 	return S_OK;
 }
@@ -693,6 +969,8 @@ uint32_t Client::CEffectDocumentRenderer::Select_Pass(
 	case EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE: return 0u;
 	case EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ: return 1u;
 	case EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ: return 2u;
+	case EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ: return 3u;
+	case EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ: return 4u;
 	case EFFECT_RENDER_PROFILE::END:
 	default: return UINT32_MAX;
 	}
@@ -795,48 +1073,54 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) ? 1u : 0u;
 	const uint32_t iDistortionOnBase =
 		Element.Detail.Color.bDistortionOnBaseMaterial ? 1u : 0u;
-	const uint32_t iSourceMaterialProfile =
-		SourceMaterialProfileIndex(SourceMaterial);
-	if (UINT32_MAX == iSourceMaterialProfile)
-		return E_FAIL;
-	float4_t SourceScalars0{};
-	float4_t SourceScalars1{};
-	float4_t SourceVector0{};
-	float4_t SourceVector1{};
-	for (size_t iScalar = 0u;
-		iScalar < SourceMaterial.Scalars.size() && iScalar < 8u; ++iScalar)
-	{
-		if (iScalar < 4u)
-			(&SourceScalars0.x)[iScalar] =
-				SourceMaterial.Scalars[iScalar].fValue;
-		else
-			(&SourceScalars1.x)[iScalar - 4u] =
-				SourceMaterial.Scalars[iScalar].fValue;
-	}
-	if (!SourceMaterial.Vectors.empty())
-		SourceVector0 = SourceMaterial.Vectors[0].vValue;
-	if (SourceMaterial.Vectors.size() > 1u)
-		SourceVector1 = SourceMaterial.Vectors[1].vValue;
-	std::array<uint32_t, 4u> DynamicSemantics{};
-	for (size_t iSemantic = 0u; iSemantic < DynamicSemantics.size();
-		++iSemantic)
-	{
-		DynamicSemantics[iSemantic] = DynamicParameterSemanticIndex(
-			SourceMaterial.DynamicParameterSemantics[iSemantic]);
-	}
-	if (pShader == m_pParticleShader &&
+	if ((pShader == m_pParticleShader || pShader == m_pMeshShader) &&
 		(FAILED(pShader->Bind_RawValue("g_SourceMaterialProfile",
-			&iSourceMaterialProfile, sizeof(iSourceMaterialProfile))) ||
+			&Resource.iSourceMaterialProfile,
+			sizeof(Resource.iSourceMaterialProfile))) ||
 		FAILED(pShader->Bind_RawValue("g_SourceScalars0",
-			&SourceScalars0, sizeof(SourceScalars0))) ||
+			&Resource.vSourceScalars0,
+			sizeof(Resource.vSourceScalars0))) ||
 		FAILED(pShader->Bind_RawValue("g_SourceScalars1",
-			&SourceScalars1, sizeof(SourceScalars1))) ||
+			&Resource.vSourceScalars1,
+			sizeof(Resource.vSourceScalars1))) ||
 		FAILED(pShader->Bind_RawValue("g_SourceVector0",
-			&SourceVector0, sizeof(SourceVector0))) ||
+			&Resource.vSourceVector0,
+			sizeof(Resource.vSourceVector0))) ||
 		FAILED(pShader->Bind_RawValue("g_SourceVector1",
-			&SourceVector1, sizeof(SourceVector1))) ||
+			&Resource.vSourceVector1,
+			sizeof(Resource.vSourceVector1))) ||
+		FAILED(pShader->Bind_RawValue("g_SourceTextureMask",
+			&Resource.iSourceTextureMask,
+			sizeof(Resource.iSourceTextureMask))) ||
+		FAILED(pShader->Bind_RawValue("g_LinearFlowParameters",
+			Resource.LinearFlowParameters.data(),
+			sizeof(Resource.LinearFlowParameters))) ||
+		FAILED(pShader->Bind_RawValue("g_LinearFlowMaskAColor",
+			&Resource.vLinearFlowMaskAColor,
+			sizeof(Resource.vLinearFlowMaskAColor))) ||
+		FAILED(pShader->Bind_RawValue("g_LinearFlowMaskBColor",
+			&Resource.vLinearFlowMaskBColor,
+			sizeof(Resource.vLinearFlowMaskBColor))) ||
+		FAILED(pShader->Bind_RawValue("g_GroupedUVScalePan",
+			&Resource.GroupedConstants.vUVScalePan,
+			sizeof(Resource.GroupedConstants.vUVScalePan))) ||
+		FAILED(pShader->Bind_RawValue("g_GroupedAlphaEmissive",
+			&Resource.GroupedConstants.vAlphaEmissive,
+			sizeof(Resource.GroupedConstants.vAlphaEmissive))) ||
+		FAILED(pShader->Bind_RawValue("g_GroupedNoiseDissolve",
+			&Resource.GroupedConstants.vNoiseDissolve,
+			sizeof(Resource.GroupedConstants.vNoiseDissolve))) ||
+		FAILED(pShader->Bind_RawValue("g_GroupedTint",
+			&Resource.GroupedConstants.vTint,
+			sizeof(Resource.GroupedConstants.vTint))) ||
+		FAILED(pShader->Bind_RawValue("g_GroupedMaterialFlags",
+			&Resource.GroupedConstants.iFlags,
+			sizeof(Resource.GroupedConstants.iFlags))) ||
+		FAILED(pShader->Bind_RawValue("g_EffectLocalTime",
+			&fLocalTimeSeconds, sizeof(fLocalTimeSeconds))) ||
 		FAILED(pShader->Bind_RawValue("g_DynamicParameterSemantics",
-			DynamicSemantics.data(), sizeof(DynamicSemantics)))))
+			Resource.DynamicParameterSemantics.data(),
+			sizeof(Resource.DynamicParameterSemantics)))))
 	{
 		return E_FAIL;
 	}
@@ -867,14 +1151,29 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		FAILED(pShader->Bind_Texture("g_EmissiveTexture", iHasEmissive ?
 			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE) : m_pBlackTexture)) ||
 		FAILED(pShader->Bind_Texture("g_DissolveTexture", iHasDissolve ?
-			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) : m_pBlackTexture)) ? E_FAIL : S_OK;
+			Find_Texture(Resource.Textures, EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE) : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture0",
+			Resource.SourceTextures[0] ? Resource.SourceTextures[0] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture1",
+			Resource.SourceTextures[1] ? Resource.SourceTextures[1] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture2",
+			Resource.SourceTextures[2] ? Resource.SourceTextures[2] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture3",
+			Resource.SourceTextures[3] ? Resource.SourceTextures[3] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture4",
+			Resource.SourceTextures[4] ? Resource.SourceTextures[4] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture5",
+			Resource.SourceTextures[5] ? Resource.SourceTextures[5] : m_pBlackTexture)) ||
+		FAILED(pShader->Bind_Texture("g_SourceTexture6",
+			Resource.SourceTextures[6] ? Resource.SourceTextures[6] : m_pBlackTexture)) ? E_FAIL : S_OK;
 }
 
 HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource,
 	const f32_t fAlphaScale,
-	const float4x4_t* pWorldOverride)
+	const float4x4_t* pWorldOverride,
+	const float4_t* pDynamicParameter)
 {
 	if (nullptr == Resource.pModel || nullptr == Element.pElement)
 		return E_FAIL;
@@ -884,7 +1183,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		return E_INVALIDARG;
 	const float4x4_t& World = nullptr != pWorldOverride ?
 		*pWorldOverride : Element.World;
+	const float4_t DynamicParameter = nullptr == pDynamicParameter ?
+		float4_t{} : *pDynamicParameter;
 	if (FAILED(m_pMeshShader->Bind_Matrix("g_WorldMatrix", &World)) ||
+		FAILED(m_pMeshShader->Bind_RawValue("g_EffectDynamicParameter",
+			&DynamicParameter, sizeof(DynamicParameter))) ||
 		FAILED(Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale)))
 	{
 		return E_FAIL;
@@ -1000,6 +1303,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 			Find_Resource(AfterImage.pElement->strElementId);
 		if (nullptr == pResource)
 			return E_FAIL;
+		if (pResource->bSourceMaterialFallbackBlocked)
+			continue;
 		EFFECT_EVALUATED_ELEMENT Element;
 		Element.pElement = AfterImage.pElement;
 		Element.World = AfterImage.World;
@@ -1034,6 +1339,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			break;
 		}
 	}
+	if (pResource->bSourceMaterialFallbackBlocked)
+		return S_FALSE;
 	if (nullptr != pSource &&
 		pSource->Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
 		!pSource->Material.SourceMaterial.bEnabled)
@@ -1061,7 +1368,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 				Frame.fSampleTimeSeconds -
 				Particle.pElement->Detail.Timing.fStartDelaySeconds);
 			MeshParticle.fNormalizedLife = Particle.fNormalizedLife;
-			if (FAILED(Render_Mesh(MeshParticle, *pResource)))
+			if (FAILED(Render_Mesh(MeshParticle, *pResource, 1.f, nullptr,
+				&Particle.vDynamicParameter)))
 				return E_FAIL;
 		}
 		return S_OK;
@@ -1126,6 +1434,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			Find_Resource(Trail.pElement->strElementId);
 		if (nullptr == pResource)
 			return E_FAIL;
+		if (pResource->bSourceMaterialFallbackBlocked)
+			continue;
 
 		std::vector<Engine::VTXEFFECT_TRAIL> Vertices;
 		std::vector<uint32_t> Indices;
@@ -1252,16 +1562,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		}
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
-			const uint32_t iHasNormalTexture = Model.Has_MaterialTexture(
-				iMesh, aiTextureType_NORMALS) ? 1u : 0u;
-			if (FAILED(Model.Bind_Material(m_pAnimatedModelShader,
-				"g_DiffuseTexture", iMesh, aiTextureType_DIFFUSE, 0)) ||
-				FAILED(m_pAnimatedModelShader->Bind_RawValue(
-					"g_HasNormalTexture", &iHasNormalTexture,
-					sizeof(iHasNormalTexture))) ||
-				(0u != iHasNormalTexture && FAILED(Model.Bind_Material(
-					m_pAnimatedModelShader, "g_NormalTexture", iMesh,
-					aiTextureType_NORMALS, 0))) ||
+			if (FAILED(Bind_DeferredMaterialInputs(
+					Model, m_pAnimatedModelShader, iMesh)) ||
 				FAILED(Model.Bind_BoneMatrices(m_pAnimatedModelShader,
 					"g_BoneMatrices", iMesh)) ||
 				FAILED(m_pAnimatedModelShader->Begin(0u)) ||
@@ -1292,8 +1594,11 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 				continue;
 			}
 			const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
-			if (nullptr == pResource ||
-				FAILED(Render_Element(Element, *pResource)))
+			if (nullptr == pResource)
+				return E_FAIL;
+			if (pResource->bSourceMaterialFallbackBlocked)
+				continue;
+			if (FAILED(Render_Element(Element, *pResource)))
 			{
 				return E_FAIL;
 			}

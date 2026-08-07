@@ -52,7 +52,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     auto    pMainApp = CMainApp::Create();
     if (nullptr == pMainApp)
-        return FALSE;
+        return 1;
 
     if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_Default"))))
         return FALSE;

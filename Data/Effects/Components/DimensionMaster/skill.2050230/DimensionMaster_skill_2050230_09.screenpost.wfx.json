@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_post.fx_par.par_j_rgbnoise_01|FX_POST.fx_par.par_j_rgbnoise_01.particlespriteemitter_11|event:source-event-026"
     ],
-    "sourceElementSha256": "75dea8aac16c017cf47d09c8186d5d297df6df73b0c9adafc724ded685334aed",
+    "sourceElementSha256": "815c152bc26dea7a10dccef0561ffb68abcd124c83e7dc205a0ed5781eb14fab",
     "inputSlot": "F"
   },
   "emitters": [
@@ -26,7 +26,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050230.09",
     "displayName": "DimensionMaster_skill_2050230_09.screenpost.wfx",
     "particleSystem": {
@@ -272,6 +272,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": true,
+            "profileId": "screen.rgb-noise.reconstructed.v1",
+            "status": "reconstructed_profile",
+            "intensity": 1.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 66
           }
         },
         "sourceRecipe": {
@@ -1046,6 +1081,95 @@
                   "keys": []
                 }
               ]
+            }
+          ]
+        },
+        "sourcePresentation": {
+          "enabled": true,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "screen.rgb-noise.reconstructed.v1",
+          "status": "reconstructed",
+          "sourceObjectPath": "FX_POST.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+          "sourceActionCueId": "skill-2050230/clip-000/notify-038",
+          "sourceEventId": "source-event-026",
+          "sourceOccurrenceIndex": 1,
+          "sourceTimeSeconds": 1.4,
+          "parameters": [
+            {
+              "name": "sourceSubtype",
+              "type": "string",
+              "status": "source_explicit",
+              "sourcePropertyPath": "ParticleSystem.objectPath",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": "RGB_NOISE"
+            },
+            {
+              "name": "powerx",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[0].paramvalue",
+              "numberValue": 5.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "rgb_str",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[1].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "circle_radius",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[2].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param4",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[3].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
             }
           ]
         }

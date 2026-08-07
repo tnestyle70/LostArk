@@ -11,7 +11,7 @@
 
 NS_BEGIN(Client)
 
-inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 11u;
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 12u;
 inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
 
 enum class EFFECT_ELEMENT_KIND : uint8_t
@@ -49,6 +49,8 @@ enum class EFFECT_RENDER_PROFILE : uint8_t
 	OPAQUE_BACK_DEPTH_WRITE,
 	ALPHA_TWO_SIDED_DEPTH_READ,
 	ADDITIVE_TWO_SIDED_DEPTH_READ,
+	ALPHA_ONE_SIDED_DEPTH_READ,
+	ADDITIVE_ONE_SIDED_DEPTH_READ,
 	END
 };
 
@@ -71,19 +73,30 @@ enum class EFFECT_SOURCE_MATERIAL_STATUS : uint8_t
 struct EFFECT_NAMED_FLOAT_DESC final
 {
 	std::string strName;
+	std::string strGroup;
 	f32_t fValue = 0.f;
 };
 
 struct EFFECT_NAMED_FLOAT4_DESC final
 {
 	std::string strName;
+	std::string strGroup;
 	float4_t vValue{};
 };
 
 struct EFFECT_NAMED_BOOL_DESC final
 {
 	std::string strName;
+	std::string strGroup;
 	bool_t bValue = false;
+};
+
+struct EFFECT_NAMED_TEXTURE_DESC final
+{
+	std::string strName;
+	std::string strGroup;
+	std::string strSourceObjectPath;
+	std::string strAssetId;
 };
 
 struct EFFECT_SOURCE_MATERIAL_DESC final
@@ -94,6 +107,7 @@ struct EFFECT_SOURCE_MATERIAL_DESC final
 	std::string strParentMaterialPath;
 	EFFECT_SOURCE_MATERIAL_STATUS eStatus =
 		EFFECT_SOURCE_MATERIAL_STATUS::UNSUPPORTED;
+	std::vector<EFFECT_NAMED_TEXTURE_DESC> Textures;
 	std::vector<EFFECT_NAMED_FLOAT_DESC> Scalars;
 	std::vector<EFFECT_NAMED_FLOAT4_DESC> Vectors;
 	std::vector<EFFECT_NAMED_BOOL_DESC> StaticSwitches;
@@ -272,6 +286,52 @@ struct EFFECT_AFTERIMAGE_DESC final
 	f32_t fAlphaExponent = 1.f;
 };
 
+enum class EFFECT_PRESENTATION_RUNTIME_STATUS : uint8_t
+{
+	RECONSTRUCTED_PROFILE,
+	END
+};
+
+enum class EFFECT_LIGHT_PROFILE : uint8_t
+{
+	POINT_RECONSTRUCTED_V1,
+	END
+};
+
+enum class EFFECT_SCREEN_POST_PROFILE : uint8_t
+{
+	RGB_NOISE_RECONSTRUCTED_V1,
+	ZOOM_BLUR_RECONSTRUCTED_V1,
+	FILM_NOISE_RECONSTRUCTED_V1,
+	END
+};
+
+struct EFFECT_LIGHT_DETAIL_DESC final
+{
+	bool_t bEnabled = false;
+	EFFECT_LIGHT_PROFILE eProfile = EFFECT_LIGHT_PROFILE::END;
+	EFFECT_PRESENTATION_RUNTIME_STATUS eStatus =
+		EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	f32_t fRange = 1.f;
+	f32_t fIntensity = 1.f;
+	float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vAmbient = { 0.f, 0.f, 0.f, 1.f };
+	f32_t fFalloffExponent = 0.f;
+};
+
+struct EFFECT_SCREEN_POST_DETAIL_DESC final
+{
+	bool_t bEnabled = false;
+	EFFECT_SCREEN_POST_PROFILE eProfile = EFFECT_SCREEN_POST_PROFILE::END;
+	EFFECT_PRESENTATION_RUNTIME_STATUS eStatus =
+		EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	f32_t fIntensity = 0.f;
+	f32_t fSecondaryIntensity = 0.f;
+	f32_t fFrequency = 1.f;
+	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+	uint32_t iRandomSeed = 1u;
+};
+
 struct EFFECT_DETAIL_DESC final
 {
 	EFFECT_TRANSFORM_DESC Transform;
@@ -285,6 +345,63 @@ struct EFFECT_DETAIL_DESC final
 	EFFECT_PARTICLE_DESC Particle;
 	EFFECT_TRAIL_DESC Trail;
 	EFFECT_AFTERIMAGE_DESC AfterImage;
+	EFFECT_LIGHT_DETAIL_DESC Light;
+	EFFECT_SCREEN_POST_DETAIL_DESC ScreenPost;
+};
+
+enum class EFFECT_SOURCE_PRESENTATION_STATUS : uint8_t
+{
+	SOURCE_EXACT,
+	RECONSTRUCTED,
+	UNRESOLVED,
+	END
+};
+
+enum class EFFECT_SOURCE_PRESENTATION_PARAMETER_KIND : uint8_t
+{
+	NUMBER,
+	BOOLEAN,
+	VECTOR,
+	STRING,
+	END
+};
+
+enum class EFFECT_SOURCE_PRESENTATION_PARAMETER_STATUS : uint8_t
+{
+	SOURCE_EXPLICIT,
+	SOURCE_DISTRIBUTION,
+	UNRESOLVED_CLASS_DEFAULT,
+	END
+};
+
+struct EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC final
+{
+	std::string strName;
+	EFFECT_SOURCE_PRESENTATION_PARAMETER_KIND eKind =
+		EFFECT_SOURCE_PRESENTATION_PARAMETER_KIND::END;
+	EFFECT_SOURCE_PRESENTATION_PARAMETER_STATUS eStatus =
+		EFFECT_SOURCE_PRESENTATION_PARAMETER_STATUS::END;
+	std::string strSourcePropertyPath;
+	f64_t fNumberValue = 0.0;
+	bool_t bBoolValue = false;
+	float4_t vVectorValue{};
+	std::string strStringValue;
+};
+
+struct EFFECT_SOURCE_PRESENTATION_DESC final
+{
+	bool_t bEnabled = false;
+	std::string strSchema;
+	uint32_t iVersion = 0u;
+	std::string strProfileId;
+	EFFECT_SOURCE_PRESENTATION_STATUS eStatus =
+		EFFECT_SOURCE_PRESENTATION_STATUS::END;
+	std::string strSourceObjectPath;
+	std::string strSourceActionCueId;
+	std::string strSourceEventId;
+	uint32_t iSourceOccurrenceIndex = 0u;
+	f32_t fSourceTimeSeconds = 0.f;
+	std::vector<EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC> Parameters;
 };
 
 struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
@@ -310,6 +427,7 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
 	EFFECT_DETAIL_DESC Detail;
 	EFFECT_CASCADE_RECIPE_DESC SourceRecipe;
+	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
 };
 
 struct EFFECT_MODEL_CUE_DESC final
@@ -342,5 +460,18 @@ struct EFFECT_DOCUMENT_DESC final
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };
+
+inline void Apply_EffectElementDetailDraft(
+	EFFECT_ELEMENT_DESC& Target,
+	const EFFECT_ELEMENT_DESC& Draft)
+{
+	Target.strDisplayName = Draft.strDisplayName;
+	Target.strGroupId = Draft.strGroupId;
+	Target.strSourceNode = Draft.strSourceNode;
+	Target.bVisible = Draft.bVisible;
+	Target.Detail = Draft.Detail;
+	Target.Material = Draft.Material;
+	Target.SourceRecipe = Draft.SourceRecipe;
+}
 
 NS_END

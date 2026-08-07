@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_pc_swp_03.par_s_swp_foldcut_rib_01|FX_PC_SWP_03.par_s_swp_foldcut_rib_01.particlespriteemitter_47"
     ],
-    "sourceElementSha256": "8fe45dd386f4eab2612eccfc5374b1f11633c9f052783dce93aa9563597019ac",
+    "sourceElementSha256": "88719219c5e2ccfc7ad565b6588019cfba51ebc04b07a0ee2c218031f6c68ca5",
     "inputSlot": "R"
   },
   "emitters": [
@@ -20,13 +20,13 @@
       "sourceElementIndex": 29,
       "renderer": "mesh",
       "visible": true,
-      "resourceBindingCount": 3,
+      "resourceBindingCount": 2,
       "moduleCount": 14
     }
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050180.02",
     "displayName": "DimensionMaster_skill_2050180_02.particlesystem.wfx",
     "particleSystem": {
@@ -50,79 +50,127 @@
             "assetId": "Effect/DimensionMaster/Meshes/fx_d_diamond_003_1.wmodel"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
-          },
-          {
-            "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_s_atypical_006.dds"
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_s_00.fx_mi.fx_s_me_localcrack_01_01_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.me.localcrack.01.tr.a0e83a46fef9",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.local-crack.v1",
             "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_me_localcrack_01_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "normal_tileu",
-                "value": 0.5
-              },
-              {
                 "name": "normal_tilev",
-                "value": 0.5
+                "value": 0.5,
+                "group": "normal"
               },
               {
-                "name": "refle_desaturation",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "refle_offsetx",
-                "value": 0.5
-              },
-              {
-                "name": "refle_offsety",
-                "value": 0.5
-              },
-              {
-                "name": "refle_pow",
-                "value": 2.0
-              },
-              {
-                "name": "refle_tileu",
-                "value": 1.0
-              },
-              {
-                "name": "refle_tilev",
-                "value": 1.0
-              },
-              {
-                "name": "refle_vector_divide",
-                "value": 3.0
+                "name": "normal_tileu",
+                "value": 0.5,
+                "group": "normal"
               },
               {
                 "name": "distortion",
-                "value": 10.0
+                "value": 10.0,
+                "group": "None"
               },
               {
                 "name": "fresnel_pow",
-                "value": 0.20000000298023224
+                "value": 0.2,
+                "group": "None"
+              },
+              {
+                "name": "depth",
+                "value": 0.0,
+                "group": "None"
+              },
+              {
+                "name": "refle_pow",
+                "value": 2.0,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_desaturation",
+                "value": 0.2,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_vector_divide",
+                "value": 3.0,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_panspeed",
+                "value": 0.1,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_offsety",
+                "value": 0.5,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_offsetx",
+                "value": 0.5,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_tilev",
+                "value": 1.0,
+                "group": "reflection"
+              },
+              {
+                "name": "refle_tileu",
+                "value": 1.0,
+                "group": "reflection"
+              },
+              {
+                "name": "dissolve_hardness",
+                "value": 5.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_pan_x",
+                "value": -0.1,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_pan_y",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tile_x",
+                "value": 1.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tension",
+                "value": 0.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_tile_y",
+                "value": 1.0,
+                "group": "dissolve"
               }
             ],
             "vectors": [
               {
-                "name": "refle_color",
+                "name": "out_color",
                 "value": [
-                  10.0,
-                  10.0,
-                  10.0,
+                  0.1,
+                  0.1,
+                  0.1,
                   1.0
-                ]
+                ],
+                "group": "None"
               },
               {
                 "name": "in_color",
@@ -131,16 +179,18 @@
                   1.0,
                   1.0,
                   1.0
-                ]
+                ],
+                "group": "None"
               },
               {
-                "name": "out_color",
+                "name": "refle_color",
                 "value": [
-                  0.1,
-                  0.1,
-                  0.1,
+                  10.0,
+                  10.0,
+                  10.0,
                   1.0
-                ]
+                ],
+                "group": "reflection"
               }
             ],
             "staticSwitches": [],
@@ -372,6 +422,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1379,6 +1464,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       }
     ]

@@ -183,7 +183,180 @@ def source_execution_status(
         "semanticDecoded", False
     ):
         return "UNSUPPORTED_MODEL_MATERIAL_SEMANTICS"
+    if runtime_channel == "DIRECTIONAL_LIGHT":
+        return (
+            "RUNTIME_DIRECTIONAL_LIGHT_BINDING_REQUIRED"
+            if typed_payload.get("semanticDecoded", False)
+            else "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
+        )
+    if runtime_channel == "SCREEN_POST":
+        return (
+            "RUNTIME_SCREEN_POST_BINDING_REQUIRED"
+            if typed_payload.get("semanticDecoded", False)
+            else "UNRESOLVED_SCREEN_POST_SEMANTICS"
+        )
     return "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+
+
+def read_payload_string(
+    raw: bytes, position: int, *, allow_empty: bool = False
+) -> tuple[str, int]:
+    if position < 0 or position + 4 > len(raw):
+        raise ValueError("typed Action payload string length is truncated")
+    length = struct.unpack_from("<i", raw, position)[0]
+    if length == 0 and allow_empty:
+        return "", position + 4
+    if length <= 1 or length > 4096:
+        raise ValueError("typed Action payload string length is invalid")
+    end = position + 4 + length
+    if end > len(raw) or raw[end - 1] != 0:
+        raise ValueError("typed Action payload string is truncated")
+    try:
+        value = raw[position + 4 : end - 1].decode("ascii")
+    except UnicodeDecodeError as error:
+        raise ValueError("typed Action payload string is not ASCII") from error
+    if not value and not allow_empty:
+        raise ValueError("typed Action payload string is empty")
+    if any(ord(character) < 32 or ord(character) >= 127 for character in value):
+        raise ValueError("typed Action payload string contains control bytes")
+    return value, end
+
+
+def decode_directional_light_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
+    signature = b"CEFActionNotify_DominantDirectionalLight_Control\x00"
+    if not raw.startswith(signature):
+        raise ValueError("DominantDirectionalLight payload header is invalid")
+    # No field-offset contract for this proprietary notify has been proven.
+    # Preserve the byte-lossless payload on the cue recipe and expose only its
+    # identity.  Treating aligned floats as color/intensity would invent source
+    # semantics and must remain fail-closed.
+    return {
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": True,
+        "semanticDecoded": False,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": len(raw),
+        "sourceSha256": hashlib.sha256(raw).hexdigest(),
+    }
+
+
+def decode_post_process_chain_payload(
+    payload: dict[str, Any],
+    asset_references: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
+    signature = b"CEFActionNotify_PostProcessChain\x00"
+    if not raw.startswith(signature):
+        raise ValueError("PostProcessChain payload header is invalid")
+
+    effect_type = b"CEFPostProcessMaterialEffectSkill\x00"
+    occurrences = [
+        match.start()
+        for match in re.finditer(re.escape(effect_type), raw)
+    ]
+    if len(occurrences) != 1 or occurrences[0] < 4:
+        raise ValueError(
+            "PostProcessChain must contain one typed material effect block"
+        )
+    effect_start = occurrences[0] - 4
+    decoded_effect_type, cursor = read_payload_string(raw, effect_start)
+    if decoded_effect_type != "CEFPostProcessMaterialEffectSkill":
+        raise ValueError("PostProcessChain material effect type is invalid")
+
+    material_reference, cursor = read_payload_string(raw, cursor)
+    material_match = re.fullmatch(r"Material'([^']+)'", material_reference)
+    if material_match is None:
+        raise ValueError("PostProcessChain material reference is invalid")
+    source_material = material_match.group(1)
+    explicit_materials = {
+        str(row.get("objectPath") or "").casefold()
+        for row in (asset_references or [])
+        if str(row.get("className") or "").casefold()
+        in {"material", "materialinstanceconstant"}
+    }
+    if explicit_materials and source_material.casefold() not in explicit_materials:
+        raise ValueError(
+            "PostProcessChain payload/reference material identity differs"
+        )
+
+    def count(name: str, maximum: int) -> int:
+        nonlocal cursor
+        if cursor + 4 > len(raw):
+            raise ValueError(f"PostProcessChain {name} count is truncated")
+        result = struct.unpack_from("<i", raw, cursor)[0]
+        cursor += 4
+        if result < 0 or result > maximum:
+            raise ValueError(f"PostProcessChain {name} count is invalid")
+        return result
+
+    def parameter_name(seen: set[str]) -> str:
+        nonlocal cursor
+        name, cursor = read_payload_string(raw, cursor)
+        key = name.casefold()
+        if key in seen:
+            raise ValueError(
+                f"PostProcessChain has duplicate parameter name: {name}"
+            )
+        seen.add(key)
+        return name
+
+    seen_names: set[str] = set()
+    scalars = []
+    for _ in range(count("scalar parameter", 128)):
+        name = parameter_name(seen_names)
+        if cursor + 4 > len(raw):
+            raise ValueError("PostProcessChain scalar value is truncated")
+        scalar = float(struct.unpack_from("<f", raw, cursor)[0])
+        cursor += 4
+        if not math.isfinite(scalar):
+            raise ValueError("PostProcessChain scalar value is non-finite")
+        scalars.append({"name": name, "value": scalar})
+
+    vectors = []
+    for _ in range(count("vector parameter", 64)):
+        name = parameter_name(seen_names)
+        if cursor + 16 > len(raw):
+            raise ValueError("PostProcessChain vector value is truncated")
+        vector = list(struct.unpack_from("<ffff", raw, cursor))
+        cursor += 16
+        if not all(math.isfinite(value) for value in vector):
+            raise ValueError("PostProcessChain vector value is non-finite")
+        vectors.append({"name": name, "value": vector})
+
+    textures = []
+    for _ in range(count("texture parameter", 64)):
+        name = parameter_name(seen_names)
+        reference, cursor = read_payload_string(raw, cursor, allow_empty=True)
+        if reference:
+            match = re.fullmatch(r"(?:Texture|Texture2D|TextureCube)'([^']+)'", reference)
+            if match is None:
+                raise ValueError(
+                    "PostProcessChain texture reference is invalid"
+                )
+            source_texture = match.group(1)
+        else:
+            source_texture = ""
+        textures.append({"name": name, "sourceTexture": source_texture})
+
+    return {
+        "schema": "lostark.cef-post-process-chain",
+        "version": 1,
+        "enabled": True,
+        "semanticDecoded": True,
+        "status": "SOURCE_EXPLICIT_PARAMETER_TABLES",
+        "effectType": decoded_effect_type,
+        "sourceMaterial": source_material,
+        "scalarParameters": scalars,
+        "vectorParameters": vectors,
+        "textureParameters": textures,
+        "sourceTableByteOffset": effect_start,
+        "unresolvedTrailingByteOffset": cursor,
+        "unresolvedTrailingByteCount": len(raw) - cursor,
+        "sourceByteSize": len(raw),
+        "sourceSha256": hashlib.sha256(raw).hexdigest(),
+    }
 
 
 def decode_typed_payload(
@@ -194,6 +367,10 @@ def decode_typed_payload(
     serialized_labels: list[str] | None = None,
 ) -> dict[str, Any]:
     source_type_lower = source_type.casefold()
+    if source_type_lower == "dominantdirectionallight_control":
+        return decode_directional_light_payload(payload)
+    if source_type_lower == "postprocesschain":
+        return decode_post_process_chain_payload(payload, asset_references)
     if source_type_lower == "playskeletalmesh":
         raw = base64.b64decode(str(payload.get("data") or ""), validate=True)
         signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
@@ -623,6 +800,26 @@ def build_action_cue_recipe(
             "disabledPlayParticleEffectCount": sum(
                 row["sourceType"].casefold() == "playparticleeffect"
                 and not row["executionEnabled"]
+                for row in cues
+            ),
+            "typedDirectionalLightCueCount": sum(
+                row["runtimeChannel"] == "DIRECTIONAL_LIGHT"
+                and row["typedPayload"].get("semanticDecoded", False)
+                for row in cues
+            ),
+            "unresolvedDirectionalLightCueCount": sum(
+                row["runtimeChannel"] == "DIRECTIONAL_LIGHT"
+                and not row["typedPayload"].get("semanticDecoded", False)
+                for row in cues
+            ),
+            "typedScreenPostCueCount": sum(
+                row["runtimeChannel"] == "SCREEN_POST"
+                and row["typedPayload"].get("semanticDecoded", False)
+                for row in cues
+            ),
+            "unresolvedScreenPostCueCount": sum(
+                row["runtimeChannel"] == "SCREEN_POST"
+                and not row["typedPayload"].get("semanticDecoded", False)
                 for row in cues
             ),
             "byteLosslessPayloadComplete": all(

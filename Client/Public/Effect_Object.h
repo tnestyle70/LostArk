@@ -4,6 +4,7 @@
 #include "Effect_AuthoringDocument.h"
 #include "Effect_Playback.h"
 #include "GameObject.h"
+#include "PresentationProvider.h"
 
 #include <memory>
 #include <string>
@@ -13,7 +14,7 @@ NS_BEGIN(Client)
 
 class CEffectDocumentRenderer;
 
-class CEffectObject final : public CGameObject
+class CEffectObject final : public CGameObject, public IPresentationProvider
 {
 public:
 	struct EFFECT_OBJECT_DESC : public CGameObject::GAMEOBJECT_DESC
@@ -21,6 +22,7 @@ public:
 		const EFFECT_DOCUMENT_DESC* pDocument = nullptr;
 		float4x4_t RootWorld{};
 		bool_t bAutoPlay = true;
+		f32_t fPlaybackRate = 1.f;
 	};
 
 private:
@@ -37,6 +39,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Submit_Presentation() override;
 
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
@@ -50,6 +53,12 @@ public:
 	void Set_Visible(bool_t bVisible) { m_bVisible = bVisible; }
 	void Reset();
 	bool_t Is_Finished() const { return m_Playback.Is_Finished(); }
+	bool_t Query_ParticleRuntimeProbe(
+		std::string_view strElementId,
+		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const
+	{
+		return m_Playback.Query_ParticleRuntimeProbe(strElementId, OutProbe);
+	}
 	const std::string& Get_Status() const { return m_strStatus; }
 
 private:
@@ -58,6 +67,7 @@ private:
 	float4x4_t m_RootWorld{};
 	bool_t m_bPlaying = true;
 	bool_t m_bVisible = true;
+	f32_t m_fPlaybackRate = 1.f;
 	std::string m_strStatus;
 
 public:

@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_post.fx_par.par_c_zoomblur_02|FX_POST.fx_par.par_c_zoomblur_02.particlespriteemitter_0"
     ],
-    "sourceElementSha256": "c243b9c841d6c5fdb7e92bcd20f7af9832a961272316c2908c35699878960db9",
+    "sourceElementSha256": "2babc3e86fb391b7b887129525001dec4ad421b3ac65d5a0d94e5761905eac90",
     "inputSlot": "T"
   },
   "emitters": [
@@ -26,7 +26,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050500.11",
     "displayName": "DimensionMaster_skill_2050500_11.screenpost.wfx",
     "particleSystem": {
@@ -277,6 +277,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": true,
+            "profileId": "screen.zoom-blur.reconstructed.v1",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 86
           }
         },
         "sourceRecipe": {
@@ -993,6 +1028,95 @@
                   "keys": []
                 }
               ]
+            }
+          ]
+        },
+        "sourcePresentation": {
+          "enabled": true,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "screen.zoom-blur.reconstructed.v1",
+          "status": "reconstructed",
+          "sourceObjectPath": "FX_POST.fx_par.par_c_zoomblur_02.particlespriteemitter_0",
+          "sourceActionCueId": "skill-2050500/clip-000/notify-037",
+          "sourceEventId": "source-event-017",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 2.8832,
+          "parameters": [
+            {
+              "name": "sourceSubtype",
+              "type": "string",
+              "status": "source_explicit",
+              "sourcePropertyPath": "ParticleSystem.objectPath",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": "ZOOM_BLUR_C"
+            },
+            {
+              "name": "blurstrength",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[0].paramvalue",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param2",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[1].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param3",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[2].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param4",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[3].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
             }
           ]
         }

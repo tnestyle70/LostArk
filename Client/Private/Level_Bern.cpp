@@ -5,6 +5,7 @@
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
 #include "Transform.h"
@@ -42,8 +43,7 @@ HRESULT CLevel_Bern::Initialize()
 		return E_FAIL;
 	}
 
-	if (FAILED(CMapPlacementRuntime::Ensure_DefaultLight()) ||
-		FAILED(Ready_Layer_Camera(
+	if (FAILED(Ready_Layer_Camera(
 			TEXT("Layer_Camera"))))
 	{
 		return E_FAIL;
@@ -172,18 +172,37 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 
 	const f32_t distance =
 		(std::max)(40.f, span * 0.7f);
+	float3_t initialEye(
+		focus.x - distance,
+		focus.y + distance * 0.65f,
+		focus.z - distance);
+	float3_t initialAt = focus;
+	LostArk::Shared::S2C_PLAYER_SPAWNED approvedSpawn{};
+	if (CNetworkManager::Get().Try_Get_LocalSpawn(approvedSpawn))
+	{
+		const float3_t approvedPosition(
+			approvedSpawn.fPositionX,
+			approvedSpawn.fPositionY,
+			approvedSpawn.fPositionZ);
+		initialEye = float3_t(
+			approvedPosition.x + 0.4f,
+			approvedPosition.y + 7.5f,
+			approvedPosition.z + 4.5f);
+		initialAt = float3_t(
+			approvedPosition.x,
+			approvedPosition.y + 1.2f,
+			approvedPosition.z);
+	}
 
 	CCamera_Free::CAMERA_FREE_DESC cameraDesc{};
 
 	/*
-	 * Player가 Spawn되기 전까지는 기존 베른성 전체 맵 카메라다.
+	 * Server spawn이 이미 도착했으면 첫 Bern 렌더부터 player framing을 사용한다.
+	 * 아직 도착하지 않은 경우에만 map bounds를 임시 fallback으로 유지한다.
 	 */
-	cameraDesc.vEye = float3_t(
-		focus.x - distance,
-		focus.y + distance * 0.65f,
-		focus.z - distance);
+	cameraDesc.vEye = initialEye;
 
-	cameraDesc.vAt = focus;
+	cameraDesc.vAt = initialAt;
 
 	cameraDesc.fFovy = 60.f;
 	cameraDesc.fNear = 0.1f;
@@ -208,7 +227,7 @@ HRESULT CLevel_Bern::Ready_Layer_Camera(
 	cameraDesc.vLookOffset =
 		float3_t(0.f, 1.2f, 0.f);
 
-	cameraDesc.fFollowResponse = 18.f;
+	cameraDesc.fFollowResponse = 0.f;
 	cameraDesc.isFollowEnabled = false;
 
 	shared_ptr<CGameObject> gameObject;

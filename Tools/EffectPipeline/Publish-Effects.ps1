@@ -25,6 +25,29 @@ $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored')
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
+$supportedSourceRuntimeShaderProfiles = @(
+    'effect.ue3.reconstructed-standard.v1',
+    'effect.ue3.fallback-blocked.v1',
+    'effect.ue3.circle.v1',
+    'effect.ue3.dot.v1',
+    'effect.ue3.ring.v1',
+    'effect.ue3.aura.v1',
+    'effect.ue3.one-layer-distortion.v1',
+    'effect.ue3.grouped-translucent.v1',
+    'effect.ue3.shine.v1',
+    'effect.ue3.blackline-aura.v1',
+    'effect.ue3.linearflow-02.v1',
+    'effect.ue3.local-crack.v1',
+    'effect.ue3.procedural-center-glow.v1'
+)
+$supportedSourceDynamicParameterSemantics = @(
+    'unbound', 'opacity', 'emissive', 'dissolve', 'uv_pan',
+    'distortion', 'radial_size'
+)
+$supportedSourceSubUVModes = @(
+    'none', 'psuvim_linear_blend',
+    'psuvim_linear_blend_random_flip_square'
+)
 
 function Read-JsonDocument([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -454,15 +477,24 @@ function Compile-EffectAssembly(
     $orderedElements = @($rows | Sort-Object sourceElementIndex | ForEach-Object {
         $_.element
     })
-    return Copy-JsonValue ([ordered]@{
+    $sourceAuthoringVersion =
+        [int](Get-RequiredProperty $Assembly 'sourceAuthoringVersion' Number)
+    $compiledDocument = [ordered]@{
         schema = 'lostark.effect-authoring'
-        version = [int](Get-RequiredProperty $Assembly 'sourceAuthoringVersion' Number)
+        version = $sourceAuthoringVersion
         effectAssetId = Get-RequiredProperty $Assembly 'effectAssetId' String
         displayName = Get-RequiredProperty $Assembly 'displayName' String
-        particleSystem = Get-RequiredProperty $Assembly 'particleSystem' Object
-        modelCues = @(Get-RequiredProperty $Assembly 'modelCues' Array)
-        elements = $orderedElements
-    })
+    }
+    if ($sourceAuthoringVersion -ge 8) {
+        $compiledDocument['particleSystem'] =
+            Get-RequiredProperty $Assembly 'particleSystem' Object
+    }
+    if ($sourceAuthoringVersion -ge 7) {
+        $compiledDocument['modelCues'] =
+            @(Get-RequiredProperty $Assembly 'modelCues' Array)
+    }
+    $compiledDocument['elements'] = $orderedElements
+    return Copy-JsonValue $compiledDocument
 }
 
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
@@ -540,7 +572,7 @@ try {
             [void](Get-RequiredProperty $document 'displayName' String)
             $elements = Get-RequiredProperty $document 'elements' Array
             if ($schema -cne 'lostark.effect-authoring' -or
-                $documentVersion -notin @(5, 6, 7, 8, 9, 10, 11) -or
+                $documentVersion -notin @(5, 6, 7, 8, 9, 10, 11, 12) -or
                 $documentId -cne $effectAssetId) {
                 throw "Effect authoring header mismatch: $effectAssetId"
             }
@@ -616,6 +648,14 @@ try {
                 $resources = Get-RequiredProperty $element 'resources' Array
                 $material = Get-RequiredProperty $element 'material' Object
                 $detail = Get-RequiredProperty $element 'detail' Object
+                $sourceProfileEnabled = $false
+                $shaderProfileId = ''
+                $groupedHasAlpha = $false
+                $groupedHasEmissive = $false
+                $sourceTextureNames = [Collections.Generic.HashSet[string]]::new(
+                    [StringComparer]::Ordinal)
+                $resolvedSourceTextureNames = [Collections.Generic.HashSet[string]]::new(
+                    [StringComparer]::Ordinal)
                 Assert-StableId $elementId 'Element ID'
                 if ($documentVersion -ge 6) {
                     $elementDisplayName = Get-RequiredProperty $element 'displayName' String
@@ -661,6 +701,12 @@ try {
 							Assert-StableId $profileId 'Source Material profile ID'
 							Assert-StableId $shaderProfileId 'Source Material shader profile ID'
 							Assert-StableId $subUVMode 'Source Material SubUV mode'
+							if ($shaderProfileId -notin $supportedSourceRuntimeShaderProfiles) {
+								throw "Unsupported Source Material shader profile in ${effectAssetId}: $elementId ($shaderProfileId)"
+							}
+							if ($subUVMode -notin $supportedSourceSubUVModes) {
+								throw "Unsupported Source Material SubUV mode in ${effectAssetId}: $elementId ($subUVMode)"
+							}
 							if ([string]::IsNullOrWhiteSpace($parentMaterialPath) -or
 								$semanticStatus -notin @('source_exact','runtime_exact','reconstructed_profile')) {
 								throw "Source Material profile metadata is invalid in ${effectAssetId}: $elementId"
@@ -673,18 +719,90 @@ try {
 							foreach ($semantic in $dynamicSemantics) {
 								Assert-StableId ([string]$semantic) `
 									'Source Material Dynamic Parameter semantic'
+								if ([string]$semantic -notin $supportedSourceDynamicParameterSemantics) {
+									throw "Unsupported Source Material Dynamic Parameter semantic in ${effectAssetId}: $elementId ($semantic)"
+								}
 							}
 							foreach ($scalar in @(Get-RequiredProperty $sourceProfile 'scalars' Array)) {
-								[void](Get-RequiredProperty $scalar 'name' String)
+								$scalarName = Get-RequiredProperty $scalar 'name' String
 								[void](Get-RequiredProperty $scalar 'value' Number)
+								$scalarGroup = if ($null -ne $scalar.PSObject.Properties['group']) {
+									[string]$scalar.group
+								} else { '' }
+								$scalarIdentity = ($scalarName + ' ' + $scalarGroup).ToLowerInvariant()
+								if ($scalarIdentity.Contains('alpha') -or
+									$scalarIdentity.Contains('mask') -or
+									$scalarIdentity.Contains('opacity') -or
+									$scalarIdentity.Contains('density')) {
+									$groupedHasAlpha = $true
+								}
+								if ($scalarIdentity.Contains('emiss')) {
+									$groupedHasEmissive = $true
+								}
+							}
+							# Named source textures were added as a backward-compatible v12
+							# extension.  Older authored v12 documents legitimately omit the
+							# property; a profile that depends on named inputs validates its own
+							# required set below.
+							$sourceTextures = @()
+							$sourceTexturesProperty = $sourceProfile.PSObject.Properties['textures']
+							if ($null -ne $sourceTexturesProperty) {
+								$sourceTexturesValue = $sourceTexturesProperty.Value
+								if ($null -ne $sourceTexturesValue -and
+									-not ($sourceTexturesValue -is [array])) {
+									throw "Source Material textures must be an array in ${effectAssetId}: $elementId"
+								}
+								$sourceTextures = @($sourceTexturesValue)
+							}
+							if ($sourceTextures.Count -gt 32) {
+								throw "Source Material texture count exceeds 32: $elementId"
+							}
+							foreach ($texture in $sourceTextures) {
+								$textureName = Get-RequiredProperty $texture 'name' String
+								$textureSourcePath = Get-RequiredProperty `
+									$texture 'sourceObjectPath' String
+								$textureAssetId = Get-RequiredProperty $texture 'assetId' String
+								if ([string]::IsNullOrWhiteSpace($textureName) -or
+									-not $sourceTextureNames.Add($textureName)) {
+									throw "Invalid or duplicate Source Material texture in ${effectAssetId}: $elementId/$textureName"
+								}
+								if (-not [string]::IsNullOrWhiteSpace($textureAssetId) -and
+									[string]::IsNullOrWhiteSpace($textureSourcePath)) {
+									throw "Resolved Source Material texture has no source object path in ${effectAssetId}: $elementId/$textureName"
+								}
+								if (-not [string]::IsNullOrWhiteSpace($textureAssetId)) {
+									[void]$resolvedSourceTextureNames.Add($textureName)
+									$sourceTextureFile = Resolve-SafeResource $textureAssetId
+									if ([IO.Path]::GetExtension($sourceTextureFile).ToLowerInvariant() -ne '.dds') {
+										throw "Source Material texture is not DDS: $textureAssetId"
+									}
+									$dependencies[$textureAssetId] =
+										(Get-FileHash -LiteralPath $sourceTextureFile -Algorithm SHA256).Hash.ToLowerInvariant()
+								}
 							}
 							foreach ($vector in @(Get-RequiredProperty $sourceProfile 'vectors' Array)) {
-								[void](Get-RequiredProperty $vector 'name' String)
+								$vectorName = Get-RequiredProperty $vector 'name' String
 								[void](Get-NumberVector $vector 'value' 4 $elementId)
+								$vectorGroup = if ($null -ne $vector.PSObject.Properties['group']) {
+									[string]$vector.group
+								} else { '' }
+								$vectorIdentity = ($vectorName + ' ' + $vectorGroup).ToLowerInvariant()
+								if ($vectorIdentity.Contains('emiss')) {
+									$groupedHasEmissive = $true
+								}
 							}
 							foreach ($switch in @(Get-RequiredProperty $sourceProfile 'staticSwitches' Array)) {
 								[void](Get-RequiredProperty $switch 'name' String)
 								[void](Get-RequiredProperty $switch 'value' Boolean)
+							}
+							if ($shaderProfileId -eq 'effect.ue3.linearflow-02.v1') {
+								foreach ($requiredName in @(
+									'diff_tex','diff_noise_tex','a_mask_tex','a_noise_01_tex',
+									'b_mask_tex','b_noise_01_tex','dissolve_tex')) {
+									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
+										throw "LinearFlow profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+								}
 							}
 						}
 					}
@@ -697,10 +815,13 @@ try {
                 }
                 $renderProfile = Get-RequiredProperty $material 'renderProfile' String
                 if ($renderProfile -notin @('opaque_back_depth_write',
-                    'alpha_two_sided_depth_read','additive_two_sided_depth_read')) {
+                    'alpha_two_sided_depth_read','additive_two_sided_depth_read',
+                    'alpha_one_sided_depth_read','additive_one_sided_depth_read')) {
                     throw "Unknown render profile in ${effectAssetId}: $renderProfile"
                 }
                 $claimedSlots = [Collections.Generic.HashSet[string]]::new(
+                    [StringComparer]::Ordinal)
+                $claimedAssets = [Collections.Generic.Dictionary[string,string]]::new(
                     [StringComparer]::Ordinal)
                 foreach ($binding in @($resources)) {
                     $slotProperty = if ($documentVersion -ge 6) { 'slotId' } else { 'slot' }
@@ -710,6 +831,7 @@ try {
                         -not $claimedSlots.Add($slot)) {
                         throw "Invalid or duplicate resource slot in ${effectAssetId}: $slot"
                     }
+                    $claimedAssets[$slot] = $assetId
                     if ([Text.Encoding]::UTF8.GetByteCount($assetId) -gt 512) {
                         throw "Effect resource asset ID is too long: $assetId"
                     }
@@ -726,20 +848,72 @@ try {
                         (Get-FileHash -LiteralPath $resourceFile -Algorithm SHA256).Hash.ToLowerInvariant()
                 }
 				$isMeshParticle = $kind -eq 'particle' -and $claimedSlots.Contains('meshModel')
-				$requiredSlot = if ($kind -eq 'mesh' -or $isMeshParticle) {
-                    'meshModel'
-                } elseif ($kind -in @('light','screenPost') -or
-                    $materialTemplateId -eq 'effect.source_material') {
-                    ''
-                } else { 'base' }
-                if (-not [string]::IsNullOrEmpty($requiredSlot) -and
-                    -not $claimedSlots.Contains($requiredSlot)) {
-                    throw "$kind Element requires '$requiredSlot' in ${effectAssetId}: $elementId"
-                }
+				$profileRequiredSlots = @()
+				if ($sourceProfileEnabled) {
+					$profileRequiredSlots = switch ($shaderProfileId) {
+						'effect.ue3.reconstructed-standard.v1' { @('base') }
+						'effect.ue3.ring.v1' { @('base','noise') }
+						'effect.ue3.aura.v1' { @('base','noise') }
+						'effect.ue3.one-layer-distortion.v1' { @('noise') }
+						'effect.ue3.shine.v1' { @('base','mask') }
+						'effect.ue3.blackline-aura.v1' { @('mask','dissolve') }
+						'effect.ue3.linearflow-02.v1' { @() }
+						'effect.ue3.local-crack.v1' { @('dissolve') }
+						'effect.ue3.procedural-center-glow.v1' { @() }
+						default { @() }
+					}
+				} elseif ($kind -notin @('mesh','light','screenPost') -and
+					-not $isMeshParticle -and
+					$materialTemplateId -ne 'effect.source_material') {
+					$profileRequiredSlots = @('base')
+				}
+				if ($kind -eq 'mesh' -or $isMeshParticle) {
+					$profileRequiredSlots = @('meshModel') + $profileRequiredSlots
+				}
+				foreach ($requiredSlot in @($profileRequiredSlots | Select-Object -Unique)) {
+					if (-not $claimedSlots.Contains($requiredSlot)) {
+						throw "$kind Element requires '$requiredSlot' for $shaderProfileId in ${effectAssetId}: $elementId"
+					}
+				}
+				$baseAssetId = if ($claimedAssets.ContainsKey('base')) {
+					$claimedAssets['base']
+				} else { '' }
+				$hasSafeGroupedBase = -not [string]::IsNullOrEmpty($baseAssetId) -and
+					$baseAssetId -notmatch '(?i)(blankwhite|normal|bump)'
+				$hasGroupedMask = $claimedSlots.Contains('mask')
+				$hasGroupedEmissive = $claimedSlots.Contains('emissive')
+				$hasGroupedDissolve = $claimedSlots.Contains('dissolve')
+				$hasGroupedCarrier = $hasSafeGroupedBase -or
+					$claimedSlots.Contains('mask') -or
+					$claimedSlots.Contains('emissive')
+				if ($sourceProfileEnabled -and
+					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
+					-not $hasGroupedCarrier) {
+					throw "Grouped translucent profile requires Base/Mask/Emissive carrier in ${effectAssetId}: $elementId"
+				}
+				if ($sourceProfileEnabled -and
+					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
+					$groupedHasAlpha -and
+					-not ($hasSafeGroupedBase -or $hasGroupedMask -or $hasGroupedDissolve)) {
+					throw "Grouped alpha profile has no runtime alpha carrier in ${effectAssetId}: $elementId"
+				}
+				if ($sourceProfileEnabled -and
+					$shaderProfileId -eq 'effect.ue3.grouped-translucent.v1' -and
+					$groupedHasEmissive -and
+					-not ($hasSafeGroupedBase -or $hasGroupedEmissive)) {
+					throw "Grouped emissive profile has no runtime emission carrier in ${effectAssetId}: $elementId"
+				}
                 Assert-EffectDetail $detail $kind "${effectAssetId}/$elementId"
 				if (($kind -eq 'mesh' -or $isMeshParticle) -and
                     -not [bool]$detail.mesh.useModelMaterial -and
-                    -not $claimedSlots.Contains('base')) {
+				    -not $claimedSlots.Contains('base') -and
+					-not ($sourceProfileEnabled -and
+						$shaderProfileId -in @(
+							'effect.ue3.fallback-blocked.v1',
+								'effect.ue3.grouped-translucent.v1',
+								'effect.ue3.blackline-aura.v1',
+								'effect.ue3.linearflow-02.v1',
+								'effect.ue3.local-crack.v1'))) {
                     throw "Mesh useModelMaterial=false requires 'base' in ${effectAssetId}: $elementId"
                 }
                 if ($kind -eq 'particle') {
@@ -774,6 +948,40 @@ try {
                 $authoringSha) {
                 throw "Effect Assembly source file hash mismatch: $effectAssetId"
             }
+            if ($null -ne $assembly.PSObject.Properties['sourceActionCues']) {
+                foreach ($sourceCue in @(Get-RequiredProperty $assembly `
+                        'sourceActionCues' Array)) {
+                    $sourceCueId = Get-RequiredProperty $sourceCue 'cueId' String
+                    if ([string]::IsNullOrWhiteSpace($sourceCueId) -or
+                        [Text.Encoding]::UTF8.GetByteCount($sourceCueId) -gt 256) {
+                        throw "Source Action cue ID is invalid: $effectAssetId"
+                    }
+                    $localTime = Get-NumberValue $sourceCue `
+                        'localTimeSeconds' $sourceCueId
+                    $globalTime = Get-NumberValue $sourceCue `
+                        'globalTimeSeconds' $sourceCueId
+                    $duration = Get-NumberValue $sourceCue `
+                        'durationSeconds' $sourceCueId
+                    $executionEnabled = [bool](Get-RequiredProperty `
+                        $sourceCue 'executionEnabled' Boolean)
+                    $timeIsExecutable = $localTime -ge 0 -and $localTime -le 60 -and
+                        $globalTime -ge 0 -and $globalTime -le 60 -and
+                        $duration -ge 0 -and $duration -le 60
+                    if ($executionEnabled -and -not $timeIsExecutable) {
+                        throw "Executable Source Action cue timing is invalid: ${effectAssetId}/$sourceCueId"
+                    }
+                    if (-not $timeIsExecutable) {
+                        $executionStatus = Get-RequiredProperty $sourceCue `
+                            'sourceExecutionStatus' String
+                        $disabledReason = Get-RequiredProperty $sourceCue `
+                            'executionDisabledReason' String
+                        if ($executionStatus -cne 'INVALID_SOURCE_TIME_FAIL_CLOSED' -or
+                            $disabledReason -cne 'SOURCE_ACTION_CUE_TIME_OUTSIDE_FINITE_0_TO_60_SECONDS') {
+                            throw "Invalid Source Action cue timing is not explicitly fail-closed: ${effectAssetId}/$sourceCueId"
+                        }
+                    }
+                }
+            }
             foreach ($cue in @(Get-RequiredProperty $assembly `
                     'componentCues' Array)) {
                 $componentId = Get-RequiredProperty $cue 'componentAssetId' String
@@ -787,10 +995,8 @@ try {
             }
             $compiledDocument = Compile-EffectAssembly `
                 $assembly $runtimeComponentsById
-            if ([string]$compiledDocument.effectAssetId -cne $effectAssetId -or
-                @($compiledDocument.elements).Count -ne @($document.elements).Count) {
-                throw "Effect Assembly compiled identity mismatch: $effectAssetId"
-            }
+            Assert-JsonEquivalent $document $compiledDocument `
+                "Effect Assembly compiled document ${effectAssetId}"
             $runtimeEffects.Add([ordered]@{
                 effectAssetId = $effectAssetId
                 authoringFormatVersion = $documentVersion

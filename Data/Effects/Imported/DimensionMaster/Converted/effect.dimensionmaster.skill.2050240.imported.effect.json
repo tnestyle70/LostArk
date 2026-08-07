@@ -1,6 +1,6 @@
 {
   "schema": "lostark.effect-authoring",
-  "version": 10,
+  "version": 12,
   "effectAssetId": "effect.dimensionmaster.skill.2050240.imported",
   "displayName": "DIMENSIONMASTER D 2050240 Imported Cascade Draft",
   "particleSystem": {
@@ -22,7 +22,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "enginematerials.defaultparticle",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -243,6 +246,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "light.point.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -759,6 +797,35 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "light.point.reconstructed.v1",
+        "status": "unresolved",
+        "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-029",
+        "sourceEventId": "source-event-030",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 1.041,
+        "parameters": [
+          {
+            "name": "pointLightComponent",
+            "type": "string",
+            "status": "unresolved_class_default",
+            "sourcePropertyPath": "TypeDataLight.PointLightComponent",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
+          }
+        ]
       }
     },
     {
@@ -772,7 +839,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "enginematerials.defaultparticle",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -993,6 +1063,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "light.point.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -1499,6 +1604,35 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "light.point.reconstructed.v1",
+        "status": "unresolved",
+        "sourceObjectPath": "light.par_mp_light_05_l.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+        "sourceActionCueId": "skill-2050240/clip-000/notify-011",
+        "sourceEventId": "source-event-004",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.4995,
+        "parameters": [
+          {
+            "name": "pointLightComponent",
+            "type": "string",
+            "status": "unresolved_class_default",
+            "sourcePropertyPath": "TypeDataLight.PointLightComponent",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": "light.par_mp_light_05_l.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
+          }
+        ]
       }
     },
     {
@@ -1512,7 +1646,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -1733,6 +1870,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -2209,6 +2381,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -2227,7 +2412,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_b_pa_gl_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -2448,6 +2636,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -3356,6 +3579,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -3367,7 +3603,7 @@
       "kind": "particle",
       "resources": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_20_1_cl.dds"
         },
         {
@@ -3375,18 +3611,21 @@
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
         },
         {
-          "slotId": "emissive",
+          "slotId": "base",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
         },
         {
-          "slotId": "mask",
+          "slotId": "emissive",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_40_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -3607,6 +3846,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -4583,6 +4857,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -4594,7 +4881,7 @@
       "kind": "particle",
       "resources": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_20_1_cl.dds"
         },
         {
@@ -4602,18 +4889,21 @@
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
         },
         {
-          "slotId": "emissive",
+          "slotId": "base",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
         },
         {
-          "slotId": "mask",
+          "slotId": "emissive",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_40_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -4834,6 +5124,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -5765,6 +6090,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -5795,7 +6133,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -6016,6 +6357,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -7327,6 +7703,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -7361,7 +7750,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_06_00_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -7582,6 +7974,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -8546,6 +8973,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -8563,16 +9003,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_glasshole_02_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -8793,6 +9232,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -9659,6 +10133,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -9685,7 +10172,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_flowtrail_03_09_ts_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -9906,6 +10396,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -10793,6 +11318,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -10819,7 +11357,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_106_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -11040,6 +11581,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -12213,6 +12789,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -12226,7 +12815,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -12447,6 +13039,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -13292,6 +13919,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -13310,7 +13950,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_me_splitline_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -13531,6 +14174,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -14547,6 +15225,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -14573,7 +15264,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_o_me_master_01_04_ds_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -14794,6 +15488,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -15629,6 +16358,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -15659,7 +16401,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_3_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -15880,6 +16625,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -16937,6 +17717,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -16963,7 +17756,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_10_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -17184,6 +17980,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -17835,6 +18666,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -17848,7 +18692,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -18069,6 +18916,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -19282,6 +20164,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -19295,7 +20190,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -19516,6 +20414,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -20729,6 +21662,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -20759,7 +21705,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -20980,6 +21929,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -22352,6 +23336,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -22378,7 +23375,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_105_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -22599,6 +23599,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -24214,6 +25249,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -24232,7 +25280,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_afterburn_01_39_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -24453,6 +25504,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -25649,6 +26735,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -25662,7 +26761,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ring_11_09_ts_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -25883,6 +26985,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -26806,6 +27943,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -26824,7 +27974,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_blackvoid_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -27045,6 +28198,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -27929,6 +29117,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -27951,7 +29152,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -28172,6 +29376,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -29050,6 +30289,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -29080,7 +30332,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -29301,6 +30556,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -30358,6 +31648,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -30376,7 +31679,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_afterburn_01_27_dt_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -30597,6 +31903,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -31536,6 +32877,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -31562,7 +32916,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_1_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -31783,6 +33140,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -32797,6 +34189,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -32827,7 +34232,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_me_master_01_3_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -33048,6 +34456,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -34062,6 +35505,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -34075,7 +35531,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -34296,6 +35755,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -35135,6 +36629,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -35156,20 +36663,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_035.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds"
-        },
-        {
-          "slotId": "emissive",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "enginematerials.defaultmaterial",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -35390,6 +36892,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -36727,6 +38264,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -36740,7 +38290,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -36961,6 +38514,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -37917,6 +39505,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -37934,20 +39535,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds"
-        },
-        {
-          "slotId": "emissive",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -38168,6 +39764,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -39004,6 +40635,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -39026,7 +40670,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -39247,6 +40894,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -40125,6 +41807,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -40138,7 +41833,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -40359,6 +42057,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -41195,6 +42928,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -41213,7 +42959,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -41434,6 +43183,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -42076,6 +43860,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -42094,7 +43891,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -42315,6 +44115,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -43002,6 +44837,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -43015,7 +44863,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -43236,6 +45087,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -44192,6 +46078,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -44205,7 +46104,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -44426,6 +46328,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -45382,6 +47319,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-005",
+        "sourceEventId": "source-event-014",
+        "sourceOccurrenceIndex": 1,
+        "sourceTimeSeconds": 0.5,
+        "parameters": []
       }
     },
     {
@@ -45395,7 +47345,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_mm_onelayerdistortion_02_01_ad",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -45616,6 +47569,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -46572,6 +48560,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-022",
+        "sourceEventId": "source-event-025",
+        "sourceOccurrenceIndex": 2,
+        "sourceTimeSeconds": 0.76,
+        "parameters": []
       }
     },
     {
@@ -46589,20 +48590,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds"
-        },
-        {
-          "slotId": "emissive",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -46823,6 +48819,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -47659,6 +49690,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -47676,20 +49720,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds"
-        },
-        {
-          "slotId": "emissive",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -47910,6 +49949,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -48746,6 +50820,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-005",
+        "sourceEventId": "source-event-014",
+        "sourceOccurrenceIndex": 1,
+        "sourceTimeSeconds": 0.5,
+        "parameters": []
       }
     },
     {
@@ -48763,20 +50850,15 @@
         {
           "slotId": "noise",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds"
-        },
-        {
-          "slotId": "mask",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds"
-        },
-        {
-          "slotId": "emissive",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -48997,6 +51079,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -49833,6 +51950,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-022",
+        "sourceEventId": "source-event-025",
+        "sourceOccurrenceIndex": 2,
+        "sourceTimeSeconds": 0.76,
+        "parameters": []
       }
     },
     {
@@ -49855,7 +51985,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -50076,6 +52209,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -50954,6 +53122,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -50976,7 +53157,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -51197,6 +53381,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -52075,6 +54294,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-005",
+        "sourceEventId": "source-event-014",
+        "sourceOccurrenceIndex": 1,
+        "sourceTimeSeconds": 0.5,
+        "parameters": []
       }
     },
     {
@@ -52097,7 +54329,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -52318,6 +54553,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -53196,6 +55466,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-022",
+        "sourceEventId": "source-event-025",
+        "sourceOccurrenceIndex": 2,
+        "sourceTimeSeconds": 0.76,
+        "parameters": []
       }
     },
     {
@@ -53209,7 +55492,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -53430,6 +55716,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -54251,6 +56572,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": []
       }
     },
     {
@@ -54264,7 +56598,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -54485,6 +56822,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -55306,6 +57678,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-005",
+        "sourceEventId": "source-event-014",
+        "sourceOccurrenceIndex": 1,
+        "sourceTimeSeconds": 0.5,
+        "parameters": []
       }
     },
     {
@@ -55319,7 +57704,10 @@
       "material": {
         "templateId": "effect.source_material",
         "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_j_pa_dot_ad_01",
-        "renderProfile": "additive_two_sided_depth_read"
+        "renderProfile": "additive_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -55540,6 +57928,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 1
         }
       },
       "sourceRecipe": {
@@ -56361,6 +58784,19 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": false,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-022",
+        "sourceEventId": "source-event-025",
+        "sourceOccurrenceIndex": 2,
+        "sourceTimeSeconds": 0.76,
+        "parameters": []
       }
     },
     {
@@ -56374,7 +58810,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -56595,6 +59034,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": true,
+          "profileId": "screen.zoom-blur.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "intensity": 0.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 41
         }
       },
       "sourceRecipe": {
@@ -57313,6 +59787,95 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": true,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "screen.zoom-blur.reconstructed.v1",
+        "status": "reconstructed",
+        "sourceObjectPath": "FX_POST.fx_par.par_c_zoomblur_02.particlespriteemitter_0",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-028",
+        "sourceEventId": "source-event-029",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 1.041,
+        "parameters": [
+          {
+            "name": "sourceSubtype",
+            "type": "string",
+            "status": "source_explicit",
+            "sourcePropertyPath": "ParticleSystem.objectPath",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": "ZOOM_BLUR_C"
+          },
+          {
+            "name": "blurstrength",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[0].paramvalue",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "param2",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[1].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "param3",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[2].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "param4",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_GHE_10.par_m_ghe_shootingstar_zoomblur_01.particlemoduleparameterdynamic_0.dynamicparams[3].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          }
+        ]
       }
     },
     {
@@ -57326,7 +59889,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -57547,6 +60113,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": true,
+          "profileId": "screen.rgb-noise.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "intensity": 1.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 42
         }
       },
       "sourceRecipe": {
@@ -58323,6 +60924,95 @@
             ]
           }
         ]
+      },
+      "sourcePresentation": {
+        "enabled": true,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "screen.rgb-noise.reconstructed.v1",
+        "status": "reconstructed",
+        "sourceObjectPath": "FX_POST.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+        "sourceActionCueId": "skill-2050240/clip-000/notify-014",
+        "sourceEventId": "source-event-007",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.4995,
+        "parameters": [
+          {
+            "name": "sourceSubtype",
+            "type": "string",
+            "status": "source_explicit",
+            "sourcePropertyPath": "ParticleSystem.objectPath",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": "RGB_NOISE"
+          },
+          {
+            "name": "powerx",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[0].paramvalue",
+            "numberValue": 5.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "rgb_str",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[1].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "circle_radius",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[2].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "param4",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[3].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          }
+        ]
       }
     },
     {
@@ -58336,7 +61026,10 @@
       "material": {
         "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
-        "renderProfile": "alpha_two_sided_depth_read"
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
       },
       "actionCueAttachment": {
         "enabled": true,
@@ -58557,6 +61250,41 @@
           "sampleIntervalSeconds": 0.05,
           "maxCopies": 16,
           "alphaExponent": 1.0
+        },
+        "light": {
+          "enabled": false,
+          "profileId": "",
+          "status": "reconstructed_profile",
+          "range": 0.0,
+          "intensity": 0.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "ambient": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "falloffExponent": 0.0
+        },
+        "screenPost": {
+          "enabled": true,
+          "profileId": "screen.rgb-noise.reconstructed.v1",
+          "status": "reconstructed_profile",
+          "intensity": 1.0,
+          "secondaryIntensity": 0.0,
+          "frequency": 0.0,
+          "tint": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "randomSeed": 42
         }
       },
       "sourceRecipe": {
@@ -59331,6 +62059,95 @@
                 "keys": []
               }
             ]
+          }
+        ]
+      },
+      "sourcePresentation": {
+        "enabled": true,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "screen.rgb-noise.reconstructed.v1",
+        "status": "reconstructed",
+        "sourceObjectPath": "FX_POST.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+        "sourceActionCueId": "skill-2050240/clip-001/notify-016",
+        "sourceEventId": "source-event-021",
+        "sourceOccurrenceIndex": 1,
+        "sourceTimeSeconds": 0.6947,
+        "parameters": [
+          {
+            "name": "sourceSubtype",
+            "type": "string",
+            "status": "source_explicit",
+            "sourcePropertyPath": "ParticleSystem.objectPath",
+            "numberValue": 0.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": "RGB_NOISE"
+          },
+          {
+            "name": "powerx",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[0].paramvalue",
+            "numberValue": 5.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "rgb_str",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[1].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "circle_radius",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[2].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
+          },
+          {
+            "name": "param4",
+            "type": "number",
+            "status": "source_distribution",
+            "sourcePropertyPath": "FX_PC_FSM_01.par_m_fsm_cs_rgbnoise_01.particlemoduleparameterdynamic_1.dynamicparams[3].paramvalue",
+            "numberValue": 1.0,
+            "boolValue": false,
+            "vectorValue": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "stringValue": ""
           }
         ]
       }

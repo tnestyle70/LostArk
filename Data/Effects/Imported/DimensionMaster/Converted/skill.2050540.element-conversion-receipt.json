@@ -184,6 +184,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "light.point.reconstructed.v1",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "enginematerials.defaultparticle",
@@ -370,6 +372,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "light.point.reconstructed.v1",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "enginematerials.defaultparticle",
@@ -630,6 +634,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -903,6 +909,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -1176,6 +1184,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -1449,6 +1459,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -1498,18 +1510,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -1735,6 +1747,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -1808,18 +1822,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -2045,6 +2059,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -2118,18 +2134,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -2355,6 +2371,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -2428,18 +2446,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -2665,6 +2683,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -2962,6 +2982,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -3235,6 +3257,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -3508,6 +3532,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -3781,6 +3807,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -3830,18 +3858,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -4067,6 +4095,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -4140,18 +4170,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -4377,6 +4407,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -4450,18 +4482,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -4687,6 +4719,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -4760,18 +4794,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -4997,6 +5031,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -5294,6 +5330,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -5567,6 +5605,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -5840,6 +5880,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -6113,6 +6155,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_02_ad",
@@ -6162,18 +6206,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -6399,6 +6443,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -6472,18 +6518,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -6709,6 +6755,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -6782,18 +6830,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -7019,6 +7067,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -7092,18 +7142,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_noise_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -7329,6 +7379,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_boxedgeline_01_tr",
@@ -7606,6 +7658,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -7855,6 +7909,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -8104,6 +8160,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -8353,6 +8411,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -8602,6 +8662,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -8851,6 +8913,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -9100,6 +9164,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -9349,6 +9415,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -9598,6 +9666,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -9847,6 +9917,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -10096,6 +10168,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -10345,6 +10419,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_f_pa_ri_01_2_ad",
@@ -10556,6 +10632,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad",
@@ -10771,6 +10849,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad",
@@ -10986,6 +11066,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad",
@@ -11201,6 +11283,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_glow_02_02_dt15_ad",
@@ -11467,6 +11551,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_cubesample_01_02_tr",
@@ -11743,6 +11829,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_cubesample_01_02_tr",
@@ -12021,6 +12109,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_splitline_99_tr",
@@ -12204,6 +12294,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_01_1_tr",
@@ -12421,6 +12513,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_shine_02_02_ad",
@@ -12728,6 +12822,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_spritewave_01_3_ad",
@@ -13115,6 +13211,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_spritewave_01_3_ad",
@@ -13472,6 +13570,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_spritewave_03_93_tr",
@@ -13630,13 +13730,6 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_atypical_005_ycl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_005_ycl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_06.fx_m_normal_compressnormal_05",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_normal_compressnormal_05.dds",
@@ -13825,6 +13918,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxdirloop_01_tr",
@@ -14232,6 +14327,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_master_01_110_ts_ad",
@@ -14379,11 +14476,18 @@
           "status": "EXACT_RUNTIME_BINDING"
         },
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_03.fx_e_atypical_018_cl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_atypical_018_cl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -14539,6 +14643,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_expbox_04",
@@ -14756,6 +14862,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -14972,6 +15080,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -15204,6 +15314,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -15395,6 +15507,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_glow_01_05_dt15_ad",
@@ -15455,23 +15569,9 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_02.fx_d_noise_019",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_019.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "dissolve",
-          "parameterName": "01_distort02_tex",
-          "sourceObjectPath": "fx_tex_06.fx_j_voronoi_tile_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -15697,6 +15797,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxexp_01_ad",
@@ -16074,6 +16176,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxlinelight_02_02_ts_ad",
@@ -16397,6 +16501,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxlinelight_02_02_ts_ad",
@@ -16720,6 +16826,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxlinelight_02_02_ts_ad",
@@ -17047,6 +17155,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxlinelight_02_02_ts_ad",
@@ -17188,13 +17298,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -17447,6 +17550,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -17628,13 +17733,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -17895,6 +17993,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -18076,13 +18176,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -18343,6 +18436,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -18506,25 +18601,25 @@
           "status": "EXACT_RUNTIME_BINDING"
         },
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_06.fx_m_gradient_01_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_gradient_01_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
+          "slotId": "noise",
+          "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_06.fx_w_atypical_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_017.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "noise",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_00.fx_a_glow_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_003.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -18731,6 +18826,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_expbox_02",
@@ -19090,6 +19187,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
@@ -19288,6 +19387,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_m.bfx_i_pa_glow_01_ad",
@@ -19508,6 +19609,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_09_dt_tr",
@@ -19745,6 +19848,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_d_pa_shine_02_09_dt_tr",
@@ -20000,6 +20105,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_09_ad",
@@ -20307,6 +20414,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_shine_01_09_ad",
@@ -20587,6 +20696,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_master_01_031_ad",
@@ -20846,6 +20957,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_whkf_rgbsplit_01_2_ad",
@@ -21094,6 +21207,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_whkf_rgbsplit_01_2_ad",
@@ -21290,6 +21405,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
@@ -21486,6 +21603,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
@@ -21704,6 +21823,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
@@ -21935,6 +22056,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
@@ -22146,6 +22269,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -22344,6 +22469,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -22389,20 +22516,6 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_02.fx_d_typical_033_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_typical_033_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_atypical_017_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_atypical_017_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "dissolve",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_06.fx_m_normal_compressnormal_04",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_normal_compressnormal_04.dds",
@@ -22632,6 +22745,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_dl_ss_wave_03_tr",
@@ -23075,6 +23190,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
@@ -23291,6 +23408,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_m.fx_d_pa_flare_03_ad",
@@ -23486,6 +23605,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad",
@@ -23673,6 +23794,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_gl_01_1_tr",
@@ -23855,6 +23978,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_bloodcliff_glow_depthfade_01_02_ad",
@@ -24128,6 +24253,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_watertrail_01_47_tr",
@@ -24493,6 +24620,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
@@ -24749,6 +24878,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
@@ -24797,13 +24928,6 @@
           "parameterName": "mask_tex_01",
           "sourceObjectPath": "fx_tex_06.fx_j_smokeline_01_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_smokeline_01_ycl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "mask_tex_02",
-          "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_05",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_05.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -24986,6 +25110,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_linearwave_01_56_tr",
@@ -25352,6 +25478,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
@@ -25406,13 +25534,6 @@
           "parameterName": "flowtex",
           "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "opacity_tex",
-          "sourceObjectPath": "fx_tex_05.fx_m_wave_001_ycl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_wave_001_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -25574,6 +25695,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_02_22_tr",
@@ -25846,6 +25969,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_circledisort_01_01_ad",
@@ -26082,6 +26207,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_m.fx_f_pa_wind_05_tr",
@@ -26318,6 +26445,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_m.fx_f_pa_wind_05_tr",
@@ -26528,6 +26657,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad",
@@ -26751,6 +26882,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad",
@@ -26974,6 +27107,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_mastermaterial.fx_mi.fx_c_pa_dist_05_ad",
@@ -27234,6 +27369,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_018_ad",
@@ -27557,6 +27694,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_x_00.fx_mi.fx_x_me_watertrail_29_02_dt_tr",
@@ -27882,6 +28021,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ri_04_ad_2s",
@@ -28107,6 +28248,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ri_04_ad_2s",
@@ -28360,6 +28503,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_r_00.fx_mi.fx_r_me_watertrail_02_01_tr",
@@ -28717,6 +28862,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_watertrail_01_46_tr",
@@ -29017,6 +29164,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_m.fx_o_pa_circledisort_01_ad",
@@ -29213,6 +29362,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_a_me_panning_01_ts_ad",
@@ -29433,6 +29584,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ri_04_ad_2s",
@@ -29493,20 +29646,6 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_04.fx_j_risingforce_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_risingforce_01.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_atypical_017_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_atypical_017_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "dissolve",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_06.fx_w_atypical_005",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_005.dds",
@@ -29786,6 +29925,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_cudi_odtrail_03_tr",
@@ -30132,13 +30273,6 @@
           "sourceObjectPath": "fx_tex_06.fx_j_auraline_04_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_04_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "mask_tex_02",
-          "sourceObjectPath": "fx_tex_06.fx_j_cloud_tile_02",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_tile_02.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -30304,6 +30438,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_pa_linearwave_01_55_tr",
@@ -30496,13 +30632,6 @@
           "sourceObjectPath": "fx_tex_06.fx_j_auraline_04_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_04_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "mask_tex_02",
-          "sourceObjectPath": "fx_tex_06.fx_j_cloud_tile_02",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_tile_02.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -30668,6 +30797,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_pa_linearwave_01_55_tr",
@@ -30860,13 +30991,6 @@
           "sourceObjectPath": "fx_tex_06.fx_j_auraline_04_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_04_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "mask_tex_02",
-          "sourceObjectPath": "fx_tex_06.fx_j_cloud_tile_02",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_tile_02.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
       "detailMappings": [
@@ -31032,6 +31156,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_pa_linearwave_01_55_tr",
@@ -31216,13 +31342,6 @@
           "parameterName": "tex_alpha_01",
           "sourceObjectPath": "fx_tex_02.fx_d_atypical_002_1_ycl",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_002_1_ycl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
-          "parameterName": "tex_alpha_02",
-          "sourceObjectPath": "fx_tex_02.fx_d_noise_003",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_003.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -31418,6 +31537,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_m_pa_shorkwave_01_8_tr",
@@ -31645,6 +31766,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "light.point.reconstructed.v1",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "enginematerials.defaultparticle",
@@ -31699,13 +31822,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -31929,6 +32045,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -32110,13 +32228,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -32340,6 +32451,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -32521,13 +32634,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -32751,6 +32857,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -32932,13 +33040,6 @@
           "parameterName": "transition_texture",
           "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_017.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha01_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_glow_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_glow_001.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -33162,6 +33263,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_boxring_01_tr",
@@ -33491,6 +33594,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -33679,6 +33784,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_me_splitline_99_tr",
@@ -33715,17 +33822,10 @@
           "status": "EXACT_RUNTIME_BINDING"
         },
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_06.fx_m_gracylinder_01",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_gracylinder_01.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_06.fx_m_gracylinder_02_ycl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_gracylinder_02_ycl.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
@@ -33734,6 +33834,13 @@
           "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_07",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_07.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -33891,6 +33998,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_boxshockwaveline_01_tr",
@@ -34159,6 +34268,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "light.point.reconstructed.v1",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "enginematerials.defaultparticle",
@@ -34380,6 +34491,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_circ_01_2_tr",
@@ -34583,6 +34696,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_ringmaster_01_204_ts_dt_ad",
@@ -34811,6 +34926,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad",
@@ -34993,6 +35110,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
@@ -35205,6 +35324,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
@@ -35432,6 +35553,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -35640,6 +35763,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -35833,6 +35958,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -36017,6 +36144,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_5_ad",
@@ -36176,6 +36305,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
@@ -36352,6 +36483,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_b_pa_gl_01_4_ad",
@@ -36554,6 +36687,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_master_01_112_ts_dt5_ad",
@@ -36763,6 +36898,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_ringmaster_01_204_ts_dt_ad",
@@ -36991,6 +37128,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad",
@@ -37230,6 +37369,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_magiccircle_01_01_tr",
@@ -37571,6 +37712,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_magiccircle_01_02_ad",
@@ -37867,6 +38010,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
@@ -38079,6 +38224,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_highpixelring_01_05_ad",
@@ -38173,20 +38320,6 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_06.fx_m_tilelinenoise_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_02.fx_d_atypical_101_1_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_101_1_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "dissolve",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_02.fx_d_noise_004_1",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_004_1.dds",
@@ -38388,6 +38521,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_aura_01_tr",
@@ -38648,20 +38783,6 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_06.fx_m_tilelinenoise_01",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_02.fx_d_atypical_101_1_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_101_1_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "dissolve",
           "parameterName": "01_distort01_tex",
           "sourceObjectPath": "fx_tex_02.fx_d_noise_004_1",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_004_1.dds",
@@ -38881,6 +39002,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_aura_01_tr",
@@ -39375,6 +39498,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_ringrainbow_03_2_ts_tr",
@@ -39759,6 +39884,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_ringrainbow_03_2_ts_tr",
@@ -40125,6 +40252,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_y_00.fx_mi.fx_y_me_ringrainbow_03_1_ts_tr",
@@ -40509,6 +40638,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_ringrainbow_03_1_ts_tr",
@@ -40875,6 +41006,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_ringrainbow_03_1_ts_tr",
@@ -41259,6 +41392,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_ringrainbow_03_1_ts_tr",
@@ -41616,6 +41751,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_l_00.fx_mi.fx_l_me_shine_02_2_ad",
@@ -42014,6 +42151,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_l_00.fx_mi.fx_l_me_shine_02_2_ad",
@@ -42416,6 +42555,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_l_00.fx_mi.fx_l_me_shine_02_2_ad",
@@ -42814,6 +42955,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_l_00.fx_mi.fx_l_me_shine_02_2_ad",
@@ -43216,6 +43359,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_l_00.fx_mi.fx_l_me_shine_02_2_ad",
@@ -43318,17 +43463,17 @@
         },
         {
           "slotId": "base",
-          "parameterName": "normal_tex",
-          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
           "parameterName": "refle_tex",
           "sourceObjectPath": "fx_tex_00.fx_b_atypical_004_cube",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": null,
+          "parameterName": "normal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE"
         }
       ],
       "detailMappings": [
@@ -43549,6 +43694,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
@@ -43659,17 +43806,17 @@
         },
         {
           "slotId": "base",
-          "parameterName": "normal_tex",
-          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
           "parameterName": "refle_tex",
           "sourceObjectPath": "fx_tex_00.fx_b_atypical_004_cube",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": null,
+          "parameterName": "normal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE"
         }
       ],
       "detailMappings": [
@@ -43890,6 +44037,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
@@ -44000,17 +44149,17 @@
         },
         {
           "slotId": "base",
-          "parameterName": "normal_tex",
-          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
           "parameterName": "refle_tex",
           "sourceObjectPath": "fx_tex_00.fx_b_atypical_004_cube",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": null,
+          "parameterName": "normal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE"
         }
       ],
       "detailMappings": [
@@ -44231,6 +44380,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
@@ -44341,17 +44492,17 @@
         },
         {
           "slotId": "base",
-          "parameterName": "normal_tex",
-          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
           "parameterName": "refle_tex",
           "sourceObjectPath": "fx_tex_00.fx_b_atypical_004_cube",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
+        },
+        {
+          "slotId": null,
+          "parameterName": "normal_tex",
+          "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+          "status": "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE"
         }
       ],
       "detailMappings": [
@@ -44572,6 +44723,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_07_tr",
@@ -44942,6 +45095,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_me_swp_master_01_008_ts_dt_ds_tr",
@@ -45047,25 +45202,18 @@
       ],
       "resourceMappings": [
         {
-          "slotId": "base",
+          "slotId": "mask",
           "parameterName": "01_alpha01_tex",
           "sourceObjectPath": "fx_tex_06.fx_m_gracylinder_01",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_gracylinder_01.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         },
         {
-          "slotId": "mask",
-          "parameterName": "01_alpha02_tex",
-          "sourceObjectPath": "fx_tex_03.fx_e_atypical_018_cl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_atypical_018_cl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "noise",
-          "parameterName": "01_alpha03_tex",
-          "sourceObjectPath": "fx_tex_01.fx_c_line_004_ycl",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_line_004_ycl.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
+          "slotId": "base",
+          "sourceObjectPath": "fx_tex_00.fx_a_blankwhite_01",
+          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_blankwhite_01.dds",
+          "status": "PROCEDURAL_MATERIAL_WHITE_FALLBACK",
+          "note": "Original material has no resolved texture parameter; replace after visual review."
         }
       ],
       "detailMappings": [
@@ -45237,6 +45385,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_swp_horizenshine_01_ad",
@@ -45502,6 +45652,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
@@ -45711,6 +45863,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_rgbsplit_01_2_ad",
@@ -45908,6 +46062,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -46124,6 +46280,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -46343,6 +46501,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -46553,6 +46713,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_5_ad",
@@ -46801,6 +46963,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_ht_01_2_ad",
@@ -47049,6 +47213,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_swp_ht_01_2_ad",
@@ -47246,6 +47412,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_b_pa_gl_01_4_ad",
@@ -47459,6 +47627,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_k_00.fx_d_pa_ring_12_ad_inst35",
@@ -47662,6 +47832,8 @@
         }
       ],
       "unrepresentedModules": [],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_me_capturergbsplit_01_01_tr",
@@ -47840,6 +48012,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
@@ -48019,6 +48193,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
@@ -48210,6 +48386,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_c_pa_lightflare_01_ddt_4_ad",
@@ -48404,6 +48582,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
@@ -48597,6 +48777,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_11_dt5_ad",
@@ -48788,6 +48970,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_11_dt5_ad",
@@ -48846,23 +49030,9 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "noisedissolve_tex",
-          "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "mask",
           "parameterName": "uv_noise_tex",
           "sourceObjectPath": "fx_tex_05.fx_m_noise_008",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_008.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "uv_noise_tex_02",
-          "sourceObjectPath": "fx_tex_00.fx_a_cloud_022",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -49038,6 +49208,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_spritewave_01_29_tr",
@@ -49246,23 +49418,9 @@
         },
         {
           "slotId": "noise",
-          "parameterName": "noisedissolve_tex",
-          "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "mask",
           "parameterName": "uv_noise_tex",
           "sourceObjectPath": "fx_tex_05.fx_m_noise_008",
           "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_008.dds",
-          "status": "PARAMETER_NAME_HEURISTIC"
-        },
-        {
-          "slotId": "emissive",
-          "parameterName": "uv_noise_tex_02",
-          "sourceObjectPath": "fx_tex_00.fx_a_cloud_022",
-          "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds",
           "status": "PARAMETER_NAME_HEURISTIC"
         }
       ],
@@ -49438,6 +49596,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_spritewave_01_29_tr",
@@ -49757,6 +49917,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_6_ad",
@@ -49944,6 +50106,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "unresolved",
+      "presentationProfileId": "",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
@@ -50142,6 +50306,8 @@
           "reason": "CURRENT_EFFECT_DOCUMENT_HAS_NO_EQUIVALENT_MAPPING"
         }
       ],
+      "presentationSourceStatus": "reconstructed",
+      "presentationProfileId": "screen.rgb-noise.reconstructed.v1",
       "materialParameterEvidence": [
         {
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_po_rgbnoise_01_01_tr",
@@ -54380,7 +54546,8 @@
     "Material texture slots use original parameter bindings, but Base/Noise/Mask/Emissive/Dissolve semantic assignment needs thumbnail review.",
     "Procedural source materials preserve sourceMaterialPath and use effect.source_material; expression-graph execution remains fail-closed in coverage until implemented.",
     "UE source position, velocity, acceleration and size use a 0.01 project-scale assumption and require visual scale verification.",
-    "Light renderer, screen-space post process, source camera shake and assetless Effect notifies stay outside this Effect Document.",
+    "Point-light and known screen-post emitters carry finite reconstructed runtime profiles plus lossless source provenance; unknown source semantics remain unresolved and fail closed.",
+    "Source camera shake and assetless Effect notifies remain separate typed presentation-channel work.",
     "Dimension Summon model animation spawn/synchronization is a presentation cue concern and is not encoded as a particle Element."
   ],
   "summary": {
@@ -54392,6 +54559,9 @@
     "unsupportedEmitterCount": 0,
     "missingResourceEmitterCount": 0,
     "sourceMaterialPendingEmitterCount": 0,
+    "presentationSourceExactEmitterCount": 0,
+    "presentationReconstructedEmitterCount": 1,
+    "presentationUnresolvedEmitterCount": 4,
     "particleBudget": 1635,
     "externalPackageCount": 126,
     "externalRequestCount": 1422,

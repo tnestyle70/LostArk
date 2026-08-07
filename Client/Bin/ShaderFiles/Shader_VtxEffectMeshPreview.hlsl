@@ -4,6 +4,7 @@ float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
 uint g_UseBaseOverride = 0;
+float4 g_EffectDynamicParameter = float4(0.f, 0.f, 0.f, 0.f);
 
 struct VS_IN
 {
@@ -35,10 +36,11 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
-    const float light = 0.35f + saturate(dot(
-        normalize(input.normal),
-        normalize(float3(0.4f, 0.8f, -0.3f)))) * 0.65f;
-    return Shade_Effect(input.uv, float3(light, light, light), float4(1.f, 1.f, 1.f, 1.f));
+    return Shade_EffectParticle(
+        input.uv,
+        float3(1.f, 1.f, 1.f),
+        float4(1.f, 1.f, 1.f, 1.f),
+        g_EffectDynamicParameter);
 }
 
 technique11 DefaultTechnique
@@ -64,6 +66,24 @@ technique11 DefaultTechnique
     pass AdditiveTwoSidedDepthRead
     {
         SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    pass AlphaOneSidedDepthRead
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_EffectAlpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN();
+    }
+    pass AdditiveOneSidedDepthRead
+    {
+        SetRasterizerState(RS_Default);
         SetDepthStencilState(DSS_ReadOnly, 0);
         SetBlendState(BS_EffectAdditive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
         VertexShader = compile vs_5_0 VS_MAIN();

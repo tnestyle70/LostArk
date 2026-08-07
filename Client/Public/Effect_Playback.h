@@ -80,6 +80,32 @@ struct EFFECT_EVALUATED_AFTERIMAGE final
 	f32_t fAlpha = 1.f;
 };
 
+struct EFFECT_EVALUATED_LIGHT final
+{
+	const EFFECT_ELEMENT_DESC* pElement = nullptr;
+	float3_t vWorldPosition{};
+	f32_t fRange = 0.f;
+	f32_t fIntensity = 0.f;
+	float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vAmbient = { 0.f, 0.f, 0.f, 1.f };
+	f32_t fFalloffExponent = 0.f;
+	f32_t fNormalizedLife = 0.f;
+};
+
+struct EFFECT_EVALUATED_SCREEN_POST final
+{
+	const EFFECT_ELEMENT_DESC* pElement = nullptr;
+	EFFECT_SCREEN_POST_PROFILE eProfile = EFFECT_SCREEN_POST_PROFILE::END;
+	uint32_t iSourceOrder = 0u;
+	uint32_t iRandomSeed = 1u;
+	f32_t fSampleTimeSeconds = 0.f;
+	f32_t fIntensity = 0.f;
+	f32_t fSecondaryIntensity = 0.f;
+	f32_t fFrequency = 1.f;
+	float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+	f32_t fNormalizedLife = 0.f;
+};
+
 struct EFFECT_EVALUATED_FRAME final
 {
 	f32_t fSampleTimeSeconds = 0.f;
@@ -88,6 +114,24 @@ struct EFFECT_EVALUATED_FRAME final
 	std::vector<EFFECT_EVALUATED_PARTICLE> Particles;
 	std::vector<EFFECT_EVALUATED_TRAIL> Trails;
 	std::vector<EFFECT_EVALUATED_AFTERIMAGE> AfterImages;
+	std::vector<EFFECT_EVALUATED_LIGHT> Lights;
+	std::vector<EFFECT_EVALUATED_SCREEN_POST> ScreenPosts;
+};
+
+struct EFFECT_PARTICLE_RUNTIME_PROBE final
+{
+	f32_t fSampleTimeSeconds = 0.f;
+	uint32_t iActiveParticleCount = 0u;
+	bool_t bMeshRenderer = false;
+	float4_t vFirstDynamicParameter{};
+	float4_t vMinDynamicParameter{};
+	float4_t vMaxDynamicParameter{};
+	f32_t fFirstAlpha = 0.f;
+	f32_t fMinAlpha = 0.f;
+	f32_t fMaxAlpha = 0.f;
+	f32_t fFirstNormalizedLife = 0.f;
+	f32_t fFirstSubImageIndex = 0.f;
+	EFFECT_SUBUV_FRAME_DESC FirstSubUV{};
 };
 
 class CEffectPlayback final
@@ -173,6 +217,9 @@ public:
 	void Set_SourceAnchorWorlds(
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
 	const EFFECT_EVALUATED_FRAME& Get_Frame() const { return m_Frame; }
+	bool_t Query_ParticleRuntimeProbe(
+		std::string_view strElementId,
+		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const;
 	bool_t Is_Finished() const;
 	f32_t Get_DurationSeconds() const { return m_fDurationSeconds; }
 	static EFFECT_SUBUV_FRAME_DESC Resolve_SourceSubUVFrame(

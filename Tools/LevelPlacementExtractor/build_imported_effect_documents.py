@@ -28,6 +28,20 @@ PROCEDURAL_MATERIAL_BASE_FALLBACK = (
 MAX_ELEMENTS = 2048
 MAX_DOCUMENT_PARTICLES = 8192
 MAX_PARTICLES_PER_IMPORTED_ELEMENT = 64
+SCREEN_POST_RUNTIME_PROFILES = {
+    "fx_post.fx_par.par_j_rgbnoise_01": (
+        "screen.rgb-noise.reconstructed.v1", "RGB_NOISE"
+    ),
+    "fx_post.fx_par.par_j_zoomblur_01": (
+        "screen.zoom-blur.reconstructed.v1", "ZOOM_BLUR_J"
+    ),
+    "fx_post.fx_par.par_c_zoomblur_02": (
+        "screen.zoom-blur.reconstructed.v1", "ZOOM_BLUR_C"
+    ),
+    "fx_post.fx_par.par_m_filmnoise_zaxis_01": (
+        "screen.film-noise.reconstructed.v1", "FILM_NOISE"
+    ),
+}
 REPRESENTED_DETAIL_MODULE_CLASSES = {
     "particlemodulerequired",
     "particlemodulespawn",
@@ -458,6 +472,85 @@ def default_detail() -> dict[str, Any]:
             "maxCopies": 16,
             "alphaExponent": 1.0,
         },
+        "light": {
+            "enabled": False,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [0.0, 0.0, 0.0, 0.0],
+            "ambient": [0.0, 0.0, 0.0, 0.0],
+            "falloffExponent": 0.0,
+        },
+        "screenPost": {
+            "enabled": False,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [1.0, 1.0, 1.0, 1.0],
+            "randomSeed": 1,
+        },
+    }
+
+
+def source_parameter(
+    name: str,
+    parameter_type: str,
+    status: str,
+    source_property_path: str,
+    value: Any = None,
+) -> dict[str, Any]:
+    row = {
+        "name": name,
+        "type": parameter_type,
+        "status": status,
+        "sourcePropertyPath": source_property_path,
+        "numberValue": 0.0,
+        "boolValue": False,
+        "vectorValue": [0.0, 0.0, 0.0, 0.0],
+        "stringValue": "",
+    }
+    if parameter_type == "number" and value is not None:
+        number = finite_number(value)
+        if number is None:
+            raise ValueError(f"presentation parameter is non-finite: {name}")
+        row["numberValue"] = number
+    elif parameter_type == "boolean" and value is not None:
+        if not isinstance(value, bool):
+            raise ValueError(f"presentation parameter is not boolean: {name}")
+        row["boolValue"] = value
+    elif parameter_type == "vector" and value is not None:
+        if not isinstance(value, list) or len(value) > 4:
+            raise ValueError(f"presentation parameter vector is invalid: {name}")
+        numbers = [finite_number(component) for component in value]
+        if any(component is None for component in numbers):
+            raise ValueError(f"presentation parameter vector is non-finite: {name}")
+        row["vectorValue"] = [
+            *[float(component) for component in numbers if component is not None],
+            *([0.0] * (4 - len(numbers))),
+        ]
+    elif parameter_type == "string" and value is not None:
+        row["stringValue"] = str(value)
+    elif parameter_type not in {"number", "boolean", "vector", "string"}:
+        raise ValueError(f"presentation parameter type is invalid: {parameter_type}")
+    return row
+
+
+def default_source_presentation() -> dict[str, Any]:
+    return {
+        "enabled": False,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": "",
+        "status": "unresolved",
+        "sourceObjectPath": "",
+        "sourceActionCueId": "",
+        "sourceEventId": "",
+        "sourceOccurrenceIndex": 0,
+        "sourceTimeSeconds": 0.0,
+        "parameters": [],
     }
 
 
@@ -762,17 +855,32 @@ def material_index(graph: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def texture_slot(parameter_name: str) -> str:
+def texture_slot(parameter_name: str) -> str | None:
     value = folded(parameter_name)
     if "dissolve" in value:
         return "dissolve"
+    if any(token in value for token in ("normal", "bump")):
+        return None
     if any(token in value for token in ("mask", "opacity", "alpha")):
         return "mask"
     if any(token in value for token in ("noise", "distort")):
         return "noise"
     if any(token in value for token in ("emiss", "glow", "bloom")):
         return "emissive"
+    if any(token in value for token in (
+        "reflection", "reflect", "refle", "environment",
+    )):
+        return "base"
     return "base"
+
+
+def has_explicit_texture_semantic(parameter_name: str) -> bool:
+    value = folded(parameter_name)
+    return any(token in value for token in (
+        "dissolve", "normal", "bump", "mask", "opacity", "alpha",
+        "noise", "distort", "emiss", "glow", "bloom",
+        "reflection", "reflect", "refle", "environment",
+    ))
 
 
 def choose_resources(
@@ -803,7 +911,11 @@ def choose_resources(
             texture_path = str(texture.get("texture") or "")
             texture_asset = runtime.get(folded(texture_path))
             if texture_asset:
-                texture_candidates.append((str(texture.get("name") or ""), texture_path, texture_asset))
+                texture_candidates.append((
+                    str(texture.get("name") or ""),
+                    texture_path,
+                    texture_asset,
+                ))
 
     resources: list[dict[str, str]] = []
     receipt: list[dict[str, Any]] = []
@@ -817,18 +929,43 @@ def choose_resources(
     ranked = sorted(
         texture_candidates,
         key=lambda row: (
+            1 if texture_slot(row[0]) is None else 0,
             0 if texture_slot(row[0]) == "base" else 1,
-            0 if any(token in folded(row[0]) for token in ("main", "base", "diffuse", "texture")) else 1,
+            0 if any(token in folded(row[0]) for token in (
+                "main", "base", "diffuse", "texture",
+            )) else 1,
             folded(row[0]),
             folded(row[2]),
         ),
     )
+    has_base_candidate = any(
+        texture_slot(row[0]) == "base" for row in ranked
+    )
+    primary_emissive = next((
+        row for row in ranked
+        if not has_base_candidate and texture_slot(row[0]) == "emissive"
+    ), None)
     for parameter, source_path, asset_id in ranked:
         if asset_id in used_assets:
             continue
-        slot = "base" if "base" not in used_slots else texture_slot(parameter)
+        resolved_slot = texture_slot(parameter)
+        if resolved_slot is None:
+            receipt.append({
+                "slotId": None,
+                "parameterName": parameter,
+                "sourceObjectPath": source_path,
+                "assetId": asset_id,
+                "status": "FALLBACK_BLOCKED_UNRESOLVED_TEXTURE_ROLE",
+            })
+            continue
+        slot = "base" if (parameter, source_path, asset_id) == \
+            primary_emissive else resolved_slot
         if slot in used_slots:
-            for fallback in ("base", "noise", "mask", "emissive", "dissolve"):
+            if has_explicit_texture_semantic(parameter):
+                continue
+            for fallback in (
+                "base", "noise", "mask", "emissive", "dissolve",
+            ):
                 if fallback not in used_slots:
                     slot = fallback
                     break
@@ -1354,6 +1491,308 @@ def build_source_recipe(
     }
 
 
+def presentation_identity(
+    event: dict[str, Any],
+    source_object_path: str,
+    profile_id: str,
+    status: str,
+    parameters: list[dict[str, Any]],
+    occurrence_index: int = 0,
+) -> dict[str, Any]:
+    return {
+        "enabled": True,
+        "schema": "lostark.effect-source-presentation",
+        "version": 1,
+        "profileId": profile_id,
+        "status": status,
+        "sourceObjectPath": source_object_path,
+        "sourceActionCueId": str(event.get("sourceActionCueId") or ""),
+        "sourceEventId": str(event.get("eventId") or ""),
+        "sourceOccurrenceIndex": occurrence_index,
+        "sourceTimeSeconds": finite_number(
+            event.get("globalTimeSeconds")
+        ) or 0.0,
+        "parameters": parameters,
+    }
+
+
+def source_start_color(
+    index: SourceIndex, modules: list[SourceObject]
+) -> tuple[list[float], list[dict[str, Any]]]:
+    module = first_module(modules, "particlemodulecolor")
+    color = distribution_vector(index, module, "startcolor")
+    alpha = distribution_float(index, module, "startalpha")
+    rgba = [1.0, 1.0, 1.0, 1.0]
+    parameters: list[dict[str, Any]] = []
+    if color is not None:
+        rgba[:3] = [float(value) for value in color[2][:3]]
+        parameters.append(source_parameter(
+            "particleStartColor", "vector", "source_distribution",
+            f"{module.object_path}.StartColor", [*rgba[:3], 0.0],
+        ))
+    if alpha is not None:
+        rgba[3] = float(alpha[2])
+        parameters.append(source_parameter(
+            "particleStartAlpha", "number", "source_distribution",
+            f"{module.object_path}.StartAlpha", rgba[3],
+        ))
+    return rgba, parameters
+
+
+def first_distribution_number(row: dict[str, Any]) -> float | None:
+    keys = row.get("keys")
+    if isinstance(keys, list) and keys:
+        minimum = keys[0].get("minimum")
+        if isinstance(minimum, list) and minimum:
+            return finite_number(minimum[0])
+    table = row.get("lookupTable")
+    if isinstance(table, list) and len(table) >= 3:
+        return finite_number(table[2])
+    minimum = row.get("defaultMinimum")
+    if isinstance(minimum, list) and minimum:
+        return finite_number(minimum[0])
+    return None
+
+
+def source_dynamic_parameters(
+    source_recipe: dict[str, Any]
+) -> tuple[dict[str, float], list[dict[str, Any]]]:
+    values: dict[str, float] = {}
+    parameters: list[dict[str, Any]] = []
+    name_pattern = re.compile(r"dynamicparams\[(\d+)\]\.paramname$")
+    for module in source_recipe.get("modules", []):
+        if folded(module.get("className")) != "particlemoduleparameterdynamic":
+            continue
+        names: dict[int, str] = {}
+        for literal in module.get("literals", []):
+            match = name_pattern.fullmatch(
+                str(literal.get("propertyPath") or "")
+            )
+            if match and str(literal.get("value") or ""):
+                names[int(match.group(1))] = str(literal["value"])
+        distributions = {
+            str(row.get("propertyPath") or ""): row
+            for row in module.get("distributions", [])
+        }
+        for parameter_index, parameter_name in sorted(names.items()):
+            property_path = f"dynamicparams[{parameter_index}].paramvalue"
+            distribution = distributions.get(property_path)
+            value = (
+                first_distribution_number(distribution)
+                if distribution is not None else None
+            )
+            if value is None:
+                parameters.append(source_parameter(
+                    parameter_name, "number", "unresolved_class_default",
+                    f"{module.get('objectPath', '')}.{property_path}",
+                ))
+                continue
+            values[folded(parameter_name)] = value
+            parameters.append(source_parameter(
+                parameter_name, "number", "source_distribution",
+                f"{module.get('objectPath', '')}.{property_path}", value,
+            ))
+    return values, parameters
+
+
+def referenced_point_light_component(
+    index: SourceIndex, modules: list[SourceObject]
+) -> tuple[SourceObject | None, str]:
+    light_modules = [
+        module for module in modules
+        if "typedatalight" in folded(module.class_name)
+    ]
+    if len(light_modules) != 1:
+        raise ValueError(
+            "Cascade light emitter must own exactly one TypeDataLight module"
+        )
+    module = light_modules[0]
+    target = index.referenced(module, "pointlightcomponent")
+    paths = sorted({
+        str(object_path)
+        for property_name, object_path in module.reference_paths
+        if folded(property_name) == "pointlightcomponent"
+        and str(object_path)
+    }, key=str.casefold)
+    if len(paths) != 1:
+        return None, ""
+    if target is None:
+        target = index.get_path(paths[0])
+    if target is None:
+        package = module.object_path.split(".", 1)[0]
+        target = index.get_path(f"{package}.{paths[0]}")
+    if target is None or folded(target.class_name) != "pointlightcomponent":
+        return None, paths[0]
+    return target, target.object_path
+
+
+def point_light_presentation(
+    index: SourceIndex,
+    modules: list[SourceObject],
+    detail: dict[str, Any],
+    event: dict[str, Any],
+    occurrence_index: int = 0,
+) -> dict[str, Any]:
+    component, source_path = referenced_point_light_component(index, modules)
+    runtime = detail["light"]
+    runtime["profileId"] = "light.point.reconstructed.v1"
+    runtime["status"] = "reconstructed_profile"
+    if component is None:
+        runtime["enabled"] = False
+        parameters = [source_parameter(
+            "pointLightComponent", "string", "unresolved_class_default",
+            "TypeDataLight.PointLightComponent", source_path,
+        )]
+        presentation = presentation_identity(
+            event, source_path, runtime["profileId"], "unresolved",
+            parameters, occurrence_index,
+        )
+        presentation["enabled"] = False
+        return presentation
+
+    parameters: list[dict[str, Any]] = []
+
+    def explicit_number(property_name: str, runtime_name: str) -> float | None:
+        item = component.properties.get(property_name)
+        value = finite_number(unwrap(item)) if item is not None else None
+        parameters.append(source_parameter(
+            runtime_name,
+            "number",
+            "source_explicit" if value is not None
+            else "unresolved_class_default",
+            f"{component.object_path}.{property_name}",
+            value,
+        ))
+        return value
+
+    brightness = explicit_number("brightness", "brightness")
+    radius_ue = explicit_number("radius", "radiusUeUnits")
+    falloff = explicit_number("falloffexponent", "falloffExponent")
+    light_color_item = component.properties.get("lightcolor")
+    light_color = unwrap(light_color_item) if light_color_item else None
+    explicit_color: list[float] | None = None
+    if isinstance(light_color, dict) and all(
+        finite_number(light_color.get(channel)) is not None
+        for channel in ("r", "g", "b", "a")
+    ):
+        explicit_color = [
+            float(light_color[channel]) / 255.0
+            for channel in ("r", "g", "b", "a")
+        ]
+    parameters.append(source_parameter(
+        "lightColor", "vector",
+        "source_explicit" if explicit_color is not None
+        else "unresolved_class_default",
+        f"{component.object_path}.lightcolor", explicit_color,
+    ))
+    parameters.append(source_parameter(
+        "ambientColor", "vector", "unresolved_class_default",
+        "PointLightComponent class default", None,
+    ))
+
+    source_color, source_color_parameters = source_start_color(index, modules)
+    parameters.extend(source_color_parameters)
+    size = detail["particle"]["startSize"]
+    particle_range = max(float(value) for value in size)
+    parameters.append(source_parameter(
+        "particleStartSizeRange", "number", "source_distribution",
+        "ParticleModuleSize.StartSize|maxAxis|UE_TO_RUNTIME_0.01",
+        particle_range,
+    ))
+
+    runtime.update({
+        "enabled": brightness is not None,
+        "range": (
+            max(0.0, radius_ue * SOURCE_UNITS_TO_RUNTIME)
+            if radius_ue is not None else max(0.0, particle_range)
+        ),
+        "intensity": max(0.0, brightness or 0.0),
+        "color": explicit_color or source_color,
+        "ambient": [0.0, 0.0, 0.0, 0.0],
+        "falloffExponent": max(0.0, falloff or 0.0),
+    })
+    required_exact = (
+        brightness is not None
+        and radius_ue is not None
+        and falloff is not None
+        and explicit_color is not None
+    )
+    return presentation_identity(
+        event,
+        component.object_path,
+        runtime["profileId"],
+        "source_exact" if required_exact else "unresolved",
+        parameters,
+        occurrence_index,
+    )
+
+
+def screen_post_presentation(
+    source_system_id: str,
+    source_recipe: dict[str, Any],
+    detail: dict[str, Any],
+    event: dict[str, Any],
+    source_object_path: str,
+    occurrence_index: int = 0,
+) -> dict[str, Any]:
+    runtime = detail["screenPost"]
+    contract = SCREEN_POST_RUNTIME_PROFILES.get(folded(source_system_id))
+    if contract is None:
+        parameters = [source_parameter(
+            "sourceSystemId", "string", "unresolved_class_default",
+            "ParticleSystem.objectPath", source_system_id,
+        )]
+        presentation = presentation_identity(
+            event, source_object_path, "", "unresolved", parameters,
+            occurrence_index,
+        )
+        presentation["enabled"] = False
+        return presentation
+
+    profile_id, subtype = contract
+    dynamic_values, parameters = source_dynamic_parameters(source_recipe)
+    parameters.insert(0, source_parameter(
+        "sourceSubtype", "string", "source_explicit",
+        "ParticleSystem.objectPath", subtype,
+    ))
+    tint = [1.0, 1.0, 1.0, 1.0]
+    runtime_enabled = True
+    presentation_status = "reconstructed"
+    if subtype == "RGB_NOISE":
+        intensity = max(0.0, dynamic_values.get("rgb_str", 0.0))
+        # ``powerx`` remains in source provenance, but the decoded graph does
+        # not prove that it is an additive full-screen noise gain.  The finite
+        # runtime profile reconstructs only the RGB channel separation.
+        secondary = 0.0
+    elif subtype.startswith("ZOOM_BLUR"):
+        intensity = max(0.0, dynamic_values.get("blurstrength", 0.0))
+        secondary = 0.0
+    else:
+        # FilmNoise has neither a DynamicParameter nor decoded parent-graph
+        # gain.  Inventing unit gain exposes full-screen static, so retain the
+        # occurrence as evidence and fail closed at runtime.
+        intensity = 0.0
+        secondary = 0.0
+        runtime_enabled = False
+        presentation_status = "unresolved"
+    runtime.update({
+        "enabled": runtime_enabled,
+        "profileId": profile_id,
+        "status": "reconstructed_profile",
+        "intensity": intensity,
+        "secondaryIntensity": secondary,
+        "frequency": 0.0,
+        "tint": tint,
+        "randomSeed": int(detail["particle"]["randomSeed"]),
+    })
+    presentation = presentation_identity(
+        event, source_object_path, profile_id, presentation_status, parameters,
+        occurrence_index,
+    )
+    presentation["enabled"] = runtime_enabled
+    return presentation
+
+
 def classify(system: dict[str, Any], modules: list[SourceObject]) -> tuple[str | None, str | None, str | None]:
     classes = [folded(module.class_name) for module in modules]
     if any("typedatalight" in name for name in classes):
@@ -1365,6 +1804,34 @@ def classify(system: dict[str, Any], modules: list[SourceObject]) -> tuple[str |
     if any("typedatamesh" in name for name in classes):
         return "particle", None, "mesh"
     return "particle", None, "sprite"
+
+
+def mesh_uses_model_material(
+    modules: list[SourceObject], detail_mappings: list[dict[str, Any]],
+) -> bool:
+    mesh_modules = [
+        module for module in modules
+        if folded(module.class_name) == "particlemoduletypedatamesh"
+    ]
+    if len(mesh_modules) != 1:
+        raise ValueError(
+            "Cascade mesh emitter must own exactly one TypeDataMesh module"
+        )
+    module = mesh_modules[0]
+    explicit = "boverridematerial" in module.properties
+    override_value = prop(module.properties, "boverridematerial", False)
+    if not isinstance(override_value, bool):
+        raise ValueError("TypeDataMesh.bOverrideMaterial must be boolean")
+    use_model_material = not override_value
+    mapping(
+        detail_mappings,
+        "detail.mesh.useModelMaterial",
+        "EXACT" if explicit else "SOURCE_CLASS_DEFAULT",
+        f"{module.object_path}.bOverrideMaterial",
+        use_model_material,
+        "runtime useModelMaterial is the inverse of UE3 bOverrideMaterial",
+    )
+    return use_model_material
 
 
 def build_document(
@@ -1451,7 +1918,9 @@ def build_document(
         apply_action_cue_transform(detail, event)
         profile = material_detail(material_rows, detail, detail_mappings)
         if renderer_shape == "mesh":
-            detail["mesh"]["useModelMaterial"] = not any(row["slotId"] == "base" for row in resources)
+            detail["mesh"]["useModelMaterial"] = mesh_uses_model_material(
+                modules, detail_mappings
+            )
             detail["particle"]["billboard"] = False
         if kind == "decal":
             detail["particle"]["spawnRatePerSecond"] = 0.0
@@ -1466,6 +1935,19 @@ def build_document(
             index, modules, renderer_shape, bursts,
             semantic_overlay,
         )
+        source_presentation = default_source_presentation()
+        if renderer_shape == "light":
+            source_presentation = point_light_presentation(
+                index, modules, detail, event,
+            )
+        elif renderer_shape == "screenPost":
+            source_presentation = screen_post_presentation(
+                source_system_id,
+                source_recipe,
+                detail,
+                event,
+                emitter.object_path,
+            )
 
         element_ids = []
         should_emit_base = True
@@ -1491,10 +1973,12 @@ def build_document(
                         "templateId": material_template,
                         "sourceMaterialPath": source_material_path,
                         "renderProfile": profile,
+                        "sourceProfile": {"enabled": False},
                     },
                     "actionCueAttachment": action_cue_attachment(event),
                     "detail": detail,
                     "sourceRecipe": source_recipe,
+                    "sourcePresentation": source_presentation,
                 }
             )
             element_ids.append(element_id)
@@ -1536,6 +2020,17 @@ def build_document(
                 duplicated["actionCueAttachment"] = action_cue_attachment(
                     occurrence
                 )
+                duplicated_presentation = duplicated["sourcePresentation"]
+                duplicated_presentation["sourceActionCueId"] = str(
+                    occurrence.get("sourceActionCueId") or ""
+                )
+                duplicated_presentation["sourceEventId"] = str(
+                    occurrence.get("eventId") or ""
+                )
+                duplicated_presentation["sourceOccurrenceIndex"] = (
+                    occurrence_index - 1
+                )
+                duplicated_presentation["sourceTimeSeconds"] = occurrence_time
                 elements.append(duplicated)
                 element_ids.append(duplicated["id"])
                 if kind == "particle":
@@ -1581,6 +2076,8 @@ def build_document(
                 "burstSource": bursts,
                 "moduleEvidence": module_evidence,
                 "unrepresentedModules": unrepresented,
+                "presentationSourceStatus": source_presentation["status"],
+                "presentationProfileId": source_presentation["profileId"],
                 "materialParameterEvidence": [
                     {
                         "sourceMaterialPath": row.get("sourceMaterialPath"),
@@ -1602,7 +2099,7 @@ def build_document(
     input_slot = str(source_receipt.get("inputSlot") or "Unbound")
     document = {
         "schema": "lostark.effect-authoring",
-        "version": 10,
+        "version": 12,
         "effectAssetId": f"effect.{character_class.casefold()}.skill.{skill_id}.imported",
         "displayName": f"{character_class} {input_slot} {skill_id} Imported Cascade Draft",
         "particleSystem": {
@@ -1637,7 +2134,8 @@ def build_document(
             "Material texture slots use original parameter bindings, but Base/Noise/Mask/Emissive/Dissolve semantic assignment needs thumbnail review.",
             "Procedural source materials preserve sourceMaterialPath and use effect.source_material; expression-graph execution remains fail-closed in coverage until implemented.",
             "UE source position, velocity, acceleration and size use a 0.01 project-scale assumption and require visual scale verification.",
-            "Light renderer, screen-space post process, source camera shake and assetless Effect notifies stay outside this Effect Document.",
+            "Point-light and known screen-post emitters carry finite reconstructed runtime profiles plus lossless source provenance; unknown source semantics remain unresolved and fail closed.",
+            "Source camera shake and assetless Effect notifies remain separate typed presentation-channel work.",
             "Dimension Summon model animation spawn/synchronization is a presentation cue concern and is not encoded as a particle Element.",
         ],
         "summary": {
@@ -1651,6 +2149,19 @@ def build_document(
             "unsupportedEmitterCount": len(unsupported),
             "missingResourceEmitterCount": sum(bool(row.get("missingResources")) for row in conversions),
             "sourceMaterialPendingEmitterCount": sum(bool(row.get("sourceMaterialRuntimePending")) for row in conversions),
+            "presentationSourceExactEmitterCount": sum(
+                row.get("presentationSourceStatus") == "source_exact"
+                for row in conversions
+            ),
+            "presentationReconstructedEmitterCount": sum(
+                row.get("presentationSourceStatus") == "reconstructed"
+                for row in conversions
+            ),
+            "presentationUnresolvedEmitterCount": sum(
+                row.get("presentationSourceStatus") == "unresolved"
+                and bool(row.get("presentationProfileId"))
+                for row in conversions
+            ),
             "particleBudget": total_particle_budget,
             "externalPackageCount": closure.get("summary", {}).get("packageCount", 0),
             "externalRequestCount": closure.get("summary", {}).get("requestCount", 0),
@@ -1674,7 +2185,7 @@ def promote_document(
     if not effect_asset_id or not display_name.strip():
         raise ValueError("promotion target ID and display name are required")
     promoted = copy.deepcopy(imported_document)
-    promoted["version"] = 10
+    promoted["version"] = 12
     promoted["effectAssetId"] = effect_asset_id
     promoted["displayName"] = display_name
     promoted["particleSystem"] = copy.deepcopy(imported_document.get(

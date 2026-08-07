@@ -6,8 +6,10 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
+#include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
 #include "PlayerSkillCatalog.h"
+#include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
@@ -855,16 +857,18 @@ namespace
 		const std::string at30 = simulate(30u);
 		const std::string at60 = simulate(60u);
 		const std::string at144 = simulate(144u);
-		if (at30 != at60 || at60 != at144)
+		const std::string at3 = simulate(3u);
+		if (at3 != at30 || at30 != at60 || at60 != at144)
 		{
-			std::cout << "[DETAIL] Effect signatures 30/60/144 bytes="
-				<< at30.size() << '/' << at60.size() << '/' << at144.size()
-				<< " hash=" << std::hash<std::string>{}(at30) << '/'
+			std::cout << "[DETAIL] Effect signatures 3/30/60/144 bytes="
+				<< at3.size() << '/' << at30.size() << '/' << at60.size() << '/'
+				<< at144.size() << " hash=" << std::hash<std::string>{}(at3) << '/'
+				<< std::hash<std::string>{}(at30) << '/'
 				<< std::hash<std::string>{}(at60) << '/'
 				<< std::hash<std::string>{}(at144) << '\n';
 		}
-		runner.Require(at30 == at60 && at60 == at144,
-			"Effect Playback Is Deterministic At 30 60 And 144 FPS");
+		runner.Require(at3 == at30 && at30 == at60 && at60 == at144,
+			"Effect Playback Is Deterministic At 3 30 60 And 144 FPS");
 
 		CEffectPlayback seeked;
 		std::string status;
@@ -993,6 +997,182 @@ namespace
 			"Particle System Applies Layout Scale Yaw And Emission Direction Speed");
 		runner.Require(bFrameShape && bNonParticleUnchanged,
 			"Particle System Leaves Non Particle Elements Unchanged");
+
+		EFFECT_DOCUMENT_DESC lerpDocument;
+		lerpDocument.strEffectAssetId = "effect.manual.mesh.lerp.harness";
+		lerpDocument.strDisplayName = "Manual Mesh Lerp Harness";
+		EFFECT_ELEMENT_DESC lerpMesh;
+		lerpMesh.strElementId = "mesh";
+		lerpMesh.strDisplayName = "Mesh";
+		lerpMesh.eKind = EFFECT_ELEMENT_KIND::MESH;
+		lerpMesh.Detail.Timing.fLifeTimeSeconds = 2.f;
+		lerpMesh.Detail.Transform.vPosition = { 0.f, 0.f, 0.f };
+		lerpMesh.Detail.Transform.vRotationDegrees = { 0.f, 0.f, 0.f };
+		lerpMesh.Detail.Transform.vScale = { 1.f, 1.f, 1.f };
+		lerpMesh.Detail.Transform.vVelocityPerSecond = { 1.f, 0.f, 0.f };
+		lerpMesh.Detail.LinearLerp.bPosition = true;
+		lerpMesh.Detail.LinearLerp.vEndPosition = { 10.f, 0.f, 0.f };
+		lerpMesh.Detail.LinearLerp.bRotation = true;
+		lerpMesh.Detail.LinearLerp.vEndRotationDegrees = { 0.f, 45.f, 0.f };
+		lerpMesh.Detail.LinearLerp.bScale = true;
+		lerpMesh.Detail.LinearLerp.vEndScale = { 2.f, 2.f, 2.f };
+		lerpMesh.Detail.LinearLerp.bVelocity = true;
+		lerpMesh.Detail.LinearLerp.vEndVelocityPerSecond = { 3.f, 0.f, 0.f };
+		lerpDocument.Elements.push_back(lerpMesh);
+		CEffectPlayback lerpPlayback;
+		const bool_t bLerpStaged =
+			lerpPlayback.Stage_Document(lerpDocument, status);
+		lerpPlayback.Seek(1.f, root);
+		const EFFECT_EVALUATED_FRAME& lerpFrame = lerpPlayback.Get_Frame();
+		bool_t bLerpEvaluated = bLerpStaged &&
+			lerpFrame.Elements.size() == 1u;
+		if (bLerpEvaluated)
+		{
+			const float4x4_t& world = lerpFrame.Elements.front().World;
+			const f32_t basisLength = std::sqrt(
+				world._11 * world._11 + world._12 * world._12 +
+				world._13 * world._13);
+			bLerpEvaluated =
+				std::abs(world._41 - 6.5f) < 0.0001f &&
+				std::abs(basisLength - 1.5f) < 0.0001f &&
+				std::abs(world._13) > 0.5f;
+		}
+		runner.Require(bLerpEvaluated,
+			"Manual Mesh Lerp Evaluates Position Rotation Scale And Velocity Over Lifetime");
+	}
+
+	void Test_EffectTypedPresentation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace Engine;
+		EFFECT_DOCUMENT_DESC document;
+		document.strEffectAssetId = "effect.presentation.harness";
+		document.strDisplayName = "Typed Presentation Harness";
+
+		EFFECT_ELEMENT_DESC light;
+		light.strElementId = "light.point";
+		light.strDisplayName = "Point Light";
+		light.eKind = EFFECT_ELEMENT_KIND::LIGHT;
+		light.Detail.Transform.vPosition = { 1.f, 2.f, 3.f };
+		light.Detail.Timing.fLifeTimeSeconds = 1.f;
+		light.Detail.Light.bEnabled = true;
+		light.Detail.Light.eProfile =
+			EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+		light.Detail.Light.eStatus =
+			EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+		light.Detail.Light.fRange = 3.f;
+		light.Detail.Light.fIntensity = 10.f;
+		light.Detail.Light.vColor = { 3.f, 2.f, 1.f, 1.f };
+		light.SourcePresentation.bEnabled = true;
+		light.SourcePresentation.strSchema =
+			"lostark.effect-source-presentation";
+		light.SourcePresentation.iVersion = 1u;
+		light.SourcePresentation.strProfileId =
+			"light.point.reconstructed.v1";
+		light.SourcePresentation.eStatus =
+			EFFECT_SOURCE_PRESENTATION_STATUS::RECONSTRUCTED;
+		light.SourcePresentation.strSourceObjectPath =
+			"Harness.ParticleModuleLight";
+		light.SourcePresentation.strSourceActionCueId = "cue.light";
+		light.SourcePresentation.strSourceEventId = "event.light";
+		light.SourcePresentation.iSourceOccurrenceIndex = 7u;
+		light.SourcePresentation.fSourceTimeSeconds = 0.25f;
+		EFFECT_SOURCE_PRESENTATION_PARAMETER_DESC intensity;
+		intensity.strName = "intensity";
+		intensity.eKind =
+			EFFECT_SOURCE_PRESENTATION_PARAMETER_KIND::NUMBER;
+		intensity.eStatus =
+			EFFECT_SOURCE_PRESENTATION_PARAMETER_STATUS::SOURCE_EXPLICIT;
+		intensity.strSourcePropertyPath = "brightness";
+		intensity.fNumberValue = 10.0;
+		light.SourcePresentation.Parameters.push_back(intensity);
+		document.Elements.push_back(light);
+
+		for (size_t iPost = 0u; iPost < 2u; ++iPost)
+		{
+			EFFECT_ELEMENT_DESC post;
+			post.strElementId = iPost == 0u ? "post.rgb" : "post.zoom";
+			post.strDisplayName = iPost == 0u ? "RGB Noise" : "Zoom Blur";
+			post.eKind = EFFECT_ELEMENT_KIND::SCREEN_POST;
+			post.Detail.Timing.fLifeTimeSeconds = 1.f;
+			post.Detail.ScreenPost.bEnabled = true;
+			post.Detail.ScreenPost.eProfile = iPost == 0u ?
+				EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1 :
+				EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1;
+			post.Detail.ScreenPost.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			post.Detail.ScreenPost.fIntensity = 0.5f +
+				static_cast<f32_t>(iPost);
+			post.Detail.ScreenPost.fSecondaryIntensity = 0.25f;
+			post.Detail.ScreenPost.fFrequency = 2.f;
+			post.Detail.ScreenPost.iRandomSeed =
+				static_cast<uint32_t>(101u + iPost);
+			document.Elements.push_back(post);
+		}
+		EFFECT_ELEMENT_DESC disabled = document.Elements.back();
+		disabled.strElementId = "post.disabled";
+		disabled.strDisplayName = "Disabled Post";
+		disabled.Detail.ScreenPost.bEnabled = false;
+		disabled.Detail.ScreenPost.eProfile = EFFECT_SCREEN_POST_PROFILE::END;
+		disabled.Detail.ScreenPost.eStatus =
+			EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+		document.Elements.push_back(disabled);
+
+		std::string status;
+		EFFECT_DOCUMENT_DESC roundTrip;
+		const bool_t codecExact =
+			CEffectDocumentCodec::Validate(document, status) &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(document), roundTrip, status) &&
+			roundTrip.iFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
+			roundTrip.Elements.front().Detail.Light.bEnabled &&
+			roundTrip.Elements.front().SourcePresentation.Parameters.size() == 1u &&
+			roundTrip.Elements.front().SourcePresentation.Parameters.front().
+				fNumberValue == 10.0;
+		runner.Require(codecExact,
+			"Effect V12 Typed Presentation Codec Round Trips Losslessly");
+
+		EFFECT_DOCUMENT_DESC invalidKind = document;
+		invalidKind.Elements.front().eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		runner.Require(!CEffectDocumentCodec::Validate(invalidKind, status),
+			"Effect Typed Light Cannot Execute On Non Light Element");
+
+		float4x4_t root{};
+		XMStoreFloat4x4(&root, XMMatrixTranslation(5.f, 0.f, 0.f));
+		CEffectPlayback playback;
+		const bool_t staged = playback.Stage_Document(document, status);
+		if (staged)
+			playback.Seek(0.5f, root);
+		const EFFECT_EVALUATED_FRAME& frame = playback.Get_Frame();
+		const bool_t evaluated = staged && frame.Elements.empty() &&
+			frame.Lights.size() == 1u && frame.ScreenPosts.size() == 2u &&
+			std::abs(frame.Lights.front().vWorldPosition.x - 6.f) < 0.0001f &&
+			frame.ScreenPosts[0].eProfile ==
+				EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1 &&
+			frame.ScreenPosts[1].eProfile ==
+				EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1 &&
+			frame.ScreenPosts[0].iSourceOrder <
+				frame.ScreenPosts[1].iSourceOrder;
+		runner.Require(evaluated,
+			"Effect Playback Separates Typed Light And Ordered Screen Post Cues");
+		if (staged)
+			playback.Seek(2.f, root);
+		runner.Require(staged && playback.Get_Frame().Lights.empty() &&
+			playback.Get_Frame().ScreenPosts.empty(),
+			"Effect Typed Presentation Stops And Disabled Cues Never Execute");
+
+		const PRESENTATION_SCREEN_POST_PLAN_STEP first =
+			Build_PresentationScreenPostPlanStep(0u);
+		const PRESENTATION_SCREEN_POST_PLAN_STEP second =
+			Build_PresentationScreenPostPlanStep(1u);
+		runner.Require(first.iSourceTarget == 0u &&
+			first.iDestinationTarget == 1u &&
+			second.iSourceTarget == 1u &&
+			second.iDestinationTarget == 0u &&
+			PresentationScreenPostFinalTarget(0u) == 0u &&
+			PresentationScreenPostFinalTarget(1u) == 1u &&
+			PresentationScreenPostFinalTarget(2u) == 0u,
+			"Effect Screen Post Plan Has No Alias And Handles Zero Odd Even");
 	}
 
 	void Test_EffectSourceModuleOccurrenceOrder(TEST_RUNNER& runner)
@@ -1345,6 +1525,16 @@ namespace
 				0.0001f;
 		runner.Require(colorExact,
 			"Effect Source Color And Detail Override Each Execute Once");
+		EFFECT_PARTICLE_RUNTIME_PROBE colorProbe;
+		const bool_t colorProbeExact = colorStaged &&
+			colorPlayback.Query_ParticleRuntimeProbe("colored", colorProbe) &&
+			colorProbe.iActiveParticleCount == 1u &&
+			!colorProbe.bMeshRenderer &&
+			std::abs(colorProbe.fFirstAlpha - 0.25f) < 0.0001f &&
+			std::abs(colorProbe.fMinAlpha - 0.25f) < 0.0001f &&
+			std::abs(colorProbe.fMaxAlpha - 0.25f) < 0.0001f;
+		runner.Require(colorProbeExact,
+			"Effect Runtime Probe Reports Evaluated Particle Alpha");
 
 		EFFECT_DOCUMENT_DESC sizeDocument;
 		sizeDocument.strEffectAssetId = "effect.size.exact.harness";
@@ -1610,9 +1800,8 @@ namespace
 		for (const uint32_t skillId : skillIds)
 		{
 			const std::filesystem::path path = CProjectDataRoot::Resolve(
-				L"Effects/Imported/DimensionMaster/Converted/"
-				L"effect.dimensionmaster.skill." + std::to_wstring(skillId) +
-				L".imported.effect.json");
+				L"Effects/Authored/effect.dimensionmaster.skill." +
+				std::to_wstring(skillId) + L".effect.json");
 			EFFECT_DOCUMENT_DESC document;
 			CEffectPlayback playback;
 			const bool_t loaded = !path.empty() &&
@@ -1710,7 +1899,7 @@ namespace
 			iBoneSocketModules == iExpectedBoneSocketModules &&
 			iEventGenerators == iExpectedEventGenerators &&
 			iEventReceivers == iExpectedEventReceivers,
-			"Current DimensionMaster Source Documents Preserve Exact Semantic Module Counts");
+			"Current DimensionMaster Authored Documents Preserve Exact Semantic Module Counts");
 		runner.Require(iVectorModules == iExpectedVectorModules &&
 			iBoundVectorModules == iExpectedVectorModules &&
 			vectorAssetIds.size() == iExpectedVectorAssets,
@@ -1739,16 +1928,18 @@ namespace
 			iAuthoredStageCount == skillIds.size(),
 			"All Effects Stages Every Current DimensionMaster Authored Document");
 
-		const std::filesystem::path aPath = CProjectDataRoot::Resolve(
+		const std::filesystem::path dPath = CProjectDataRoot::Resolve(
 			L"Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json");
 		EFFECT_DOCUMENT_DESC aDocument;
 		EFFECT_DOCUMENT_DESC aRoundTrip;
-		const bool_t aLoaded = !aPath.empty() &&
-			CEffectDocumentCodec::Load(aPath, aDocument, status);
+		const bool_t aLoaded = !dPath.empty() &&
+			CEffectDocumentCodec::Load(dPath, aDocument, status);
 		std::set<std::string> aProfileIds;
 		size_t aParticleCount = 0u;
 		size_t aEnabledProfileCount = 0u;
 		size_t aReconstructedProfileCount = 0u;
+		size_t aGroupedShaderCount = 0u;
+		size_t aFallbackBlockedShaderCount = 0u;
 		size_t aSpecializedShaderCount = 0u;
 		size_t aDynamicSemanticElementCount = 0u;
 		size_t aSubUVElementCount = 0u;
@@ -1846,7 +2037,17 @@ namespace
 			{
 				++aReconstructedProfileCount;
 			}
-			if (source.strRuntimeShaderProfileId !=
+			if (source.strRuntimeShaderProfileId ==
+				"effect.ue3.grouped-translucent.v1")
+			{
+				++aGroupedShaderCount;
+			}
+			else if (source.strRuntimeShaderProfileId ==
+				"effect.ue3.fallback-blocked.v1")
+			{
+				++aFallbackBlockedShaderCount;
+			}
+			else if (source.strRuntimeShaderProfileId !=
 				"effect.ue3.reconstructed-standard.v1")
 			{
 				++aSpecializedShaderCount;
@@ -1868,31 +2069,40 @@ namespace
 		const bool_t aRoundTripped = aLoaded &&
 			CEffectDocumentCodec::Parse(aSerialized, aRoundTrip, status) &&
 			CEffectDocumentCodec::Serialize(aRoundTrip) == aSerialized;
-		runner.Require(aLoaded && aDocument.iFormatVersion == 11u &&
+		runner.Require(aLoaded &&
+			aDocument.iFormatVersion == EFFECT_AUTHORING_FORMAT_VERSION &&
 			aDocument.Elements.size() == 51u && aParticleCount == 46u &&
 			aEnabledProfileCount == 46u &&
 			aReconstructedProfileCount == 46u &&
-			aProfileIds.size() == 21u && aSpecializedShaderCount == 14u &&
+			aProfileIds.size() == 21u && aGroupedShaderCount == 30u &&
+			aFallbackBlockedShaderCount == 2u &&
+			aSpecializedShaderCount == 14u &&
 			aDynamicSemanticElementCount == 32u &&
 			aSubUVElementCount == 2u &&
 			aSourceModuleOccurrenceCount == 518u &&
 			aSourceModuleClasses.size() == 28u && aRoundTripped,
-			"DimensionMaster A V11 Source Material Profiles Round Trip Losslessly");
+			"DimensionMaster D 2050240 V12 Source Material Profiles Round Trip Losslessly");
 		runner.Require(aCookedLookupCount == 604u &&
 			aMalformedLookupCount == 0u && aEmitter17SizeExact &&
 			aEmitter32SizeExact && aEmitter64SizeExact &&
 			aXyzRandomLockCount == 13u,
-			"DimensionMaster A Cooked Distribution Payloads And Sprite Sizes Are Exact");
+			"DimensionMaster D 2050240 Cooked Distribution Payloads And Sprite Sizes Are Exact");
 		runner.Require(aSourceColorElementCount == 46u &&
 			aSourceColorOverrideViolationCount == 0u &&
 			aSourceSubUVOverrideViolationCount == 0u,
-			"DimensionMaster A Source Color And SubUV Baselines Execute Once");
+			"DimensionMaster D 2050240 Source Color And SubUV Baselines Execute Once");
 		resourceRootEnvironment.Restore();
 	}
 
 	void Test_DimensionMasterImportedPortalDraft(TEST_RUNNER& runner)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path resourceRoot =
+			CProjectDataRoot::Get().parent_path() /
+			L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
 		std::string status;
 		std::vector<uint32_t> skillIds;
 		std::vector<std::string> expectedEffectIds;
@@ -2042,6 +2252,12 @@ namespace
 	void Test_EffectAllEffectsAuthoringJoin(TEST_RUNNER& runner)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path resourceRoot =
+			CProjectDataRoot::Get().parent_path() /
+			L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
 		std::string status;
 		bool_t valid = CPlayerSkillCatalog::Load(status);
 		if (!valid)
@@ -2075,6 +2291,12 @@ namespace
 	void Test_EffectDraftAtomicSave(TEST_RUNNER& runner)
 	{
 		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path resourceRoot =
+			CProjectDataRoot::Get().parent_path() /
+			L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(resourceRoot.c_str());
 		EFFECT_DOCUMENT_DESC document;
 		document.strEffectAssetId = "effect.draft.harness";
 		document.strDisplayName = "Draft Harness";
@@ -2098,13 +2320,250 @@ namespace
 		runner.Require(
 			!CEffectDocumentCodec::Validate(unknownTemplate, status),
 			"Effect Authoring Rejects Unregistered Material Template");
+		runner.Require(
+			Is_UnsafeEffectBaseTextureAssetId("") &&
+			Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/T_blankwhite_00.dds") &&
+			Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/T_NormalMap_00.dds") &&
+			Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/T_BUMP_00.dds") &&
+			Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/fx_surface_n.dds") &&
+			Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/fx_surface_n_01.dds") &&
+			!Is_UnsafeEffectBaseTextureAssetId(
+				"Effect/Test/T_BaseColor_00.dds"),
+			"Effect Runtime And Tool Share Unsafe Base Texture Classification");
+		runner.Require(
+			!Is_EffectManualMeshAuthoringContractSatisfied(
+				false, true, false) &&
+			!Is_EffectManualMeshAuthoringContractSatisfied(
+				true, false, false) &&
+			!Is_EffectManualMeshAuthoringContractSatisfied(
+				true, true, true) &&
+			Is_EffectManualMeshAuthoringContractSatisfied(
+				true, true, false),
+			"Manual Mesh Authoring Requires Mesh And Safe Base Only");
+		runner.Require(
+			!Is_EffectManualMeshCreateReady("", true, true, false) &&
+			Is_EffectManualMeshCreateReady(
+				"effect.manual.mesh.named", true, true, false),
+			"Manual Mesh Create Requires Name But Not A Preselected Data File");
+
+		EFFECT_DOCUMENT_DESC manualMeshDocument;
+		manualMeshDocument.strEffectAssetId = "effect.manual.mesh.harness";
+		manualMeshDocument.strDisplayName = "Manual Mesh Harness";
+		EFFECT_ELEMENT_DESC manualMesh;
+		manualMesh.strElementId = "mesh_layer_1";
+		manualMesh.strDisplayName = "Mesh Layer 1";
+		manualMesh.eKind = EFFECT_ELEMENT_KIND::MESH;
+		manualMesh.Material.strTemplateId = "effect.standard";
+		manualMesh.Material.eRenderProfile =
+			EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ;
+		manualMesh.Detail.Mesh.bUseModelMaterial = false;
+		manualMesh.Detail.Transform.vScale = {
+			EFFECT_MANUAL_MESH_DEFAULT_SCALE,
+			EFFECT_MANUAL_MESH_DEFAULT_SCALE,
+			EFFECT_MANUAL_MESH_DEFAULT_SCALE };
+		manualMesh.ResourceBindings = {
+			{ "meshModel",
+				"Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" },
+			{ "base",
+				"Effect/DimensionMaster/Textures/EFMASTER_MATERIAL_PROLOGUE/fx_a_ice_003.dds" }
+		};
+		manualMeshDocument.Elements.push_back(manualMesh);
+		EFFECT_DOCUMENT_DESC manualMeshRoundTrip;
+		runner.Require(
+			CEffectDocumentCodec::Validate_Drawable(
+				manualMeshDocument, status) &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(manualMeshDocument),
+				manualMeshRoundTrip, status) &&
+			manualMeshRoundTrip.Elements.size() == 1u &&
+			manualMeshRoundTrip.Elements.front().eKind ==
+				EFFECT_ELEMENT_KIND::MESH &&
+			!manualMeshRoundTrip.Elements.front().Detail.Mesh.
+				bUseModelMaterial &&
+			manualMeshRoundTrip.Elements.front().Detail.Transform.vScale.x ==
+				EFFECT_MANUAL_MESH_DEFAULT_SCALE &&
+			manualMeshRoundTrip.Elements.front().Detail.Transform.vScale.y ==
+				EFFECT_MANUAL_MESH_DEFAULT_SCALE &&
+			manualMeshRoundTrip.Elements.front().Detail.Transform.vScale.z ==
+				EFFECT_MANUAL_MESH_DEFAULT_SCALE &&
+			manualMeshRoundTrip.Elements.front().ResourceBindings.size() == 2u,
+			"Manual Mesh Create Contract Round Trips One Percent Scale Carrier Layer");
+
+		EFFECT_DOCUMENT_DESC sourceMaterialDocument = document;
+		EFFECT_MATERIAL_DESC& sourceMaterial =
+			sourceMaterialDocument.Elements.front().Material;
+		sourceMaterial.strTemplateId = "effect.source_material";
+		sourceMaterial.strSourceMaterialPath = "harness.material.source";
+		sourceMaterial.SourceMaterial.bEnabled = true;
+		sourceMaterial.SourceMaterial.strProfileId =
+			"harness.material.profile";
+		sourceMaterial.SourceMaterial.strRuntimeShaderProfileId =
+			"effect.ue3.reconstructed-standard.v1";
+		sourceMaterial.SourceMaterial.strParentMaterialPath =
+			"harness.material.parent";
+		sourceMaterial.SourceMaterial.eStatus =
+			EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE;
+		runner.Require(
+			CEffectDocumentCodec::Validate(sourceMaterialDocument, status),
+			"Effect Authoring Accepts Registered Source Material Runtime Contract");
+		EFFECT_DOCUMENT_DESC groupedMaterialDocument = sourceMaterialDocument;
+		EFFECT_SOURCE_MATERIAL_DESC& groupedSource =
+			groupedMaterialDocument.Elements.front().Material.SourceMaterial;
+		groupedSource.strRuntimeShaderProfileId =
+			"effect.ue3.grouped-translucent.v1";
+		groupedSource.Scalars = {
+			{ "02.Map_A_UVScale_R", "01_Alpha", 2.f },
+			{ "03.mAP_a_UvScAlE_g", "01_ALPHA", 3.f },
+			{ "04.Map_A_Panning_X", "01_aLpHa", 0.25f },
+			{ "05.map_A_pAnNiNg_Y", "01_Alpha", -0.5f },
+			{ "36.Str", "01_Alpha", 0.5f },
+			{ "37.POWER", "01_Alpha", 2.f },
+			{ "92.Emissiion_Str", "02_Emission", 4.f },
+			{ "93.EMISSIION_POWER", "02_EMISSION", 1.5f },
+			{ "05.Distort_Str", "08_UVDistort", 0.2f },
+			{ "Dissolve_Hardness", "07_Dissolve", 10.f }
+		};
+		groupedSource.Vectors = {
+			{ "94.Emissiion_Color", "02_Emission",
+				{ 0.25f, 0.5f, 1.f, 1.f } }
+		};
+		const EFFECT_GROUPED_TRANSLUCENT_CONSTANTS groupedConstants =
+			Build_EffectGroupedTranslucentConstants(groupedSource);
+		EFFECT_DOCUMENT_DESC groupedRoundTrip;
+		const bool_t groupedRoundTripExact =
+			CEffectDocumentCodec::Validate(groupedMaterialDocument, status) &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(groupedMaterialDocument),
+				groupedRoundTrip, status) &&
+			groupedRoundTrip.Elements.front().Material.SourceMaterial.
+				Scalars.front().strGroup == "01_Alpha" &&
+			groupedRoundTrip.Elements.front().Material.SourceMaterial.
+				Vectors.front().strGroup == "02_Emission";
+		runner.Require(groupedRoundTripExact &&
+			groupedConstants.vUVScalePan.x == 2.f &&
+			groupedConstants.vUVScalePan.y == 3.f &&
+			groupedConstants.vUVScalePan.z == 0.25f &&
+			groupedConstants.vUVScalePan.w == -0.5f &&
+			groupedConstants.vAlphaEmissive.x == 0.5f &&
+			groupedConstants.vAlphaEmissive.y == 2.f &&
+			groupedConstants.vAlphaEmissive.z == 4.f &&
+			groupedConstants.vAlphaEmissive.w == 1.5f &&
+			groupedConstants.vNoiseDissolve.y == 0.2f &&
+			groupedConstants.vNoiseDissolve.w == 10.f &&
+			groupedConstants.vTint.z == 1.f,
+			"Effect Grouped Translucent Packs Named Parameters By Name And Group");
+		runner.Require(
+			!Is_EffectGroupedTranslucentResourceContractSatisfied(
+				groupedSource, false, false, false, false) &&
+			Is_EffectGroupedTranslucentResourceContractSatisfied(
+				groupedSource, true, false, false, false),
+			"Effect Grouped Translucent Fails Closed Without Alpha Or Emission Resource");
+		EFFECT_SOURCE_MATERIAL_DESC emissionOnlySource;
+		emissionOnlySource.Scalars = {
+			{ "Emission_Strength", "Emission", 3.f }
+		};
+		runner.Require(
+			!Is_EffectGroupedTranslucentResourceContractSatisfied(
+				emissionOnlySource, false, true, false, false) &&
+			Is_EffectGroupedTranslucentResourceContractSatisfied(
+				emissionOnlySource, false, false, true, false),
+			"Effect Grouped Translucent Requires Emission Carrier For Emission Profile");
+		runner.Require(
+			Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.shine.v1", true, true, false, false) &&
+			!Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.shine.v1", true, false, false, false) &&
+			Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.blackline-aura.v1", false, true, true, true) &&
+			Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.local-crack.v1", false, false, true, true) &&
+			!Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.local-crack.v1", false, false, false, true) &&
+			Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.procedural-center-glow.v1",
+				false, false, false, false),
+			"Effect Finite Source Profiles Require Their Decoded Runtime Carriers");
+		EFFECT_SOURCE_MATERIAL_DESC stagedSourceSignature = groupedSource;
+		EFFECT_SOURCE_MATERIAL_DESC changedSourceSignature = groupedSource;
+		changedSourceSignature.Scalars.front().fValue += 1.f;
+		runner.Require(
+			Is_EffectSourceMaterialStagingSignatureEqual(
+				stagedSourceSignature, stagedSourceSignature) &&
+			!Is_EffectSourceMaterialStagingSignatureEqual(
+				stagedSourceSignature, changedSourceSignature),
+			"Effect Material Value Edits Invalidate Renderer Staging Constants");
+		EFFECT_DOCUMENT_DESC fallbackBlockedMaterial = sourceMaterialDocument;
+		fallbackBlockedMaterial.Elements.front().Material.SourceMaterial.
+			strRuntimeShaderProfileId = "effect.ue3.fallback-blocked.v1";
+		fallbackBlockedMaterial.Elements.front().Material.eRenderProfile =
+			EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ;
+		EFFECT_DOCUMENT_DESC fallbackBlockedRoundTrip;
+		runner.Require(
+			CEffectDocumentCodec::Validate(fallbackBlockedMaterial, status) &&
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(fallbackBlockedMaterial),
+				fallbackBlockedRoundTrip, status) &&
+			fallbackBlockedRoundTrip.Elements.front().Material.
+				SourceMaterial.strRuntimeShaderProfileId ==
+					"effect.ue3.fallback-blocked.v1" &&
+			fallbackBlockedRoundTrip.Elements.front().Material.eRenderProfile ==
+				EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ,
+			"Effect Authoring Round Trips Fail-Closed One-Sided Material Profile");
+		EFFECT_DOCUMENT_DESC fallbackBlockedMesh = fallbackBlockedMaterial;
+		EFFECT_ELEMENT_DESC& fallbackMeshElement =
+			fallbackBlockedMesh.Elements.front();
+		fallbackMeshElement.bVisible = true;
+		fallbackMeshElement.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		fallbackMeshElement.Material.strTemplateId = "effect.standard";
+		fallbackMeshElement.Detail.Mesh.bUseModelMaterial = false;
+		fallbackMeshElement.ResourceBindings = {
+			{ "meshModel",
+				"Effect/DimensionMaster/Meshes/fm_d_crack_037.wmodel" },
+			{ "dissolve",
+				"Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds" }
+		};
+		runner.Require(
+			CEffectDocumentCodec::Validate_Drawable(
+				fallbackBlockedMesh, status),
+			"Effect Fail-Closed Mesh Without Base Stages For Hidden Rendering");
+		EFFECT_DOCUMENT_DESC unprotectedMesh = fallbackBlockedMesh;
+		unprotectedMesh.Elements.front().Material.SourceMaterial.
+			strRuntimeShaderProfileId =
+				"effect.ue3.reconstructed-standard.v1";
+		runner.Require(
+			!CEffectDocumentCodec::Validate_Drawable(unprotectedMesh, status),
+			"Effect Unprotected Mesh Without Base Still Fails Drawable Validation");
+		EFFECT_DOCUMENT_DESC unknownShaderProfile = sourceMaterialDocument;
+		unknownShaderProfile.Elements.front().Material.SourceMaterial.
+			strRuntimeShaderProfileId = "effect.ue3.merge-typo.v1";
+		runner.Require(
+			!CEffectDocumentCodec::Validate(unknownShaderProfile, status),
+			"Effect Authoring Rejects Unknown Source Material Shader Profile Before Draw");
+		EFFECT_DOCUMENT_DESC unknownDynamicSemantic = sourceMaterialDocument;
+		unknownDynamicSemantic.Elements.front().Material.SourceMaterial.
+			DynamicParameterSemantics[0] = "merge_typo";
+		runner.Require(
+			!CEffectDocumentCodec::Validate(unknownDynamicSemantic, status),
+			"Effect Authoring Rejects Unknown Dynamic Parameter Semantic Before Draw");
+		EFFECT_DOCUMENT_DESC unknownSubUVMode = sourceMaterialDocument;
+		unknownSubUVMode.Elements.front().Material.SourceMaterial.strSubUVMode =
+			"psuvim_merge_typo";
+		runner.Require(
+			!CEffectDocumentCodec::Validate(unknownSubUVMode, status),
+			"Effect Authoring Rejects Unknown Source Material SubUV Mode Before Draw");
 
 		EFFECT_DOCUMENT_DESC sourceRecipeDocument = document;
-		EFFECT_ELEMENT_DESC& sourceElement =
+		EFFECT_ELEMENT_DESC sourceDraft =
 			sourceRecipeDocument.Elements.front();
-		sourceElement.SourceRecipe.bEnabled = true;
-		sourceElement.SourceRecipe.strRendererShape = "sprite";
-		sourceElement.SourceRecipe.fEmitterDurationSeconds = 1.f;
+		sourceDraft.strDisplayName = "Applied SourceRecipe Draft";
+		sourceDraft.SourceRecipe.bEnabled = true;
+		sourceDraft.SourceRecipe.strRendererShape = "sprite";
+		sourceDraft.SourceRecipe.fEmitterDurationSeconds = 1.f;
 		EFFECT_SOURCE_MODULE_DESC sourceModule;
 		sourceModule.strStableId = "harness:module:spawn";
 		sourceModule.strClassName = "particlemodulespawn";
@@ -2116,7 +2575,9 @@ namespace
 		sourceRate.vDefaultMinimum.x = 12.f;
 		sourceRate.vDefaultMaximum.x = 12.f;
 		sourceModule.Distributions.push_back(sourceRate);
-		sourceElement.SourceRecipe.Modules.push_back(sourceModule);
+		sourceDraft.SourceRecipe.Modules.push_back(sourceModule);
+		Apply_EffectElementDetailDraft(
+			sourceRecipeDocument.Elements.front(), sourceDraft);
 		EFFECT_DOCUMENT_DESC sourceRoundTrip;
 		const float4_t evaluatedRate = CEffectDistribution::Evaluate(
 			sourceRate, 0.5f, 0.25f);
@@ -2125,10 +2586,14 @@ namespace
 			CEffectDocumentCodec::Parse(
 				CEffectDocumentCodec::Serialize(sourceRecipeDocument),
 				sourceRoundTrip, status) &&
+			sourceRecipeDocument.Elements.front().strElementId ==
+				"unbound_sprite" &&
+			sourceRoundTrip.Elements.front().strDisplayName ==
+				"Applied SourceRecipe Draft" &&
 			sourceRoundTrip.Elements.front().SourceRecipe.bEnabled &&
 			sourceRoundTrip.Elements.front().SourceRecipe.Modules.size() == 1u &&
 			evaluatedRate.x == 12.f,
-			"Effect V9 Source Recipe And Distribution Round Trip Losslessly");
+			"Effect Detail Apply And Source Recipe Round Trip Losslessly");
 
 		std::string legacyV7 = CEffectDocumentCodec::Serialize(document);
 		const std::string currentVersion = "\"version\": " +
@@ -2163,20 +2628,103 @@ namespace
 		std::filesystem::remove(path, error);
 		EFFECT_DOCUMENT_DESC loaded;
 		runner.Require(
-			CEffectDocumentCodec::Save_Atomic(path, document, status) &&
+			CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				path, sourceRecipeDocument, std::string_view{}, status) &&
 			CEffectDocumentCodec::Load(path, loaded, status) &&
 			loaded.strEffectAssetId == document.strEffectAssetId &&
 			loaded.Elements.size() == 1u &&
-			loaded.Elements.front().strDisplayName == "Unbound Sprite" &&
+			loaded.Elements.front().strDisplayName ==
+				"Applied SourceRecipe Draft" &&
 			loaded.Elements.front().strGroupId == "harness_group" &&
 			loaded.Elements.front().strSourceNode == "Harness/Node/0" &&
 			!loaded.Elements.front().bVisible &&
 		loaded.Elements.front().Material.strTemplateId == "effect.standard" &&
+		loaded.Elements.front().SourceRecipe.bEnabled &&
+		loaded.Elements.front().SourceRecipe.Modules.size() == 1u &&
+		loaded.Elements.front().SourceRecipe.Modules.front().strStableId ==
+			"harness:module:spawn" &&
 		loaded.Elements.front().Detail.Particle.vInitialPositionMin.x == 0.f &&
 		loaded.Elements.front().Detail.Particle.vInitialPositionMax.x == 0.f &&
 		loaded.Elements.front().ResourceBindings.empty(),
-			"Effect Authoring Atomically Saves And Reloads V9 Metadata Draft");
+			"Effect Authoring Atomically Saves And Reloads V12 Partial SourceRecipe Draft");
+
+		const std::string loadedCanonical =
+			CEffectDocumentCodec::Serialize(loaded);
+		EFFECT_DOCUMENT_DESC externalEdit = loaded;
+		externalEdit.strDisplayName = "External Writer Won";
+		const bool_t externalSaved = CEffectDocumentCodec::Save_Atomic(
+			path, externalEdit, status);
+		EFFECT_DOCUMENT_DESC staleDraft = loaded;
+		staleDraft.strDisplayName = "Stale Tool Lost";
+		const bool_t staleRejected = externalSaved &&
+			!CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				path, staleDraft, loadedCanonical, status);
+		EFFECT_DOCUMENT_DESC preservedExternal;
+		const bool_t externalPreserved = staleRejected &&
+			CEffectDocumentCodec::Load(path, preservedExternal, status) &&
+			preservedExternal.strDisplayName == "External Writer Won";
+		runner.Require(externalPreserved,
+			"Effect Authoring Rejects Stale Save And Preserves External Writer");
 		std::filesystem::remove(path, error);
+
+		const std::filesystem::path qPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050100.effect.json");
+		EFFECT_DOCUMENT_DESC qDocument;
+		const std::string qElementId =
+			"fx_pc_swp_00.par_j_swp_nailstrike_00_1.particlespriteemitter_8";
+		const bool_t qLoaded = !qPath.empty() &&
+			CEffectDocumentCodec::Load(qPath, qDocument, status);
+		auto qElement = qLoaded ? std::find_if(
+			qDocument.Elements.begin(), qDocument.Elements.end(),
+			[&qElementId](const EFFECT_ELEMENT_DESC& element)
+			{
+				return element.strElementId == qElementId;
+			}) : qDocument.Elements.end();
+		const std::filesystem::path qDraftPath =
+			std::filesystem::temp_directory_path() /
+			"lostark-effect-q-material-draft.effect.json";
+		std::filesystem::remove(qDraftPath, error);
+		bool_t qMaterialRoundTrip = false;
+		if (qLoaded && qElement != qDocument.Elements.end() &&
+			!qElement->Material.SourceMaterial.Scalars.empty())
+		{
+			EFFECT_NAMED_FLOAT_DESC& scalar =
+				qElement->Material.SourceMaterial.Scalars.front();
+			const std::string scalarName = scalar.strName;
+			const f32_t authoredValue = scalar.fValue + 0.125f;
+			scalar.fValue = authoredValue;
+			qElement->Material.SourceMaterial.eStatus =
+				EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE;
+			EFFECT_DOCUMENT_DESC qReloaded;
+			qMaterialRoundTrip =
+				CEffectDocumentCodec::Save_AtomicIfUnchanged(
+					qDraftPath, qDocument, std::string_view{}, status) &&
+				CEffectDocumentCodec::Load(qDraftPath, qReloaded, status) &&
+				CEffectDocumentCodec::Serialize(qReloaded) ==
+					CEffectDocumentCodec::Serialize(qDocument) &&
+				CEffectDocumentCodec::Validate_Drawable(qReloaded, status);
+			if (qMaterialRoundTrip)
+			{
+				const auto reloadedElement = std::find_if(
+					qReloaded.Elements.begin(), qReloaded.Elements.end(),
+					[&qElementId](const EFFECT_ELEMENT_DESC& element)
+					{
+						return element.strElementId == qElementId;
+					});
+				qMaterialRoundTrip =
+					reloadedElement != qReloaded.Elements.end() &&
+					!reloadedElement->Material.SourceMaterial.Scalars.empty() &&
+					reloadedElement->Material.SourceMaterial.Scalars.front().strName ==
+						scalarName &&
+					reloadedElement->Material.SourceMaterial.Scalars.front().fValue ==
+						authoredValue &&
+					reloadedElement->Material.SourceMaterial.eStatus ==
+						EFFECT_SOURCE_MATERIAL_STATUS::RECONSTRUCTED_PROFILE;
+			}
+		}
+		runner.Require(qMaterialRoundTrip,
+			"DimensionMaster Q Stable Emitter Material Tuning Saves And Reloads Losslessly");
+		std::filesystem::remove(qDraftPath, error);
 	}
 
 	void Test_EffectAssemblyRuntimeCatalog(
@@ -2379,6 +2927,16 @@ int main(const int argc, char* argv[])
 {
 	TEST_RUNNER runner{};
 	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--effect-document" && argc > 2 && nullptr != argv[2])
+	{
+		Client::EFFECT_DOCUMENT_DESC document;
+		std::string status;
+		const bool_t loaded = Client::CEffectDocumentCodec::Load(
+			std::filesystem::path(argv[2]), document, status);
+		std::cout << (loaded ? "[PASS] " : "[FAILURE] ")
+			<< "Effect Document V12 Parse: " << status << '\n';
+		return loaded ? 0 : 1;
+	}
 	if (Mode == "--skill-binding-fast")
 	{
 		Test_RealSkillBindingDocuments(runner);
@@ -2387,7 +2945,9 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--effect-executor-fast")
 	{
+		Test_RealSkillBindingDocuments(runner);
 		Test_EffectPlaybackDeterminism(runner);
+		Test_EffectTypedPresentation(runner);
 		Test_EffectSourceModuleOccurrenceOrder(runner);
 		Test_EffectExactSourceSemantics(runner);
 		Test_DimensionMasterSourceSemanticAssets(runner);
@@ -2396,6 +2956,7 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--effect-runtime-fast")
 	{
+		Test_RealSkillBindingDocuments(runner);
 		Test_EffectAssemblyRuntimeCatalog(runner, false);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
@@ -2403,6 +2964,13 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-imported-fast")
 	{
 		Test_DimensionMasterImportedPortalDraft(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-authoring-fast")
+	{
+		Test_EffectDraftAtomicSave(runner);
+		Test_EffectTypedPresentation(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -2418,6 +2986,7 @@ int main(const int argc, char* argv[])
 	Test_RealSkillBindingDocuments(runner);
 	Test_SkillBindingAtomicSave(runner);
 	Test_EffectPlaybackDeterminism(runner);
+	Test_EffectTypedPresentation(runner);
 	Test_EffectSourceModuleOccurrenceOrder(runner);
 	Test_EffectExactSourceSemantics(runner);
 	Test_DimensionMasterSourceSemanticAssets(runner);

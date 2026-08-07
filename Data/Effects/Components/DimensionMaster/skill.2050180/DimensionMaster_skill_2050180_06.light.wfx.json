@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_cm_02.light.par_mp_light_01|FX_CM_02.light.par_mp_light_01.particlespriteemitter_2"
     ],
-    "sourceElementSha256": "61c9c6ce84da0561dfea64c82679c1fb1b4cc03a42db611dd8bec1193dea2edf",
+    "sourceElementSha256": "ed65c71b2777ad5c059f400893385d0006a2a47b1968fe032906f25cde3947ad",
     "inputSlot": "R"
   },
   "emitters": [
@@ -26,7 +26,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050180.06",
     "displayName": "DimensionMaster_skill_2050180_06.light.wfx",
     "particleSystem": {
@@ -277,6 +277,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "light.point.reconstructed.v1",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -791,6 +826,35 @@
                   "keys": []
                 }
               ]
+            }
+          ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "light.point.reconstructed.v1",
+          "status": "unresolved",
+          "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+          "sourceActionCueId": "skill-2050180/clip-000/notify-038",
+          "sourceEventId": "source-event-022",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 1.1,
+          "parameters": [
+            {
+              "name": "pointLightComponent",
+              "type": "string",
+              "status": "unresolved_class_default",
+              "sourcePropertyPath": "TypeDataLight.PointLightComponent",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335"
             }
           ]
         }

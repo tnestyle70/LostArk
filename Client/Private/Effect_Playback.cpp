@@ -20,7 +20,9 @@ namespace
 	constexpr f32_t FIXED_STEP_SECONDS = 1.f / 60.f;
 	constexpr f64_t FIXED_STEP_SECONDS_EXACT = 1.0 / 60.0;
 	constexpr f64_t FIXED_STEP_EPSILON = 1.0e-9;
-	constexpr uint32_t MAX_CATCH_UP_STEPS = 8u;
+	// Keep a one-second bounded budget so a 3 FPS frame (20 fixed steps)
+	// advances at the same rate as the authoritative action/animation clock.
+	constexpr uint32_t MAX_CATCH_UP_STEPS = 60u;
 	constexpr uint32_t MAX_SOURCE_EVENTS_PER_STEP = 4096u;
 
 	struct SOURCE_VECTOR_FIELD final
@@ -2109,22 +2111,29 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 	m_Frame = {};
 	m_Frame.fSampleTimeSeconds = m_fSampleTimeSeconds;
 	m_Frame.RootWorld = RootWorld;
-	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	for (size_t iElement = 0u; iElement < m_Document.Elements.size(); ++iElement)
 	{
+		const EFFECT_ELEMENT_DESC& Element = m_Document.Elements[iElement];
 		if (!Element.bVisible)
 			continue;
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
 			Element.Detail.Timing.fStartDelaySeconds;
-		const f32_t T = Clamp01(fLocalTime /
+		const f32_t fPresentationTime = fLocalTime -
+			(Element.SourceRecipe.bEnabled ?
+				Element.SourceRecipe.fEmitterDelaySeconds : 0.f);
+		const f32_t T = Clamp01(fPresentationTime /
 			Element.Detail.Timing.fLifeTimeSeconds);
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		if (!Can_EvaluateElementWorld(Element))
 			continue;
 
-		if (fLocalTime >= 0.f &&
-			fLocalTime <= Element.Detail.Timing.fLifeTimeSeconds &&
+		const bool_t bPresentationActive = fPresentationTime >= 0.f &&
+			fPresentationTime < Element.Detail.Timing.fLifeTimeSeconds;
+		if (bPresentationActive &&
 			EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind &&
-			EFFECT_ELEMENT_KIND::TRAIL != Element.eKind)
+			EFFECT_ELEMENT_KIND::TRAIL != Element.eKind &&
+			EFFECT_ELEMENT_KIND::LIGHT != Element.eKind &&
+			EFFECT_ELEMENT_KIND::SCREEN_POST != Element.eKind)
 		{
 			m_Frame.Elements.push_back({
 				&Element,
@@ -2132,6 +2141,99 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				Evaluate_Color(Element, T),
 				fLocalTime,
 				T });
+		}
+
+		const f32_t fStableRandom = static_cast<f32_t>(
+			Hash_StableId(Element.strElementId) ^
+			Element.Detail.Particle.iRandomSeed) /
+			static_cast<f32_t>(UINT32_MAX);
+		if (bPresentationActive &&
+			EFFECT_ELEMENT_KIND::LIGHT == Element.eKind &&
+			Element.Detail.Light.bEnabled &&
+			Element.Detail.Light.eProfile ==
+				EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 &&
+			Element.Detail.Light.eStatus ==
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE)
+		{
+			const float4x4_t World = Evaluate_ElementWorld(
+				Element, m_fSampleTimeSeconds, RootWorld);
+			const float3_t ColorOverLife = Evaluate_SourceVector(
+				Element, "particlemodulecoloroverlife", "coloroverlife",
+				T, fStableRandom, float3_t(1.f, 1.f, 1.f));
+			const float3_t ColorScaleOverLife = Evaluate_SourceVector(
+				Element, "particlemodulecolorscaleoverlife",
+				"colorscaleoverlife", T, fStableRandom,
+				float3_t(1.f, 1.f, 1.f));
+			const f32_t fAlpha = Evaluate_SourceFloat(
+				Element, "particlemodulecoloroverlife", "alphaoverlife",
+				T, fStableRandom, 1.f) * Evaluate_SourceFloat(
+				Element, "particlemodulecolorscaleoverlife",
+				"alphascaleoverlife", T, fStableRandom, 1.f);
+			EFFECT_EVALUATED_LIGHT Light;
+			Light.pElement = &Element;
+			Light.vWorldPosition = Get_Translation(World);
+			Light.fRange = Element.Detail.Light.fRange;
+			Light.fIntensity = Element.Detail.Light.fIntensity *
+				(std::max)(0.f, fAlpha);
+			Light.vColor = {
+				Element.Detail.Light.vColor.x * ColorOverLife.x *
+					ColorScaleOverLife.x,
+				Element.Detail.Light.vColor.y * ColorOverLife.y *
+					ColorScaleOverLife.y,
+				Element.Detail.Light.vColor.z * ColorOverLife.z *
+					ColorScaleOverLife.z,
+				Element.Detail.Light.vColor.w };
+			Light.vAmbient = Element.Detail.Light.vAmbient;
+			Light.fFalloffExponent = Element.Detail.Light.fFalloffExponent;
+			Light.fNormalizedLife = T;
+			m_Frame.Lights.push_back(Light);
+		}
+		else if (bPresentationActive &&
+			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind &&
+			Element.Detail.ScreenPost.bEnabled &&
+			Element.Detail.ScreenPost.eProfile <
+				EFFECT_SCREEN_POST_PROFILE::END &&
+			Element.Detail.ScreenPost.eStatus ==
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE)
+		{
+			EFFECT_EVALUATED_SCREEN_POST Post;
+			Post.pElement = &Element;
+			Post.eProfile = Element.Detail.ScreenPost.eProfile;
+			Post.iSourceOrder = static_cast<uint32_t>(iElement);
+			Post.iRandomSeed = Element.Detail.ScreenPost.iRandomSeed;
+			Post.fSampleTimeSeconds = fPresentationTime;
+			Post.fIntensity = Element.Detail.ScreenPost.fIntensity;
+			Post.fSecondaryIntensity =
+				Element.Detail.ScreenPost.fSecondaryIntensity;
+			Post.fFrequency = Element.Detail.ScreenPost.fFrequency;
+			Post.vTint = Element.Detail.ScreenPost.vTint;
+			Post.fNormalizedLife = T;
+
+			if (EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1 ==
+				Post.eProfile)
+			{
+				Post.fSecondaryIntensity = Evaluate_SourceFloat(
+					Element, "particlemoduleparameterdynamic",
+					"dynamicparams[0].paramvalue", T, fStableRandom,
+					Post.fSecondaryIntensity);
+				Post.fIntensity = Evaluate_SourceFloat(
+					Element, "particlemoduleparameterdynamic",
+					"dynamicparams[1].paramvalue", T, fStableRandom,
+					Post.fIntensity);
+			}
+			else if (EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1 ==
+				Post.eProfile)
+			{
+				Post.fIntensity = Evaluate_SourceFloat(
+					Element, "particlemoduleparameterdynamic",
+					"dynamicparams[0].paramvalue", T, fStableRandom,
+					Post.fIntensity);
+			}
+
+			Post.fIntensity *= (std::max)(0.f, Evaluate_SourceFloat(
+				Element, "particlemodulecoloroverlife", "alphaoverlife",
+				T, fStableRandom, 1.f));
+			m_Frame.ScreenPosts.push_back(Post);
 		}
 
 		for (const PARTICLE_STATE& Particle : State.Particles)
@@ -2236,6 +2338,119 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 					Element.Detail.AfterImage.fAlphaExponent) });
 		}
 	}
+}
+
+bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
+	const std::string_view strElementId,
+	EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const
+{
+	OutProbe = {};
+	OutProbe.fSampleTimeSeconds = m_Frame.fSampleTimeSeconds;
+	const EFFECT_ELEMENT_DESC* pElement = nullptr;
+	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
+	{
+		if (Element.strElementId == strElementId)
+		{
+			pElement = &Element;
+			break;
+		}
+	}
+	if (nullptr == pElement)
+		return false;
+
+	OutProbe.bMeshRenderer = std::any_of(
+		pElement->ResourceBindings.begin(), pElement->ResourceBindings.end(),
+		[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+		{
+			return Binding.strSlotId == "meshModel";
+		});
+	for (const EFFECT_EVALUATED_PARTICLE& Particle : m_Frame.Particles)
+	{
+		if (nullptr == Particle.pElement ||
+			Particle.pElement->strElementId != strElementId)
+		{
+			continue;
+		}
+		if (0u == OutProbe.iActiveParticleCount)
+		{
+			OutProbe.fFirstAlpha = Particle.Color.w;
+			OutProbe.fMinAlpha = Particle.Color.w;
+			OutProbe.fMaxAlpha = Particle.Color.w;
+			OutProbe.vFirstDynamicParameter = Particle.vDynamicParameter;
+			OutProbe.vMinDynamicParameter = Particle.vDynamicParameter;
+			OutProbe.vMaxDynamicParameter = Particle.vDynamicParameter;
+			OutProbe.fFirstNormalizedLife = Particle.fNormalizedLife;
+			OutProbe.fFirstSubImageIndex = Particle.fSubImageIndex;
+		}
+		else
+		{
+			OutProbe.fMinAlpha = (std::min)(
+				OutProbe.fMinAlpha, Particle.Color.w);
+			OutProbe.fMaxAlpha = (std::max)(
+				OutProbe.fMaxAlpha, Particle.Color.w);
+			OutProbe.vMinDynamicParameter = {
+				(std::min)(OutProbe.vMinDynamicParameter.x,
+					Particle.vDynamicParameter.x),
+				(std::min)(OutProbe.vMinDynamicParameter.y,
+					Particle.vDynamicParameter.y),
+				(std::min)(OutProbe.vMinDynamicParameter.z,
+					Particle.vDynamicParameter.z),
+				(std::min)(OutProbe.vMinDynamicParameter.w,
+					Particle.vDynamicParameter.w)
+			};
+			OutProbe.vMaxDynamicParameter = {
+				(std::max)(OutProbe.vMaxDynamicParameter.x,
+					Particle.vDynamicParameter.x),
+				(std::max)(OutProbe.vMaxDynamicParameter.y,
+					Particle.vDynamicParameter.y),
+				(std::max)(OutProbe.vMaxDynamicParameter.z,
+					Particle.vDynamicParameter.z),
+				(std::max)(OutProbe.vMaxDynamicParameter.w,
+					Particle.vDynamicParameter.w)
+			};
+		}
+		++OutProbe.iActiveParticleCount;
+	}
+
+	if (0u == OutProbe.iActiveParticleCount ||
+		!pElement->SourceRecipe.bEnabled ||
+		!pElement->Material.SourceMaterial.bEnabled ||
+		pElement->Material.SourceMaterial.strSubUVMode == "none")
+	{
+		return true;
+	}
+
+	const EFFECT_SOURCE_MODULE_DESC* pRequired =
+		Find_SourceModule(*pElement, "particlemodulerequired");
+	const uint32_t iColumns = static_cast<uint32_t>((std::max)(1.f,
+		nullptr == pRequired ? 1.f :
+			SourceNumber(*pRequired, "subimages_horizontal", 1.f)));
+	const uint32_t iRows = static_cast<uint32_t>((std::max)(1.f,
+		nullptr == pRequired ? 1.f :
+			SourceNumber(*pRequired, "subimages_vertical", 1.f)));
+	const bool_t bAllowFlip = nullptr != pRequired &&
+		SourceBool(*pRequired, "ballowimageflipping", false);
+	const bool_t bSquareFlip = nullptr != pRequired &&
+		SourceBool(*pRequired, "bsquareimageflipping", false);
+	const EFFECT_EVALUATED_PARTICLE* pFirst = nullptr;
+	for (const EFFECT_EVALUATED_PARTICLE& Particle : m_Frame.Particles)
+	{
+		if (nullptr != Particle.pElement &&
+			Particle.pElement->strElementId == strElementId)
+		{
+			pFirst = &Particle;
+			break;
+		}
+	}
+	if (nullptr != pFirst)
+	{
+		OutProbe.FirstSubUV = Resolve_SourceSubUVFrame(
+			iColumns, iRows, pFirst->fSubImageIndex,
+			bAllowFlip, bSquareFlip, pFirst->fDistributionRandom,
+			pElement->Material.SourceMaterial.strSubUVMode.starts_with(
+				"psuvim_linear_blend"));
+	}
+	return true;
 }
 
 uint32_t Client::CEffectPlayback::Next_Random(ELEMENT_STATE& State) const

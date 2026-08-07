@@ -78,6 +78,7 @@
     <ClInclude Include="..\Public\NetworkManager.h" />
     <ClInclude Include="..\Public\Part_Body.h" />
     <ClInclude Include="..\Public\Part_Equipment.h" />
+	<ClInclude Include="..\Public\DeferredMaterialRenderUtils.h" />
     <ClInclude Include="..\Public\MapAssetRenderUtils.h" />
     <ClInclude Include="..\Public\MapStaticBatchObject.h" />
     <ClInclude Include="..\Public\Body_Valtan.h" />
@@ -171,6 +172,7 @@
     <ClCompile Include="..\Private\NetworkManager.cpp" />
     <ClCompile Include="..\Private\Part_Body.cpp" />
     <ClCompile Include="..\Private\Part_Equipment.cpp" />
+	<ClCompile Include="..\Private\DeferredMaterialRenderUtils.cpp" />
     <ClCompile Include="..\Private\MapAssetRenderUtils.cpp" />
     <ClCompile Include="..\Private\MapStaticBatchObject.cpp" />
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
@@ -751,7 +753,9 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.parent-material-graph-evidence.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.skeletal-mesh-sockets.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.source-material-evidence.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMasterBase.action-effects.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\action-effect-source-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\effect.dimensionmaster.skill.2050010.imported.effect.json" />
@@ -810,9 +814,12 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Converted\skill.2050550.element-conversion-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base-effect-extraction.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base-effect-materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base11-materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.base11-promotion.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.character-animation-retime.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.component-build.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.model-cue-runtime-bindings.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.renderer-family-audit.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.resource-source-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.skill-effect-source-inventory.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.source-semantic-overlay.json" />

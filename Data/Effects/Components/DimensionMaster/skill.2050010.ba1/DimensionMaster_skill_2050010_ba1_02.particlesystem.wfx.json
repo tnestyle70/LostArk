@@ -17,7 +17,7 @@
       "fx_pc_swp_00.par_j_swp_normalatk_0_1|FX_PC_SWP_00.par_j_swp_normalatk_0_1.particlespriteemitter_18",
       "fx_pc_swp_00.par_j_swp_normalatk_0_1|FX_PC_SWP_00.par_j_swp_normalatk_0_1.particlespriteemitter_2"
     ],
-    "sourceElementSha256": "361cde3ac6a8320153939be2550e8929a9bbc6b393b14a54c8ce8d5f4f9a22bf",
+    "sourceElementSha256": "89938c7b3b66a24822f6334c66b7c943484d16ecc641e0d083aa2b4ae81b9583",
     "inputSlot": "BA"
   },
   "emitters": [
@@ -27,7 +27,7 @@
       "sourceElementIndex": 2,
       "renderer": "mesh",
       "visible": true,
-      "resourceBindingCount": 3,
+      "resourceBindingCount": 4,
       "moduleCount": 10
     },
     {
@@ -81,7 +81,7 @@
       "sourceElementIndex": 14,
       "renderer": "mesh",
       "visible": true,
-      "resourceBindingCount": 4,
+      "resourceBindingCount": 5,
       "moduleCount": 10
     },
     {
@@ -96,7 +96,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050010.ba1.02",
     "displayName": "DimensionMaster_skill_2050010_ba1_02.particlesystem.wfx",
     "particleSystem": {
@@ -120,63 +120,322 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_d_cone_007.wmodel"
           },
           {
-            "slotId": "base",
+            "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_048.dds"
           },
           {
             "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds"
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_o_me_master_01_04_ds_ad",
-          "renderProfile": "additive_two_sided_depth_read",
+          "renderProfile": "additive_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.ad.2bf3a6febe9f",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
             "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_master_01_ad",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "02.map_a_uvscale_r",
-                "value": 3.0
+                "name": "22.uvscale.y",
+                "value": -1.5,
+                "group": "01_alpha"
               },
               {
                 "name": "21.uvscale.x",
-                "value": 2.0
+                "value": 2.0,
+                "group": "01_alpha"
               },
               {
-                "name": "22.uvscale.y",
-                "value": -1.5
+                "name": "05.distort_str",
+                "value": 0.5,
+                "group": "08_uvdistort"
               },
               {
-                "name": "29.cmap.direct",
-                "value": 0.0
+                "name": "08.map_d_uvscale_g",
+                "value": 1.0,
+                "group": "08_uvdistort"
               },
               {
-                "name": "36.str",
-                "value": 1.0
+                "name": "07.map_d_uvscale_r",
+                "value": 1.0,
+                "group": "08_uvdistort"
               },
               {
-                "name": "37.power",
-                "value": 1.2000000476837158
+                "name": "10.map_d_panning_y",
+                "value": 0.0,
+                "group": "08_uvdistort"
               },
               {
-                "name": "32.fresnal_power",
-                "value": 2.0
+                "name": "09.map_d_panning_x",
+                "value": 0.0,
+                "group": "08_uvdistort"
               },
               {
-                "name": "33.fresnal_str",
-                "value": 1.0
+                "name": "13.map_b_uvscale_g",
+                "value": 1.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "12.map_b_uvscale_r",
+                "value": 1.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "15.map_b_panning_y",
+                "value": 0.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "14.map_b_panning_x",
+                "value": 0.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "03.map_a_uvscale_g",
+                "value": 1.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "02.map_a_uvscale_r",
+                "value": 3.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "05.map_a_panning_y",
+                "value": 0.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "04.map_a_panning_x",
+                "value": 0.0,
+                "group": "01_alpha"
               },
               {
                 "name": "05.distortion_str",
-                "value": 30.0
+                "value": 30.0,
+                "group": "09_distortion"
+              },
+              {
+                "name": "33.fresnal_str",
+                "value": 1.0,
+                "group": "07_alphaadditiveoption"
+              },
+              {
+                "name": "32.fresnal_power",
+                "value": 2.0,
+                "group": "07_alphaadditiveoption"
+              },
+              {
+                "name": "01.depthbiasdalpha_bias",
+                "value": 50.0,
+                "group": "07_alphaadditiveoption"
+              },
+              {
+                "name": "37.power",
+                "value": 1.2,
+                "group": "01_alpha"
+              },
+              {
+                "name": "36.str",
+                "value": 1.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "52.fresnal_str",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "51.fresnal_power",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "92.emissiion_power",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "91.desaturation",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "04.map_e_uvscale_g",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "03.map_e_uvscale_r",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "06.map_e_panning_y",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "05.map_e_panning_x",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "14.map_f_uvscale_g",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "13.map_f_uvscale_r",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "16.map_f_panning_y",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "15.map_f_panning_x",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "22.fresnal_str",
+                "value": 1.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "21.fresnal_power",
+                "value": 1.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "08.specmap_power",
+                "value": 1.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "07.desaturation",
+                "value": 0.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "02.specmap_str",
+                "value": 0.25,
+                "group": "05_specullar"
+              },
+              {
+                "name": "06.specmap_uvscale.y",
+                "value": 1.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "05.specmap_uvscale.x",
+                "value": 1.0,
+                "group": "05_specullar"
+              },
+              {
+                "name": "44.uvscale.x",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "45.uvscale.y",
+                "value": 1.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "91.direct",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "61.twist.x",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "29.cmap.direct",
+                "value": 0.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "49.cmap.direct",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "61.power",
+                "value": 4.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "50.cmap.time(rotrate)",
+                "value": 0.0,
+                "group": "02_emission"
+              },
+              {
+                "name": "30.cmap.time(rotrate)",
+                "value": 0.0,
+                "group": "01_alpha"
+              },
+              {
+                "name": "time",
+                "value": 1.0,
+                "group": "12_time"
               }
             ],
-            "vectors": [],
+            "vectors": [
+              {
+                "name": "93.emissiion_color",
+                "value": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "group": "02_emission"
+              },
+              {
+                "name": "09.specmap_color",
+                "value": [
+                  2.0,
+                  2.0,
+                  2.0,
+                  1.0
+                ],
+                "group": "05_specullar"
+              },
+              {
+                "name": "61.twist.xy",
+                "value": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "group": "02_emission"
+              },
+              {
+                "name": "62.color",
+                "value": [
+                  3.0,
+                  1.0,
+                  0.1,
+                  1.0
+                ],
+                "group": "02_emission"
+              }
+            ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
               "opacity",
@@ -406,6 +665,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1255,6 +1549,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -1273,15 +1580,67 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
-          "renderProfile": "additive_two_sided_depth_read",
+          "renderProfile": "additive_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.fallback-blocked.v1",
             "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
             "semanticStatus": "reconstructed_profile",
-            "scalars": [],
-            "vectors": [],
+            "scalars": [
+              {
+                "name": "uv_panning_y",
+                "value": 0.0,
+                "group": "panning"
+              },
+              {
+                "name": "uv_panning_x",
+                "value": 0.0,
+                "group": "panning"
+              },
+              {
+                "name": "uv_noise_panning_y",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_panning_x",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_tilling",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_intensity",
+                "value": 0.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "emissive_tex_desturation",
+                "value": 0.0,
+                "group": "emissive"
+              },
+              {
+                "name": "dynamic_parameter_explanation",
+                "value": 1.0,
+                "group": "emissive"
+              }
+            ],
+            "vectors": [
+              {
+                "name": "emissive_color&intensity",
+                "value": [
+                  1.0,
+                  1.0,
+                  1.0,
+                  1.0
+                ],
+                "group": "emissive"
+              }
+            ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
               "unbound",
@@ -1511,6 +1870,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -2498,6 +2892,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -2513,88 +2920,119 @@
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds"
           },
           {
-            "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_021.dds"
-          },
-          {
             "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_pa_shine_01_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.f.pa.shine.01.0.tr.7bf5dfb918ef",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_f_pa_shine_01_0_tr",
+            "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.f.pa.shine.01.0.tr.3d21bd1f3e79",
+            "runtimeShaderProfileId": "effect.ue3.shine.v1",
+            "parentMaterialPath": "fx_m_mi_02.fx_m.fx_f_pa_shine_01_0_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "00.noisepower",
-                "value": 0.699999988079071
-              },
-              {
-                "name": "00.noisestr",
-                "value": 5.0
-              },
-              {
-                "name": "02.map_a_uvscale_r",
-                "value": 7.0
-              },
-              {
-                "name": "02.map_b_uvscale_r",
-                "value": 5.0
-              },
-              {
-                "name": "03.map_a_uvscale_g",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "03.map_b_uvscale_g",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "04.map_a_panning_x",
-                "value": -0.20000000298023224
-              },
-              {
-                "name": "04.map_b_panning_x",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "05.map_a_panning_y",
-                "value": 0.5
-              },
-              {
-                "name": "05.map_b_panning_y",
-                "value": -0.20000000298023224
-              },
-              {
-                "name": "13.distortstr",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "15.map_d_uvscale_r",
-                "value": 4.0
-              },
-              {
-                "name": "16.map_d_uvscale_g",
-                "value": 0.10000000149011612
+                "name": "str",
+                "value": 0.3,
+                "group": "shape"
               },
               {
                 "name": "power",
-                "value": 3.4000000953674316
+                "value": 3.4,
+                "group": "shape"
               },
               {
-                "name": "str",
-                "value": 0.30000001192092896
+                "name": "00.noisestr",
+                "value": 5.0,
+                "group": "noise"
+              },
+              {
+                "name": "00.noisepower",
+                "value": 0.7,
+                "group": "noise"
+              },
+              {
+                "name": "05.map_b_panning_y",
+                "value": -0.2,
+                "group": "noise"
+              },
+              {
+                "name": "13.distortstr",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "18.map_d_panning_y",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "16.map_d_uvscale_g",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "15.map_d_uvscale_r",
+                "value": 4.0,
+                "group": "noise"
+              },
+              {
+                "name": "17.map_d_panning_x",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "03.map_b_uvscale_g",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "02.map_b_uvscale_r",
+                "value": 5.0,
+                "group": "noise"
+              },
+              {
+                "name": "04.map_b_panning_x",
+                "value": 0.1,
+                "group": "noise"
+              },
+              {
+                "name": "05.map_a_panning_y",
+                "value": 0.5,
+                "group": "noise"
+              },
+              {
+                "name": "03.map_a_uvscale_g",
+                "value": 0.2,
+                "group": "noise"
+              },
+              {
+                "name": "02.map_a_uvscale_r",
+                "value": 7.0,
+                "group": "noise"
+              },
+              {
+                "name": "04.map_a_panning_x",
+                "value": -0.2,
+                "group": "noise"
+              },
+              {
+                "name": "depthbiasdalpha_bias",
+                "value": 50.0,
+                "group": "depthbiasalpha"
               },
               {
                 "name": "biasvalue",
-                "value": 40.0
+                "value": 40.0,
+                "group": "None"
               }
             ],
             "vectors": [
@@ -2605,7 +3043,8 @@
                   2.0,
                   1.0,
                   5.0
-                ]
+                ],
+                "group": "None"
               }
             ],
             "staticSwitches": [],
@@ -2837,6 +3276,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -3783,6 +4257,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -3808,86 +4295,105 @@
           "renderProfile": "alpha_two_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.d.pa.shine.02.tr.62e708fe3f21",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_tr",
+            "profileId": "ue3.material.fx.m.fx.d.pa.shine.02.tr.ca99a520c635",
+            "runtimeShaderProfileId": "effect.ue3.fallback-blocked.v1",
+            "parentMaterialPath": "fx_m.fx_d_pa_shine_02_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
                 "name": "01.height.power",
-                "value": 5.0
+                "value": 5.0,
+                "group": ""
               },
               {
                 "name": "02.height.strength",
-                "value": 1.2000000476837158
+                "value": 1.2,
+                "group": ""
               },
               {
                 "name": "11.width.power",
-                "value": 6.0
+                "value": 6.0,
+                "group": ""
               },
               {
                 "name": "12.width.strength",
-                "value": 1.2000000476837158
+                "value": 1.2,
+                "group": ""
               },
               {
                 "name": "02.map_a_uvscale_r",
-                "value": 2.0
+                "value": 2.0,
+                "group": ""
               },
               {
                 "name": "03.map_a_uvscale_g",
-                "value": 1.0
+                "value": 1.0,
+                "group": ""
               },
               {
                 "name": "04.map_a_panning_x",
-                "value": 0.0
+                "value": 0.0,
+                "group": ""
               },
               {
                 "name": "05.map_a_panning_y",
-                "value": 0.8999999761581421
+                "value": 0.9,
+                "group": ""
               },
               {
                 "name": "07.map_b_uvscale_r",
-                "value": 1.0
+                "value": 1.0,
+                "group": ""
               },
               {
                 "name": "08.map_b_uvscale_g",
-                "value": 1.0
+                "value": 1.0,
+                "group": ""
               },
               {
                 "name": "09.map_b_panning_x",
-                "value": 0.0
+                "value": 0.0,
+                "group": ""
               },
               {
                 "name": "10.map_b_panning_y",
-                "value": 0.0
+                "value": 0.0,
+                "group": ""
               },
               {
                 "name": "31.noisepower",
-                "value": 4.0
+                "value": 4.0,
+                "group": ""
               },
               {
                 "name": "32.noisestr",
-                "value": 1.5
+                "value": 1.5,
+                "group": ""
               },
               {
                 "name": "13.distortstr",
-                "value": 0.30000001192092896
+                "value": 0.3,
+                "group": ""
               },
               {
                 "name": "15.map_d_uvscale_r",
-                "value": 2.0
+                "value": 2.0,
+                "group": ""
               },
               {
                 "name": "16.map_d_uvscale_g",
-                "value": 2.0
+                "value": 2.0,
+                "group": ""
               },
               {
                 "name": "17.map_d_panning_x",
-                "value": 0.0
+                "value": 0.0,
+                "group": ""
               },
               {
                 "name": "18.map_d_panning_y",
-                "value": -1.0
+                "value": -1.0,
+                "group": ""
               }
             ],
             "vectors": [
@@ -3898,7 +4404,8 @@
                   1.0,
                   1.0,
                   1.0
-                ]
+                ],
+                "group": ""
               }
             ],
             "staticSwitches": [],
@@ -4130,6 +4637,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -5099,6 +5641,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -5114,16 +5669,16 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_d_plane_002.wmodel"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds"
-          },
-          {
             "slotId": "noise",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
           },
           {
             "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds"
           }
         ],
         "material": {
@@ -5133,81 +5688,149 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.me.makeflow.03.tr.6e5c0dd36299",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
             "parentMaterialPath": "fx_m_mi_k_00.fx_m.fx_k_me_makeflow_03_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "diff1_tile_u",
-                "value": 2.5
-              },
-              {
-                "name": "diff1_tile_v",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "diff2_tile_u",
-                "value": 2.0
-              },
-              {
-                "name": "diff2_tile_v",
-                "value": 0.5
-              },
-              {
-                "name": "diff_des",
-                "value": 0.0
-              },
-              {
-                "name": "diff_pow",
-                "value": 1.0
-              },
-              {
-                "name": "diff_str",
-                "value": 10.0
-              },
-              {
-                "name": "flow_bias",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "flow_tile_u",
-                "value": 5.0
-              },
-              {
-                "name": "flow_tile_v",
-                "value": 0.20000000298023224
+                "name": "opacity_pow",
+                "value": 1.0,
+                "group": "opacity"
               },
               {
                 "name": "gra_pow",
-                "value": 1.0
+                "value": 1.0,
+                "group": "opacity"
               },
               {
                 "name": "opacity_distort_str",
-                "value": 3.0
+                "value": 3.0,
+                "group": "opacity"
               },
               {
-                "name": "opacity_pow",
-                "value": 1.0
+                "name": "diff1_pan_v",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff1_pan_u",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "flow_bias",
+                "value": 0.2,
+                "group": "flow"
+              },
+              {
+                "name": "flow_tile_v",
+                "value": 0.2,
+                "group": "flow"
+              },
+              {
+                "name": "flow_tile_u",
+                "value": 5.0,
+                "group": "flow"
+              },
+              {
+                "name": "diff1_tile_v",
+                "value": 0.2,
+                "group": "diff"
+              },
+              {
+                "name": "diff1_tile_u",
+                "value": 2.5,
+                "group": "diff"
               },
               {
                 "name": "opacity_rot",
-                "value": 0.0
-              },
-              {
-                "name": "opacity_str",
-                "value": 10.0
-              },
-              {
-                "name": "opacity_tile_u",
-                "value": 1.0
+                "value": 0.0,
+                "group": "opacity"
               },
               {
                 "name": "opacity_tile_v",
-                "value": 1.2000000476837158
+                "value": 1.2,
+                "group": "opacity"
+              },
+              {
+                "name": "opacity_tile_u",
+                "value": 1.0,
+                "group": "opacity"
+              },
+              {
+                "name": "diff_str",
+                "value": 10.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff_pow",
+                "value": 1.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff_des",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_pan_v",
+                "value": -0.2,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_pan_u",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_tile_v",
+                "value": 0.5,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_tile_u",
+                "value": 2.0,
+                "group": "diff"
+              },
+              {
+                "name": "color_str",
+                "value": 2.0,
+                "group": "color"
+              },
+              {
+                "name": "color_pow",
+                "value": 1.0,
+                "group": "color"
+              },
+              {
+                "name": "color_des",
+                "value": 0.0,
+                "group": "color"
+              },
+              {
+                "name": "flow_pan_u",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_pan_v",
+                "value": 0.0,
+                "group": "flow"
               },
               {
                 "name": "cameravec_pow",
-                "value": 2.0
+                "value": 2.0,
+                "group": "None"
+              },
+              {
+                "name": "opacity_str",
+                "value": 10.0,
+                "group": "opacity"
+              },
+              {
+                "name": "distort_str",
+                "value": 0.5,
+                "group": "distort"
               }
             ],
             "vectors": [
@@ -5218,7 +5841,8 @@
                   1.0,
                   3.0,
                   1.0
-                ]
+                ],
+                "group": "diff"
               }
             ],
             "staticSwitches": [],
@@ -5450,6 +6074,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -6690,6 +7349,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -6705,16 +7377,16 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_d_plane_002.wmodel"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds"
-          },
-          {
             "slotId": "noise",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
           },
           {
             "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds"
           }
         ],
         "material": {
@@ -6724,81 +7396,149 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.me.makeflow.03.tr.6e5c0dd36299",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
             "parentMaterialPath": "fx_m_mi_k_00.fx_m.fx_k_me_makeflow_03_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "diff1_tile_u",
-                "value": 2.5
-              },
-              {
-                "name": "diff1_tile_v",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "diff2_tile_u",
-                "value": 2.0
-              },
-              {
-                "name": "diff2_tile_v",
-                "value": 0.5
-              },
-              {
-                "name": "diff_des",
-                "value": 0.0
-              },
-              {
-                "name": "diff_pow",
-                "value": 1.0
-              },
-              {
-                "name": "diff_str",
-                "value": 10.0
-              },
-              {
-                "name": "flow_bias",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "flow_tile_u",
-                "value": 5.0
-              },
-              {
-                "name": "flow_tile_v",
-                "value": 0.20000000298023224
+                "name": "opacity_pow",
+                "value": 1.0,
+                "group": "opacity"
               },
               {
                 "name": "gra_pow",
-                "value": 1.0
+                "value": 1.0,
+                "group": "opacity"
               },
               {
                 "name": "opacity_distort_str",
-                "value": 3.0
+                "value": 3.0,
+                "group": "opacity"
               },
               {
-                "name": "opacity_pow",
-                "value": 1.0
+                "name": "diff1_pan_v",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff1_pan_u",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "flow_bias",
+                "value": 0.2,
+                "group": "flow"
+              },
+              {
+                "name": "flow_tile_v",
+                "value": 0.2,
+                "group": "flow"
+              },
+              {
+                "name": "flow_tile_u",
+                "value": 5.0,
+                "group": "flow"
+              },
+              {
+                "name": "diff1_tile_v",
+                "value": 0.2,
+                "group": "diff"
+              },
+              {
+                "name": "diff1_tile_u",
+                "value": 2.5,
+                "group": "diff"
               },
               {
                 "name": "opacity_rot",
-                "value": 0.0
-              },
-              {
-                "name": "opacity_str",
-                "value": 10.0
-              },
-              {
-                "name": "opacity_tile_u",
-                "value": 1.0
+                "value": 0.0,
+                "group": "opacity"
               },
               {
                 "name": "opacity_tile_v",
-                "value": 1.2000000476837158
+                "value": 1.2,
+                "group": "opacity"
+              },
+              {
+                "name": "opacity_tile_u",
+                "value": 1.0,
+                "group": "opacity"
+              },
+              {
+                "name": "diff_str",
+                "value": 10.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff_pow",
+                "value": 1.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff_des",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_pan_v",
+                "value": -0.2,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_pan_u",
+                "value": 0.0,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_tile_v",
+                "value": 0.5,
+                "group": "diff"
+              },
+              {
+                "name": "diff2_tile_u",
+                "value": 2.0,
+                "group": "diff"
+              },
+              {
+                "name": "color_str",
+                "value": 2.0,
+                "group": "color"
+              },
+              {
+                "name": "color_pow",
+                "value": 1.0,
+                "group": "color"
+              },
+              {
+                "name": "color_des",
+                "value": 0.0,
+                "group": "color"
+              },
+              {
+                "name": "flow_pan_u",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_pan_v",
+                "value": 0.0,
+                "group": "flow"
               },
               {
                 "name": "cameravec_pow",
-                "value": 2.0
+                "value": 2.0,
+                "group": "None"
+              },
+              {
+                "name": "opacity_str",
+                "value": 10.0,
+                "group": "opacity"
+              },
+              {
+                "name": "distort_str",
+                "value": 0.5,
+                "group": "distort"
               }
             ],
             "vectors": [
@@ -6809,7 +7549,8 @@
                   1.0,
                   3.0,
                   1.0
-                ]
+                ],
+                "group": "diff"
               }
             ],
             "staticSwitches": [],
@@ -7041,6 +7782,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -8281,6 +9057,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -8306,198 +9095,360 @@
           {
             "slotId": "noise",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds"
+          },
+          {
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_me_linearflow_02_14_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.pa.linearflow.02.tr.78813e4f65bd",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_pa_linearflow_02_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.linearflow.02.tr.ac0bdcfd95f7",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_linearflow_02_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "dissolve_hardness",
-                "value": 20.0
-              },
-              {
-                "name": "dissolve_tile_x",
-                "value": 1.0
-              },
-              {
-                "name": "dissolve_tile_y",
-                "value": 1.0
-              },
-              {
-                "name": "diff_pow",
-                "value": 2.0
-              },
-              {
-                "name": "diff_str",
-                "value": 5.0
-              },
-              {
-                "name": "diff_tex_desaturation",
-                "value": 0.0
-              },
-              {
-                "name": "diff_tile_u",
-                "value": 1.0
-              },
-              {
-                "name": "diff_tile_v",
-                "value": 0.699999988079071
-              },
-              {
-                "name": "a_mask_debug(0or1)",
-                "value": 0.0
-              },
-              {
-                "name": "a_mask_desaturation",
-                "value": 1.0
-              },
-              {
-                "name": "a_mask_pow",
-                "value": 0.5
-              },
-              {
-                "name": "a_mask_str",
-                "value": 15.0
-              },
-              {
-                "name": "a_offset_x",
-                "value": 0.0
-              },
-              {
-                "name": "a_offset_y",
-                "value": -0.20000000298023224
-              },
-              {
-                "name": "a_rotator",
-                "value": 0.0
-              },
-              {
-                "name": "a_sizecontrol",
-                "value": 2.0
-              },
-              {
-                "name": "a_tile_u",
-                "value": 1.0
-              },
-              {
-                "name": "a_tile_v",
-                "value": 1.0
-              },
-              {
-                "name": "a_noise_01_pan_y",
-                "value": 0.05000000074505806
-              },
-              {
-                "name": "a_noise_01_str",
-                "value": 0.0
-              },
-              {
-                "name": "a_noise_01_tile_u",
-                "value": 0.6000000238418579
-              },
-              {
-                "name": "a_noise_01_tile_v",
-                "value": 1.0
-              },
-              {
-                "name": "b_mask_debug(0or1)",
-                "value": 0.0
-              },
-              {
-                "name": "b_mask_desaturation",
-                "value": 1.0
-              },
-              {
-                "name": "b_mask_pow",
-                "value": 0.800000011920929
-              },
-              {
-                "name": "b_mask_str",
-                "value": 100.0
-              },
-              {
-                "name": "b_offset_x",
-                "value": 0.0
-              },
-              {
-                "name": "b_offset_y",
-                "value": 0.0
-              },
-              {
-                "name": "b_rotator",
-                "value": 0.0
-              },
-              {
-                "name": "b_sizecontrol",
-                "value": 1.5
-              },
-              {
-                "name": "b_tile_u",
-                "value": 1.0
-              },
-              {
-                "name": "b_tile_v",
-                "value": 1.0
-              },
-              {
-                "name": "b_noise_01_pan_x",
-                "value": 0.0
-              },
-              {
-                "name": "b_noise_01_pan_y",
-                "value": 0.0
-              },
-              {
-                "name": "b_noise_01_str",
-                "value": 0.20000000298023224
-              },
-              {
-                "name": "b_noise_01_tile_u",
-                "value": 0.5
-              },
-              {
-                "name": "b_noise_01_tile_v",
-                "value": 0.4000000059604645
+                "name": "distortion",
+                "value": 0.0,
+                "group": "None"
               },
               {
                 "name": "mask_density",
-                "value": 1.2000000476837158
-              },
-              {
-                "name": "mask_linearalpha",
-                "value": 0.5
+                "value": 1.2,
+                "group": "None"
               },
               {
                 "name": "mask_radius",
-                "value": 1.7999999523162842
+                "value": 1.8,
+                "group": "None"
               },
               {
-                "name": "opacity_pow",
-                "value": 0.6000000238418579
+                "name": "coresoft_str",
+                "value": 2.0,
+                "group": "None"
+              },
+              {
+                "name": "gra_pow",
+                "value": 1.5,
+                "group": "mesh_control"
               },
               {
                 "name": "opacity_str",
-                "value": 1.2000000476837158
+                "value": 1.2,
+                "group": "None"
+              },
+              {
+                "name": "opacity_pow",
+                "value": 0.6,
+                "group": "None"
+              },
+              {
+                "name": "mask_linearalpha",
+                "value": 0.5,
+                "group": "None"
+              },
+              {
+                "name": "b_mask_pow",
+                "value": 0.8,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_mask_str",
+                "value": 100.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "a_mask_debug(0or1)",
+                "value": 0.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "b_noise_01_str",
+                "value": 0.2,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "b_noise_01_tile_v",
+                "value": 0.4,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "b_noise_01_tile_u",
+                "value": 0.5,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "b_rotator",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_sizecontrol",
+                "value": 1.5,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_offset_y",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_pany_speed",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_offset_x",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_panx_speed",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_tile_v",
+                "value": 1.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "b_tile_u",
+                "value": 1.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "a_mask_pow",
+                "value": 0.5,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_mask_str",
+                "value": 15.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "b_mask_debug(0or1)",
+                "value": 0.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "a_noise_01_str",
+                "value": 0.0,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "a_noise_01_tile_v",
+                "value": 1.0,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "a_noise_01_tile_u",
+                "value": 0.6,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "a_rotator",
+                "value": 0.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_sizecontrol",
+                "value": 2.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_offset_y",
+                "value": -0.2,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_pany_speed",
+                "value": 0.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_offset_x",
+                "value": 0.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_panx_speed",
+                "value": 0.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_tile_v",
+                "value": 1.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "a_tile_u",
+                "value": 1.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "depth",
+                "value": 0.3,
+                "group": "None"
+              },
+              {
+                "name": "diff_pow",
+                "value": 2.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_str",
+                "value": 5.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_tex_desaturation",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_tile_v",
+                "value": 0.7,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_tile_u",
+                "value": 1.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_noise_str",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_noise_tile_v",
+                "value": 1.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_noise_tile_u",
+                "value": 1.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_rotator",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_offset_y",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_pany_speed",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_offset_x",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "diff_panx_speed",
+                "value": 0.0,
+                "group": "01_diffuse"
+              },
+              {
+                "name": "a_mask_desaturation",
+                "value": 1.0,
+                "group": "mask_a"
+              },
+              {
+                "name": "b_mask_desaturation",
+                "value": 1.0,
+                "group": "mask_b"
+              },
+              {
+                "name": "a_noise_01_pan_y",
+                "value": 0.05,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "a_noise_01_pan_x",
+                "value": 0.0,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "b_noise_01_pan_y",
+                "value": 0.0,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "b_noise_01_pan_x",
+                "value": 0.0,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "a_noise_01_offset_x",
+                "value": 0.0,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "a_noise_01_offset_y",
+                "value": 0.0,
+                "group": "mask_a_noise"
+              },
+              {
+                "name": "b_noise_01_offset_x",
+                "value": 0.0,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "b_noise_01_offset_y",
+                "value": 0.0,
+                "group": "mask_b_noise"
+              },
+              {
+                "name": "dissolve_rot",
+                "value": 0.0,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "dissolve_pan_y",
+                "value": 0.0,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "dissolve_tile_x",
+                "value": 1.0,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "dissolve_tile_y",
+                "value": 1.0,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "dissolve_hardness",
+                "value": 20.0,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "dissolve_pan_x",
+                "value": -0.1,
+                "group": "00_dissolve"
+              },
+              {
+                "name": "meshedgefade",
+                "value": 0.0,
+                "group": "None"
               }
             ],
             "vectors": [
-              {
-                "name": "a_mask_color",
-                "value": [
-                  0.3,
-                  0.3,
-                  0.3,
-                  1.0
-                ]
-              },
               {
                 "name": "b_mask_color",
                 "value": [
@@ -8505,7 +9456,18 @@
                   -0.1,
                   -0.1,
                   1.0
-                ]
+                ],
+                "group": "01_diffuse"
+              },
+              {
+                "name": "a_mask_color",
+                "value": [
+                  0.3,
+                  0.3,
+                  0.3,
+                  1.0
+                ],
+                "group": "01_diffuse"
               }
             ],
             "staticSwitches": [],
@@ -8737,6 +9699,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -9698,6 +10695,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -9709,48 +10719,139 @@
         "kind": "particle",
         "resources": [
           {
-            "slotId": "base",
+            "slotId": "dissolve",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_noise_008.dds"
           },
           {
-            "slotId": "emissive",
+            "slotId": "base",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.dissolve.01.tr.a799c9636783",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
             "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "depth_alpha_bias",
-                "value": -30.0
+                "name": "world_normal_intensity",
+                "value": 0.0,
+                "group": "world_normal"
               },
               {
-                "name": "dissolve_noise_intensity",
-                "value": 1.0
-              },
-              {
-                "name": "dissolve_noise_power",
-                "value": 1.0
+                "name": "distortion_intensity",
+                "value": 1.0,
+                "group": "distortion"
               },
               {
                 "name": "dissolve_power",
-                "value": 100.0
+                "value": 100.0,
+                "group": "dissolve"
               },
               {
-                "name": "emissive_desaturation",
-                "value": 1.0
+                "name": "dissolve_noise_power",
+                "value": 1.0,
+                "group": "dissolve"
+              },
+              {
+                "name": "dissolve_noise_intensity",
+                "value": 1.0,
+                "group": "dissolve"
               },
               {
                 "name": "emissive_power",
-                "value": 1.0
+                "value": 1.0,
+                "group": "emissive"
+              },
+              {
+                "name": "uv_scale",
+                "value": 1.0,
+                "group": "emissive"
+              },
+              {
+                "name": "uv_noise_01_tiling_y",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_01_tiling_x",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_01_panning_y",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_01_panning_x",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_01_intensity",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_02_tiling_y",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_02_tiling_x",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_02_panning_y",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_02_panning_x",
+                "value": 0.1,
+                "group": "uv_noise"
+              },
+              {
+                "name": "uv_noise_02_intensity",
+                "value": 1.0,
+                "group": "uv_noise"
+              },
+              {
+                "name": "depth_alpha_bias",
+                "value": -30.0,
+                "group": "depth_alpha"
+              },
+              {
+                "name": "fresnel_power",
+                "value": 3.0,
+                "group": "emissive"
+              },
+              {
+                "name": "emissive_desaturation",
+                "value": 1.0,
+                "group": "emissive"
+              },
+              {
+                "name": "dynamic_parameter_explanation",
+                "value": 1.0,
+                "group": "emissive"
+              },
+              {
+                "name": "edge_power",
+                "value": 3.0,
+                "group": "edge_glow"
+              },
+              {
+                "name": "edge_intensity",
+                "value": 5.0,
+                "group": "edge_glow"
               }
             ],
             "vectors": [
@@ -9761,7 +10862,8 @@
                   0.0,
                   0.0,
                   1.0
-                ]
+                ],
+                "group": "dissolve"
               }
             ],
             "staticSwitches": [],
@@ -9993,6 +11095,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -10835,6 +11972,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       }
     ]

@@ -26,6 +26,7 @@ def is_particle_graph_class(class_name: str) -> bool:
     return (
         folded == "particlesystem"
         or folded == "particlelodlevel"
+        or folded == "pointlightcomponent"
         or (folded.startswith("particle") and folded.endswith("emitter"))
         or folded.startswith("particlemodule")
         or folded.startswith("efparticlemodule")
@@ -207,28 +208,72 @@ def extract_package(package_path: Path, logical_name: str, aes_key: str) -> dict
         )
 
     graph_export_indexes = {row["exportIndex"] for row in objects}
+    graph_exports_by_index = {
+        int(row["exportIndex"]): row for row in objects
+    }
     particle_emitter_reference_count = 0
     missing_emitter_targets = []
+    point_light_component_reference_count = 0
+    invalid_point_light_component_targets = []
     for row in objects:
-        if row["className"].casefold() != "particlesystem":
-            continue
-        for reference in row["references"]:
-            if not reference["property"].casefold().startswith("emitters"):
-                continue
-            package_index = int(reference["packageIndex"])
-            if package_index <= 0:
-                continue
-            particle_emitter_reference_count += 1
-            target_export_index = package_index - 1
-            if target_export_index not in graph_export_indexes:
-                missing_emitter_targets.append(
+        class_name = row["className"].casefold()
+        if class_name == "particlesystem":
+            for reference in row["references"]:
+                if not reference["property"].casefold().startswith("emitters"):
+                    continue
+                package_index = int(reference["packageIndex"])
+                if package_index <= 0:
+                    continue
+                particle_emitter_reference_count += 1
+                target_export_index = package_index - 1
+                if target_export_index not in graph_export_indexes:
+                    missing_emitter_targets.append(
+                        {
+                            "particleSystem": row["objectName"],
+                            "property": reference["property"],
+                            "targetExportIndex": target_export_index,
+                            "targetObjectPath": reference["objectPath"],
+                        }
+                    )
+        if "typedatalight" in class_name:
+            references = [
+                reference
+                for reference in row["references"]
+                if reference["property"].casefold() == "pointlightcomponent"
+            ]
+            point_light_component_reference_count += len(references)
+            if len(references) != 1:
+                invalid_point_light_component_targets.append(
                     {
-                        "particleSystem": row["objectName"],
-                        "property": reference["property"],
-                        "targetExportIndex": target_export_index,
-                        "targetObjectPath": reference["objectPath"],
+                        "sourceModule": row["objectPath"],
+                        "reason": "POINT_LIGHT_COMPONENT_REFERENCE_COUNT",
+                        "referenceCount": len(references),
                     }
                 )
+                continue
+            reference = references[0]
+            package_index = int(reference["packageIndex"])
+            target = (
+                graph_exports_by_index.get(package_index - 1)
+                if package_index > 0 else None
+            )
+            if target is None or target["className"].casefold() != "pointlightcomponent":
+                invalid_point_light_component_targets.append(
+                    {
+                        "sourceModule": row["objectPath"],
+                        "reason": "POINT_LIGHT_COMPONENT_TARGET_MISSING_OR_WRONG_CLASS",
+                        "packageIndex": package_index,
+                        "targetObjectPath": reference["objectPath"],
+                        "targetClassName": (
+                            target["className"] if target is not None else None
+                        ),
+                    }
+                )
+
+    graph_invariant_errors = [
+        *missing_emitter_targets,
+        *invalid_point_light_component_targets,
+    ]
 
     return {
         "schemaVersion": 2,
@@ -243,11 +288,21 @@ def extract_package(package_path: Path, logical_name: str, aes_key: str) -> dict
             "propertyErrorCount": len(errors),
             "particleEmitterReferenceCount": particle_emitter_reference_count,
             "missingParticleEmitterTargetCount": len(missing_emitter_targets),
+            "pointLightComponentCount": sum(
+                row["className"].casefold() == "pointlightcomponent"
+                for row in objects
+            ),
+            "pointLightComponentReferenceCount": (
+                point_light_component_reference_count
+            ),
+            "invalidPointLightComponentTargetCount": len(
+                invalid_point_light_component_targets
+            ),
             **decoded_distribution_summary(objects),
         },
         "objects": objects,
         "propertyErrors": errors,
-        "graphInvariantErrors": missing_emitter_targets,
+        "graphInvariantErrors": graph_invariant_errors,
     }
 
 
@@ -301,7 +356,9 @@ def main() -> int:
     )
     print(json.dumps({"manifest": str(manifest_path), "packageCount": len(rows)}))
     return 0 if not any(
-        row["propertyErrorCount"] or row["missingParticleEmitterTargetCount"]
+        row["propertyErrorCount"]
+        or row["missingParticleEmitterTargetCount"]
+        or row["invalidPointLightComponentTargetCount"]
         for row in rows
     ) else 1
 

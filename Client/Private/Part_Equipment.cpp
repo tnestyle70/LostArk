@@ -1,5 +1,6 @@
 #include "Part_Equipment.h"
 
+#include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 
 CPart_Equipment::CPart_Equipment(ComPtr<ID3D11Device> pDevice,
@@ -28,6 +29,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	m_pSocketBoneName = pDesc->pSocketBoneName;
 	m_fSocketYawDegrees = pDesc->fSocketYawDegrees;
 	m_pSocketRootMatrix = pDesc->pSocketRootMatrix;
+	m_strMaterialProfileId = pDesc->strMaterialProfileId;
 
 	/* Both kinds need the body's model: a socketed piece reads one bone from it,
 	a skinned piece borrows its whole palette. */
@@ -98,14 +100,12 @@ HRESULT CPart_Equipment::Render()
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
-		const uint32_t hasNormalTexture =
-			m_pModelCom->Has_MaterialTexture(i, aiTextureType_NORMALS) ? 1u : 0u;
-		if (FAILED(m_pModelCom->Bind_Material(
-			m_pShaderCom, "g_DiffuseTexture", i, aiTextureType_DIFFUSE, 0)) ||
-			FAILED(m_pShaderCom->Bind_RawValue(
-				"g_HasNormalTexture", &hasNormalTexture, sizeof(hasNormalTexture))) ||
-			(0 != hasNormalTexture && FAILED(m_pModelCom->Bind_Material(
-				m_pShaderCom, "g_NormalTexture", i, aiTextureType_NORMALS, 0))) ||
+		const DEFERRED_MATERIAL_PROFILE Profile =
+			Resolve_DeferredMaterialProfile(
+				m_strMaterialProfileId,
+				m_pModelCom->Get_MaterialName(i));
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, Profile)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
@@ -140,6 +140,18 @@ HRESULT CPart_Equipment::Bind_ShaderResources()
 		FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
+	if (nullptr != m_pSocketBoneName)
+	{
+		matrix_t World = XMLoadFloat4x4(&m_CombinedWorldMatrix);
+		World.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+		const matrix_t InverseTranspose =
+			XMMatrixTranspose(XMMatrixInverse(nullptr, World));
+		float4x4_t Stored{};
+		XMStoreFloat4x4(&Stored, InverseTranspose);
+		if (FAILED(m_pShaderCom->Bind_Matrix(
+			"g_WorldInvTransposeMatrix", &Stored)))
+			return E_FAIL;
+	}
 	return S_OK;
 }
 

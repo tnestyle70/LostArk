@@ -2,6 +2,9 @@
 
 #include "Effect_DocumentRenderer.h"
 #include "GameInstance.h"
+#include "Presentation_Manager.h"
+
+#include <cmath>
 
 Client::CEffectObject::CEffectObject(
 	ComPtr<ID3D11Device> pDevice,
@@ -31,8 +34,14 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 		return S_OK;
 	const EFFECT_OBJECT_DESC& Desc =
 		*static_cast<EFFECT_OBJECT_DESC*>(pArg);
+	if (!std::isfinite(Desc.fPlaybackRate) ||
+		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f)
+	{
+		return E_FAIL;
+	}
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
+	m_fPlaybackRate = Desc.fPlaybackRate;
 	if (nullptr != Desc.pDocument &&
 		!Stage_Document(*Desc.pDocument, m_strStatus))
 	{
@@ -89,7 +98,7 @@ void Client::CEffectObject::Reset()
 void Client::CEffectObject::Update(const f32_t fTimeDelta)
 {
 	if (m_bPlaying)
-		m_Playback.Update(fTimeDelta, m_RootWorld);
+		m_Playback.Update(fTimeDelta * m_fPlaybackRate, m_RootWorld);
 }
 
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
@@ -97,9 +106,82 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 	UNREFERENCED_PARAMETER(fTimeDelta);
 	if (!m_bVisible)
 		return;
+	const shared_ptr<CEffectObject> Self =
+		static_pointer_cast<CEffectObject>(shared_from_this());
+	const HRESULT hProviderResult =
+		CPresentation_Manager::Get().Add_FrameProvider(
+			static_pointer_cast<IPresentationProvider>(Self));
+	if (FAILED(hProviderResult))
+	{
+		m_strStatus = "Effect presentation provider budget exceeded.";
+		return;
+	}
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::BLEND,
-		static_pointer_cast<CGameObject>(shared_from_this()));
+		static_pointer_cast<CGameObject>(Self));
+}
+
+HRESULT Client::CEffectObject::Submit_Presentation()
+{
+	if (!m_bVisible)
+		return S_OK;
+	const EFFECT_EVALUATED_FRAME& Frame = m_Playback.Get_Frame();
+	for (const EFFECT_EVALUATED_LIGHT& Evaluated : Frame.Lights)
+	{
+		LIGHT_DESC Light{};
+		Light.eType = LIGHT::POINT;
+		Light.vPosition = {
+			Evaluated.vWorldPosition.x,
+			Evaluated.vWorldPosition.y,
+			Evaluated.vWorldPosition.z,
+			1.f };
+		Light.fRange = Evaluated.fRange;
+		Light.vDiffuse = {
+			Evaluated.vColor.x * Evaluated.fIntensity,
+			Evaluated.vColor.y * Evaluated.fIntensity,
+			Evaluated.vColor.z * Evaluated.fIntensity,
+			Evaluated.vColor.w };
+		Light.vAmbient = {
+			Evaluated.vAmbient.x * Evaluated.fIntensity,
+			Evaluated.vAmbient.y * Evaluated.fIntensity,
+			Evaluated.vAmbient.z * Evaluated.fIntensity,
+			Evaluated.vAmbient.w };
+		Light.vSpecular = { 0.f, 0.f, 0.f, 0.f };
+		if (FAILED(CPresentation_Manager::Get().Add_TransientLight(Light)))
+			return E_FAIL;
+	}
+
+	for (const EFFECT_EVALUATED_SCREEN_POST& Evaluated : Frame.ScreenPosts)
+	{
+		PRESENTATION_SCREEN_POST_DESC Post;
+		switch (Evaluated.eProfile)
+		{
+		case EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1:
+			Post.eProfile =
+				PRESENTATION_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED;
+			break;
+		case EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1:
+			Post.eProfile =
+				PRESENTATION_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED;
+			break;
+		case EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
+			Post.eProfile =
+				PRESENTATION_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED;
+			break;
+		default:
+			return E_FAIL;
+		}
+		Post.iSourceOrder = Evaluated.iSourceOrder;
+		Post.iRandomSeed = Evaluated.iRandomSeed;
+		Post.fSampleTimeSeconds = Evaluated.fSampleTimeSeconds;
+		Post.fIntensity = Evaluated.fIntensity;
+		Post.fSecondaryIntensity = Evaluated.fSecondaryIntensity;
+		Post.fFrequency = Evaluated.fFrequency;
+		Post.vTint = Evaluated.vTint;
+		if (FAILED(CPresentation_Manager::Get().Add_ScreenPost(Post)))
+			return E_FAIL;
+	}
+	return S_OK;
 }
 
 HRESULT Client::CEffectObject::Render()

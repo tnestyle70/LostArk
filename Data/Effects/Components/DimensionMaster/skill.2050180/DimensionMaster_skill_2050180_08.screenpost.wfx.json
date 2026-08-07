@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_post.fx_par.par_j_zoomblur_01|FX_POST.fx_par.par_j_zoomblur_01.particlespriteemitter_0"
     ],
-    "sourceElementSha256": "79f1b831631b5feeb74c00ca9b8d5001f60a10932f67e450420e939df7db9659",
+    "sourceElementSha256": "0dbf54055d7eff8fc46fe9da580ff5556df61db2a2076d707999354ef7c2d2eb",
     "inputSlot": "R"
   },
   "emitters": [
@@ -26,7 +26,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050180.08",
     "displayName": "DimensionMaster_skill_2050180_08.screenpost.wfx",
     "particleSystem": {
@@ -277,6 +277,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": true,
+            "profileId": "screen.zoom-blur.reconstructed.v1",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 20
           }
         },
         "sourceRecipe": {
@@ -1060,6 +1095,95 @@
                   "keys": []
                 }
               ]
+            }
+          ]
+        },
+        "sourcePresentation": {
+          "enabled": true,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "screen.zoom-blur.reconstructed.v1",
+          "status": "reconstructed",
+          "sourceObjectPath": "FX_POST.fx_par.par_j_zoomblur_01.particlespriteemitter_0",
+          "sourceActionCueId": "skill-2050180/clip-000/notify-037",
+          "sourceEventId": "source-event-021",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 1.1,
+          "parameters": [
+            {
+              "name": "sourceSubtype",
+              "type": "string",
+              "status": "source_explicit",
+              "sourcePropertyPath": "ParticleSystem.objectPath",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": "ZOOM_BLUR_J"
+            },
+            {
+              "name": "blurstrength",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_BS_04.state.par_i_classup_02.particlemoduleparameterdynamic_4.dynamicparams[0].paramvalue",
+              "numberValue": 0.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param2",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_BS_04.state.par_i_classup_02.particlemoduleparameterdynamic_4.dynamicparams[1].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param3",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_BS_04.state.par_i_classup_02.particlemoduleparameterdynamic_4.dynamicparams[2].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
+            },
+            {
+              "name": "param4",
+              "type": "number",
+              "status": "source_distribution",
+              "sourcePropertyPath": "FX_BS_04.state.par_i_classup_02.particlemoduleparameterdynamic_4.dynamicparams[3].paramvalue",
+              "numberValue": 1.0,
+              "boolValue": false,
+              "vectorValue": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stringValue": ""
             }
           ]
         }

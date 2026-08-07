@@ -39,6 +39,7 @@ public:
 		f32_t fSocketYawDegrees = 0.f;
 
 		const float4x4_t* pSocketRootMatrix = { nullptr };
+		string strMaterialProfileId;
 	} PART_EQUIPMENT_DESC;
 
 private:
@@ -68,6 +69,7 @@ private:
 	const char_t* m_pSocketBoneName = { nullptr };
 	f32_t m_fSocketYawDegrees = 0.f;
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
+	string m_strMaterialProfileId;
 
 private:
 	HRESULT Ready_Components(const PART_EQUIPMENT_DESC* pDesc);

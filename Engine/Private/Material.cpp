@@ -240,6 +240,10 @@ CMaterial::~CMaterial()
 
 HRESULT CMaterial::Initialize(const aiMaterial* pAIMaterial, const char_t* pModelFilePath)
 {
+	aiString materialName;
+	if (AI_SUCCESS == pAIMaterial->Get(AI_MATKEY_NAME, materialName))
+		m_strName = materialName.C_Str();
+
 	char_t			szDrive[MAX_PATH] = {};
 	char_t			szDir[MAX_PATH] = {};
 
@@ -294,6 +298,9 @@ HRESULT CMaterial::Initialize(const aiMaterial* pAIMaterial, const char_t* pMode
 
 HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 {
+	m_strName = material.name;
+	m_iNameHash = material.nameHash;
+
 	const filesystem::path& compatibleDiffusePath = material.diffusePath.empty()
 		? material.emissivePath
 		: material.diffusePath;

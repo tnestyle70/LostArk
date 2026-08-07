@@ -15,7 +15,7 @@
       "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00|FX_PC_SWP_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_63",
       "fx_pc_swp_01.par_w_swp_flickerthrust_wp_00|FX_PC_SWP_01.par_w_swp_flickerthrust_wp_00.particlespriteemitter_8"
     ],
-    "sourceElementSha256": "2ea5bb8706ff4b0a9ab2af84adc06c80e0e7803cd84a44d94e703f2fc68daee6",
+    "sourceElementSha256": "b92ae0aa853f6b3c4ff08a1c22a2da4eba865361326e515773c4657f827dc0be",
     "inputSlot": "D"
   },
   "emitters": [
@@ -34,7 +34,7 @@
       "sourceElementIndex": 31,
       "renderer": "sprite",
       "visible": true,
-      "resourceBindingCount": 4,
+      "resourceBindingCount": 2,
       "moduleCount": 9
     },
     {
@@ -76,7 +76,7 @@
   ],
   "document": {
     "schema": "lostark.effect-authoring",
-    "version": 11,
+    "version": 12,
     "effectAssetId": "effect.component.dimensionmaster.skill.2050240.00",
     "displayName": "DimensionMaster_skill_2050240_00.particlesystem.wfx",
     "particleSystem": {
@@ -106,11 +106,32 @@
           "renderProfile": "additive_two_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.mm.fx.mm.onelayerdistortion.02.ad.7b52607c1f26",
+            "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.onelayerdistortion.02.ad.6f0e183fe955",
             "runtimeShaderProfileId": "effect.ue3.one-layer-distortion.v1",
-            "parentMaterialPath": "fx_mm.fx_mm_onelayerdistortion_02_ad",
+            "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_onelayerdistortion_02_ad",
             "semanticStatus": "reconstructed_profile",
-            "scalars": [],
+            "scalars": [
+              {
+                "name": "wave amplitude",
+                "value": 0.8,
+                "group": "wavering"
+              },
+              {
+                "name": "line thickness",
+                "value": 0.8,
+                "group": "None"
+              },
+              {
+                "name": "cyclenum01",
+                "value": 12.0,
+                "group": "wavering"
+              },
+              {
+                "name": "cyclenum02",
+                "value": 9.0,
+                "group": "wavering"
+              }
+            ],
             "vectors": [],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
@@ -341,6 +362,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -1297,6 +1353,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -1313,99 +1382,139 @@
           },
           {
             "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_digtal_01.dds"
-          },
-          {
-            "slotId": "mask",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cyber_01.dds"
-          },
-          {
-            "slotId": "emissive",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_042.dds"
           }
         ],
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_hologram_01_01_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.me.hologram.01.tr.17fe3560c2f2",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_me_hologram_01_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.me.hologram.01.tr.e6febdda35c4",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_me_hologram_01_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "noise01_movetime_str",
-                "value": 1.0
-              },
-              {
-                "name": "noise01_str",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "noise02_movetime_str",
-                "value": 2.0
-              },
-              {
-                "name": "noise02_str",
-                "value": -0.10000000149011612
-              },
-              {
                 "name": "gra_pow",
-                "value": 3.0
-              },
-              {
-                "name": "colorizealpha",
-                "value": 1.0
-              },
-              {
-                "name": "diffuse_offset_x",
-                "value": 0.0
-              },
-              {
-                "name": "diffuse_offset_y",
-                "value": 0.0
-              },
-              {
-                "name": "diffuse_texsize",
-                "value": 1.0
-              },
-              {
-                "name": "flickeringalpha",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "globalopacity",
-                "value": 0.75
-              },
-              {
-                "name": "highvalue",
-                "value": 1.0
-              },
-              {
-                "name": "linevalue",
-                "value": 0.20000000298023224
+                "value": 3.0,
+                "group": "opacity"
               },
               {
                 "name": "lowopacity",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
               },
               {
-                "name": "lowvalue",
-                "value": 0.10000000149011612
-              },
-              {
-                "name": "timevariable",
-                "value": 1.0
-              },
-              {
-                "name": "x_speed",
-                "value": 0.0
+                "name": "globalopacity",
+                "value": 0.75,
+                "group": "None"
               },
               {
                 "name": "y_speed",
-                "value": -2.0
+                "value": -2.0,
+                "group": "None"
+              },
+              {
+                "name": "x_speed",
+                "value": 0.0,
+                "group": "None"
+              },
+              {
+                "name": "linevalue",
+                "value": 0.2,
+                "group": "None"
+              },
+              {
+                "name": "highvalue",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "lowvalue",
+                "value": 0.1,
+                "group": "None"
+              },
+              {
+                "name": "noise01_str",
+                "value": 0.1,
+                "group": "electricnoise01"
+              },
+              {
+                "name": "noise01_movetime_str",
+                "value": 1.0,
+                "group": "electricnoise01"
+              },
+              {
+                "name": "diffuse_offset_y",
+                "value": 0.0,
+                "group": "None"
+              },
+              {
+                "name": "diffuse_offset_x",
+                "value": 0.0,
+                "group": "None"
+              },
+              {
+                "name": "diffuse_tile_y",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "diffuse_tile_x",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "diffuse_texsize",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "noise02_str",
+                "value": -0.1,
+                "group": "electricnoise02"
+              },
+              {
+                "name": "noise02_movetime_str",
+                "value": 2.0,
+                "group": "electricnoise02"
+              },
+              {
+                "name": "flickeringalpha",
+                "value": 0.1,
+                "group": "None"
+              },
+              {
+                "name": "timevariable",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "colorizealpha",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "rot_str",
+                "value": 0.3,
+                "group": "None"
+              },
+              {
+                "name": "rot_speed",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "softedge_pow",
+                "value": 4.0,
+                "group": "None"
+              },
+              {
+                "name": "softedge_str",
+                "value": 2.0,
+                "group": "None"
               }
             ],
             "vectors": [
@@ -1416,7 +1525,8 @@
                   1.0,
                   1.0,
                   1.0
-                ]
+                ],
+                "group": "None"
               }
             ],
             "staticSwitches": [],
@@ -1648,6 +1758,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -2484,6 +2629,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -2506,57 +2664,103 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_spriteinvert_01_02_tr",
-          "renderProfile": "alpha_two_sided_depth_read",
+          "renderProfile": "alpha_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.j.pa.spriteinvert.01.tr.f8e2214b46d6",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_j_pa_spriteinvert_01_tr",
+            "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.spriteinvert.01.tr.0f09ed5738d6",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_spriteinvert_01_tr",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "alpha_pow",
-                "value": 2.0
-              },
-              {
-                "name": "alpha_str",
-                "value": 3.0
-              },
-              {
                 "name": "invert_maxstr",
-                "value": 10.0
+                "value": 10.0,
+                "group": "alpha"
               },
               {
                 "name": "invert_minstr",
-                "value": 9.0
-              },
-              {
-                "name": "flow_pany",
-                "value": 0.0
+                "value": 9.0,
+                "group": "alpha"
               },
               {
                 "name": "flow_str",
-                "value": 0.07000000029802322
+                "value": 0.07,
+                "group": "flow"
               },
               {
                 "name": "flow_tileu",
-                "value": 1.0
+                "value": 1.0,
+                "group": "flow"
               },
               {
                 "name": "flow_tilev",
-                "value": 1.0
+                "value": 1.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_pany",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "flow_panx",
+                "value": 0.0,
+                "group": "flow"
+              },
+              {
+                "name": "alpha_tileu",
+                "value": 1.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_tilev",
+                "value": 1.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_offsety",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_offsetx",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_panx",
+                "value": 0.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_pany",
+                "value": 0.0,
+                "group": "alpha"
               },
               {
                 "name": "emissive_pow",
-                "value": 1.0
+                "value": 1.0,
+                "group": "None"
               },
               {
                 "name": "emissive_str",
-                "value": 15.0
+                "value": 15.0,
+                "group": "None"
+              },
+              {
+                "name": "alpha_str",
+                "value": 3.0,
+                "group": "alpha"
+              },
+              {
+                "name": "alpha_pow",
+                "value": 2.0,
+                "group": "alpha"
               },
               {
                 "name": "sinetime",
-                "value": 0.0
+                "value": 0.0,
+                "group": "None"
               }
             ],
             "vectors": [],
@@ -2789,6 +2993,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -3667,6 +3906,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -3918,6 +4170,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -4754,6 +5041,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -4772,21 +5072,28 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
-          "renderProfile": "additive_two_sided_depth_read",
+          "renderProfile": "additive_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.c.pa.lensflare.01.ad.ed326b13c7b3",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_c_pa_lensflare_01_ad",
+            "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.c.pa.lensflare.01.ad.2cdc706962af",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_00.fx_m.fx_c_pa_lensflare_01_ad",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "desaturation",
-                "value": 1.0
+                "name": "select texture(0 or 0.5)",
+                "value": 0.0,
+                "group": "None"
               },
               {
-                "name": "select texture(0 or 0.5)",
-                "value": 0.0
+                "name": "desaturation",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "depthbaisalpha",
+                "value": -50.0,
+                "group": "None"
               }
             ],
             "vectors": [],
@@ -5019,6 +5326,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -5661,6 +6003,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       },
       {
@@ -5679,21 +6034,28 @@
         "material": {
           "templateId": "effect.standard",
           "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_09_ad",
-          "renderProfile": "additive_two_sided_depth_read",
+          "renderProfile": "additive_one_sided_depth_read",
           "sourceProfile": {
             "enabled": true,
-            "profileId": "ue3.material.fx.m.fx.c.pa.lensflare.01.ad.ed326b13c7b3",
-            "runtimeShaderProfileId": "effect.ue3.reconstructed-standard.v1",
-            "parentMaterialPath": "fx_m.fx_c_pa_lensflare_01_ad",
+            "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.c.pa.lensflare.01.ad.2cdc706962af",
+            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "parentMaterialPath": "fx_m_mi_00.fx_m.fx_c_pa_lensflare_01_ad",
             "semanticStatus": "reconstructed_profile",
             "scalars": [
               {
-                "name": "desaturation",
-                "value": 1.0
+                "name": "select texture(0 or 0.5)",
+                "value": 0.0,
+                "group": "None"
               },
               {
-                "name": "select texture(0 or 0.5)",
-                "value": 0.0
+                "name": "desaturation",
+                "value": 1.0,
+                "group": "None"
+              },
+              {
+                "name": "depthbaisalpha",
+                "value": -50.0,
+                "group": "None"
               }
             ],
             "vectors": [],
@@ -5926,6 +6288,41 @@
             "sampleIntervalSeconds": 0.05,
             "maxCopies": 16,
             "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
           }
         },
         "sourceRecipe": {
@@ -6613,6 +7010,19 @@
               ]
             }
           ]
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
         }
       }
     ]

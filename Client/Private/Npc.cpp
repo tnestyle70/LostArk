@@ -1,5 +1,6 @@
 #include "Npc.h"
 
+#include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
@@ -104,15 +105,8 @@ HRESULT CNpc::Render()
 	const uint32_t iNumMeshes = m_pModelCom->Get_NumMeshes();
 	for (uint32_t i = 0; i < iNumMeshes; ++i)
 	{
-		const uint32_t hasNormalTexture =
-			m_pModelCom->Has_MaterialTexture(i, aiTextureType_NORMALS) ? 1u : 0u;
-
-		if (FAILED(m_pModelCom->Bind_Material(
-			m_pShaderCom, "g_DiffuseTexture", i, aiTextureType_DIFFUSE, 0)) ||
-			FAILED(m_pShaderCom->Bind_RawValue(
-				"g_HasNormalTexture", &hasNormalTexture, sizeof(hasNormalTexture))) ||
-			(0 != hasNormalTexture && FAILED(m_pModelCom->Bind_Material(
-				m_pShaderCom, "g_NormalTexture", i, aiTextureType_NORMALS, 0))) ||
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||

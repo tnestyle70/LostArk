@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050520",
   "displayName": "DIMENSIONMASTER V 2050520 Imported Cascade Draft",
-  "sourceAuthoringVersion": 11,
+  "sourceAuthoringVersion": 12,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -157,9 +157,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "14d07fe148d3c692591b37fc284ce72f0300b188e576a26b2d6b9683b31b22d1",
+  "sourceDocumentSha256": "4459153765a3c2e3267c578cb08ca3e15cdeee0547e875ea30288a1182ff5a67",
   "inputSlot": "V",
-  "sourceDocumentFileSha256": "33039225da72a61f34e5736a612ff7eee2d34e47df1b04924866b44422a9fb05",
+  "sourceDocumentFileSha256": "917cd4b6b1ffd716d3635e99163b49dd25293b689b75683facd23ba3974aed9d",
   "sourceActionCues": [
     {
       "cueId": "skill-2050520/clip-000/notify-003",
@@ -283,12 +283,17 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAACEiIkAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLUV4TW92ZQBkAAAAAQAAAAAAAAAAAAAAAQAAAAAAAADNzMw9AACQQJqZmT7NzEw+AAAAAAAAAAAAAAAAAAAAACMAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": false,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": 167,
+        "sourceSha256": "249c71a35f6cae0922b353878a3c5a76af3638d4186613e67f20441531e5c6cb"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
     },
     {
       "cueId": "skill-2050520/clip-000/notify-005",

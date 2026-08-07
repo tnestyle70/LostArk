@@ -32,7 +32,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 27,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 23
+        "reconstructedProfileCount": 23,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -53,7 +55,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 10,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 10
+        "reconstructedProfileCount": 10,
+        "roleResolvedIdentityCount": 1,
+        "roleResolvedRuntimeBindingCount": 1
       },
       "role": "AGGREGATE"
     },
@@ -74,7 +78,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 42,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 35
+        "reconstructedProfileCount": 35,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -95,7 +101,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 18,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 15
+        "reconstructedProfileCount": 15,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -116,7 +124,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 16,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 15
+        "reconstructedProfileCount": 15,
+        "roleResolvedIdentityCount": 2,
+        "roleResolvedRuntimeBindingCount": 5
       },
       "role": "AGGREGATE"
     },
@@ -137,7 +147,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 31,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 24
+        "reconstructedProfileCount": 24,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -158,7 +170,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 14,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 13
+        "reconstructedProfileCount": 13,
+        "roleResolvedIdentityCount": 1,
+        "roleResolvedRuntimeBindingCount": 1
       },
       "role": "AGGREGATE"
     },
@@ -179,7 +193,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 51,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 43
+        "reconstructedProfileCount": 43,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -200,7 +216,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 26,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 21
+        "reconstructedProfileCount": 21,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -223,7 +241,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 74,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 48
+        "reconstructedProfileCount": 48,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -244,7 +264,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 13,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 13
+        "reconstructedProfileCount": 13,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },
@@ -265,7 +287,9 @@
         "failureCount": 0,
         "sourceExactIdentityCount": 73,
         "runtimeExactProfileCount": 0,
-        "reconstructedProfileCount": 51
+        "reconstructedProfileCount": 51,
+        "roleResolvedIdentityCount": 0,
+        "roleResolvedRuntimeBindingCount": 0
       },
       "role": "AGGREGATE"
     },

@@ -3,7 +3,7 @@
   "version": 1,
   "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
   "displayName": "기본 공격 BA2",
-  "sourceAuthoringVersion": 11,
+  "sourceAuthoringVersion": 12,
   "particleSystem": {
     "uniformScaleMultiplier": 1.0,
     "yawOffsetDegrees": 0.0,
@@ -85,9 +85,9 @@
       }
     }
   ],
-  "sourceDocumentSha256": "52ead631054a438db43bc2b8b929a9a717bfb17106b7a656b5e5b1851ff15ff6",
+  "sourceDocumentSha256": "8851a33a76fe86740e647f5660137c025a0669c0cecb93d35880db362dae6e0f",
   "inputSlot": "BA",
-  "sourceDocumentFileSha256": "0f465c89889bfa536b18cf6e19e8053205f7f21fc7554ef9ee5b78ffd4cd9dcd",
+  "sourceDocumentFileSha256": "0ab4edd104d49cf0ddf02dfbc89c845f95a7c748b0eba76654e222aed85ed6f1",
   "sourceActionCues": [
     {
       "cueId": "skill-2050010/clip-001/notify-005",

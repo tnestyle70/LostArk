@@ -36,6 +36,7 @@ class EffectExtractionToolTests(unittest.TestCase):
         self.assertTrue(is_particle_graph_class("ParticleSpriteEmitter"))
         self.assertTrue(is_particle_graph_class("ParticleModuleTypeDataMesh"))
         self.assertTrue(is_particle_graph_class("EFParticleModuleTypeDataDecal"))
+        self.assertTrue(is_particle_graph_class("PointLightComponent"))
         self.assertTrue(is_particle_graph_class("DistributionVectorConstantCurve"))
         self.assertFalse(is_particle_graph_class("CameraActor"))
 
@@ -179,6 +180,19 @@ class EffectExtractionToolTests(unittest.TestCase):
         }
         self.assertEqual(
             [("Emitters", 3)], list(iter_property_reference_values(properties))
+        )
+
+    def test_point_light_component_reference_is_preserved(self):
+        properties = {
+            "PointLightComponent": {
+                "type": "ObjectProperty",
+                "structType": None,
+                "value": 7,
+            }
+        }
+        self.assertEqual(
+            [("PointLightComponent", 7)],
+            list(iter_property_reference_values(properties)),
         )
 
     def test_interp_curve_float_recovers_tagged_keyframes(self):

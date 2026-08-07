@@ -212,6 +212,17 @@ void CCharacter::Reset_EffectCueCursor(
 	m_iEffectActionStartTick = iActionStartTick;
 }
 
+f32_t CCharacter::Get_EffectPlaybackRate() const
+{
+	if (nullptr == m_pChain || m_iChainStep < 0 ||
+		m_iChainStep >= static_cast<int32_t>(m_pChain->clips.size()))
+	{
+		return 1.f;
+	}
+	const f32_t fRate = m_pChain->clips[m_iChainStep].playRate;
+	return std::isfinite(fRate) && fRate > 0.f ? fRate : 1.f;
+}
+
 void CCharacter::Spawn_FallbackEffect(
 	const LostArk::Shared::SKILL_ID iSkillId)
 {
@@ -240,6 +251,7 @@ void CCharacter::Spawn_FallbackEffect(
 	Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	Desc.iActionStartTick = m_iEffectActionStartTick;
 	Desc.iCueStartMs = 0u;
+	Desc.fPlaybackRate = Get_EffectPlaybackRate();
 	std::string status;
 	CEffectPresentationService::Spawn(Desc, status);
 }
@@ -288,6 +300,7 @@ void CCharacter::Update_EffectCues()
 		Desc.iCueDurationMs = Cue.iEndMs - Cue.iStartMs;
 		Desc.iActionStartTick = m_iEffectActionStartTick;
 		Desc.iCueStartMs = Cue.iStartMs;
+		Desc.fPlaybackRate = Get_EffectPlaybackRate();
 		std::string status;
 		CEffectPresentationService::Spawn(Desc, status);
 	}

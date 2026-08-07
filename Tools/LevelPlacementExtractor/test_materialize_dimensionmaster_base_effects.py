@@ -11,6 +11,8 @@ from materialize_dimensionmaster_base_effects import (
     build_combo_stage_document,
     materializable_extraction_rows,
     reconstruct_source_material_profiles,
+    restore_mesh_material_override_contract,
+    select_admitted_skills,
     source_confirmed_model_cues,
     synchronize_effect_catalog,
     unsupported_model_material_cues,
@@ -18,7 +20,120 @@ from materialize_dimensionmaster_base_effects import (
 
 
 class MaterializeDimensionMasterBaseEffectsTests(unittest.TestCase):
-    def test_rebuilds_v11_profiles_without_old_authored_or_material_map(self) -> None:
+    def test_restores_mesh_material_choice_from_typedata_override(self) -> None:
+        document = {"elements": [
+            {
+                "id": "override",
+                "kind": "particle",
+                "detail": {"mesh": {"useModelMaterial": True}},
+                "sourceRecipe": {
+                    "rendererShape": "mesh",
+                    "modules": [{
+                        "className": "ParticleModuleTypeDataMesh",
+                        "literals": [{
+                            "propertyPath": "bOverrideMaterial",
+                            "value": True,
+                        }],
+                    }],
+                },
+            },
+            {
+                "id": "model-default",
+                "kind": "particle",
+                "detail": {"mesh": {"useModelMaterial": False}},
+                "sourceRecipe": {
+                    "rendererShape": "mesh",
+                    "modules": [{
+                        "className": "ParticleModuleTypeDataMesh",
+                        "literals": [],
+                    }],
+                },
+            },
+        ]}
+
+        self.assertEqual(2, restore_mesh_material_override_contract(document))
+        self.assertFalse(
+            document["elements"][0]["detail"]["mesh"]["useModelMaterial"]
+        )
+        self.assertTrue(
+            document["elements"][1]["detail"]["mesh"]["useModelMaterial"]
+        )
+
+    def test_selected_materialization_skill_must_be_admitted(self) -> None:
+        admitted = [
+            {"skillId": 10, "effectAssetId": "effect.dimensionmaster.skill.10"},
+            {"skillId": 20, "effectAssetId": "effect.dimensionmaster.skill.20"},
+        ]
+        self.assertEqual(
+            [20],
+            [
+                row["skillId"] for row in select_admitted_skills(
+                    admitted, {20}
+                )
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "not an admitted"):
+            select_admitted_skills(admitted, {30})
+
+    def test_explicit_evidence_is_not_limited_to_qrs_checkpoint(self) -> None:
+        with TemporaryDirectory() as temporary:
+            imported_root = Path(temporary)
+            (imported_root / "Converted").mkdir()
+            evidence_path = imported_root / "staged-evidence.json"
+            (imported_root / "skill.20.source-receipt.json").write_text(
+                json.dumps({
+                    "schema": "lostark.effect-source-receipt",
+                    "characterClass": "DIMENSIONMASTER",
+                    "skillId": 20,
+                    "materialParameterBindings": [{
+                        "sourceMaterialPath": "fx_pkg.fx_mi.card",
+                        "sourcePhysicalPackage": "fx_pkg.upk",
+                        "parent": "fx_m.card",
+                    }],
+                }), encoding="utf-8"
+            )
+            (imported_root / "Converted" /
+             "skill.20.element-conversion-receipt.json").write_text(
+                json.dumps({"elementConversions": []}), encoding="utf-8"
+            )
+            evidence_path.write_text(json.dumps({
+                "schema": "lostark.effect-source-material-evidence",
+                "characterClass": "DIMENSIONMASTER",
+                # A legacy checkpoint must not suppress selected staging.
+                "checkpointSkillIds": [2050100, 2050180, 2050220],
+                "materials": {"fx_pkg.fx_mi.card": [{
+                    "material_path": "fx_pkg.fx_mi.card",
+                    "source_file": "fx_pkg.upk",
+                    "parent": "fx_m.card",
+                    "fallbackBlockedReason": "MISSING_PARENT_PROPS",
+                }]},
+            }), encoding="utf-8")
+            imported = {
+                "version": 10,
+                "effectAssetId": "effect.dimensionmaster.skill.20.imported",
+                "elements": [{
+                    "id": "p0", "kind": "particle", "resources": [],
+                    "material": {
+                        "templateId": "effect.source_material",
+                        "sourceMaterialPath": "fx_pkg.fx_mi.card",
+                    },
+                    "sourceRecipe": {"modules": []},
+                }],
+            }
+            upgraded, _receipt = reconstruct_source_material_profiles(
+                20, imported_root, imported,
+                {
+                    "schema": "lostark.class-effect-resource-source-manifest",
+                    "characterClass": "DIMENSIONMASTER", "assets": [],
+                }, evidence_path,
+            )
+            self.assertEqual(
+                "effect.ue3.fallback-blocked.v1",
+                upgraded["elements"][0]["material"]["sourceProfile"]
+                ["runtimeShaderProfileId"],
+            )
+
+    def test_rebuilds_v12_profiles_without_old_authored_or_material_map(self) -> None:
         with TemporaryDirectory() as temporary:
             imported_root = Path(temporary)
             (imported_root / "Converted").mkdir()
@@ -77,11 +192,16 @@ class MaterializeDimensionMasterBaseEffectsTests(unittest.TestCase):
             )
 
             profile = upgraded["elements"][0]["material"]["sourceProfile"]
-            self.assertEqual(11, upgraded["version"])
+            self.assertEqual(12, upgraded["version"])
             self.assertTrue(profile["enabled"])
             self.assertNotEqual("manual.stale", profile["profileId"])
             self.assertEqual(
-                [{"name": "power", "value": 3.0}], profile["scalars"]
+                [{
+                    "name": "power",
+                    "group": "",
+                    "value": 3.0,
+                }],
+                profile["scalars"],
             )
             self.assertEqual(0, receipt["summary"]["failureCount"])
 

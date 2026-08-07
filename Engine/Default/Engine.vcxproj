@@ -216,6 +216,8 @@
     <ClInclude Include="..\Public\Profiler.h" />
     <ClInclude Include="..\public\Prototype.h" />
     <ClInclude Include="..\public\Prototype_Manager.h" />
+    <ClInclude Include="..\Public\PresentationProvider.h" />
+    <ClInclude Include="..\Public\Presentation_Manager.h" />
     <ClInclude Include="..\public\Renderer.h" />
     <ClInclude Include="..\public\RenderTarget.h" />
     <ClInclude Include="..\public\Shader.h" />
@@ -274,6 +276,7 @@
     <ClCompile Include="..\private\Level_Manager.cpp" />
     <ClCompile Include="..\private\Light.cpp" />
     <ClCompile Include="..\private\Light_Manager.cpp" />
+    <ClCompile Include="..\Private\Presentation_Manager.cpp" />
     <ClCompile Include="..\private\Material.cpp" />
     <ClCompile Include="..\private\Mesh.cpp" />
     <ClCompile Include="..\private\Model.cpp" />

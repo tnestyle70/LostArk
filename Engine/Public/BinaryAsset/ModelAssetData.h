@@ -8,6 +8,8 @@ NS_BEGIN(Engine)
 
 struct MODEL_MATERIAL_DATA
 {
+	string name;
+	uint64_t nameHash = {};
 	filesystem::path diffusePath;
 	filesystem::path normalPath;
 	filesystem::path specularPath;

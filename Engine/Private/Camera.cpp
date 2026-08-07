@@ -58,4 +58,5 @@ void CCamera::Update_PipeLine()
 
 	CGameInstance::Get().Set_Transform(D3DTS::VIEW, ViewMatrixInverse);
 	CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMMatrixPerspectiveFovLH(XMConvertToRadians(m_fFovy), m_fAspect, m_fNear, m_fFar));
+	CGameInstance::Get().Refresh_CameraState();
 }

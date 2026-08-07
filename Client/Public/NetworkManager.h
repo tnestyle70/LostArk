@@ -83,6 +83,8 @@ public:
 	[[nodiscard]] LostArk::Shared::NET_ENTITY_ID Get_LocalEntityId() const;
 	[[nodiscard]] LostArk::Shared::CHARACTER_CLASS_ID
 		Get_LocalCharacterClass() const;
+	[[nodiscard]] bool Try_Get_LocalSpawn(
+		LostArk::Shared::S2C_PLAYER_SPAWNED& outSpawn) const;
 
 
 private:
@@ -123,5 +125,7 @@ private:
 		LostArk::Shared::WORLD_ID::END;
 	LostArk::Shared::CHARACTER_CLASS_ID m_eLocalCharacterClass =
 		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	bool m_hasLocalSpawn = false;
+	LostArk::Shared::S2C_PLAYER_SPAWNED m_LocalSpawn = {};
 
 };

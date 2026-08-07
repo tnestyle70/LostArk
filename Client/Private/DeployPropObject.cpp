@@ -1,5 +1,6 @@
 #include "DeployPropObject.h"
 
+#include "DeferredMaterialRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Shader.h"
@@ -319,14 +320,8 @@ HRESULT CDeployPropObject::Render_Animated()
 {
 	for (uint32_t index = 0; index < m_pIntactModelCom->Get_NumMeshes(); ++index)
 	{
-		const uint32_t hasNormal =
-			m_pIntactModelCom->Has_MaterialTexture(index, aiTextureType_NORMALS) ? 1u : 0u;
-		if (FAILED(m_pIntactModelCom->Bind_Material(
-			m_pShaderCom, "g_DiffuseTexture", index, aiTextureType_DIFFUSE)) ||
-			FAILED(m_pShaderCom->Bind_RawValue(
-				"g_HasNormalTexture", &hasNormal, sizeof(hasNormal))) ||
-			(0 != hasNormal && FAILED(m_pIntactModelCom->Bind_Material(
-				m_pShaderCom, "g_NormalTexture", index, aiTextureType_NORMALS))) ||
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pIntactModelCom, m_pShaderCom, index)) ||
 			FAILED(m_pIntactModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", index)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||

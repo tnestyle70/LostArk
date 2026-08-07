@@ -147,12 +147,17 @@
         "data": "Q0VGQWN0aW9uTm90aWZ5X0RvbWluYW50RGlyZWN0aW9uYWxMaWdodF9Db250cm9sAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAACEiIkAAAAAAAQAAAAAAAAAAAAAACgAAAEZYLUV4TW92ZQBkAAAAAQAAAAAAAAAAAAAAAQAAAAAAAADNzMw9AACQQJqZmT7NzEw+AAAAAAAAAAAAAAAAAAAAACMAAAA="
       },
       "typedPayload": {
-        "schema": "lostark.action-cue-payload",
-        "enabled": true
+        "schema": "lostark.cef-dominant-directional-light-control",
+        "version": 1,
+        "enabled": true,
+        "semanticDecoded": false,
+        "status": "UNRESOLVED_FIELD_LAYOUT",
+        "sourceByteSize": 167,
+        "sourceSha256": "249c71a35f6cae0922b353878a3c5a76af3638d4186613e67f20441531e5c6cb"
       },
       "executionEnabled": true,
       "sourceReceiptEventIndex": null,
-      "sourceExecutionStatus": "SEMANTIC_EXECUTION_AUDIT_REQUIRED"
+      "sourceExecutionStatus": "UNRESOLVED_DIRECTIONAL_LIGHT_SEMANTICS"
     },
     {
       "cueId": "skill-2050520/clip-000/notify-005",
@@ -1041,6 +1046,10 @@
     },
     "enabledPlayParticleEffectCount": 6,
     "disabledPlayParticleEffectCount": 0,
+    "typedDirectionalLightCueCount": 0,
+    "unresolvedDirectionalLightCueCount": 1,
+    "typedScreenPostCueCount": 0,
+    "unresolvedScreenPostCueCount": 0,
     "byteLosslessPayloadComplete": true,
     "referenceJoinComplete": true,
     "runtimeAnchorResolutionComplete": true,

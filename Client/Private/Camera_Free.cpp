@@ -51,12 +51,11 @@ void CCamera_Free::Priority_Update(f32_t fTimeDelta)
 {
 	Update_Shortcuts();
 
-	if (m_bFollowEnabled)
-		Update_FollowCamera(fTimeDelta);
-	else
+	if (!m_bFollowEnabled)
+	{
 		Update_FreeCamera(fTimeDelta);
-
-	__super::Update_PipeLine();
+		__super::Update_PipeLine();
+	}
 }
 
 void CCamera_Free::Update(f32_t fTimeDelta)
@@ -65,6 +64,12 @@ void CCamera_Free::Update(f32_t fTimeDelta)
 
 void CCamera_Free::Late_Update(f32_t fTimeDelta)
 {
+	if (!m_bFollowEnabled)
+		return;
+
+	Update_FollowCamera(fTimeDelta);
+	if (m_bFollowEnabled)
+		__super::Update_PipeLine();
 }
 
 HRESULT CCamera_Free::Render()
@@ -74,12 +79,19 @@ HRESULT CCamera_Free::Render()
 
 void CCamera_Free::Set_FollowTarget(const shared_ptr<CTransform>& pFollowTarget)
 {
-	if (m_pFollowTarget.lock() != pFollowTarget)
+	const bool_t targetChanged =
+		m_pFollowTarget.lock() != pFollowTarget;
+	if (targetChanged)
 		m_bFollowInitialized = false;
 
 	m_pFollowTarget = pFollowTarget;
 	m_bFollowEnabled =
 		m_bFollowRequested && nullptr != pFollowTarget;
+	if (targetChanged && m_bFollowEnabled)
+	{
+		Update_FollowCamera(0.f);
+		__super::Update_PipeLine();
+	}
 }
 
 void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
@@ -91,6 +103,11 @@ void CCamera_Free::Set_FollowEnabled(bool_t isEnabled)
 		m_bFollowInitialized = false;
 
 	m_bFollowEnabled = nextEnabled;
+	if (m_bFollowEnabled && !m_bFollowInitialized)
+	{
+		Update_FollowCamera(0.f);
+		__super::Update_PipeLine();
+	}
 }
 
 void CCamera_Free::Set_PositionOffset(
@@ -104,7 +121,6 @@ void CCamera_Free::Set_PositionOffset(
 	}
 
 	m_vPositionOffset = vPositionOffset;
-	m_bFollowInitialized = false;
 }
 
 void CCamera_Free::Frame_Area(
@@ -130,6 +146,7 @@ void CCamera_Free::Frame_Area(
 	m_pTransformCom->Set_State(STATE::POSITION, eye);
 	m_pTransformCom->LookAt(lookAt);
 	XMStoreFloat3(&m_vCurrentLookAt, lookAt);
+	__super::Update_PipeLine();
 }
 
 void CCamera_Free::Update_Shortcuts()
