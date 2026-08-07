@@ -6,6 +6,8 @@
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
 #include "DeployPropRuntime.h"
+#include "EncounterPatternReference.h"
+#include "WorldDestructionDocument.h"
 #include "NavGridBaker.h"
 #include "NavGridPaintDocument.h"
 #include "NavRuntimeBlockerDocument.h"
@@ -32,6 +34,7 @@ private:
 	{
 		MAP_ASSETS,
 		WORLD_GAMEPLAY,
+		WORLD_DESTRUCTION,
 		NAVIGATION,
 		CAMERA,
 	};
@@ -61,6 +64,8 @@ private:
 		std::filesystem::path navigationPaint;
 		std::filesystem::path navigationBlockers;
 		std::filesystem::path gameplayDocument;
+		std::filesystem::path encounterReference;
+		std::filesystem::path worldEventsDocument;
 		EDITOR_NAVIGATION_POLICY navigationPolicy =
 			EDITOR_NAVIGATION_POLICY::NONE;
 		EDITOR_GAMEPLAY_POLICY gameplayPolicy =
@@ -141,6 +146,15 @@ private:
 	void Render_MapAssetsPanel(bool_t isAssetTest);
 	void Render_WorldGameplayPanel(bool_t isAssetTest);
 	void Render_SpawnGroupsPanel();
+	void Render_WorldDestructionPanel(bool_t isAssetTest);
+	void Render_DestructionEncounterSource();
+	void Render_DestructionDeployList();
+	void Render_DestructionWorldRows();
+	void Render_DestructionNavigationRegions();
+	void Render_DestructionGroupEditor();
+	void Render_DestructionBindingEditor();
+	void Render_DestructionTimeline();
+	void Render_DestructionDiagnostics();
 	void Render_ModeBar();
 	void Render_CameraPanel();
 	void Render_NavigationPanel();
@@ -241,6 +255,15 @@ private:
 	std::filesystem::path Get_WorldGameplayPath() const;
 	std::filesystem::path Get_SpawnGroupsPath() const;
 
+	/* World Destruction Authoring */
+	bool_t Load_EncounterReference();
+	bool_t Load_WorldDestruction();
+	bool_t Save_WorldDestruction();
+	std::filesystem::path Get_WorldDestructionPath() const;
+	bool_t Try_PickDeployProp(uint64_t& outRuntimePlacementId) const;
+	bool_t Refresh_DestructionHighlight();
+	void Apply_DestructionPreview(DEPLOY_PROP_STATE state);
+
 	/* Queries */
 	PLACED_ENTRY* Find_Placement(uint64_t placementId);
 	const MAP_ASSET_ENTRY* Get_SelectedAsset() const;
@@ -316,6 +339,34 @@ private:
 	float3_t m_WorldPlacementPositionDelta = {};
 	float3_t m_WorldTriggerHalfExtents = float3_t(2.f, 1.f, 2.f);
 	bool_t m_bWorldTriggerOnce = true;
+
+	/* World Destruction State */
+	CEncounterPatternReference m_EncounterReference;
+	std::string m_EncounterReferenceStatus =
+		"Press Reload Encounter Reference";
+	std::string m_SelectedDestructionPatternId;
+	uint64_t m_iSelectedDeployPlacementId = 0;
+	bool_t m_bDestructionOnlyWithOffAction = false;
+	char m_DestructionDeployFilter[128]{};
+	CWorldDestructionDocument m_DestructionDocument;
+	std::filesystem::path m_WorldEventsPath;
+	std::string m_DestructionStatus =
+		"Select Valtan to author world destruction";
+	std::string m_SelectedDestructionGroupId;
+	std::string m_SelectedDestructionBindingId;
+	/* Which encounter stage the next binding will attach to. Set from the
+	   timeline; not a binding identity. */
+	std::string m_SelectedDestructionStageId;
+	vector<TRIGGER_BOX_ENTRY> m_DestructionHighlightBoxes;
+	bool_t m_bDestructionPickArmed = false;
+	char m_DestructionGroupId[128] = "destroyable.group.valtan.wall.01";
+	char m_DestructionMutationId[128] = "mutation.valtan.wall.01.break";
+	char m_DestructionBindingId[128] = "binding.valtan.wall.01.break";
+	char m_DestructionReceiverId[128] = "collision.valtan.wall.01";
+	char m_DestructionRegionId[128]{};
+	int32_t m_iDestructionTriggerKind = 1;
+	int32_t m_iDestructionBreakingMs = 1900;
+	int32_t m_iDestructionOffsetMs = 0;
 
 	/* Navigation State */
 	bool_t m_bNavigationStrokeActive = false;

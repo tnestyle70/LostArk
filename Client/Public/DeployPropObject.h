@@ -41,6 +41,14 @@ public:
 	uint32_t Get_DeployActorId() const { return m_Placement.deployActorId; }
 	bool_t Is_Destructible() const { return m_Placement.destructible; }
 	bool_t Is_AnimBindPoseOnly() const;
+	/* World axis-aligned bounds of the model this prop currently renders.
+	   Authoring tools use it to hit-test and outline a prop instead of
+	   re-cloning a prototype by tag. Returns false when the model carries no
+	   baked local bounds so the caller can skip the prop instead of using a
+	   zero-sized box. */
+	bool_t Get_WorldBounds(
+		float3_t& outCenter,
+		float3_t& outHalfExtents) const;
 
 private:
 	HRESULT Ready_Components(const DEPLOY_PROP_DESC& desc);

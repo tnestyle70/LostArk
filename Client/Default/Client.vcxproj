@@ -105,6 +105,8 @@
     <ClInclude Include="..\Public\MapLoadScope.h" />
     <ClInclude Include="..\Public\MapTool.h" />
     <ClInclude Include="..\Public\WorldGameplayDocument.h" />
+    <ClInclude Include="..\Public\EncounterPatternReference.h" />
+    <ClInclude Include="..\Public\WorldDestructionDocument.h" />
     <ClInclude Include="..\Public\SpawnGroupDocument.h" />
     <ClInclude Include="..\Public\NavGridBaker.h" />
     <ClInclude Include="..\Public\NavGridPaintDocument.h" />
@@ -194,6 +196,8 @@
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
     <ClCompile Include="..\Private\MapTool.cpp" />
     <ClCompile Include="..\Private\WorldGameplayDocument.cpp" />
+    <ClCompile Include="..\Private\EncounterPatternReference.cpp" />
+    <ClCompile Include="..\Private\WorldDestructionDocument.cpp" />
     <ClCompile Include="..\Private\SpawnGroupDocument.cpp" />
     <ClCompile Include="..\Private\NavGridBaker.cpp" />
     <ClCompile Include="..\Private\NavGridPaintDocument.cpp" />

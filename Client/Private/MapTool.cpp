@@ -334,6 +334,7 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 		m_bWorldGameplayPlacementArmed = false;
 		m_bWorldTriggerTargetPickArmed = false;
 		m_bSpawnAnchorPlacementArmed = false;
+		m_bDestructionPickArmed = false;
 		m_eNavigationBoundsState = NAV_BOUNDS_STATE::IDLE;
 		m_Status = "Placement cancelled";
 		if (TOOL_MODE::NAVIGATION == m_eToolMode)
@@ -375,6 +376,23 @@ void Client::CMapTool::Update_WorldInteraction(bool_t isAssetTest)
 
 	if (!canUseWorldMouse)
 		return;
+	if (TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode)
+	{
+		uint64_t pickedPlacementId = 0u;
+		if (m_bDestructionPickArmed && mousePressed &&
+			Try_PickDeployProp(pickedPlacementId))
+		{
+			m_iSelectedDeployPlacementId = pickedPlacementId;
+			const DESTRUCTION_GROUP* owner =
+				m_DestructionDocument.Find_GroupOfMember(pickedPlacementId);
+			if (nullptr != owner)
+				m_SelectedDestructionGroupId = owner->groupId;
+			Refresh_DestructionHighlight();
+			m_DestructionStatus = "Picked deploy prop " +
+				std::to_string(pickedPlacementId);
+		}
+		return;
+	}
 	if (TOOL_MODE::WORLD_GAMEPLAY == m_eToolMode)
 	{
 		if (m_bWorldTriggerTargetPickArmed && mousePressed)
@@ -559,6 +577,8 @@ bool_t Client::CMapTool::Save_AllAuthoring()
 	{
 		return false;
 	}
+	if (m_DestructionDocument.Is_Dirty() && !Save_WorldDestruction())
+		return false;
 	return true;
 }
 
@@ -572,6 +592,12 @@ void Client::CMapTool::Render_ActiveMode(bool_t isAssetTest)
 
 	case TOOL_MODE::WORLD_GAMEPLAY:
 		Render_WorldGameplayPanel(isAssetTest);
+		break;
+
+	case TOOL_MODE::WORLD_DESTRUCTION:
+		ImGui::BeginDisabled(!isAssetTest);
+		Render_WorldDestructionPanel(isAssetTest);
+		ImGui::EndDisabled();
 		break;
 
 	case TOOL_MODE::NAVIGATION:
@@ -1420,6 +1446,31 @@ std::filesystem::path Client::CMapTool::Get_SpawnGroupsPath() const
 		gameplayPath.parent_path() / L"SpawnGroups.world.json";
 }
 
+bool_t Client::CMapTool::Load_EncounterReference()
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor || descriptor->encounterReference.empty())
+	{
+		m_EncounterReferenceStatus =
+			"Active Area declares no encounter reference";
+		return false;
+	}
+
+	std::string status;
+	if (!m_EncounterReference.Load(descriptor->encounterReference, status))
+	{
+		m_EncounterReferenceStatus = status;
+		return false;
+	}
+	m_EncounterReferenceStatus = status;
+	if (nullptr == m_EncounterReference.Find_Pattern(
+		m_SelectedDestructionPatternId))
+	{
+		m_SelectedDestructionPatternId.clear();
+	}
+	return true;
+}
+
 bool_t Client::CMapTool::Load_WorldGameplay()
 {
 	const std::filesystem::path path = Get_WorldGameplayPath();
@@ -1799,6 +1850,18 @@ void Client::CMapTool::Update_WorldTriggerBoxPresentation(
 		entry.object->Set_AuthoringVisible(isVisible);
 		entry.object->Set_Selected(entry.placementId == m_SelectedSpawnAnchorId);
 	}
+	/* Destruction outlines follow their own mode instead of the gameplay
+	   visibility flag the two loops above share. */
+	const std::string pickedId =
+		std::to_string(m_iSelectedDeployPlacementId);
+	for (TRIGGER_BOX_ENTRY& entry : m_DestructionHighlightBoxes)
+	{
+		if (nullptr == entry.object)
+			continue;
+		entry.object->Set_AuthoringVisible(
+			m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode);
+		entry.object->Set_Selected(entry.placementId == pickedId);
+	}
 }
 bool Client::CMapTool::IsOpen() const
 {
@@ -2104,6 +2167,22 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 			descriptor.navigationBlockers = ResolveDataCatalogPath(blockers);
 			descriptor.navigationPolicy =
 				EDITOR_NAVIGATION_POLICY::SOURCE_PAINT_BLOCKERS;
+			/* The editor area registry already hardcodes which four areas
+			   the Map Tool opens, so the destruction reference path is
+			   declared the same way instead of adding a field to the shared
+			   MapCatalog schema. Render_DestructionEncounterSource cross
+			   checks the loaded encounterId against the boss placement of
+			   this Area. */
+			descriptor.encounterReference = CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanEncounter.json");
+			descriptor.worldEventsDocument = CProjectDataRoot::Resolve(
+				L"Encounters/Valtan/ValtanWorldEvents.json");
+			if (descriptor.encounterReference.empty() ||
+				descriptor.worldEventsDocument.empty())
+			{
+				m_Status = "Valtan encounter reference path is invalid";
+				return false;
+			}
 		}
 
 		if (descriptor.areaId == "LV_LOBBY_CLASSSELECT_SL00" ||
@@ -2156,7 +2235,8 @@ bool_t Client::CMapTool::Has_UnsavedAuthoring() const
 {
 	return m_bDirty || m_bWorldGameplayDirty || m_bSpawnGroupsDirty ||
 		m_NavigationDocument.Is_Dirty() ||
-		m_RuntimeBlockerDocument.Is_Dirty();
+		m_RuntimeBlockerDocument.Is_Dirty() ||
+		m_DestructionDocument.Is_Dirty();
 }
 
 bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
@@ -2264,6 +2344,38 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		}
 	}
 
+	/* Pure data document: an Area without a world events path simply has no
+	   destruction authoring, a missing file for Valtan starts empty so the
+	   first Save can create it, and a corrupt file fails the switch like the
+	   other authoring documents do. */
+	CWorldDestructionDocument stagedDestruction;
+	if (!descriptor.worldEventsDocument.empty())
+	{
+		std::error_code destructionError;
+		const bool_t hasDocument = std::filesystem::is_regular_file(
+			descriptor.worldEventsDocument, destructionError);
+		if (IsFileInspectionFailure(destructionError))
+		{
+			m_Status = "World destruction document is unreadable: " +
+				descriptor.areaId;
+			return false;
+		}
+		std::string destructionStatus;
+		if (!hasDocument)
+		{
+			stagedDestruction.Reset_Empty();
+		}
+		else if (!stagedDestruction.Load(
+			descriptor.worldEventsDocument,
+			descriptor.areaId,
+			"ENCOUNTER_VALTAN",
+			destructionStatus))
+		{
+			m_Status = destructionStatus;
+			return false;
+		}
+	}
+
 	if (!Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
 
@@ -2315,6 +2427,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_SpawnAnchorBoxes = std::move(stagedSpawnAnchorBoxes);
 	m_NavigationDocument = std::move(stagedNavigation);
 	m_RuntimeBlockerDocument = std::move(stagedBlockers);
+	m_DestructionDocument = std::move(stagedDestruction);
+	m_WorldEventsPath = descriptor.worldEventsDocument;
 	m_NavigationSourcePath = descriptor.navigationSource;
 	m_NavigationPaintPath = descriptor.navigationPaint;
 	m_RuntimeBlockerPath = descriptor.navigationBlockers;
@@ -2330,6 +2444,18 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_SelectedSpawnGroupId.clear();
 	m_SelectedSpawnWaveId.clear();
 	m_SelectedAssetId.clear();
+	Remove_WorldTriggerBoxes(m_DestructionHighlightBoxes);
+	m_SelectedDestructionGroupId.clear();
+	m_SelectedDestructionBindingId.clear();
+	m_SelectedDestructionStageId.clear();
+	m_SelectedDestructionPatternId.clear();
+	m_iSelectedDeployPlacementId = 0;
+	m_bDestructionPickArmed = false;
+	m_EncounterReference.Clear();
+	m_EncounterReferenceStatus = "Press Reload Encounter Reference";
+	m_DestructionStatus = descriptor.worldEventsDocument.empty() ?
+		"World destruction authoring disabled for this Area" :
+		"World destruction authoring ready";
 	m_iNextPlacementId = 1;
 	for (const PLACED_ENTRY& entry : m_Placements)
 	{
@@ -3344,6 +3470,1073 @@ void Client::CMapTool::Set_EnvironmentPhase(ENVIRONMENT_PHASE phase)
 	}
 }
 
+std::filesystem::path Client::CMapTool::Get_WorldDestructionPath() const
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	return nullptr != descriptor ? descriptor->worldEventsDocument :
+		std::filesystem::path{};
+}
+
+bool_t Client::CMapTool::Load_WorldDestruction()
+{
+	const std::filesystem::path path = Get_WorldDestructionPath();
+	if (path.empty())
+	{
+		m_DestructionStatus = "This Area has no world destruction document";
+		return false;
+	}
+	/* The document only exists after the first Save, so a missing file is a
+	   normal starting state and not a read failure. */
+	std::error_code inspectError;
+	if (!std::filesystem::is_regular_file(path, inspectError))
+	{
+		m_DestructionStatus = IsFileInspectionFailure(inspectError) ?
+			"World events document is unreadable" :
+			"No world events document yet. Create a group and press Save.";
+		return false;
+	}
+	CWorldDestructionDocument staged;
+	std::string status;
+	if (!staged.Load(path, m_Catalog.Get_AreaId(), "ENCOUNTER_VALTAN", status))
+	{
+		m_DestructionStatus = status;
+		return false;
+	}
+	m_DestructionDocument = std::move(staged);
+	m_SelectedDestructionGroupId.clear();
+	m_SelectedDestructionBindingId.clear();
+	m_SelectedDestructionStageId.clear();
+	Refresh_DestructionHighlight();
+	m_DestructionStatus = status;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_WorldDestruction()
+{
+	const std::filesystem::path path = Get_WorldDestructionPath();
+	if (path.empty() || !m_DestructionDocument.Is_Ready())
+	{
+		m_DestructionStatus = "World destruction save requires a Valtan Area";
+		return false;
+	}
+	std::string status;
+	if (!m_DestructionDocument.Save(
+		path, m_Catalog.Get_AreaId(), "ENCOUNTER_VALTAN", status))
+	{
+		m_DestructionStatus = status;
+		return false;
+	}
+	m_DestructionDocument.Clear_Dirty();
+	m_DestructionStatus = status;
+	return true;
+}
+
+bool_t Client::CMapTool::Try_PickDeployProp(
+	uint64_t& outRuntimePlacementId) const
+{
+	float3_t picked{};
+	if (!Try_PickPlacementPosition(picked))
+		return false;
+
+	/* The depth pick returns the surface point of whatever was drawn, so the
+	   owning prop is the one whose world bounds contain that point. Ties go to
+	   the nearest centre so overlapping props stay selectable. */
+	constexpr f32_t tolerance = 0.05f;
+	uint64_t bestId = 0u;
+	f32_t bestDistance = 0.f;
+	for (const DEPLOY_RUNTIME_ENTRY& entry : m_DeployRuntime.Get_Entries())
+	{
+		float3_t center{};
+		float3_t halfExtents{};
+		if (nullptr == entry.object ||
+			!entry.object->Get_WorldBounds(center, halfExtents) ||
+			std::abs(picked.x - center.x) > halfExtents.x + tolerance ||
+			std::abs(picked.y - center.y) > halfExtents.y + tolerance ||
+			std::abs(picked.z - center.z) > halfExtents.z + tolerance)
+		{
+			continue;
+		}
+		const f32_t offsetX = picked.x - center.x;
+		const f32_t offsetY = picked.y - center.y;
+		const f32_t offsetZ = picked.z - center.z;
+		const f32_t distance =
+			offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ;
+		if (0u == bestId || distance < bestDistance)
+		{
+			bestId = entry.placement.runtimePlacementId;
+			bestDistance = distance;
+		}
+	}
+	if (0u == bestId)
+		return false;
+	outRuntimePlacementId = bestId;
+	return true;
+}
+
+bool_t Client::CMapTool::Refresh_DestructionHighlight()
+{
+	Remove_WorldTriggerBoxes(m_DestructionHighlightBoxes);
+	if (m_iAuthoringLevelIndex >= ETOUI(LEVEL::END))
+		return false;
+
+	/* Outline every member of the selected group, plus the single picked prop
+	   while it has no group yet. The wire box is authoring presentation only. */
+	std::vector<uint64_t> targets;
+	const DESTRUCTION_GROUP* group = m_SelectedDestructionGroupId.empty() ?
+		nullptr :
+		m_DestructionDocument.Find_Group(m_SelectedDestructionGroupId);
+	if (nullptr != group)
+		targets = group->memberPlacementIds;
+	if (0u != m_iSelectedDeployPlacementId &&
+		targets.end() == std::find(targets.begin(), targets.end(),
+			m_iSelectedDeployPlacementId))
+	{
+		targets.push_back(m_iSelectedDeployPlacementId);
+	}
+
+	vector<TRIGGER_BOX_ENTRY> staged;
+	for (const uint64_t placementId : targets)
+	{
+		const shared_ptr<CDeployPropObject> prop =
+			m_DeployRuntime.Find(placementId);
+		float3_t center{};
+		float3_t halfExtents{};
+		if (nullptr == prop || !prop->Get_WorldBounds(center, halfExtents))
+			continue;
+
+		CTrigger_Box::TRIGGER_BOX_DESC desc{};
+		desc.placementId = std::to_string(placementId);
+		desc.position = center;
+		desc.halfExtents = halfExtents;
+		desc.yawDegrees = 0.f;
+		desc.isEnabled = true;
+		desc.isCollisionBox = false;
+		shared_ptr<CGameObject> gameObject;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			m_iAuthoringLevelIndex,
+			TEXT("Prototype_GameObject_TriggerBox"),
+			m_iAuthoringLevelIndex,
+			TEXT("Layer_TriggerBoxes"),
+			&desc,
+			&gameObject)))
+		{
+			Remove_WorldTriggerBoxes(staged);
+			return false;
+		}
+		shared_ptr<CTrigger_Box> box =
+			dynamic_pointer_cast<CTrigger_Box>(gameObject);
+		if (nullptr == box)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_iAuthoringLevelIndex,
+				TEXT("Layer_TriggerBoxes"),
+				gameObject);
+			Remove_WorldTriggerBoxes(staged);
+			return false;
+		}
+		box->Set_Selected(placementId == m_iSelectedDeployPlacementId);
+		box->Set_AuthoringVisible(
+			m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode);
+		staged.push_back({ desc.placementId, std::move(box) });
+	}
+	m_DestructionHighlightBoxes = std::move(staged);
+	return true;
+}
+
+void Client::CMapTool::Apply_DestructionPreview(const DEPLOY_PROP_STATE state)
+{
+	std::vector<uint64_t> targets;
+	const DESTRUCTION_GROUP* group = m_SelectedDestructionGroupId.empty() ?
+		nullptr :
+		m_DestructionDocument.Find_Group(m_SelectedDestructionGroupId);
+	if (nullptr != group)
+		targets = group->memberPlacementIds;
+	else if (0u != m_iSelectedDeployPlacementId)
+		targets.push_back(m_iSelectedDeployPlacementId);
+	if (targets.empty())
+	{
+		m_DestructionStatus = "Select a group or a wall before previewing";
+		return;
+	}
+
+	/* Presentation only. The Server owns the real state and nothing here is
+	   written to a document, so the preview never marks the document dirty. */
+	size_t applied = 0u;
+	for (const uint64_t placementId : targets)
+	{
+		if (m_DeployRuntime.Set_State(placementId, state))
+			++applied;
+	}
+	m_DestructionStatus = "Preview applied to " + std::to_string(applied) +
+		" of " + std::to_string(targets.size()) + " props";
+	Refresh_DestructionHighlight();
+}
+
+void Client::CMapTool::Render_DestructionGroupEditor()
+{
+	if (!ImGui::CollapsingHeader("Destruction Groups",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	ImGui::BeginDisabled(!m_DestructionDocument.Is_Dirty());
+	if (ImGui::Button("Save World Events"))
+		Save_WorldDestruction();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload World Events"))
+		Load_WorldDestruction();
+	ImGui::SameLine();
+	ImGui::TextUnformatted(
+		m_DestructionDocument.Is_Dirty() ? "[unsaved]" : "[saved]");
+	ImGui::TextWrapped("%s", m_DestructionStatus.c_str());
+	ImGui::Separator();
+
+	ImGui::SetNextItemWidth(320.f);
+	ImGui::InputText("New group ID", m_DestructionGroupId,
+		IM_ARRAYSIZE(m_DestructionGroupId));
+	ImGui::SameLine();
+	if (ImGui::Button("Create Group"))
+	{
+		std::string status;
+		if (m_DestructionDocument.Add_Group(m_DestructionGroupId, status))
+			m_SelectedDestructionGroupId = m_DestructionGroupId;
+		m_DestructionStatus = status;
+		Refresh_DestructionHighlight();
+	}
+
+	if (ImGui::BeginTable("DestructionGroupList", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_ScrollY,
+		ImVec2(0.f, 140.f)))
+	{
+		ImGui::TableSetupColumn("groupId");
+		ImGui::TableSetupColumn("members");
+		ImGui::TableSetupColumn("navPolarity");
+		ImGui::TableSetupColumn("initial");
+		ImGui::TableHeadersRow();
+		for (const DESTRUCTION_GROUP& entry : m_DestructionDocument.Get_Groups())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t isSelected =
+				m_SelectedDestructionGroupId == entry.groupId;
+			if (ImGui::Selectable(entry.groupId.c_str(), isSelected,
+				ImGuiSelectableFlags_SpanAllColumns))
+			{
+				m_SelectedDestructionGroupId = entry.groupId;
+				Refresh_DestructionHighlight();
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%zu", entry.memberPlacementIds.size());
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextUnformatted(
+				CWorldDestructionDocument::NavPolarity_ToString(
+					entry.eNavPolarity));
+			ImGui::TableSetColumnIndex(3);
+			ImGui::TextUnformatted(
+				CWorldGameplayDocument::DestroyableState_ToString(
+					entry.eInitialState));
+		}
+		ImGui::EndTable();
+	}
+
+	/* Picking and preview act on a wall, not on a group, so they stay usable
+	   before the first group exists. */
+	ImGui::Separator();
+	ImGui::Checkbox("Pick walls in the world", &m_bDestructionPickArmed);
+	ImGui::SameLine();
+	ImGui::TextDisabled("Left click a wall in the viewport; Escape cancels");
+	ImGui::Text("picked: %llu",
+		static_cast<unsigned long long>(m_iSelectedDeployPlacementId));
+	ImGui::SameLine();
+	ImGui::TextDisabled("| preview is presentation only, never saved");
+	if (ImGui::Button("Preview INTACT"))
+		Apply_DestructionPreview(DEPLOY_PROP_STATE::INTACT);
+	ImGui::SameLine();
+	if (ImGui::Button("Preview FRACTURED"))
+		Apply_DestructionPreview(DEPLOY_PROP_STATE::FRACTURED);
+	ImGui::SameLine();
+	if (ImGui::Button("Preview DESPAWNED"))
+		Apply_DestructionPreview(DEPLOY_PROP_STATE::DESPAWNED);
+
+	const DESTRUCTION_GROUP* group = m_SelectedDestructionGroupId.empty() ?
+		nullptr :
+		m_DestructionDocument.Find_Group(m_SelectedDestructionGroupId);
+	if (nullptr == group)
+	{
+		ImGui::TextUnformatted(
+			"Create a group above, then select it to add the picked wall.");
+		return;
+	}
+
+	ImGui::Separator();
+	ImGui::Text("Editing %s", group->groupId.c_str());
+	if (ImGui::Button("Delete Group"))
+	{
+		std::string status;
+		if (m_DestructionDocument.Remove_Group(
+			m_SelectedDestructionGroupId, status))
+		{
+			m_SelectedDestructionGroupId.clear();
+		}
+		m_DestructionStatus = status;
+		Refresh_DestructionHighlight();
+		return;
+	}
+
+	/* The baked grid leaves every wall footprint walkable, so a wall blocks
+	   while INTACT and a collapsing floor blocks while FRACTURED. */
+	int32_t polarity = DESTRUCTION_NAV_POLARITY::BLOCK_WHILE_FRACTURED ==
+		group->eNavPolarity ? 1 : 0;
+	ImGui::TextUnformatted("Navigation polarity");
+	if (ImGui::RadioButton("Block while INTACT (wall)", 0 == polarity))
+		polarity = 0;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Block while FRACTURED (floor)", 1 == polarity))
+		polarity = 1;
+	m_DestructionDocument.Set_NavPolarity(group->groupId,
+		1 == polarity ? DESTRUCTION_NAV_POLARITY::BLOCK_WHILE_FRACTURED :
+		DESTRUCTION_NAV_POLARITY::BLOCK_WHILE_INTACT);
+
+	int32_t initialState =
+		WORLD_DESTROYABLE_STATE::FRACTURED == group->eInitialState ? 1 : 0;
+	ImGui::TextUnformatted("Initial state");
+	if (ImGui::RadioButton("INTACT", 0 == initialState))
+		initialState = 0;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("FRACTURED", 1 == initialState))
+		initialState = 1;
+	m_DestructionDocument.Set_InitialState(group->groupId,
+		1 == initialState ? WORLD_DESTROYABLE_STATE::FRACTURED :
+		WORLD_DESTROYABLE_STATE::INTACT);
+
+	ImGui::Separator();
+	ImGui::BeginDisabled(0u == m_iSelectedDeployPlacementId);
+	if (ImGui::Button("Add Picked Wall"))
+	{
+		std::string status;
+		m_DestructionDocument.Add_Member(
+			group->groupId, m_iSelectedDeployPlacementId, status);
+		m_DestructionStatus = status;
+		Refresh_DestructionHighlight();
+	}
+	ImGui::EndDisabled();
+
+	if (ImGui::BeginTable("DestructionMembers", 3,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_ScrollY,
+		ImVec2(0.f, 140.f)))
+	{
+		ImGui::TableSetupColumn("runtimePlacementId");
+		ImGui::TableSetupColumn("assetId");
+		ImGui::TableSetupColumn("");
+		ImGui::TableHeadersRow();
+		uint64_t removeRequest = 0u;
+		for (const uint64_t placementId : group->memberPlacementIds)
+		{
+			ImGui::TableNextRow();
+			ImGui::PushID(static_cast<int32_t>(placementId));
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("%llu",
+				static_cast<unsigned long long>(placementId));
+			ImGui::TableSetColumnIndex(1);
+			const shared_ptr<CDeployPropObject> prop =
+				m_DeployRuntime.Find(placementId);
+			ImGui::TextUnformatted(nullptr != prop ? "loaded" : "missing");
+			ImGui::TableSetColumnIndex(2);
+			if (ImGui::SmallButton("Remove"))
+				removeRequest = placementId;
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+		if (0u != removeRequest &&
+			m_DestructionDocument.Remove_Member(
+				m_SelectedDestructionGroupId, removeRequest))
+		{
+			Refresh_DestructionHighlight();
+		}
+	}
+
+	ImGui::SetNextItemWidth(280.f);
+	ImGui::InputText("Nav region ID", m_DestructionRegionId,
+		IM_ARRAYSIZE(m_DestructionRegionId));
+	ImGui::SameLine();
+	if (ImGui::Button("Link Region"))
+	{
+		std::string status;
+		m_DestructionDocument.Add_NavigationRegion(
+			group->groupId, m_DestructionRegionId, status);
+		m_DestructionStatus = status;
+	}
+	std::string regionRemoveRequest;
+	for (const std::string& regionId : group->navigationRegionIds)
+	{
+		ImGui::BulletText("%s", regionId.c_str());
+		ImGui::SameLine();
+		ImGui::PushID(regionId.c_str());
+		if (ImGui::SmallButton("Unlink"))
+			regionRemoveRequest = regionId;
+		ImGui::PopID();
+	}
+	if (!regionRemoveRequest.empty())
+	{
+		m_DestructionDocument.Remove_NavigationRegion(
+			m_SelectedDestructionGroupId, regionRemoveRequest);
+	}
+
+}
+
+void Client::CMapTool::Render_DestructionBindingEditor()
+{
+	if (!ImGui::CollapsingHeader("Mutations and Bindings"))
+		return;
+
+	ImGui::SetNextItemWidth(300.f);
+	ImGui::InputText("Mutation ID", m_DestructionMutationId,
+		IM_ARRAYSIZE(m_DestructionMutationId));
+	ImGui::SetNextItemWidth(160.f);
+	ImGui::InputInt("Breaking ms", &m_iDestructionBreakingMs, 50, 500);
+	m_iDestructionBreakingMs = (std::clamp)(m_iDestructionBreakingMs, 0,
+		static_cast<int32_t>(CWorldDestructionDocument::MAX_DURATION_MS));
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_SelectedDestructionGroupId.empty());
+	if (ImGui::Button("Create Mutation"))
+	{
+		DESTRUCTION_MUTATION mutation;
+		mutation.mutationId = m_DestructionMutationId;
+		mutation.groupId = m_SelectedDestructionGroupId;
+		mutation.eTargetState = WORLD_DESTROYABLE_STATE::FRACTURED;
+		mutation.iBreakingDurationMs =
+			static_cast<uint32_t>(m_iDestructionBreakingMs);
+		std::string status;
+		m_DestructionDocument.Add_Mutation(mutation, status);
+		m_DestructionStatus = status;
+	}
+	ImGui::EndDisabled();
+
+	if (ImGui::BeginTable("DestructionMutations", 5,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+	{
+		ImGui::TableSetupColumn("mutationId");
+		ImGui::TableSetupColumn("groupId");
+		ImGui::TableSetupColumn("target");
+		ImGui::TableSetupColumn("breaking ms");
+		ImGui::TableSetupColumn("");
+		ImGui::TableHeadersRow();
+		std::string removeRequest;
+		for (const DESTRUCTION_MUTATION& entry :
+			m_DestructionDocument.Get_Mutations())
+		{
+			ImGui::TableNextRow();
+			ImGui::PushID(entry.mutationId.c_str());
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(entry.mutationId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(entry.groupId.c_str());
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextUnformatted(
+				CWorldGameplayDocument::DestroyableState_ToString(
+					entry.eTargetState));
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%u", entry.iBreakingDurationMs);
+			ImGui::TableSetColumnIndex(4);
+			if (ImGui::SmallButton("Remove"))
+				removeRequest = entry.mutationId;
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+		if (!removeRequest.empty())
+		{
+			std::string status;
+			m_DestructionDocument.Remove_Mutation(removeRequest, status);
+			m_DestructionStatus = status;
+		}
+	}
+
+	ImGui::Separator();
+	ImGui::SetNextItemWidth(300.f);
+	ImGui::InputText("Binding ID", m_DestructionBindingId,
+		IM_ARRAYSIZE(m_DestructionBindingId));
+	ImGui::TextUnformatted("Trigger kind");
+	if (ImGui::RadioButton("STAGE_ENTER", 0 == m_iDestructionTriggerKind))
+		m_iDestructionTriggerKind = 0;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("STAGE_TIME", 1 == m_iDestructionTriggerKind))
+		m_iDestructionTriggerKind = 1;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("STAGE_EXIT", 2 == m_iDestructionTriggerKind))
+		m_iDestructionTriggerKind = 2;
+	ImGui::SameLine();
+	if (ImGui::RadioButton("COLLISION_IMPACT", 3 == m_iDestructionTriggerKind))
+		m_iDestructionTriggerKind = 3;
+
+	ImGui::BeginDisabled(1 != m_iDestructionTriggerKind);
+	ImGui::SetNextItemWidth(200.f);
+	ImGui::InputInt("Offset ms", &m_iDestructionOffsetMs, 10, 100);
+	m_iDestructionOffsetMs = (std::clamp)(m_iDestructionOffsetMs, 0,
+		static_cast<int32_t>(CWorldDestructionDocument::MAX_DURATION_MS));
+	ImGui::EndDisabled();
+	ImGui::BeginDisabled(3 != m_iDestructionTriggerKind);
+	ImGui::SetNextItemWidth(300.f);
+	ImGui::InputText("Receiver collision ID", m_DestructionReceiverId,
+		IM_ARRAYSIZE(m_DestructionReceiverId));
+	ImGui::EndDisabled();
+
+	const bool_t canCreateBinding =
+		!m_SelectedDestructionPatternId.empty() &&
+		!m_SelectedDestructionStageId.empty() &&
+		!m_DestructionDocument.Get_Mutations().empty();
+	ImGui::BeginDisabled(!canCreateBinding);
+	if (ImGui::Button("Create Binding for selected pattern stage"))
+	{
+		DESTRUCTION_BINDING binding;
+		binding.bindingId = m_DestructionBindingId;
+		binding.mutationId = m_DestructionMutationId;
+		binding.patternId = m_SelectedDestructionPatternId;
+		binding.stageId = m_SelectedDestructionStageId;
+		binding.eTriggerKind =
+			0 == m_iDestructionTriggerKind ?
+				DESTRUCTION_TRIGGER_KIND::STAGE_ENTER :
+			1 == m_iDestructionTriggerKind ?
+				DESTRUCTION_TRIGGER_KIND::STAGE_TIME :
+			2 == m_iDestructionTriggerKind ?
+				DESTRUCTION_TRIGGER_KIND::STAGE_EXIT :
+				DESTRUCTION_TRIGGER_KIND::COLLISION_IMPACT;
+		binding.iOffsetMs = 1 == m_iDestructionTriggerKind ?
+			static_cast<uint32_t>(m_iDestructionOffsetMs) : 0u;
+		binding.receiverCollisionId = 3 == m_iDestructionTriggerKind ?
+			m_DestructionReceiverId : "";
+		binding.isEnabled = false;
+		std::string status;
+		m_DestructionDocument.Add_Binding(binding, status);
+		m_DestructionStatus = status;
+	}
+	ImGui::EndDisabled();
+	if (!canCreateBinding)
+	{
+		ImGui::TextDisabled(
+			"Select a pattern stage above and create a mutation first.");
+	}
+
+	if (!ImGui::BeginTable("DestructionBindings", 7,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+	{
+		return;
+	}
+	ImGui::TableSetupColumn("bindingId");
+	ImGui::TableSetupColumn("pattern");
+	ImGui::TableSetupColumn("stage");
+	ImGui::TableSetupColumn("trigger");
+	ImGui::TableSetupColumn("offset ms");
+	ImGui::TableSetupColumn("enabled");
+	ImGui::TableSetupColumn("");
+	ImGui::TableHeadersRow();
+	std::string bindingRemoveRequest;
+	for (const DESTRUCTION_BINDING& entry :
+		m_DestructionDocument.Get_Bindings())
+	{
+		ImGui::TableNextRow();
+		ImGui::PushID(entry.bindingId.c_str());
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextUnformatted(entry.bindingId.c_str());
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(entry.patternId.c_str());
+		ImGui::TableSetColumnIndex(2);
+		ImGui::TextUnformatted(entry.stageId.c_str());
+		ImGui::TableSetColumnIndex(3);
+		ImGui::TextUnformatted(
+			CWorldDestructionDocument::TriggerKind_ToString(
+				entry.eTriggerKind));
+		ImGui::TableSetColumnIndex(4);
+		ImGui::Text("%u", entry.iOffsetMs);
+		ImGui::TableSetColumnIndex(5);
+		bool_t enabled = entry.isEnabled;
+		if (ImGui::Checkbox("##enabled", &enabled))
+		{
+			DESTRUCTION_BINDING updated = entry;
+			updated.isEnabled = enabled;
+			std::string status;
+			m_DestructionDocument.Update_Binding(updated, status);
+			m_DestructionStatus = status;
+		}
+		ImGui::TableSetColumnIndex(6);
+		if (ImGui::SmallButton("Remove"))
+			bindingRemoveRequest = entry.bindingId;
+		ImGui::PopID();
+	}
+	ImGui::EndTable();
+	if (!bindingRemoveRequest.empty())
+		m_DestructionDocument.Remove_Binding(bindingRemoveRequest);
+}
+
+void Client::CMapTool::Render_DestructionTimeline()
+{
+	if (!ImGui::CollapsingHeader("Pattern Timeline",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	const ENCOUNTER_PATTERN_REFERENCE* pattern =
+		m_SelectedDestructionPatternId.empty() ? nullptr :
+		m_EncounterReference.Find_Pattern(m_SelectedDestructionPatternId);
+	if (nullptr == pattern || 0u == pattern->iTotalDurationMs)
+	{
+		ImGui::TextUnformatted(
+			"Select a pattern in Encounter Source to see its timeline.");
+		return;
+	}
+
+	const f32_t width = (std::max)(240.f, ImGui::GetContentRegionAvail().x - 16.f);
+	constexpr f32_t barHeight = 26.f;
+	const ImVec2 origin = ImGui::GetCursorScreenPos();
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+	const f32_t totalMs = static_cast<f32_t>(pattern->iTotalDurationMs);
+
+	for (size_t index = 0; index < pattern->stages.size(); ++index)
+	{
+		const ENCOUNTER_STAGE_REFERENCE& stage = pattern->stages[index];
+		const f32_t left = origin.x +
+			width * static_cast<f32_t>(stage.iStartOffsetMs) / totalMs;
+		const f32_t right = origin.x + width *
+			static_cast<f32_t>(stage.iStartOffsetMs + stage.iDurationMs) /
+			totalMs;
+		const bool_t isActive = "ACTIVE" == stage.stageKind;
+		const ImU32 fill = isActive ?
+			IM_COL32(190, 90, 60, 210) : IM_COL32(70, 80, 110, 210);
+		draw->AddRectFilled(ImVec2(left, origin.y),
+			ImVec2(right - 1.f, origin.y + barHeight), fill);
+		draw->AddRect(ImVec2(left, origin.y),
+			ImVec2(right - 1.f, origin.y + barHeight),
+			IM_COL32(220, 220, 220, 160));
+		if (right - left > 44.f)
+		{
+			draw->AddText(ImVec2(left + 4.f, origin.y + 5.f),
+				IM_COL32(240, 240, 240, 255), stage.stageId.c_str());
+		}
+		if (ImGui::IsMouseHoveringRect(ImVec2(left, origin.y),
+			ImVec2(right, origin.y + barHeight)))
+		{
+			ImGui::SetTooltip("%s | %s | %u ms | tick %u",
+				stage.stageId.c_str(), stage.stageKind.c_str(),
+				stage.iDurationMs,
+				CEncounterPatternReference::To_ServerTick(
+					stage.iStartOffsetMs,
+					m_EncounterReference.Get_FixedTickHz()));
+		}
+	}
+
+	/* Draw every binding of this pattern as a marker at its absolute ms so the
+	   author sees the requested moment against the real stage boundaries. */
+	for (const DESTRUCTION_BINDING& binding :
+		m_DestructionDocument.Get_Bindings())
+	{
+		if (binding.patternId != pattern->patternId)
+			continue;
+		const auto stage = std::find_if(
+			pattern->stages.begin(), pattern->stages.end(),
+			[&binding](const ENCOUNTER_STAGE_REFERENCE& value)
+			{
+				return value.stageId == binding.stageId;
+			});
+		if (pattern->stages.end() == stage)
+			continue;
+		uint32_t absoluteMs = stage->iStartOffsetMs;
+		if (DESTRUCTION_TRIGGER_KIND::STAGE_TIME == binding.eTriggerKind)
+			absoluteMs += (std::min)(binding.iOffsetMs, stage->iDurationMs);
+		else if (DESTRUCTION_TRIGGER_KIND::STAGE_EXIT == binding.eTriggerKind)
+			absoluteMs += stage->iDurationMs;
+		const f32_t markerX = origin.x +
+			width * static_cast<f32_t>(absoluteMs) / totalMs;
+		const ImU32 color = binding.isEnabled ?
+			IM_COL32(120, 255, 120, 255) : IM_COL32(255, 220, 90, 255);
+		draw->AddLine(ImVec2(markerX, origin.y - 4.f),
+			ImVec2(markerX, origin.y + barHeight + 4.f), color, 2.f);
+	}
+
+	ImGui::Dummy(ImVec2(width, barHeight + 10.f));
+	ImGui::Text("total %u ms | %u Hz | green marker = enabled binding",
+		pattern->iTotalDurationMs,
+		m_EncounterReference.Get_FixedTickHz());
+
+	ImGui::TextUnformatted("Stage for the next binding");
+	for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern->stages)
+	{
+		if (ImGui::RadioButton(stage.stageId.c_str(),
+			m_SelectedDestructionStageId == stage.stageId))
+		{
+			m_SelectedDestructionStageId = stage.stageId;
+			m_iDestructionOffsetMs = 0;
+		}
+		ImGui::SameLine();
+	}
+	ImGui::NewLine();
+}
+
+void Client::CMapTool::Render_WorldDestructionPanel(bool_t isAssetTest)
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	ImGui::Text("Area: %s",
+		nullptr != descriptor ? descriptor->label.c_str() : "NONE");
+	ImGui::SameLine();
+	ImGui::TextUnformatted(
+		"| Saves Data authoring only. The Server owns the real state.");
+	ImGui::Separator();
+
+	if (!isAssetTest)
+	{
+		ImGui::TextUnformatted(
+			"Enter the Debug Map Editor workspace to inspect this Area.");
+		return;
+	}
+	if (nullptr == descriptor || descriptor->encounterReference.empty())
+	{
+		ImGui::TextUnformatted(
+			"This Area declares no destruction authoring source.");
+		ImGui::TextUnformatted("Select Valtan in the workspace bar.");
+		return;
+	}
+
+	Render_DestructionEncounterSource();
+	Render_DestructionTimeline();
+	Render_DestructionGroupEditor();
+	Render_DestructionBindingEditor();
+	Render_DestructionDeployList();
+	Render_DestructionWorldRows();
+	Render_DestructionNavigationRegions();
+	Render_DestructionDiagnostics();
+}
+
+void Client::CMapTool::Render_DestructionEncounterSource()
+{
+	if (!ImGui::CollapsingHeader("Encounter Source",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	if (ImGui::Button("Reload Encounter Reference"))
+		Load_EncounterReference();
+	ImGui::SameLine();
+	ImGui::TextWrapped("%s", m_EncounterReferenceStatus.c_str());
+	if (!m_EncounterReference.Is_Ready())
+		return;
+
+	const uint32_t fixedTickHz = m_EncounterReference.Get_FixedTickHz();
+	ImGui::Text("Encounter %s | Boss %s | %u Hz | %zu patterns",
+		m_EncounterReference.Get_EncounterId().c_str(),
+		m_EncounterReference.Get_BossArchetypeId().c_str(),
+		fixedTickHz,
+		m_EncounterReference.Get_Patterns().size());
+
+	/* The boss placement of this Area must reference the same encounter this
+	   reference document declares, otherwise the two authoring layers drifted. */
+	const WORLD_GAMEPLAY_PLACEMENT* bossPlacement = nullptr;
+	for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+		m_WorldGameplayDocument.Get_Placements())
+	{
+		if (WORLD_PLACEMENT_KIND::BOSS == placement.eKind)
+		{
+			bossPlacement = &placement;
+			break;
+		}
+	}
+	if (nullptr == bossPlacement)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.85f, 0.2f, 1.f),
+			"Gameplay document has no boss placement to cross-check.");
+	}
+	else if (bossPlacement->encounterId !=
+		m_EncounterReference.Get_EncounterId())
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f),
+			"Boss placement %s references %s, not %s.",
+			bossPlacement->placementId.c_str(),
+			bossPlacement->encounterId.c_str(),
+			m_EncounterReference.Get_EncounterId().c_str());
+	}
+
+	if (ImGui::BeginTable("DestructionPatterns", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_ScrollY,
+		ImVec2(0.f, 180.f)))
+	{
+		ImGui::TableSetupColumn("patternId");
+		ImGui::TableSetupColumn("HP bar");
+		ImGui::TableSetupColumn("stages");
+		ImGui::TableSetupColumn("total ms");
+		ImGui::TableHeadersRow();
+		for (const ENCOUNTER_PATTERN_REFERENCE& entry :
+			m_EncounterReference.Get_Patterns())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			const bool_t isSelected =
+				m_SelectedDestructionPatternId == entry.patternId;
+			if (ImGui::Selectable(entry.patternId.c_str(), isSelected,
+				ImGuiSelectableFlags_SpanAllColumns))
+			{
+				m_SelectedDestructionPatternId = entry.patternId;
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%u", entry.iTriggerHealthBar);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%zu", entry.stages.size());
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%u", entry.iTotalDurationMs);
+		}
+		ImGui::EndTable();
+	}
+
+	const ENCOUNTER_PATTERN_REFERENCE* pattern =
+		m_SelectedDestructionPatternId.empty() ? nullptr :
+		m_EncounterReference.Find_Pattern(m_SelectedDestructionPatternId);
+	if (nullptr == pattern)
+	{
+		ImGui::TextUnformatted("Select a pattern to inspect its stages.");
+		return;
+	}
+
+	ImGui::Text("%s | actionId %s | selection %s",
+		pattern->displayName.c_str(),
+		pattern->actionId.c_str(),
+		pattern->selectionMode.c_str());
+	if (ImGui::BeginTable("DestructionStages", 7,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+	{
+		ImGui::TableSetupColumn("stageId");
+		ImGui::TableSetupColumn("kind");
+		ImGui::TableSetupColumn("start ms");
+		ImGui::TableSetupColumn("duration ms");
+		ImGui::TableSetupColumn("start tick");
+		ImGui::TableSetupColumn("hitShape");
+		ImGui::TableSetupColumn("actionId");
+		ImGui::TableHeadersRow();
+		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern->stages)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(stage.stageId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextUnformatted(stage.stageKind.c_str());
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%u", stage.iStartOffsetMs);
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%u", stage.iDurationMs);
+			ImGui::TableSetColumnIndex(4);
+			ImGui::Text("%u", CEncounterPatternReference::To_ServerTick(
+				stage.iStartOffsetMs, fixedTickHz));
+			ImGui::TableSetColumnIndex(5);
+			ImGui::TextUnformatted(stage.hitShape.c_str());
+			ImGui::TableSetColumnIndex(6);
+			ImGui::TextUnformatted(stage.actionId.c_str());
+		}
+		ImGui::EndTable();
+	}
+}
+
+void Client::CMapTool::Render_DestructionDeployList()
+{
+	if (!ImGui::CollapsingHeader("Deploy Props",
+		ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		return;
+	}
+
+	const std::vector<DEPLOY_RUNTIME_ENTRY>& entries =
+		m_DeployRuntime.Get_Entries();
+	ImGui::Text("Loaded placements: %zu | Runtime: %s",
+		entries.size(),
+		m_DeployRuntime.Is_Loaded() ? "READY" : "NOT LOADED");
+	ImGui::SetNextItemWidth(220.f);
+	ImGui::InputText("Asset filter", m_DestructionDeployFilter,
+		IM_ARRAYSIZE(m_DestructionDeployFilter));
+	ImGui::SameLine();
+	ImGui::Checkbox("Only rows with stateOffActionId",
+		&m_bDestructionOnlyWithOffAction);
+
+	if (!ImGui::BeginTable("DestructionDeployRows", 6,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_ScrollY,
+		ImVec2(0.f, 240.f)))
+	{
+		return;
+	}
+	ImGui::TableSetupColumn("runtimePlacementId");
+	ImGui::TableSetupColumn("assetId");
+	ImGui::TableSetupColumn("stateOff");
+	ImGui::TableSetupColumn("trig");
+	ImGui::TableSetupColumn("position");
+	ImGui::TableSetupColumn("state");
+	ImGui::TableHeadersRow();
+
+	const std::string filter = m_DestructionDeployFilter;
+	for (const DEPLOY_RUNTIME_ENTRY& entry : entries)
+	{
+		if (m_bDestructionOnlyWithOffAction &&
+			0u == entry.placement.stateOffActionId)
+		{
+			continue;
+		}
+		if (!filter.empty() &&
+			std::string::npos == entry.placement.assetId.find(filter))
+		{
+			continue;
+		}
+
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		const std::string idText =
+			std::to_string(entry.placement.runtimePlacementId);
+		const bool_t isSelected = m_iSelectedDeployPlacementId ==
+			entry.placement.runtimePlacementId;
+		if (ImGui::Selectable(idText.c_str(), isSelected,
+			ImGuiSelectableFlags_SpanAllColumns))
+		{
+			m_iSelectedDeployPlacementId =
+				entry.placement.runtimePlacementId;
+		}
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(entry.placement.assetId.c_str());
+		ImGui::TableSetColumnIndex(2);
+		ImGui::Text("%u", entry.placement.stateOffActionId);
+		ImGui::TableSetColumnIndex(3);
+		ImGui::Text("%u", entry.placement.triggerBinaryOccurrenceCount);
+		ImGui::TableSetColumnIndex(4);
+		ImGui::Text("%.2f, %.2f, %.2f",
+			entry.placement.position.x,
+			entry.placement.position.y,
+			entry.placement.position.z);
+		ImGui::TableSetColumnIndex(5);
+		ImGui::TextUnformatted(nullptr != entry.object ? "SPAWNED" : "NONE");
+	}
+	ImGui::EndTable();
+}
+
+void Client::CMapTool::Render_DestructionWorldRows()
+{
+	if (!ImGui::CollapsingHeader("World Gameplay destroyable rows"))
+		return;
+
+	size_t destroyableCount = 0;
+	if (ImGui::BeginTable("DestructionWorldRows", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+	{
+		ImGui::TableSetupColumn("placementId");
+		ImGui::TableSetupColumn("deployRuntimePlacementId");
+		ImGui::TableSetupColumn("initialState");
+		ImGui::TableSetupColumn("enabled");
+		ImGui::TableHeadersRow();
+		for (const WORLD_GAMEPLAY_PLACEMENT& placement :
+			m_WorldGameplayDocument.Get_Placements())
+		{
+			if (WORLD_PLACEMENT_KIND::DESTROYABLE != placement.eKind)
+				continue;
+			++destroyableCount;
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(placement.placementId.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%llu",
+				static_cast<unsigned long long>(
+					placement.deployRuntimePlacementId));
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextUnformatted(
+				CWorldGameplayDocument::DestroyableState_ToString(
+					placement.eInitialState));
+			ImGui::TableSetColumnIndex(3);
+			ImGui::TextUnformatted(placement.isEnabled ? "true" : "false");
+		}
+		ImGui::EndTable();
+	}
+	ImGui::Text("destroyable rows: %zu", destroyableCount);
+	ImGui::TextWrapped(
+		"The Client document parser accepts this kind, but "
+		"Publish-WorldGameplay.ps1 rejects every kind outside "
+		"playerSpawn/npc/boss/triggerBox/collisionBox. G5 opens that gate.");
+}
+
+void Client::CMapTool::Render_DestructionNavigationRegions()
+{
+	if (!ImGui::CollapsingHeader("Navigation blocker regions"))
+		return;
+
+	ImGui::Text("Document: %s | regions: %zu",
+		m_RuntimeBlockerDocument.Is_Ready() ? "READY" : "NOT READY",
+		m_RuntimeBlockerDocument.Get_RegionCount());
+	if (0 == m_RuntimeBlockerDocument.Get_RegionCount())
+	{
+		ImGui::TextWrapped(
+			"No region is authored yet. The baked grid treats every wall "
+			"footprint as walkable, so an INTACT wall has to add a blocker "
+			"rather than remove one.");
+		return;
+	}
+
+	if (!ImGui::BeginTable("DestructionNavRegions", 4,
+		ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+	{
+		return;
+	}
+	ImGui::TableSetupColumn("regionId");
+	ImGui::TableSetupColumn("conditionId");
+	ImGui::TableSetupColumn("activateWhenTrue");
+	ImGui::TableSetupColumn("cells");
+	ImGui::TableHeadersRow();
+	for (size_t index = 0;
+		index < m_RuntimeBlockerDocument.Get_RegionCount();
+		++index)
+	{
+		const NAV_RUNTIME_BLOCKER_REGION* region =
+			m_RuntimeBlockerDocument.Get_Region(index);
+		if (nullptr == region)
+			continue;
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextUnformatted(region->id.c_str());
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(region->conditionId.c_str());
+		ImGui::TableSetColumnIndex(2);
+		ImGui::TextUnformatted(
+			region->activateWhenConditionTrue ? "true" : "false");
+		ImGui::TableSetColumnIndex(3);
+		ImGui::Text("%u",
+			m_RuntimeBlockerDocument.Get_RegionCellCount(index));
+	}
+	ImGui::EndTable();
+}
+
+void Client::CMapTool::Render_DestructionDiagnostics()
+{
+	if (!ImGui::CollapsingHeader("Diagnostics"))
+		return;
+
+	ImGui::TextWrapped(
+		"Measured on 2026-08-07. These are locked notes, not runtime state.");
+	ImGui::BulletText(
+		"Server and Shared contain no destroyable state, message or receiver.");
+	ImGui::BulletText(
+		"CDeployPropRuntime::Set_State has no product caller; only the dead "
+		"Set_DeployPhase calls Set_State_All.");
+	ImGui::BulletText(
+		"All 85 wall footprints are walkable in the published navgrid, so "
+		"navigation must block while INTACT and open while FRACTURED.");
+	ImGui::BulletText(
+		"Arena floor collapse is the opposite polarity of a wall and must not "
+		"share one boolean.");
+	ImGui::BulletText(
+		"CServerNavigation exposes only Load/Find_Path/Project_Point and "
+		"cannot mutate the grid after load.");
+	ImGui::BulletText(
+		"CPlayerSkillSystem keeps the raw X/Z after Project_Point, so skill "
+		"movement passes through any blocker until G10.");
+	ImGui::BulletText(
+		"DEPLOY_ITR_02326 has no fractured mesh and its ao_off clip holds "
+		"still for 1.833s then scales to zero at 1.900s.");
+}
+
 void Client::CMapTool::Render_ModeBar()
 {
 	if (ImGui::RadioButton(
@@ -3360,6 +4553,18 @@ void Client::CMapTool::Render_ModeBar()
 	{
 		m_eToolMode = TOOL_MODE::WORLD_GAMEPLAY;
 		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bNavigationStrokeActive = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton(
+		"World Destruction",
+		TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode))
+	{
+		m_eToolMode = TOOL_MODE::WORLD_DESTRUCTION;
+		m_ePlacementState = PLACEMENT_STATE::IDLE;
+		m_bWorldGameplayPlacementArmed = false;
+		m_bWorldTriggerTargetPickArmed = false;
+		m_bSpawnAnchorPlacementArmed = false;
 		m_bNavigationStrokeActive = false;
 	}
 	ImGui::SameLine();

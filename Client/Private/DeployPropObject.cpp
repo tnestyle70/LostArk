@@ -4,6 +4,8 @@
 #include "Model.h"
 #include "Shader.h"
 
+#include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <string_view>
 
@@ -160,6 +162,65 @@ bool_t CDeployPropObject::Is_AnimBindPoseOnly() const
 {
 	return m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() == 0;
+}
+
+bool_t CDeployPropObject::Get_WorldBounds(
+	float3_t& outCenter,
+	float3_t& outHalfExtents) const
+{
+	const shared_ptr<CModel>& model =
+		(DEPLOY_PROP_STATE::FRACTURED == m_State &&
+			nullptr != m_pFracturedModelCom) ?
+		m_pFracturedModelCom : m_pIntactModelCom;
+	if (nullptr == model || !model->Has_LocalBounds())
+		return false;
+
+	const float3_t& localMinimum = model->Get_LocalBoundsMin();
+	const float3_t& localMaximum = model->Get_LocalBoundsMax();
+	/* Same scale and rotation Apply_Transform builds, without the translation,
+	   so the eight rotated corners can be re-bounded around the placement. */
+	const vector_t quaternion =
+		XMQuaternionNormalize(XMLoadFloat4(&m_Placement.rotationQuaternion));
+	const matrix_t rotation = XMMatrixScaling(
+		m_Placement.uniformScale,
+		m_Placement.uniformScale,
+		m_Placement.uniformScale) * XMMatrixRotationQuaternion(quaternion);
+
+	float3_t minimum(FLT_MAX, FLT_MAX, FLT_MAX);
+	float3_t maximum(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+	for (uint32_t corner = 0u; corner < 8u; ++corner)
+	{
+		float3_t rotated{};
+		XMStoreFloat3(&rotated, XMVector3Transform(
+			XMVectorSet(
+				0u != (corner & 1u) ? localMaximum.x : localMinimum.x,
+				0u != (corner & 2u) ? localMaximum.y : localMinimum.y,
+				0u != (corner & 4u) ? localMaximum.z : localMinimum.z,
+				1.f),
+			rotation));
+		if (!std::isfinite(rotated.x) || !std::isfinite(rotated.y) ||
+			!std::isfinite(rotated.z))
+		{
+			return false;
+		}
+		minimum.x = (std::min)(minimum.x, rotated.x);
+		minimum.y = (std::min)(minimum.y, rotated.y);
+		minimum.z = (std::min)(minimum.z, rotated.z);
+		maximum.x = (std::max)(maximum.x, rotated.x);
+		maximum.y = (std::max)(maximum.y, rotated.y);
+		maximum.z = (std::max)(maximum.z, rotated.z);
+	}
+
+	outHalfExtents = float3_t(
+		(maximum.x - minimum.x) * 0.5f,
+		(maximum.y - minimum.y) * 0.5f,
+		(maximum.z - minimum.z) * 0.5f);
+	outCenter = float3_t(
+		m_Placement.position.x + (minimum.x + maximum.x) * 0.5f,
+		m_Placement.position.y + (minimum.y + maximum.y) * 0.5f,
+		m_Placement.position.z + (minimum.z + maximum.z) * 0.5f);
+	return outHalfExtents.x > 0.f && outHalfExtents.y > 0.f &&
+		outHalfExtents.z > 0.f;
 }
 
 HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
