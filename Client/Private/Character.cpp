@@ -757,6 +757,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		equipmentDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		equipmentDesc.strModelTag = m_pSpec->pEquipment[i].pModelTag;
 		equipmentDesc.strShaderTag = m_pSpec->pShaderTag;
+		equipmentDesc.iHiddenMeshMask = m_pSpec->pEquipment[i].iHiddenMeshMask;
 		equipmentDesc.pSkeletonModel = m_pBodyModel;
 
 		if (FAILED(__super::Add_PartObject(

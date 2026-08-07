@@ -657,9 +657,10 @@ namespace
 					{ "T", 2050500u, { "pc_sp_m_00_sk_sk_dimensionprison" } },
 					{ "V", 2050520u, { "pc_sp_m_00_sk_sk_timewave" } },
 					{ "ALT_V", 2050540u, { "pc_sp_m_00_sk_sk_super_timewave" } },
+					/* jump_04 carries the same notify timeline as
+					moving_normal_1_04, so binding both replayed one leap twice. */
 					{ "SPACE", 2050020u, {
-						"pc_sp_m_00_sk_sk_moving_normal_1_04",
-						"pc_sp_m_00_sk_sk_jump_04" } }
+						"pc_sp_m_00_sk_sk_moving_normal_1_04" } }
 				};
 				bool_t exactRoster = expected.size() == parsed.Bindings.size();
 				for (const EXPECTED_BINDING& row : expected)

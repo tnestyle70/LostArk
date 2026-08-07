@@ -31,6 +31,9 @@ public:
 		/* The body's model: it owns the skeleton this piece rides or shares. */
 		shared_ptr<Engine::CModel> pSkeletonModel = { nullptr };
 
+		/* Bit i hides submesh i: the body already draws that content. */
+		uint32_t iHiddenMeshMask = {};
+
 		/* nullptr means the piece is skinned to the body's skeleton. */
 		const char_t* pSocketBoneName = { nullptr };
 		f32_t fSocketYawDegrees = 0.f;
@@ -58,6 +61,7 @@ public:
 
 private:
 	bool_t m_isVisible = true;
+	uint32_t m_iHiddenMeshMask = {};
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	shared_ptr<CModel> m_pSkeletonModelCom = { nullptr };
