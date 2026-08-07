@@ -5,6 +5,20 @@ float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
 texture2D   g_Texture;
 texture2D g_DepthTexture;
 
+/* LinearSampler's AddressU/V = WRAP is correct for tiled 3D world textures but wrong here:
+this shader only backs CUI_Sprite's screen-space UI quads, whose texcoords span exactly
+0..1. With WRAP, bilinear filtering near v=0/v=1 blends in a few texels from the texture's
+opposite edge, showing as a thin seam of that edge's color across the sprite's boundary --
+visible as a solid line where a gradient texture (e.g. a vignette fading from opaque at one
+edge to transparent at the other) has a stark edge-to-edge color difference. CLAMP holds the
+edge texel instead of wrapping. */
+sampler UISampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+};
+
 
 
 /* �������̴� */ 
@@ -64,10 +78,10 @@ struct PS_OUT
 PS_OUT PS_MAIN(PS_IN In)
 {
     PS_OUT Out;
-    
-    Out.vColor = g_Texture.Sample(LinearSampler, In.vTexcoord);  
-    
-    return Out;    
+
+    Out.vColor = g_Texture.Sample(UISampler, In.vTexcoord);
+
+    return Out;
 }
 
 
