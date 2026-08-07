@@ -3534,9 +3534,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "player-resource-regen-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3658,9 +3658,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "player-resource-regen-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3782,9 +3782,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "player-resource-regen-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3906,9 +3906,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "player-resource-regen-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4030,9 +4030,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "player-resource-regen-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -4134,9 +4134,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-player-resource-v1"
                                    },
-                        "sourceValue":  25,
+                        "sourceValue":  500,
                         "transform":  "identity",
-                        "resultValue":  25
+                        "resultValue":  500
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
