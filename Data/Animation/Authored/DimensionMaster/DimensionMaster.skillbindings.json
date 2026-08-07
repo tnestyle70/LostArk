@@ -31,9 +31,9 @@
       "skillId": 2050160,
       "clips": [
         "pc_sp_m_00_sk_sk_overslash_01",
-        "pc_sp_m_00_sk_sk_overslash_02",
-        "pc_sp_m_00_sk_sk_overslash_03",
-        "pc_sp_m_00_sk_sk_overslash_04",
+        { "clip": "pc_sp_m_00_sk_sk_overslash_02", "playMs": 250 },
+        { "clip": "pc_sp_m_00_sk_sk_overslash_03", "playMs": 250 },
+        { "clip": "pc_sp_m_00_sk_sk_overslash_04", "playMs": 250 },
         "pc_sp_m_00_sk_sk_overslash_05"
       ]
     },
@@ -89,8 +89,7 @@
     {
       "skillId": 2050020,
       "clips": [
-        "pc_sp_m_00_sk_sk_moving_normal_1_04",
-        "pc_sp_m_00_sk_sk_jump_04"
+        "pc_sp_m_00_sk_sk_moving_normal_1_04"
       ]
     }
   ]
