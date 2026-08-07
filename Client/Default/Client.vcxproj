@@ -311,6 +311,8 @@
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapassets" />
     <None Include="..\..\Data\Maps\Imported\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\MapCatalog.json" />
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource" />
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navpaint" />
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json" />
     <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navsource" />
     <None Include="..\..\Data\Navigation\LV_LOBBY_CLASSSELECT_SL00.navpaint" />

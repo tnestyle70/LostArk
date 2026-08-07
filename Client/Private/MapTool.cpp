@@ -28,6 +28,7 @@
 #include <iomanip>
 #include <limits>
 #include <map>
+#include <system_error>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -211,6 +212,14 @@ namespace
 		}
 		outValue = value->Get_String();
 		return true;
+	}
+
+	/* is_regular_file reports a missing file through the error_code, so a
+	   bare "if (error)" cannot separate an absent optional document from a
+	   real inspection failure. Only the latter may abort a load. */
+	bool_t IsFileInspectionFailure(const std::error_code& error)
+	{
+		return error && error != std::errc::no_such_file_or_directory;
 	}
 
 	std::filesystem::path ResolveDataCatalogPath(
@@ -2229,7 +2238,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		error.clear();
 		const bool_t hasSource = std::filesystem::is_regular_file(
 			descriptor.navigationSource, error);
-		if (error || (!hasSource && !descriptor.allowNavigationBootstrap))
+		if (IsFileInspectionFailure(error) ||
+			(!hasSource && !descriptor.allowNavigationBootstrap))
 		{
 			m_Status = "Required navigation source is missing: " +
 				descriptor.areaId;
@@ -2524,7 +2534,8 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 		std::error_code sourceError;
 		const bool_t hasSource = std::filesystem::is_regular_file(
 			active->navigationSource, sourceError);
-		if (sourceError || (!hasSource && !active->allowNavigationBootstrap))
+		if (IsFileInspectionFailure(sourceError) ||
+			(!hasSource && !active->allowNavigationBootstrap))
 		{
 			m_NavigationStatus =
 				"Required navigation source is missing: " + active->areaId;
@@ -2582,7 +2593,7 @@ bool_t Client::CMapTool::Load_NavigationDocument()
 	std::error_code sourceError;
 	const bool_t hasSource = std::filesystem::is_regular_file(
 		stagedContract.sourcePath, sourceError);
-	if (sourceError)
+	if (IsFileInspectionFailure(sourceError))
 	{
 		m_NavigationStatus =
 			"Could not inspect navigation source for " +

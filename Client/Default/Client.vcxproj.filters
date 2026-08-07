@@ -1006,6 +1006,12 @@
     <None Include="..\..\Data\Maps\MapCatalog.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navsource">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
+    <None Include="..\..\Data\Navigation\LV_BER_BERNCASTLE.navpaint">
+      <Filter>96.DataFiles\Navigation</Filter>
+    </None>
     <None Include="..\..\Data\Navigation\LV_DEV_TRAINING_GROUND.navgrid.json">
       <Filter>96.DataFiles\Navigation</Filter>
     </None>

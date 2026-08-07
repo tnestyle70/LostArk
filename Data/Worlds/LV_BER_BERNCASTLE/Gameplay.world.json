@@ -2,74 +2,71 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 4,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 5,
+  "revision": 13,
   "placements": [
     {
-      "placementId": "player.spawn.bern.entry",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [144.8, 42.7, -70.3],
-      "yawDegrees": 180.0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.bern.party02",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [145.8, 42.7, -70.3],
-      "yawDegrees": 180.0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.bern.party03",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [143.8, 42.7, -70.3],
-      "yawDegrees": 180.0,
-      "enabled": true
-    },
-    {
-      "placementId": "player.spawn.bern.party04",
-      "kind": "playerSpawn",
-      "archetypeId": null,
-      "encounterId": null,
-      "position": [144.8, 42.7, -71.3],
-      "yawDegrees": 180.0,
-      "enabled": true
+      "placementId": "collision.bern.editor-proof",
+      "kind": "collisionBox",
+      "position": [140.800003, 43.7000008, -65.3000031],
+      "yawDegrees": 0,
+      "enabled": true,
+      "halfExtents": [0.5, 1, 3]
     },
     {
       "placementId": "npc.bern.beda.guide",
       "kind": "npc",
       "archetypeId": "NPC_BEDA",
       "encounterId": null,
-      "position": [149.0, 42.7, -66.0],
-      "yawDegrees": 225.0,
+      "position": [149, 42.7000008, -66],
+      "yawDegrees": 225,
       "enabled": true
     },
     {
-      "placementId": "collision.bern.editor-proof",
-      "kind": "collisionBox",
-      "position": [140.8, 43.7, -65.3],
-      "yawDegrees": 0.0,
-      "enabled": true,
-      "halfExtents": [0.5, 1.0, 3.0]
+      "placementId": "player_1",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [137.586334, 42.2498169, -22.4640217],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player_2",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [136.235718, 42.3023796, -24.2058201],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player_3",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [139.376724, 42.2554817, -25.0925045],
+      "yawDegrees": 0,
+      "enabled": true
+    },
+    {
+      "placementId": "player_4",
+      "kind": "playerSpawn",
+      "archetypeId": null,
+      "encounterId": null,
+      "position": [137.271729, 42.2554741, -20.2455158],
+      "yawDegrees": 0,
+      "enabled": true
     },
     {
       "placementId": "trigger.bern.to-valtan",
       "kind": "triggerBox",
-      "position": [144.8, 42.7, -60.3],
-      "yawDegrees": 0.0,
+      "position": [144.800003, 42.7000008, -60.2999992],
+      "yawDegrees": 0,
       "enabled": true,
-      "halfExtents": [2.0, 2.0, 2.0],
+      "halfExtents": [2, 2, 2],
       "triggerOnce": true,
       "events": [
-        {
-          "type": "changeLevel",
-          "targetWorldId": "VALTAN_ARENA"
-        }
+        { "type": "changeLevel", "targetWorldId": "VALTAN_ARENA" }
       ]
     }
   ]
