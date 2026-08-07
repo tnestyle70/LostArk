@@ -23,6 +23,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 		return E_FAIL;
 
 	const auto pDesc = static_cast<PART_EQUIPMENT_DESC*>(pArg);
+	m_iHiddenMeshMask = pDesc->iHiddenMeshMask;
 	m_pSkeletonModelCom = pDesc->pSkeletonModel;
 	m_pSocketBoneName = pDesc->pSocketBoneName;
 	m_fSocketYawDegrees = pDesc->fSocketYawDegrees;
@@ -94,6 +95,9 @@ HRESULT CPart_Equipment::Render()
 
 	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
 	{
+		if (0 != (m_iHiddenMeshMask & (1u << i)))
+			continue;
+
 		const uint32_t hasNormalTexture =
 			m_pModelCom->Has_MaterialTexture(i, aiTextureType_NORMALS) ? 1u : 0u;
 		if (FAILED(m_pModelCom->Bind_Material(

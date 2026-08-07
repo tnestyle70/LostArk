@@ -15,12 +15,17 @@ namespace
 		  TEXT("Prototype_Component_Model_Artist_Weapon"), "b_wp_1" },
 	};
 
+	/* The helmet piece carries the hat (0) and the helmet-fitted hair (1,
+	pc_sp_28). The body already draws pc_sp_06 as its own submesh 3, so leaving
+	both on renders two heads of hair. The hat is what this piece is here for. */
+	constexpr uint32_t HELMET_HAIR = 1u << 1;
+
 	/* Equipment part tags sort after "Part_00_Body" so the body still updates
 	first, and before the weapon tags. */
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Artist_Arm") },
-		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet") },
+		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet"), HELMET_HAIR },
 		{ TEXT("Part_10_Equip_Lower"),    TEXT("Prototype_Component_Model_Artist_Lower") },
 		{ TEXT("Part_10_Equip_Shoulder"), TEXT("Prototype_Component_Model_Artist_Shoulder") },
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Artist_Upper") },

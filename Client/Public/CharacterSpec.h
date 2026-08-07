@@ -30,6 +30,9 @@ struct EQUIPMENT_PART_SPEC
 {
 	const tchar_t* pPartTag;      /* sorts after "Part_Body", see CCharacter */
 	const tchar_t* pModelTag;
+
+	/* Bit i hides submesh i of this piece, for content the body already draws. */
+	uint32_t iHiddenMeshMask;
 };
 
 /* A piece that rides one bone instead of the whole palette. Classes differ in how
