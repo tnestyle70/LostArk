@@ -1,5 +1,7 @@
 #include "MonsterBrain.h"
 
+#include "PlayerSkillSystem.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -134,7 +136,8 @@ void LostArk::Server::CMonsterBrain::Update(
 			const float deltaX = target->fPositionX - monster.fPositionX;
 			const float deltaZ = target->fPositionZ - monster.fPositionZ;
 			const float hitRange = monster.fAttackRange + monster.fCollisionRadius;
-			if (deltaX * deltaX + deltaZ * deltaZ <= hitRange * hitRange)
+			if (deltaX * deltaX + deltaZ * deltaZ <= hitRange * hitRange &&
+				!CPlayerSkillSystem::Try_Counter(*target, catalog, serverTick))
 			{
 				const PLAYER_RUNTIME_PROFILE* playerProfile =
 					catalog.Find_Player(target->eCharacterClass);

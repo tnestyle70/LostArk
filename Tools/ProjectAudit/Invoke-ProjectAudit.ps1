@@ -1171,7 +1171,7 @@ try {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) invalid row")
 				continue
 			}
-			$isStaged = $skillRows[0].skillKind -in @('COMBO', 'HOLD')
+			$isStaged = $skillRows[0].skillKind -in @('COMBO', 'HOLD', 'COUNTER')
 			if ($isStaged -and
 				$stages.Count -ne @($skillRows[0].comboStages).Count) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo stage count")

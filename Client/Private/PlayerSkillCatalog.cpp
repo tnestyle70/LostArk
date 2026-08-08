@@ -217,6 +217,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
 		else if ("HOLD" == kindText)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::HOLD;
+		else if ("COUNTER" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COUNTER;
 		else
 		{
 			outStatus = "PlayerSkills.json has an unknown skillKind";

@@ -441,11 +441,46 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
-	if ($skillKind -notin @('ACTIVE','COMBO','HOLD')) {
+	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER')) {
 		throw "Unknown skillKind: $id $skillKind"
 	}
 	$stages = @($skill.comboStages)
-	if ($skillKind -eq 'HOLD') {
+	if ($skillKind -eq 'COUNTER') {
+		# Guard then counter. The guard stage reuses its input window as the
+		# window a hit taken has to land in, and lands no damage of its own.
+		if ($stages.Count -ne 2) {
+			throw "COUNTER skill needs exactly 2 stages: $id"
+		}
+		if ([uint32]$skill.cooldownMs -eq 0) {
+			throw "COUNTER skill needs a cooldown: $id"
+		}
+		for ($stageIndex = 0; $stageIndex -lt 2; $stageIndex++) {
+			$stage = $stages[$stageIndex]
+			Assert-ExactProperties $stage @(
+				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'counter stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
+			}
+			if ([uint32]$stage.actionDurationMs -eq 0 -or
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs) {
+				throw "Counter stage timing is invalid: $id stage $stageIndex"
+			}
+			if ($stageIndex -eq 0) {
+				if ([uint32]$stage.hitTimeMs -ne 0) {
+					throw "A counter's guard stage lands no damage: $id"
+				}
+				if ([uint32]$stage.inputOpenMs -ge [uint32]$stage.inputCloseMs -or
+					[uint32]$stage.inputCloseMs -gt [uint32]$stage.actionDurationMs) {
+					throw "Counter guard window is invalid: $id"
+				}
+			}
+			elseif ([uint32]$stage.hitTimeMs -eq 0 -or
+				[uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
+				throw "A counter's second stage lands the damage and opens no window: $id"
+			}
+		}
+	}
+	elseif ($skillKind -eq 'HOLD') {
 		if ($stages.Count -ne 3) {
 			throw "HOLD skill needs exactly 3 stages: $id"
 		}

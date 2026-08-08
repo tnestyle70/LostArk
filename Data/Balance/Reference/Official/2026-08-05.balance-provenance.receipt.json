@@ -48,7 +48,7 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  31,
-                     "fieldEntryCount":  2421
+                     "fieldEntryCount":  2429
                  },
     "entries":  [
                     {
@@ -17902,9 +17902,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-timing-v1"
                                    },
-                        "sourceValue":  3266,
+                        "sourceValue":  2033,
                         "transform":  "identity",
-                        "resultValue":  3266
+                        "resultValue":  2033
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -17915,9 +17915,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-timing-v1"
                                    },
-                        "sourceValue":  1633,
+                        "sourceValue":  400,
                         "transform":  "identity",
-                        "resultValue":  1633
+                        "resultValue":  400
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -19548,9 +19548,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  1192,
+                        "sourceValue":  609,
                         "transform":  "identity",
-                        "resultValue":  1192
+                        "resultValue":  609
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -20432,9 +20432,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  3300,
+                        "sourceValue":  2000,
                         "transform":  "identity",
-                        "resultValue":  3300
+                        "resultValue":  2000
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -20470,6 +20470,110 @@
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
+                                   },
+                        "sourceValue":  2,
+                        "transform":  "identity",
+                        "resultValue":  2
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[0].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  2000,
+                        "transform":  "identity",
+                        "resultValue":  2000
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[0].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[0].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[0].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  1200,
+                        "transform":  "identity",
+                        "resultValue":  1200
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[1].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  1300,
+                        "transform":  "identity",
+                        "resultValue":  1300
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[1].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  350,
+                        "transform":  "identity",
+                        "resultValue":  350
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[1].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34580",
+                        "targetField":  "comboStages[1].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
                                    },
                         "sourceValue":  0,
                         "transform":  "identity",
@@ -20523,9 +20627,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  2350,
+                        "sourceValue":  0,
                         "transform":  "identity",
-                        "resultValue":  2350
+                        "resultValue":  0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -20640,9 +20744,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "lancemaster-short-spear-binding-v1"
                                    },
-                        "sourceValue":  "ACTIVE",
+                        "sourceValue":  "COUNTER",
                         "transform":  "identity",
-                        "resultValue":  "ACTIVE"
+                        "resultValue":  "COUNTER"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

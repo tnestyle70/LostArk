@@ -463,7 +463,8 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 		owns exactly one stage holding its whole chain. */
 		const bool_t isStaged =
 			PLAYER_SKILL_KIND::COMBO == definition->eSkillKind ||
-			PLAYER_SKILL_KIND::HOLD == definition->eSkillKind;
+			PLAYER_SKILL_KIND::HOLD == definition->eSkillKind ||
+			PLAYER_SKILL_KIND::COUNTER == definition->eSkillKind;
 		std::size_t totalClips = 0u;
 		for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
 			totalClips += stage.Clips.size();

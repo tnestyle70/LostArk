@@ -1317,6 +1317,82 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	}
 
 	{
+		/* 절룡세 guards, and a hit taken inside that window is what buys the
+		counter: no press advances it and the guard itself lands nothing. */
+		SERVER_PLAYER counterPlayer{};
+		counterPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		counterPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		counterPlayer.iCurrentHp = 1000;
+		counterPlayer.iMaximumHp = 1000;
+		counterPlayer.iCurrentResource = 1000;
+		counterPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem counterSkills;
+
+		C2S_USE_SKILL counterCommand{};
+		counterCommand.iClientSequence = 1;
+		counterCommand.iSkillId = 34580;
+		counterCommand.fAimX = 1.f;
+		counterCommand.fAimZ = 0.f;
+		tests.Require(
+			counterSkills.Try_Start(counterPlayer, counterCommand, catalog, 10) &&
+			1u == counterPlayer.iComboStage,
+			"Approve the counter guard stage");
+
+		std::vector<SERVER_WORLD_ENTITY> counterEntities;
+		std::vector<DAMAGE_EVENT> counterDamageEvents;
+		counterSkills.Update(counterPlayer, counterEntities, catalog, nullptr,
+			1.f / 30.f, 11, counterDamageEvents);
+		tests.Require(
+			1u == counterPlayer.iComboStage && counterDamageEvents.empty(),
+			"Hold the guard stage and land no damage while it runs");
+
+		const std::uint32_t hpBeforeCounter = counterPlayer.iCurrentHp;
+		tests.Require(
+			CPlayerSkillSystem::Try_Counter(counterPlayer, catalog, 12) &&
+			2u == counterPlayer.iComboStage &&
+			hpBeforeCounter == counterPlayer.iCurrentHp &&
+			0.f == counterPlayer.fActionElapsedSeconds,
+			"Absorb the hit inside the guard window and promote to the counter");
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(counterPlayer, catalog, 13),
+			"Do not counter twice from one guard");
+
+		SERVER_PLAYER lateCounter{};
+		lateCounter.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		lateCounter.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		lateCounter.iCurrentHp = 1000;
+		lateCounter.iMaximumHp = 1000;
+		lateCounter.iCurrentResource = 1000;
+		lateCounter.iMaximumResource = 1000;
+		CPlayerSkillSystem lateSkills;
+		C2S_USE_SKILL lateCommand = counterCommand;
+		lateSkills.Try_Start(lateCounter, lateCommand, catalog, 10);
+		lateCounter.fActionElapsedSeconds = 1.5f;
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(lateCounter, catalog, 20) &&
+			1u == lateCounter.iComboStage,
+			"Reject a hit that lands after the guard window closed");
+
+		SERVER_PLAYER comboPlayer{};
+		comboPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		comboPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		comboPlayer.iCurrentHp = 1000;
+		comboPlayer.iMaximumHp = 1000;
+		comboPlayer.iCurrentResource = 1000;
+		comboPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem comboSkills;
+		C2S_USE_SKILL basicAttack{};
+		basicAttack.iClientSequence = 1;
+		basicAttack.iSkillId = 34010;
+		basicAttack.fAimX = 1.f;
+		basicAttack.fAimZ = 0.f;
+		comboSkills.Try_Start(comboPlayer, basicAttack, catalog, 10);
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(comboPlayer, catalog, 11),
+			"Never counter out of a skill that is not a COUNTER");
+	}
+
+	{
 		SERVER_PLAYER stancePlayer{};
 		stancePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		stancePlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;

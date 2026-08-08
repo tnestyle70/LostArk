@@ -88,6 +88,8 @@ namespace
 			output = PLAYER_SKILL_KIND::COMBO;
 		else if ("HOLD" == value)
 			output = PLAYER_SKILL_KIND::HOLD;
+		else if ("COUNTER" == value)
+			output = PLAYER_SKILL_KIND::COUNTER;
 		else
 			return false;
 		return true;
@@ -415,6 +417,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				(LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
 					owner->second.eSkillKind &&
 					LostArk::Shared::PLAYER_SKILL_KIND::HOLD !=
+						owner->second.eSkillKind &&
+					LostArk::Shared::PLAYER_SKILL_KIND::COUNTER !=
 						owner->second.eSkillKind) ||
 				stageIndex != owner->second.ComboStages.size())
 			{

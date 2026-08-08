@@ -910,7 +910,9 @@ bool_t Client::CAnimation_Tool::Create_SkillBindingDraft(
 		const bool_t isStaged =
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
 				definition.eSkillKind ||
-			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind;
+			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind ||
+			LostArk::Shared::PLAYER_SKILL_KIND::COUNTER ==
+				definition.eSkillKind;
 		const std::size_t stageCount =
 			isStaged ? definition.iComboStageCount : 1u;
 		ANIMATION_SKILL_STAGE seedStage;
@@ -1093,6 +1095,8 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 			definition->eSkillKind;
 		const bool_t isStaged = isCombo ||
 			LostArk::Shared::PLAYER_SKILL_KIND::HOLD ==
+				definition->eSkillKind ||
+			LostArk::Shared::PLAYER_SKILL_KIND::COUNTER ==
 				definition->eSkillKind;
 		char_t header[192]{};
 		snprintf(

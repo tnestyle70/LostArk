@@ -1,5 +1,7 @@
 #include "ValtanBrain.h"
 
+#include "PlayerSkillSystem.h"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -354,7 +356,8 @@ namespace
 		{
 			(void)playerId;
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
-				!ContainsPatternHit(boss, player))
+				!ContainsPatternHit(boss, player) ||
+				CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
 			{
 				continue;
 			}

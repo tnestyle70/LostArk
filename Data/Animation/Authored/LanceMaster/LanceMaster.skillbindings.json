@@ -70,7 +70,7 @@
       "clips": [
         [ { "clip": "flm_sk_chestdestruction_01", "playMs": 551 },
           "flm_sk_chestdestruction_02" ],
-        [ "flm_sk_chestdestruction_03",
+        [ { "clip": "flm_sk_chestdestruction_03", "playMs": 100 },
           "flm_sk_chestdestruction_04" ]
       ]
     },
@@ -117,8 +117,7 @@
     {
       "skillId": 34540,
       "clips": [
-        { "clip": "flm_sk_stab", "playMs": 700, "playRate": 1.15 },
-        { "clip": "flm_sk_stab_custom_3_01", "playRate": 1.2 }
+        { "clip": "flm_sk_stab", "playMs": 700, "playRate": 1.15 }
       ]
     },
     {
@@ -147,8 +146,8 @@
     {
       "skillId": 34580,
       "clips": [
-        "flm_sk_counterattack_01",
-        "flm_sk_counterattack_02"
+        [ "flm_sk_counterattack_01" ],
+        [ "flm_sk_counterattack_02" ]
       ]
     },
     {

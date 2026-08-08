@@ -143,7 +143,10 @@ bool_t CCharacter::Load_ClipChains()
 		const bool_t isHold =
 			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition->eSkillKind;
 		chain.isServerStaged = isHold ||
-			LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition->eSkillKind;
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
+				definition->eSkillKind ||
+			LostArk::Shared::PLAYER_SKILL_KIND::COUNTER ==
+				definition->eSkillKind;
 		chain.stages.reserve(binding.Stages.size());
 		for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
 		{

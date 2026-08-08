@@ -224,8 +224,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const std::size_t stageIndex =
 		0u == player.iComboStage ? 0u : player.iComboStage - 1u;
 	const bool isHold = PLAYER_SKILL_KIND::HOLD == skill->eSkillKind;
+	const bool isCounter = PLAYER_SKILL_KIND::COUNTER == skill->eSkillKind;
 	const bool hasStage =
-		(PLAYER_SKILL_KIND::COMBO == skill->eSkillKind || isHold) &&
+		(PLAYER_SKILL_KIND::COMBO == skill->eSkillKind || isHold ||
+			isCounter) &&
 		stageIndex < skill->ComboStages.size();
 	const std::uint32_t durationMs = hasStage ?
 		skill->ComboStages[stageIndex].iActionDurationMs :
@@ -290,7 +292,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const float hitSeconds =
 		static_cast<float>(hitMs) * MILLISECONDS_TO_SECONDS;
 	const bool holdWithoutDamage = isHold && 3u != player.iComboStage;
+	/* The guard stage lands nothing: the damage belongs to the counter it buys. */
+	const bool counterWithoutDamage = isCounter && 2u != player.iComboStage;
 	if (!skill->strDamageProfileId.empty() && !holdWithoutDamage &&
+		!counterWithoutDamage &&
 		!player.hasAppliedSkillDamage && player.fActionElapsedSeconds >= hitSeconds)
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
@@ -363,7 +368,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasReleasedHold &&
 		player.fActionElapsedSeconds >= durationSeconds;
 
-	const bool hasNextStage = hasStage &&
+	/* A counter never advances on its own clock: only a hit taken inside the
+	guard window promotes it, which Try_Counter does. */
+	const bool hasNextStage = hasStage && !isCounter &&
 		(isHold ? static_cast<std::size_t>(player.iComboStage) <
 				skill->ComboStages.size()
 			: player.hasBufferedComboInput &&
@@ -403,6 +410,41 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.hasReleasedHold = false;
 		}
 	}
+}
+
+bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
+	SERVER_PLAYER& player,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::SKILL != player.eAction || 1u != player.iComboStage)
+		return false;
+	const PLAYER_SKILL_DEFINITION* skill =
+		catalog.Find_Skill(player.iCurrentSkillId);
+	if (nullptr == skill ||
+		PLAYER_SKILL_KIND::COUNTER != skill->eSkillKind ||
+		2u != skill->ComboStages.size())
+	{
+		return false;
+	}
+	/* The guard window reuses the stage's input window: for a counter the thing
+	that advances the stage is the hit, so the same two numbers gate it. */
+	const PLAYER_COMBO_STAGE& guard = skill->ComboStages[0];
+	const float elapsedMs = player.fActionElapsedSeconds * 1000.f;
+	if (0u == guard.iInputCloseMs ||
+		elapsedMs < static_cast<float>(guard.iInputOpenMs) ||
+		elapsedMs > static_cast<float>(guard.iInputCloseMs))
+	{
+		return false;
+	}
+	player.iComboStage = 2u;
+	player.hasBufferedComboInput = false;
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	// A changed start tick is how the client learns to play the counter clip.
+	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+	return true;
 }
 
 void LostArk::Server::CPlayerSkillSystem::Release(
