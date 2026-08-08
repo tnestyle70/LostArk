@@ -387,7 +387,7 @@ if ($effectToolSource -notmatch 'Reference A/B Capture' -or
 }
 if ($effectObjectSource -notmatch 'Advance_Preview' -or
     $effectToolSource -notmatch 'fSequentialAdvance' -or
-    $effectToolSource -notmatch 'pObject->Advance_Preview\(fSequentialAdvance\)') {
+    $effectToolSource -notmatch 'pObject->Advance_Preview\(fSequentialAdvance,\s*Root\)') {
     throw 'Playing Effect previews must advance sequentially; Seek is reserved for scrub and loop jumps.'
 }
 if ($effectToolSource -notmatch 'm_bPreviewPlaying = false;\s+bSeekAfterLoop = true;' -or
@@ -553,7 +553,9 @@ $loadDocumentMatch = [regex]::Match(
 if (-not $loadDocumentMatch.Success -or
     $loadDocumentMatch.Value -match 'Start_WorldPreviewFromBeginning\(\)' -or
     $loadDocumentMatch.Value -notmatch 'Set_Visible\(false\)' -or
+	$loadDocumentMatch.Value -notmatch 'm_bPreviewVisibleRequested = false' -or
     $effectToolSource -notmatch 'Load = inspect saved data without autoplay' -or
+	$effectToolSource -notmatch 'bLivePreview = bDrawable &&\s*m_bPreviewVisibleRequested' -or
     $effectToolSource -notmatch 'pObject->Set_Visible\(true\)') {
     throw 'Loading an Effect must stage it hidden; only explicit Complete, Group, or Solo play may start the character-pivot preview.'
 }
@@ -594,9 +596,14 @@ if ($authoringHeader -notmatch 'EFFECT_AUTHORING_FORMAT_VERSION = 12u' -or
 }
 if ($effectToolHeader -notmatch 'EFFECT_DETAIL_SELECTION' -or
     $effectToolHeader -notmatch 'SOLO_PARTICLE_SYSTEM' -or
+	$effectToolHeader -notmatch 'SOLO_MESH_EMITTERS' -or
+	$effectToolHeader -notmatch 'SOLO_SPRITE_EMITTERS' -or
     $effectToolSource -notmatch 'Try_SelectParticleSystem' -or
     $effectToolSource -notmatch 'Apply Particle System' -or
     $effectToolSource -notmatch 'Audition Particle System' -or
+	$effectToolSource -notmatch 'Play Mesh Emitters' -or
+	$effectToolSource -notmatch 'Mesh-backed Cascade emitter preview committed' -or
+	$effectToolSource -notmatch 'm_bPreviewVisibleRequested && bRootResolved' -or
     $effectToolSource -notmatch 'Source Systems %zu \| Emitters %zu \| Layers %zu' -or
     $playbackSource -notmatch 'fUniformScaleMultiplier' -or
     $playbackSource -notmatch 'fDirectionYawDegrees' -or
@@ -638,9 +645,12 @@ if ($rendererSource -notmatch 'fSequenceTerm\) \+\s+Element\.Detail\.UV\.iTileIn
 }
 if ($rendererSource -match 'unordered_map<const EFFECT_ELEMENT_DESC\*' -or
     $rendererSource -notmatch 'for \(const EFFECT_ELEMENT_DESC& DocumentElement : m_Document\.Elements\)' -or
-    $rendererSource -notmatch 'Render_AfterImages\(Frame, strElementId\)' -or
-    $rendererSource -notmatch 'Render_Particles\(Frame, strElementId\)' -or
-    $rendererSource -notmatch 'Render_Trails\(Frame, strElementId\)') {
+    $rendererSource -notmatch 'iAfterImageBegin' -or
+    $rendererSource -notmatch 'iParticleBegin' -or
+    $rendererSource -notmatch 'iTrailBegin' -or
+    $rendererSource -notmatch '\.subspan\(iParticleBegin' -or
+    $rendererSource -notmatch '\.subspan\(iTrailBegin' -or
+    $rendererSource -notmatch '\.subspan\(iAfterImageBegin') {
     throw 'Effect draw submission must preserve authored Element stack order across all five kinds.'
 }
 $decalRenderSource = [regex]::Match($rendererSource,

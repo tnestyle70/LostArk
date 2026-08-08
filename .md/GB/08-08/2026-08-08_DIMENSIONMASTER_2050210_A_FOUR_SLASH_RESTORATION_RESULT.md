@@ -150,3 +150,33 @@ Solo
 
 수동 런타임 FPS와 네 타격의 실제 Animation/Effect 정합은 사용자 GPU 검증 전이므로 PASS로
 기록하지 않는다.
+
+## 9. canonical A 6 FPS 검증 병목 교정
+
+정본 A를 로드한 뒤 명시적 재생 전에도 프레임이 떨어지는 원인을 코드로 재현했다.
+
+- Load가 EffectObject를 숨겨도 다음 Tool Update가 정상 Root를 확인하며 다시 표시했다.
+- 정지 상태에서도 `Set_RootWorld`가 117 Elements의 evaluated frame을 매 프레임 재구축했다.
+- 재생 중에는 Root 갱신과 시간 진행이 각각 frame rebuild를 호출해 같은 프레임을 두 번 평가했다.
+- Renderer는 authored Element 117개마다 전체 Particle/Trail/AfterImage 목록을 다시 순회했다.
+
+교정 결과:
+
+- Load와 Hide는 명시적 preview visibility 상태를 유지하며 Play/Solo 전에는 평가·제출하지 않는다.
+- Tool preview는 Root와 sequential time을 한 번의 `Advance_Preview` 호출로 평가한다.
+  제품 Follow anchor의 같은 프레임 계약은 변경하지 않았다.
+- Renderer는 기존 authored stack 순서를 유지하면서 evaluated 목록의 contiguous range를 한 번만
+  순회한다.
+- `Mesh Emitters`와 `Sprite Emitters` preview scope를 추가했다. Data Files의
+  `Play Mesh Emitters`는 48개 mesh-backed layer만 재생하며 Screen Post와 Sprite는 제외한다.
+
+자동 검증:
+
+- Client x64 Debug build: 오류 0
+- ClientFrontendHarness x64 Debug build/run: `failures 0`
+- Effect Tool final audit: PASS
+- ProjectAudit: 77 checks PASS
+- `git diff --check`: PASS
+
+수동 GPU FPS는 아직 측정 전이다. 따라서 6 FPS 해결 완료가 아니라, 원인이었던 숨김 해제·이중 평가·
+제곱 순회를 제거하고 검증 가능한 Mesh 전용 범위를 제공한 상태다.

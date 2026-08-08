@@ -49,6 +49,9 @@ public:
 		const std::unordered_map<std::string, float4x4_t>& SourceAnchorWorlds);
 	void Set_SampleTime(f32_t fSampleTimeSeconds);
 	void Advance_Preview(f32_t fTimeDelta);
+	void Advance_Preview(
+		f32_t fTimeDelta,
+		const float4x4_t& RootWorld);
 	void Set_Playing(bool_t bPlaying) { m_bPlaying = bPlaying; }
 	void Set_Visible(bool_t bVisible) { m_bVisible = bVisible; }
 	void Reset();

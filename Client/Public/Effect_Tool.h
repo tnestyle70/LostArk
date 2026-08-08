@@ -39,6 +39,8 @@ enum class EFFECT_PREVIEW_FILTER : uint8_t
 {
     COMPLETE,
     SOLO_PARTICLE_SYSTEM,
+	SOLO_MESH_EMITTERS,
+	SOLO_SPRITE_EMITTERS,
     SOLO_SELECTED,
     MUTE_SELECTED,
     SOLO_SELECTED_GROUP,
@@ -338,6 +340,7 @@ private:
     f32_t m_fPreviewDurationSeconds = 1.f;
     bool_t m_bPreviewPlaying = false;
     bool_t m_bPreviewLoop = true;
+	bool_t m_bPreviewVisibleRequested = false;
 	bool_t m_bPreviewScreenPostEnabled = true;
     bool_t m_bDocumentDirty = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;

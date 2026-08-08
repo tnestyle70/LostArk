@@ -89,9 +89,16 @@ void Client::CEffectObject::Advance_Preview(const f32_t fTimeDelta)
 	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
 }
 
+void Client::CEffectObject::Advance_Preview(
+	const f32_t fTimeDelta,
+	const float4x4_t& RootWorld)
+{
+	m_RootWorld = RootWorld;
+	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
+}
+
 void Client::CEffectObject::Reset()
 {
-	m_Playback.Reset();
 	m_Playback.Seek(0.f, m_RootWorld);
 }
 
