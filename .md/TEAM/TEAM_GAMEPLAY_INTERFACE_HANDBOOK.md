@@ -349,8 +349,8 @@ map, 서버 승인 character, replication, controller 경로를 유지한다.
 Editor Area 정책은 `AREA_DATA_LAYER_GUIDE.md` 4절이 정본이다. 특히 Character Select와
 원본 Training Map은 gameplay 문서를 만들지 않는다. Bern은 명시된 source/paint 경로에서
 Nav Bounds bootstrap만 허용하며 실제 bake 검증 전에는 Server 제품 navigation으로 취급하지
-않는다. 원본 Training Map은 navigation 문서를 추측 생성하지 않는다. Valtan DeployProp 편집은
-현재 제외되어 있다.
+않는다. 원본 Training Map은 navigation 문서를 추측 생성하지 않는다. Valtan DeployProp과 World
+Destruction은 Debug authoring/preview로 편집할 수 있지만 제품 destroyable publisher gate와는 분리한다.
 
 gameplay authoring은 formatVersion 4다. 제품 publisher/runtime는 현재 `playerSpawn`, `npc`, `boss`,
 단일 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter` action을 가진 `triggerBox`, 정적 `collisionBox`를 admission한다.
@@ -381,6 +381,24 @@ MapTool `Spawn Groups` panel은 anchor, group, prerequisite, maxAlive, wave, ent
 같은 panel의 `Collision Box` option은 표면 pick, position, yaw, half extents, enabled, 목록 선택과
 delete를 제공한다. 파란 wire OBB는 저작 표시일 뿐이며 실제 차단은 Server bootstrap을 읽은 뒤 적용된다.
 `NPC_BEDA`는 `NpcCatalog.json` → Server world entity → Client replication → `CNpc` 경로로 표시한다.
+
+Valtan `Destruction Model View`의 Debug 경계는 다음과 같다.
+
+```text
+destructionsimulation.json
+  -> CDestructionSimulationController
+  -> CDestructionSimulationRuntime
+  -> CDeployPropObject의 source/proxy presentation
+  -> CRigidBody -> CPhysics_Manager -> PhysX
+```
+
+source placement 하나가 Wall Mesh Emitter 하나이고 runtime이 stable fragment ID 12개를 파생한다.
+MapTool은 All Fragments/Solo Emitter/Solo Fragment와 60 Hz deterministic seek를 제공한다. 이 결과는
+Server truth가 아니며 Client PhysX pose를 Server로 보내지 않는다. preview ground도 editor support일 뿐
+`Gameplay.world.json collisionBox`가 아니다. persistent FRACTURED full sync는 과거 debris를 재생하지
+않고, live event만 one-shot mesh debris/effect cue를 만든다. Effect Tool private type과 active document를
+MapTool 또는 제품 runtime에 의존시키지 않는다. 상세 작업법은 `MAP_DESTRUCTION_PHYSX_HANDOFF.md`를
+따른다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
 
@@ -455,6 +473,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - HUD용 player/boss runtime ViewModel
 - Valtan 추적, pattern, damage, phase, death
 - world gameplay와 navigation 배치 정합성 검사
+- Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
 - Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster 다섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 다섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
 
@@ -468,5 +487,6 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - party/raid admission과 roster
 - 동적 collider, projectile, knockback/피격 판정
 - 잡몹 및 추가 boss pattern
+- Valtan destroyable publisher, Server 상태/동적 collision·navigation, Shared replication과 제품 debris/effect cue
 
 이 항목들은 현재 인터페이스를 우회해 임시 구현하지 않는다.

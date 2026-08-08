@@ -31,6 +31,7 @@ struct DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT final
 	DESTRUCTION_SIMULATION_SCOPE eScope =
 		DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS;
 	std::string selectedElementId;
+	std::string selectedFragmentId;
 	std::string status = "Destruction simulation is not staged";
 };
 
@@ -65,6 +66,8 @@ public:
 	void Request_Reset();
 	void Request_SingleStep();
 	void Request_Seek(f32_t sampleTimeSeconds);
+	/* selectedElementId is the wall ID for SOLO_SELECTED and the stable
+	   fragment ID for SOLO_FRAGMENT. */
 	void Request_SetScope(
 		DESTRUCTION_SIMULATION_SCOPE scope,
 		const std::string& selectedElementId = {});

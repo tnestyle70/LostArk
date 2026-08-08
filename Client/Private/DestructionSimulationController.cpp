@@ -348,6 +348,7 @@ void Client::CDestructionSimulationController::Refresh_Snapshot()
 	m_Snapshot.fDurationSeconds = frame.fDurationSeconds;
 	m_Snapshot.eScope = frame.eScope;
 	m_Snapshot.selectedElementId = frame.selectedElementId;
+	m_Snapshot.selectedFragmentId = frame.selectedFragmentId;
 	if (m_Snapshot.status.empty())
 		m_Snapshot.status = m_Runtime.Get_Status();
 }

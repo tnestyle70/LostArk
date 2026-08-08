@@ -347,17 +347,20 @@ MapTool에서 맵 담당자가 방향·속도·중력·수명·조건을 직접 
 
 빌드 로그의 `C4819`와 Release DirectXTK `LNK4099`는 기존 인코딩/PDB 경고이며 새 컴파일 오류는 없다.
 
-### 7.3 수동 인게임 검증 — 아직 PASS 처리하지 않음
+### 7.3 수동 인게임 검증 — visible mesh emitter 확인, 나머지 진행 중
 
-자동 검증 뒤 통합 Server/Client를 실행했으며 GUI 결과는 사용자가 확인 중이다. 아직 PASS로 기록하지 않는다.
+자동 검증 뒤 통합 Server/Client를 실행했다. 사용자는 Valtan Area와 새 Destruction Model View에서
+project-authored stone mesh가 PhysX로 날아가는 결과를 눈으로 확인했다. 따라서 visible mesh emitter
+재생은 PASS다. 아래 Save/Reload, collision manual fire와 모든 lifecycle 조합은 아직 각각 PASS로
+확정하지 않는다.
 
 ```text
 1. Client/Bin/Debug/Client.exe를 Client/Default 작업 디렉터리에서 실행
 2. Lobby -> Test -> LEVEL::DEVELOPMENT
 3. F1 -> Map Tool -> Valtan -> World Destruction
 4. group destroyable.group.valtan.wall.3705102 선택
-5. Destruction Model View -> Stage + Play All
-6. All Debris / Solo Selected, Pause, 1/60 Step, Restart, timeline Seek 확인
+5. Destruction Model View -> Play All Fragments
+6. All Fragments / Solo Emitter / Solo Fragment, Pause, 1/60 Step, Restart, timeline Seek 확인
 7. Detail에서 direction/speed/gravity/lifetime을 바꾸고 live audition 확인
 8. Apply Detail 뒤 Save All, Area 재진입 후 값 유지 확인
 9. Collision trigger element에서는 Fire Collision로 발화 확인
@@ -373,9 +376,9 @@ debris presentation은 PLAN의 `WD-G05`~`WD-G08`에서 함께 구현하기 전�
 
 ### 7.5 Git 상태
 
-`codex/valtan-physics-maptool-integration`에서 MapTool 작업자 commit, Primary Effect 복구본과 PhysX slice를
-합친 뒤 Debug Engine/Server/Client와 PhysicsContractHarness를 다시 통과했다. 사용자의 명시적 요청에 따라
-GUI 검증과 병행해 이 통합 단위를 commit/push한다.
+`codex/valtan-brick-debris-preview`는 작업 시작 시 공개 `origin/main` `52dd7e8`로 fast-forward한 뒤
+MapTool/PhysX 변경만 다시 적용했다. Primary Effect dirty worktree나 다른 세션의 미커밋 파일은 이 branch에
+복사하지 않는다. main 직접 push 대신 이 검증 단위를 commit/push하고 PR로 동기화한다.
 
 ### 7.6 Valtan Area 진입 회귀 원인과 방지
 
@@ -388,3 +391,75 @@ GUI 검증과 병행해 이 통합 단위를 commit/push한다.
 - MapTool workspace bar에 Area stage 실패 status를 항상 표시해 다음 담당자가 조용한 실패로 오인하지 않게 했다.
 - 잘못된 별도 worktree EXE를 실행하면 Primary의 미커밋 Effect/Data/Shader를 읽지 않아 외형·성능이 회귀해
   보일 수 있다. 통합 smoke는 실행 파일 경로, 작업 디렉터리, `LOSTARK_RESOURCE_ROOT`를 함께 고정한다.
+
+## 8. 2026-08-09 project-authored Mesh Debris Emitter 결과
+
+### 8.1 해결한 문제
+
+이전 preview는 simulation element 하나를 Deploy placement 전체 actor 하나로 처리했기 때문에
+`ITR_02306` 기둥 5개가 통째로 움직였다. `ITR_02306_FRACTURED.wmodel` 내부에는 visible toggle로 꺼진
+작은 벽돌이 없으므로 해당 모델의 visibility나 animation을 바꿔서는 원하는 결과가 나오지 않는다.
+
+해결 구조는 source placement 하나를 하나의 Wall Mesh Emitter로 유지하고 그 아래 12개의
+project-authored proxy fragment를 파생하는 것이다.
+
+```text
+Profile 1개
+  -> Wall Mesh Emitter 5개
+  -> Emitter당 fragment 12개
+  -> 최대 CModel proxy 60개 + PhysX actor 60개
+```
+
+source wall은 원래 위치에서 FRACTURED presentation을 유지한다. 네 Valtan stone WModel을 기존
+`CModel -> CMaterial` 경로로 clone하고 각각 별도 `CRigidBody` dynamic box actor를 연결한다. 기본
+diffuse/emissive가 없는 binary material은 `CMaterial`의 solid gray diffuse fallback을 사용한다.
+
+### 8.2 UI와 runtime 계약
+
+- `Profile -> Wall Mesh Emitter -> fragment.00~fragment.11` 트리를 추가했다.
+- `Play All Fragments`, `Solo Emitter`, fragment별 `Solo + Play`를 추가했다.
+- fragment stable ID는 `<elementId>.fragment.NN`이며 vector index나 Prototype tag를 저장하지 않는다.
+- fragment frame은 model asset, WAITING/ACTIVE/EXPIRED/FILTERED, life, pose, velocity를 제공한다.
+- `SOLO_FRAGMENT`는 선택 actor 하나만 만들고 다른 11개는 `FILTERED`로 유지한다.
+- 네 proxy prototype은 0.01 asset pretransform 뒤 3.5 preview scale로 admit한다.
+- piece별 0.8~1.2 scale, spread/up/angular velocity는 stable seed에서 결정돼 Restart/Seek가 재현된다.
+- fragment sample은 read-only이고 v1 JSON에는 emitter 공통 direction/speed/gravity/lifetime/trigger만 저장한다.
+
+### 8.3 Trigger와 Effect 경계
+
+`IMMEDIATE`와 `TIMELINE_TIME`은 controller fixed timeline이 발화한다. `COLLISION_IMPACT`는 현재
+MapTool의 `Request_Collision -> Notify_Collision` 수동 audition만 구현됐다. `ValtanWorldEvents.json`의
+preview binding은 실제 collisionBox가 없으므로 disabled `STAGE_TIME` 250ms와 빈 receiver를 유지한다.
+
+원본 `FX_ITR_02315.Par_G_Fracture_Dust_02_01`은 아직 미복구다. 현재 돌은 Effect particle이 아니라
+static CModel + PhysX actor다. exact dust가 복구되면 Effect Tool private runtime을 가져오지 않고
+controller sample time으로 `CEffectObject::Reset/Set_SampleTime`을 구동하는 별도 effect lane을 붙인다.
+제품에서는 Server live event가 stable cue ID, impact origin/direction과 seed만 확정한다.
+
+### 8.4 이번 변경에서 실행한 검증
+
+| 검증 | 결과 |
+|---|---|
+| 공개 main 동기화 | `HEAD == origin/main == 52dd7e8`에서 변경 적용 |
+| Engine x64 Debug | PASS |
+| `UpdateLib.bat Debug` | PASS, PhysX DLL 배포 |
+| Server x64 Debug + `--contract-test` | PASS, failures 0 |
+| Client x64 Debug | PASS, MapTool/Runtime/Controller/DeployProp 실제 컴파일·링크 |
+| PhysicsContractHarness Debug | PASS, physics-and-destruction.contract |
+| ProjectAudit | PASS, 81 checks |
+| JSON/XML parse, `git diff --check` | PASS |
+| 사용자 GUI | Valtan에서 visible mesh debris playback 확인 |
+
+이번 follow-up에서는 Release를 다시 빌드하지 않았다. 7.2절의 이전 Release 증거와 이번 Debug/main
+integration 증거를 구분한다.
+
+### 8.5 맵 담당자 다음 순서
+
+1. 실제 collisionBox와 nav blocker region을 저작한다.
+2. simulation receiver와 WorldEvents receiver를 같은 stable ID로 연결한다.
+3. `COLLISION_IMPACT`를 MapTool manual fire로 먼저 검증한다.
+4. 원본 dust Effect와 dependency를 복구해 controller-owned effect lane에 stage한다.
+5. 다른 destroy asset은 source 근거를 조사한 뒤 exact 또는 `PROJECT_AUTHORED` recipe로 추가한다.
+6. publisher/Server/Shared/제품 Client를 한 수직 슬라이스로 닫은 뒤에만 destroyable gate를 연다.
+
+상세 호출 지점과 금지 경계는 `.md/TEAM/MAP_DESTRUCTION_PHYSX_HANDOFF.md`를 따른다.

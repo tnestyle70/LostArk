@@ -14,7 +14,7 @@ LevelCatalog scenario
   -> MapCatalog area
      -> visual asset admission / placement
      -> optional deploy asset / placement pair
-     -> Gameplay.world.json v2 (actor placement + gated trigger/destroyable authoring)
+     -> Gameplay.world.json formatVersion 4 (actor placement + gated trigger/destroyable authoring)
      -> navigation authoring -> runtime navgrid
      -> stable actor / encounter / balance ID 참조
 ```
@@ -112,10 +112,38 @@ Valtan MapTool의 파괴 물리 audition은 제품 publisher 입력과 분리된
 파괴 그룹별 debris element의 spawn offset, world direction, speed, gravity scale, lifetime과
 `IMMEDIATE`/`TIMELINE_TIME`/`COLLISION_IMPACT` 조건을 저장한다. `Destruction Model View`는 실제
 Development world의 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` 인스턴스에 PhysX actor를
-연결하고 All Debris/Solo Selected, play/pause/restart, 1/60 step과 reset 후 고정-step seek를 제공한다.
+연결한다. Profile 아래 source placement를 Wall Mesh Emitter로, 각 Emitter 아래 runtime-generated
+`fragment.00`~`fragment.11`을 표시하고 All Fragments/Solo Emitter/Solo Fragment,
+play/pause/restart, 1/60 step과 reset 후 고정-step seek를 제공한다. fragment는 runtime sample이며
+format v1 JSON에는 emitter 공통 값만 저장한다.
 이 문서는 `Publish-WorldGameplay.ps1`의 입력이 아니므로 tool audition 자체는 위 destroyable admission에
 거부되지 않는다. 반대로 이 preview가 Server 파괴 상태, 동적 collision/navigation, Shared replication이나
 제품 Valtan presentation을 활성화했다는 뜻은 아니며, 그 제품 gate는 계속 fail-closed다.
+
+`DEPLOY_ITR_02306`의 fractured WModel은 작은 벽돌 submesh를 숨겨 둔 자산이 아니라 기둥 전체를
+표현하는 static CModel이다. MapTool의 작은 파편 audition은 정확한 source particle
+`FX_ITR_02315.Par_G_Fracture_Dust_02_01`이 복구되기 전까지 다음 Resources-relative Valtan stone
+WModel을 명시적인 `PROJECT_AUTHORED` proxy로 사용한다.
+
+```text
+Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel
+Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel
+Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel
+Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel
+```
+
+source placement 하나는 fractured 상태로 원래 위치에 남고 proxy stone 12개만 각각 PhysX actor로
+날아간다. fragment ID는 `<elementId>.fragment.00`~`.11`이고 model/state/life/pose/velocity를
+read-only로 확인할 수 있다. prototype의 0.01 pretransform 뒤 preview scale 3.5와 deterministic
+0.8~1.2 piece scale을 적용한다. proxy admission은 원자적이며 누락·손상 시 파편 preview만
+unavailable 상태로 격리한다.
+optional proxy 누락 때문에 Valtan Area, DeployProp 편집, World Destruction 문서 편집 전체를 막아서는
+안 된다. Map 담당자에게는 위 네 asset ID와 물리 `Client/Bin/Resources/Effect/Valtan/Meshes/FX_SM_00`
+폴더를 함께 인계한다.
+
+맵 담당자의 실행 순서, 세 trigger 층의 차이, Effect cue와 제품 Server를 붙이는 호출 지점은
+`MAP_DESTRUCTION_PHYSX_HANDOFF.md`가 정본이다. `Stage Selected (Paused)`는 actor tree를 stage할 뿐
+재생하지 않으므로 가시성 검증은 `Play All Fragments` 또는 fragment 행의 `Solo + Play`를 사용한다.
 
 ### Valtan MapTool Area 진입 실패 점검
 

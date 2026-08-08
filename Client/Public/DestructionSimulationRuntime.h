@@ -19,6 +19,7 @@ enum class DESTRUCTION_SIMULATION_SCOPE
 {
 	ALL_DEBRIS,
 	SOLO_SELECTED,
+	SOLO_FRAGMENT,
 	END
 };
 
@@ -31,8 +32,33 @@ enum class DESTRUCTION_SIMULATION_ELEMENT_STATE
 	END
 };
 
+/* Shared admission recipe for the project-authored Valtan stone proxies.
+   MapTool admits these Resources-relative CModel assets under the stable
+   prototype tags, then the preview runtime clones only those prototypes.
+   sourceParticleAssetId remains documented separately because these meshes
+   are a project-authored stand-in, not the recovered source particle. */
+struct DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC final
+{
+	std::wstring prototypeTag;
+	std::string assetId;
+	f32_t fUniformScale = 1.f;
+};
+
 struct DESTRUCTION_SIMULATION_ELEMENT_FRAME final
 {
+	struct FRAGMENT_FRAME final
+	{
+		std::string fragmentId;
+		std::string modelAssetId;
+		uint32_t pieceIndex = 0u;
+		DESTRUCTION_SIMULATION_ELEMENT_STATE eState =
+			DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING;
+		float3_t vWorldPosition{};
+		float4_t vWorldRotationQuaternion = { 0.f, 0.f, 0.f, 1.f };
+		float3_t vLinearVelocity{};
+		f32_t fNormalizedLife = 0.f;
+	};
+
 	std::string elementId;
 	uint64_t sourceRuntimePlacementId = 0u;
 	DESTRUCTION_SIMULATION_ELEMENT_STATE eState =
@@ -41,7 +67,11 @@ struct DESTRUCTION_SIMULATION_ELEMENT_FRAME final
 	float4_t vWorldRotationQuaternion = { 0.f, 0.f, 0.f, 1.f };
 	float3_t vLinearVelocity{};
 	f32_t fNormalizedLife = 0.f;
+	std::vector<FRAGMENT_FRAME> Fragments;
 };
+
+using DESTRUCTION_SIMULATION_FRAGMENT_FRAME =
+	DESTRUCTION_SIMULATION_ELEMENT_FRAME::FRAGMENT_FRAME;
 
 struct DESTRUCTION_SIMULATION_FRAME final
 {
@@ -52,6 +82,7 @@ struct DESTRUCTION_SIMULATION_FRAME final
 	DESTRUCTION_SIMULATION_SCOPE eScope =
 		DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS;
 	std::string selectedElementId;
+	std::string selectedFragmentId;
 	std::vector<DESTRUCTION_SIMULATION_ELEMENT_FRAME> Elements;
 };
 
@@ -74,6 +105,12 @@ public:
 		const CDestructionSimulationRuntime&) = delete;
 
 public:
+	static constexpr uint32_t PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT = 12u;
+	static constexpr const char_t* PROJECT_AUTHORED_SOURCE_PARTICLE_ID =
+		"FX_ITR_02315.Par_G_Fracture_Dust_02_01";
+	static const std::vector<DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC>&
+		Get_ProjectAuthoredDebrisModelSpecs();
+
 	bool_t Stage_Profile(
 		const DESTRUCTION_SIMULATION_PROFILE& profile,
 		const std::string& selectedGroupId,
@@ -83,6 +120,8 @@ public:
 		std::string& outStatus);
 	void Clear();
 	bool_t Reset(std::string& outStatus);
+	/* selectedElementId carries an element ID for SOLO_SELECTED and an exact
+	   `<element>.fragment.NN` ID for SOLO_FRAGMENT. ALL_DEBRIS ignores it. */
 	bool_t Set_Scope(
 		DESTRUCTION_SIMULATION_SCOPE scope,
 		const std::string& selectedElementId,
@@ -116,8 +155,10 @@ private:
 		std::string& outStatus);
 	void Expire_Element(ELEMENT_RUNTIME& runtime);
 	void Destroy_Actors();
+	void Release_DebrisPreviews();
 	void Rebuild_Frame();
 	bool_t Is_ElementInScope(const std::string& elementId) const;
+	bool_t Is_FragmentInScope(const std::string& fragmentId) const;
 
 private:
 	std::unique_ptr<CPhysicsAdapter> m_pPhysics;
@@ -130,6 +171,7 @@ private:
 	DESTRUCTION_SIMULATION_SCOPE m_eScope =
 		DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS;
 	std::string m_SelectedElementId;
+	std::string m_SelectedFragmentId;
 	std::string m_Status = "Destruction simulation is not staged";
 	bool_t m_isStaged = false;
 	bool_t m_isPhysicsPaused = true;

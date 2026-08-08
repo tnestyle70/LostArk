@@ -217,6 +217,7 @@ private:
 	bool_t Ensure_AuthoringPrototypes(const CMapAssetCatalog& catalog);
 	bool_t Ensure_DeployAuthoringPrototypes(
 		const CDeployPropCatalog& catalog);
+	bool_t Ensure_DestructionDebrisAuthoringPrototypes();
 	bool_t Load_EditorAreaRegistry();
 	bool_t Switch_EditorArea(size_t descriptorIndex);
 	bool_t Save_AllAuthoring();
@@ -312,6 +313,9 @@ private:
 	bool_t Stage_DestructionElementDraftPreview();
 	void Select_DestructionSimulationProfile(const std::string& profileId);
 	void Select_DestructionSimulationElement(const std::string& elementId);
+	void Select_DestructionSimulationFragment(
+		const std::string& elementId,
+		const std::string& fragmentId);
 	void Reset_DestructionSimulationUI();
 	const DESTRUCTION_SIMULATION_PROFILE*
 		Get_SelectedDestructionSimulationProfile() const;
@@ -439,6 +443,7 @@ private:
 	CDestructionSimulationDocument m_DestructionSimulationDocument;
 	std::string m_SelectedDestructionSimulationProfileId;
 	std::string m_SelectedDestructionSimulationElementId;
+	std::string m_SelectedDestructionSimulationFragmentId;
 	std::optional<DESTRUCTION_SIMULATION_ELEMENT>
 		m_DestructionSimulationElementDraft;
 	std::string m_DestructionSimulationStatus =
@@ -446,6 +451,9 @@ private:
 	char m_DestructionSimulationFilter[128]{};
 	char m_DestructionSimulationReceiverId[128]{};
 	bool_t m_bDestructionSimulationElementDraftDirty = false;
+	bool_t m_bDestructionDebrisPrototypesReady = false;
+	std::string m_DestructionDebrisPrototypeStatus =
+		"PROJECT_AUTHORED debris models are not admitted";
 	bool_t m_bDestructionSimulationLoop = true;
 	bool_t m_bDestructionSimulationClearRequested = false;
 

@@ -2015,7 +2015,7 @@ Map Tool과 제품 Level의 동일 presentation profile
 ```text
 Valtan World Destruction group 3705102
   -> lostark.destruction-simulation v1 profile
-  -> All Debris / Solo Selected projection
+  -> All Fragments / Solo Emitter / Solo Fragment projection
   -> controller-owned 1/60 timeline
   -> existing CDeployPropObject visible instance
   -> CRigidBody handle -> CPhysics_Manager -> PhysX 5.6.1
@@ -2073,3 +2073,45 @@ collision trigger를 눈으로 확인한 결과는 RESULT의 수동 검증으로
 제품 미완료는 그대로다. `Gameplay.world.json kind=destroyable` admission, Server persistent state,
 dynamic collision/navigation, Valtan actual charge/swept receiver, Shared full/delta, late join과 제품
 Client debris presentation은 `WD-G05`~`WD-G08`에서 한 수직 슬라이스로 열어야 한다.
+
+### 13.5 ITR_02306 project-authored mesh debris 보강
+
+실측 결과 `DEPLOY_ITR_02306`의 fractured WModel은 작은 벽돌 조각을 숨겨 둔 모델이 아니라 기둥
+전체를 표현하는 하나의 static CModel이다. 따라서 `Visible=true`나 submesh visibility 전환으로 작은
+파편을 복구할 수 없다. 원본 deploy metadata가 가리키는 정확한 파괴 particle은
+`FX_ITR_02315.Par_G_Fracture_Dust_02_01`이지만 현재 runtime Resources에는 그 emitter와 dependency가
+복구되어 있지 않다.
+
+정확한 particle이 복구되기 전의 MapTool audition은 다음처럼 명시적으로 `PROJECT_AUTHORED`인 proxy
+debris를 사용한다.
+
+```text
+ITR_02306 source placement 1개
+  -> 원래 위치에서 intact -> fractured 상태 전환
+  -> Valtan stone proxy CModel 12개
+  -> PhysX dynamic box actor 12개
+  -> element direction/speed + stable deterministic spread/up/angular velocity
+  -> gravity/lifetime 뒤 proxy만 숨김
+  -> Reset/Clear에서 actor/proxy 제거와 source state exact 복원
+```
+
+proxy model은 `Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001`, `002`, `004`, `010`의 static
+WModel을 기존 `CModel -> CMaterial` 경로로 admit한다. profile v1의 element 하나는 계속 source
+placement 하나를 뜻하며, runtime이 stable element ID와 piece ordinal로 12개 조각을 결정한다. 따라서
+기존 WorldEvents group과 element placement의 1:1 cross-reference 및 All/Solo UX를 깨지 않는다.
+
+runtime fragment ID는 `<elementId>.fragment.00`~`.fragment.11`이다. Profile -> Wall Mesh Emitter ->
+Fragment tree에서 model asset, state, normalized life, world pose, velocity를 read-only로 표시한다.
+`ALL_DEBRIS`는 모든 emitter의 fragment, `SOLO_SELECTED`는 선택 emitter의 12개, `SOLO_FRAGMENT`는
+정확히 actor 하나만 생성한다. proxy prototype은 0.01 asset pretransform 뒤 3.5 preview scale을 사용하고
+piece별 0.8~1.2 scale/spread/up/angular velocity는 stable seed에서 결정한다.
+
+activation 시 source fractured model을 물리 actor로 이동시키지 않고 제자리에 남긴다. proxy 조각만
+각 actor pose를 pull해 렌더한다. 같은 seed 입력에서 Play, Restart, 1/60 Step과 reset 후 Seek가 같은
+proxy 선택, spawn pose, 선속도와 각속도를 재현해야 한다. UI는 source particle ID가 아직 미복구이며
+현재 결과가 project-authored proxy임을 숨기지 않는다. exact emitter가 복구되면 model spec/recipe를
+교체하되 PhysX clock, actor lifecycle, All/Solo와 Detail 저작 경계는 그대로 재사용한다.
+
+향후 recipe를 데이터로 승격할 때는 `recipeId`, Resources-relative fragment asset IDs, piece count,
+spread angle, upward speed, speed/angular/visual scale range와 seed policy를 schema v2 또는 별도
+presentation catalog에 둔다. Prototype tag와 vector index는 저장하지 않는다.
