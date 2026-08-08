@@ -50,6 +50,10 @@ namespace
 	/* Tighter than the narrowest combo window the balance data declares (183 ms
 	on the Artist third basic-attack stage), so a held button cannot skip one. */
 	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
+
+	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 100 };
+	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 1.f;
+	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
 }
 
 void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>& character)
@@ -64,6 +68,8 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_wasKeyDown.fill(false);
 	m_wasLeftMouseDown = false;
 	m_LastBasicAttackSentAt = {};
+	m_LastMoveGoalSentAt = {};
+	m_LastSentMoveGoal = {};
 }
 
 void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
@@ -86,7 +92,6 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 		m_pCommandSink;
 
 	if (gameplayCommandsEnabled && isRightMouseDown &&
-		!m_wasRightMouseDown &&
 		nullptr != character &&
 		nullptr != commandSink)
 	{
@@ -95,17 +100,25 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 
 		if (nullptr != transform)
 		{
-			const f32_t groundY = XMVectorGetY(
-				transform->Get_State(STATE::POSITION));
+			const vector_t position =
+				transform->Get_State(STATE::POSITION);
+			const f32_t groundY = XMVectorGetY(position);
 
 			float3_t goal{};
 
 			if (Try_PickGroundPlane(groundY, goal) &&
+				Should_SendMoveGoal(
+					m_wasRightMouseDown,
+					XMVectorGetX(position),
+					XMVectorGetZ(position),
+					goal) &&
 				commandSink->Request_MoveGoal(
 					m_iNextMoveSequence,
 					goal.x,
 					goal.z))
 			{
+				m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
+				m_LastSentMoveGoal = goal;
 				++m_iNextMoveSequence;
 				if (0 == m_iNextMoveSequence)
 					m_iNextMoveSequence = 1;
@@ -292,6 +305,35 @@ void Client::CPlayerController::Set_CommandSink(
 	const shared_ptr<IPlayerCommandSink>& commandSink)
 {
 	m_pCommandSink = commandSink;
+}
+
+bool_t Client::CPlayerController::Should_SendMoveGoal(
+	const bool_t wasRightMouseDown,
+	const f32_t characterX,
+	const f32_t characterZ,
+	const float3_t& goal) const
+{
+	if (!wasRightMouseDown)
+		return true;
+
+	if (std::chrono::steady_clock::now() - m_LastMoveGoalSentAt <
+		MOVE_GOAL_RESEND_INTERVAL)
+	{
+		return false;
+	}
+
+	const f32_t reachX = goal.x - characterX;
+	const f32_t reachZ = goal.z - characterZ;
+	if (reachX * reachX + reachZ * reachZ <
+		MOVE_GOAL_DEADZONE_RADIUS * MOVE_GOAL_DEADZONE_RADIUS)
+	{
+		return false;
+	}
+
+	const f32_t driftX = goal.x - m_LastSentMoveGoal.x;
+	const f32_t driftZ = goal.z - m_LastSentMoveGoal.z;
+	return driftX * driftX + driftZ * driftZ >=
+		MOVE_GOAL_RESEND_EPSILON * MOVE_GOAL_RESEND_EPSILON;
 }
 
 bool_t Client::CPlayerController::Try_PickGroundPlane(
