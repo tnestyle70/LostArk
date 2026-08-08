@@ -547,6 +547,16 @@ if ($effectToolHeader -notmatch 'PENDING_DOCUMENT_LOAD' -or
     $effectToolSource -notmatch 'iParticleBudget') {
     throw 'Effect document switching, animation sequence, Element audition, Apply feedback, and Particle layer summary must remain explicit.'
 }
+$loadDocumentMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged\([\s\S]*?bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad')
+if (-not $loadDocumentMatch.Success -or
+    $loadDocumentMatch.Value -match 'Start_WorldPreviewFromBeginning\(\)' -or
+    $loadDocumentMatch.Value -notmatch 'Set_Visible\(false\)' -or
+    $effectToolSource -notmatch 'Load = inspect saved data without autoplay' -or
+    $effectToolSource -notmatch 'pObject->Set_Visible\(true\)') {
+    throw 'Loading an Effect must stage it hidden; only explicit Complete, Group, or Solo play may start the character-pivot preview.'
+}
 foreach ($scopeName in @(
     'EffectTool.AuthoringWindow',
     'EffectTool.ModelViewWindow',

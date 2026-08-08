@@ -4726,7 +4726,9 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
     if (ImGui::Button("Refresh Index"))
         Refresh_DataFiles();
     ImGui::TextDisabled(
-        "Load = open saved data | Unload = remove it from the screen, never delete the file");
+        "Load = inspect saved data without autoplay | Play Complete/Group/Solo starts preview");
+    ImGui::TextDisabled(
+        "Unload = remove it from the screen, never delete the file");
     ImGui::TextDisabled(
         "Imported Draft rows are extraction reference only; load the matching Authored row.");
     Render_LoadedEffectContents();
@@ -5731,18 +5733,22 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
             m_pWorldPreviewObject.lock())
         {
             pObject->Set_RootWorld(TargetRoot);
-            pObject->Set_Visible(true);
         }
     }
     if (bPreviewStaged)
     {
-        Stage_WorldPreview();
-        Start_WorldPreviewFromBeginning();
+        if (const shared_ptr<CEffectObject> pObject =
+            m_pWorldPreviewObject.lock())
+        {
+            pObject->Set_Visible(false);
+        }
+        m_bPreviewPlaying = false;
+        Set_SynchronizedAnimationPaused(true);
     }
     else
         m_bPreviewPlaying = false;
     m_strDocumentStatus = bPreviewStaged ?
-        "Loaded existing Effect and started the world preview: " +
+        "Loaded existing Effect for inspection; choose Complete, Group, or Solo Play: " +
 			(Path.empty() ? strSelectionId : Path.string()) :
         "Loaded editable draft; preview is hidden until required resources bind: " +
             (PreviewStatus.empty() ? m_strPreviewStatus : PreviewStatus);
@@ -7119,6 +7125,13 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
         m_bPreviewPlaying = false;
         return;
     }
+    float4x4_t TargetRoot{};
+    if (CAnimationTargetService::Resolve_RootTransform(&TargetRoot))
+    {
+        m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
+        pObject->Set_RootWorld(TargetRoot);
+    }
+    pObject->Set_Visible(true);
     pObject->Reset();
     pObject->Set_SampleTime(0.f);
     m_bPreviewPlaying = true;
