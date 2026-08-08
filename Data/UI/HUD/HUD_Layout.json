@@ -2,7 +2,7 @@
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
   "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default", "Yinyangshi", "Slayer", "Gunslinger", "LanceMaster", "DimensionMaster"],
+  "classes": ["Default", "Artist", "Slayer", "Gunslinger", "LanceMaster", "DimensionMaster"],
   "slots": [
     {
       "id": "HealthBar_BG",
@@ -242,52 +242,52 @@
     },
     {
       "id": "Yi_id_paint_1",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 581.448975, "y": 583.231018, "width": 76, "height": 107 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id paint 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id paint 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_paint_2",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 698.237, "y": 599.487, "width": 71, "height": 84 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id paint 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id paint 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_emblem",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 5,
       "rect": { "x": 597.754028, "y": 568.226013, "width": 161, "height": 157 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_brush",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 5,
       "rect": { "x": 649.018982, "y": 555.176025, "width": 68, "height": 165 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id brush.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id brush.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
@@ -308,39 +308,39 @@
     },
     {
       "id": "Yi_id_gauge",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 609.830994, "y": 668.80603, "width": 134, "height": 53 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id gauge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id gauge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yin_Skill_Z",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 7,
       "rect": { "x": 612.273987, "y": 621.15802, "width": 30, "height": 30 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yin id skill Z.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yin id skill Z.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yin_Skill_X",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 7,
       "rect": { "x": 707.520996, "y": 622.586975, "width": 30, "height": 30 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yin id skill X.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yin id skill X.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
@@ -360,65 +360,65 @@
     },
     {
       "id": "Yin_Skill_X_BG",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 7,
       "rect": { "x": 697.046997, "y": 609.734985, "width": 51, "height": 54 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yin_Skill_Z_BG",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 7,
       "rect": { "x": 601.802002, "y": 608.30603, "width": 51, "height": 54 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_orb_1_1",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 608.953979, "y": 672.455994, "width": 48, "height": 44 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_orb_1_1_1",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 650.742004, "y": 676.81897, "width": 48, "height": 44 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Yi_id_orb_1_1_1_1",
-      "ownerClass": "Yinyangshi",
+      "ownerClass": "Artist",
       "type": 6,
       "rect": { "x": 695.596008, "y": 672.125977, "width": 48, "height": 44 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Yinyangshi/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Artist/Yi id orb.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }

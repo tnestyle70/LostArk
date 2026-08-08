@@ -53,6 +53,12 @@ public:
 	(monotonic reveal -- a slot visible from stage N stays visible at every stage after N). */
 	void Render(const string& strOwnerClass, int32_t iStage);
 
+	/* Resources-relative path (e.g. "UI/ClassSelect/Common/Category.png") -> cached SRV, or
+	nullptr if it can't be resolved/loaded. For callers that draw a handful of images outside
+	this document's own slot layout (Level_CharacterSelect's category list, ...) instead of
+	duplicating DDS/WIC loading, or standing up a second CHUDRuntimeView, for that. */
+	ID3D11ShaderResourceView* Load_Texture(const string& strPath);
+
 private:
 	struct TEXTURE_LAYER
 	{
@@ -78,6 +84,15 @@ private:
 		consumer, not a new document field. */
 		vector<string>			AnimationFrames;
 		f32_t					fAnimationFPS = 10.f;
+		/* true (default) repeats for as long as this view is on screen, e.g. a lobby background.
+		false plays once from the view's first render and then stops drawing the slot entirely,
+		e.g. a boot logo intro that should reveal whatever is layered beneath it once it ends. */
+		bool_t					bAnimationLoop = true;
+		/* Sentinel: unset until this slot's first Render() call, which stamps it with
+		ImGui::GetTime() so playback starts from frame 0 the first time this slot is actually
+		drawn -- using the raw (app-launch-relative) clock directly would let engine/asset init
+		time before this view's first frame eat into or skip past a non-looping slot entirely. */
+		f64_t					dAnimationStartSeconds = -1.0;
 	};
 
 private:

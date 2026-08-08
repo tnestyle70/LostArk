@@ -187,12 +187,20 @@ HRESULT Client::CHUDRuntimeView::Load()
 							Slot.AnimationFrames.push_back(FrameValue.Get_String());
 				}
 			}
+			if (const DATA_JSON_VALUE* pLoop = pAnimation->Find("loop"))
+				if (pLoop->Is_Boolean())
+					Slot.bAnimationLoop = pLoop->Get_Boolean();
 		}
 
 		m_Slots.push_back(move(Slot));
 	}
 
 	return S_OK;
+}
+
+ID3D11ShaderResourceView* Client::CHUDRuntimeView::Load_Texture(const string& strPath)
+{
+	return Get_Or_Load_Texture(strPath);
 }
 
 ID3D11ShaderResourceView* Client::CHUDRuntimeView::Get_Or_Load_Texture(const string& strPath)
@@ -281,7 +289,7 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 	const float fScaleX = pViewport->WorkSize.x / m_fResolutionWidth;
 	const float fScaleY = pViewport->WorkSize.y / m_fResolutionHeight;
 
-	for (const HUD_SLOT& Slot : m_Slots)
+	for (HUD_SLOT& Slot : m_Slots)
 	{
 		if (!Slot.strOwnerClass.empty() && Slot.strOwnerClass != strOwnerClass)
 			continue;
@@ -299,16 +307,34 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 		Get_Rotated_Rect_Corners(vTopLeft, vBotRight, Slot.fRotation, Corners);
 
 		/* A flipbook slot (login/lobby background frame sequences, ...) plays instead of
-		drawing Layers -- ImGui::GetTime() is already the monotonic clock every other draw
-		call this frame reads, so the whole HUD stays on one time source. Looping (modulo
-		frame count) instead of clamping is deliberate: a background sequence is meant to
-		keep playing for as long as this view is on screen. */
+		drawing Layers. Playback is timed from this slot's own first Render() call (stamped
+		into dAnimationStartSeconds below) rather than raw ImGui::GetTime(), so engine/asset
+		init time before this view ever draws can't eat into or skip past a non-looping slot.
+		Looping (modulo frame count) is for a background meant to keep playing for as long as
+		this view is on screen; a non-looping slot (e.g. a boot logo intro) instead stops
+		drawing itself once its last frame's duration has elapsed, which reveals whatever draws
+		beneath it -- Lobby_Layout.json relies on this to uncover the title background once the
+		intro finishes, so slot order there puts the intro after the background. */
 		if (!Slot.AnimationFrames.empty())
 		{
-			const double dElapsedSeconds = ImGui::GetTime();
+			if (Slot.dAnimationStartSeconds < 0.0)
+				Slot.dAnimationStartSeconds = ImGui::GetTime();
+
+			const double dElapsedSeconds = ImGui::GetTime() - Slot.dAnimationStartSeconds;
 			const size_t iFrameCount = Slot.AnimationFrames.size();
-			const size_t iFrameIndex = static_cast<size_t>(
-				dElapsedSeconds * static_cast<double>(Slot.fAnimationFPS)) % iFrameCount;
+			const double dFrameProgress = dElapsedSeconds * static_cast<double>(Slot.fAnimationFPS);
+
+			size_t iFrameIndex = 0;
+			if (Slot.bAnimationLoop)
+			{
+				iFrameIndex = static_cast<size_t>(dFrameProgress) % iFrameCount;
+			}
+			else
+			{
+				if (dFrameProgress >= static_cast<double>(iFrameCount))
+					continue;
+				iFrameIndex = static_cast<size_t>(dFrameProgress);
+			}
 
 			ID3D11ShaderResourceView* pSRV =
 				Get_Or_Load_Texture(Slot.AnimationFrames[iFrameIndex]);

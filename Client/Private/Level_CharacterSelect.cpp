@@ -9,6 +9,7 @@
 #include "CharacterSelectionState.h"
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
+#include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
@@ -137,6 +138,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 	if (FAILED(Ready_Preview(initialClass)) || FAILED(Ready_Camera()))
 		return E_FAIL;
 
+	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext,
+		L"UI/ClassSelect/ClassSelect_Layout.json",
+		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
+
 	CHARACTER_TEST_ENTRY_MODE entryMode = CHARACTER_TEST_ENTRY_MODE::NONE;
 	if (CCharacterSelectionState::Try_Consume_TestEntryMode(entryMode) &&
 		CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY == entryMode)
@@ -183,6 +189,7 @@ HRESULT CLevel_CharacterSelect::Render()
 		TEXT("LostArk Character Select - Preview"));
 #endif
 	Render_SelectionPanel();
+	Render_ClassList();
 	return S_OK;
 }
 
@@ -731,6 +738,235 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		"F1: tools  |  F6: follow/free  |  Server Play: skill input enabled");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
+}
+
+namespace
+{
+	/* Mirrors the rects CHUDLayoutTool wrote for the same slot ids in
+	Data/UI/ClassSelect/ClassSelect_Layout.json -- CHUDRuntimeView has no public slot query, so
+	the click targets (and the hand-drawn category list / thumbnail / confirm button, which
+	aren't slot-driven at all) are kept in sync with that JSON by hand here. */
+	struct CLASS_LIST_ENTRY
+	{
+		f32_t fX, fWidth, fHeight;
+		size_t iSupportedClassIndex;
+		/* "Warlord" etc -- matches ClassSelect_Layout.json's "classes" array and each per-class
+		slot's ownerClass, not Get_CharacterClassName()'s display text ("Dimension Master" has a
+		space CHUDRuntimeView's ownerClass match would never see). */
+		const char* pJsonClassName;
+		const char* pCategoryLabel;
+		const char* pClassLabel;
+		/* File under UI/ClassSelect/Common/, or nullptr where no category symbol has been cut
+		yet (Specialist(M) -- text-only per an earlier explicit "substitute for now"). Drawn as a
+		small square at the row's left edge, not stretched across the row: that stretch (a
+		280x48 slot layer scaling a ~76x72 source) was the exact "horizontally squashed symbol"
+		this replaces. */
+		const char* pCategorySymbolFile;
+	};
+
+	/* No fY here: rows accordion (a click pushes every row below it down by the expanded
+	thumbnail's height instead of the thumbnail always drawing in one fixed spot), so each row's
+	actual y is only known at render time -- see Render_ClassList's running fRowY. */
+	constexpr CLASS_LIST_ENTRY CLASS_LIST_ENTRIES[] =
+	{
+		{ 950.f, 280.f, 48.f, 5, "Warlord",         "\xec\xa0\x84\xec\x82\xac(\xeb\x82\xa8)", "\xec\x9b\x8c\xeb\xa1\x9c\xeb\x93\x9c", "CategorySymbol_Warrior.png" },
+		{ 950.f, 280.f, 48.f, 0, "LanceMaster",     "\xeb\xac\xb4\xeb\x8f\x84\xea\xb0\x80(\xec\x97\xac)", "\xec\xb0\xbd\xec\x88\xa0\xec\x82\xac", "CategorySymbol_MartialW.png" },
+		{ 950.f, 280.f, 48.f, 3, "Artist",          "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xec\x97\xac)", "\xeb\x8f\x84\xed\x99\x94\xea\xb0\x80", "CategorySymbol_SpecialistF.png" },
+		{ 950.f, 280.f, 48.f, 4, "DimensionMaster", "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xeb\x82\xa8)", "\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac", nullptr },
+	};
+
+	constexpr f32_t REF_WIDTH = 1280.f;
+	constexpr f32_t REF_HEIGHT = 720.f;
+
+	constexpr f32_t ROW_Y_START = 60.f;
+	constexpr f32_t ROW_GAP = 7.f;
+	constexpr f32_t THUMB_W = 134.f;
+	constexpr f32_t THUMB_H = 78.f;
+	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
+	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
+
+	constexpr f32_t CONFIRM_W = 349.f;
+	constexpr f32_t CONFIRM_H = 52.f;
+	constexpr f32_t CONFIRM_X = (REF_WIDTH - CONFIRM_W) * 0.5f;
+	constexpr f32_t CONFIRM_Y = 668.f;
+
+	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
+	{
+		return string("UI/ClassSelect/") + pClassName + "/" + pFileName;
+	}
+}
+
+void CLevel_CharacterSelect::Render_ClassList()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+
+	const string strPreviewClass = m_iPreviewIndex < SUPPORTED_CLASSES.size()
+		? [this]() -> string
+		{
+			for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+				if (Entry.iSupportedClassIndex == m_iPreviewIndex)
+					return Entry.pJsonClassName;
+			return {};
+		}()
+		: string{};
+
+	m_pClassSelectView->Render(strPreviewClass, 0);
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
+	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
+	{
+		return ImVec2(
+			pViewport->WorkPos.x + fX * fScaleX,
+			pViewport->WorkPos.y + fY * fScaleY);
+	};
+
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	/* Changing preview class only makes sense while nothing server-authoritative is in
+	flight; Render_SelectionPanel's own Selectable list gates the same way. */
+	const bool_t bInteractable = MODE::PREVIEW == m_eMode;
+
+	/* Left panel text: JSON slots only carry images, so the class name and the three yellow
+	section labels are drawn here against the same rects CHUDLayoutTool wrote for
+	<Class>_NameSymbol / _Description / _IdentityID in ClassSelect_Layout.json. Description /
+	IdentityDescription paragraph copy isn't authored anywhere yet, so those two stay
+	image/text-empty for now -- just their marker rects exist. */
+	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
+	{
+		if (Entry.iSupportedClassIndex != m_iPreviewIndex)
+			continue;
+
+		pDrawList->AddText(Fn_ToScreen(45.f, 264.f), IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
+		pDrawList->AddText(Fn_ToScreen(15.f, 296.f), IM_COL32(255, 220, 140, 255),
+			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
+		pDrawList->AddText(Fn_ToScreen(15.f, 465.f), IM_COL32(255, 220, 140, 255),
+			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
+		pDrawList->AddText(Fn_ToScreen(15.f, 600.f), IM_COL32(255, 220, 140, 255),
+			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
+		break;
+	}
+
+	pDrawList->AddText(Fn_ToScreen(1000.f, 20.f), IM_COL32(255, 220, 140, 255),
+		"\xed\x81\xb4\xeb\x9e\x98\xec\x8a\xa4 \xec\x84\xa0\xed\x83\x9d");
+
+	/* Accordion: fRowY advances past each row, and past the expanded row's thumbnail block too,
+	so a category expanding pushes every row beneath it down instead of the thumbnail always
+	drawing in one fixed spot regardless of which category opened it. */
+	const int32_t iExpandedBefore = m_iExpandedCategory;
+	f32_t fRowY = ROW_Y_START;
+	for (int32_t i = 0; i < static_cast<int32_t>(std::size(CLASS_LIST_ENTRIES)); ++i)
+	{
+		const CLASS_LIST_ENTRY& Entry = CLASS_LIST_ENTRIES[i];
+		const ImVec2 vTopLeft = Fn_ToScreen(Entry.fX, fRowY);
+		const ImVec2 vBotRight = Fn_ToScreen(Entry.fX + Entry.fWidth, fRowY + Entry.fHeight);
+
+		const bool_t bHovered = bInteractable &&
+			vMouse.x >= vTopLeft.x && vMouse.x < vBotRight.x &&
+			vMouse.y >= vTopLeft.y && vMouse.y < vBotRight.y;
+		const bool_t bExpanded = i == iExpandedBefore;
+
+		if (ID3D11ShaderResourceView* pRowBgSRV = m_pClassSelectView->Load_Texture(
+			bExpanded ? "UI/ClassSelect/Common/CategorySelected.png" : "UI/ClassSelect/Common/Category.png"))
+		{
+			pDrawList->AddImage(pRowBgSRV, vTopLeft, vBotRight);
+		}
+
+		if (!bExpanded && bHovered)
+		{
+			pDrawList->AddRect(vTopLeft, vBotRight, IM_COL32(255, 220, 90, 160), 4.f, 0, 1.5f);
+		}
+
+		if (nullptr != Entry.pCategorySymbolFile)
+		{
+			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
+				string("UI/ClassSelect/Common/") + Entry.pCategorySymbolFile))
+			{
+				pDrawList->AddImage(pSymbolSRV,
+					Fn_ToScreen(Entry.fX + 8.f, fRowY + 6.f),
+					Fn_ToScreen(Entry.fX + 44.f, fRowY + 42.f));
+			}
+		}
+
+		pDrawList->AddText(Fn_ToScreen(Entry.fX + 52.f, fRowY + 16.f),
+			IM_COL32(230, 230, 230, 255), Entry.pCategoryLabel);
+
+		if (bHovered && bClicked)
+			m_iExpandedCategory = bExpanded ? -1 : i;
+
+		fRowY += Entry.fHeight + ROW_GAP;
+
+		if (bExpanded)
+		{
+			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iPreviewIndex;
+			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
+
+			const ImVec2 vThumbTopLeft = Fn_ToScreen(Entry.fX, fThumbY);
+			const ImVec2 vThumbBotRight = Fn_ToScreen(Entry.fX + THUMB_W, fThumbY + THUMB_H);
+
+			if (ID3D11ShaderResourceView* pThumbSRV = m_pClassSelectView->Load_Texture(
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png")))
+			{
+				pDrawList->AddImage(pThumbSRV, vThumbTopLeft, vThumbBotRight);
+			}
+
+			if (ID3D11ShaderResourceView* pSymbolSRV = m_pClassSelectView->Load_Texture(
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IdentitySymbol.png")))
+			{
+				const ImVec2 vSymbolTopLeft = Fn_ToScreen(Entry.fX + THUMB_W - 22.f, fThumbY - 4.f);
+				const ImVec2 vSymbolBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 4.f, fThumbY + 22.f);
+				pDrawList->AddImage(pSymbolSRV, vSymbolTopLeft, vSymbolBotRight);
+			}
+
+			pDrawList->AddText(Fn_ToScreen(Entry.fX + 4.f, fThumbY + THUMB_H - 18.f),
+				IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
+
+			const bool_t bThumbHovered = bInteractable &&
+				vMouse.x >= vThumbTopLeft.x && vMouse.x < vThumbBotRight.x &&
+				vMouse.y >= vThumbTopLeft.y && vMouse.y < vThumbBotRight.y;
+
+			/* Small illust selected.png is the one hover/confirm frame -- both states use the
+			same authored art instead of a placeholder AddRect() outline. */
+			if (bConfirmed || bThumbHovered)
+			{
+				if (ID3D11ShaderResourceView* pSelectedFrameSRV = m_pClassSelectView->Load_Texture(
+					"UI/ClassSelect/Common/SmallIllustSelected.png"))
+				{
+					const ImVec2 vFrameTopLeft = Fn_ToScreen(Entry.fX - 2.f, fThumbY - 2.f);
+					const ImVec2 vFrameBotRight = Fn_ToScreen(Entry.fX + THUMB_W + 2.f, fThumbY + THUMB_H + 2.f);
+					pDrawList->AddImage(pSelectedFrameSRV, vFrameTopLeft, vFrameBotRight);
+				}
+			}
+
+			if (bThumbHovered && bClicked)
+				Select_Preview(Entry.iSupportedClassIndex);
+
+			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
+	}
+
+	{
+		const ImVec2 vConfirmTopLeft = Fn_ToScreen(CONFIRM_X, CONFIRM_Y);
+		const ImVec2 vConfirmBotRight = Fn_ToScreen(CONFIRM_X + CONFIRM_W, CONFIRM_Y + CONFIRM_H);
+
+		if (ID3D11ShaderResourceView* pEdgeSRV =
+			m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/ConfirmEdge.png"))
+		{
+			pDrawList->AddImage(pEdgeSRV, vConfirmTopLeft, vConfirmBotRight);
+		}
+
+		const char* pConfirmLabel = "\xec\xba\x90\xeb\xa6\xad\xed\x84\xb0 \xec\x83\x9d\xec\x84\xb1";
+		const ImVec2 vLabelSize = ImGui::CalcTextSize(pConfirmLabel);
+		pDrawList->AddText(
+			ImVec2(
+				(vConfirmTopLeft.x + vConfirmBotRight.x) * 0.5f - vLabelSize.x * 0.5f,
+				(vConfirmTopLeft.y + vConfirmBotRight.y) * 0.5f - vLabelSize.y * 0.5f),
+			IM_COL32(255, 255, 255, 255), pConfirmLabel);
+	}
 }
 
 unique_ptr<CLevel_CharacterSelect> CLevel_CharacterSelect::Create(
