@@ -50,7 +50,7 @@
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 20000,
-      "actionDurationMs": 4333,
+      "actionDurationMs": 3034,
       "hitTimeMs": 300,
       "resourceCost": 410,
       "movementDistance": 0.0,

@@ -53,8 +53,8 @@
     {
       "skillId": 34100,
       "clips": [
-        "flm_sk_cycloinclance_01",
-        "flm_sk_cycloinclance_02",
+        { "clip": "flm_sk_cycloinclance_01", "playMs": 401 },
+        { "clip": "flm_sk_cycloinclance_02", "playMs": 1200 },
         "flm_sk_cycloinclance_03_re"
       ]
     },

@@ -17075,9 +17075,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  4333,
+                        "sourceValue":  3034,
                         "transform":  "identity",
-                        "resultValue":  4333
+                        "resultValue":  3034
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
