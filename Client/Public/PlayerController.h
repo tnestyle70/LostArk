@@ -38,6 +38,12 @@ namespace Client
 			f32_t groundY,
 			float3_t& outPosition) const;
 
+		bool_t Should_SendMoveGoal(
+			bool_t wasRightMouseDown,
+			f32_t characterX,
+			f32_t characterZ,
+			const float3_t& goal) const;
+
 		/* Walks the quick slots once and reports the first newly pressed one that
 		the character's class has a skill bound to. Only writes outSkillId when it
 		is still INVALID_SKILL_ID, so one frame submits at most one skill. */
@@ -63,6 +69,8 @@ namespace Client
 		std::uint32_t m_iNextMoveSequence = 1;
 		std::uint32_t m_iNextActionSequence = 1;
 		bool_t m_wasRightMouseDown = false;
+		std::chrono::steady_clock::time_point m_LastMoveGoalSentAt{};
+		float3_t m_LastSentMoveGoal{};
 		/* Edge state indexed by DirectInput key code, not by binding position: a
 		slot that is later re-pointed at another skill must not make a key that is
 		already held read as a fresh press. */
