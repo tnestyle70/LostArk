@@ -50,7 +50,7 @@
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 20000,
-      "actionDurationMs": 4333,
+      "actionDurationMs": 3034,
       "hitTimeMs": 300,
       "resourceCost": 410,
       "movementDistance": 0.0,
@@ -65,18 +65,31 @@
       "inputSlot": "R",
       "displayName": "공의연무",
       "actionId": "lancemaster.skill.34160",
-      "skillKind": "ACTIVE",
+      "skillKind": "COMBO",
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 16000,
-      "actionDurationMs": 5667,
+      "actionDurationMs": 2300,
       "hitTimeMs": 500,
       "resourceCost": 361,
       "movementDistance": 0.0,
       "maximumRange": 3.0,
       "serverDamageProfileId": "damage.player.34160",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 2300,
+          "hitTimeMs": 500,
+          "inputOpenMs": 1302,
+          "inputCloseMs": 2300
+        },
+        {
+          "actionDurationMs": 1400,
+          "hitTimeMs": 250,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 34140,
@@ -84,18 +97,31 @@
       "inputSlot": "A",
       "displayName": "선풍참혼",
       "actionId": "lancemaster.skill.34140",
-      "skillKind": "ACTIVE",
+      "skillKind": "COMBO",
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 15000,
-      "actionDurationMs": 5600,
+      "actionDurationMs": 2118,
       "hitTimeMs": 450,
       "resourceCost": 347,
       "movementDistance": 0.0,
       "maximumRange": 8.0,
       "serverDamageProfileId": "damage.player.34140",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 2118,
+          "hitTimeMs": 450,
+          "inputOpenMs": 299,
+          "inputCloseMs": 2118
+        },
+        {
+          "actionDurationMs": 2033,
+          "hitTimeMs": 400,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 34120,
@@ -126,7 +152,7 @@
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 18000,
-      "actionDurationMs": 2667,
+      "actionDurationMs": 1250,
       "hitTimeMs": 200,
       "resourceCost": 386,
       "movementDistance": 0.0,
@@ -860,7 +886,7 @@
       "requiredStance": "LANCE_MASTER_SHORT_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 5000,
-      "actionDurationMs": 1192,
+      "actionDurationMs": 609,
       "hitTimeMs": 304,
       "resourceCost": 36,
       "movementDistance": 0.0,
@@ -932,18 +958,31 @@
       "inputSlot": "A",
       "displayName": "절룡세",
       "actionId": "lancemaster.skill.34580",
-      "skillKind": "ACTIVE",
+      "skillKind": "COUNTER",
       "requiredStance": "LANCE_MASTER_SHORT_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 20000,
-      "actionDurationMs": 3300,
-      "hitTimeMs": 2350,
+      "actionDurationMs": 2000,
+      "hitTimeMs": 0,
       "resourceCost": 80,
       "movementDistance": 0.0,
       "maximumRange": 2.0,
       "serverDamageProfileId": "damage.player.34580",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 2000,
+          "hitTimeMs": 0,
+          "inputOpenMs": 0,
+          "inputCloseMs": 1200
+        },
+        {
+          "actionDurationMs": 1300,
+          "hitTimeMs": 350,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 34590,

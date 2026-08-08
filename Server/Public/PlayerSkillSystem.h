@@ -24,6 +24,14 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_RELEASE_SKILL& command,
 			const CGameplayCatalog& catalog);
 
+		/* Every source of incoming player damage asks this first. A COUNTER skill
+		guarding inside its window absorbs the hit and promotes to its counter
+		stage, and the caller must then skip the damage it was about to apply. */
+		[[nodiscard]] static bool Try_Counter(
+			SERVER_PLAYER& player,
+			const CGameplayCatalog& catalog,
+			std::uint32_t serverTick);
+
 		/* outDamageEvents collects every hit this call resolves so the room can
 		ship the amounts in the same tick's snapshot. The room owns the vector's
 		lifetime; a combo emits once per stage that lands. */

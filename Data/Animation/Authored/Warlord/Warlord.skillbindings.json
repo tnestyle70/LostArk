@@ -1,15 +1,15 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "Warlord",
   "characterClass": "WARLORD",
   "bindings": [
     {
       "skillId": 17000,
       "clips": [
-        "wgl_att_battle_1_01",
-        "wgl_att_battle_1_02",
-        "wgl_att_battle_1_03"
+        [ "wgl_att_battle_1_01" ],
+        [ "wgl_att_battle_1_02" ],
+        [ "wgl_att_battle_1_03" ]
       ]
     },
     {
@@ -80,9 +80,9 @@
     {
       "skillId": 17240,
       "clips": [
-        "wgl_sk_eternalcyclone_01",
-        "wgl_sk_eternalcyclone_02",
-        "wgl_sk_eternalcyclone_07"
+        [ "wgl_sk_eternalcyclone_01" ],
+        [ "wgl_sk_eternalcyclone_02" ],
+        [ "wgl_sk_eternalcyclone_07" ]
       ]
     },
     {

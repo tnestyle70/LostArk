@@ -21,7 +21,7 @@ namespace
 
 	constexpr std::string_view DOCUMENT_SCHEMA =
 		"lostark.animation-skill-bindings";
-	constexpr double DOCUMENT_VERSION = 2.0;
+	constexpr double DOCUMENT_VERSION = 3.0;
 	constexpr std::size_t MAX_BINDINGS = 64u;
 	constexpr std::size_t MAX_CLIPS_PER_BINDING = 16u;
 	constexpr std::uint32_t MAX_CLIP_PLAY_MS = 60000u;
@@ -149,13 +149,31 @@ namespace
 		return true;
 	}
 
+	void Serialize_Clip(
+		std::ostringstream& output,
+		const ANIMATION_SKILL_CLIP& clip)
+	{
+		if (0u == clip.iPlayMs && 1.f == clip.fPlayRate)
+		{
+			output << '"' << CDataJson::Escape(clip.strClipName) << '"';
+			return;
+		}
+		output << "{ \"clip\": \""
+			<< CDataJson::Escape(clip.strClipName) << '"';
+		if (0u != clip.iPlayMs)
+			output << ", \"playMs\": " << clip.iPlayMs;
+		if (1.f != clip.fPlayRate)
+			output << ", \"playRate\": " << clip.fPlayRate;
+		output << " }";
+	}
+
 	std::string Serialize(
 		const ANIMATION_SKILL_BINDING_DOCUMENT& document)
 	{
 		std::ostringstream output;
 		output << "{\n"
 			<< "  \"schema\": \"" << DOCUMENT_SCHEMA << "\",\n"
-			<< "  \"formatVersion\": 2,\n"
+			<< "  \"formatVersion\": 3,\n"
 			<< "  \"animationAssetId\": \""
 			<< CDataJson::Escape(document.strAnimationAssetId) << "\",\n"
 			<< "  \"characterClass\": \""
@@ -168,28 +186,29 @@ namespace
 		{
 			const ANIMATION_SKILL_BINDING& binding =
 				document.Bindings[bindingIndex];
+			const bool_t isNested = 1u != binding.Stages.size();
 			output << "    {\n"
 				<< "      \"skillId\": " << binding.iSkillId << ",\n"
 				<< "      \"clips\": [";
-			for (std::size_t clipIndex = 0;
-				clipIndex < binding.Clips.size();
-				++clipIndex)
+			for (std::size_t stageIndex = 0;
+				stageIndex < binding.Stages.size();
+				++stageIndex)
 			{
-				if (clipIndex > 0u)
+				if (stageIndex > 0u)
 					output << ", ";
-				const ANIMATION_SKILL_CLIP& clip = binding.Clips[clipIndex];
-				if (0u == clip.iPlayMs && 1.f == clip.fPlayRate)
+				const ANIMATION_SKILL_STAGE& stage = binding.Stages[stageIndex];
+				if (isNested)
+					output << '[';
+				for (std::size_t clipIndex = 0;
+					clipIndex < stage.Clips.size();
+					++clipIndex)
 				{
-					output << '"' << CDataJson::Escape(clip.strClipName) << '"';
-					continue;
+					if (clipIndex > 0u)
+						output << ", ";
+					Serialize_Clip(output, stage.Clips[clipIndex]);
 				}
-				output << "{ \"clip\": \""
-					<< CDataJson::Escape(clip.strClipName) << '"';
-				if (0u != clip.iPlayMs)
-					output << ", \"playMs\": " << clip.iPlayMs;
-				if (1.f != clip.fPlayRate)
-					output << ", \"playRate\": " << clip.fPlayRate;
-				output << " }";
+				if (isNested)
+					output << ']';
 			}
 			output << "]\n    }"
 				<< (bindingIndex + 1u < document.Bindings.size() ? "," : "")
@@ -214,7 +233,7 @@ namespace
 			const ANIMATION_SKILL_BINDING& a = left.Bindings[index];
 			const ANIMATION_SKILL_BINDING& b = right.Bindings[index];
 			if (a.iSkillId != b.iSkillId ||
-				a.Clips != b.Clips)
+				a.Stages != b.Stages)
 			{
 				return false;
 			}
@@ -302,43 +321,84 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 			outStatus = "Skill binding row is invalid.";
 			return false;
 		}
-		for (const DATA_JSON_VALUE& clip : clips->Get_Array())
+		/* A flat array is one stage, a nested one is a stage per element. Mixing
+		the two shapes in a single binding leaves the stage count ambiguous. */
+		const bool_t isNested = clips->Get_Array().front().Is_Array();
+		std::size_t totalClips = 0u;
+		for (const DATA_JSON_VALUE& element : clips->Get_Array())
 		{
-			ANIMATION_SKILL_CLIP stagedClip;
-			if (clip.Is_String())
+			if (element.Is_Array() != isNested)
 			{
-				stagedClip.strClipName = clip.Get_String();
+				outStatus = "Skill binding mixes staged and flat clip rows.";
+				return false;
 			}
-			else if (Has_OnlyKnownProperties(
-				clip, { "clip", "playMs", "playRate" }))
+			ANIMATION_SKILL_STAGE stagedStage;
+			const DATA_JSON_VALUE::ARRAY single{};
+			const DATA_JSON_VALUE::ARRAY& stageClips =
+				isNested ? element.Get_Array() : single;
+			if (isNested &&
+				(stageClips.empty() || stageClips.size() > MAX_CLIPS_PER_BINDING))
 			{
-				const DATA_JSON_VALUE* clipName = Required(
-					clip, "clip", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* playMs = clip.Find("playMs");
-				const DATA_JSON_VALUE* playRate = clip.Find("playRate");
-				if (nullptr == clipName ||
-					(nullptr == playMs && nullptr == playRate) ||
-					(nullptr != playMs &&
-						!Try_ParsePlayMs(*playMs, stagedClip.iPlayMs)) ||
-					(nullptr != playRate &&
-						!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate)))
+				outStatus = "Skill binding stage is empty or too long.";
+				return false;
+			}
+			const std::size_t stageClipCount =
+				isNested ? stageClips.size() : 1u;
+			for (std::size_t index = 0; index < stageClipCount; ++index)
+			{
+				const DATA_JSON_VALUE& clip =
+					isNested ? stageClips[index] : element;
+				ANIMATION_SKILL_CLIP stagedClip;
+				if (clip.Is_String())
 				{
-					outStatus = "Skill binding clip play length is invalid.";
+					stagedClip.strClipName = clip.Get_String();
+				}
+				else if (Has_OnlyKnownProperties(
+					clip, { "clip", "playMs", "playRate" }))
+				{
+					const DATA_JSON_VALUE* clipName = Required(
+						clip, "clip", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* playMs = clip.Find("playMs");
+					const DATA_JSON_VALUE* playRate = clip.Find("playRate");
+					if (nullptr == clipName ||
+						(nullptr == playMs && nullptr == playRate) ||
+						(nullptr != playMs &&
+							!Try_ParsePlayMs(*playMs, stagedClip.iPlayMs)) ||
+						(nullptr != playRate &&
+							!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate)))
+					{
+						outStatus = "Skill binding clip play length is invalid.";
+						return false;
+					}
+					stagedClip.strClipName = clipName->Get_String();
+				}
+				else
+				{
+					outStatus = "Skill binding clip row has an unexpected field set.";
 					return false;
 				}
-				stagedClip.strClipName = clipName->Get_String();
+				if (!Is_StableToken(stagedClip.strClipName))
+				{
+					outStatus = "Skill binding clip name is invalid.";
+					return false;
+				}
+				stagedStage.Clips.push_back(std::move(stagedClip));
 			}
-			else
+			totalClips += stagedStage.Clips.size();
+			if (totalClips > MAX_CLIPS_PER_BINDING)
 			{
-				outStatus = "Skill binding clip row has an unexpected field set.";
+				outStatus = "Skill binding row is invalid.";
 				return false;
 			}
-			if (!Is_StableToken(stagedClip.strClipName))
+			if (isNested)
 			{
-				outStatus = "Skill binding clip name is invalid.";
-				return false;
+				binding.Stages.push_back(std::move(stagedStage));
+				continue;
 			}
-			binding.Clips.push_back(std::move(stagedClip));
+			if (binding.Stages.empty())
+				binding.Stages.emplace_back();
+			binding.Stages.front().Clips.push_back(
+				std::move(stagedStage.Clips.front()));
 		}
 		staged.Bindings.push_back(std::move(binding));
 	}
@@ -399,27 +459,45 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 				"Skill binding does not match the PlayerSkills class.";
 			return false;
 		}
-		if (binding.Clips.empty() ||
-			binding.Clips.size() > MAX_CLIPS_PER_BINDING ||
-			(PLAYER_SKILL_KIND::COMBO == definition->eSkillKind &&
-				binding.Clips.size() != definition->iComboStageCount))
+		/* A staged skill owns one stage per Server combo stage; everything else
+		owns exactly one stage holding its whole chain. */
+		const bool_t isStaged =
+			PLAYER_SKILL_KIND::COMBO == definition->eSkillKind ||
+			PLAYER_SKILL_KIND::HOLD == definition->eSkillKind ||
+			PLAYER_SKILL_KIND::COUNTER == definition->eSkillKind;
+		std::size_t totalClips = 0u;
+		for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
+			totalClips += stage.Clips.size();
+		if (binding.Stages.empty() || 0u == totalClips ||
+			totalClips > MAX_CLIPS_PER_BINDING ||
+			(isStaged &&
+				binding.Stages.size() != definition->iComboStageCount) ||
+			(!isStaged && 1u != binding.Stages.size()))
 		{
 			outStatus =
 				"COMBO clip count must match the Server-owned combo stage count.";
 			return false;
 		}
-		for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
+		for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
 		{
-			if (!Is_StableToken(clip.strClipName) ||
-				clip.iPlayMs > MAX_CLIP_PLAY_MS ||
-				!std::isfinite(clip.fPlayRate) ||
-				clip.fPlayRate < 0.05f || clip.fPlayRate > 16.f ||
-				availableClips.end() == std::find(
-					availableClips.begin(), availableClips.end(),
-					clip.strClipName))
+			if (stage.Clips.empty())
 			{
-				outStatus = "Skill binding references a clip missing from the target model.";
+				outStatus = "Skill binding stage binds no clip.";
 				return false;
+			}
+			for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
+			{
+				if (!Is_StableToken(clip.strClipName) ||
+					clip.iPlayMs > MAX_CLIP_PLAY_MS ||
+					!std::isfinite(clip.fPlayRate) ||
+					clip.fPlayRate < 0.05f || clip.fPlayRate > 16.f ||
+					availableClips.end() == std::find(
+						availableClips.begin(), availableClips.end(),
+						clip.strClipName))
+				{
+					outStatus = "Skill binding references a clip missing from the target model.";
+					return false;
+				}
 			}
 		}
 	}

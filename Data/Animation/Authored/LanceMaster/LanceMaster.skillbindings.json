@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
   "bindings": [
@@ -31,10 +31,10 @@
     {
       "skillId": 34010,
       "clips": [
-        "flm_att_identity1_1_01",
-        "flm_att_identity1_1_02",
-        "flm_att_identity1_1_03",
-        "flm_att_identity1_1_04"
+        [ "flm_att_identity1_1_01" ],
+        [ "flm_att_identity1_1_02" ],
+        [ "flm_att_identity1_1_03" ],
+        [ "flm_att_identity1_1_04" ]
       ]
     },
     {
@@ -53,26 +53,25 @@
     {
       "skillId": 34100,
       "clips": [
-        "flm_sk_cycloinclance_01",
-        "flm_sk_cycloinclance_02",
+        { "clip": "flm_sk_cycloinclance_01", "playMs": 401 },
+        { "clip": "flm_sk_cycloinclance_02", "playMs": 1200 },
         "flm_sk_cycloinclance_03_re"
       ]
     },
     {
       "skillId": 34160,
       "clips": [
-        "flm_sk_riseup_01",
-        "flm_sk_riseup_02",
-        "flm_sk_riseup_custom_6"
+        [ { "clip": "flm_sk_riseup_01", "playMs": 2300 } ],
+        [ "flm_sk_riseup_02" ]
       ]
     },
     {
       "skillId": 34140,
       "clips": [
-        "flm_sk_chestdestruction_01",
-        "flm_sk_chestdestruction_02",
-        "flm_sk_chestdestruction_03",
-        "flm_sk_chestdestruction_04"
+        [ { "clip": "flm_sk_chestdestruction_01", "playMs": 551 },
+          "flm_sk_chestdestruction_02" ],
+        [ { "clip": "flm_sk_chestdestruction_03", "playMs": 100 },
+          "flm_sk_chestdestruction_04" ]
       ]
     },
     {
@@ -86,8 +85,7 @@
     {
       "skillId": 34110,
       "clips": [
-        { "clip": "flm_sk_crescentsweep", "playRate": 1.2 },
-        { "clip": "flm_sk_crescentsweep_custom_5", "playRate": 1.2 }
+        { "clip": "flm_sk_crescentsweep", "playRate": 1.2 }
       ]
     },
     {
@@ -111,16 +109,15 @@
     {
       "skillId": 34510,
       "clips": [
-        "flm_att_identity2_1_01",
-        "flm_att_identity2_1_02",
-        "flm_att_identity2_1_03"
+        [ "flm_att_identity2_1_01" ],
+        [ "flm_att_identity2_1_02" ],
+        [ "flm_att_identity2_1_03" ]
       ]
     },
     {
       "skillId": 34540,
       "clips": [
-        { "clip": "flm_sk_stab", "playMs": 700, "playRate": 1.15 },
-        { "clip": "flm_sk_stab_custom_3_01", "playRate": 1.2 }
+        { "clip": "flm_sk_stab", "playMs": 700, "playRate": 1.15 }
       ]
     },
     {
@@ -149,16 +146,16 @@
     {
       "skillId": 34580,
       "clips": [
-        "flm_sk_counterattack_01",
-        "flm_sk_counterattack_02"
+        [ "flm_sk_counterattack_01" ],
+        [ "flm_sk_counterattack_02" ]
       ]
     },
     {
       "skillId": 34590,
       "clips": [
-        "flm_sk_lastwhisper_start",
-        "flm_sk_lastwhisper_loop",
-        "flm_sk_lastwhisper_end"
+        [ "flm_sk_lastwhisper_start" ],
+        [ "flm_sk_lastwhisper_loop" ],
+        [ "flm_sk_lastwhisper_end" ]
       ]
     },
     {

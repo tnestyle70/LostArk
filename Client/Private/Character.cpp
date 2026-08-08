@@ -143,14 +143,26 @@ bool_t CCharacter::Load_ClipChains()
 		const bool_t isHold =
 			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition->eSkillKind;
 		chain.isServerStaged = isHold ||
-			LostArk::Shared::PLAYER_SKILL_KIND::COMBO == definition->eSkillKind;
-		chain.clips.reserve(binding.Clips.size());
-		for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
+			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
+				definition->eSkillKind ||
+			LostArk::Shared::PLAYER_SKILL_KIND::COUNTER ==
+				definition->eSkillKind;
+		chain.stages.reserve(binding.Stages.size());
+		for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
 		{
-			const bool_t isHoldLoop =
-				isHold && 1u == chain.clips.size() && 3u == binding.Clips.size();
-			chain.clips.push_back(
-				{ clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop });
+			CLIP_STAGE stagedStage{};
+			stagedStage.clips.reserve(stage.Clips.size());
+			for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
+			{
+				/* The hold loop is the middle stage's only clip: stage two runs
+				until the release the Server confirms. */
+				const bool_t isHoldLoop =
+					isHold && 1u == chain.stages.size() &&
+					3u == binding.Stages.size();
+				stagedStage.clips.push_back(
+					{ clip.strClipName, clip.iPlayMs, clip.fPlayRate, isHoldLoop });
+			}
+			chain.stages.push_back(std::move(stagedStage));
 		}
 		stagedChains.push_back(std::move(chain));
 	}
@@ -214,12 +226,19 @@ void CCharacter::Reset_EffectCueCursor(
 
 f32_t CCharacter::Get_EffectPlaybackRate() const
 {
-	if (nullptr == m_pChain || m_iChainStep < 0 ||
-		m_iChainStep >= static_cast<int32_t>(m_pChain->clips.size()))
+	if (nullptr == m_pChain || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
 	{
 		return 1.f;
 	}
-	const f32_t fRate = m_pChain->clips[m_iChainStep].playRate;
+	const std::vector<CLIP_STEP>& clips =
+		m_pChain->stages[m_iChainStage].clips;
+	if (m_iChainStep < 0 ||
+		m_iChainStep >= static_cast<int32_t>(clips.size()))
+	{
+		return 1.f;
+	}
+	const f32_t fRate = clips[m_iChainStep].playRate;
 	return std::isfinite(fRate) && fRate > 0.f ? fRate : 1.f;
 }
 
@@ -339,10 +358,14 @@ bool_t CCharacter::Is_ClipFinished() const
 		return false;
 
 	f32_t fLimit = fDuration;
-	if (nullptr != m_pChain && m_iChainStep >= 0 &&
-		m_iChainStep < static_cast<int32_t>(m_pChain->clips.size()))
+	if (nullptr != m_pChain && m_iChainStage >= 0 &&
+		m_iChainStage < static_cast<int32_t>(m_pChain->stages.size()) &&
+		m_iChainStep >= 0 &&
+		m_iChainStep < static_cast<int32_t>(
+			m_pChain->stages[m_iChainStage].clips.size()))
 	{
-		const uint32_t iPlayMs = m_pChain->clips[m_iChainStep].playMs;
+		const uint32_t iPlayMs =
+			m_pChain->stages[m_iChainStage].clips[m_iChainStep].playMs;
 		const f32_t fTicksPerSecond =
 			m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
 		if (0u != iPlayMs && std::isfinite(fTicksPerSecond) &&
@@ -376,10 +399,14 @@ bool_t CCharacter::Play_Skill(
 		break;
 	}
 
-	if (nullptr == pPick || !Start_Clip(pPick->clips[0]))
+	if (nullptr == pPick || pPick->stages.empty() ||
+		!Start_Clip(pPick->stages[0].clips[0]))
+	{
 		return false;
+	}
 
 	m_pChain = pPick;
+	m_iChainStage = 0;
 	m_iChainStep = 0;
 	return true;
 }
@@ -389,19 +416,31 @@ void CCharacter::Update_Chain()
 	if (nullptr == m_pChain || !Is_ClipFinished())
 		return;
 
-	/* A combo holds on its last clip until the server confirms the next stage.
-	Every other mode keeps running to the end by itself. */
+	/* Clips inside one stage always run themselves out: a staged skill's single
+	press is what buys that whole stage. */
+	const std::vector<CLIP_STEP>& clips =
+		m_pChain->stages[m_iChainStage].clips;
+	if (m_iChainStep + 1 < static_cast<int32_t>(clips.size()))
+	{
+		++m_iChainStep;
+		Start_Clip(clips[m_iChainStep]);
+		return;
+	}
+
+	/* A combo holds on its stage's last clip until the server confirms the next
+	stage. Every other mode keeps running to the end by itself. */
 	if (m_pChain->isServerStaged)
 		return;
 
 	/* A user-authored presentation clip can be shorter than the Server action.
 	Hold its final pose until the replicated action becomes NONE; otherwise the
 	client would return to locomotion before the authoritative duration ends. */
-	if (m_iChainStep + 1 >= static_cast<int32_t>(m_pChain->clips.size()))
+	if (m_iChainStage + 1 >= static_cast<int32_t>(m_pChain->stages.size()))
 		return;
 
-	++m_iChainStep;
-	Start_Clip(m_pChain->clips[m_iChainStep]);
+	++m_iChainStage;
+	m_iChainStep = 0;
+	Start_Clip(m_pChain->stages[m_iChainStage].clips[0]);
 }
 
 void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
@@ -483,11 +522,12 @@ bool_t CCharacter::Advance_ComboStage(const std::uint8_t comboStage)
 {
 	if (nullptr == m_pChain || 0u == comboStage)
 		return false;
-	const int32_t step = static_cast<int32_t>(comboStage) - 1;
-	if (step >= static_cast<int32_t>(m_pChain->clips.size()))
+	const int32_t stage = static_cast<int32_t>(comboStage) - 1;
+	if (stage >= static_cast<int32_t>(m_pChain->stages.size()))
 		return false;
-	m_iChainStep = step;
-	return Start_Clip(m_pChain->clips[step]);
+	m_iChainStage = stage;
+	m_iChainStep = 0;
+	return Start_Clip(m_pChain->stages[stage].clips[0]);
 }
 
 bool_t CCharacter::Apply_NetworkAction(
@@ -515,6 +555,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		snapshot between them was dropped. Clearing before the pending document
 		commit also makes Animation Tool live reload pointer-safe. */
 		m_pChain = nullptr;
+		m_iChainStage = 0;
 		m_iChainStep = 0;
 		Commit_PendingClipChains();
 		m_iCurrentEffectSkillId = skillId;
@@ -534,6 +575,7 @@ bool_t CCharacter::Apply_NetworkAction(
 				std::to_string(skillId) + " at action tick " +
 				std::to_string(actionStartTick) + "\n").c_str());
 			m_pChain = nullptr;
+			m_iChainStage = 0;
 			m_iChainStep = 0;
 			Set_Animation(
 				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
@@ -554,6 +596,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 		{
 			m_pChain = nullptr;
+			m_iChainStage = 0;
 			m_iChainStep = 0;
 			Commit_PendingClipChains();
 			Set_Animation(CHARACTER_ANIM::RUN, true);
@@ -563,6 +606,7 @@ bool_t CCharacter::Apply_NetworkAction(
 	else if (PLAYER_ACTION_STATE::DEAD == action)
 	{
 		m_pChain = nullptr;
+		m_iChainStage = 0;
 		m_iChainStep = 0;
 		Commit_PendingClipChains();
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
@@ -572,6 +616,7 @@ bool_t CCharacter::Apply_NetworkAction(
 	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 	{
 		m_pChain = nullptr;
+		m_iChainStage = 0;
 		m_iChainStep = 0;
 		Commit_PendingClipChains();
 		Set_Animation(

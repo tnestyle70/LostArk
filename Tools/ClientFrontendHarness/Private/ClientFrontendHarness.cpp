@@ -486,9 +486,10 @@ namespace
 		document.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		document.Bindings =
 		{
-			{ 101u, { { "Active_A", 0u, 1.f }, { "Active_B", 0u, 1.f } } },
-			{ 102u, { { "BA_1", 0u, 1.f }, { "BA_2", 0u, 1.f },
-				{ "BA_3", 0u, 1.f } } }
+			{ 101u, { { { { "Active_A", 0u, 1.f }, { "Active_B", 0u, 1.f } } } } },
+			{ 102u, { { { { "BA_1", 0u, 1.f } } },
+				{ { { "BA_2", 0u, 1.f } } },
+				{ { { "BA_3", 0u, 1.f } } } } }
 		};
 		return document;
 	}
@@ -502,11 +503,11 @@ namespace
 			{ "Active_A", "Active_B", "BA_1", "BA_2", "BA_3" };
 		const std::string valid =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
+			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":[\"Active_A\","
 			"{\"clip\":\"Active_B\",\"playMs\":250,\"playRate\":1.25}]},"
-			"{\"skillId\":102,\"clips\":[\"BA_1\",\"BA_2\",\"BA_3\"]}]}";
+			"{\"skillId\":102,\"clips\":[[\"BA_1\"],[\"BA_2\"],[\"BA_3\"]]}]}";
 		ANIMATION_SKILL_BINDING_DOCUMENT output;
 		std::string status;
 		runner.Require(
@@ -515,22 +516,39 @@ namespace
 				CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Valid Parse And Catalog Join");
 
+		runner.Require(
+			1u == output.Bindings[0].Stages.size() &&
+			2u == output.Bindings[0].Stages[0].Clips.size() &&
+			3u == output.Bindings[1].Stages.size() &&
+			1u == output.Bindings[1].Stages[0].Clips.size(),
+			"Skill Binding Flat Clips Are One Stage And Nested Clips Are Many");
+
 		const std::string wrongVersion =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
+			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":[\"Active_A\"]}]}";
 		const std::string badPlayMs =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":2,\"animationAssetId\":\"LanceMaster\","
+			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":["
 			"{\"clip\":\"Active_A\",\"playMs\":0}]}]}";
 		const std::string traversal =
 			"{\"schema\":\"lostark.animation-skill-bindings\","
-			"\"formatVersion\":2,\"animationAssetId\":\"../Escape\","
+			"\"formatVersion\":3,\"animationAssetId\":\"../Escape\","
 			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
 			"{\"skillId\":101,\"clips\":[\"Active_A\"]}]}";
+		const std::string mixedShape =
+			"{\"schema\":\"lostark.animation-skill-bindings\","
+			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
+			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
+			"{\"skillId\":102,\"clips\":[[\"BA_1\"],\"BA_2\",[\"BA_3\"]]}]}";
+		const std::string emptyStage =
+			"{\"schema\":\"lostark.animation-skill-bindings\","
+			"\"formatVersion\":3,\"animationAssetId\":\"LanceMaster\","
+			"\"characterClass\":\"LANCE_MASTER\",\"bindings\":["
+			"{\"skillId\":102,\"clips\":[[\"BA_1\"],[],[\"BA_3\"]]}]}";
 		const std::string extraField = valid.substr(0u, valid.size() - 1u) +
 			",\"unexpected\":true}";
 		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
@@ -541,6 +559,10 @@ namespace
 			extraField, output, status), "Skill Binding Rejects Extra Field");
 		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
 			badPlayMs, output, status), "Skill Binding Rejects Zero Clip Play Length");
+		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
+			mixedShape, output, status), "Skill Binding Rejects Mixed Stage Shape");
+		runner.Require(!CAnimationSkillBindingDocument::Parse_Text(
+			emptyStage, output, status), "Skill Binding Rejects Empty Stage");
 
 		auto invalid = Make_BindingFixture();
 		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
@@ -562,22 +584,30 @@ namespace
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Rejects Unknown Skill");
 		invalid = Make_BindingFixture();
-		invalid.Bindings[0].Clips[0].strClipName = "Missing_Clip";
+		invalid.Bindings[0].Stages[0].Clips[0].strClipName = "Missing_Clip";
 		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Rejects Unknown Model Clip");
 		invalid = Make_BindingFixture();
-		invalid.Bindings[1].Clips.pop_back();
+		invalid.Bindings[1].Stages.pop_back();
 		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
 			"Skill Binding Rejects Combo Count Mismatch");
+		/* An ACTIVE chain is one stage by contract: splitting it would silently
+		make the client wait for a stage the Server never sends. */
+		invalid = Make_BindingFixture();
+		invalid.Bindings[0].Stages.push_back(
+			{ { { "Active_B", 0u, 1.f } } });
+		runner.Require(!CAnimationSkillBindingDocument::Validate(invalid,
+			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, status),
+			"Skill Binding Rejects Staged Active Skill");
 
 		ANIMATION_SKILL_BINDING_DOCUMENT preserved = Make_BindingFixture();
 		runner.Require(!CAnimationSkillBindingDocument::Load_FromPath(
 			L"Z:/definitely/missing/skillbindings.json", "LanceMaster",
 			CHARACTER_CLASS_ID::LANCE_MASTER, skills, clips, preserved, status) &&
 			2u == preserved.Bindings.size() &&
-			"Active_A" == preserved.Bindings[0].Clips[0].strClipName,
+			"Active_A" == preserved.Bindings[0].Stages[0].Clips[0].strClipName,
 			"Skill Binding Failed Staged Load Preserves Prior Output");
 	}
 
@@ -616,8 +646,11 @@ namespace
 			std::vector<std::string> available;
 			for (const ANIMATION_SKILL_BINDING& binding : parsed.Bindings)
 			{
-				for (const ANIMATION_SKILL_CLIP& clip : binding.Clips)
-					available.push_back(clip.strClipName);
+				for (const ANIMATION_SKILL_STAGE& stage : binding.Stages)
+				{
+					for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
+						available.push_back(clip.strClipName);
+				}
 			}
 			runner.Require(CAnimationSkillBindingDocument::Validate(parsed,
 				owner.asset, owner.characterClass, CPlayerSkillCatalog::Get_Skills(),
@@ -676,14 +709,22 @@ namespace
 						{
 							return row.iSkillId == candidate.iSkillId;
 						});
-					bool_t clipsMatch = binding != parsed.Bindings.end() &&
-						binding->Clips.size() == row.Clips.size();
+					std::vector<std::string> boundClips;
+					if (binding != parsed.Bindings.end())
+					{
+						for (const ANIMATION_SKILL_STAGE& stage : binding->Stages)
+						{
+							for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
+								boundClips.push_back(clip.strClipName);
+						}
+					}
+					bool_t clipsMatch = boundClips.size() == row.Clips.size();
 					if (clipsMatch)
 					{
 						for (size_t iClip = 0u; iClip < row.Clips.size(); ++iClip)
 						{
 							clipsMatch = clipsMatch &&
-								binding->Clips[iClip].strClipName == row.Clips[iClip];
+								boundClips[iClip] == row.Clips[iClip];
 						}
 					}
 					const std::string expectedEffectId =
@@ -732,7 +773,7 @@ namespace
 		const std::string before = Read_Text(destination);
 		SetFileAttributesW(destination.c_str(), FILE_ATTRIBUTE_READONLY);
 		auto changed = document;
-		changed.Bindings[0].Clips = { { "Active_B", 0u, 1.f } };
+		changed.Bindings[0].Stages = { { { { "Active_B", 0u, 1.f } } } };
 		runner.Require(!CAnimationSkillBindingDocument::Save_Atomic(changed,
 			"LanceMaster", CHARACTER_CLASS_ID::LANCE_MASTER,
 			skills, clips, status) && before == Read_Text(destination),

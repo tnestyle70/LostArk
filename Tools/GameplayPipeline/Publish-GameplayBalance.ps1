@@ -441,11 +441,46 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
-	if ($skillKind -notin @('ACTIVE','COMBO','HOLD')) {
+	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER')) {
 		throw "Unknown skillKind: $id $skillKind"
 	}
 	$stages = @($skill.comboStages)
-	if ($skillKind -eq 'HOLD') {
+	if ($skillKind -eq 'COUNTER') {
+		# Guard then counter. The guard stage reuses its input window as the
+		# window a hit taken has to land in, and lands no damage of its own.
+		if ($stages.Count -ne 2) {
+			throw "COUNTER skill needs exactly 2 stages: $id"
+		}
+		if ([uint32]$skill.cooldownMs -eq 0) {
+			throw "COUNTER skill needs a cooldown: $id"
+		}
+		for ($stageIndex = 0; $stageIndex -lt 2; $stageIndex++) {
+			$stage = $stages[$stageIndex]
+			Assert-ExactProperties $stage @(
+				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'counter stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
+			}
+			if ([uint32]$stage.actionDurationMs -eq 0 -or
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs) {
+				throw "Counter stage timing is invalid: $id stage $stageIndex"
+			}
+			if ($stageIndex -eq 0) {
+				if ([uint32]$stage.hitTimeMs -ne 0) {
+					throw "A counter's guard stage lands no damage: $id"
+				}
+				if ([uint32]$stage.inputOpenMs -ge [uint32]$stage.inputCloseMs -or
+					[uint32]$stage.inputCloseMs -gt [uint32]$stage.actionDurationMs) {
+					throw "Counter guard window is invalid: $id"
+				}
+			}
+			elseif ([uint32]$stage.hitTimeMs -eq 0 -or
+				[uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
+				throw "A counter's second stage lands the damage and opens no window: $id"
+			}
+		}
+	}
+	elseif ($skillKind -eq 'HOLD') {
 		if ($stages.Count -ne 3) {
 			throw "HOLD skill needs exactly 3 stages: $id"
 		}
@@ -746,9 +781,39 @@ foreach ($requiredActionId in $expectedNormalActionIds) {
 Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument $bossDocument
 
 $skillDurationById = @{}
+$skillStageDurationsById = @{}
 foreach ($skill in @($skillDocument.skills)) {
     $skillDurationById[[string]$skill.skillId] = [uint32]$skill.actionDurationMs
+    $skillStageDurationsById[[string]$skill.skillId] = @(
+        @($skill.comboStages) | ForEach-Object { [uint32]$_.actionDurationMs })
 }
+
+function Format-RootMotionSamples {
+    param(
+        [object[]]$Samples,
+        [string]$SkillId,
+        [uint32]$LimitMs
+    )
+
+    if ($Samples.Count -lt 2 -or $Samples.Count -gt 512) {
+        throw "Root motion sample count is invalid: $SkillId"
+    }
+    $packed = [Collections.Generic.List[string]]::new()
+    $previousMs = -1
+    foreach ($sample in $Samples) {
+        Assert-ExactProperties $sample @('timeMs','forward','lateral','up') 'root motion sample'
+        $timeMs = [int]$sample.timeMs
+        if ($timeMs -le $previousMs -or $timeMs -gt $LimitMs) {
+            throw "Root motion sample time is out of order or past the action: $SkillId"
+        }
+        $previousMs = $timeMs
+        $packed.Add(('{0}:{1}:{2}' -f $timeMs,
+            (Format-InvariantSignedFloat $sample.forward "root motion $SkillId forward"),
+            (Format-InvariantSignedFloat $sample.lateral "root motion $SkillId lateral")))
+    }
+    return ($packed -join ',')
+}
+
 $rootMotionRows = [Collections.Generic.List[string]]::new()
 $rootMotionSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animation\RootMotion') `
@@ -757,11 +822,10 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'root motion document'
     if ($document.schema -ne 'lostark.animation-root-motion' -or
-        [uint32]$document.formatVersion -ne 1) {
+        [uint32]$document.formatVersion -ne 2) {
         throw "Root motion header is invalid: $($path.Name)"
     }
     foreach ($entry in @($document.skills)) {
-        Assert-ExactProperties $entry @('skillId','durationMs','samples') 'root motion skill'
         $id = [string]$entry.skillId
         if (-not $skillDurationById.ContainsKey($id)) {
             throw "Root motion targets an unknown skill: $id"
@@ -769,30 +833,47 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
         if (-not $rootMotionSeen.Add($id)) {
             throw "Duplicate root motion entry: $id"
         }
-        $samples = @($entry.samples)
-        if ($samples.Count -lt 2 -or $samples.Count -gt 512) {
-            throw "Root motion sample count is invalid: $id"
-        }
-        $packed = [Collections.Generic.List[string]]::new()
-        $previousMs = -1
-        foreach ($sample in $samples) {
-            Assert-ExactProperties $sample @('timeMs','forward','lateral','up') 'root motion sample'
-            $timeMs = [int]$sample.timeMs
-            if ($timeMs -le $previousMs -or $timeMs -gt $skillDurationById[$id]) {
-                throw "Root motion sample time is out of order or past the action: $id"
+        # A staged skill runs each stage on its own clock, so it carries one
+        # curve per stage instead of the single action-long curve.
+        if ($null -ne $entry.stages) {
+            Assert-ExactProperties $entry @('skillId','stages') 'root motion skill'
+            $stageDurations = @($skillStageDurationsById[$id])
+            if ($stageDurations.Count -lt 1) {
+                throw "Root motion stages target a skill without combo stages: $id"
             }
-            $previousMs = $timeMs
-            $packed.Add(('{0}:{1}:{2}' -f $timeMs,
-                (Format-InvariantSignedFloat $sample.forward "root motion $id forward"),
-                (Format-InvariantSignedFloat $sample.lateral "root motion $id lateral")))
+            $seenStages = [Collections.Generic.HashSet[int]]::new()
+            foreach ($stage in @($entry.stages)) {
+                Assert-ExactProperties $stage @(
+                    'stageIndex','durationMs','samples') 'root motion stage'
+                $stageIndex = [int]$stage.stageIndex
+                if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
+                    -not $seenStages.Add($stageIndex)) {
+                    throw "Root motion stage index is invalid or duplicated: $id"
+                }
+                $samples = @($stage.samples)
+                $packed = Format-RootMotionSamples `
+                    -Samples $samples -SkillId $id `
+                    -LimitMs $stageDurations[$stageIndex]
+                $rootMotionRows.Add((@(
+                    'SKILLSTAGEROOTMOTION', $id, $stageIndex,
+                    $samples.Count, $packed) -join "`t"))
+            }
+            continue
         }
+        Assert-ExactProperties $entry @('skillId','durationMs','samples') 'root motion skill'
+        if (@($skillStageDurationsById[$id]).Count -ne 0) {
+            throw "A staged skill must carry per-stage root motion: $id"
+        }
+        $samples = @($entry.samples)
+        $packed = Format-RootMotionSamples `
+            -Samples $samples -SkillId $id -LimitMs $skillDurationById[$id]
         $rootMotionRows.Add((@(
-            'SKILLROOTMOTION', $id, $samples.Count, ($packed -join ',')) -join "`t"))
+            'SKILLROOTMOTION', $id, $samples.Count, $packed) -join "`t"))
     }
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t3`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t4`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

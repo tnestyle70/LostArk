@@ -1220,7 +1220,7 @@ try {
 			continue
 		}
 		if ($bindingDocument.schema -ne 'lostark.animation-skill-bindings' -or
-			[int]$bindingDocument.formatVersion -ne 2 -or
+			[int]$bindingDocument.formatVersion -ne 3 -or
 			$bindingDocument.animationAssetId -ne $assetName -or
 			$bindingDocument.characterClass -ne $className) {
 			$quickSkillAnimationErrors.Add("${className}:owner/schema mismatch")
@@ -1238,7 +1238,25 @@ try {
 				$quickSkillAnimationErrors.Add("${className}:binding duplicates gameplay authority")
 			}
 			$skillRows = @($classSkills | Where-Object skillId -eq $binding.skillId)
-			$clips = @($binding.clips)
+			$elements = @($binding.clips)
+			# A flat clips array is one stage; a nested one is a stage per element.
+			# Mixing the shapes leaves the stage count ambiguous.
+			$nestedCount = @($elements | Where-Object {
+				$_ -is [Array] -or $_ -is [Collections.IEnumerable] -and
+					$_ -isnot [string] -and $_ -isnot [Management.Automation.PSCustomObject] }).Count
+			$isNested = $nestedCount -eq $elements.Count -and $elements.Count -gt 0
+			if ($nestedCount -ne 0 -and -not $isNested) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) mixed stage shape")
+				continue
+			}
+			# Built by explicit append: returning a nested array from if/else lets
+			# the output stream unroll it back into a flat one.
+			$stages = @()
+			if ($isNested) {
+				foreach ($element in $elements) { $stages += , @($element) }
+			}
+			else { $stages += , @($elements) }
+			$clips = @($stages | ForEach-Object { $_ })
 			$clipNames = @($clips | ForEach-Object {
 				if ($_ -is [string]) { $_ } else { [string]$_.clip } })
 			$invalidClipRows = @($clips | Where-Object {
@@ -1250,16 +1268,21 @@ try {
 					($null -ne $_.playRate -and
 						([double]$_.playRate -lt 0.05 -or [double]$_.playRate -gt 16))) })
 			if ($skillRows.Count -ne 1 -or $clips.Count -lt 1 -or $clips.Count -gt 16 -or
+				@($stages | Where-Object { @($_).Count -lt 1 }).Count -ne 0 -or
 				$invalidClipRows.Count -ne 0 -or
 				@($clipNames | Where-Object { $_ -notmatch '^[A-Za-z0-9_.-]{1,255}$' }).Count -ne 0) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) invalid row")
 				continue
 			}
-			if ($skillRows[0].skillKind -eq 'COMBO' -and
-				$clips.Count -ne @($skillRows[0].comboStages).Count) {
-				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo clip count")
+			$isStaged = $skillRows[0].skillKind -in @('COMBO', 'HOLD', 'COUNTER')
+			if ($isStaged -and
+				$stages.Count -ne @($skillRows[0].comboStages).Count) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) combo stage count")
 			}
-			if ($skillRows[0].skillKind -eq 'HOLD' -and $clips.Count -ne 3) {
+			if (-not $isStaged -and $stages.Count -ne 1) {
+				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) active must be one stage")
+			}
+			if ($skillRows[0].skillKind -eq 'HOLD' -and $stages.Count -ne 3) {
 				$quickSkillAnimationErrors.Add("${className}:$($binding.skillId) hold needs start/loop/end")
 			}
 		}

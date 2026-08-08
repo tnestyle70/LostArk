@@ -42,6 +42,9 @@ namespace LostArk::Shared
 		ACTIVE = 0,
 		COMBO = 1,
 		HOLD = 2,
+		// Two stages whose advance is a hit taken, not a press: the first stage
+		// guards and the second is the counter it buys.
+		COUNTER = 3,
 		END
 	};
 

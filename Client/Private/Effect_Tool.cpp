@@ -4596,10 +4596,16 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
             });
         if (Skill == Skills.end())
             continue;
-        for (size_t iClip = 0u;
-            iClip < Binding.Clips.size(); ++iClip)
+        std::vector<ANIMATION_SKILL_CLIP> BoundClips;
+        for (const ANIMATION_SKILL_STAGE& Stage : Binding.Stages)
         {
-            const ANIMATION_SKILL_CLIP& Clip = Binding.Clips[iClip];
+            BoundClips.insert(
+                BoundClips.end(), Stage.Clips.begin(), Stage.Clips.end());
+        }
+        for (size_t iClip = 0u;
+            iClip < BoundClips.size(); ++iClip)
+        {
+            const ANIMATION_SKILL_CLIP& Clip = BoundClips[iClip];
             for (uint32_t iAnimation = 0u;
                 iAnimation < iAnimationCount; ++iAnimation)
             {
@@ -4608,10 +4614,10 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
                     continue;
                 std::string Label = "[" + Skill->strInputSlot + "] " +
                     Skill->strDisplayName;
-                if (Binding.Clips.size() > 1u)
+                if (BoundClips.size() > 1u)
                 {
                     Label += " " + std::to_string(iClip + 1u) + "/" +
-                        std::to_string(Binding.Clips.size());
+                        std::to_string(BoundClips.size());
                 }
                 Label += " | " + Clip.strClipName;
                 m_AnimationClipDisplayLabels[iAnimation] = std::move(Label);
@@ -7349,13 +7355,27 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
         {
             return Candidate.iSkillId == Skill->iSkillId;
         });
-    if (Binding == Bindings.Bindings.end() || Binding->Clips.empty())
+    if (Binding == Bindings.Bindings.end() || Binding->Stages.empty())
     {
         m_strPreviewAnimationStatus =
             "Effect is playing; its first bound animation clip is unavailable.";
         return;
     }
-    m_SynchronizedAnimationClips = Binding->Clips;
+    /* The preview plays the authored clips end to end: it is showing the effect,
+    not waiting on the Server stage the combo would need. */
+    m_SynchronizedAnimationClips.clear();
+    for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
+    {
+        m_SynchronizedAnimationClips.insert(
+            m_SynchronizedAnimationClips.end(),
+            Stage.Clips.begin(), Stage.Clips.end());
+    }
+    if (m_SynchronizedAnimationClips.empty())
+    {
+        m_strPreviewAnimationStatus =
+            "Effect is playing; its first bound animation clip is unavailable.";
+        return;
+    }
     m_iSynchronizedAnimationClipIndex = 0u;
     m_iSynchronizedAnimationTargetGeneration =
         CAnimationTargetService::Resolve_TargetGeneration();

@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "Slayer",
   "characterClass": "SLAYER",
   "bindings": [
@@ -82,10 +82,10 @@
     {
       "skillId": 45000,
       "clips": [
-        "wbk_att_battle_2_01",
-        "wbk_att_battle_2_02",
-        "wbk_att_battle_2_03",
-        "wbk_att_battle_2_04"
+        [ "wbk_att_battle_2_01" ],
+        [ "wbk_att_battle_2_02" ],
+        [ "wbk_att_battle_2_03" ],
+        [ "wbk_att_battle_2_04" ]
       ]
     }
   ]

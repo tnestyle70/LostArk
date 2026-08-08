@@ -1161,7 +1161,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -1213,7 +1213,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -1244,6 +1244,152 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Reject a damageless skill that still claims a hit time");
 		std::error_code noDamageCleanupError;
 		fs::remove_all(noDamageRoot, noDamageCleanupError);
+	}
+
+	{
+		/* A staged skill carries movement per stage, because a stage advance
+		resets the action clock the curve is sampled on. */
+		const PLAYER_SKILL_DEFINITION* basicAttack = catalog.Find_Skill(34010);
+		bool everyStageCurveFits = nullptr != basicAttack &&
+			!basicAttack->ComboStages.empty() &&
+			basicAttack->RootMotion.empty();
+		bool anyStageMoves = false;
+		if (nullptr != basicAttack)
+		{
+			for (const PLAYER_COMBO_STAGE& stage : basicAttack->ComboStages)
+			{
+				if (stage.RootMotion.empty())
+					continue;
+				anyStageMoves = true;
+				everyStageCurveFits = everyStageCurveFits &&
+					stage.RootMotion.size() >= 2u &&
+					stage.RootMotion.back().iTimeMs <= stage.iActionDurationMs;
+			}
+		}
+		tests.Require(everyStageCurveFits && anyStageMoves,
+			"Resolve per-stage root motion inside each combo stage duration");
+
+		namespace fs = std::filesystem;
+		const fs::path stageRoot =
+			fs::temp_directory_path() / L"LostArkStageRootMotionContractTest";
+		std::error_code stagePrepareError;
+		const auto loadWithStageRow = [&](const char* stageIndex)
+		{
+			fs::remove_all(stageRoot, stagePrepareError);
+			fs::create_directories(stageRoot / L"Gameplay");
+			{
+				std::ofstream bootstrap(
+					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
+					std::ios::binary);
+				bootstrap <<
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t8\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"DAMAGE\tdamage.player.34010\t100\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
+					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
+					"\t0\t1633\t470\t0\t0\t3\tdamage.player.34010\tCOMBO"
+					"\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
+					"SKILLSTAGE\t34010\t0\t1633\t470\t329\t658\n"
+					"SKILLSTAGEROOTMOTION\t34010\t" << stageIndex <<
+					"\t2\t0:0:0,1600:1.5:0\n";
+			}
+			wchar_t previous[32768]{};
+			const DWORD previousLength = GetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				static_cast<DWORD>(std::size(previous)));
+			SetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", stageRoot.c_str());
+			CGameplayCatalog stageCatalog;
+			const bool loaded = stageCatalog.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+				0u == previousLength || previousLength >= std::size(previous) ?
+					nullptr : previous);
+			return loaded;
+		};
+		tests.Require(loadWithStageRow("0"),
+			"Accept a root motion row that names an existing combo stage");
+		tests.Require(!loadWithStageRow("1"),
+			"Reject a root motion row past the last combo stage");
+		std::error_code stageCleanupError;
+		fs::remove_all(stageRoot, stageCleanupError);
+	}
+
+	{
+		/* 절룡세 guards, and a hit taken inside that window is what buys the
+		counter: no press advances it and the guard itself lands nothing. */
+		SERVER_PLAYER counterPlayer{};
+		counterPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		counterPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		counterPlayer.iCurrentHp = 1000;
+		counterPlayer.iMaximumHp = 1000;
+		counterPlayer.iCurrentResource = 1000;
+		counterPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem counterSkills;
+
+		C2S_USE_SKILL counterCommand{};
+		counterCommand.iClientSequence = 1;
+		counterCommand.iSkillId = 34580;
+		counterCommand.fAimX = 1.f;
+		counterCommand.fAimZ = 0.f;
+		tests.Require(
+			counterSkills.Try_Start(counterPlayer, counterCommand, catalog, 10) &&
+			1u == counterPlayer.iComboStage,
+			"Approve the counter guard stage");
+
+		std::vector<SERVER_WORLD_ENTITY> counterEntities;
+		std::vector<DAMAGE_EVENT> counterDamageEvents;
+		counterSkills.Update(counterPlayer, counterEntities, catalog, nullptr,
+			1.f / 30.f, 11, counterDamageEvents);
+		tests.Require(
+			1u == counterPlayer.iComboStage && counterDamageEvents.empty(),
+			"Hold the guard stage and land no damage while it runs");
+
+		const std::uint32_t hpBeforeCounter = counterPlayer.iCurrentHp;
+		tests.Require(
+			CPlayerSkillSystem::Try_Counter(counterPlayer, catalog, 12) &&
+			2u == counterPlayer.iComboStage &&
+			hpBeforeCounter == counterPlayer.iCurrentHp &&
+			0.f == counterPlayer.fActionElapsedSeconds,
+			"Absorb the hit inside the guard window and promote to the counter");
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(counterPlayer, catalog, 13),
+			"Do not counter twice from one guard");
+
+		SERVER_PLAYER lateCounter{};
+		lateCounter.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		lateCounter.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
+		lateCounter.iCurrentHp = 1000;
+		lateCounter.iMaximumHp = 1000;
+		lateCounter.iCurrentResource = 1000;
+		lateCounter.iMaximumResource = 1000;
+		CPlayerSkillSystem lateSkills;
+		C2S_USE_SKILL lateCommand = counterCommand;
+		lateSkills.Try_Start(lateCounter, lateCommand, catalog, 10);
+		lateCounter.fActionElapsedSeconds = 1.5f;
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(lateCounter, catalog, 20) &&
+			1u == lateCounter.iComboStage,
+			"Reject a hit that lands after the guard window closed");
+
+		SERVER_PLAYER comboPlayer{};
+		comboPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		comboPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		comboPlayer.iCurrentHp = 1000;
+		comboPlayer.iMaximumHp = 1000;
+		comboPlayer.iCurrentResource = 1000;
+		comboPlayer.iMaximumResource = 1000;
+		CPlayerSkillSystem comboSkills;
+		C2S_USE_SKILL basicAttack{};
+		basicAttack.iClientSequence = 1;
+		basicAttack.iSkillId = 34010;
+		basicAttack.fAimX = 1.f;
+		basicAttack.fAimZ = 0.f;
+		comboSkills.Try_Start(comboPlayer, basicAttack, catalog, 10);
+		tests.Require(
+			!CPlayerSkillSystem::Try_Counter(comboPlayer, catalog, 11),
+			"Never counter out of a skill that is not a COUNTER");
 	}
 
 	{

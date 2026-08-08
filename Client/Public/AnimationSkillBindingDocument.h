@@ -23,11 +23,21 @@ namespace Client
 		bool operator==(const ANIMATION_SKILL_CLIP&) const = default;
 	};
 
+	/* One Server combo stage's clips. A flat "clips" array parses into exactly one
+	stage, a nested one into a stage per element, so the JSON shape alone decides
+	the stage count and no reader has to infer it from the skill kind. */
+	struct ANIMATION_SKILL_STAGE
+	{
+		std::vector<ANIMATION_SKILL_CLIP> Clips;
+
+		bool operator==(const ANIMATION_SKILL_STAGE&) const = default;
+	};
+
 	struct ANIMATION_SKILL_BINDING
 	{
 		LostArk::Shared::SKILL_ID iSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
-		std::vector<ANIMATION_SKILL_CLIP> Clips;
+		std::vector<ANIMATION_SKILL_STAGE> Stages;
 	};
 
 	struct ANIMATION_SKILL_BINDING_DOCUMENT
