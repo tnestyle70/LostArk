@@ -4,6 +4,8 @@
 
 #include "ImGuiLayer.h"
 
+#include <filesystem>
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd,
 	UINT message,
@@ -36,13 +38,37 @@ bool_t CImGuiLayer::Initialize(HWND hWnd, ID3D11Device* pDevice, ID3D11DeviceCon
 	ImGui::StyleColorsDark();
 
 	/* The stock atlas is ASCII only, so Korean tool labels (skill names and the
-	like) render as boxes. Malgun Gothic ships with Windows and its Korean glyph
-	range also carries Latin, so it can serve as the single UI font. If the file
-	is somehow absent we keep the default font rather than fail tool startup. */
+	like) render as boxes. The project's own LostArk UI font (Resources/Fonts/,
+	next to the DirectXTK .spritefont cooked from the same source) matches the
+	game's real typeface; Malgun Gothic (ships with Windows) and finally the
+	stock default are fallbacks so a missing font file never fails tool startup. */
 	{
-		const char_t* pKoreanFont = "C:\\Windows\\Fonts\\malgun.ttf";
-		if (INVALID_FILE_ATTRIBUTES != GetFileAttributesA(pKoreanFont))
-			io.Fonts->AddFontFromFileTTF(pKoreanFont, 16.f, nullptr,
+		wchar_t moduleFilePath[MAX_PATH]{};
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr, moduleFilePath, static_cast<DWORD>(std::size(moduleFilePath)));
+		const std::filesystem::path lostArkFont = (0 == moduleLength || moduleLength >= std::size(moduleFilePath))
+			? std::filesystem::path{}
+			: std::filesystem::path(moduleFilePath).parent_path() / L"Resources" / L"Fonts" / L"HANYoonGothic330.ttf";
+
+		/* This checkout's own path can contain non-ASCII (Korean username, ...); narrowing via
+		filesystem::path::string() uses the "C" locale and mangles that, and stb_truetype's
+		fopen() underneath AddFontFromFileTTF expects the ANSI codepage a Windows char* path
+		implies, not UTF-8. Converting through the system ANSI codepage explicitly is what
+		actually round-trips a Korean path back to a fopen() that succeeds. */
+		char_t lostArkFontAnsi[MAX_PATH]{};
+		if (!lostArkFont.empty())
+		{
+			WideCharToMultiByte(CP_ACP, 0, lostArkFont.c_str(), -1,
+				lostArkFontAnsi, static_cast<int32_t>(std::size(lostArkFontAnsi)), nullptr, nullptr);
+		}
+
+		const char_t* pFallbackFont = "C:\\Windows\\Fonts\\malgun.ttf";
+
+		if ('\0' != lostArkFontAnsi[0] && std::filesystem::exists(lostArkFont))
+			io.Fonts->AddFontFromFileTTF(lostArkFontAnsi, 16.f, nullptr,
+				io.Fonts->GetGlyphRangesKorean());
+		else if (INVALID_FILE_ATTRIBUTES != GetFileAttributesA(pFallbackFont))
+			io.Fonts->AddFontFromFileTTF(pFallbackFont, 16.f, nullptr,
 				io.Fonts->GetGlyphRangesKorean());
 		else
 			io.Fonts->AddFontDefault();

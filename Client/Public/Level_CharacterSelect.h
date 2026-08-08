@@ -15,6 +15,7 @@ NS_BEGIN(Client)
 
 class CCamera_Free;
 class CCharacter;
+class CHUDRuntimeView;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
@@ -65,6 +66,7 @@ private:
 	bool_t Request_ValtanSpawn();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
+	void Render_ClassList();
 
 private:
 	static constexpr std::array<
@@ -79,6 +81,8 @@ private:
 	};
 
 	CMapPlacementRuntime m_MapRuntime;
+	unique_ptr<CHUDRuntimeView> m_pClassSelectView = { nullptr };
+	int32_t m_iExpandedCategory = -1;
 	MODE m_eMode = MODE::PREVIEW;
 	size_t m_iPreviewIndex = 0;
 	shared_ptr<CCharacter> m_pPreviewCharacter = { nullptr };

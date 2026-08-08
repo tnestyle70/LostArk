@@ -30,6 +30,7 @@ namespace
 		{ "Loading Screen", "UI/Loading/LoadingLayout.json", "UI/Loading/",  false },
 		{ "Skill Window",   "UI/SkillWindow/SkillWindow_Layout.json", "UI/SkillWindow/", false },
 		{ "Lobby",          "UI/Lobby/Lobby_Layout.json", "UI/Lobby/TitleBackground/", false },
+		{ "Class Select",   "UI/ClassSelect/ClassSelect_Layout.json", "UI/ClassSelect/", true  },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -1067,11 +1068,17 @@ void Client::CHUDLayoutTool::Render_Canvas()
 
 		if (bSelected && 1 == m_SelectedSlots.size())
 		{
-			const float fHandle = 8.f;
+			/* Fixed screen-space size: at the tool's default 0.7x canvas zoom an 8-canvas-unit
+			handle was only ~5-6 screen pixels, effectively unclickable. A hit target that stays
+			constant on screen regardless of zoom is grabbable at any zoom level. */
+			const float fHandle = 12.f;
 			const ImVec2 vHandleTopLeft(vBotRight.x - fHandle, vBotRight.y - fHandle);
 			ImGui::SetCursorScreenPos(vHandleTopLeft);
 			ImGui::InvisibleButton("resize", ImVec2(fHandle, fHandle));
-			pDrawList->AddRectFilled(vHandleTopLeft, vBotRight, IM_COL32(255, 220, 90, 220));
+			const bool_t bHandleHot = ImGui::IsItemHovered() || ImGui::IsItemActive();
+			pDrawList->AddRectFilled(vHandleTopLeft, vBotRight,
+				bHandleHot ? IM_COL32(255, 240, 150, 255) : IM_COL32(255, 220, 90, 220));
+			pDrawList->AddRect(vHandleTopLeft, vBotRight, IM_COL32(40, 30, 0, 255));
 			if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 			{
 				const ImVec2 vDelta = ImGui::GetIO().MouseDelta;
