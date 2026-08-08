@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <span>
 #include <unordered_map>
 
 namespace
@@ -1292,12 +1293,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Element(
 
 HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 	const EFFECT_EVALUATED_FRAME& Frame,
-	const std::string& strElementId)
+	const std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages)
 {
-	for (const EFFECT_EVALUATED_AFTERIMAGE& AfterImage : Frame.AfterImages)
+	for (const EFFECT_EVALUATED_AFTERIMAGE& AfterImage : AfterImages)
 	{
-		if (nullptr == AfterImage.pElement ||
-			AfterImage.pElement->strElementId != strElementId)
+		if (nullptr == AfterImage.pElement)
 			continue;
 		const ELEMENT_RESOURCE* pResource =
 			Find_Resource(AfterImage.pElement->strElementId);
@@ -1324,25 +1324,25 @@ HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 
 HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const EFFECT_EVALUATED_FRAME& Frame,
-	const std::string& strElementId)
+	const std::span<const EFFECT_EVALUATED_PARTICLE> Particles)
 {
 	const EFFECT_ELEMENT_DESC* pSource = nullptr;
-	const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
-	if (nullptr == pResource)
-		return E_FAIL;
-	for (const EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+	for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
 	{
-		if (nullptr != Particle.pElement &&
-			Particle.pElement->strElementId == strElementId)
+		if (nullptr != Particle.pElement)
 		{
 			pSource = Particle.pElement;
 			break;
 		}
 	}
+	if (nullptr == pSource)
+		return S_OK;
+	const ELEMENT_RESOURCE* pResource = Find_Resource(pSource->strElementId);
+	if (nullptr == pResource)
+		return E_FAIL;
 	if (pResource->bSourceMaterialFallbackBlocked)
 		return S_FALSE;
-	if (nullptr != pSource &&
-		pSource->Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
+	if (pSource->Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
 		!pSource->Material.SourceMaterial.bEnabled)
 	{
 		// Version 10 and older source-material documents are intentionally
@@ -1352,13 +1352,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	}
 	if (nullptr != pResource->pModel)
 	{
-		for (const EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+		for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
 		{
-			if (nullptr == Particle.pElement ||
-				Particle.pElement->strElementId != strElementId)
-			{
+			if (nullptr == Particle.pElement)
 				continue;
-			}
 			EFFECT_EVALUATED_ELEMENT MeshParticle;
 			MeshParticle.pElement = Particle.pElement;
 			MeshParticle.World = Apply_ParticleCameraOffset(Particle);
@@ -1375,10 +1372,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		return S_OK;
 	}
 	std::vector<Engine::VTXEFFECT_PARTICLE> Instances;
-	for (const EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+	Instances.reserve(Particles.size());
+	for (const EFFECT_EVALUATED_PARTICLE& Particle : Particles)
 	{
-		if (nullptr == Particle.pElement ||
-			Particle.pElement->strElementId != strElementId)
+		if (nullptr == Particle.pElement)
 			continue;
 		pSource = Particle.pElement;
 		const float4x4_t World = Particle.pElement->Detail.Particle.bBillboard ?
@@ -1420,15 +1417,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 
 HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 	const EFFECT_EVALUATED_FRAME& Frame,
-	const std::string& strElementId)
+	const std::span<const EFFECT_EVALUATED_TRAIL> Trails)
 {
 	const vector_t CameraPosition = XMLoadFloat4(
 		CGameInstance::Get().Get_CamPosition());
-	for (const EFFECT_EVALUATED_TRAIL& Trail : Frame.Trails)
+	for (const EFFECT_EVALUATED_TRAIL& Trail : Trails)
 	{
-		if (nullptr == Trail.pElement ||
-			Trail.pElement->strElementId != strElementId ||
-			Trail.Points.size() < 2u)
+		if (nullptr == Trail.pElement || Trail.Points.size() < 2u)
 			continue;
 		const ELEMENT_RESOURCE* pResource =
 			Find_Resource(Trail.pElement->strElementId);
@@ -1581,30 +1576,66 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 {
 	if (FAILED(Render_ModelCues(Frame)))
 		return E_FAIL;
+	size_t iElement = 0u;
+	size_t iParticle = 0u;
+	size_t iTrail = 0u;
+	size_t iAfterImage = 0u;
 	for (const EFFECT_ELEMENT_DESC& DocumentElement : m_Document.Elements)
 	{
 		const std::string& strElementId = DocumentElement.strElementId;
-		if (FAILED(Render_AfterImages(Frame, strElementId)))
-			return E_FAIL;
-		for (const EFFECT_EVALUATED_ELEMENT& Element : Frame.Elements)
+		const size_t iAfterImageBegin = iAfterImage;
+		while (iAfterImage < Frame.AfterImages.size() &&
+			nullptr != Frame.AfterImages[iAfterImage].pElement &&
+			Frame.AfterImages[iAfterImage].pElement->strElementId == strElementId)
 		{
-			if (nullptr == Element.pElement ||
-				Element.pElement->strElementId != strElementId)
-			{
-				continue;
-			}
+			++iAfterImage;
+		}
+		if (FAILED(Render_AfterImages(Frame,
+			std::span<const EFFECT_EVALUATED_AFTERIMAGE>(Frame.AfterImages)
+				.subspan(iAfterImageBegin,
+					iAfterImage - iAfterImageBegin))))
+			return E_FAIL;
+
+		while (iElement < Frame.Elements.size() &&
+			nullptr != Frame.Elements[iElement].pElement &&
+			Frame.Elements[iElement].pElement->strElementId == strElementId)
+		{
 			const ELEMENT_RESOURCE* pResource = Find_Resource(strElementId);
 			if (nullptr == pResource)
 				return E_FAIL;
 			if (pResource->bSourceMaterialFallbackBlocked)
+			{
+				++iElement;
 				continue;
-			if (FAILED(Render_Element(Element, *pResource)))
+			}
+			if (FAILED(Render_Element(Frame.Elements[iElement], *pResource)))
 			{
 				return E_FAIL;
 			}
+			++iElement;
 		}
-		if (FAILED(Render_Particles(Frame, strElementId)) ||
-			FAILED(Render_Trails(Frame, strElementId)))
+
+		const size_t iParticleBegin = iParticle;
+		while (iParticle < Frame.Particles.size() &&
+			nullptr != Frame.Particles[iParticle].pElement &&
+			Frame.Particles[iParticle].pElement->strElementId == strElementId)
+		{
+			++iParticle;
+		}
+		const size_t iTrailBegin = iTrail;
+		while (iTrail < Frame.Trails.size() &&
+			nullptr != Frame.Trails[iTrail].pElement &&
+			Frame.Trails[iTrail].pElement->strElementId == strElementId)
+		{
+			++iTrail;
+		}
+		if (FAILED(Render_Particles(Frame,
+			std::span<const EFFECT_EVALUATED_PARTICLE>(Frame.Particles)
+				.subspan(iParticleBegin,
+					iParticle - iParticleBegin))) ||
+			FAILED(Render_Trails(Frame,
+				std::span<const EFFECT_EVALUATED_TRAIL>(Frame.Trails)
+					.subspan(iTrailBegin, iTrail - iTrailBegin))))
 		{
 			return E_FAIL;
 		}

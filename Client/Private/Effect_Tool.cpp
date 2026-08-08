@@ -972,27 +972,32 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         return;
     float4x4_t Root{};
     const bool_t bRootResolved = Resolve_PreviewRoot(Root);
-    pObject->Set_Visible(bRootResolved);
-    if (bRootResolved)
+    pObject->Set_Visible(m_bPreviewVisibleRequested && bRootResolved);
+    if (m_bPreviewVisibleRequested && bRootResolved)
     {
-        pObject->Set_RootWorld(Root);
         if (0u == m_strPreviewStatus.find("World preview hidden:"))
             m_strPreviewStatus = "World preview anchor resolved.";
     }
-    else
+    else if (m_bPreviewVisibleRequested)
     {
         m_strPreviewStatus = "World preview hidden: current target cannot resolve " +
             (EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind ?
                 std::string("its root pivot.") :
                 std::string("anchor '") + m_strPreviewAnchorSlotId + "'.");
     }
+    if (!m_bPreviewVisibleRequested)
+		return;
     if (bSeekAfterLoop)
     {
+		if (bRootResolved)
+			pObject->Set_RootWorld(Root);
         pObject->Set_SampleTime(m_fPreviewTimeSeconds);
         Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
     }
-    else if (fSequentialAdvance > 0.f)
-        pObject->Advance_Preview(fSequentialAdvance);
+	else if (bRootResolved && fSequentialAdvance > 0.f)
+		pObject->Advance_Preview(fSequentialAdvance, Root);
+	else if (bRootResolved)
+		pObject->Set_RootWorld(Root);
 }
 
 void Client::CEffect_Tool::Render()
@@ -1927,6 +1932,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     SelectPreviewFilter(
         "Particles Only", EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM);
     ImGui::SameLine();
+	SelectPreviewFilter(
+		"Mesh Emitters", EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS);
+	ImGui::SameLine();
+	SelectPreviewFilter(
+		"Sprite Emitters", EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS);
+	ImGui::SameLine();
     SelectPreviewFilter("Solo Element", EFFECT_PREVIEW_FILTER::SOLO_SELECTED);
     ImGui::SameLine();
     SelectPreviewFilter("Mute Element", EFFECT_PREVIEW_FILTER::MUTE_SELECTED);
@@ -1980,7 +1991,8 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
                 Start_WorldPreviewFromBeginning();
             else
             {
-                m_bPreviewPlaying = true;
+				m_bPreviewVisibleRequested = true;
+				m_bPreviewPlaying = true;
                 Set_SynchronizedAnimationPaused(false);
             }
         }
@@ -2006,6 +2018,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         0.f, m_fPreviewDurationSeconds, "%.3f s"))
     {
         m_bPreviewPlaying = false;
+		m_bPreviewVisibleRequested = true;
         if (const shared_ptr<CEffectObject> pObject =
             m_pWorldPreviewObject.lock())
             pObject->Set_SampleTime(m_fPreviewTimeSeconds);
@@ -2442,6 +2455,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	const bool_t bDrawable = CEffectDocumentCodec::Validate_Drawable(
 		*m_ActiveDocument, DrawableError);
 	const bool_t bLivePreview = bDrawable &&
+		m_bPreviewVisibleRequested &&
 		nullptr != m_pWorldPreviewObject.lock();
 	ImGui::SeparatorText("Restoration Session");
 	ImGui::Text("Source: %s | Draft: %s | Document: %s | Preview: %s",
@@ -2708,6 +2722,12 @@ void Client::CEffect_Tool::Render_ParticleSystemDetail()
     ImGui::SameLine();
     if (ImGui::Button("Audition Particle System"))
         Try_AuditionParticleSystem();
+	ImGui::SameLine();
+	if (ImGui::Button("Play Mesh Emitters") &&
+		Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS))
+	{
+		Start_WorldPreviewFromBeginning();
+	}
     if (m_bParticleSystemDraftDirty)
         ImGui::TextDisabled(
             "Particle System draft is local until Apply Particle System.");
@@ -4053,6 +4073,12 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
         Start_WorldPreviewFromBeginning();
     }
     ImGui::SameLine();
+	if (ImGui::Button("Play Mesh Emitters") &&
+		Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS))
+	{
+		Start_WorldPreviewFromBeginning();
+	}
+	ImGui::SameLine();
     if (ImGui::Button("Hide Preview"))
         Hide_WorldPreview();
     ImGui::EndDisabled();
@@ -5735,6 +5761,7 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
             pObject->Set_RootWorld(TargetRoot);
         }
     }
+    m_bPreviewVisibleRequested = false;
     if (bPreviewStaged)
     {
         if (const shared_ptr<CEffectObject> pObject =
@@ -6218,7 +6245,9 @@ bool_t Client::CEffect_Tool::Try_SelectElement(
     m_eResourceLibraryFileKind = Slot_FileKind(
         *Iterator, m_strSelectedResourceSlotId);
     m_strSelectedResourceAssetId.clear();
-    if (EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM == m_ePreviewFilter)
+    if (EFFECT_PREVIEW_FILTER::SOLO_PARTICLE_SYSTEM == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS == m_ePreviewFilter)
         m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     if (EFFECT_PREVIEW_FILTER::COMPLETE != m_ePreviewFilter)
         Stage_WorldPreview();
@@ -6422,6 +6451,7 @@ bool_t Client::CEffect_Tool::Try_AuditionParticleSystem()
     {
         pObject->Reset();
         pObject->Set_SampleTime(0.f);
+		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
     else
@@ -6485,6 +6515,7 @@ bool_t Client::CEffect_Tool::Try_AuditionSelectedElement()
     {
         pObject->Reset();
         pObject->Set_SampleTime(m_fPreviewTimeSeconds);
+		m_bPreviewVisibleRequested = true;
         m_bPreviewPlaying = true;
     }
     else
@@ -6919,6 +6950,14 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         m_strPreviewStatus =
             "Particle System-only preview committed.";
         break;
+	case EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS:
+		m_strPreviewStatus =
+			"Mesh-backed Cascade emitter preview committed.";
+		break;
+	case EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS:
+		m_strPreviewStatus =
+			"Sprite Cascade emitter preview committed.";
+		break;
     case EFFECT_PREVIEW_FILTER::SOLO_SELECTED:
         m_strPreviewStatus = "Selected Element Solo preview committed.";
         break;
@@ -6962,6 +7001,22 @@ Client::CEffect_Tool::Build_PreviewDocument(
         Preview.ModelCues.clear();
         return Preview;
     }
+	if (EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::SOLO_SPRITE_EMITTERS == m_ePreviewFilter)
+	{
+		const CASCADE_RENDERER_KIND eRequired =
+			EFFECT_PREVIEW_FILTER::SOLO_MESH_EMITTERS == m_ePreviewFilter ?
+				CASCADE_RENDERER_KIND::MESH :
+				CASCADE_RENDERER_KIND::SPRITE;
+		std::erase_if(Preview.Elements,
+			[eRequired](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind ||
+					Resolve_CascadeRendererKind(Element) != eRequired;
+			});
+		Preview.ModelCues.clear();
+		return Preview;
+	}
     if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED_GROUP == m_ePreviewFilter ||
         EFFECT_PREVIEW_FILTER::MUTE_SELECTED_GROUP == m_ePreviewFilter)
     {
@@ -7134,6 +7189,7 @@ void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()
     pObject->Set_Visible(true);
     pObject->Reset();
     pObject->Set_SampleTime(0.f);
+	m_bPreviewVisibleRequested = true;
     m_bPreviewPlaying = true;
 }
 
@@ -7546,6 +7602,7 @@ void Client::CEffect_Tool::Reset_SynchronizedAnimationSequence()
 void Client::CEffect_Tool::Hide_WorldPreview()
 {
     m_bPreviewPlaying = false;
+	m_bPreviewVisibleRequested = false;
     Release_WorldPreview(true);
     m_strPreviewStatus =
         "World preview hidden; the loaded Document and Effect Detail values were preserved.";

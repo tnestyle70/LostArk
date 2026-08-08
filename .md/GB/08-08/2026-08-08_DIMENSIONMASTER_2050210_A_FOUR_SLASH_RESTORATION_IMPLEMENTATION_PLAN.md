@@ -658,3 +658,19 @@ Effect pipeline, Python 34 tests까지 통과했다. 전체 ProjectAudit에는 �
 아직 완료하지 않은 항목은 수동 GPU A/B다. 또한 parent graph는 344 expression entry 중
 110개만 non-null이고 unresolved input edge가 45개이므로 Material 의미는 계속
 `RECONSTRUCTED_PROFILE`이며 `RUNTIME_EXACT=0`이다. 이 상태를 원작 픽셀 완료로 부르지 않는다.
+
+## 14. canonical A 검증 성능 게이트
+
+정본 117 Elements를 검증할 수 없는 6 FPS 상태를 Material A/B보다 먼저 닫는다.
+
+1. Data Files Load는 리소스 stage만 수행하며 명시적 Play 전에는 preview를 숨기고 평가하지 않는다.
+2. Follow root와 preview time을 한 번의 playback update로 반영해 같은 프레임을 두 번 재구축하지 않는다.
+3. Renderer는 authored Element 순서를 유지하되 Element마다 전체 evaluated 목록을 다시 찾지 않고
+   정렬된 contiguous range를 선형 순회한다.
+4. `Mesh Emitters` 범위를 별도로 제공해 48개 mesh-backed Cascade layer의 형상·타이밍을
+   52개 Sprite와 Screen Post 13개 없이 먼저 검증한다.
+5. `Solo Element`는 선택 emitter 하나만 stage하며 Complete, Mesh, Sprite, Solo 결과를 서로
+   완료로 혼동하지 않는다.
+
+수동 완료 기준은 Load 직후 idle FPS 회복, Mesh Emitters 네 타격 재생, Solo emitter의
+상호작용 가능한 프레임 유지다. Complete Effect의 최종 FPS는 실제 GPU 측정 전에는 PASS로 기록하지 않는다.

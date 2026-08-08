@@ -7,6 +7,7 @@
 #include "Effect_Playback.h"
 
 #include <array>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -116,13 +117,13 @@ private:
 		const ELEMENT_RESOURCE& Resource);
 	HRESULT Render_Particles(
 		const EFFECT_EVALUATED_FRAME& Frame,
-		const std::string& strElementId);
+		std::span<const EFFECT_EVALUATED_PARTICLE> Particles);
 	HRESULT Render_Trails(
 		const EFFECT_EVALUATED_FRAME& Frame,
-		const std::string& strElementId);
+		std::span<const EFFECT_EVALUATED_TRAIL> Trails);
 	HRESULT Render_AfterImages(
 		const EFFECT_EVALUATED_FRAME& Frame,
-		const std::string& strElementId);
+		std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages);
 	HRESULT Render_ModelCues(const EFFECT_EVALUATED_FRAME& Frame);
 	uint32_t Select_Pass(EFFECT_RENDER_PROFILE eProfile) const;
 	const ELEMENT_RESOURCE* Find_Resource(const std::string& strElementId) const;
