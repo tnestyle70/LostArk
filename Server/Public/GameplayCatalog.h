@@ -9,19 +9,22 @@
 
 namespace LostArk::Server
 {
+	struct PLAYER_ROOT_MOTION_SAMPLE
+	{
+		std::uint32_t iTimeMs = 0;
+		float fForward = 0.f;
+		float fLateral = 0.f;
+	};
+
 	struct PLAYER_COMBO_STAGE final
 	{
 		std::uint32_t iActionDurationMs = 0;
 		std::uint32_t iHitTimeMs = 0;
 		std::uint32_t iInputOpenMs = 0;
 		std::uint32_t iInputCloseMs = 0;
-	};
-
-	struct PLAYER_ROOT_MOTION_SAMPLE
-	{
-		std::uint32_t iTimeMs = 0;
-		float fForward = 0.f;
-		float fLateral = 0.f;
+		/* A stage advance resets the action clock, so a staged skill owns its
+		movement per stage instead of on one action-long curve. */
+		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -172,6 +175,14 @@ namespace LostArk::Server
 		const std::string& Get_Status() const { return m_strStatus; }
 
 	private:
+		/* Shared by the per-skill and per-stage rows so both read one packed
+		encoding and one ordering rule. Reports its own failure into m_strStatus. */
+		bool Parse_RootMotionSamples(
+			std::string_view packed,
+			std::uint32_t sampleCount,
+			std::uint32_t limitMs,
+			std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples);
+
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;

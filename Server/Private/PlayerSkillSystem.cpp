@@ -237,7 +237,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		static_cast<float>(durationMs) * MILLISECONDS_TO_SECONDS;
 	float stepForward = 0.f;
 	float stepLateral = 0.f;
-	if (!skill->RootMotion.empty())
+	/* A stage advance resets the action clock, so a staged skill reads the
+	running stage's own curve on that same clock. */
+	const std::vector<PLAYER_ROOT_MOTION_SAMPLE>& rootMotion = hasStage ?
+		skill->ComboStages[stageIndex].RootMotion : skill->RootMotion;
+	if (!rootMotion.empty())
 	{
 		const float previousSeconds =
 			(std::max)(0.f, player.fActionElapsedSeconds - fixedDeltaSeconds);
@@ -245,9 +249,9 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		float previousLateral = 0.f;
 		float currentForward = 0.f;
 		float currentLateral = 0.f;
-		Sample_RootMotion(skill->RootMotion, previousSeconds,
+		Sample_RootMotion(rootMotion, previousSeconds,
 			previousForward, previousLateral);
-		Sample_RootMotion(skill->RootMotion, player.fActionElapsedSeconds,
+		Sample_RootMotion(rootMotion, player.fActionElapsedSeconds,
 			currentForward, currentLateral);
 		stepForward = currentForward - previousForward;
 		stepLateral = currentLateral - previousLateral;

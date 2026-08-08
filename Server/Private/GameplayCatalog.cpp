@@ -188,6 +188,51 @@ namespace
 	}
 }
 
+bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
+	const std::string_view packed,
+	const std::uint32_t sampleCount,
+	const std::uint32_t limitMs,
+	std::vector<PLAYER_ROOT_MOTION_SAMPLE>& outSamples)
+{
+	outSamples.clear();
+	outSamples.reserve(sampleCount);
+	std::size_t cursor = 0;
+	while (cursor <= packed.size())
+	{
+		const std::size_t comma = packed.find(',', cursor);
+		const std::string_view token{
+			packed.data() + cursor,
+			(std::string::npos == comma ? packed.size() : comma) - cursor };
+		const std::size_t first = token.find(':');
+		const std::size_t second = std::string_view::npos == first ?
+			std::string_view::npos : token.find(':', first + 1);
+		PLAYER_ROOT_MOTION_SAMPLE sample{};
+		if (std::string_view::npos == second ||
+			!ParseNumber(token.substr(0, first), sample.iTimeMs) ||
+			!ParseNumber(token.substr(first + 1, second - first - 1),
+				sample.fForward) ||
+			!ParseNumber(token.substr(second + 1), sample.fLateral) ||
+			!std::isfinite(sample.fForward) ||
+			!std::isfinite(sample.fLateral) ||
+			sample.iTimeMs > limitMs ||
+			(!outSamples.empty() && sample.iTimeMs <= outSamples.back().iTimeMs))
+		{
+			m_strStatus = "Root motion sample is invalid";
+			return false;
+		}
+		outSamples.push_back(sample);
+		if (std::string::npos == comma)
+			break;
+		cursor = comma + 1;
+	}
+	if (outSamples.size() != sampleCount)
+	{
+		m_strStatus = "Root motion sample count does not match";
+		return false;
+	}
+	return true;
+}
+
 bool LostArk::Server::CGameplayCatalog::Load()
 {
 	using SKILL_MAP = decltype(m_Skills);
@@ -268,7 +313,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 3u != version ||
+		!ParseNumber(header[1], version) || 4u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -398,43 +443,46 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			std::vector<PLAYER_ROOT_MOTION_SAMPLE> samples;
-			samples.reserve(sampleCount);
-			std::string packed{ fields[3] };
-			std::size_t cursor = 0;
-			while (cursor <= packed.size())
+			if (!Parse_RootMotionSamples(
+				fields[3], sampleCount, owner->second.iActionDurationMs, samples))
 			{
-				const std::size_t comma = packed.find(',', cursor);
-				const std::string_view token{
-					packed.data() + cursor,
-					(std::string::npos == comma ? packed.size() : comma) - cursor };
-				const std::size_t first = token.find(':');
-				const std::size_t second = std::string_view::npos == first ?
-					std::string_view::npos : token.find(':', first + 1);
-				PLAYER_ROOT_MOTION_SAMPLE sample{};
-				if (std::string_view::npos == second ||
-					!ParseNumber(token.substr(0, first), sample.iTimeMs) ||
-					!ParseNumber(token.substr(first + 1, second - first - 1),
-						sample.fForward) ||
-					!ParseNumber(token.substr(second + 1), sample.fLateral) ||
-					!std::isfinite(sample.fForward) ||
-					!std::isfinite(sample.fLateral) ||
-					sample.iTimeMs > owner->second.iActionDurationMs ||
-					(!samples.empty() && sample.iTimeMs <= samples.back().iTimeMs))
-				{
-					m_strStatus = "Root motion sample is invalid";
-					return false;
-				}
-				samples.push_back(sample);
-				if (std::string::npos == comma)
-					break;
-				cursor = comma + 1;
-			}
-			if (samples.size() != sampleCount)
-			{
-				m_strStatus = "Root motion sample count does not match";
 				return false;
 			}
 			owner->second.RootMotion = std::move(samples);
+		}
+		else if (!fields.empty() && "SKILLSTAGEROOTMOTION" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t stageIndex = 0;
+			std::uint32_t sampleCount = 0;
+			if (5u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], stageIndex) ||
+				!ParseNumber(fields[3], sampleCount) ||
+				sampleCount < 2u || sampleCount > 512u)
+			{
+				m_strStatus = "Root motion row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			// Stages arrive after their own SKILLCOMBOSTAGE rows, so an index
+			// past the end is a corrupt bootstrap rather than a tolerable gap.
+			if (owner == m_Skills.end() ||
+				stageIndex >= owner->second.ComboStages.size() ||
+				!owner->second.ComboStages[stageIndex].RootMotion.empty())
+			{
+				m_strStatus = "Root motion does not follow its skill";
+				return false;
+			}
+			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
+			std::vector<PLAYER_ROOT_MOTION_SAMPLE> samples;
+			if (!Parse_RootMotionSamples(
+				fields[4], sampleCount, stage.iActionDurationMs, samples))
+			{
+				return false;
+			}
+			stage.RootMotion = std::move(samples);
 		}
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{

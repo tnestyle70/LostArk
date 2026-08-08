@@ -1161,7 +1161,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -1213,7 +1213,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t3\t6\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t6\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -1244,6 +1244,76 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Reject a damageless skill that still claims a hit time");
 		std::error_code noDamageCleanupError;
 		fs::remove_all(noDamageRoot, noDamageCleanupError);
+	}
+
+	{
+		/* A staged skill carries movement per stage, because a stage advance
+		resets the action clock the curve is sampled on. */
+		const PLAYER_SKILL_DEFINITION* basicAttack = catalog.Find_Skill(34010);
+		bool everyStageCurveFits = nullptr != basicAttack &&
+			!basicAttack->ComboStages.empty() &&
+			basicAttack->RootMotion.empty();
+		bool anyStageMoves = false;
+		if (nullptr != basicAttack)
+		{
+			for (const PLAYER_COMBO_STAGE& stage : basicAttack->ComboStages)
+			{
+				if (stage.RootMotion.empty())
+					continue;
+				anyStageMoves = true;
+				everyStageCurveFits = everyStageCurveFits &&
+					stage.RootMotion.size() >= 2u &&
+					stage.RootMotion.back().iTimeMs <= stage.iActionDurationMs;
+			}
+		}
+		tests.Require(everyStageCurveFits && anyStageMoves,
+			"Resolve per-stage root motion inside each combo stage duration");
+
+		namespace fs = std::filesystem;
+		const fs::path stageRoot =
+			fs::temp_directory_path() / L"LostArkStageRootMotionContractTest";
+		std::error_code stagePrepareError;
+		const auto loadWithStageRow = [&](const char* stageIndex)
+		{
+			fs::remove_all(stageRoot, stagePrepareError);
+			fs::create_directories(stageRoot / L"Gameplay");
+			{
+				std::ofstream bootstrap(
+					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
+					std::ios::binary);
+				bootstrap <<
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t4\t8\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"DAMAGE\tdamage.player.34010\t100\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\tLANCE_MASTER_LONG_SPEAR\n"
+					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
+					"\t0\t1633\t470\t0\t0\t3\tdamage.player.34010\tCOMBO"
+					"\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
+					"SKILLSTAGE\t34010\t0\t1633\t470\t329\t658\n"
+					"SKILLSTAGEROOTMOTION\t34010\t" << stageIndex <<
+					"\t2\t0:0:0,1600:1.5:0\n";
+			}
+			wchar_t previous[32768]{};
+			const DWORD previousLength = GetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				static_cast<DWORD>(std::size(previous)));
+			SetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", stageRoot.c_str());
+			CGameplayCatalog stageCatalog;
+			const bool loaded = stageCatalog.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+				0u == previousLength || previousLength >= std::size(previous) ?
+					nullptr : previous);
+			return loaded;
+		};
+		tests.Require(loadWithStageRow("0"),
+			"Accept a root motion row that names an existing combo stage");
+		tests.Require(!loadWithStageRow("1"),
+			"Reject a root motion row past the last combo stage");
+		std::error_code stageCleanupError;
+		fs::remove_all(stageRoot, stageCleanupError);
 	}
 
 	{
