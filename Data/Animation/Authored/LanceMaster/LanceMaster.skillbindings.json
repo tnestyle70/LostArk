@@ -61,18 +61,17 @@
     {
       "skillId": 34160,
       "clips": [
-        "flm_sk_riseup_01",
-        "flm_sk_riseup_02",
-        "flm_sk_riseup_custom_6"
+        [ { "clip": "flm_sk_riseup_01", "playMs": 2300 } ],
+        [ "flm_sk_riseup_02" ]
       ]
     },
     {
       "skillId": 34140,
       "clips": [
-        "flm_sk_chestdestruction_01",
-        "flm_sk_chestdestruction_02",
-        "flm_sk_chestdestruction_03",
-        "flm_sk_chestdestruction_04"
+        [ { "clip": "flm_sk_chestdestruction_01", "playMs": 551 },
+          "flm_sk_chestdestruction_02" ],
+        [ "flm_sk_chestdestruction_03",
+          "flm_sk_chestdestruction_04" ]
       ]
     },
     {

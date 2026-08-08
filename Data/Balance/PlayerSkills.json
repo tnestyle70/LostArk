@@ -65,18 +65,31 @@
       "inputSlot": "R",
       "displayName": "공의연무",
       "actionId": "lancemaster.skill.34160",
-      "skillKind": "ACTIVE",
+      "skillKind": "COMBO",
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 16000,
-      "actionDurationMs": 5667,
+      "actionDurationMs": 2300,
       "hitTimeMs": 500,
       "resourceCost": 361,
       "movementDistance": 0.0,
       "maximumRange": 3.0,
       "serverDamageProfileId": "damage.player.34160",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 2300,
+          "hitTimeMs": 500,
+          "inputOpenMs": 1302,
+          "inputCloseMs": 2300
+        },
+        {
+          "actionDurationMs": 1400,
+          "hitTimeMs": 250,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 34140,
@@ -84,18 +97,31 @@
       "inputSlot": "A",
       "displayName": "선풍참혼",
       "actionId": "lancemaster.skill.34140",
-      "skillKind": "ACTIVE",
+      "skillKind": "COMBO",
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 15000,
-      "actionDurationMs": 5600,
+      "actionDurationMs": 2118,
       "hitTimeMs": 450,
       "resourceCost": 347,
       "movementDistance": 0.0,
       "maximumRange": 8.0,
       "serverDamageProfileId": "damage.player.34140",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 2118,
+          "hitTimeMs": 450,
+          "inputOpenMs": 299,
+          "inputCloseMs": 602
+        },
+        {
+          "actionDurationMs": 3266,
+          "hitTimeMs": 1633,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 34120,

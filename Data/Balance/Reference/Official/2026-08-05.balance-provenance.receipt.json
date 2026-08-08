@@ -48,7 +48,7 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  31,
-                     "fieldEntryCount":  2405
+                     "fieldEntryCount":  2421
                  },
     "entries":  [
                     {
@@ -17798,9 +17798,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  5600,
+                        "sourceValue":  2118,
                         "transform":  "identity",
-                        "resultValue":  5600
+                        "resultValue":  2118
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -17836,6 +17836,110 @@
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-count-v1"
+                                   },
+                        "sourceValue":  2,
+                        "transform":  "identity",
+                        "resultValue":  2
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[0].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  2118,
+                        "transform":  "identity",
+                        "resultValue":  2118
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[0].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  450,
+                        "transform":  "identity",
+                        "resultValue":  450
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[0].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  299,
+                        "transform":  "identity",
+                        "resultValue":  299
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[0].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  602,
+                        "transform":  "identity",
+                        "resultValue":  602
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[1].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  3266,
+                        "transform":  "identity",
+                        "resultValue":  3266
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[1].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  1633,
+                        "transform":  "identity",
+                        "resultValue":  1633
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[1].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34140",
+                        "targetField":  "comboStages[1].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
                                    },
                         "sourceValue":  0,
                         "transform":  "identity",
@@ -18026,9 +18130,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-skill-kind-v1"
                                    },
-                        "sourceValue":  "ACTIVE",
+                        "sourceValue":  "COMBO",
                         "transform":  "identity",
-                        "resultValue":  "ACTIVE"
+                        "resultValue":  "COMBO"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18280,9 +18384,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  5667,
+                        "sourceValue":  2300,
                         "transform":  "identity",
-                        "resultValue":  5667
+                        "resultValue":  2300
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -18318,6 +18422,110 @@
                         "source":  {
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-count-v1"
+                                   },
+                        "sourceValue":  2,
+                        "transform":  "identity",
+                        "resultValue":  2
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[0].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  2300,
+                        "transform":  "identity",
+                        "resultValue":  2300
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[0].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  500,
+                        "transform":  "identity",
+                        "resultValue":  500
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[0].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  1302,
+                        "transform":  "identity",
+                        "resultValue":  1302
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[0].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  2300,
+                        "transform":  "identity",
+                        "resultValue":  2300
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[1].actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  1400,
+                        "transform":  "identity",
+                        "resultValue":  1400
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[1].hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  250,
+                        "transform":  "identity",
+                        "resultValue":  250
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[1].inputOpenMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34160",
+                        "targetField":  "comboStages[1].inputCloseMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "server-combo-stage-timing-v1"
                                    },
                         "sourceValue":  0,
                         "transform":  "identity",
@@ -18508,9 +18716,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-skill-kind-v1"
                                    },
-                        "sourceValue":  "ACTIVE",
+                        "sourceValue":  "COMBO",
                         "transform":  "identity",
-                        "resultValue":  "ACTIVE"
+                        "resultValue":  "COMBO"
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
