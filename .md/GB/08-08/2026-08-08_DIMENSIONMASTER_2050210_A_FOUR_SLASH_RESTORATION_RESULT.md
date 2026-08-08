@@ -116,3 +116,37 @@ canonical `effect.dimensionmaster.skill.2050210`을 선택한다.
 - A 수동 candidate는 비교 자료일 뿐 canonical publish에 사용하지 않는다.
 - 향후 base11 자동 promotion은 canonical A SHA가 기존 receipt와 다르면 의도된 수동 override로
   거부한다. A를 덮기 전에 이번 canonical을 명시적으로 보존해야 한다.
+
+## 8. main 병합 후 수동 후보와 검증 성능 복구
+
+main 병합에서 canonical과 혼동하지 않도록 제외했던 별도 수동 후보를 다시 Git 관리 대상으로
+복구했다. 이 후보는 canonical을 덮지 않으며, 원본 실행 복구 전후를 비교하는 검증 기준이다.
+
+```text
+effect.dimensionmaster.skill.2050210.a-restoration-candidate
+16 Mesh Elements
+manual.a.hit01~04 × body/rim/highlight/afterimage
+```
+
+`Data Files`에서 이 문서를 로드하면 `Play Group`과 Element별 `Solo`가 다시 표시된다. 후보는
+deterministic seed와 동일하며 7개 Python 회귀 테스트로 확인했다.
+
+또한 문서 로드가 117-layer canonical 전체를 즉시 재생해 프레임을 떨어뜨리던 동작을 제거했다.
+이제 Load는 문서와 GPU 리소스를 stage한 뒤 Preview를 숨기고 정지한다. 다음 명령 중 하나를
+눌렀을 때만 Character root pivot과 연결된 A animation source time으로 재생한다.
+
+```text
+Play Complete Effect
+Play Group
+Solo
+```
+
+자동 검증 결과:
+
+- A candidate Python: 7 tests PASS
+- Effect Tool final audit: PASS
+- Effect data project registration: 435 files / 47 filters PASS
+- Client x64 Debug build: 오류 0
+
+수동 런타임 FPS와 네 타격의 실제 Animation/Effect 정합은 사용자 GPU 검증 전이므로 PASS로
+기록하지 않는다.

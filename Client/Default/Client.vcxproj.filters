@@ -1353,6 +1353,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a-restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
