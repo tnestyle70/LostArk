@@ -17316,9 +17316,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-timing-v1"
                                    },
-                        "sourceValue":  2667,
+                        "sourceValue":  1250,
                         "transform":  "identity",
-                        "resultValue":  2667
+                        "resultValue":  1250
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -17889,9 +17889,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "server-combo-stage-timing-v1"
                                    },
-                        "sourceValue":  602,
+                        "sourceValue":  2118,
                         "transform":  "identity",
-                        "resultValue":  602
+                        "resultValue":  2118
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

@@ -113,7 +113,7 @@
           "actionDurationMs": 2118,
           "hitTimeMs": 450,
           "inputOpenMs": 299,
-          "inputCloseMs": 602
+          "inputCloseMs": 2118
         },
         {
           "actionDurationMs": 3266,
@@ -152,7 +152,7 @@
       "requiredStance": "LANCE_MASTER_LONG_SPEAR",
       "setsStance": "NONE",
       "cooldownMs": 18000,
-      "actionDurationMs": 2667,
+      "actionDurationMs": 1250,
       "hitTimeMs": 200,
       "resourceCost": 386,
       "movementDistance": 0.0,

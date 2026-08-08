@@ -85,8 +85,7 @@
     {
       "skillId": 34110,
       "clips": [
-        { "clip": "flm_sk_crescentsweep", "playRate": 1.2 },
-        { "clip": "flm_sk_crescentsweep_custom_5", "playRate": 1.2 }
+        { "clip": "flm_sk_crescentsweep", "playRate": 1.2 }
       ]
     },
     {
