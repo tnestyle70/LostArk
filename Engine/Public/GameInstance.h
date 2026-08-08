@@ -137,6 +137,12 @@ public: /* For.Frustum */
 public: /* For.Profiler */
 	class CProfiler* Get_Profiler() const { return m_pProfiler.get(); }
 
+public: /* For.Physics */
+	class CPhysics_Manager* Get_PhysicsManager() const
+	{
+		return m_pPhysics_Manager.get();
+	}
+
 private:
 	void Refresh_CameraState();
 
@@ -160,6 +166,7 @@ private:
 	unique_ptr<class CShadow>				m_pShadow = { nullptr };
 	unique_ptr<class CFrustum>				m_pFrustum = { nullptr };
 	unique_ptr<class CProfiler>				m_pProfiler = { nullptr };
+	unique_ptr<class CPhysics_Manager>		m_pPhysics_Manager = { nullptr };
 
 private:
 	float2_t			m_vViewportDesc = {};

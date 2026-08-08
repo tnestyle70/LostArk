@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_cm_02.light.par_mp_light_01|FX_CM_02.light.par_mp_light_01.particlespriteemitter_2|event:source-event-065"
     ],
-    "sourceElementSha256": "feb9d7a7fc17c98129a08a2551352bad4047a10b9657c473853a7b098729bfa1",
+    "sourceElementSha256": "f72e995881b21cbc63e8193936b6314ae158274df5a1093c32a440c032d40810",
     "inputSlot": "A"
   },
   "emitters": [
@@ -81,8 +81,8 @@
           "transform": {
             "position": [
               1.5,
-              0.0,
-              1.2
+              1.2,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -226,12 +226,12 @@
             "initialPositionMin": [
               0.01,
               0.01,
-              0.01
+              -0.01
             ],
             "initialPositionMax": [
               0.01,
               0.01,
-              0.01
+              -0.01
             ],
             "initialVelocityMin": [
               0.0,

@@ -6,6 +6,7 @@
 #include "MapPlacementDocument.h"
 #include "MapPlacementRuntime.h"
 #include "DeployPropRuntime.h"
+#include "DestructionSimulationDocument.h"
 #include "EncounterPatternReference.h"
 #include "WorldDestructionDocument.h"
 #include "NavGridBaker.h"
@@ -16,6 +17,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -27,6 +29,7 @@ class CMapAssetObject;
 class CMapStaticBatchObject;
 class CTrigger_Box;
 class CCamera_Free;
+class CDestructionSimulationController;
 class CMapTool final
 {
 private:
@@ -66,6 +69,7 @@ private:
 		std::filesystem::path gameplayDocument;
 		std::filesystem::path encounterReference;
 		std::filesystem::path worldEventsDocument;
+		std::filesystem::path destructionSimulationDocument;
 		EDITOR_NAVIGATION_POLICY navigationPolicy =
 			EDITOR_NAVIGATION_POLICY::NONE;
 		EDITOR_GAMEPLAY_POLICY gameplayPolicy =
@@ -134,6 +138,9 @@ public:
 
 private:
 	/* Frame Update */
+	void Update_DestructionSimulation(
+		f32_t fTimeDelta,
+		bool_t isMapAuthoringLevel);
 	void Update_WorldInteraction(bool_t isAssetTest);
 	void Handle_LevelTransition(
 		uint32_t currentLevelIndex,
@@ -151,6 +158,10 @@ private:
 	void Render_DestructionSimpleWallList();
 	void Render_DestructionSimpleInspector();
 	void Render_DestructionSimpleTimeline();
+	void Render_DestructionSimulationWindow(bool_t isAssetTest);
+	void Render_DestructionSimulationOutliner();
+	void Render_DestructionSimulationDetail();
+	void Render_DestructionSimulationTimeline();
 	void Render_DestructionEncounterSource();
 	void Render_DestructionDeployList();
 	void Render_DestructionWorldRows();
@@ -264,6 +275,7 @@ private:
 	bool_t Reload_DestructionAuthoring();
 	bool_t Load_WorldDestruction();
 	bool_t Save_WorldDestruction();
+	bool_t Save_DestructionAuthoringPair();
 	std::filesystem::path Get_WorldDestructionPath() const;
 	bool_t Try_PickDeployProp(
 		uint64_t& outRuntimePlacementId,
@@ -286,6 +298,23 @@ private:
 	bool_t Validate_CurrentDestructionReferences(
 		std::string& outStatus) const;
 	void Use_DestructionTimelineTime();
+	bool_t Load_DestructionSimulation();
+	bool_t Save_DestructionSimulation();
+	std::filesystem::path Get_DestructionSimulationPath() const;
+	bool_t Create_DefaultDestructionSimulationProfile();
+	bool_t Modify_DestructionGroupMember(
+		uint64_t placementId,
+		bool_t addMember);
+	bool_t Request_StageDestructionSimulation(
+		const DESTRUCTION_SIMULATION_PROFILE& profile,
+		bool_t preserveSampleTime,
+		bool_t playAfterStage);
+	bool_t Stage_DestructionElementDraftPreview();
+	void Select_DestructionSimulationProfile(const std::string& profileId);
+	void Select_DestructionSimulationElement(const std::string& elementId);
+	void Reset_DestructionSimulationUI();
+	const DESTRUCTION_SIMULATION_PROFILE*
+		Get_SelectedDestructionSimulationProfile() const;
 	bool_t Refresh_DestructionHighlight();
 	void Apply_DestructionPreview(DEPLOY_PROP_STATE state);
 	void Restore_DestructionPreview();
@@ -403,6 +432,22 @@ private:
 	int32_t m_iDestructionTriggerKind = 1;
 	int32_t m_iDestructionBreakingMs = 1900;
 	int32_t m_iDestructionOffsetMs = 0;
+
+	/* Destruction Physics Audition State */
+	std::unique_ptr<CDestructionSimulationController>
+		m_pDestructionSimulationController;
+	CDestructionSimulationDocument m_DestructionSimulationDocument;
+	std::string m_SelectedDestructionSimulationProfileId;
+	std::string m_SelectedDestructionSimulationElementId;
+	std::optional<DESTRUCTION_SIMULATION_ELEMENT>
+		m_DestructionSimulationElementDraft;
+	std::string m_DestructionSimulationStatus =
+		"Select a destruction group and stage a simulation";
+	char m_DestructionSimulationFilter[128]{};
+	char m_DestructionSimulationReceiverId[128]{};
+	bool_t m_bDestructionSimulationElementDraftDirty = false;
+	bool_t m_bDestructionSimulationLoop = true;
+	bool_t m_bDestructionSimulationClearRequested = false;
 
 	/* Navigation State */
 	bool_t m_bNavigationStrokeActive = false;

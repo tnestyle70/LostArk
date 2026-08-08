@@ -24,6 +24,7 @@ public:
 	virtual HRESULT Initialize(void* pArg) override;
 	virtual void Priority_Update(f32_t fTimeDelta);
 	virtual void Update(f32_t fTimeDelta);
+	virtual void Post_Physics_Update(f32_t fTimeDelta);
 	virtual void Late_Update(f32_t fTimeDelta);
 	virtual HRESULT Render();
 	virtual HRESULT Render_Shadow();

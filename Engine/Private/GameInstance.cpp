@@ -18,6 +18,7 @@
 #include "Graphic_Device.h"
 #include "Prototype_Manager.h"
 #include "Profiler.h"
+#include "Physics_Manager.h"
 
 CGameInstance::CGameInstance()
 {
@@ -94,6 +95,10 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<I
 	if (nullptr == m_pFrustum)
 		return E_FAIL;
 
+	m_pPhysics_Manager = CPhysics_Manager::Create(EngineDesc.iNumLevels);
+	if (nullptr == m_pPhysics_Manager)
+		return E_FAIL;
+
 	m_pProfiler = std::make_unique<CProfiler>();
 	if (FAILED(m_pProfiler->Initialize(pOutDevice, pOutContext)))
 		return E_FAIL;
@@ -116,6 +121,8 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	Refresh_CameraState();
 
 	m_pObject_Manager->Update(fTimeDelta);
+	m_pPhysics_Manager->Update(fTimeDelta);
+	m_pObject_Manager->Post_Physics_Update(fTimeDelta);
 	m_pObject_Manager->Late_Update(fTimeDelta);
 
 	m_pLevel_Manager->Update(fTimeDelta);
@@ -160,6 +167,9 @@ HRESULT CGameInstance::Clear_Resources(uint32_t iClearLevelID)
 		return E_FAIL;
 
 	if (FAILED(m_pPrototype_Manager->Clear(iClearLevelID)))
+		return E_FAIL;
+
+	if (FAILED(m_pPhysics_Manager->Clear(iClearLevelID)))
 		return E_FAIL;
 
 	return S_OK;
@@ -466,6 +476,7 @@ void CGameInstance::Release_Engine()
 	/* 현재 Loading Level이 보유한 Loader 스레드를 먼저 종료시킨다. */
 	m_pLevel_Manager.reset();
 	m_pObject_Manager.reset();
+	m_pPhysics_Manager.reset();
 	m_pPrototype_Manager.reset();
 	m_pTimer_Manager.reset();
 #ifdef _WIN64

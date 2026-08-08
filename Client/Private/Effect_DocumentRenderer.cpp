@@ -26,15 +26,41 @@ namespace
 			"diff_tex", "diff_noise_tex", "a_mask_tex", "a_noise_01_tex",
 			"b_mask_tex", "b_noise_01_tex", "dissolve_tex"
 		}};
+	inline constexpr std::array<std::string_view, 5u>
+		BLACKLINE_SOURCE_TEXTURE_NAMES = {{
+			"diffuse_tex", "flow_tex", "mask_a_tex", "mask_b_tex",
+			"dissolve_tex"
+		}};
+	inline constexpr std::array<std::string_view, 3u>
+		LOCAL_CRACK_SOURCE_TEXTURE_NAMES = {{
+			"normal_tex", "refle_tex", "dissolve_tex"
+		}};
+
+	template <size_t Size>
+	int32_t NamedSourceTextureIndex(
+		const std::array<std::string_view, Size>& Names,
+		const std::string_view strName)
+	{
+		const auto Iterator = std::find(Names.begin(), Names.end(), strName);
+		return Iterator == Names.end() ? -1 :
+			static_cast<int32_t>(std::distance(Names.begin(), Iterator));
+	}
 
 	int32_t LinearFlowSourceTextureIndex(const std::string_view strName)
 	{
-		const auto Iterator = std::find(
-			LINEARFLOW_SOURCE_TEXTURE_NAMES.begin(),
-			LINEARFLOW_SOURCE_TEXTURE_NAMES.end(), strName);
-		return Iterator == LINEARFLOW_SOURCE_TEXTURE_NAMES.end() ? -1 :
-			static_cast<int32_t>(std::distance(
-				LINEARFLOW_SOURCE_TEXTURE_NAMES.begin(), Iterator));
+		return NamedSourceTextureIndex(
+			LINEARFLOW_SOURCE_TEXTURE_NAMES, strName);
+	}
+
+	int32_t BlacklineSourceTextureIndex(const std::string_view strName)
+	{
+		return NamedSourceTextureIndex(BLACKLINE_SOURCE_TEXTURE_NAMES, strName);
+	}
+
+	int32_t LocalCrackSourceTextureIndex(const std::string_view strName)
+	{
+		return NamedSourceTextureIndex(
+			LOCAL_CRACK_SOURCE_TEXTURE_NAMES, strName);
 	}
 
 	f32_t SourceScalar(
@@ -123,17 +149,168 @@ namespace
 			Source, "b_mask_color", { 1.f, 1.f, 1.f, 1.f });
 	}
 
-	bool_t Has_LinearFlowSourceTextureContract(
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	void Build_BlacklineConstants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		std::array<float4_t, 16u>& Parameters,
+		float4_t& vDiffuseColor,
+		float4_t& vMaskColor)
+	{
+		auto S = [&Source](const std::string_view strName, const f32_t fFallback)
+		{
+			return SourceScalar(Source, strName, fFallback);
+		};
+		Parameters[0] = { S("diff_tile_x", 1.f), S("diff_tile_y", 1.f),
+			S("diff_offset_x", 0.f), S("diff_offset_y", 0.f) };
+		Parameters[1] = { S("diff_dypan_x", 0.f), S("diff_dypan_y", 0.f),
+			S("diff_rot", 0.f), S("diff_flow_str", 0.f) };
+		Parameters[2] = { S("diff_str", 1.f), S("diff_pow", 1.f),
+			S("desaturation", 0.f), S("depth", 0.f) };
+		Parameters[3] = { S("mask_a_tile_x", 1.f),
+			S("mask_a_tile_y", 1.f), S("mask_a_offset_x", 0.f),
+			S("mask_a_offset_y", 0.f) };
+		Parameters[4] = { S("maska_dypan_x", 0.f),
+			S("maska_dypan_y", 0.f), S("mask_a_rot", 0.f),
+			S("maska_flow_strength", 0.f) };
+		Parameters[5] = { S("mask_a_str", 1.f), S("mask_a_pow", 1.f),
+			S("mask_density", 1.f), S("mask_radius", 1.f) };
+		Parameters[6] = { S("mask_b_tile_x", 1.f),
+			S("mask_b_tile_y", 1.f), S("mask_b_offset_x", 0.f),
+			S("mask_b_offset_y", 0.f) };
+		Parameters[7] = { S("mask_b_pan_x", 0.f), S("mask_b_pan_y", 0.f),
+			S("maskb_dypan_x", 0.f), S("maskb_dypan_y", 0.f) };
+		Parameters[8] = { S("mask_b_rot", 0.f),
+			S("maskb_flow_strength", 0.f), S("mask_b_str", 1.f),
+			S("mask_b_pow", 1.f) };
+		Parameters[9] = { S("flow01_tile_x", 1.f),
+			S("flow01_tile_y", 1.f), S("flow01_pan_x", 0.f),
+			S("flow01_pan_y", 0.f) };
+		Parameters[10] = { S("flow01_str", 0.f), S("flow02_tile_x", 1.f),
+			S("flow02_tile_y", 1.f), S("flow02_pan_x", 0.f) };
+		Parameters[11] = { S("flow02_pan_y", 0.f), S("flow02_str", 0.f),
+			S("dissolve_tile_x", 1.f), S("dissolve_tile_y", 1.f) };
+		Parameters[12] = { S("dissolve_pan_x", 0.f),
+			S("dissolve_pan_y", 0.f), S("dissolve_hardness", 5.f), 0.f };
+		Parameters[13] = { S("emissive_str", 1.f), S("emissive_pow", 1.f),
+			S("spheremask_str_min", 0.f), S("spheremask_str_max", 1.f) };
+		Parameters[14] = { S("01.uv_xscale", 0.f),
+			S("01.uv_yscale", 0.f), S("02.uv_xscale", 0.f),
+			S("02.uv_yscale", 0.f) };
+		vDiffuseColor = SourceVector(
+			Source, "diff_color", { 1.f, 1.f, 1.f, 1.f });
+		vMaskColor = SourceVector(
+			Source, "mask_color", { 1.f, 1.f, 1.f, 1.f });
+	}
+
+	void Build_LocalCrackConstants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		std::array<float4_t, 5u>& Parameters,
+		float4_t& vOutColor,
+		float4_t& vInColor,
+		float4_t& vReflectionColor)
+	{
+		auto S = [&Source](const std::string_view strName, const f32_t fFallback)
+		{
+			return SourceScalar(Source, strName, fFallback);
+		};
+		Parameters[0] = { S("dissolve_tile_x", 1.f),
+			S("dissolve_tile_y", 1.f), S("dissolve_pan_x", 0.f),
+			S("dissolve_pan_y", 0.f) };
+		Parameters[1] = { S("dissolve_hardness", 5.f),
+			S("dissolve_tension", 0.f), S("normal_tileu", 1.f),
+			S("normal_tilev", 1.f) };
+		Parameters[2] = { S("distortion", 0.f), S("fresnel_pow", 1.f),
+			S("depth", 0.f), S("refle_pow", 1.f) };
+		Parameters[3] = { S("refle_desaturation", 0.f),
+			S("refle_vector_divide", 1.f), S("refle_panspeed", 0.f),
+			S("refle_offsetx", 0.5f) };
+		Parameters[4] = { S("refle_offsety", 0.5f),
+			S("refle_tileu", 1.f), S("refle_tilev", 1.f), 0.f };
+		vOutColor = SourceVector(
+			Source, "out_color", { 0.1f, 0.1f, 0.1f, 1.f });
+		vInColor = SourceVector(
+			Source, "in_color", { 1.f, 1.f, 1.f, 1.f });
+		vReflectionColor = SourceVector(
+			Source, "refle_color", { 1.f, 1.f, 1.f, 1.f });
+	}
+
+	void Build_SliceConstants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		float4_t& vScalars0,
+		float4_t& vScalars1,
+		float4_t& vAuxiliary)
+	{
+		auto S = [&Source](const std::string_view strName, const f32_t fFallback)
+		{
+			return SourceScalar(Source, strName, fFallback);
+		};
+		vScalars0 = { S("slice_rot", 0.f), S("opacity_radius", 2.f),
+			S("flow_str", 0.f), S("distortion", 0.f) };
+		vScalars1 = { S("slice_flow_tileu", 1.f),
+			S("slice_flow_tilev", 1.f), S("slice_flow_offsetx", 0.f),
+			S("slice_flow_offsety", 0.f) };
+		vAuxiliary = { S("slice_flow_rot", 0.f), 0.f, 0.f, 0.f };
+	}
+
+	void Build_MissileTrailConstants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		float4_t& vScalars0,
+		float4_t& vScalars1,
+		float4_t& vAuxiliary0,
+		float4_t& vAuxiliary1)
+	{
+		auto S = [&Source](const std::string_view strName, const f32_t fFallback)
+		{
+			return SourceScalar(Source, strName, fFallback);
+		};
+		vScalars0 = { S("alpha_tex_strength", 1.f),
+			S("alpha_out_falloff", 1.f), S("emissive_tex_strength", 1.f),
+			S("emissive_tex_power", 1.f) };
+		vScalars1 = { S("alpha_tex_r_texcoord", 1.f),
+			S("alpha_tex_g_texcoord", 1.f), S("uv_noise_head_velue", 0.f),
+			S("dissolve_hardness", 5.f) };
+		vAuxiliary0 = { S("alpha_tex_positon_r", 0.f),
+			S("alpha_tex_positon_g", 0.f),
+			S("uvnoise_tex_01_r_texcoord", 1.f),
+			S("uvnoise_tex_01_g_texcoord", 1.f) };
+		vAuxiliary1 = { S("uvnoise_tex_02_r_texcoord", 1.f),
+			S("uvnoise_tex_02_g_texcoord", 1.f),
+			S("emissive_tex_backvelue", 0.f),
+			S("fresnelalpha_power", 1.f) };
+	}
+
+	template <size_t Size>
+	bool_t Has_NamedSourceTextureContract(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		const std::array<std::string_view, Size>& Names)
 	{
 		uint32_t iMask = 0u;
 		for (const Client::EFFECT_NAMED_TEXTURE_DESC& Texture : Source.Textures)
 		{
-			const int32_t iIndex = LinearFlowSourceTextureIndex(Texture.strName);
+			const int32_t iIndex = NamedSourceTextureIndex(Names, Texture.strName);
 			if (iIndex >= 0 && !Texture.strAssetId.empty())
 				iMask |= 1u << static_cast<uint32_t>(iIndex);
 		}
-		return iMask == (1u << LINEARFLOW_SOURCE_TEXTURE_NAMES.size()) - 1u;
+		return iMask == (1u << Names.size()) - 1u;
+	}
+
+	bool_t Has_LinearFlowSourceTextureContract(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	{
+		return Has_NamedSourceTextureContract(
+			Source, LINEARFLOW_SOURCE_TEXTURE_NAMES);
+	}
+
+	bool_t Has_BlacklineSourceTextureContract(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	{
+		return Has_NamedSourceTextureContract(
+			Source, BLACKLINE_SOURCE_TEXTURE_NAMES);
+	}
+
+	bool_t Has_LocalCrackSourceTextureContract(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source)
+	{
+		return Client::Has_EffectLocalCrackNamedTextureContract(Source);
 	}
 
 	size_t Texture_Index(const Client::EFFECT_RESOURCE_SLOT eSlot)
@@ -216,11 +393,25 @@ namespace
 		{
 			return !Has_LinearFlowSourceTextureContract(Source);
 		}
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.blackline-aura.v1")
+		{
+			return !Has_BlacklineSourceTextureContract(Source);
+		}
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.local-crack.v1")
+		{
+			const bool_t bHasNamedContract =
+				Has_LocalCrackSourceTextureContract(Source);
+			return !Client::Is_EffectLocalCrackResourceContractSatisfied(
+				bHasNamedContract, bHasNamedContract, bHasNamedContract,
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::MESH_MODEL));
+		}
 		if (Source.strRuntimeShaderProfileId == "effect.ue3.shine.v1" ||
+			Source.strRuntimeShaderProfileId == "effect.ue3.slice.v1" ||
 			Source.strRuntimeShaderProfileId ==
-				"effect.ue3.blackline-aura.v1" ||
-			Source.strRuntimeShaderProfileId ==
-				"effect.ue3.local-crack.v1" ||
+				"effect.ue3.missiletrail-01.v1" ||
 			Source.strRuntimeShaderProfileId ==
 				"effect.ue3.procedural-center-glow.v1")
 		{
@@ -417,22 +608,27 @@ namespace
 			break;
 		}
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X:
-			Orientation = XMMatrixRotationY(XM_PIDIV2);
+			Orientation = XMMatrixRotationZ(fRoll) *
+				XMMatrixRotationY(XM_PIDIV2);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_X:
-			Orientation = XMMatrixRotationY(-XM_PIDIV2);
+			Orientation = XMMatrixRotationZ(fRoll) *
+				XMMatrixRotationY(-XM_PIDIV2);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Y:
-			Orientation = XMMatrixRotationX(-XM_PIDIV2);
+			Orientation = XMMatrixRotationZ(fRoll) *
+				XMMatrixRotationX(-XM_PIDIV2);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Y:
-			Orientation = XMMatrixRotationX(XM_PIDIV2);
+			Orientation = XMMatrixRotationZ(fRoll) *
+				XMMatrixRotationX(XM_PIDIV2);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z:
-			Orientation = XMMatrixRotationY(XM_PI);
+			Orientation = XMMatrixRotationZ(fRoll) *
+				XMMatrixRotationY(XM_PI);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Z:
-			Orientation = XMMatrixIdentity();
+			Orientation = XMMatrixRotationZ(fRoll);
 			break;
 		case Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Z:
 		{
@@ -564,13 +760,23 @@ namespace
 			return 8u;
 		if (Source.strRuntimeShaderProfileId ==
 			"effect.ue3.local-crack.v1")
-			return 9u;
+		{
+			if (Source.Textures.empty())
+				return 0u;
+			return Has_LocalCrackSourceTextureContract(Source) ? 9u :
+				UINT32_MAX;
+		}
 		if (Source.strRuntimeShaderProfileId ==
 			"effect.ue3.procedural-center-glow.v1")
 			return 10u;
 		if (Source.strRuntimeShaderProfileId ==
 			"effect.ue3.linearflow-02.v1")
 			return 11u;
+		if (Source.strRuntimeShaderProfileId == "effect.ue3.slice.v1")
+			return 12u;
+		if (Source.strRuntimeShaderProfileId ==
+			"effect.ue3.missiletrail-01.v1")
+			return 13u;
 		return UINT32_MAX;
 	}
 
@@ -582,6 +788,18 @@ namespace
 		if (strSemantic == "uv_pan") return 4u;
 		if (strSemantic == "distortion") return 5u;
 		if (strSemantic == "radial_size") return 6u;
+		if (strSemantic == "mask_a_offset") return 7u;
+		if (strSemantic == "mask_b_offset") return 8u;
+		if (strSemantic == "mask_a_distort") return 9u;
+		if (strSemantic == "mask_b_distort") return 10u;
+		if (strSemantic == "mask_a_pan") return 11u;
+		if (strSemantic == "flow_strength") return 12u;
+		if (strSemantic == "mask_b_pan") return 13u;
+		if (strSemantic == "diffuse_pan") return 14u;
+		if (strSemantic == "missile_alpha_pan") return 15u;
+		if (strSemantic == "missile_noise_strength") return 16u;
+		if (strSemantic == "missile_noise_pan") return 17u;
+		if (strSemantic == "missile_dissolve") return 18u;
 		return 0u;
 	}
 
@@ -728,6 +946,22 @@ HRESULT Client::CEffectDocumentRenderer::Load_Texture(
 		m_pDevice.Get(), Path.c_str(), nullptr, &OutSRV);
 }
 
+HRESULT Client::CEffectDocumentRenderer::Load_SourceTexture(
+	const EFFECT_NAMED_TEXTURE_DESC& Texture,
+	ComPtr<ID3D11ShaderResourceView>& OutSRV) const
+{
+	const std::filesystem::path Path =
+		CRuntimeAssetRoot::Resolve(std::filesystem::path(Texture.strAssetId));
+	if (Path.empty() || !std::filesystem::is_regular_file(Path))
+		return E_FAIL;
+	const DirectX::DDS_LOADER_FLAGS Flags =
+		EFFECT_TEXTURE_COLOR_SPACE::SRGB == Texture.eColorSpace ?
+			DirectX::DDS_LOADER_FORCE_SRGB : DirectX::DDS_LOADER_IGNORE_SRGB;
+	return DirectX::CreateDDSTextureFromFileEx(
+		m_pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
+		D3D11_BIND_SHADER_RESOURCE, 0u, 0u, Flags, nullptr, &OutSRV);
+}
+
 HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_RESOURCE& OutResource,
@@ -780,6 +1014,30 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 			Staged.vLinearFlowMaskAColor, Staged.vLinearFlowMaskBColor,
 			Staged.vSourceScalars0, Staged.vSourceScalars1);
 	}
+	else if (8u == Staged.iSourceMaterialProfile)
+	{
+		Build_BlacklineConstants(
+			SourceMaterial, Staged.BlacklineParameters,
+			Staged.vBlacklineDiffuseColor, Staged.vBlacklineMaskColor);
+	}
+	else if (9u == Staged.iSourceMaterialProfile)
+	{
+		Build_LocalCrackConstants(
+			SourceMaterial, Staged.LocalCrackParameters,
+			Staged.vLocalCrackOutColor, Staged.vLocalCrackInColor,
+			Staged.vLocalCrackReflectionColor);
+	}
+	else if (12u == Staged.iSourceMaterialProfile)
+	{
+		Build_SliceConstants(SourceMaterial, Staged.vSourceScalars0,
+			Staged.vSourceScalars1, Staged.vSourceVector0);
+	}
+	else if (13u == Staged.iSourceMaterialProfile)
+	{
+		Build_MissileTrailConstants(SourceMaterial, Staged.vSourceScalars0,
+			Staged.vSourceScalars1, Staged.vSourceVector0,
+			Staged.vSourceVector1);
+	}
 	for (size_t iSemantic = 0u;
 		iSemantic < Staged.DynamicParameterSemantics.size(); ++iSemantic)
 	{
@@ -825,22 +1083,42 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		}
 		Staged.Textures[Texture_Index(pInput->eRuntimeSlot)] = std::move(Texture);
 	}
-	if (11u == Staged.iSourceMaterialProfile)
+	if (8u == Staged.iSourceMaterialProfile ||
+		9u == Staged.iSourceMaterialProfile ||
+		11u == Staged.iSourceMaterialProfile)
 	{
 		for (const EFFECT_NAMED_TEXTURE_DESC& TextureDesc : SourceMaterial.Textures)
 		{
-			const int32_t iIndex =
-				LinearFlowSourceTextureIndex(TextureDesc.strName);
+			const int32_t iIndex = 8u == Staged.iSourceMaterialProfile ?
+				BlacklineSourceTextureIndex(TextureDesc.strName) :
+				(9u == Staged.iSourceMaterialProfile ?
+					LocalCrackSourceTextureIndex(TextureDesc.strName) :
+					LinearFlowSourceTextureIndex(TextureDesc.strName));
 			if (iIndex < 0 || TextureDesc.strAssetId.empty())
 				continue;
 			ComPtr<ID3D11ShaderResourceView> Texture;
-			if (FAILED(Load_Texture(TextureDesc.strAssetId, Texture)))
+			if (FAILED(Load_SourceTexture(TextureDesc, Texture)))
 				continue;
 			Staged.SourceTextures[static_cast<size_t>(iIndex)] =
 				std::move(Texture);
 			Staged.iSourceTextureMask |=
 				1u << static_cast<uint32_t>(iIndex);
+			if (EFFECT_TEXTURE_ADDRESS_MODE::CLAMP == TextureDesc.eAddressU)
+				Staged.iSourceTextureClampUMask |=
+					1u << static_cast<uint32_t>(iIndex);
+			if (EFFECT_TEXTURE_ADDRESS_MODE::CLAMP == TextureDesc.eAddressV)
+				Staged.iSourceTextureClampVMask |=
+					1u << static_cast<uint32_t>(iIndex);
 		}
+	}
+	if (9u == Staged.iSourceMaterialProfile &&
+		Staged.iSourceTextureMask !=
+			(1u << LOCAL_CRACK_SOURCE_TEXTURE_NAMES.size()) - 1u)
+	{
+		strOutError =
+			"Local-crack named normal/reflection/dissolve texture stage failed: " +
+			Element.strElementId;
+		return E_FAIL;
 	}
 
 	if (EFFECT_ELEMENT_KIND::MESH != Element.eKind &&
@@ -854,6 +1132,12 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	}
 	Staged.bSourceMaterialFallbackBlocked =
 		Is_SourceMaterialFallbackBlocked(Element, Staged.GroupedConstants) ||
+		(8u == Staged.iSourceMaterialProfile &&
+			Staged.iSourceTextureMask !=
+				(1u << BLACKLINE_SOURCE_TEXTURE_NAMES.size()) - 1u) ||
+		(9u == Staged.iSourceMaterialProfile &&
+			Staged.iSourceTextureMask !=
+				(1u << LOCAL_CRACK_SOURCE_TEXTURE_NAMES.size()) - 1u) ||
 		(11u == Staged.iSourceMaterialProfile &&
 			Staged.iSourceTextureMask !=
 				(1u << LINEARFLOW_SOURCE_TEXTURE_NAMES.size()) - 1u);
@@ -1102,6 +1386,33 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		FAILED(pShader->Bind_RawValue("g_LinearFlowMaskBColor",
 			&Resource.vLinearFlowMaskBColor,
 			sizeof(Resource.vLinearFlowMaskBColor))) ||
+		FAILED(pShader->Bind_RawValue("g_BlacklineParameters",
+			Resource.BlacklineParameters.data(),
+			sizeof(Resource.BlacklineParameters))) ||
+		FAILED(pShader->Bind_RawValue("g_BlacklineDiffuseColor",
+			&Resource.vBlacklineDiffuseColor,
+			sizeof(Resource.vBlacklineDiffuseColor))) ||
+		FAILED(pShader->Bind_RawValue("g_BlacklineMaskColor",
+			&Resource.vBlacklineMaskColor,
+			sizeof(Resource.vBlacklineMaskColor))) ||
+		FAILED(pShader->Bind_RawValue("g_LocalCrackParameters",
+			Resource.LocalCrackParameters.data(),
+			sizeof(Resource.LocalCrackParameters))) ||
+		FAILED(pShader->Bind_RawValue("g_LocalCrackOutColor",
+			&Resource.vLocalCrackOutColor,
+			sizeof(Resource.vLocalCrackOutColor))) ||
+		FAILED(pShader->Bind_RawValue("g_LocalCrackInColor",
+			&Resource.vLocalCrackInColor,
+			sizeof(Resource.vLocalCrackInColor))) ||
+		FAILED(pShader->Bind_RawValue("g_LocalCrackReflectionColor",
+			&Resource.vLocalCrackReflectionColor,
+			sizeof(Resource.vLocalCrackReflectionColor))) ||
+		FAILED(pShader->Bind_RawValue("g_SourceTextureClampUMask",
+			&Resource.iSourceTextureClampUMask,
+			sizeof(Resource.iSourceTextureClampUMask))) ||
+		FAILED(pShader->Bind_RawValue("g_SourceTextureClampVMask",
+			&Resource.iSourceTextureClampVMask,
+			sizeof(Resource.iSourceTextureClampVMask))) ||
 		FAILED(pShader->Bind_RawValue("g_GroupedUVScalePan",
 			&Resource.GroupedConstants.vUVScalePan,
 			sizeof(Resource.GroupedConstants.vUVScalePan))) ||
@@ -1186,7 +1497,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		*pWorldOverride : Element.World;
 	const float4_t DynamicParameter = nullptr == pDynamicParameter ?
 		float4_t{} : *pDynamicParameter;
+	const float4_t CameraPosition = *CGameInstance::Get().Get_CamPosition();
 	if (FAILED(m_pMeshShader->Bind_Matrix("g_WorldMatrix", &World)) ||
+		FAILED(m_pMeshShader->Bind_RawValue("g_CameraPosition",
+			&CameraPosition, sizeof(CameraPosition))) ||
 		FAILED(m_pMeshShader->Bind_RawValue("g_EffectDynamicParameter",
 			&DynamicParameter, sizeof(DynamicParameter))) ||
 		FAILED(Bind_Common(m_pMeshShader, Element, Resource, fAlphaScale)))

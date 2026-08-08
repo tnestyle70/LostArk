@@ -106,7 +106,8 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 
 void CDeployPropObject::Update(f32_t fTimeDelta)
 {
-	if (m_State == DEPLOY_PROP_STATE::FRACTURED &&
+	if (!m_bPhysicsPreviewActive &&
+		m_State == DEPLOY_PROP_STATE::FRACTURED &&
 		m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0)
 		m_pIntactModelCom->Play_Animation(fTimeDelta);
@@ -180,8 +181,12 @@ bool_t CDeployPropObject::Get_WorldBounds(
 	const float3_t& localMaximum = model->Get_LocalBoundsMax();
 	/* Same scale and rotation Apply_Transform builds, without the translation,
 	   so the eight rotated corners can be re-bounded around the placement. */
+	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
+		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
+	const float3_t& rootPosition = m_bPhysicsPreviewActive ?
+		m_PhysicsPreviewPosition : m_Placement.position;
 	const vector_t quaternion =
-		XMQuaternionNormalize(XMLoadFloat4(&m_Placement.rotationQuaternion));
+		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
 	const matrix_t rotation = XMMatrixScaling(
 		m_Placement.uniformScale,
 		m_Placement.uniformScale,
@@ -217,11 +222,172 @@ bool_t CDeployPropObject::Get_WorldBounds(
 		(maximum.y - minimum.y) * 0.5f,
 		(maximum.z - minimum.z) * 0.5f);
 	outCenter = float3_t(
-		m_Placement.position.x + (minimum.x + maximum.x) * 0.5f,
-		m_Placement.position.y + (minimum.y + maximum.y) * 0.5f,
-		m_Placement.position.z + (minimum.z + maximum.z) * 0.5f);
+		rootPosition.x + (minimum.x + maximum.x) * 0.5f,
+		rootPosition.y + (minimum.y + maximum.y) * 0.5f,
+		rootPosition.z + (minimum.z + maximum.z) * 0.5f);
 	return outHalfExtents.x > 0.f && outHalfExtents.y > 0.f &&
 		outHalfExtents.z > 0.f;
+}
+
+bool_t CDeployPropObject::Get_PhysicsPreviewLocalBounds(
+	float3_t& outCenter,
+	float3_t& outHalfExtents) const
+{
+	const shared_ptr<CModel>& model =
+		(m_ModelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
+			nullptr != m_pFracturedModelCom) ?
+		m_pFracturedModelCom : m_pIntactModelCom;
+	if (nullptr == model || !model->Has_LocalBounds() ||
+		!std::isfinite(m_Placement.uniformScale) ||
+		m_Placement.uniformScale <= 0.f)
+	{
+		return false;
+	}
+
+	const float3_t& minimum = model->Get_LocalBoundsMin();
+	const float3_t& maximum = model->Get_LocalBoundsMax();
+	outCenter = float3_t(
+		(minimum.x + maximum.x) * 0.5f * m_Placement.uniformScale,
+		(minimum.y + maximum.y) * 0.5f * m_Placement.uniformScale,
+		(minimum.z + maximum.z) * 0.5f * m_Placement.uniformScale);
+	outHalfExtents = float3_t(
+		(maximum.x - minimum.x) * 0.5f * m_Placement.uniformScale,
+		(maximum.y - minimum.y) * 0.5f * m_Placement.uniformScale,
+		(maximum.z - minimum.z) * 0.5f * m_Placement.uniformScale);
+	return std::isfinite(outCenter.x) && std::isfinite(outCenter.y) &&
+		std::isfinite(outCenter.z) && std::isfinite(outHalfExtents.x) &&
+		std::isfinite(outHalfExtents.y) && std::isfinite(outHalfExtents.z) &&
+		outHalfExtents.x > 0.f && outHalfExtents.y > 0.f &&
+		outHalfExtents.z > 0.f;
+}
+
+bool_t CDeployPropObject::Begin_PhysicsPreview(
+	const DEPLOY_PROP_STATE previewState)
+{
+	if (m_bPhysicsPreviewActive ||
+		(previewState != DEPLOY_PROP_STATE::INTACT &&
+			previewState != DEPLOY_PROP_STATE::FRACTURED))
+	{
+		return false;
+	}
+
+	const DEPLOY_PROP_STATE previousState = m_State;
+	uint32_t previousAnimationIndex = UINT32_MAX;
+	f32_t previousAnimationPosition = 0.f;
+	f32_t previousAnimationDuration = 0.f;
+	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+		m_pIntactModelCom->Get_NumAnimations() > 0u)
+	{
+		previousAnimationIndex = m_pIntactModelCom->Get_CurrentAnimIndex();
+		if (!m_pIntactModelCom->Get_AnimationProgress(
+			previousAnimationIndex, previousAnimationPosition,
+			previousAnimationDuration))
+		{
+			return false;
+		}
+	}
+	if (!Set_State(previewState))
+		return false;
+	/* Set_State intentionally treats an equal persistent state as a no-op.
+	   Preview restart is a one-shot event, so explicitly rewind the fractured
+	   logical clip even when authoring already left the prop FRACTURED. */
+	if (previewState == DEPLOY_PROP_STATE::FRACTURED &&
+		m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
+		m_pIntactModelCom->Get_NumAnimations() > 0u &&
+		!Apply_LogicalAnimation(m_pIntactModelCom, "off"))
+	{
+		Set_State(previousState);
+		if (UINT32_MAX != previousAnimationIndex)
+		{
+			m_pIntactModelCom->Set_Animation(previousAnimationIndex, false);
+			m_pIntactModelCom->Set_AnimTrackPosition(
+				previousAnimationIndex, previousAnimationPosition);
+			m_pIntactModelCom->Play_Animation(0.f);
+		}
+		return false;
+	}
+
+	m_PrePhysicsPreviewState = previousState;
+	m_iPrePhysicsPreviewAnimationIndex = previousAnimationIndex;
+	m_fPrePhysicsPreviewAnimationTrackPosition = previousAnimationPosition;
+	m_PhysicsPreviewPosition = m_Placement.position;
+	m_PhysicsPreviewRotation = m_Placement.rotationQuaternion;
+	m_bPhysicsPreviewActive = true;
+	Apply_Transform();
+	return true;
+}
+
+bool_t CDeployPropObject::Apply_PhysicsPreviewPose(
+	const float3_t& position,
+	const float4_t& rotationQuaternion)
+{
+	if (!m_bPhysicsPreviewActive ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(rotationQuaternion.x) ||
+		!std::isfinite(rotationQuaternion.y) ||
+		!std::isfinite(rotationQuaternion.z) ||
+		!std::isfinite(rotationQuaternion.w))
+	{
+		return false;
+	}
+
+	const vector_t rotation = XMLoadFloat4(&rotationQuaternion);
+	const f32_t lengthSquared = XMVectorGetX(XMVector4LengthSq(rotation));
+	if (!std::isfinite(lengthSquared) || lengthSquared <= 0.000001f)
+		return false;
+
+	m_PhysicsPreviewPosition = position;
+	XMStoreFloat4(
+		&m_PhysicsPreviewRotation,
+		XMQuaternionNormalize(rotation));
+	Apply_Transform();
+	return true;
+}
+
+bool_t CDeployPropObject::Advance_PhysicsPreviewAnimation(
+	const f32_t fixedDeltaSeconds)
+{
+	if (!m_bPhysicsPreviewActive ||
+		!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
+	{
+		return false;
+	}
+	if (m_ModelKind != DEPLOY_PROP_MODEL_KIND::ANIM ||
+		0u == m_pIntactModelCom->Get_NumAnimations())
+	{
+		return true;
+	}
+	if (m_State != DEPLOY_PROP_STATE::FRACTURED)
+		return false;
+
+	m_pIntactModelCom->Play_Animation(fixedDeltaSeconds);
+	return true;
+}
+
+void CDeployPropObject::End_PhysicsPreview()
+{
+	if (!m_bPhysicsPreviewActive)
+		return;
+
+	m_bPhysicsPreviewActive = false;
+	m_PhysicsPreviewPosition = m_Placement.position;
+	m_PhysicsPreviewRotation = m_Placement.rotationQuaternion;
+	Set_State(m_PrePhysicsPreviewState);
+	if (UINT32_MAX != m_iPrePhysicsPreviewAnimationIndex &&
+		m_iPrePhysicsPreviewAnimationIndex <
+			m_pIntactModelCom->Get_NumAnimations())
+	{
+		m_pIntactModelCom->Set_Animation(
+			m_iPrePhysicsPreviewAnimationIndex, false);
+		m_pIntactModelCom->Set_AnimTrackPosition(
+			m_iPrePhysicsPreviewAnimationIndex,
+			m_fPrePhysicsPreviewAnimationTrackPosition);
+		m_pIntactModelCom->Play_Animation(0.f);
+	}
+	m_iPrePhysicsPreviewAnimationIndex = UINT32_MAX;
+	m_fPrePhysicsPreviewAnimationTrackPosition = 0.f;
+	Apply_Transform();
 }
 
 HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
@@ -333,8 +499,12 @@ HRESULT CDeployPropObject::Render_Animated()
 
 void CDeployPropObject::Apply_Transform()
 {
+	const float4_t& rootRotation = m_bPhysicsPreviewActive ?
+		m_PhysicsPreviewRotation : m_Placement.rotationQuaternion;
+	const float3_t& rootPosition = m_bPhysicsPreviewActive ?
+		m_PhysicsPreviewPosition : m_Placement.position;
 	const vector_t quaternion =
-		XMQuaternionNormalize(XMLoadFloat4(&m_Placement.rotationQuaternion));
+		XMQuaternionNormalize(XMLoadFloat4(&rootRotation));
 	const matrix_t world = XMMatrixScaling(
 		m_Placement.uniformScale,
 		m_Placement.uniformScale,
@@ -343,8 +513,8 @@ void CDeployPropObject::Apply_Transform()
 	m_pTransformCom->Set_State(STATE::UP, world.r[1]);
 	m_pTransformCom->Set_State(STATE::LOOK, world.r[2]);
 	m_pTransformCom->Set_State(STATE::POSITION, XMVectorSet(
-		m_Placement.position.x, m_Placement.position.y,
-		m_Placement.position.z, 1.f));
+		rootPosition.x, rootPosition.y,
+		rootPosition.z, 1.f));
 }
 
 unique_ptr<CDeployPropObject> CDeployPropObject::Create(

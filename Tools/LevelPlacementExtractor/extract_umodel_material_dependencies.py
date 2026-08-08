@@ -319,19 +319,26 @@ def texture_assets(root: Path) -> dict[str, list[dict[str, Any]]]:
     return rows
 
 
-def select_material_evidence_props(
+def resolve_material_props_chain(
     output_root: Path,
     instance_props: Path,
     parent_path: str | None,
-) -> tuple[Path | None, int]:
+) -> tuple[list[Path], int]:
+    """Resolve leaf -> intermediate MI -> terminal Material props.
+
+    Every MaterialInstanceConstant in the chain owns overrides.  Returning the
+    full chain prevents a leaf-only parser from silently dropping values set by
+    an intermediate instance.
+    """
     if not parent_path:
         return (
-            (instance_props, 1)
+            ([instance_props], 1)
             if instance_props.parent.name.casefold() in {"material", "material3"}
-            else (None, 0)
+            else ([], 0)
         )
 
     visited = {instance_props.resolve()}
+    chain = [instance_props]
     current_parent = str(parent_path)
     while current_parent:
         parent_name = current_parent.rsplit(".", 1)[-1]
@@ -352,19 +359,61 @@ def select_material_evidence_props(
         ]
         candidates = package_matches or matches
         if len(candidates) != 1:
-            return None, len(candidates)
+            return [], len(candidates)
         selected = candidates[0]
         resolved = selected.resolve()
         if resolved in visited:
-            return None, 0
+            return [], 0
         visited.add(resolved)
+        chain.append(selected)
         if selected.parent.name.casefold() in {"material", "material3"}:
-            return selected, 1
+            return chain, 1
         if selected.parent.name.casefold() != "materialinstanceconstant":
-            return None, 1
+            return [], 1
         current_props = parse_props(selected.read_text(encoding="utf-8-sig"))
         current_parent = str(current_props["parent"] or "")
-    return None, 0
+    return [], 0
+
+
+def select_material_evidence_props(
+    output_root: Path,
+    instance_props: Path,
+    parent_path: str | None,
+) -> tuple[Path | None, int]:
+    chain, count = resolve_material_props_chain(
+        output_root, instance_props, parent_path
+    )
+    return (chain[-1] if chain else None), count
+
+
+def merge_instance_parameter_chain(
+    chain: list[Path],
+) -> dict[str, list[dict[str, Any]]]:
+    """Merge intermediate-to-leaf MI overrides by parameter name."""
+    result: dict[str, list[dict[str, Any]]] = {
+        "scalar": [], "texture": [], "vector": [], "static_switch": [],
+    }
+    by_name: dict[str, dict[str, dict[str, Any]]] = {
+        kind: {} for kind in result
+    }
+    instance_paths = [
+        path for path in chain
+        if path.parent.name.casefold() == "materialinstanceconstant"
+    ]
+    for path in reversed(instance_paths):
+        parsed = parse_props(path.read_text(encoding="utf-8-sig"))
+        for kind in result:
+            for parameter in parsed[kind]:
+                key = str(parameter.get("name") or "").casefold()
+                if not key:
+                    continue
+                if key in by_name[kind]:
+                    by_name[kind][key]["value"] = parameter.get("value")
+                    continue
+                row = dict(parameter)
+                result[kind].append(row)
+                by_name[kind][key] = row
+    return result
 
 
 def build_candidate(
@@ -392,10 +441,33 @@ def build_candidate(
             "resolutionStatus": "MISSING_OR_AMBIGUOUS_PROPS",
             "propsCandidateCount": len(props_matches),
         }
-    props = parse_props(props_matches[0].read_text(encoding="utf-8-sig"))
+    props_file = props_matches[0]
+    props = parse_props(props_file.read_text(encoding="utf-8-sig"))
+    props_chain, evidence_candidate_count = resolve_material_props_chain(
+        output_root, props_file, props["parent"]
+    )
+    effective_parameters = (
+        merge_instance_parameter_chain(props_chain)
+        if props_chain else {
+            "scalar": props["scalar"],
+            "texture": props["texture"],
+            "vector": props["vector"],
+            "static_switch": props["static_switch"],
+        }
+    )
     textures_by_name = texture_assets(output_root)
     parent_source_file = None
     normalized_parent = props["parent"]
+    if len(props_chain) >= 2:
+        terminal_instance_paths = [
+            path for path in props_chain[:-1]
+            if path.parent.name.casefold() == "materialinstanceconstant"
+        ]
+        if terminal_instance_paths:
+            terminal_props = parse_props(
+                terminal_instance_paths[-1].read_text(encoding="utf-8-sig")
+            )
+            normalized_parent = terminal_props["parent"] or normalized_parent
     if props["parent"]:
         parent_logical_name = str(props["parent"]).split(".", 1)[0]
         parent_source_file = (inventory or {}).get(
@@ -424,9 +496,36 @@ def build_candidate(
                 parent_logical.casefold() + "."
             ):
                 normalized_parent = f"{parent_logical.lower()}.{props['parent']}"
+    if len(props_chain) >= 2:
+        terminal_props_path = props_chain[-1]
+        terminal_instance_path = next(
+            (
+                path for path in reversed(props_chain[:-1])
+                if path.parent.name.casefold() == "materialinstanceconstant"
+            ),
+            None,
+        )
+        if terminal_instance_path is not None:
+            terminal_props = parse_props(
+                terminal_instance_path.read_text(encoding="utf-8-sig")
+            )
+            terminal_parent = str(terminal_props["parent"] or "")
+            terminal_relative = terminal_props_path.relative_to(output_root)
+            terminal_package = (
+                terminal_relative.parts[0] if terminal_relative.parts else ""
+            )
+            if terminal_package and not terminal_parent.casefold().startswith(
+                terminal_package.casefold() + "."
+            ):
+                terminal_parent = f"{terminal_package.lower()}.{terminal_parent}"
+            normalized_parent = terminal_parent or normalized_parent
+            terminal_logical = normalized_parent.split(".", 1)[0]
+            parent_source_file = (inventory or {}).get(
+                terminal_logical.casefold(), parent_source_file
+            )
     textures = []
     used = set()
-    for parameter in props["texture"]:
+    for parameter in effective_parameters["texture"]:
         parameter_object_name = str(parameter["value"]).rsplit(".", 1)[-1]
         matches = textures_by_name.get(parameter_object_name.casefold(), [])
         if len(matches) == 1:
@@ -449,9 +548,7 @@ def build_candidate(
                 textures.append(
                     {"name": "umodel_dependency", "texture": row["texturePath"]}
                 )
-    evidence_props, evidence_candidate_count = select_material_evidence_props(
-        output_root, props_matches[0], props["parent"]
-    )
+    evidence_props = props_chain[-1] if props_chain else None
     material_evidence = parse_material_dump(
         evidence_props.read_text(encoding="utf-8-sig")
         if evidence_props is not None else ""
@@ -464,9 +561,9 @@ def build_candidate(
         "parent": normalized_parent,
         "parent_source_file": parent_source_file,
         "textures": textures,
-        "scalars": props["scalar"],
-        "vectors": props["vector"],
-        "static_switches": props["static_switch"],
+        "scalars": effective_parameters["scalar"],
+        "vectors": effective_parameters["vector"],
+        "static_switches": effective_parameters["static_switch"],
         "materialEvidence": material_evidence,
         "materialEvidenceStatus": (
             "SOURCE_MATERIAL_PROPS"
@@ -481,9 +578,17 @@ def build_candidate(
             sha256_file(evidence_props) if evidence_props is not None else None
         ),
         "materialEvidencePropsCandidateCount": evidence_candidate_count,
+        "materialInstanceChain": [
+            {
+                "propsFile": path.relative_to(output_root).as_posix(),
+                "sha256": sha256_file(path),
+            }
+            for path in props_chain
+            if path.parent.name.casefold() == "materialinstanceconstant"
+        ],
         "resolutionStatus": "RESOLVED_UMODEL_EXPORT",
-        "propsFile": props_matches[0].relative_to(output_root).as_posix(),
-        "propsFileSha256": sha256_file(props_matches[0]),
+        "propsFile": props_file.relative_to(output_root).as_posix(),
+        "propsFileSha256": sha256_file(props_file),
         "exportedTextures": [
             row for rows in textures_by_name.values() for row in rows
         ],

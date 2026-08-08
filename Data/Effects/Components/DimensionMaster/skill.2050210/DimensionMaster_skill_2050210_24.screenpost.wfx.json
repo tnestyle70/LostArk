@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_post.fx_par.par_j_rgbnoise_01|FX_POST.fx_par.par_j_rgbnoise_01.particlespriteemitter_11|event:source-event-055"
     ],
-    "sourceElementSha256": "3e1077225ba7b746a8634957425dfea92e0b147d4df38a6ea92c4fa152657d5d",
+    "sourceElementSha256": "23190213f77d247f08c98d48d341485253f2891ae776ffa1a35cc875735f424a",
     "inputSlot": "A"
   },
   "emitters": [
@@ -225,13 +225,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,

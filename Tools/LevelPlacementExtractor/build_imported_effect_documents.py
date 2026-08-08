@@ -42,6 +42,36 @@ SCREEN_POST_RUNTIME_PROFILES = {
         "screen.film-noise.reconstructed.v1", "FILM_NOISE"
     ),
 }
+
+
+def ue3_centimeters_to_client(value: Iterable[float]) -> list[float]:
+    """Convert one UE3 spatial vector into the Client meter basis exactly once."""
+    x, y, z = (float(component) for component in value)
+    return [
+        x * SOURCE_UNITS_TO_RUNTIME,
+        z * SOURCE_UNITS_TO_RUNTIME,
+        -y * SOURCE_UNITS_TO_RUNTIME,
+    ]
+
+
+def ue3_centimeter_range_to_client(
+    minimum: Iterable[float], maximum: Iterable[float]
+) -> tuple[list[float], list[float]]:
+    """Convert an axis-aligned UE3 range without inverting the Client Z bounds."""
+    min_x, min_y, min_z = (float(component) for component in minimum)
+    max_x, max_y, max_z = (float(component) for component in maximum)
+    return (
+        [
+            min_x * SOURCE_UNITS_TO_RUNTIME,
+            min_z * SOURCE_UNITS_TO_RUNTIME,
+            -max_y * SOURCE_UNITS_TO_RUNTIME,
+        ],
+        [
+            max_x * SOURCE_UNITS_TO_RUNTIME,
+            max_z * SOURCE_UNITS_TO_RUNTIME,
+            -min_y * SOURCE_UNITS_TO_RUNTIME,
+        ],
+    )
 REPRESENTED_DETAIL_MODULE_CLASSES = {
     "particlemodulerequired",
     "particlemodulespawn",
@@ -581,9 +611,23 @@ def emitter_detail(
     required = first_module(modules, "particlemodulerequired")
     spawn = first_module(modules, "particlemodulespawn")
 
+    explicit_local_space = (
+        required is not None and "buselocalspace" in required.properties
+    )
     local_space = bool(prop(required.properties, "buselocalspace", True)) if required else True
     detail["particle"]["localSpace"] = local_space
-    mapping(mappings, "particle.localSpace", "EXACT", "Required.bUseLocalSpace", local_space)
+    mapping(
+        mappings,
+        "particle.localSpace",
+        "EXACT" if explicit_local_space else "SOURCE_CLASS_DEFAULT",
+        "Required.bUseLocalSpace",
+        local_space,
+        (
+            "literal source property"
+            if explicit_local_space
+            else "source literal absent; UE3 class default remains unverified"
+        ),
+    )
 
     duration = finite_number(prop(required.properties, "emitterduration")) if required else None
     delay_distribution = distribution_float(index, required, "emitterdelay")
@@ -640,18 +684,19 @@ def emitter_detail(
     velocity_module = first_module(modules, "particlemodulevelocity")
     velocity = distribution_vector(index, velocity_module, "startvelocity")
     if velocity:
-        minimum = [value * SOURCE_UNITS_TO_RUNTIME for value in velocity[0]]
-        maximum = [value * SOURCE_UNITS_TO_RUNTIME for value in velocity[1]]
+        minimum, maximum = ue3_centimeter_range_to_client(
+            velocity[0], velocity[1]
+        )
         detail["particle"]["initialVelocityMin"] = minimum
         detail["particle"]["initialVelocityMax"] = maximum
-        mapping(mappings, "particle.initialVelocityMin/Max", "APPROXIMATION", f"{velocity_module.object_path}.StartVelocity", [minimum, maximum], "UE source units scaled by 0.01")
+        mapping(mappings, "particle.initialVelocityMin/Max", "APPROXIMATION", f"{velocity_module.object_path}.StartVelocity", [minimum, maximum], "UE3 (X,Y,Z) converted once to Client (X,Z,-Y), then source units scaled by 0.01")
 
     acceleration_module = first_module(modules, "particlemoduleacceleration")
     acceleration = distribution_vector(index, acceleration_module, "acceleration")
     if acceleration:
-        value = [component * SOURCE_UNITS_TO_RUNTIME for component in acceleration[2]]
+        value = ue3_centimeters_to_client(acceleration[2])
         detail["particle"]["acceleration"] = value
-        mapping(mappings, "particle.acceleration", "APPROXIMATION", f"{acceleration_module.object_path}.Acceleration", value, "random/curve range collapsed to one vector")
+        mapping(mappings, "particle.acceleration", "APPROXIMATION", f"{acceleration_module.object_path}.Acceleration", value, "random/curve range collapsed to one vector after UE3 (X,Y,Z) -> Client (X,Z,-Y) conversion")
 
     size_module = first_module(modules, "particlemodulesize")
     size = distribution_vector(index, size_module, "startsize")
@@ -699,11 +744,12 @@ def emitter_detail(
     location_module = first_module(modules, "particlemodulelocation")
     location = distribution_vector(index, location_module, "startlocation")
     if location:
-        minimum = [value * SOURCE_UNITS_TO_RUNTIME for value in location[0]]
-        maximum = [value * SOURCE_UNITS_TO_RUNTIME for value in location[1]]
+        minimum, maximum = ue3_centimeter_range_to_client(
+            location[0], location[1]
+        )
         detail["particle"]["initialPositionMin"] = minimum
         detail["particle"]["initialPositionMax"] = maximum
-        mapping(mappings, "particle.initialPositionMin/Max", "EXACT_RANGE", f"{location_module.object_path}.StartLocation", [minimum, maximum], "UE source units scaled by 0.01")
+        mapping(mappings, "particle.initialPositionMin/Max", "EXACT_RANGE", f"{location_module.object_path}.StartLocation", [minimum, maximum], "UE3 (X,Y,Z) converted once to Client (X,Z,-Y), then source units scaled by 0.01")
 
     subuv = first_module(modules, "particlemodulesubuv")
     if subuv:

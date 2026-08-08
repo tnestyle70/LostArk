@@ -89,6 +89,43 @@ namespace
 		return float3_t(Value.x * Scale, Value.y * Scale, Value.z * Scale);
 	}
 
+	float3_t UE3_VectorToClient(const float3_t& Value)
+	{
+		return float3_t(Value.x, Value.z, -Value.y);
+	}
+
+	float3_t UE3_CentimetersToClient(const float3_t& Value)
+	{
+		return Scale3(UE3_VectorToClient(Value), 0.01f);
+	}
+
+	float3_t UE3_AxisScaleToClient(const float3_t& Value)
+	{
+		// A component-wise scale follows the remapped axes, but does not inherit
+		// the handedness sign used by position/direction vectors.
+		return float3_t(Value.x, Value.z, Value.y);
+	}
+
+	bool_t Is_MeshParticle(const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		return std::any_of(
+			Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
+			[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == "meshModel";
+			});
+	}
+
+	float3_t UE3_SizeToClient(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const float3_t& Value)
+	{
+		// Billboard StartSize X/Y are renderer-plane axes, not UE world axes.
+		// Mesh particles use a converted WModel and therefore need the same
+		// component-axis reorder as the mesh transform, without a handedness sign.
+		return Is_MeshParticle(Element) ? UE3_AxisScaleToClient(Value) : Value;
+	}
+
 	f32_t DistanceSquared(const float3_t& A, const float3_t& B)
 	{
 		const f32_t X = A.x - B.x;
@@ -160,6 +197,22 @@ namespace
 				return Distribution.strPropertyPath == PropertyPath;
 			});
 		return Iterator == pModule->Distributions.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Uses_ImplicitAlphaIdentity(
+		const Client::EFFECT_DISTRIBUTION_DESC& Distribution,
+		const std::string_view PropertyPath)
+	{
+		if (!Distribution.LookupTable.empty() || !Distribution.Keys.empty())
+			return false;
+		if (Distribution.vDefaultMinimum.x != 0.f ||
+			Distribution.vDefaultMaximum.x != 0.f)
+		{
+			return false;
+		}
+		return PropertyPath == "startalpha" ||
+			PropertyPath == "alphaoverlife" ||
+			PropertyPath == "alphascaleoverlife";
 	}
 
 	bool_t SourceClass_Matches(
@@ -277,21 +330,21 @@ namespace
 				if (Axis.ends_with("epal_negative_x"))
 					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_X;
 				else if (Axis.ends_with("epal_negative_y"))
-					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Y;
+					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Z;
 				else if (Axis.ends_with("epal_negative_z"))
-					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z;
+					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Y;
 				else if (Axis.ends_with("epal_rotate_x"))
 					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_X;
 				else if (Axis.ends_with("epal_rotate_y"))
-					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Y;
-				else if (Axis.ends_with("epal_rotate_z"))
 					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Z;
+				else if (Axis.ends_with("epal_rotate_z"))
+					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::ROTATE_Y;
 				else if (Axis.ends_with("epal_x"))
 					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_X;
 				else if (Axis.ends_with("epal_y"))
-					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Y;
+					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_NEGATIVE_Z;
 				else if (Axis.ends_with("epal_z"))
-					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Z;
+					eOutAlignment = Client::EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Y;
 			}
 		}
 	}
@@ -1036,6 +1089,8 @@ f32_t Client::CEffectPlayback::Evaluate_ModuleFloat(
 		Find_SourceDistribution(&Module, PropertyPath);
 	if (nullptr == pDistribution)
 		return fFallback;
+	if (Uses_ImplicitAlphaIdentity(*pDistribution, PropertyPath))
+		return fFallback;
 	float4_t RandomUnits{};
 	if (2u == pDistribution->iOperation || 3u == pDistribution->iOperation)
 		RandomUnits.x = Next_ModuleRandom(State, Module);
@@ -1106,8 +1161,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(Module, "particlemodulelocation"))
 		{
 			Particle.vPosition = Add3(Particle.vPosition,
-				Scale3(Evaluate_ModuleVector(State, Module, "startlocation",
-					fEmitterTimeSeconds, float3_t{}), 0.01f));
+				UE3_CentimetersToClient(Evaluate_ModuleVector(
+					State, Module, "startlocation",
+					fEmitterTimeSeconds, float3_t{})));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocationdirect"))
@@ -1121,10 +1177,12 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				State, Module, "scalefactor", fEmitterTimeSeconds,
 				float3_t(1.f, 1.f, 1.f));
 			Particle.vPosition = Add3(Particle.vPosition,
-				Scale3(Add3(Multiply3(Location, Scale), Offset), 0.01f));
+				UE3_CentimetersToClient(
+					Add3(Multiply3(Location, Scale), Offset)));
 			Particle.vVelocity = Add3(Particle.vVelocity,
-				Scale3(Evaluate_ModuleVector(State, Module, "direction",
-					fEmitterTimeSeconds, float3_t{}), 0.01f));
+				UE3_CentimetersToClient(Evaluate_ModuleVector(
+					State, Module, "direction",
+					fEmitterTimeSeconds, float3_t{})));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocationbonesocket"))
@@ -1177,7 +1235,7 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				{
 					const std::string PrefixPath = "sourcelocations[" +
 						std::to_string(iSourceIndex) + "].offset.";
-					const float3_t Offset = Scale3(Add3(
+					const float3_t Offset = UE3_CentimetersToClient(Add3(
 						float3_t(
 							SourceNumber(Module, PrefixPath + "x", 0.f),
 							SourceNumber(Module, PrefixPath + "y", 0.f),
@@ -1185,7 +1243,7 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 						float3_t(
 							SourceNumber(Module, "universaloffset.x", 0.f),
 							SourceNumber(Module, "universaloffset.y", 0.f),
-							SourceNumber(Module, "universaloffset.z", 0.f))), 0.01f);
+							SourceNumber(Module, "universaloffset.z", 0.f))));
 					const matrix_t AnchorLocal = XMMatrixTranslation(
 						Offset.x, Offset.y, Offset.z) *
 						XMLoadFloat4x4(&Anchor->second) *
@@ -1236,13 +1294,13 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				float3_t{});
 			const float3_t Offset = Scale3(Direction, fRadius);
 			Particle.vPosition = Add3(Particle.vPosition,
-				Scale3(Add3(Start, Offset), 0.01f));
+				UE3_CentimetersToClient(Add3(Start, Offset)));
 			if (SourceBool(Module, "velocity", false))
 			{
 				const f32_t fVelocityScale = Evaluate_ModuleFloat(
 					State, Module, "velocityscale", fEmitterTimeSeconds, 0.f);
 				Particle.vVelocity = Add3(Particle.vVelocity,
-					Scale3(Offset, fVelocityScale * 0.01f));
+					Scale3(UE3_CentimetersToClient(Offset), fVelocityScale));
 			}
 		}
 		else if (SourceClass_Matches(
@@ -1269,13 +1327,70 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				State, Module, "startlocation", fEmitterTimeSeconds,
 				float3_t{});
 			Particle.vPosition = Add3(Particle.vPosition,
-				Scale3(Add3(Start, Offset), 0.01f));
+				UE3_CentimetersToClient(Add3(Start, Offset)));
 			if (SourceBool(Module, "velocity", false))
 			{
 				const f32_t fVelocityScale = Evaluate_ModuleFloat(
 					State, Module, "velocityscale", fEmitterTimeSeconds, 0.f);
 				Particle.vVelocity = Add3(Particle.vVelocity,
-					Scale3(Offset, fVelocityScale * 0.01f));
+					Scale3(UE3_CentimetersToClient(Offset), fVelocityScale));
+			}
+		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulelocationprimitivecylinderspin"))
+		{
+			const f32_t fRadius = Evaluate_ModuleFloat(
+				State, Module, "startradius", fEmitterTimeSeconds, 0.f);
+			const f32_t fHalfHeight = 0.5f * Evaluate_ModuleFloat(
+				State, Module, "startheight", fEmitterTimeSeconds, 0.f);
+			f32_t fAngle = Next_ModuleRandom(State, Module) * XM_2PI;
+			if (!SourceBool(Module, "negative_x", true) &&
+				std::cos(fAngle) < 0.f)
+			{
+				fAngle = XM_PI - fAngle;
+			}
+			if (!SourceBool(Module, "positive_x", true) &&
+				std::cos(fAngle) > 0.f)
+			{
+				fAngle = XM_PI - fAngle;
+			}
+			if (!SourceBool(Module, "negative_y", true) &&
+				std::sin(fAngle) < 0.f)
+			{
+				fAngle = -fAngle;
+			}
+			if (!SourceBool(Module, "positive_y", true) &&
+				std::sin(fAngle) > 0.f)
+			{
+				fAngle = -fAngle;
+			}
+			fAngle += XMConvertToRadians(Evaluate_ModuleFloat(
+				State, Module, "startcylinderrot", fEmitterTimeSeconds, 0.f) +
+				Evaluate_ModuleFloat(State, Module, "spinangle",
+					fEmitterTimeSeconds, 0.f) * fEmitterTimeSeconds);
+			const f32_t fRadial = SourceBool(Module, "surfaceonly", false) ?
+				fRadius : std::sqrt(Next_ModuleRandom(State, Module)) * fRadius;
+			float3_t Offset(
+				std::cos(fAngle) * fRadial,
+				std::sin(fAngle) * fRadial,
+				-fHalfHeight + 2.f * fHalfHeight *
+					Next_ModuleRandom(State, Module));
+			const std::string_view Axis = SourceString(Module, "heightaxis");
+			if (Axis.ends_with("_x"))
+				Offset = float3_t(Offset.z, Offset.x, Offset.y);
+			else if (Axis.ends_with("_y"))
+				Offset = float3_t(Offset.x, Offset.z, Offset.y);
+			const float3_t Start = Evaluate_ModuleVector(
+				State, Module, "startlocation", fEmitterTimeSeconds,
+				float3_t{});
+			Particle.vPosition = Add3(Particle.vPosition,
+				UE3_CentimetersToClient(Add3(Start, Offset)));
+			if (SourceBool(Module, "velocity", false))
+			{
+				const f32_t fVelocityScale = Evaluate_ModuleFloat(
+					State, Module, "velocityscale", fEmitterTimeSeconds, 0.f);
+				Particle.vVelocity = Add3(Particle.vVelocity,
+					Scale3(UE3_CentimetersToClient(Offset), fVelocityScale));
 			}
 		}
 		else if (SourceClass_Matches(
@@ -1300,12 +1415,13 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				State, Module, "startlocation", fEmitterTimeSeconds,
 				float3_t{});
 			Particle.vPosition = Add3(Particle.vPosition,
-				Scale3(Add3(Start, Offset), 0.01f));
+				UE3_CentimetersToClient(Add3(Start, Offset)));
 			if (SourceBool(Module, "velocity", false))
 			{
 				Particle.vVelocity = Add3(Particle.vVelocity,
-					Scale3(Offset, Evaluate_ModuleFloat(State, Module,
-						"velocityscale", fEmitterTimeSeconds, 0.f) * 0.01f));
+					Scale3(UE3_CentimetersToClient(Offset),
+						Evaluate_ModuleFloat(State, Module,
+							"velocityscale", fEmitterTimeSeconds, 0.f)));
 			}
 		}
 		else if (SourceClass_Matches(Module, "particlemodulevelocity"))
@@ -1313,8 +1429,15 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			const float3_t Velocity = Evaluate_ModuleVector(
 				State, Module, "startvelocity", fEmitterTimeSeconds,
 				float3_t{});
-			Particle.vVelocity = Add3(
-				Particle.vVelocity, Scale3(Velocity, 0.01f));
+			float3_t StartVelocity = UE3_CentimetersToClient(Velocity);
+			if (Element.Detail.Particle.bLocalSpace &&
+				SourceBool(Module, "binworldspace", false))
+			{
+				const matrix_t InverseRoot = XMMatrixInverse(
+					nullptr, XMLoadFloat4x4(&ElementWorld));
+				StartVelocity = Transform_Normal(StartVelocity, InverseRoot);
+			}
+			Particle.vVelocity = Add3(Particle.vVelocity, StartVelocity);
 			const f32_t fRadial = Evaluate_ModuleFloat(
 				State, Module, "startvelocityradial", fEmitterTimeSeconds, 0.f);
 			Particle.vVelocity = Add3(Particle.vVelocity,
@@ -1323,8 +1446,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(Module, "particlemodulesize"))
 		{
 			Particle.vBaseSize = Add3(Particle.vBaseSize,
-				Scale3(Evaluate_ModuleVector(State, Module, "startsize",
-					fEmitterTimeSeconds, float3_t{}), 0.01f));
+				Scale3(UE3_SizeToClient(Element, Evaluate_ModuleVector(
+					State, Module, "startsize", fEmitterTimeSeconds,
+					float3_t{})), 0.01f));
 			bHasSize = true;
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecolor"))
@@ -1375,8 +1499,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		{
 			Particle.vRotationDegrees = Add3(
 				Particle.vRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "startrotation",
-					fEmitterTimeSeconds, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "startrotation", fEmitterTimeSeconds,
+					float3_t{})), 360.f));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationrate"))
@@ -1390,8 +1515,9 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		{
 			Particle.vRotationRateDegreesPerSecond = Add3(
 				Particle.vRotationRateDegreesPerSecond,
-				Scale3(Evaluate_ModuleVector(State, Module, "startrotationrate",
-					fEmitterTimeSeconds, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "startrotationrate", fEmitterTimeSeconds,
+					float3_t{})), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -1435,16 +1561,18 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
 		{
 			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
-				Scale3(Evaluate_ModuleVector(State, Module, "offsetamount",
-					0.f, float3_t{}), 0.01f));
+				UE3_CentimetersToClient(Evaluate_ModuleVector(
+					State, Module, "offsetamount", 0.f, float3_t{})));
 			Particle.vOrbitRotationDegrees = Add3(
 				Particle.vOrbitRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
-					0.f, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "rotationamount", 0.f, float3_t{})),
+					360.f));
 			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
 				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(Evaluate_ModuleVector(State, Module,
-					"rotationrateamount", 0.f, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "rotationrateamount", 0.f,
+					float3_t{})), 360.f));
 		}
 	}
 	if (!bHasSize)
@@ -1662,8 +1790,18 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 				bEffectAcceleration ? "acceldata" : "acceleration";
 			const f32_t fTime = bEffectAcceleration ? fNormalizedAge :
 				Particle.fSpawnEmitterTimeSeconds;
-			const float3_t Acceleration = Scale3(Evaluate_ModuleVector(
-				State, Module, PropertyPath, fTime, float3_t{}), 0.01f);
+			float3_t Acceleration = UE3_CentimetersToClient(
+				Evaluate_ModuleVector(State, Module, PropertyPath, fTime,
+					float3_t{}));
+			if (SourceBool(Module, "balwaysinworldspace", false))
+			{
+				const float4x4_t& ParticleRoot =
+					Element.Detail.Particle.bLocalSpace ?
+						ElementWorld : Particle.SpawnRootWorld;
+				const matrix_t InverseRoot = XMMatrixInverse(
+					nullptr, XMLoadFloat4x4(&ParticleRoot));
+				Acceleration = Transform_Normal(Acceleration, InverseRoot);
+			}
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Acceleration, fFixedDelta));
 		}
@@ -1676,27 +1814,30 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			if (SourceBool(Module, "absolute", false) ||
 				SourceBool(Module, "babsolute", false))
 			{
-				Particle.vVelocity = Scale3(Velocity, 0.01f);
+				Particle.vVelocity = UE3_CentimetersToClient(Velocity);
 				Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 			}
 			else
 			{
 				Particle.vVelocityScale = Multiply3(
-					Particle.vVelocityScale, Velocity);
+					Particle.vVelocityScale,
+					UE3_AxisScaleToClient(Velocity));
 			}
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulesizemultiplylife"))
 		{
 			Particle.vSize = Multiply3(Particle.vSize,
-				Evaluate_ModuleVector(State, Module, "lifemultiplier",
-					fNormalizedAge, float3_t(1.f, 1.f, 1.f)));
+				UE3_SizeToClient(Element, Evaluate_ModuleVector(
+					State, Module, "lifemultiplier", fNormalizedAge,
+					float3_t(1.f, 1.f, 1.f))));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulesizescale"))
 		{
 			Particle.vSize = Multiply3(Particle.vSize,
-				Evaluate_ModuleVector(State, Module, "sizescale",
-					fEmitterTimeSeconds, float3_t(1.f, 1.f, 1.f)));
+				UE3_SizeToClient(Element, Evaluate_ModuleVector(
+					State, Module, "sizescale", fEmitterTimeSeconds,
+					float3_t(1.f, 1.f, 1.f))));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulecoloroverlife"))
@@ -1730,8 +1871,9 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		{
 			Particle.vRotationRateScale = Multiply3(
 				Particle.vRotationRateScale,
-				Evaluate_ModuleVector(State, Module, "lifemultiplier",
-					fNormalizedAge, float3_t(1.f, 1.f, 1.f)));
+				UE3_AxisScaleToClient(Evaluate_ModuleVector(
+					State, Module, "lifemultiplier", fNormalizedAge,
+					float3_t(1.f, 1.f, 1.f))));
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulerotationratemultiplylife"))
@@ -1743,8 +1885,8 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			Module, "particlemodulemeshrotationrateoverlife"))
 		{
 			Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotrate",
-					fNormalizedAge, float3_t{}),
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "rotrate", fNormalizedAge, float3_t{})),
 					360.f * fFixedDelta));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
@@ -1789,16 +1931,19 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
 		{
 			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
-				Scale3(Evaluate_ModuleVector(State, Module, "offsetamount",
-					fNormalizedAge, float3_t{}), 0.01f));
+				UE3_CentimetersToClient(Evaluate_ModuleVector(
+					State, Module, "offsetamount", fNormalizedAge,
+					float3_t{})));
 			Particle.vOrbitRotationDegrees = Add3(
 				Particle.vOrbitRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
-					fNormalizedAge, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "rotationamount", fNormalizedAge,
+					float3_t{})), 360.f));
 			Particle.vOrbitRotationRateDegreesPerSecond = Add3(
 				Particle.vOrbitRotationRateDegreesPerSecond,
-				Scale3(Evaluate_ModuleVector(State, Module,
-					"rotationrateamount", fNormalizedAge, float3_t{}), 360.f));
+				Scale3(UE3_VectorToClient(Evaluate_ModuleVector(
+					State, Module, "rotationrateamount", fNormalizedAge,
+					float3_t{})), 360.f));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulevortex"))
 		{
@@ -2031,6 +2176,8 @@ f32_t Client::CEffectPlayback::Evaluate_SourceFloat(
 		Find_SourceDistribution(pModule, pPropertyPath);
 	if (nullptr == pDistribution)
 		return fFallback;
+	if (Uses_ImplicitAlphaIdentity(*pDistribution, pPropertyPath))
+		return fFallback;
 	return CEffectDistribution::Evaluate(
 		*pDistribution, fTime, fRandomUnit).x;
 }
@@ -2254,12 +2401,7 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			const float4x4_t& ParticleRoot =
 				Element.Detail.Particle.bLocalSpace ?
 				CurrentElementWorld : Particle.SpawnRootWorld;
-			const bool_t bMeshParticle = std::any_of(
-				Element.ResourceBindings.begin(), Element.ResourceBindings.end(),
-				[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return Binding.strSlotId == "meshModel";
-				});
+			const bool_t bMeshParticle = Is_MeshParticle(Element);
 			const f32_t fDepthScale = bMeshParticle ?
 				(Element.SourceRecipe.bEnabled ? Size.z :
 					0.5f * (Size.x + Size.y)) : 1.f;
@@ -2358,12 +2500,7 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 	if (nullptr == pElement)
 		return false;
 
-	OutProbe.bMeshRenderer = std::any_of(
-		pElement->ResourceBindings.begin(), pElement->ResourceBindings.end(),
-		[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
-		{
-			return Binding.strSlotId == "meshModel";
-		});
+	OutProbe.bMeshRenderer = Is_MeshParticle(*pElement);
 	for (const EFFECT_EVALUATED_PARTICLE& Particle : m_Frame.Particles)
 	{
 		if (nullptr == Particle.pElement ||

@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_post.fx_par.par_j_zoomblur_01|FX_POST.fx_par.par_j_zoomblur_01.particlespriteemitter_0"
     ],
-    "sourceElementSha256": "1d84208fdf09ebbc727f93b54d7b0afce29e11f0f2858202fce213f19edbbd71",
+    "sourceElementSha256": "eef3928e4a7deaa021fc63ba35eaedaf6379709b3cab4b0d9992040a1d13571a",
     "inputSlot": "A"
   },
   "emitters": [
@@ -81,8 +81,8 @@
           "transform": {
             "position": [
               1.55,
-              0.25,
-              0.1
+              0.1,
+              -0.25
             ],
             "rotationDegrees": [
               0.0,

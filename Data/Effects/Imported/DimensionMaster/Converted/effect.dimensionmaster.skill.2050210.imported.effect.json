@@ -55,8 +55,8 @@
         "transform": {
           "position": [
             1.5,
-            0.0,
-            1.2
+            1.2,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -200,12 +200,12 @@
           "initialPositionMin": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialPositionMax": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialVelocityMin": [
             0.0,
@@ -872,8 +872,8 @@
         "transform": {
           "position": [
             1.5,
-            0.0,
-            1.2
+            1.2,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -1017,12 +1017,12 @@
           "initialPositionMin": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialPositionMax": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialVelocityMin": [
             0.0,
@@ -1689,8 +1689,8 @@
         "transform": {
           "position": [
             1.5,
-            0.0,
-            1.2
+            1.2,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -1834,12 +1834,12 @@
           "initialPositionMin": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialPositionMax": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialVelocityMin": [
             0.0,
@@ -2506,8 +2506,8 @@
         "transform": {
           "position": [
             1.5,
-            0.0,
-            1.2
+            1.2,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -2651,12 +2651,12 @@
           "initialPositionMin": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialPositionMax": [
             0.01,
             0.01,
-            0.01
+            -0.01
           ],
           "initialVelocityMin": [
             0.0,
@@ -3332,8 +3332,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -3347,8 +3347,8 @@
           ],
           "scale": [
             1.0,
-            0.5,
-            1.0
+            1.0,
+            0.5
           ],
           "velocityPerSecond": [
             0.0,
@@ -4579,8 +4579,8 @@
         "transform": {
           "position": [
             -0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -5826,8 +5826,8 @@
         "transform": {
           "position": [
             0.3,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -7073,8 +7073,8 @@
         "transform": {
           "position": [
             -0.3,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -8320,8 +8320,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -9571,8 +9571,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -9586,8 +9586,8 @@
           ],
           "scale": [
             1.0,
-            0.5,
-            1.0
+            1.0,
+            0.5
           ],
           "velocityPerSecond": [
             0.0,
@@ -9715,23 +9715,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "acceleration": [
             0.0,
@@ -10795,8 +10795,8 @@
         "transform": {
           "position": [
             -0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -10939,23 +10939,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "acceleration": [
             0.0,
@@ -12019,8 +12019,8 @@
         "transform": {
           "position": [
             0.3,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -12163,23 +12163,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "acceleration": [
             0.0,
@@ -13243,8 +13243,8 @@
         "transform": {
           "position": [
             -0.3,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -13387,23 +13387,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "acceleration": [
             0.0,
@@ -14467,8 +14467,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -14611,23 +14611,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            -0.1
+            -0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "acceleration": [
             0.0,
@@ -15678,8 +15678,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -15832,13 +15832,13 @@
           ],
           "initialVelocityMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMax": [
             0.0,
-            0.0,
-            0.15
+            0.15,
+            -0.0
           ],
           "acceleration": [
             0.0,
@@ -17263,8 +17263,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -17417,13 +17417,13 @@
           ],
           "initialVelocityMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMax": [
             0.0,
-            0.0,
-            0.15
+            0.15,
+            -0.0
           ],
           "acceleration": [
             0.0,
@@ -18848,8 +18848,8 @@
         "transform": {
           "position": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -19002,13 +19002,13 @@
           ],
           "initialVelocityMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMax": [
             0.0,
-            0.0,
-            0.15
+            0.15,
+            -0.0
           ],
           "acceleration": [
             0.0,
@@ -20433,8 +20433,8 @@
         "transform": {
           "position": [
             0.6,
-            0.3,
-            0.1
+            0.1,
+            -0.3
           ],
           "rotationDegrees": [
             0.0,
@@ -20577,23 +20577,23 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.2
+            0.2,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.2
+            0.2,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMax": [
             0.0,
-            0.0,
-            0.15
+            0.15,
+            -0.0
           ],
           "acceleration": [
             0.0,
@@ -23228,7 +23228,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -23319,8 +23319,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            0.2
+            0.2,
+            -0.0
           ],
           "startSize": [
             0.01,
@@ -24440,8 +24440,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -24584,13 +24584,13 @@
           ],
           "initialPositionMin": [
             1.6,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             1.6,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -25553,8 +25553,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -25697,13 +25697,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -26851,8 +26851,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -26924,7 +26924,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -26995,13 +26995,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -28455,8 +28455,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -28528,7 +28528,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -28599,13 +28599,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -30055,8 +30055,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -30128,7 +30128,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -30200,12 +30200,12 @@
           "initialPositionMin": [
             1.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialPositionMax": [
             1.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -31465,8 +31465,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -32644,8 +32644,8 @@
         "transform": {
           "position": [
             0.2,
-            0.0,
-            0.7000000000000001
+            0.7000000000000001,
+            0.0
           ],
           "rotationDegrees": [
             0.0,
@@ -32788,13 +32788,13 @@
           ],
           "initialPositionMin": [
             1.8,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             1.8,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -34589,8 +34589,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -34733,23 +34733,23 @@
           ],
           "initialPositionMin": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialPositionMax": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialVelocityMin": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "initialVelocityMax": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "acceleration": [
             0.0,
@@ -35986,8 +35986,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -36130,23 +36130,23 @@
           ],
           "initialPositionMin": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialPositionMax": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialVelocityMin": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "initialVelocityMax": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "acceleration": [
             0.0,
@@ -37383,8 +37383,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -37527,23 +37527,23 @@
           ],
           "initialPositionMin": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialPositionMax": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialVelocityMin": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "initialVelocityMax": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "acceleration": [
             0.0,
@@ -38780,8 +38780,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -38924,23 +38924,23 @@
           ],
           "initialPositionMin": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialPositionMax": [
             2.0,
-            3.5,
-            0.0
+            0.0,
+            -3.5
           ],
           "initialVelocityMin": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "initialVelocityMax": [
             0.0,
-            -0.25,
-            0.0
+            0.0,
+            0.25
           ],
           "acceleration": [
             0.0,
@@ -40173,8 +40173,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -40246,7 +40246,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -40317,23 +40317,23 @@
           ],
           "initialPositionMin": [
             1.8,
-            -0.6,
-            0.0
+            0.0,
+            -1.6
           ],
           "initialPositionMax": [
             1.8,
-            1.6,
-            0.0
+            0.0,
+            0.6
           ],
           "initialVelocityMin": [
             0.05,
-            -0.3,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.1,
-            -0.1,
-            0.0
+            0.0,
+            0.3
           ],
           "acceleration": [
             0.0,
@@ -41805,8 +41805,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -41878,7 +41878,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -41949,23 +41949,23 @@
           ],
           "initialPositionMin": [
             1.8,
-            -0.6,
-            0.0
+            0.0,
+            -1.6
           ],
           "initialPositionMax": [
             1.8,
-            1.6,
-            0.0
+            0.0,
+            0.6
           ],
           "initialVelocityMin": [
             0.05,
-            -0.3,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.1,
-            -0.1,
-            0.0
+            0.0,
+            0.3
           ],
           "acceleration": [
             0.0,
@@ -43437,8 +43437,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -43510,7 +43510,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -43581,23 +43581,23 @@
           ],
           "initialPositionMin": [
             1.8,
-            -0.6,
-            0.0
+            0.0,
+            -1.6
           ],
           "initialPositionMax": [
             1.8,
-            1.6,
-            0.0
+            0.0,
+            0.6
           ],
           "initialVelocityMin": [
             0.05,
-            -0.3,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.1,
-            -0.1,
-            0.0
+            0.0,
+            0.3
           ],
           "acceleration": [
             0.0,
@@ -45069,8 +45069,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -45142,7 +45142,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -45213,23 +45213,23 @@
           ],
           "initialPositionMin": [
             1.8,
-            -0.6,
-            0.0
+            0.0,
+            -1.6
           ],
           "initialPositionMax": [
             1.8,
-            1.6,
-            0.0
+            0.0,
+            0.6
           ],
           "initialVelocityMin": [
             0.05,
-            -0.3,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMax": [
             0.1,
-            -0.1,
-            0.0
+            0.0,
+            0.3
           ],
           "acceleration": [
             0.0,
@@ -46701,8 +46701,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -46845,23 +46845,23 @@
           ],
           "initialPositionMin": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialPositionMax": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialVelocityMin": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "initialVelocityMax": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "acceleration": [
             0.0,
@@ -48209,8 +48209,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -48353,23 +48353,23 @@
           ],
           "initialPositionMin": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialPositionMax": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialVelocityMin": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "initialVelocityMax": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "acceleration": [
             0.0,
@@ -49717,8 +49717,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -49861,23 +49861,23 @@
           ],
           "initialPositionMin": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialPositionMax": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialVelocityMin": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "initialVelocityMax": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "acceleration": [
             0.0,
@@ -51225,8 +51225,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -51369,23 +51369,23 @@
           ],
           "initialPositionMin": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialPositionMax": [
             2.1,
-            4.7,
-            0.0
+            0.0,
+            -4.7
           ],
           "initialVelocityMin": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "initialVelocityMax": [
             0.0,
-            0.2,
-            0.0
+            0.0,
+            -0.2
           ],
           "acceleration": [
             0.0,
@@ -52733,8 +52733,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -52806,7 +52806,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -52887,13 +52887,13 @@
           ],
           "initialVelocityMin": [
             0.3,
-            -3.0,
-            0.0
+            0.0,
+            1.0
           ],
           "initialVelocityMax": [
             0.6,
-            -1.0,
-            0.0
+            0.0,
+            3.0
           ],
           "acceleration": [
             0.0,
@@ -54484,8 +54484,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -54557,7 +54557,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -54638,13 +54638,13 @@
           ],
           "initialVelocityMin": [
             0.3,
-            -3.0,
-            0.0
+            0.0,
+            1.0
           ],
           "initialVelocityMax": [
             0.6,
-            -1.0,
-            0.0
+            0.0,
+            3.0
           ],
           "acceleration": [
             0.0,
@@ -56235,8 +56235,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -56308,7 +56308,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -56389,13 +56389,13 @@
           ],
           "initialVelocityMin": [
             0.3,
-            -3.0,
-            0.0
+            0.0,
+            1.0
           ],
           "initialVelocityMax": [
             0.6,
-            -1.0,
-            0.0
+            0.0,
+            3.0
           ],
           "acceleration": [
             0.0,
@@ -57986,8 +57986,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -58059,7 +58059,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -58140,13 +58140,13 @@
           ],
           "initialVelocityMin": [
             0.3,
-            -3.0,
-            0.0
+            0.0,
+            1.0
           ],
           "initialVelocityMax": [
             0.6,
-            -1.0,
-            0.0
+            0.0,
+            3.0
           ],
           "acceleration": [
             0.0,
@@ -59749,8 +59749,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -59893,13 +59893,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -61243,8 +61243,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -61387,13 +61387,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -62737,8 +62737,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -62881,13 +62881,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -64231,8 +64231,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -64375,13 +64375,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.55
+            0.55,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -65725,8 +65725,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -65869,13 +65869,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialPositionMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMin": [
             0.0,
@@ -67224,8 +67224,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -67368,13 +67368,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialPositionMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMin": [
             0.0,
@@ -68723,8 +68723,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -68867,13 +68867,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialPositionMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMin": [
             0.0,
@@ -70222,8 +70222,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -70366,13 +70366,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialPositionMax": [
             0.0,
-            -0.1,
-            0.0
+            0.0,
+            0.1
           ],
           "initialVelocityMin": [
             0.0,
@@ -71709,8 +71709,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -71782,7 +71782,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -71854,12 +71854,12 @@
           "initialPositionMin": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialPositionMax": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -72967,8 +72967,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -73040,7 +73040,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -73112,12 +73112,12 @@
           "initialPositionMin": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialPositionMax": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -74225,8 +74225,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -74298,7 +74298,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -74370,12 +74370,12 @@
           "initialPositionMin": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialPositionMax": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -75483,8 +75483,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -75556,7 +75556,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -75628,12 +75628,12 @@
           "initialPositionMin": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialPositionMax": [
             -0.3,
             0.0,
-            0.0
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -76753,8 +76753,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -78130,8 +78130,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -79507,8 +79507,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -80884,8 +80884,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -82261,8 +82261,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -83618,8 +83618,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -84975,8 +84975,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -86332,8 +86332,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -87689,8 +87689,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -89074,8 +89074,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -90459,8 +90459,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -91844,8 +91844,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -93229,8 +93229,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -94704,8 +94704,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -96179,8 +96179,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -97654,8 +97654,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -99121,8 +99121,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -100424,8 +100424,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -101727,8 +101727,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -103030,8 +103030,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -104337,8 +104337,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -104481,13 +104481,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialPositionMax": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialVelocityMin": [
             0.0,
@@ -105582,8 +105582,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -105726,13 +105726,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialPositionMax": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialVelocityMin": [
             0.0,
@@ -106827,8 +106827,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -106971,13 +106971,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialPositionMax": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialVelocityMin": [
             0.0,
@@ -108072,8 +108072,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -108216,13 +108216,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialPositionMax": [
             0.0,
-            0.15,
-            0.0
+            0.0,
+            -0.15
           ],
           "initialVelocityMin": [
             0.0,
@@ -109317,8 +109317,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -110893,8 +110893,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -112469,8 +112469,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -114045,8 +114045,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -115613,8 +115613,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -115777,8 +115777,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -3.0
+            -3.0,
+            -0.0
           ],
           "startSize": [
             0.01,
@@ -116829,8 +116829,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -116993,8 +116993,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -3.0
+            -3.0,
+            -0.0
           ],
           "startSize": [
             0.01,
@@ -118045,8 +118045,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -118209,8 +118209,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -3.0
+            -3.0,
+            -0.0
           ],
           "startSize": [
             0.01,
@@ -119261,8 +119261,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -119425,8 +119425,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -3.0
+            -3.0,
+            -0.0
           ],
           "startSize": [
             0.01,
@@ -120477,8 +120477,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -120550,7 +120550,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -120641,8 +120641,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -6.0
+            -6.0,
+            -0.0
           ],
           "startSize": [
             0.03,
@@ -122356,8 +122356,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -122429,7 +122429,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -122520,8 +122520,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -6.0
+            -6.0,
+            -0.0
           ],
           "startSize": [
             0.03,
@@ -124235,8 +124235,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -124308,7 +124308,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -124399,8 +124399,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -6.0
+            -6.0,
+            -0.0
           ],
           "startSize": [
             0.03,
@@ -126114,8 +126114,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -126187,7 +126187,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -126278,8 +126278,8 @@
           ],
           "acceleration": [
             0.0,
-            0.0,
-            -6.0
+            -6.0,
+            -0.0
           ],
           "startSize": [
             0.03,
@@ -127993,8 +127993,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -129150,8 +129150,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -130307,8 +130307,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -131464,8 +131464,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -132621,8 +132621,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -133519,8 +133519,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -134417,8 +134417,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -135315,8 +135315,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -136217,8 +136217,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            -0.9
+            -0.9,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -137528,8 +137528,8 @@
         "transform": {
           "position": [
             0.5,
-            -0.5,
-            0.8000000000000002
+            0.8000000000000002,
+            0.5
           ],
           "rotationDegrees": [
             0.0,
@@ -138839,8 +138839,8 @@
         "transform": {
           "position": [
             0.5,
-            0.30000000000000004,
-            -0.9
+            -0.9,
+            -0.30000000000000004
           ],
           "rotationDegrees": [
             0.0,
@@ -140150,8 +140150,8 @@
         "transform": {
           "position": [
             0.5,
-            0.6000000000000001,
-            -0.8
+            -0.8,
+            -0.6000000000000001
           ],
           "rotationDegrees": [
             0.0,
@@ -141596,13 +141596,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -142589,8 +142589,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -142733,13 +142733,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -143870,13 +143870,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -144863,8 +144863,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -145007,13 +145007,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -146144,13 +146144,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -147137,8 +147137,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -147281,13 +147281,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -148418,13 +148418,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -149411,8 +149411,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -149555,13 +149555,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -150692,13 +150692,13 @@
           ],
           "initialPositionMin": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialPositionMax": [
             0.0,
-            0.0,
-            0.1
+            0.1,
+            -0.0
           ],
           "initialVelocityMin": [
             0.0,
@@ -151685,8 +151685,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -152831,8 +152831,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -153977,8 +153977,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,
@@ -155123,8 +155123,8 @@
         "transform": {
           "position": [
             1.55,
-            0.25,
-            0.1
+            0.1,
+            -0.25
           ],
           "rotationDegrees": [
             0.0,

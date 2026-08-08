@@ -91,12 +91,33 @@ struct EFFECT_NAMED_BOOL_DESC final
 	bool_t bValue = false;
 };
 
+enum class EFFECT_TEXTURE_ADDRESS_MODE : uint8_t
+{
+	WRAP,
+	CLAMP,
+	END
+};
+
+enum class EFFECT_TEXTURE_COLOR_SPACE : uint8_t
+{
+	LINEAR,
+	SRGB,
+	END
+};
+
 struct EFFECT_NAMED_TEXTURE_DESC final
 {
 	std::string strName;
 	std::string strGroup;
 	std::string strSourceObjectPath;
 	std::string strAssetId;
+	EFFECT_TEXTURE_ADDRESS_MODE eAddressU =
+		EFFECT_TEXTURE_ADDRESS_MODE::WRAP;
+	EFFECT_TEXTURE_ADDRESS_MODE eAddressV =
+		EFFECT_TEXTURE_ADDRESS_MODE::WRAP;
+	EFFECT_TEXTURE_COLOR_SPACE eColorSpace =
+		EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+	std::string strSamplingEvidence = "legacy_default";
 };
 
 struct EFFECT_SOURCE_MATERIAL_DESC final

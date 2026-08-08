@@ -38,6 +38,20 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def ue3_vector_to_client(values: list[float]) -> list[float]:
+    """Map UE3's X-forward/Z-up basis to the Client X-forward/Y-up basis."""
+    if len(values) != 3:
+        raise ValueError("UE3 vector must have exactly three components")
+    return [float(values[0]), float(values[2]), -float(values[1])]
+
+
+def ue3_axis_scale_to_client(values: list[float]) -> list[float]:
+    """Reorder component scales without applying the handedness sign."""
+    if len(values) != 3:
+        raise ValueError("UE3 scale must have exactly three components")
+    return [float(values[0]), float(values[2]), float(values[1])]
+
+
 def normalize_clip(value: str) -> str:
     result = value.casefold()
     for prefix in ("pc_sp_m_00_sk_", "pc_sp_f_00_sk_"):
@@ -444,9 +458,11 @@ def decode_typed_payload(
             "transformDecoded": True,
             "localTransform": {
                 "sourcePositionUeUnits": position_ue,
-                "position": [value * 0.01 for value in position_ue],
-                "rotationDegrees": rotation_degrees,
-                "scale": scale,
+                "position": [
+                    value * 0.01 for value in ue3_vector_to_client(position_ue)
+                ],
+                "rotationDegrees": ue3_vector_to_client(rotation_degrees),
+                "scale": ue3_axis_scale_to_client(scale),
             },
             "sourceTransformByteOffset": transform_start,
         })
@@ -653,9 +669,11 @@ def decode_typed_payload(
         },
         "localTransform": {
             "sourcePositionUeUnits": position_ue,
-            "position": [value * 0.01 for value in position_ue],
-            "rotationDegrees": rotation_degrees,
-            "scale": scale,
+            "position": [
+                value * 0.01 for value in ue3_vector_to_client(position_ue)
+            ],
+            "rotationDegrees": ue3_vector_to_client(rotation_degrees),
+            "scale": ue3_axis_scale_to_client(scale),
         },
         "sourceTransformByteOffset": transform_start,
     })

@@ -38,11 +38,17 @@ $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.blackline-aura.v1',
     'effect.ue3.linearflow-02.v1',
     'effect.ue3.local-crack.v1',
-    'effect.ue3.procedural-center-glow.v1'
+    'effect.ue3.procedural-center-glow.v1',
+    'effect.ue3.slice.v1',
+    'effect.ue3.missiletrail-01.v1'
 )
 $supportedSourceDynamicParameterSemantics = @(
     'unbound', 'opacity', 'emissive', 'dissolve', 'uv_pan',
-    'distortion', 'radial_size'
+    'distortion', 'radial_size',
+    'mask_a_offset', 'mask_b_offset', 'mask_a_distort', 'mask_b_distort',
+    'mask_a_pan', 'flow_strength', 'mask_b_pan', 'diffuse_pan',
+    'missile_alpha_pan', 'missile_noise_strength', 'missile_noise_pan',
+    'missile_dissolve'
 )
 $supportedSourceSubUVModes = @(
     'none', 'psuvim_linear_blend',
@@ -656,6 +662,9 @@ try {
                     [StringComparer]::Ordinal)
                 $resolvedSourceTextureNames = [Collections.Generic.HashSet[string]]::new(
                     [StringComparer]::Ordinal)
+                $sourceTexturesByName =
+                    [Collections.Generic.Dictionary[string,object]]::new(
+                        [StringComparer]::Ordinal)
                 Assert-StableId $elementId 'Element ID'
                 if ($documentVersion -ge 6) {
                     $elementDisplayName = Get-RequiredProperty $element 'displayName' String
@@ -766,6 +775,7 @@ try {
 									-not $sourceTextureNames.Add($textureName)) {
 									throw "Invalid or duplicate Source Material texture in ${effectAssetId}: $elementId/$textureName"
 								}
+								$sourceTexturesByName[$textureName] = $texture
 								if (-not [string]::IsNullOrWhiteSpace($textureAssetId) -and
 									[string]::IsNullOrWhiteSpace($textureSourcePath)) {
 									throw "Resolved Source Material texture has no source object path in ${effectAssetId}: $elementId/$textureName"
@@ -801,6 +811,31 @@ try {
 									'b_mask_tex','b_noise_01_tex','dissolve_tex')) {
 									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
 										throw "LinearFlow profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+								}
+							}
+							if ($shaderProfileId -eq 'effect.ue3.local-crack.v1' -and
+								$sourceTextures.Count -gt 0) {
+								foreach ($requiredName in @(
+									'normal_tex','refle_tex','dissolve_tex')) {
+									if (-not $resolvedSourceTextureNames.Contains($requiredName)) {
+										throw "LocalCrack profile is missing Source Material texture '$requiredName' in ${effectAssetId}: $elementId"
+									}
+									$requiredTexture = $sourceTexturesByName[$requiredName]
+									$addressU = Get-RequiredProperty `
+										$requiredTexture 'addressU' String
+									$addressV = Get-RequiredProperty `
+										$requiredTexture 'addressV' String
+									$colorSpace = Get-RequiredProperty `
+										$requiredTexture 'colorSpace' String
+									$samplingEvidence = Get-RequiredProperty `
+										$requiredTexture 'samplingEvidence' String
+									if ($addressU -notin @('wrap','clamp') -or
+										$addressV -notin @('wrap','clamp') -or
+										$colorSpace -notin @('linear','srgb') -or
+										[string]::IsNullOrWhiteSpace($samplingEvidence) -or
+										$samplingEvidence -eq 'legacy_default') {
+										throw "LocalCrack texture sampling contract is incomplete in ${effectAssetId}: $elementId/$requiredName"
 									}
 								}
 							}
@@ -858,7 +893,10 @@ try {
 						'effect.ue3.shine.v1' { @('base','mask') }
 						'effect.ue3.blackline-aura.v1' { @('mask','dissolve') }
 						'effect.ue3.linearflow-02.v1' { @() }
-						'effect.ue3.local-crack.v1' { @('dissolve') }
+						'effect.ue3.missiletrail-01.v1' { @('base','mask','noise','dissolve') }
+						'effect.ue3.local-crack.v1' {
+							if ($sourceTextures.Count -eq 0) { @('dissolve') } else { @() }
+						}
 						'effect.ue3.procedural-center-glow.v1' { @() }
 						default { @() }
 					}
@@ -913,6 +951,7 @@ try {
 								'effect.ue3.grouped-translucent.v1',
 								'effect.ue3.blackline-aura.v1',
 								'effect.ue3.linearflow-02.v1',
+								'effect.ue3.missiletrail-01.v1',
 								'effect.ue3.local-crack.v1'))) {
                     throw "Mesh useModelMaterial=false requires 'base' in ${effectAssetId}: $elementId"
                 }

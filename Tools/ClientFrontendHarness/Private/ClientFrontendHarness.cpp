@@ -1039,6 +1039,111 @@ namespace
 		}
 		runner.Require(bLerpEvaluated,
 			"Manual Mesh Lerp Evaluates Position Rotation Scale And Velocity Over Lifetime");
+
+		EFFECT_DOCUMENT_DESC snapshotDocument;
+		snapshotDocument.strEffectAssetId =
+			"effect.player.root.snapshot.occurrences.harness";
+		snapshotDocument.strDisplayName =
+			"Player Root Snapshot Occurrences Harness";
+		auto snapshotSlash = [](const std::string& id, const f32_t start)
+		{
+			EFFECT_ELEMENT_DESC element;
+			element.strElementId = id;
+			element.strDisplayName = id;
+			element.eKind = EFFECT_ELEMENT_KIND::MESH;
+			element.Detail.Timing.fStartDelaySeconds = start;
+			element.Detail.Timing.fLifeTimeSeconds = 0.75f;
+			element.ActionCueAttachment.bEnabled = true;
+			element.ActionCueAttachment.bFollow = false;
+			element.ActionCueAttachment.strSourceAnchorSlotId = "root";
+			element.ActionCueAttachment.strRuntimeAnchorSlotId = "root";
+			return element;
+		};
+		snapshotDocument.Elements.push_back(snapshotSlash("slash.0", 0.25f));
+		snapshotDocument.Elements.push_back(snapshotSlash("slash.1", 0.60f));
+		snapshotDocument.Elements.push_back(snapshotSlash("slash.2", 0.90f));
+		snapshotDocument.Elements.push_back(snapshotSlash("slash.3", 1.30f));
+		CEffectPlayback snapshotPlayback;
+		const bool_t bSnapshotStaged =
+			snapshotPlayback.Stage_Document(snapshotDocument, status);
+		float4x4_t rootAtZero{};
+		float4x4_t rootAtFirstSlash{};
+		float4x4_t rootBetweenFirstSecond{};
+		float4x4_t rootAtSecondSlash{};
+		float4x4_t rootBetweenSecondThird{};
+		float4x4_t rootAtThirdSlash{};
+		float4x4_t rootBetweenThirdFourth{};
+		float4x4_t rootAtFourthSlash{};
+		float4x4_t rootAfterFourthSlash{};
+		XMStoreFloat4x4(&rootAtZero, XMMatrixIdentity());
+		XMStoreFloat4x4(&rootAtFirstSlash, XMMatrixTranslation(1.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootBetweenFirstSecond, XMMatrixTranslation(2.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootAtSecondSlash, XMMatrixTranslation(3.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootBetweenSecondThird, XMMatrixTranslation(4.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootAtThirdSlash, XMMatrixTranslation(5.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootBetweenThirdFourth, XMMatrixTranslation(6.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootAtFourthSlash, XMMatrixTranslation(7.f, 0.f, 0.f));
+		XMStoreFloat4x4(&rootAfterFourthSlash, XMMatrixTranslation(8.f, 0.f, 0.f));
+		auto findSnapshotX = [&snapshotPlayback](const char* elementId)
+		{
+			for (const EFFECT_EVALUATED_ELEMENT& element :
+				snapshotPlayback.Get_Frame().Elements)
+			{
+				if (element.pElement->strElementId == elementId)
+					return element.World._41;
+			}
+			return -1.f;
+		};
+		auto hasActiveSlash = [&snapshotPlayback](const char* elementId)
+		{
+			for (const EFFECT_EVALUATED_ELEMENT& element :
+				snapshotPlayback.Get_Frame().Elements)
+			{
+				if (element.pElement->strElementId == elementId)
+					return true;
+			}
+			return false;
+		};
+		f32_t firstSnapshotX = -1.f;
+		f32_t secondSnapshotX = -1.f;
+		f32_t thirdSnapshotX = -1.f;
+		f32_t fourthSnapshotX = -1.f;
+		bool_t bExpiredInAuthoredOrder = false;
+		if (bSnapshotStaged)
+		{
+			snapshotPlayback.Update(0.20f, rootAtZero);
+			snapshotPlayback.Update(0.10f, rootAtFirstSlash);
+			firstSnapshotX = findSnapshotX("slash.0");
+			snapshotPlayback.Update(0.25f, rootBetweenFirstSecond);
+			snapshotPlayback.Update(0.10f, rootAtSecondSlash);
+			secondSnapshotX = findSnapshotX("slash.1");
+			snapshotPlayback.Update(0.20f, rootBetweenSecondThird);
+			snapshotPlayback.Update(0.10f, rootAtThirdSlash);
+			thirdSnapshotX = findSnapshotX("slash.2");
+			snapshotPlayback.Update(0.30f, rootBetweenThirdFourth);
+			snapshotPlayback.Update(0.10f, rootAtFourthSlash);
+			fourthSnapshotX = findSnapshotX("slash.3");
+
+			snapshotPlayback.Update(0.05f, rootAfterFourthSlash);
+			const bool_t bFirstTwoExpired =
+				snapshotPlayback.Get_Frame().Elements.size() == 2u &&
+				hasActiveSlash("slash.2") && hasActiveSlash("slash.3");
+			snapshotPlayback.Update(0.30f, rootAfterFourthSlash);
+			const bool_t bThirdExpired =
+				snapshotPlayback.Get_Frame().Elements.size() == 1u &&
+				hasActiveSlash("slash.3");
+			snapshotPlayback.Update(0.40f, rootAfterFourthSlash);
+			bExpiredInAuthoredOrder = bFirstTwoExpired && bThirdExpired &&
+				snapshotPlayback.Get_Frame().Elements.empty();
+		}
+		runner.Require(bSnapshotStaged &&
+			std::abs(firstSnapshotX - 1.f) < 0.0001f &&
+			std::abs(secondSnapshotX - 3.f) < 0.0001f &&
+			std::abs(thirdSnapshotX - 5.f) < 0.0001f &&
+			std::abs(fourthSnapshotX - 7.f) < 0.0001f,
+			"Effect Slash Occurrences Snapshot Player Root At Their Own Start Times");
+		runner.Require(bSnapshotStaged && bExpiredInAuthoredOrder,
+			"Effect Slash Occurrences Expire From Their Authored Start And Lifetime");
 	}
 
 	void Test_EffectTypedPresentation(TEST_RUNNER& runner)
@@ -1289,6 +1394,14 @@ namespace
 			result.strString = value;
 			return result;
 		};
+		auto literalBoolean = [](const std::string& path, const bool_t value)
+		{
+			EFFECT_SOURCE_LITERAL_DESC result;
+			result.strPropertyPath = path;
+			result.eKind = EFFECT_SOURCE_LITERAL_KIND::BOOLEAN;
+			result.bBoolean = value;
+			return result;
+		};
 		auto distribution = [](const std::string& path,
 			const float4_t& minimum, const float4_t& maximum,
 			const uint32_t components, const uint32_t operation = 1u)
@@ -1429,9 +1542,9 @@ namespace
 			std::abs(seededPlayback.Get_Frame().Particles.front().World._41 -
 				ueFractions.x) < 0.00001f &&
 			std::abs(seededPlayback.Get_Frame().Particles.front().World._42 -
-				ueFractions.y) < 0.00001f &&
+				ueFractions.z) < 0.00001f &&
 			std::abs(seededPlayback.Get_Frame().Particles.front().World._43 -
-				ueFractions.z) < 0.00001f;
+				(-ueFractions.y)) < 0.00001f;
 		seededPlayback.Reset();
 		seededPlayback.Seek(1.f / 60.f, identity);
 		runner.Require(seededExact &&
@@ -1485,9 +1598,106 @@ namespace
 			std::abs(lockedPlayback.Get_Frame().Particles.front().World._42 -
 				expectedLockedPosition) < 0.00001f &&
 			std::abs(lockedPlayback.Get_Frame().Particles.front().World._43 -
-				expectedLockedPosition) < 0.00001f;
+				(-expectedLockedPosition)) < 0.00001f;
 		runner.Require(lockedExact,
 			"Effect Raw Type XYZ Lock Reuses First UE Random Fraction");
+
+		EFFECT_DOCUMENT_DESC basisDocument;
+		basisDocument.strEffectAssetId = "effect.ue3.basis.harness";
+		basisDocument.strDisplayName = "UE3 Basis Harness";
+		EFFECT_ELEMENT_DESC basis = sourceElement("basis");
+		basis.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		basis.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC basisLocation;
+		basisLocation.strStableId = "location.basis";
+		basisLocation.strClassName = "particlemodulelocation";
+		basisLocation.strObjectPath = "Harness.LocationBasis";
+		basisLocation.Distributions.push_back(distribution(
+			"startlocation", { 100.f, 200.f, 300.f, 0.f },
+			{ 100.f, 200.f, 300.f, 0.f }, 3u));
+		basis.SourceRecipe.Modules.push_back(basisLocation);
+		EFFECT_SOURCE_MODULE_DESC basisAxisLock;
+		basisAxisLock.strStableId = "axis.basis";
+		basisAxisLock.strClassName = "particlemoduleorientationaxislock";
+		basisAxisLock.strObjectPath = "Harness.AxisBasis";
+		basisAxisLock.Literals.push_back(literalString(
+			"lockaxisflags", "epal_z"));
+		basis.SourceRecipe.Modules.push_back(basisAxisLock);
+		basisDocument.Elements.push_back(basis);
+		CEffectPlayback basisPlayback;
+		const bool_t basisStaged = basisPlayback.Stage_Document(
+			basisDocument, status);
+		if (basisStaged)
+			basisPlayback.Seek(1.f / 60.f, identity);
+		const bool_t basisExact = basisStaged &&
+			basisPlayback.Get_Frame().Particles.size() == 1u &&
+			std::abs(basisPlayback.Get_Frame().Particles.front().World._41 -
+				1.f) < 0.00001f &&
+			std::abs(basisPlayback.Get_Frame().Particles.front().World._42 -
+				3.f) < 0.00001f &&
+			std::abs(basisPlayback.Get_Frame().Particles.front().World._43 +
+				2.f) < 0.00001f &&
+			basisPlayback.Get_Frame().Particles.front().eSpriteAlignment ==
+				EFFECT_PARTICLE_SPRITE_ALIGNMENT::AXIS_POSITIVE_Y;
+		runner.Require(basisExact,
+			"Effect Source Position And EPAL Z Use UE3 To Client Basis Once");
+
+		EFFECT_DOCUMENT_DESC cylinderSpinDocument;
+		cylinderSpinDocument.strEffectAssetId =
+			"effect.cylinder.spin.source.harness";
+		cylinderSpinDocument.strDisplayName = "Cylinder Spin Source Harness";
+		EFFECT_ELEMENT_DESC cylinderSpin = sourceElement("cylinder.spin");
+		cylinderSpin.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		cylinderSpin.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC cylinderSpinModule;
+		cylinderSpinModule.strStableId = "cylinder.spin.module";
+		cylinderSpinModule.strClassName =
+			"efparticlemodulelocationprimitivecylinderspin";
+		cylinderSpinModule.strObjectPath = "Harness.CylinderSpin";
+		cylinderSpinModule.Literals.push_back(literalBoolean(
+			"negative_x", false));
+		cylinderSpinModule.Literals.push_back(literalBoolean(
+			"surfaceonly", true));
+		cylinderSpinModule.Literals.push_back(literalBoolean(
+			"velocity", true));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"startradius", { 200.f, 0.f, 0.f, 0.f },
+			{ 200.f, 0.f, 0.f, 0.f }, 1u));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"startheight", {}, {}, 1u));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"startcylinderrot", {}, {}, 1u));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"spinangle", {}, {}, 1u));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"startlocation", {}, {}, 3u));
+		cylinderSpinModule.Distributions.push_back(distribution(
+			"velocityscale", { 1.f, 0.f, 0.f, 0.f },
+			{ 1.f, 0.f, 0.f, 0.f }, 1u));
+		cylinderSpin.SourceRecipe.Modules.push_back(cylinderSpinModule);
+		cylinderSpinDocument.Elements.push_back(cylinderSpin);
+		CEffectPlayback cylinderSpinPlayback;
+		const bool_t cylinderSpinStaged = cylinderSpinPlayback.Stage_Document(
+			cylinderSpinDocument, status);
+		if (cylinderSpinStaged)
+			cylinderSpinPlayback.Seek(1.f / 60.f, identity);
+		const EFFECT_EVALUATED_PARTICLE* pCylinderSpin =
+			cylinderSpinStaged &&
+			cylinderSpinPlayback.Get_Frame().Particles.size() == 1u ?
+			&cylinderSpinPlayback.Get_Frame().Particles.front() : nullptr;
+		const f32_t fCylinderRadius = nullptr == pCylinderSpin ? 0.f :
+			std::sqrt(pCylinderSpin->World._41 * pCylinderSpin->World._41 +
+				pCylinderSpin->World._43 * pCylinderSpin->World._43);
+		const f32_t fCylinderSpeed = nullptr == pCylinderSpin ? 0.f :
+			std::sqrt(pCylinderSpin->vWorldVelocity.x *
+				pCylinderSpin->vWorldVelocity.x +
+				pCylinderSpin->vWorldVelocity.z *
+				pCylinderSpin->vWorldVelocity.z);
+		runner.Require(nullptr != pCylinderSpin &&
+			std::abs(pCylinderSpin->World._42) < 0.00001f &&
+			fCylinderRadius >= 2.f && fCylinderRadius < 2.1f &&
+			std::abs(fCylinderSpeed - 2.f) < 0.0001f,
+			"Effect Source Cylinder Spin Adds Radial Position And Velocity");
 
 		EFFECT_DOCUMENT_DESC colorDocument;
 		colorDocument.strEffectAssetId = "effect.color.ownership.harness";
@@ -1536,6 +1746,49 @@ namespace
 		runner.Require(colorProbeExact,
 			"Effect Runtime Probe Reports Evaluated Particle Alpha");
 
+		EFFECT_DOCUMENT_DESC implicitAlphaDocument;
+		implicitAlphaDocument.strEffectAssetId =
+			"effect.alpha.implicit.identity.harness";
+		implicitAlphaDocument.strDisplayName =
+			"Implicit UE3 Alpha Identity Harness";
+		EFFECT_ELEMENT_DESC implicitAlpha = sourceElement("implicit.alpha");
+		implicitAlpha.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		implicitAlpha.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC implicitColor;
+		implicitColor.strStableId = "color.implicit.alpha";
+		implicitColor.strClassName = "particlemodulecolor";
+		implicitColor.strObjectPath = "Harness.ImplicitColor";
+		implicitColor.Distributions.push_back(distribution(
+			"startcolor", { 1.f, 1.f, 1.f, 0.f },
+			{ 1.f, 1.f, 1.f, 0.f }, 3u));
+		implicitColor.Distributions.push_back(distribution(
+			"startalpha", {}, {}, 1u));
+		implicitAlpha.SourceRecipe.Modules.push_back(implicitColor);
+		EFFECT_SOURCE_MODULE_DESC implicitScale;
+		implicitScale.strStableId = "color.scale.implicit.alpha";
+		implicitScale.strClassName = "particlemodulecolorscaleoverlife";
+		implicitScale.strObjectPath = "Harness.ImplicitColorScale";
+		implicitScale.Distributions.push_back(distribution(
+			"colorscaleoverlife", { 1.f, 1.f, 1.f, 0.f },
+			{ 1.f, 1.f, 1.f, 0.f }, 3u));
+		implicitScale.Distributions.push_back(distribution(
+			"alphascaleoverlife", {}, {}, 1u));
+		implicitAlpha.SourceRecipe.Modules.push_back(implicitScale);
+		implicitAlphaDocument.Elements.push_back(implicitAlpha);
+		CEffectPlayback implicitAlphaPlayback;
+		const bool_t implicitAlphaStaged =
+			implicitAlphaPlayback.Stage_Document(implicitAlphaDocument, status);
+		if (implicitAlphaStaged)
+			implicitAlphaPlayback.Seek(1.f / 60.f, identity);
+		EFFECT_PARTICLE_RUNTIME_PROBE implicitAlphaProbe;
+		runner.Require(
+			implicitAlphaStaged &&
+			implicitAlphaPlayback.Query_ParticleRuntimeProbe(
+				"implicit.alpha", implicitAlphaProbe) &&
+			implicitAlphaProbe.iActiveParticleCount == 1u &&
+			std::abs(implicitAlphaProbe.fFirstAlpha - 1.f) < 0.0001f,
+			"Effect Empty UE3 Alpha Distributions Preserve Multiplicative Identity");
+
 		EFFECT_DOCUMENT_DESC sizeDocument;
 		sizeDocument.strEffectAssetId = "effect.size.exact.harness";
 		sizeDocument.strDisplayName = "Source Size Unit Harness";
@@ -1567,8 +1820,8 @@ namespace
 			sizePlayback.Seek(1.f / 60.f, identity);
 		if (!sizeStaged || sizePlayback.Get_Frame().Particles.size() != 1u ||
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._11 - 1.f) >= 0.0001f ||
-			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 2.f) >= 0.0001f ||
-			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 3.f) >= 0.0001f)
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 3.f) >= 0.0001f ||
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 2.f) >= 0.0001f)
 		{
 			std::cout << "[DETAIL] source size stage=" << sizeStaged
 				<< " status=" << status
@@ -1585,10 +1838,86 @@ namespace
 		runner.Require(sizeStaged &&
 			sizePlayback.Get_Frame().Particles.size() == 1u &&
 			std::abs(sizePlayback.Get_Frame().Particles.front().World._11 - 1.f) < 0.0001f &&
-			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 2.f) < 0.0001f &&
-			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 3.f) < 0.0001f,
-			"Effect Source Mesh Size Converts UE Units By Project 0.01 Scale");
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._22 - 3.f) < 0.0001f &&
+			std::abs(sizePlayback.Get_Frame().Particles.front().World._33 - 2.f) < 0.0001f,
+			"Effect Source Mesh Size Converts UE Units And Axis Basis Once");
 		resourceRootEnvironment.Restore();
+
+		EFFECT_DOCUMENT_DESC worldAccelerationDocument;
+		worldAccelerationDocument.strEffectAssetId =
+			"effect.acceleration.world.basis.harness";
+		worldAccelerationDocument.strDisplayName =
+			"World Acceleration Basis Harness";
+		EFFECT_ELEMENT_DESC worldAcceleration =
+			sourceElement("world.acceleration");
+		worldAcceleration.Detail.Transform.vRotationDegrees = { 0.f, 90.f, 0.f };
+		worldAcceleration.Detail.Particle.bLocalSpace = true;
+		worldAcceleration.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		worldAcceleration.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC accelerationModule;
+		accelerationModule.strStableId = "acceleration.world";
+		accelerationModule.strClassName = "particlemoduleacceleration";
+		accelerationModule.strObjectPath = "Harness.WorldAcceleration";
+		accelerationModule.Literals.push_back(literalBoolean(
+			"balwaysinworldspace", true));
+		accelerationModule.Distributions.push_back(distribution(
+			"acceleration", { 0.f, 100.f, 0.f, 0.f },
+			{ 0.f, 100.f, 0.f, 0.f }, 3u));
+		worldAcceleration.SourceRecipe.Modules.push_back(accelerationModule);
+		worldAccelerationDocument.Elements.push_back(worldAcceleration);
+		CEffectPlayback worldAccelerationPlayback;
+		const bool_t worldAccelerationStaged =
+			worldAccelerationPlayback.Stage_Document(
+				worldAccelerationDocument, status);
+		if (worldAccelerationStaged)
+			worldAccelerationPlayback.Seek(1.f / 60.f, identity);
+		const EFFECT_EVALUATED_PARTICLE* pWorldAcceleration =
+			worldAccelerationStaged &&
+			worldAccelerationPlayback.Get_Frame().Particles.size() == 1u ?
+				&worldAccelerationPlayback.Get_Frame().Particles.front() : nullptr;
+		runner.Require(nullptr != pWorldAcceleration &&
+			std::abs(pWorldAcceleration->vWorldVelocity.x) < 0.0001f &&
+			std::abs(pWorldAcceleration->vWorldVelocity.y) < 0.0001f &&
+			std::abs(pWorldAcceleration->vWorldVelocity.z + 1.f / 60.f) <
+				0.0001f,
+			"Effect Always World Acceleration Converts UE Basis And Ignores Root");
+
+		EFFECT_DOCUMENT_DESC worldVelocityDocument;
+		worldVelocityDocument.strEffectAssetId =
+			"effect.initial.velocity.world.basis.harness";
+		worldVelocityDocument.strDisplayName =
+			"World Initial Velocity Basis Harness";
+		EFFECT_ELEMENT_DESC worldVelocity =
+			sourceElement("world.initial.velocity");
+		worldVelocity.Detail.Transform.vRotationDegrees = { 0.f, 90.f, 0.f };
+		worldVelocity.Detail.Particle.bLocalSpace = true;
+		worldVelocity.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+		worldVelocity.SourceRecipe.Modules.push_back(lifetime());
+		EFFECT_SOURCE_MODULE_DESC velocityModule;
+		velocityModule.strStableId = "velocity.world";
+		velocityModule.strClassName = "particlemodulevelocity";
+		velocityModule.strObjectPath = "Harness.WorldInitialVelocity";
+		velocityModule.Literals.push_back(literalBoolean(
+			"binworldspace", true));
+		velocityModule.Distributions.push_back(distribution(
+			"startvelocity", { 0.f, 100.f, 0.f, 0.f },
+			{ 0.f, 100.f, 0.f, 0.f }, 3u));
+		worldVelocity.SourceRecipe.Modules.push_back(velocityModule);
+		worldVelocityDocument.Elements.push_back(worldVelocity);
+		CEffectPlayback worldVelocityPlayback;
+		const bool_t worldVelocityStaged =
+			worldVelocityPlayback.Stage_Document(worldVelocityDocument, status);
+		if (worldVelocityStaged)
+			worldVelocityPlayback.Seek(1.f / 60.f, identity);
+		const EFFECT_EVALUATED_PARTICLE* pWorldVelocity =
+			worldVelocityStaged &&
+			worldVelocityPlayback.Get_Frame().Particles.size() == 1u ?
+				&worldVelocityPlayback.Get_Frame().Particles.front() : nullptr;
+		runner.Require(nullptr != pWorldVelocity &&
+			std::abs(pWorldVelocity->vWorldVelocity.x) < 0.0001f &&
+			std::abs(pWorldVelocity->vWorldVelocity.y) < 0.0001f &&
+			std::abs(pWorldVelocity->vWorldVelocity.z + 1.f) < 0.0001f,
+			"Effect World Initial Velocity Converts UE Basis And Ignores Root");
 
 		EFFECT_DOCUMENT_DESC spaceDocument;
 		spaceDocument.strEffectAssetId = "effect.space.exact.harness";
@@ -1927,6 +2256,32 @@ namespace
 		runner.Require(bAllEffectsAuthoredStage &&
 			iAuthoredStageCount == skillIds.size(),
 			"All Effects Stages Every Current DimensionMaster Authored Document");
+
+		const std::filesystem::path hitAPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050210.effect.json");
+		EFFECT_DOCUMENT_DESC hitADocument;
+		CEffectPlayback hitAPlayback;
+		const bool_t hitAStaged = !hitAPath.empty() &&
+			CEffectDocumentCodec::Load(hitAPath, hitADocument, status) &&
+			hitAPlayback.Stage_Document(hitADocument, status);
+		float4x4_t hitAIdentity{};
+		XMStoreFloat4x4(&hitAIdentity, XMMatrixIdentity());
+		if (hitAStaged)
+			hitAPlayback.Seek(0.282f, hitAIdentity);
+		bool_t bHitAImplicitAlphaVisible = hitAStaged;
+		for (const std::string_view emitterId : {
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+				"particlespriteemitter_14",
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+				"particlespriteemitter_20" })
+		{
+			EFFECT_PARTICLE_RUNTIME_PROBE probe;
+			bHitAImplicitAlphaVisible = bHitAImplicitAlphaVisible &&
+				hitAPlayback.Query_ParticleRuntimeProbe(emitterId, probe) &&
+				probe.iActiveParticleCount > 0u && probe.fMaxAlpha > 0.f;
+		}
+		runner.Require(bHitAImplicitAlphaVisible,
+			"DimensionMaster A Hit Mesh 14 And 20 Preserve Implicit Alpha Identity");
 
 		const std::filesystem::path dPath = CProjectDataRoot::Resolve(
 			L"Effects/Authored/effect.dimensionmaster.skill.2050240.effect.json");
@@ -2480,14 +2835,74 @@ namespace
 				"effect.ue3.shine.v1", true, false, false, false) &&
 			Is_EffectFiniteProfileResourceContractSatisfied(
 				"effect.ue3.blackline-aura.v1", false, true, true, true) &&
-			Is_EffectFiniteProfileResourceContractSatisfied(
-				"effect.ue3.local-crack.v1", false, false, true, true) &&
 			!Is_EffectFiniteProfileResourceContractSatisfied(
-				"effect.ue3.local-crack.v1", false, false, false, true) &&
+				"effect.ue3.local-crack.v1", true, true, true, true) &&
+			Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.missiletrail-01.v1", true, true, true, true) &&
+			!Is_EffectFiniteProfileResourceContractSatisfied(
+				"effect.ue3.missiletrail-01.v1", true, false, true, true) &&
 			Is_EffectFiniteProfileResourceContractSatisfied(
 				"effect.ue3.procedural-center-glow.v1",
 				false, false, false, false),
 			"Effect Finite Source Profiles Require Their Decoded Runtime Carriers");
+		runner.Require(
+			Is_EffectLocalCrackResourceContractSatisfied(
+				true, true, true, true) &&
+			!Is_EffectLocalCrackResourceContractSatisfied(
+				false, true, true, true) &&
+			!Is_EffectLocalCrackResourceContractSatisfied(
+				true, false, true, true) &&
+			!Is_EffectLocalCrackResourceContractSatisfied(
+				true, true, false, true) &&
+			!Is_EffectLocalCrackResourceContractSatisfied(
+				true, true, true, false),
+			"Effect Local Crack Requires Named Normal Reflection Dissolve And Mesh");
+		EFFECT_DOCUMENT_DESC legacyLocalCrackDocument = sourceMaterialDocument;
+		EFFECT_ELEMENT_DESC& legacyLocalCrackElement =
+			legacyLocalCrackDocument.Elements.front();
+		legacyLocalCrackElement.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		legacyLocalCrackElement.ResourceBindings = {
+			{ "meshModel",
+				"Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel" },
+			{ "dissolve",
+				"Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds" }
+		};
+		EFFECT_SOURCE_MATERIAL_DESC& legacyLocalCrackSource =
+			legacyLocalCrackElement.Material.SourceMaterial;
+		legacyLocalCrackSource.strRuntimeShaderProfileId =
+			"effect.ue3.local-crack.v1";
+		legacyLocalCrackSource.Textures.clear();
+		EFFECT_DOCUMENT_DESC partialLocalCrackDocument =
+			legacyLocalCrackDocument;
+		partialLocalCrackDocument.Elements.front().Material.SourceMaterial.Textures = {
+			{ "normal_tex", "", "harness.localcrack.normal",
+				"Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR, "upk_props" }
+		};
+		EFFECT_DOCUMENT_DESC completeLocalCrackDocument =
+			partialLocalCrackDocument;
+		completeLocalCrackDocument.Elements.front().Material.SourceMaterial.Textures.
+			push_back({ "refle_tex", "", "harness.localcrack.reflection",
+				"Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB, "upk_props" });
+		completeLocalCrackDocument.Elements.front().Material.SourceMaterial.Textures.
+			push_back({ "dissolve_tex", "", "harness.localcrack.dissolve",
+				"Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_ADDRESS_MODE::WRAP,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB, "upk_props" });
+		runner.Require(
+			CEffectDocumentCodec::Validate_Drawable(
+				legacyLocalCrackDocument, status) &&
+			!CEffectDocumentCodec::Validate_Drawable(
+				partialLocalCrackDocument, status) &&
+			CEffectDocumentCodec::Validate_Drawable(
+				completeLocalCrackDocument, status),
+			"Effect Local Crack Admits Legacy Carrier But Rejects Partial Named Contract");
 		EFFECT_SOURCE_MATERIAL_DESC stagedSourceSignature = groupedSource;
 		EFFECT_SOURCE_MATERIAL_DESC changedSourceSignature = groupedSource;
 		changedSourceSignature.Scalars.front().fValue += 1.f;

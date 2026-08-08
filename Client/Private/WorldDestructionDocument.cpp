@@ -125,17 +125,17 @@ namespace
 		const std::filesystem::path& destination,
 		const std::filesystem::path& temporary)
 	{
-		std::error_code renameError;
-		std::filesystem::rename(temporary, destination, renameError);
-		if (!renameError)
+		std::error_code existsError;
+		if (std::filesystem::exists(destination, existsError) &&
+			!existsError && ReplaceFileW(
+				destination.c_str(), temporary.c_str(), nullptr,
+				REPLACEFILE_WRITE_THROUGH, nullptr, nullptr))
+		{
 			return true;
-		std::error_code removeError;
-		std::filesystem::remove(destination, removeError);
-		if (removeError)
-			return false;
-		renameError.clear();
-		std::filesystem::rename(temporary, destination, renameError);
-		return !renameError;
+		}
+		return FALSE != MoveFileExW(
+			temporary.c_str(), destination.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
 	}
 }
 
@@ -567,14 +567,20 @@ bool_t Client::CWorldDestructionDocument::Save(
 	CWorldDestructionDocument verify;
 	std::string verifyStatus;
 	if (!writeSucceeded ||
-		!verify.Load(temporary, areaId, encounterId, verifyStatus) ||
-		!Commit_TemporaryFile(path, temporary))
+		!verify.Load(temporary, areaId, encounterId, verifyStatus))
 	{
 		std::error_code removeError;
 		std::filesystem::remove(temporary, removeError);
 		outStatus = writeSucceeded ?
 			"World destruction reload check failed: " + verifyStatus :
 			"World destruction write failed";
+		return false;
+	}
+	if (!Commit_TemporaryFile(path, temporary))
+	{
+		std::error_code removeError;
+		std::filesystem::remove(temporary, removeError);
+		outStatus = "World destruction atomic replace failed";
 		return false;
 	}
 

@@ -157,6 +157,50 @@ namespace
         return Iterator->generic_string();
     }
 
+    bool Try_DeriveEffectAssetIdFromFilename(
+        const std::filesystem::path& Path,
+        const Client::EFFECT_DOCUMENT_SOURCE eSource,
+        std::string& OutAssetId)
+    {
+        constexpr std::string_view EffectSuffix = ".effect.json";
+        constexpr std::string_view ImportedSuffix = ".imported";
+        const std::string Name = Path.filename().string();
+        if (!Name.ends_with(EffectSuffix))
+            return false;
+
+        std::string AssetId = Name.substr(
+            0u, Name.size() - EffectSuffix.size());
+        if (Client::EFFECT_DOCUMENT_SOURCE::IMPORTED == eSource &&
+            AssetId.ends_with(ImportedSuffix))
+        {
+            AssetId.resize(AssetId.size() - ImportedSuffix.size());
+        }
+        if (AssetId.empty() || AssetId.size() > 128u ||
+            !std::all_of(AssetId.begin(), AssetId.end(),
+                [](const char Character)
+                {
+                    const unsigned char Value =
+                        static_cast<unsigned char>(Character);
+                    return 0 != std::isalnum(Value) || Character == '_' ||
+                        Character == '-' || Character == '.';
+                }))
+        {
+            return false;
+        }
+        OutAssetId = std::move(AssetId);
+        return true;
+    }
+
+    bool_t Ensure_PlayerSkillCatalog(std::string& OutStatus)
+    {
+        if (!Client::CPlayerSkillCatalog::Get_Skills().empty())
+        {
+            OutStatus = "Using the loaded player skill catalog.";
+            return true;
+        }
+        return Client::CPlayerSkillCatalog::Load(OutStatus);
+    }
+
     const char* Animation_AssetName(
         const LostArk::Shared::CHARACTER_CLASS_ID eClass)
     {
@@ -994,6 +1038,7 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         pObject->Set_SampleTime(m_fPreviewTimeSeconds);
         Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
     }
+
 	else if (bRootResolved && fSequentialAdvance > 0.f)
 		pObject->Advance_Preview(fSequentialAdvance, Root);
 	else if (bRootResolved)
@@ -1004,6 +1049,17 @@ void Client::CEffect_Tool::Render()
 {
     Engine::CProfilerScope Profile(
         CGameInstance::Get().Get_Profiler(), "EffectTool.Render");
+    {
+        Engine::CProfilerScope InitialIndexProfile(
+            CGameInstance::Get().Get_Profiler(),
+            "EffectTool.InitialIndexStep");
+        if (!m_bResourceCatalogRefreshAttempted)
+            Refresh_ResourceCatalog();
+        else if (!m_bAllEffectsRefreshAttempted)
+            Refresh_AllEffects();
+        else if (!m_bDataFilesRefreshAttempted)
+            Refresh_DataFiles();
+    }
     {
         Engine::CProfilerScope WindowProfile(
             CGameInstance::Get().Get_Profiler(),
@@ -1459,8 +1515,6 @@ void Client::CEffect_Tool::Render_ResourceGrid(
 {
     Engine::CProfilerScope Profile(
         CGameInstance::Get().Get_Profiler(), "EffectTool.ResourceGrid");
-    if (!m_bResourceCatalogRefreshAttempted)
-        Refresh_ResourceCatalog();
     const EFFECT_ELEMENT_DESC* pElement = bMeshAuthoringDraft ?
         &m_MeshAuthoringDraft : Find_SelectedElement();
     const bool_t bSlotSelected = nullptr != pElement &&
@@ -2451,9 +2505,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	const bool_t bEditableSource =
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource ||
 		EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource;
-	std::string DrawableError;
-	const bool_t bDrawable = CEffectDocumentCodec::Validate_Drawable(
-		*m_ActiveDocument, DrawableError);
+	const bool_t bDrawable = m_bActiveDocumentDrawable;
 	const bool_t bLivePreview = bDrawable &&
 		m_bPreviewVisibleRequested &&
 		nullptr != m_pWorldPreviewObject.lock();
@@ -2490,7 +2542,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 	{
 		ImGui::TextWrapped(
 			"Structurally valid partial draft. Preview hidden and publish blocked: %s",
-			DrawableError.c_str());
+			m_strActiveDocumentDrawableError.c_str());
 	}
 	else if (m_bActiveDocumentMatchesRuntime)
 	{
@@ -4040,8 +4092,6 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
         ImGui::End();
         return;
     }
-    if (!m_bAllEffectsRefreshAttempted)
-        Refresh_AllEffects();
     constexpr LostArk::Shared::CHARACTER_CLASS_ID Classes[] = {
         LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
         LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
@@ -4085,7 +4135,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
     if (ImGui::CollapsingHeader("Catalog / Destructive Edit Commands"))
     {
         if (ImGui::Button("Refresh Skill Catalog"))
-            Refresh_AllEffects();
+            Refresh_AllEffects(true);
         ImGui::SameLine();
         if (ImGui::Button("Delete Selected Element"))
             Try_DeleteSelectedElement();
@@ -4121,21 +4171,26 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
     bool_t bActiveAppearsInTree = false;
     for (const EFFECT_SKILL_TREE_ENTRY& Entry : m_AllEffects)
     {
+        const EFFECT_DOCUMENT_DESC* pIndexedDocument =
+            nullptr != Entry.pRuntimeDocument ?
+                Entry.pRuntimeDocument.get() : nullptr;
         if (Entry.Skill.eCharacterClass != m_eAllEffectsClass ||
             (!Contains_NoCase(Entry.Skill.strInputSlot, Search) &&
              !Contains_NoCase(Entry.Skill.strDisplayName, Search) &&
              !Contains_NoCase(Entry.Skill.strEffectId, Search) &&
-             !Contains_NoCase(Entry.Document.strDisplayName, Search)))
+             (nullptr == pIndexedDocument || !Contains_NoCase(
+                 pIndexedDocument->strDisplayName, Search))))
             continue;
         if (m_ActiveDocument.has_value() &&
             m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId)
             bActiveAppearsInTree = true;
-        const EFFECT_DOCUMENT_DESC& TreeDocument =
+        const EFFECT_DOCUMENT_DESC* pTreeDocument =
             m_ActiveDocument.has_value() &&
-            m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId ?
-            *m_ActiveDocument : Entry.Document;
+                m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId ?
+            &*m_ActiveDocument : pIndexedDocument;
         const PARTICLE_LAYER_SUMMARY ParticleSummary =
-            Summarize_ParticleLayers(TreeDocument);
+            nullptr == pTreeDocument ? PARTICLE_LAYER_SUMMARY{} :
+                Summarize_ParticleLayers(*pTreeDocument);
         ImGui::PushID(static_cast<int32_t>(Entry.Skill.iSkillId));
         const bool_t bActiveSkill = m_ActiveDocument.has_value() &&
             m_ActiveDocument->strEffectAssetId == Entry.Skill.strEffectId;
@@ -4155,20 +4210,29 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             Try_SelectSkill(Entry.Skill.strEffectId);
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip(
-                "%zu Elements in one complete Effect Document.\n"
-                "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu\n"
-                "Mesh %zu | Sprite %zu | Unresolved %zu | Budget %llu\n"
-                "Click the skill label to load or restart all of them.",
-                TreeDocument.Elements.size(),
-                ParticleSummary.iSourceSystemCount,
-                ParticleSummary.iSourceEmitterCount,
-                ParticleSummary.iLayerCount,
-                ParticleSummary.iMeshRendererCount,
-                ParticleSummary.iSpriteRendererCount,
-                ParticleSummary.iUnresolvedRendererCount,
-                static_cast<unsigned long long>(
-                    ParticleSummary.iParticleBudget));
+            if (nullptr != pTreeDocument)
+            {
+                ImGui::SetTooltip(
+                    "%zu Elements in the indexed Effect Document.\n"
+                    "Cascade System: Source Systems %zu | Emitters %zu | Layers %zu\n"
+                    "Mesh %zu | Sprite %zu | Unresolved %zu | Budget %llu\n"
+                    "Click the skill label to load the Authored document.",
+                    pTreeDocument->Elements.size(),
+                    ParticleSummary.iSourceSystemCount,
+                    ParticleSummary.iSourceEmitterCount,
+                    ParticleSummary.iLayerCount,
+                    ParticleSummary.iMeshRendererCount,
+                    ParticleSummary.iSpriteRendererCount,
+                    ParticleSummary.iUnresolvedRendererCount,
+                    static_cast<unsigned long long>(
+                        ParticleSummary.iParticleBudget));
+            }
+            else
+            {
+                ImGui::SetTooltip(
+                    "Authored data is indexed but has no published Runtime snapshot.\n"
+                    "Load it to validate and inspect its Elements.");
+            }
         }
         if (bSkillOpen)
         {
@@ -4196,6 +4260,15 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				Render_AssemblyHierarchy(Entry.Skill.strEffectId);
 				ImGui::TreePop();
 			}
+            if (nullptr == pTreeDocument)
+            {
+                ImGui::TextDisabled(
+                    "Load the Authored document to inspect unpublished layers.");
+                ImGui::TreePop();
+                ImGui::PopID();
+                continue;
+            }
+            const EFFECT_DOCUMENT_DESC& TreeDocument = *pTreeDocument;
             if (!TreeDocument.ModelCues.empty() &&
                 ImGui::TreeNode(("Model Cues (" +
                     std::to_string(TreeDocument.ModelCues.size()) + ")").c_str()))
@@ -4487,7 +4560,7 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
     }
 
     std::string CatalogStatus;
-    if (!CPlayerSkillCatalog::Load(CatalogStatus))
+    if (!Ensure_PlayerSkillCatalog(CatalogStatus))
     {
         m_strAnimationClipLabelStatus =
             "PlayerSkills label load failed: " + CatalogStatus;
@@ -4562,8 +4635,6 @@ void Client::CEffect_Tool::Render_DataFilesWindow()
         ImGui::End();
         return;
     }
-    if (!m_bDataFilesRefreshAttempted)
-        Refresh_DataFiles();
     if (ImGui::BeginCombo("Authoring Category##DataFilesDomain",
         m_strSelectedAuthoringDomainId.c_str()))
     {
@@ -4781,6 +4852,9 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
         m_strDocumentStatus = Error;
         return false;
     }
+    std::string DrawableError;
+    const bool_t bDrawable =
+        CEffectDocumentCodec::Validate_Drawable(Document, DrawableError);
     const std::filesystem::path ExistingPath = CProjectDataRoot::Resolve(
         std::filesystem::path(L"Effects") / L"Authored" /
         (std::filesystem::path(Document.strEffectAssetId).wstring() +
@@ -4793,6 +4867,7 @@ bool_t Client::CEffect_Tool::Try_CreateDocument()
         return false;
     }
     m_ActiveDocument = std::move(Document);
+    Set_ActiveDocumentDrawableStatus(bDrawable, std::move(DrawableError));
     m_ActiveDocumentPath.clear();
 	m_strActiveDocumentBaselineCanonical.clear();
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
@@ -5015,9 +5090,7 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect()
         m_ePreviewFilter = ePreviousPreviewFilter;
         if (m_ActiveDocument.has_value())
         {
-            std::string PreviousDrawableError;
-            if (CEffectDocumentCodec::Validate_Drawable(
-                *m_ActiveDocument, PreviousDrawableError))
+            if (m_bActiveDocumentDrawable)
                 Stage_WorldPreview(*m_ActiveDocument);
             else
                 Release_WorldPreview(true);
@@ -5031,6 +5104,7 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect()
     }
 
     m_ActiveDocument = std::move(Staged);
+    Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
     m_strActiveDocumentBaselineCanonical =
@@ -5303,10 +5377,8 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 	const bool_t bSaved = Try_SaveDocument();
 	if (bSaved)
 	{
-		std::string DrawableError;
-		const bool_t bDrawable = CEffectDocumentCodec::Validate_Drawable(
-			*m_ActiveDocument, DrawableError);
-		if (bDrawable && nullptr != m_pWorldPreviewObject.lock())
+		if (m_bActiveDocumentDrawable &&
+			nullptr != m_pWorldPreviewObject.lock())
 		{
 			m_strDetailStatus =
 				"Applied and saved Authored; live world preview is active. Runtime publish remains a separate step.";
@@ -5315,7 +5387,7 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 		{
 			m_strDetailStatus =
 				"Applied and saved a structurally valid partial draft; world preview is hidden and publish is blocked: " +
-				DrawableError;
+				m_strActiveDocumentDrawableError;
 		}
 	}
 	return bSaved;
@@ -5372,22 +5444,19 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
         return false;
     }
     m_bDocumentDirty = false;
-    Refresh_RuntimeEquivalence();
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
 	m_strActiveDocumentBaselineCanonical =
 		CEffectDocumentCodec::Serialize(*m_ActiveDocument);
+    Refresh_RuntimeEquivalence();
     m_strSelectedDataFileAssetId =
         m_ActiveDocument->strEffectAssetId;
     m_strDocumentStatus = "Saved Authored atomically: " + Path.string();
-	std::string DrawableError;
-	const bool_t bDrawable = CEffectDocumentCodec::Validate_Drawable(
-		*m_ActiveDocument, DrawableError);
-	if (!bDrawable)
+	if (!m_bActiveDocumentDrawable)
 	{
 		m_strDocumentStatus +=
 			" Structurally valid partial draft saved; world preview hidden and publish blocked: " +
-			DrawableError;
+			m_strActiveDocumentDrawableError;
 	}
 	else
 	{
@@ -5443,7 +5512,11 @@ bool_t Client::CEffect_Tool::Try_SaveDocumentAs(
         m_strDocumentStatus = Error;
         return false;
     }
+    const bool_t bWasDrawable = m_bActiveDocumentDrawable;
+    std::string PreviousDrawableError = m_strActiveDocumentDrawableError;
     m_ActiveDocument = std::move(Staged);
+    Set_ActiveDocumentDrawableStatus(
+        bWasDrawable, std::move(PreviousDrawableError));
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
 	m_strActiveDocumentBaselineCanonical =
@@ -5488,7 +5561,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
     const std::string TargetId = ImportedId.substr(
         0u, ImportedId.size() - Suffix.size());
     std::string CatalogStatus;
-    if (!CPlayerSkillCatalog::Load(CatalogStatus))
+    if (!Ensure_PlayerSkillCatalog(CatalogStatus))
     {
         m_strDocumentStatus = "PlayerSkills load failed: " + CatalogStatus;
         return false;
@@ -5552,6 +5625,7 @@ bool_t Client::CEffect_Tool::Try_PromoteImportedDocument()
         return false;
     }
     m_ActiveDocument = std::move(Staged);
+    Set_ActiveDocumentDrawableStatus(true, {});
     m_ActiveDocumentPath = Path;
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::AUTHORED;
 	m_strActiveDocumentBaselineCanonical =
@@ -5619,6 +5693,8 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
     const std::string& strSelectionId,
     const bool_t bBypassUnsavedGuard)
 {
+    Engine::CProfilerScope LoadProfile(
+        CGameInstance::Get().Get_Profiler(), "EffectTool.DocumentLoad");
     if (EFFECT_DOCUMENT_SOURCE::IMPORTED_REFERENCE == eSource)
     {
         m_strDocumentStatus =
@@ -5670,33 +5746,43 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
 		}
 		Staged = Component->Document;
 	}
-	else if (Path.empty() || !CEffectDocumentCodec::Load(Path, Staged, Error))
-	{
-		m_strDocumentStatus = Path.empty() ?
-			"Effect load path escaped Data/Effects/Authored." : Error;
-		return false;
-	}
-    std::string PreviewStatus;
-    const bool_t bDrawable =
-        CEffectDocumentCodec::Validate_Drawable(Staged, PreviewStatus);
-    bool_t bPreviewStaged = false;
-    if (bDrawable)
+    else
     {
-        bPreviewStaged = Stage_WorldPreview(Staged);
-        if (!bPreviewStaged)
+        if (Path.empty())
         {
             m_strDocumentStatus =
-                "Load rejected; active Document and preview were preserved: " +
-                m_strPreviewStatus;
+                "Effect load path escaped Data/Effects/Authored.";
+            return false;
+        }
+        Engine::CProfilerScope ParseProfile(
+            CGameInstance::Get().Get_Profiler(),
+            "EffectTool.DocumentLoad.Parse");
+        if (!CEffectDocumentCodec::Load(Path, Staged, Error))
+        {
+            m_strDocumentStatus = Error;
             return false;
         }
     }
-    else
-        Release_WorldPreview(true);
-	const std::string CanonicalBaseline =
-		EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource ?
-			CEffectDocumentCodec::Serialize(Staged) : std::string{};
+    std::string PreviewStatus;
+    bool_t bDrawable = false;
+    {
+        Engine::CProfilerScope ValidationProfile(
+            CGameInstance::Get().Get_Profiler(),
+            "EffectTool.DocumentLoad.ValidateDrawable");
+        bDrawable =
+            CEffectDocumentCodec::Validate_Drawable(Staged, PreviewStatus);
+    }
+    Release_WorldPreview(true);
+    std::string CanonicalBaseline;
+    if (EFFECT_DOCUMENT_SOURCE::AUTHORED == eSource)
+    {
+        Engine::CProfilerScope CanonicalProfile(
+            CGameInstance::Get().Get_Profiler(),
+            "EffectTool.DocumentLoad.CanonicalBaseline");
+        CanonicalBaseline = CEffectDocumentCodec::Serialize(Staged);
+    }
 	m_ActiveDocument = std::move(Staged);
+    Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
     m_ActiveDocumentPath = Path;
 	m_strActiveDocumentBaselineCanonical = CanonicalBaseline;
     m_eActiveDocumentSource = eSource;
@@ -5750,35 +5836,19 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
     m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     Recalculate_PreviewDuration();
     Synchronize_LoadedSkillPreview();
-    float4x4_t TargetRoot{};
-    if (bPreviewStaged &&
-        CAnimationTargetService::Resolve_RootTransform(&TargetRoot))
-    {
-        m_ePreviewPivotKind = EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT;
-        if (const shared_ptr<CEffectObject> pObject =
-            m_pWorldPreviewObject.lock())
-        {
-            pObject->Set_RootWorld(TargetRoot);
-        }
-    }
     m_bPreviewVisibleRequested = false;
-    if (bPreviewStaged)
-    {
-        if (const shared_ptr<CEffectObject> pObject =
-            m_pWorldPreviewObject.lock())
-        {
-            pObject->Set_Visible(false);
-        }
-        m_bPreviewPlaying = false;
+    m_bPreviewPlaying = false;
+    if (bDrawable)
         Set_SynchronizedAnimationPaused(true);
-    }
-    else
-        m_bPreviewPlaying = false;
-    m_strDocumentStatus = bPreviewStaged ?
-        "Loaded existing Effect for inspection; choose Complete, Group, or Solo Play: " +
+
+    m_strPreviewStatus = bDrawable ?
+        "Document loaded; GPU resources are deferred until an explicit preview scope is played." :
+        "Preview is unavailable until required resources bind: " + PreviewStatus;
+    m_strDocumentStatus = bDrawable ?
+        "Loaded existing Effect for inspection without GPU staging; choose Complete, Group, or Solo Play: " +
 			(Path.empty() ? strSelectionId : Path.string()) :
         "Loaded editable draft; preview is hidden until required resources bind: " +
-            (PreviewStatus.empty() ? m_strPreviewStatus : PreviewStatus);
+            PreviewStatus;
     return true;
 }
 
@@ -5810,11 +5880,13 @@ bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad(
         true);
 }
 
-bool_t Client::CEffect_Tool::Refresh_AllEffects()
+bool_t Client::CEffect_Tool::Refresh_AllEffects(
+    const bool_t bReloadSkillCatalog)
 {
     m_bAllEffectsRefreshAttempted = true;
     std::string CatalogStatus;
-    if (!CPlayerSkillCatalog::Load(CatalogStatus))
+    if ((bReloadSkillCatalog || CPlayerSkillCatalog::Get_Skills().empty()) &&
+        !CPlayerSkillCatalog::Load(CatalogStatus))
     {
         m_strElementStatus =
             "All Effects refresh preserved the previous tree: " +
@@ -5838,18 +5910,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects()
             ++iMissingAuthored;
             continue;
         }
-        EFFECT_DOCUMENT_DESC Document;
-        std::string Error;
-        if (!CEffectDocumentCodec::Load(Path, Document, Error) ||
-            Document.strEffectAssetId != Skill.strEffectId)
-        {
-            m_strElementStatus =
-                "All Effects refresh preserved the previous tree; invalid " +
-                Skill.strEffectId + ": " +
-                (Error.empty() ? "file ID does not match effectId." : Error);
-            return false;
-        }
-        Staged.push_back({ Skill, std::move(Document) });
+        Staged.push_back({ Skill, CEffectCatalog::Find(Skill.strEffectId) });
     }
     std::sort(Staged.begin(), Staged.end(),
         [](const EFFECT_SKILL_TREE_ENTRY& Left,
@@ -5862,7 +5923,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects()
             return Left.Skill.iSkillId < Right.Skill.iSkillId;
         });
     m_AllEffects = std::move(Staged);
-    m_strElementStatus = "All Effects refreshed from PlayerSkills + Authored: " +
+    m_strElementStatus = "All Effects indexed from PlayerSkills + Authored: " +
         std::to_string(m_AllEffects.size()) + " complete skills";
     if (0u != iMissingAuthored)
         m_strElementStatus += ", " + std::to_string(iMissingAuthored) +
@@ -5892,7 +5953,7 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
 
     std::map<std::string, std::string> SkillDomains;
     std::string SkillCatalogStatus;
-    if (CPlayerSkillCatalog::Load(SkillCatalogStatus))
+    if (Ensure_PlayerSkillCatalog(SkillCatalogStatus))
     {
         for (const PLAYER_SKILL_DEFINITION& Skill :
             CPlayerSkillCatalog::Get_Skills())
@@ -5955,28 +6016,28 @@ bool_t Client::CEffect_Tool::Refresh_DataFiles()
             const std::string Name = Iterator->path().filename().string();
             if (!Name.ends_with(".effect.json"))
                 continue;
-            EFFECT_DOCUMENT_DESC Document;
-            std::string CodecError;
-            if (!CEffectDocumentCodec::Load(
-                Iterator->path(), Document, CodecError))
+            std::string EffectAssetId;
+            if (!Try_DeriveEffectAssetIdFromFilename(
+                Iterator->path(), eSource, EffectAssetId))
             {
                 RecordRejectedDocument(
-                    Iterator->path().string() + ": " + CodecError);
+                    "noncanonical Effect filename: " +
+                    Iterator->path().string());
                 continue;
             }
-            if (!AssetIds.insert(Document.strEffectAssetId).second)
+            if (!AssetIds.insert(EffectAssetId).second)
             {
                 RecordRejectedDocument(
-                    "duplicate Effect ID: " + Document.strEffectAssetId);
+                    "duplicate Effect ID: " + EffectAssetId);
                 continue;
             }
             const std::filesystem::path RelativePath =
                 Iterator->path().lexically_relative(Root);
             const std::string DomainId = ResolveDocumentDomain(
-                Document.strEffectAssetId, RelativePath, eSource);
+                EffectAssetId, RelativePath, eSource);
             StagedDomainIds.insert(DomainId);
             Staged.push_back({
-                Document.strEffectAssetId, DomainId,
+                EffectAssetId, DomainId,
                 Iterator->path(), eSource });
         }
         return true;
@@ -6814,6 +6875,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
     if (!CEffectDocumentCodec::Validate_Drawable(Staged, DrawableError))
     {
         m_ActiveDocument = std::move(Staged);
+        Set_ActiveDocumentDrawableStatus(false, DrawableError);
         m_bDocumentDirty = true;
         m_bActiveDocumentMatchesRuntime = false;
         Recalculate_PreviewDuration();
@@ -6831,6 +6893,7 @@ bool_t Client::CEffect_Tool::Try_CommitDocument(
         return false;
     }
     m_ActiveDocument = std::move(Staged);
+    Set_ActiveDocumentDrawableStatus(true, {});
     m_bDocumentDirty = true;
     m_bActiveDocumentMatchesRuntime = false;
     Recalculate_PreviewDuration();
@@ -7201,7 +7264,8 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
         return;
 
     std::string CatalogStatus;
-    const bool_t bCatalogReloaded = CPlayerSkillCatalog::Load(CatalogStatus);
+    const bool_t bCatalogAvailable =
+        Ensure_PlayerSkillCatalog(CatalogStatus);
     const vector<PLAYER_SKILL_DEFINITION>& Skills =
         CPlayerSkillCatalog::Get_Skills();
     auto Skill = std::find_if(
@@ -7226,7 +7290,7 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
     }
     if (Skill == Skills.end())
     {
-        m_strPreviewAnimationStatus = bCatalogReloaded ?
+        m_strPreviewAnimationStatus = bCatalogAvailable ?
             "No PlayerSkills row owns this Effect; animation was left unchanged." :
             "PlayerSkills refresh failed; animation was left unchanged: " +
                 CatalogStatus;
@@ -7625,6 +7689,7 @@ void Client::CEffect_Tool::Release_WorldPreview(
 void Client::CEffect_Tool::Discard_ActiveDocument()
 {
     m_ActiveDocument.reset();
+    Clear_ActiveDocumentDrawableStatus();
     m_ActiveDocumentPath.clear();
 	m_strActiveDocumentBaselineCanonical.clear();
     m_eActiveDocumentSource = EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
@@ -7738,6 +7803,21 @@ bool_t Client::CEffect_Tool::Has_UnappliedDetailDraft() const
     return m_bParticleSystemDraftDirty || m_bDetailDraftDirty;
 }
 
+void Client::CEffect_Tool::Set_ActiveDocumentDrawableStatus(
+    const bool_t bDrawable,
+    std::string strError)
+{
+    m_bActiveDocumentDrawable = bDrawable;
+    m_strActiveDocumentDrawableError = bDrawable ?
+        std::string{} : std::move(strError);
+}
+
+void Client::CEffect_Tool::Clear_ActiveDocumentDrawableStatus()
+{
+    m_bActiveDocumentDrawable = false;
+    m_strActiveDocumentDrawableError.clear();
+}
+
 void Client::CEffect_Tool::Refresh_RuntimeEquivalence()
 {
     m_bActiveDocumentMatchesRuntime = false;
@@ -7748,10 +7828,23 @@ void Client::CEffect_Tool::Refresh_RuntimeEquivalence()
         CEffectCatalog::Find(m_ActiveDocument->strEffectAssetId);
     if (nullptr == pRuntimeDocument)
         return;
+    if (m_pRuntimeEquivalenceDocument != pRuntimeDocument)
+    {
+        m_pRuntimeEquivalenceDocument = pRuntimeDocument;
+        m_strRuntimeEquivalenceCanonical =
+            CEffectDocumentCodec::Serialize(*pRuntimeDocument);
+    }
 
+    std::string ActiveCanonicalStorage;
+    std::string_view ActiveCanonical = m_strActiveDocumentBaselineCanonical;
+    if (ActiveCanonical.empty())
+    {
+        ActiveCanonicalStorage =
+            CEffectDocumentCodec::Serialize(*m_ActiveDocument);
+        ActiveCanonical = ActiveCanonicalStorage;
+    }
     m_bActiveDocumentMatchesRuntime =
-        CEffectDocumentCodec::Serialize(*pRuntimeDocument) ==
-        CEffectDocumentCodec::Serialize(*m_ActiveDocument);
+        m_strRuntimeEquivalenceCanonical == ActiveCanonical;
 }
 
 Client::EFFECT_ELEMENT_DESC* Client::CEffect_Tool::Find_SelectedElement()

@@ -87,8 +87,10 @@ Visual runtime은 `Publish-MapAuthoring.ps1`, world bootstrap은
 `Publish-WorldGameplay.ps1`, Server navigation은 `Publish-ServerNavigation.ps1`만 교체한다.
 `ACTIVE.maparea`도 selector 변경 때 자동 저장하지 않는다.
 
-Valtan DeployProp은 이번 workspace 전환에서 명시적으로 제외했다. deploy source/catalog,
-transactional stage와 save 계약을 한 번에 닫기 전까지 editor에서 load/save하지 않는다.
+Valtan DeployProp은 Development MapTool에서 source catalog 9 asset / 85 placement를
+`CDeployPropRuntime` 한 경로로 stage한다. Area 전환은 catalog가 요구하는 모든 Map/Deploy runtime
+asset이 실제 `Client/Bin/Resources`에 있을 때만 commit하며, 하나라도 없으면 이전 Area를 보존하고
+누락된 Resources-relative asset ID를 workspace status에 표시한다.
 Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
 있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
 
@@ -104,6 +106,31 @@ world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool �
 OBB 진입과 포물선 이동을 판정하고 player snapshot으로 복제한다. `triggerOnce=true`는 room 전체에서
 첫 성공 진입 한 번, `false`는 player가 완전히 나간 뒤 다시 들어오는 edge마다 재실행한다. 저작용 wire
 box는 판정 권위가 아니다. `activateSpawnGroup`은 Area spawn group stable ID만, `activateEncounter`는 disabled boss placement ID만 참조한다. `destroyable`, `setCondition`, `setDestroyableState`, 파티 대기, 컷신은 계속 publisher가 fail-closed로 거부한다. 수업용 `CMonster`를 재사용하거나 `npc`/`boss`로 위장하지 않는다.
+
+Valtan MapTool의 파괴 물리 audition은 제품 publisher 입력과 분리된 Debug authoring 계약이다.
+`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json`이
+파괴 그룹별 debris element의 spawn offset, world direction, speed, gravity scale, lifetime과
+`IMMEDIATE`/`TIMELINE_TIME`/`COLLISION_IMPACT` 조건을 저장한다. `Destruction Model View`는 실제
+Development world의 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` 인스턴스에 PhysX actor를
+연결하고 All Debris/Solo Selected, play/pause/restart, 1/60 step과 reset 후 고정-step seek를 제공한다.
+이 문서는 `Publish-WorldGameplay.ps1`의 입력이 아니므로 tool audition 자체는 위 destroyable admission에
+거부되지 않는다. 반대로 이 preview가 Server 파괴 상태, 동적 collision/navigation, Shared replication이나
+제품 Valtan presentation을 활성화했다는 뜻은 아니며, 그 제품 gate는 계속 fail-closed다.
+
+### Valtan MapTool Area 진입 실패 점검
+
+`git pull`은 Git 제외 대상인 `Client/Bin/Resources`를 복구하지 않는다. Valtan Area catalog는
+275 map asset / 13,192 map placement와 위 Deploy 9/85를 strict validation하므로, 팀 runtime pack의
+`Map/LV_LUT_HEARTRB_ED` 파일을 물리 Resources 폴더에 준비해야 한다. 서로 다른 worktree의 EXE를
+실행할 때는 그 EXE가 읽는 `Data`, `ShaderFiles`, `Resources` 루트가 달라질 수 있으므로 실행 경로를
+먼저 확인하고, 공유 Resources를 쓸 때는 process-local `LOSTARK_RESOURCE_ROOT`로 명시한다.
+
+파괴 audition은 `ValtanWorldEvents.json`의 non-empty group과
+`LV_LUT_HEARTRB_ED.destructionsimulation.json`의 `profile.groupId`가 일치해야 한다. 실제
+`collisionBox`가 아직 저작되지 않은 preview binding은 `STAGE_TIME`과 빈 `receiverCollisionId`를
+사용한다. 존재하지 않는 collision ID를 `COLLISION_IMPACT`로 참조하거나 빈 WorldEvents 파일을
+병합하면 Area 전환이 fail-closed된다. 실제 receiver collisionBox를 저장한 뒤에만
+`COLLISION_IMPACT`로 바꾼다.
 
 Valtan `SpawnGroups.world.json`은 anchor transform, prerequisite group, maxAlive, wave 순서, archetype/count/delay를 소유한다. MapTool은 gameplay와 spawn group을 별도 dirty/save로 관리하고 publisher는 두 문서를 한 transaction으로 `VALTAN_ARENA.worldbootstrap`과 `VALTAN_ARENA.spawngroupsbootstrap`에 publish한다. Server가 wave·AI·damage·despawn을 확정하고 Client는 Shared spawn/snapshot/despawn만 표현한다.
 

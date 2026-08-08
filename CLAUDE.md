@@ -69,7 +69,8 @@ Debug와 Release 바이너리는 서로 덮어쓰지 않도록 구성별 폴더�
 - `Engine\Public\*.*` → `EngineSDK\inc\`
 - `Engine\Bin\<Configuration>\*.lib` → `EngineSDK\lib\<Configuration>\`
 - `Engine\ThirdPartyLib\*.lib` → `EngineSDK\lib\`
-- `Engine.dll`, `fmod.dll`, 구성에 맞는 `assimp-vc143-mt(d).dll` → `Client\Bin\<Configuration>\`
+- `Engine.dll`, `fmod.dll`, 구성에 맞는 `assimp-vc143-mt(d).dll`, PhysX/PhysXCommon/
+  PhysXFoundation 구성별 DLL → `Client\Bin\<Configuration>\`
 - `Engine\Bin\ShaderFiles\*` → `EngineSDK\hlsl\` → `Client\Bin\ShaderFiles\`
 
 `EngineSDK\`는 `.gitignore` 대상이다. **clean clone 직후에는 존재하지 않으므로 Client부터 빌드하면 반드시 실패한다.** 병렬 빌드(`/m`)로 한 번에 돌릴 때도 Engine → UpdateLib → Client 순서가 보장되지 않으면 race가 난다.
@@ -147,6 +148,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 피킹 | `CPicking` | 마우스 레이 피킹 |
 | 그림자 | `CShadow` | 그림자 광원 행렬 바인딩 |
 | 절두체 | `CFrustum` | 월드/로컬 공간 컬링 판정 |
+| 물리 | `CPhysics_Manager` | PhysX scene, generation actor handle, fixed-step과 post-physics pose 동기화 |
 
 렌더 그룹 순서(`RENDERGROUP`): `PRIORITY → SHADOW → NONBLEND → NONLIGHT → BLEND → UI`
 
@@ -207,7 +209,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 `dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00 -> Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT`를 사용한다. 최초 Character Select는 socket 없이 여섯 class의 3D preview를 제공한다. preview에서 class를 고르고 `Server Play`를 선택하면 tokenized TEST command가 Lobby로 넘어가며, Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤 기존 socket을 one-shot handoff한다. Server Arena에서 `Preview`를 선택하면 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 거쳐 socket 없는 Preview로 재진입한다. 재진입한 Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 Client local spawn이 아니라 Server의 disabled placement template 승인을 거치며 presentation asset은 Engine batch prototype commit으로 지연 준비한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
-같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다.
+같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<Server에 도달 가능한 IPv4>`를 설정한다. 서로 다른 장소에서는 Server의 Wi-Fi 사설 IPv4로 직접 접속할 수 없으므로 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint를 Client에 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. Visual Studio가 이전 `.vcxproj.user`를 캐시할 수 있으므로 변경 후 project Reload 또는 IDE 재시작이 필요하다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 LAN·VPN·공인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다. 세부 설정과 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
@@ -269,6 +271,14 @@ CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
 `Tools/EffectPipeline/Publish-Effects.ps1`만 수행한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
+
+Valtan의 `World Destruction` 모드에는 제품 Server와 분리된 `Destruction Model View`가 있다.
+`Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json`의
+stable debris element를 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` world instance에
+연결하고, All/Solo, play/pause/restart, 1/60 single-step과 reset 후 고정-step seek로 PhysX를 audition한다.
+direction과 speed는 초기 linear velocity로 변환되고 gravity scale/lifetime/trigger는 authoring policy다.
+이 파일은 제품 publisher 입력이 아니며 `Gameplay.world.json kind=destroyable`의 Server admission,
+동적 navigation/collision과 Shared replication은 계속 fail-closed다.
 
 ### UI 레이아웃 authoring과 제품 런타임 전환
 

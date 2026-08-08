@@ -52,7 +52,7 @@ class ActionCueRecipeTests(unittest.TestCase):
         self.assertEqual(
             typed["sourceSkeletalMesh"], "SK_TEST.Mesh.SK_TEST_SK"
         )
-        self.assertEqual(typed["localTransform"]["position"], [0.0, 0.0, 0.45])
+        self.assertEqual(typed["localTransform"]["position"], [0.0, 0.45, 0.0])
         for value in typed["localTransform"]["scale"]:
             self.assertAlmostEqual(value, 1.2)
 
@@ -282,9 +282,9 @@ class ActionCueRecipeTests(unittest.TestCase):
         struct.pack_into("<i", raw, base + 56, len(anchor))
         raw[base + 60 : base + 60 + len(anchor)] = anchor
         transform = base + 60 + len(anchor)
-        struct.pack_into("<fff", raw, transform + 20, 25.0, 0.0, 90.0)
+        struct.pack_into("<fff", raw, transform + 20, 25.0, 40.0, 90.0)
         struct.pack_into("<fff", raw, transform + 32, 0.0, 0.0, 45.0)
-        struct.pack_into("<fff", raw, transform + 80, 1.2, 1.2, 1.2)
+        struct.pack_into("<fff", raw, transform + 80, 1.2, 1.3, 1.4)
 
         payload = base64.b64encode(bytes(raw)).decode("ascii")
         notify = {
@@ -344,9 +344,12 @@ class ActionCueRecipeTests(unittest.TestCase):
             typed["attachment"]["runtimeResolutionStatus"],
             "EXACT_SOURCE_BONE",
         )
-        self.assertEqual(typed["localTransform"]["position"], [0.25, 0.0, 0.9])
-        self.assertEqual(typed["localTransform"]["rotationDegrees"], [0.0, 0.0, 45.0])
-        self.assertAlmostEqual(typed["localTransform"]["scale"][0], 1.2)
+        self.assertEqual(typed["localTransform"]["position"], [0.25, 0.9, -0.4])
+        self.assertEqual(typed["localTransform"]["rotationDegrees"], [0.0, 45.0, 0.0])
+        for actual, expected in zip(
+            typed["localTransform"]["scale"], [1.2, 1.4, 1.3]
+        ):
+            self.assertAlmostEqual(actual, expected, places=6)
 
 
 if __name__ == "__main__":

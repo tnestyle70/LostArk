@@ -95,7 +95,7 @@ private:
     struct EFFECT_SKILL_TREE_ENTRY final
     {
         PLAYER_SKILL_DEFINITION Skill;
-        EFFECT_DOCUMENT_DESC Document;
+        shared_ptr<const EFFECT_DOCUMENT_DESC> pRuntimeDocument;
     };
 
     struct EFFECT_DATA_FILE_ENTRY final
@@ -204,7 +204,7 @@ private:
         const std::string& strSelectionId,
         bool_t bBypassUnsavedGuard);
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
-    bool_t Refresh_AllEffects();
+    bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
@@ -265,6 +265,10 @@ private:
     void Recalculate_PreviewDuration(const EFFECT_DOCUMENT_DESC& Document);
     bool_t Has_UnsavedWork() const;
     bool_t Has_UnappliedDetailDraft() const;
+    void Set_ActiveDocumentDrawableStatus(
+        bool_t bDrawable,
+        std::string strError);
+    void Clear_ActiveDocumentDrawableStatus();
     void Refresh_RuntimeEquivalence();
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
@@ -343,6 +347,7 @@ private:
 	bool_t m_bPreviewVisibleRequested = false;
 	bool_t m_bPreviewScreenPostEnabled = true;
     bool_t m_bDocumentDirty = false;
+    bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
     bool_t m_bAllEffectsRefreshAttempted = false;
@@ -367,6 +372,9 @@ private:
     size_t m_iSynchronizedAnimationClipIndex = 0u;
 
     string m_strDocumentStatus;
+    string m_strActiveDocumentDrawableError;
+    shared_ptr<const EFFECT_DOCUMENT_DESC> m_pRuntimeEquivalenceDocument;
+    string m_strRuntimeEquivalenceCanonical;
     string m_strElementStatus;
     string m_strDetailStatus;
     string m_strResourceStatus;

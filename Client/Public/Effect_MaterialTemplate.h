@@ -45,7 +45,7 @@ inline constexpr std::string_view EFFECT_SOURCE_MATERIAL_TEMPLATE_ID =
 	"effect.source_material";
 inline constexpr f32_t EFFECT_MANUAL_MESH_DEFAULT_SCALE = 0.01f;
 
-inline constexpr std::array<std::string_view, 13u>
+inline constexpr std::array<std::string_view, 15u>
 	EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS = {{
 		"effect.ue3.reconstructed-standard.v1",
 		"effect.ue3.fallback-blocked.v1",
@@ -58,11 +58,13 @@ inline constexpr std::array<std::string_view, 13u>
 		"effect.ue3.shine.v1",
 		"effect.ue3.blackline-aura.v1",
 		"effect.ue3.linearflow-02.v1",
+		"effect.ue3.slice.v1",
+		"effect.ue3.missiletrail-01.v1",
 		"effect.ue3.local-crack.v1",
 		"effect.ue3.procedural-center-glow.v1"
 	}};
 
-inline constexpr std::array<std::string_view, 7u>
+inline constexpr std::array<std::string_view, 19u>
 	EFFECT_SOURCE_DYNAMIC_PARAMETER_SEMANTICS = {{
 		"unbound",
 		"opacity",
@@ -70,7 +72,19 @@ inline constexpr std::array<std::string_view, 7u>
 		"dissolve",
 		"uv_pan",
 		"distortion",
-		"radial_size"
+		"radial_size",
+		"mask_a_offset",
+		"mask_b_offset",
+		"mask_a_distort",
+		"mask_b_distort",
+		"mask_a_pan",
+		"flow_strength",
+		"mask_b_pan",
+		"diffuse_pan",
+		"missile_alpha_pan",
+		"missile_noise_strength",
+		"missile_noise_pan",
+		"missile_dissolve"
 	}};
 
 inline constexpr std::array<std::string_view, 3u>
@@ -187,7 +201,10 @@ inline bool_t Is_EffectSourceMaterialStagingSignatureEqual(
 		const EFFECT_NAMED_TEXTURE_DESC& B = Right.Textures[i];
 		if (A.strName != B.strName || A.strGroup != B.strGroup ||
 			A.strSourceObjectPath != B.strSourceObjectPath ||
-			A.strAssetId != B.strAssetId)
+			A.strAssetId != B.strAssetId ||
+			A.eAddressU != B.eAddressU || A.eAddressV != B.eAddressV ||
+			A.eColorSpace != B.eColorSpace ||
+			A.strSamplingEvidence != B.strSamplingEvidence)
 		{
 			return false;
 		}
@@ -581,13 +598,60 @@ inline bool_t Is_EffectFiniteProfileResourceContractSatisfied(
 	if (strRuntimeShaderProfileId == "effect.ue3.blackline-aura.v1")
 		return bHasMask && bHasDissolve;
 	if (strRuntimeShaderProfileId == "effect.ue3.local-crack.v1")
-		return bHasMesh && bHasDissolve;
+		return false;
+	if (strRuntimeShaderProfileId == "effect.ue3.slice.v1")
+		return bSafeBase;
+	if (strRuntimeShaderProfileId == "effect.ue3.missiletrail-01.v1")
+		return bSafeBase && bHasMask && bHasDissolve && bHasMesh;
 	if (strRuntimeShaderProfileId ==
 		"effect.ue3.procedural-center-glow.v1")
 	{
 		return true;
 	}
 	return true;
+}
+
+inline bool_t Is_EffectLocalCrackResourceContractSatisfied(
+	const bool_t bHasNormal,
+	const bool_t bHasReflection,
+	const bool_t bHasDissolve,
+	const bool_t bHasMesh)
+{
+	return bHasNormal && bHasReflection && bHasDissolve && bHasMesh;
+}
+
+inline bool_t Has_EffectLocalCrackNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	static constexpr std::array<std::string_view, 3u> RequiredNames = {{
+		"normal_tex", "refle_tex", "dissolve_tex"
+	}};
+	for (const std::string_view strRequiredName : RequiredNames)
+	{
+		bool_t bFound = false;
+		for (const EFFECT_NAMED_TEXTURE_DESC& Texture : Source.Textures)
+		{
+			if (Texture.strName == strRequiredName &&
+				!Texture.strAssetId.empty() &&
+				!Texture.strSamplingEvidence.empty() &&
+				Texture.strSamplingEvidence != "legacy_default")
+			{
+				bFound = true;
+				break;
+			}
+		}
+		if (!bFound)
+			return false;
+	}
+	return true;
+}
+
+inline bool_t Is_EffectLegacyLocalCrackResourceContractSatisfied(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source,
+	const bool_t bHasDissolve,
+	const bool_t bHasMesh)
+{
+	return Source.Textures.empty() && bHasDissolve && bHasMesh;
 }
 
 inline const EFFECT_MATERIAL_INPUT_SLOT_DESC* Find_EffectMaterialInput(

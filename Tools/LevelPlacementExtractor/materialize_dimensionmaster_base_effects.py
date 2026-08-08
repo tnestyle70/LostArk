@@ -263,6 +263,7 @@ def reconstruct_source_material_profiles(
     resource_manifest: dict[str, Any],
     material_evidence_path: Path | None = None,
     material_graph_evidence_path: Path | None = None,
+    texture_sampling_evidence_path: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Rebuild v12 profiles from source evidence, never an old Authored file."""
     source_receipt = read_json(
@@ -314,6 +315,20 @@ def reconstruct_source_material_profiles(
         or int(material_graph_evidence.get("formatVersion", 0)) != 1
     ):
         raise ValueError("DimensionMaster parent Material graph evidence is invalid")
+    sampling_evidence_path = texture_sampling_evidence_path or (
+        imported_root / "ActionSource" /
+        "DimensionMaster.texture-sampling-evidence.json"
+    )
+    texture_sampling_evidence = (
+        read_json(sampling_evidence_path)
+        if sampling_evidence_path.is_file() else {}
+    )
+    if texture_sampling_evidence and (
+        texture_sampling_evidence.get("schema")
+        != "lostark.ue3-texture-sampling-evidence"
+        or int(texture_sampling_evidence.get("formatVersion", 0)) != 1
+    ):
+        raise ValueError("DimensionMaster texture sampling evidence is invalid")
     contract, receipt = build_source_material_contract(
         imported_document,
         source_receipt,
@@ -322,6 +337,7 @@ def reconstruct_source_material_profiles(
         material_evidence,
         Path(__file__).resolve().parents[2] / "Client" / "Bin" / "Resources",
         material_graph_evidence,
+        texture_sampling_evidence,
     )
     if receipt.get("failures"):
         raise ValueError(
@@ -410,6 +426,7 @@ def materialize(
     material_evidence_path: Path | None = None,
     material_graph_evidence_path: Path | None = None,
     requested_skill_ids: set[int] | None = None,
+    texture_sampling_evidence_path: Path | None = None,
 ) -> dict[str, Any]:
     extraction = read_json(extraction_receipt_path)
     all_admitted_skills = dimensionmaster_admitted_skills(
@@ -471,6 +488,7 @@ def materialize(
         imported, source_material_receipt = reconstruct_source_material_profiles(
             skill_id, imported_root, imported, resource_manifest,
             material_evidence_path, material_graph_evidence_path,
+            texture_sampling_evidence_path,
         )
         mesh_material_contract_correction_count = (
             restore_mesh_material_override_contract(imported)
@@ -669,6 +687,13 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--texture-sampling-evidence", type=Path,
+        help=(
+            "Optional direct cooked-UPK texture address/sRGB evidence. The "
+            "default is the checked-in ActionSource evidence set."
+        ),
+    )
+    parser.add_argument(
         "--skill-id", type=int, action="append", default=[],
         help=(
             "Materialize only admitted skill IDs for staging. Catalog "
@@ -692,6 +717,7 @@ def main() -> int:
         args.catalog, args.resource_manifest,
         args.material_evidence, args.material_graph_evidence,
         set(args.skill_id) or None,
+        args.texture_sampling_evidence,
     )
     write_json_atomic(args.receipt, receipt)
     print(json.dumps({

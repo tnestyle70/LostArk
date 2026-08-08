@@ -21,7 +21,53 @@ Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss
 
 Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 최초 Character Select는 socket 없는 3D Preview Level이다. Character Select 창의 `Server Play`는 선택 class와 tokenized TEST만 Lobby에 제출하고, Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 Server gameplay로 다시 연다. Server Arena의 `Preview`는 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 Lobby에 제출하여 socket 없는 Preview로 재진입한다. 재진입 Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 `IWorldEntityCommandSink`를 통해 stable placement ID만 제출하고 Server가 world template/navigation/profile을 검증한 결과를 broadcast한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
-같은 PC 테스트는 `Framework.slnLaunch`의 `Server + Client` profile과 기본 `127.0.0.1:7777` 계약을 사용한다. LAN에서는 Server를 `--bind-address 0.0.0.0`으로 실행하고 각 Client process에 `LOSTARK_SERVER_HOST=<host 사설 IPv4>`를 준다. 개인 IP는 Git에 저장하지 않으며 endpoint 입력 UI와 자동 서버 탐색은 현재 Lobby 범위가 아니다.
+같은 PC 테스트는 `Framework.slnLaunch`의 `Server + Client` profile과 기본 `127.0.0.1:7777` 계약을 사용한다. LAN에서는 Server를 `--bind-address 0.0.0.0`으로 실행하고 각 Client process에 `LOSTARK_SERVER_HOST=<Server에 도달 가능한 IPv4>`를 준다. 개인 IP는 Git에 저장하지 않으며 endpoint 입력 UI와 자동 서버 탐색은 현재 Lobby 범위가 아니다.
+
+### 1.1 서로 다른 장소에서 Server와 Client 연결
+
+Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디에 있는지 먼저 구분한다.
+
+| 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
+|---|---|---|
+| 같은 PC | `127.0.0.1` | `127.0.0.1` |
+| 같은 공유기/LAN | `0.0.0.0` | Server PC의 현재 LAN IPv4 |
+| 서로 다른 장소/네트워크 | `0.0.0.0` | Server PC의 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint |
+
+`192.168.x.x`, `10.x.x.x`, `172.16.x.x`~`172.31.x.x`는 사설 주소다. 서로 다른 장소의 Client는 Server PC의 Wi-Fi 사설 주소로 직접 접속할 수 없다. 팀 테스트는 두 PC를 같은 사설망처럼 연결하는 VPN 주소를 우선 사용한다. 공인 인터넷에 직접 노출해야 한다면 Server PC로 TCP `7777`을 포트포워딩하고 Windows Firewall의 인바운드 범위를 승인된 원격 주소로 제한한다.
+
+Server PC의 Git 제외 로컬 파일 `Server/Default/Server.vcxproj.user`에는 다음처럼 모든 현재 어댑터를 수신하도록 지정한다. DHCP로 Wi-Fi 주소가 바뀌어도 존재하지 않는 옛 주소에 bind하지 않으므로 `WSAEADDRNOTAVAIL (10049)`를 피할 수 있다.
+
+```xml
+<LocalDebuggerCommandArguments>--bind-address 0.0.0.0</LocalDebuggerCommandArguments>
+```
+
+각 Client PC의 Git 제외 로컬 파일 `Client/Default/Client.vcxproj.user`에는 그 Client에서 실제로 도달 가능한 Server 주소를 지정한다.
+
+```xml
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=&lt;SERVER_REACHABLE_IPV4&gt;</LocalDebuggerEnvironment>
+```
+
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. Server PC에서 같이 실행하는 Client는 `127.0.0.1`, 같은 LAN의 다른 Client는 Server PC의 LAN IPv4, 다른 장소의 Client는 Server PC의 VPN IPv4 또는 공인 endpoint를 사용한다. 개인 LAN·VPN·공인 주소는 이 문서나 공유 project 파일에 기록하지 않고 각자의 `.vcxproj.user`에만 둔다.
+
+현재 Server PC 주소는 실행할 때마다 다음 명령으로 확인한다.
+
+```powershell
+Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object { $_.AddressState -eq 'Preferred' -and $_.IPAddress -notlike '127.*' } |
+    Select-Object InterfaceAlias, IPAddress
+```
+
+설정 후 Visual Studio는 `.vcxproj.user`를 메모리에 캐시할 수 있으므로 Server와 Client project를 Reload하거나 Visual Studio를 재시작한다. 그다음 Server PC와 Client PC에서 각각 확인한다.
+
+```powershell
+# Server PC
+Server\Bin\Debug\Server.exe --bind-address 0.0.0.0 --smoke-timeout-ms 500
+
+# Client PC: VPN/LAN endpoint가 실제로 열렸는지 확인
+Test-NetConnection <SERVER_REACHABLE_IPV4> -Port 7777
+```
+
+`Failed to open TCP listener ... Error=10049`는 `--bind-address`에 적은 주소가 현재 Server PC의 어느 어댑터에도 없다는 뜻이다. Client의 주소나 이전 Wi-Fi 주소를 Server bind 값으로 복사하지 말고 Server는 `0.0.0.0`, Client만 도달 가능한 endpoint를 사용한다.
 
 ## 2. 팀원이 먼저 읽을 파일
 

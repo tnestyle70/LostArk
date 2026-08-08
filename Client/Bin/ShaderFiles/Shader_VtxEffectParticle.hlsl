@@ -26,6 +26,7 @@ struct VS_OUT
     float4 dynamicParameter : TEXCOORD1;
     float2 uvNext : TEXCOORD2;
     float2 particleData : TEXCOORD3;
+    float2 localUV : TEXCOORD4;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -42,6 +43,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.uvNext =
         (input.uv * input.uvTransformNext.xy + input.uvTransformNext.zw) *
         g_UVScale + g_UVOffset;
+    output.localUV = input.uv * g_UVScale + g_UVOffset;
     output.color = input.color;
     output.dynamicParameter = input.dynamicParameter;
     output.particleData = input.particleData;
@@ -50,14 +52,14 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
-    EFFECT_PS_OUT current = Shade_EffectParticle(
-        input.uv, float3(1.f, 1.f, 1.f), input.color,
+    EFFECT_PS_OUT current = Shade_EffectParticleUV(
+        input.uv, input.localUV, float3(1.f, 1.f, 1.f), input.color,
         input.dynamicParameter);
     const float blend = saturate(input.particleData.y);
     if (blend <= 0.f)
         return current;
-    const EFFECT_PS_OUT next = Shade_EffectParticle(
-        input.uvNext, float3(1.f, 1.f, 1.f), input.color,
+    const EFFECT_PS_OUT next = Shade_EffectParticleUV(
+        input.uvNext, input.localUV, float3(1.f, 1.f, 1.f), input.color,
         input.dynamicParameter);
     current.SceneColor = lerp(current.SceneColor, next.SceneColor, blend);
     current.Distortion = lerp(current.Distortion, next.Distortion, blend);

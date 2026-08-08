@@ -39,6 +39,15 @@ private:
 		std::array<float4_t, 16u> LinearFlowParameters{};
 		float4_t vLinearFlowMaskAColor{ 1.f, 1.f, 1.f, 1.f };
 		float4_t vLinearFlowMaskBColor{ 1.f, 1.f, 1.f, 1.f };
+		std::array<float4_t, 16u> BlacklineParameters{};
+		float4_t vBlacklineDiffuseColor{ 1.f, 1.f, 1.f, 1.f };
+		float4_t vBlacklineMaskColor{ 1.f, 1.f, 1.f, 1.f };
+		std::array<float4_t, 5u> LocalCrackParameters{};
+		float4_t vLocalCrackOutColor{ 0.1f, 0.1f, 0.1f, 1.f };
+		float4_t vLocalCrackInColor{ 1.f, 1.f, 1.f, 1.f };
+		float4_t vLocalCrackReflectionColor{ 1.f, 1.f, 1.f, 1.f };
+		uint32_t iSourceTextureClampUMask = 0u;
+		uint32_t iSourceTextureClampVMask = 0u;
 		std::array<uint32_t, 4u> DynamicParameterSemantics{};
 		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
 		bool_t bSourceMaterialFallbackBlocked = false;
@@ -75,6 +84,9 @@ private:
 		std::string& strOutError) const;
 	HRESULT Load_Texture(
 		const std::string& strAssetId,
+		ComPtr<ID3D11ShaderResourceView>& OutSRV) const;
+	HRESULT Load_SourceTexture(
+		const EFFECT_NAMED_TEXTURE_DESC& Texture,
 		ComPtr<ID3D11ShaderResourceView>& OutSRV) const;
 	HRESULT Create_FallbackTextures();
 	HRESULT Bind_Common(

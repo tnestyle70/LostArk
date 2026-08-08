@@ -13,6 +13,7 @@
 #include "MapStaticBatchObject.h"
 #include "MapAssetPreview.h"
 #include "DeployPropObject.h"
+#include "DestructionSimulationController.h"
 #include "Model.h"
 #include "Navigation.h"
 #include "ProjectDataRoot.h"
@@ -259,6 +260,57 @@ namespace
 		return CProjectDataRoot::Resolve(relative);
 	}
 
+	const char_t* SimulationPlaybackStateLabel(
+		const DESTRUCTION_SIMULATION_PLAYBACK_STATE state)
+	{
+		switch (state)
+		{
+		case DESTRUCTION_SIMULATION_PLAYBACK_STATE::STOPPED:
+			return "STOPPED";
+		case DESTRUCTION_SIMULATION_PLAYBACK_STATE::PLAYING:
+			return "PLAYING";
+		case DESTRUCTION_SIMULATION_PLAYBACK_STATE::PAUSED:
+			return "PAUSED";
+		case DESTRUCTION_SIMULATION_PLAYBACK_STATE::FINISHED:
+			return "FINISHED";
+		case DESTRUCTION_SIMULATION_PLAYBACK_STATE::END:
+		default:
+			return "INVALID";
+		}
+	}
+
+	const char_t* SimulationElementStateLabel(
+		const DESTRUCTION_SIMULATION_ELEMENT_STATE state)
+	{
+		switch (state)
+		{
+		case DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING:
+			return "WAITING";
+		case DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE:
+			return "ACTIVE";
+		case DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED:
+			return "EXPIRED";
+		case DESTRUCTION_SIMULATION_ELEMENT_STATE::FILTERED:
+			return "FILTERED";
+		case DESTRUCTION_SIMULATION_ELEMENT_STATE::END:
+		default:
+			return "INVALID";
+		}
+	}
+
+	bool_t NormalizeSimulationDirection(float3_t& direction)
+	{
+		const f32_t lengthSquared = direction.x * direction.x +
+			direction.y * direction.y + direction.z * direction.z;
+		if (!std::isfinite(lengthSquared) || lengthSquared <= 0.000001f)
+			return false;
+		const f32_t inverseLength = 1.f / std::sqrt(lengthSquared);
+		direction.x *= inverseLength;
+		direction.y *= inverseLength;
+		direction.z *= inverseLength;
+		return true;
+	}
+
 }
 
 struct Client::CMapTool::NAVIGATION_RENDER_RESOURCES final
@@ -281,6 +333,8 @@ HRESULT Client::CMapTool::Initialize(
 
 	auto navigationResources =
 		std::make_unique<NAVIGATION_RENDER_RESOURCES>();
+	auto destructionSimulationController =
+		std::make_unique<CDestructionSimulationController>();
 	navigationResources->pBatch =
 		make_shared<PrimitiveBatch<VertexPositionColor>>(pContext.Get());
 	navigationResources->pEffect =
@@ -306,6 +360,8 @@ HRESULT Client::CMapTool::Initialize(
 	m_pContext = pContext;
 	m_pAssetPreview = std::move(preview);
 	m_pNavigationRenderResources = std::move(navigationResources);
+	m_pDestructionSimulationController =
+		std::move(destructionSimulationController);
 	return S_OK;
 }
 
@@ -325,6 +381,8 @@ void Client::CMapTool::SetOpen(const bool_t isOpen)
 		m_bDestructionAddMemberArmed = false;
 	}
 	m_bOpen = isOpen;
+	if (!m_bOpen)
+		m_bDestructionSimulationClearRequested = true;
 }
 
 void Client::CMapTool::Update(f32_t fTimeDelta)
@@ -335,6 +393,7 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 		ETOUI(LEVEL::DEVELOPMENT) == currentLevelIndex &&
 		CMapEditorWorkspaceService::Is_Active();
 	Handle_LevelTransition(currentLevelIndex, isMapAuthoringLevel);
+	Update_DestructionSimulation(fTimeDelta, isMapAuthoringLevel);
 	Update_WorldInteraction(isMapAuthoringLevel);
 
 	if (m_bOpen && TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
@@ -363,6 +422,48 @@ void Client::CMapTool::Update(f32_t fTimeDelta)
 				}
 			}
 		}
+	}
+}
+
+void Client::CMapTool::Update_DestructionSimulation(
+	const f32_t fTimeDelta,
+	const bool_t isMapAuthoringLevel)
+{
+	if (nullptr == m_pDestructionSimulationController)
+		return;
+	if (m_bDestructionSimulationClearRequested)
+	{
+		m_pDestructionSimulationController->Clear();
+		m_bDestructionSimulationClearRequested = false;
+	}
+
+	const bool_t isAuditionVisible = isMapAuthoringLevel && m_bOpen &&
+		TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode;
+	if (!isAuditionVisible)
+	{
+		if (m_pDestructionSimulationController->Get_Runtime().Is_Staged() ||
+			m_pDestructionSimulationController->Has_PendingCommand())
+		{
+			/* Leaving the audition must release its exclusive debug clock and
+			   restore every DeployProp preview seam. Clear also discards a stage
+			   command latched by the preceding Render frame. */
+			m_pDestructionSimulationController->Clear();
+		}
+		return;
+	}
+
+	m_pDestructionSimulationController->Update(
+		(std::max)(0.f, fTimeDelta));
+	m_pDestructionSimulationController->Post_Physics_Update();
+
+	const DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT& snapshot =
+		m_pDestructionSimulationController->Get_Snapshot();
+	if (isAuditionVisible && m_bDestructionSimulationLoop &&
+		DESTRUCTION_SIMULATION_PLAYBACK_STATE::FINISHED == snapshot.eState &&
+		!m_pDestructionSimulationController->Has_PendingCommand())
+	{
+		m_pDestructionSimulationController->Request_Reset();
+		m_pDestructionSimulationController->Request_Play();
 	}
 }
 
@@ -484,6 +585,7 @@ void Client::CMapTool::Render()
 
 	if (isOpen != m_bOpen)
 		SetOpen(isOpen);
+	Render_DestructionSimulationWindow(isMapAuthoringLevel);
 }
 
 void Client::CMapTool::Render_WorldOverlay(bool_t isAssetTest)
@@ -570,6 +672,11 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 			LEVEL::LOBBY, "debug.map-editor.exit"))
 			m_Status = CLevelTransitionService::Get_Status();
 	}
+	if (!m_Status.empty())
+	{
+		ImGui::Separator();
+		ImGui::TextWrapped("Workspace status: %s", m_Status.c_str());
+	}
 
 	if (m_isEditorAreaSwitchPending || m_isEditorExitPending)
 		ImGui::OpenPopup("Unsaved map authoring");
@@ -620,6 +727,12 @@ void Client::CMapTool::Render_WorkspaceBar(const bool_t isAssetTest)
 
 bool_t Client::CMapTool::Save_AllAuthoring()
 {
+	if (m_bDestructionSimulationElementDraftDirty)
+	{
+		m_DestructionSimulationStatus =
+			"Apply or Revert the debris Detail draft before saving";
+		return false;
+	}
 	if (m_DestructionDocument.Is_Ready() &&
 		(m_bWorldGameplayDirty || m_NavigationDocument.Is_Dirty() ||
 			m_RuntimeBlockerDocument.Is_Dirty() ||
@@ -644,8 +757,12 @@ bool_t Client::CMapTool::Save_AllAuthoring()
 	{
 		return false;
 	}
-	if (m_DestructionDocument.Is_Dirty() && !Save_WorldDestruction())
+	if ((m_DestructionDocument.Is_Dirty() ||
+		m_DestructionSimulationDocument.Is_Dirty()) &&
+		!Save_DestructionAuthoringPair())
+	{
 		return false;
+	}
 	return true;
 }
 
@@ -2070,6 +2187,8 @@ bool_t Client::CMapTool::ConsumesWorldLeftMouse() const
 			(m_bWorldGameplayPlacementArmed ||
 				m_bWorldTriggerTargetPickArmed ||
 				m_bSpawnAnchorPlacementArmed)) ||
+		(TOOL_MODE::WORLD_DESTRUCTION == m_eToolMode &&
+			m_bDestructionPickArmed) ||
 		PLACEMENT_STATE::ARMED == m_ePlacementState;
 }
 
@@ -2365,8 +2484,12 @@ bool_t Client::CMapTool::Load_EditorAreaRegistry()
 				L"Encounters/Valtan/ValtanEncounter.json");
 			descriptor.worldEventsDocument = CProjectDataRoot::Resolve(
 				L"Encounters/Valtan/ValtanWorldEvents.json");
+			descriptor.destructionSimulationDocument = CProjectDataRoot::Resolve(
+				L"Maps/Authoring/LV_LUT_HEARTRB_ED/"
+				L"LV_LUT_HEARTRB_ED.destructionsimulation.json");
 			if (descriptor.encounterReference.empty() ||
-				descriptor.worldEventsDocument.empty())
+				descriptor.worldEventsDocument.empty() ||
+				descriptor.destructionSimulationDocument.empty())
 			{
 				m_Status = "Valtan encounter reference path is invalid";
 				return false;
@@ -2424,7 +2547,9 @@ bool_t Client::CMapTool::Has_UnsavedAuthoring() const
 	return m_bDirty || m_bWorldGameplayDirty || m_bSpawnGroupsDirty ||
 		m_NavigationDocument.Is_Dirty() ||
 		m_RuntimeBlockerDocument.Is_Dirty() ||
-		m_DestructionDocument.Is_Dirty();
+		m_DestructionDocument.Is_Dirty() ||
+		m_DestructionSimulationDocument.Is_Dirty() ||
+		m_bDestructionSimulationElementDraftDirty;
 }
 
 bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
@@ -2575,6 +2700,40 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		}
 	}
 
+	CDestructionSimulationDocument stagedSimulation;
+	if (!descriptor.destructionSimulationDocument.empty())
+	{
+		std::error_code simulationError;
+		const bool_t hasSimulation = std::filesystem::is_regular_file(
+			descriptor.destructionSimulationDocument, simulationError);
+		if (IsFileInspectionFailure(simulationError))
+		{
+			m_Status = "Destruction simulation document is unreadable: " +
+				descriptor.areaId;
+			return false;
+		}
+		std::string simulationStatus;
+		if (!hasSimulation)
+		{
+			stagedSimulation.Reset_Empty();
+		}
+		else if (!stagedSimulation.Load(
+			descriptor.destructionSimulationDocument,
+			descriptor.areaId,
+			simulationStatus))
+		{
+			m_Status = simulationStatus;
+			return false;
+		}
+	}
+	if (stagedSimulation.Is_Ready() && stagedDestruction.Is_Ready() &&
+		!stagedSimulation.Validate_GroupReferences(
+			stagedDestruction, stagedStatus))
+	{
+		m_Status = stagedStatus;
+		return false;
+	}
+
 	if (!Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
 
@@ -2629,6 +2788,11 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		return false;
 	}
 
+	/* The staged runtime owns preview seams into the current Deploy runtime.
+	   Release them before the Area transaction move-assigns that owner. */
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+	m_bDestructionSimulationClearRequested = false;
 	Remove_PlacementRuntime(m_Placements, m_StaticBatches);
 	Remove_WorldTriggerBoxes(m_WorldTriggerBoxes);
 	Remove_WorldTriggerBoxes(m_SpawnAnchorBoxes);
@@ -2643,6 +2807,7 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_RuntimeBlockerDocument = std::move(stagedBlockers);
 	m_DestructionDocument = std::move(stagedDestruction);
 	m_EncounterReference = std::move(stagedEncounterReference);
+	m_DestructionSimulationDocument = std::move(stagedSimulation);
 	m_WorldEventsPath = descriptor.worldEventsDocument;
 	m_NavigationSourcePath = descriptor.navigationSource;
 	m_NavigationPaintPath = descriptor.navigationPaint;
@@ -2674,6 +2839,15 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_EncounterReferenceStatus = descriptor.encounterReference.empty() ?
 		"Active Area declares no encounter reference" :
 		stagedEncounterStatus;
+	Reset_DestructionSimulationUI();
+	if (!m_DestructionSimulationDocument.Get_Profiles().empty())
+	{
+		const DESTRUCTION_SIMULATION_PROFILE& firstProfile =
+			m_DestructionSimulationDocument.Get_Profiles().front();
+		m_SelectedDestructionGroupId = firstProfile.groupId;
+		Select_DestructionSimulationProfile(firstProfile.profileId);
+		Refresh_DestructionHighlight();
+	}
 	m_DestructionStatus = descriptor.worldEventsDocument.empty() ?
 		"World destruction authoring disabled for this Area" :
 		"World destruction authoring ready";
@@ -2718,6 +2892,9 @@ void Client::CMapTool::Handle_LevelTransition(
 		currentLevelIndex : ETOUI(LEVEL::END);
 	if (targetLevelIndex == m_iAuthoringLevelIndex)
 		return;
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+	Reset_DestructionSimulationUI();
 
 	m_ePlacementState = PLACEMENT_STATE::IDLE;
 	m_bWorldGameplayPlacementArmed = false;
@@ -2743,6 +2920,7 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_bWorldGameplayDirty = false;
 	m_bSpawnGroupsDirty = false;
 	m_SpawnGroupDocument.Reset();
+	m_DestructionSimulationDocument.Clear();
 	m_Catalog = CMapAssetCatalog{};
 	m_EditorAreas.clear();
 	m_iActiveEditorArea = SIZE_MAX;
@@ -3770,10 +3948,37 @@ bool_t Client::CMapTool::Load_WorldDestruction()
 		m_DestructionStatus = status;
 		return false;
 	}
+	if (m_DestructionSimulationDocument.Is_Ready() &&
+		!m_DestructionSimulationDocument.Validate_GroupReferences(
+			staged, status))
+	{
+		m_DestructionStatus = status;
+		return false;
+	}
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+	m_bDestructionSimulationClearRequested = false;
 	m_DestructionDocument = std::move(staged);
 	m_SelectedDestructionGroupId.clear();
 	m_SelectedDestructionBindingId.clear();
 	m_SelectedDestructionStageId.clear();
+	const std::string previousProfileId =
+		m_SelectedDestructionSimulationProfileId;
+	Reset_DestructionSimulationUI();
+	m_bDestructionSimulationClearRequested = false;
+	const DESTRUCTION_SIMULATION_PROFILE* selectedProfile =
+		m_DestructionSimulationDocument.Find_Profile(previousProfileId);
+	if (nullptr == selectedProfile &&
+		!m_DestructionSimulationDocument.Get_Profiles().empty())
+	{
+		selectedProfile =
+			&m_DestructionSimulationDocument.Get_Profiles().front();
+	}
+	if (nullptr != selectedProfile)
+	{
+		m_SelectedDestructionGroupId = selectedProfile->groupId;
+		Select_DestructionSimulationProfile(selectedProfile->profileId);
+	}
 	Refresh_DestructionHighlight();
 	m_DestructionStatus = status;
 	return true;
@@ -3781,10 +3986,17 @@ bool_t Client::CMapTool::Load_WorldDestruction()
 
 bool_t Client::CMapTool::Save_WorldDestruction()
 {
-	const std::filesystem::path path = Get_WorldDestructionPath();
-	if (path.empty() || !m_DestructionDocument.Is_Ready())
+	return Save_DestructionAuthoringPair();
+}
+
+bool_t Client::CMapTool::Save_DestructionAuthoringPair()
+{
+	if (m_bDestructionSimulationElementDraftDirty)
 	{
-		m_DestructionStatus = "World destruction save requires a Valtan Area";
+		const std::string status =
+			"Apply or Revert the debris Detail draft before saving";
+		m_DestructionStatus = status;
+		m_DestructionSimulationStatus = status;
 		return false;
 	}
 	if (m_bWorldGameplayDirty || m_NavigationDocument.Is_Dirty() ||
@@ -3806,15 +4018,401 @@ bool_t Client::CMapTool::Save_WorldDestruction()
 		m_DestructionStatus = status;
 		return false;
 	}
-	if (!m_DestructionDocument.Save(
-		path, m_Catalog.Get_AreaId(), "ENCOUNTER_VALTAN", status))
+
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	const std::filesystem::path destructionPath =
+		Get_WorldDestructionPath();
+	const std::filesystem::path simulationPath =
+		Get_DestructionSimulationPath();
+	if (nullptr == descriptor || destructionPath.empty() ||
+		simulationPath.empty() || !m_DestructionDocument.Is_Ready() ||
+		!m_DestructionSimulationDocument.Is_Ready())
 	{
+		const std::string status =
+			"Destruction pair save requires a ready Valtan Area";
 		m_DestructionStatus = status;
+		m_DestructionSimulationStatus = status;
 		return false;
 	}
+
+	if (!CDestructionSimulationDocument::Save_AuthoringPair(
+		m_DestructionDocument, destructionPath,
+		m_DestructionSimulationDocument, simulationPath,
+		descriptor->areaId, "ENCOUNTER_VALTAN", status))
+	{
+		m_DestructionStatus = status;
+		m_DestructionSimulationStatus = status;
+		return false;
+	}
+
 	m_DestructionDocument.Clear_Dirty();
+	m_DestructionSimulationDocument.Clear_Dirty();
 	m_DestructionStatus = status;
+	m_DestructionSimulationStatus = status;
 	return true;
+}
+
+std::filesystem::path Client::CMapTool::Get_DestructionSimulationPath() const
+{
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	return nullptr != descriptor ? descriptor->destructionSimulationDocument :
+		std::filesystem::path{};
+}
+
+bool_t Client::CMapTool::Load_DestructionSimulation()
+{
+	if (m_bDestructionSimulationElementDraftDirty)
+	{
+		m_DestructionSimulationStatus =
+			"Apply or Revert the debris Detail draft before reloading";
+		return false;
+	}
+
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	const std::filesystem::path path = Get_DestructionSimulationPath();
+	if (nullptr == descriptor || path.empty())
+	{
+		m_DestructionSimulationStatus =
+			"This Area has no destruction simulation document";
+		return false;
+	}
+
+	CDestructionSimulationDocument staged;
+	std::error_code inspectError;
+	const bool_t exists = std::filesystem::is_regular_file(path, inspectError);
+	if (IsFileInspectionFailure(inspectError))
+	{
+		m_DestructionSimulationStatus =
+			"Destruction simulation document is unreadable";
+		return false;
+	}
+
+	std::string status;
+	if (!exists)
+	{
+		staged.Reset_Empty();
+		status = "No simulation document yet; create a default profile";
+	}
+	else if (!staged.Load(path, descriptor->areaId, status))
+	{
+		m_DestructionSimulationStatus = status;
+		return false;
+	}
+	if (m_DestructionDocument.Is_Ready() &&
+		!staged.Validate_GroupReferences(m_DestructionDocument, status))
+	{
+		m_DestructionSimulationStatus = status;
+		return false;
+	}
+
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+	m_bDestructionSimulationClearRequested = false;
+	m_DestructionSimulationDocument = std::move(staged);
+	Reset_DestructionSimulationUI();
+	if (!m_DestructionSimulationDocument.Get_Profiles().empty())
+	{
+		const DESTRUCTION_SIMULATION_PROFILE& firstProfile =
+			m_DestructionSimulationDocument.Get_Profiles().front();
+		m_SelectedDestructionGroupId = firstProfile.groupId;
+		Select_DestructionSimulationProfile(firstProfile.profileId);
+		Refresh_DestructionHighlight();
+	}
+	m_DestructionSimulationStatus = status;
+	return true;
+}
+
+bool_t Client::CMapTool::Save_DestructionSimulation()
+{
+	return Save_DestructionAuthoringPair();
+}
+
+const DESTRUCTION_SIMULATION_PROFILE*
+Client::CMapTool::Get_SelectedDestructionSimulationProfile() const
+{
+	return m_SelectedDestructionSimulationProfileId.empty() ? nullptr :
+		m_DestructionSimulationDocument.Find_Profile(
+			m_SelectedDestructionSimulationProfileId);
+}
+
+void Client::CMapTool::Reset_DestructionSimulationUI()
+{
+	m_SelectedDestructionSimulationProfileId.clear();
+	m_SelectedDestructionSimulationElementId.clear();
+	m_DestructionSimulationElementDraft.reset();
+	m_bDestructionSimulationElementDraftDirty = false;
+	m_DestructionSimulationReceiverId[0] = '\0';
+	m_bDestructionSimulationClearRequested = true;
+}
+
+void Client::CMapTool::Select_DestructionSimulationProfile(
+	const std::string& profileId)
+{
+	if (m_bDestructionSimulationElementDraftDirty &&
+		profileId != m_SelectedDestructionSimulationProfileId)
+	{
+		m_DestructionSimulationStatus =
+			"Apply or Revert the debris Detail draft before changing profile";
+		return;
+	}
+	const DESTRUCTION_SIMULATION_PROFILE* profile =
+		m_DestructionSimulationDocument.Find_Profile(profileId);
+	if (nullptr == profile)
+	{
+		m_DestructionSimulationStatus =
+			"Selected destruction simulation profile is missing";
+		return;
+	}
+
+	const bool_t profileChanged =
+		m_SelectedDestructionSimulationProfileId != profile->profileId;
+	m_SelectedDestructionSimulationProfileId = profile->profileId;
+	m_SelectedDestructionGroupId = profile->groupId;
+	m_SelectedDestructionSimulationElementId.clear();
+	m_DestructionSimulationElementDraft.reset();
+	m_bDestructionSimulationElementDraftDirty = false;
+	m_DestructionSimulationReceiverId[0] = '\0';
+	if (!profile->Elements.empty())
+		Select_DestructionSimulationElement(profile->Elements.front().elementId);
+	if (nullptr != m_pDestructionSimulationController)
+	{
+		const bool_t hasRuntime =
+			m_pDestructionSimulationController->Get_Runtime().Is_Staged() ||
+			m_pDestructionSimulationController->Has_PendingCommand();
+		if (profileChanged && hasRuntime)
+		{
+			m_bDestructionSimulationClearRequested = true;
+		}
+		else if (hasRuntime)
+		{
+			m_pDestructionSimulationController->Request_Reset();
+		}
+	}
+	m_DestructionSimulationStatus = "Selected simulation profile: " +
+		profile->profileId;
+}
+
+void Client::CMapTool::Select_DestructionSimulationElement(
+	const std::string& elementId)
+{
+	if (m_bDestructionSimulationElementDraftDirty &&
+		elementId != m_SelectedDestructionSimulationElementId)
+	{
+		m_DestructionSimulationStatus =
+			"Apply or Revert the debris Detail draft before changing element";
+		return;
+	}
+	const DESTRUCTION_SIMULATION_ELEMENT* element =
+		m_DestructionSimulationDocument.Find_Element(
+			m_SelectedDestructionSimulationProfileId, elementId);
+	if (nullptr == element)
+	{
+		m_DestructionSimulationStatus =
+			"Selected debris element is missing";
+		return;
+	}
+
+	m_SelectedDestructionSimulationElementId = element->elementId;
+	m_DestructionSimulationElementDraft = *element;
+	m_bDestructionSimulationElementDraftDirty = false;
+	strncpy_s(m_DestructionSimulationReceiverId,
+		element->Trigger.receiverCollisionId.c_str(), _TRUNCATE);
+
+	if (nullptr != m_pDestructionSimulationController &&
+		DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED ==
+			m_pDestructionSimulationController->Get_Snapshot().eScope)
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+			element->elementId);
+	}
+}
+
+bool_t Client::CMapTool::Create_DefaultDestructionSimulationProfile()
+{
+	const DESTRUCTION_GROUP* group = m_SelectedDestructionGroupId.empty() ?
+		nullptr :
+		m_DestructionDocument.Find_Group(m_SelectedDestructionGroupId);
+	if (nullptr == group)
+	{
+		m_DestructionSimulationStatus =
+			"Select a non-empty destruction group before creating a profile";
+		return false;
+	}
+
+	DESTRUCTION_SIMULATION_PROFILE profile;
+	std::string status;
+	if (!CDestructionSimulationDocument::Create_DefaultForGroup(
+		*group, m_DeployRuntime, profile, status) ||
+		!m_DestructionSimulationDocument.Add_Profile(profile, status))
+	{
+		m_DestructionSimulationStatus = status;
+		return false;
+	}
+	Select_DestructionSimulationProfile(profile.profileId);
+	m_DestructionSimulationStatus = status;
+	return true;
+}
+
+bool_t Client::CMapTool::Modify_DestructionGroupMember(
+	const uint64_t placementId,
+	const bool_t addMember)
+{
+	if (m_bDestructionSimulationElementDraftDirty)
+	{
+		m_DestructionStatus =
+			"Apply or Revert the debris Detail draft before editing group members";
+		return false;
+	}
+	if (0u == placementId || m_SelectedDestructionGroupId.empty())
+	{
+		m_DestructionStatus = "A selected group and Deploy placement are required";
+		return false;
+	}
+
+	CWorldDestructionDocument stagedDestruction = m_DestructionDocument;
+	CDestructionSimulationDocument stagedSimulation =
+		m_DestructionSimulationDocument;
+	std::string status;
+	const bool_t changed = addMember ? stagedDestruction.Add_Member(
+		m_SelectedDestructionGroupId, placementId, status) :
+		stagedDestruction.Remove_Member(
+			m_SelectedDestructionGroupId, placementId);
+	if (!changed)
+	{
+		m_DestructionStatus = status.empty() ?
+			"Destruction group member change was rejected" : status;
+		return false;
+	}
+
+	const DESTRUCTION_GROUP* stagedGroup = stagedDestruction.Find_Group(
+		m_SelectedDestructionGroupId);
+	if (nullptr == stagedGroup ||
+		!stagedSimulation.Synchronize_Group(
+			*stagedGroup, m_DeployRuntime, status) ||
+		!stagedSimulation.Validate_GroupReferences(
+			stagedDestruction, status))
+	{
+		m_DestructionStatus = status.empty() ?
+			"Destruction group/simulation transaction was rejected" : status;
+		return false;
+	}
+
+	const std::string selectedGroupId = m_SelectedDestructionGroupId;
+	const std::string selectedProfileId =
+		m_SelectedDestructionSimulationProfileId;
+	if (nullptr != m_pDestructionSimulationController)
+		m_pDestructionSimulationController->Clear();
+	m_DestructionDocument = std::move(stagedDestruction);
+	m_DestructionSimulationDocument = std::move(stagedSimulation);
+	Reset_DestructionSimulationUI();
+	m_bDestructionSimulationClearRequested = false;
+	m_SelectedDestructionGroupId = selectedGroupId;
+	const DESTRUCTION_SIMULATION_PROFILE* profile =
+		m_DestructionSimulationDocument.Find_Profile(selectedProfileId);
+	if (nullptr == profile)
+	{
+		const auto found = std::find_if(
+			m_DestructionSimulationDocument.Get_Profiles().begin(),
+			m_DestructionSimulationDocument.Get_Profiles().end(),
+			[&selectedGroupId](const DESTRUCTION_SIMULATION_PROFILE& candidate)
+			{
+				return candidate.groupId == selectedGroupId;
+			});
+		if (found != m_DestructionSimulationDocument.Get_Profiles().end())
+			profile = &*found;
+	}
+	if (nullptr != profile)
+		Select_DestructionSimulationProfile(profile->profileId);
+	Refresh_DestructionHighlight();
+	m_DestructionStatus = addMember ?
+		"Added group member and synchronized simulation elements" :
+		"Removed group member and synchronized simulation elements";
+	return true;
+}
+
+bool_t Client::CMapTool::Request_StageDestructionSimulation(
+	const DESTRUCTION_SIMULATION_PROFILE& profile,
+	const bool_t preserveSampleTime,
+	const bool_t playAfterStage)
+{
+	if (nullptr == m_pDestructionSimulationController ||
+		m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
+		profile.groupId != m_SelectedDestructionGroupId ||
+		nullptr == m_DestructionDocument.Find_Group(profile.groupId))
+	{
+		m_DestructionSimulationStatus =
+			"Stage requires the selected profile and destruction group to match";
+		return false;
+	}
+
+	std::string validationStatus;
+	if (!CDestructionSimulationDocument::Validate_Profile(
+		profile, validationStatus))
+	{
+		m_DestructionSimulationStatus = validationStatus;
+		return false;
+	}
+
+	const DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT previous =
+		m_pDestructionSimulationController->Get_Snapshot();
+	/* Stage_Profile replaces the staged actors through the controller-owned
+	   runtime, so it supersedes a UI-only clear requested by profile selection. */
+	m_bDestructionSimulationClearRequested = false;
+	m_pDestructionSimulationController->Request_StageProfile(
+		profile,
+		m_SelectedDestructionGroupId,
+		m_DestructionDocument,
+		m_DeployRuntime,
+		m_iAuthoringLevelIndex);
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == previous.eScope &&
+		!m_SelectedDestructionSimulationElementId.empty())
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+			m_SelectedDestructionSimulationElementId);
+	}
+	else
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+	}
+	if (preserveSampleTime)
+		m_pDestructionSimulationController->Request_Seek(
+			(std::min)(previous.fSampleTimeSeconds, profile.fDurationSeconds));
+	if (playAfterStage)
+		m_pDestructionSimulationController->Request_Play();
+	m_DestructionSimulationStatus = "Simulation stage requested: " +
+		profile.profileId;
+	return true;
+}
+
+bool_t Client::CMapTool::Stage_DestructionElementDraftPreview()
+{
+	const DESTRUCTION_SIMULATION_PROFILE* activeProfile =
+		Get_SelectedDestructionSimulationProfile();
+	if (nullptr == activeProfile ||
+		!m_DestructionSimulationElementDraft.has_value())
+	{
+		return false;
+	}
+
+	DESTRUCTION_SIMULATION_PROFILE staged = *activeProfile;
+	const auto element = std::find_if(staged.Elements.begin(),
+		staged.Elements.end(),
+		[this](const DESTRUCTION_SIMULATION_ELEMENT& value)
+		{
+			return value.elementId ==
+				m_DestructionSimulationElementDraft->elementId;
+		});
+	if (element == staged.Elements.end())
+		return false;
+	*element = *m_DestructionSimulationElementDraft;
+
+	const bool_t wasPlaying = nullptr != m_pDestructionSimulationController &&
+		DESTRUCTION_SIMULATION_PLAYBACK_STATE::PLAYING ==
+			m_pDestructionSimulationController->Get_Snapshot().eState;
+	return Request_StageDestructionSimulation(staged, true, wasPlaying);
 }
 
 bool_t Client::CMapTool::Try_PickDeployProp(
@@ -4163,15 +4761,8 @@ bool_t Client::CMapTool::Select_DestructionWall(
 		}
 		if (nullptr == owner)
 		{
-			CWorldDestructionDocument staged = m_DestructionDocument;
-			std::string status;
-			if (!staged.Add_Member(
-				target->groupId, runtimePlacementId, status))
-			{
-				m_DestructionStatus = status;
+			if (!Modify_DestructionGroupMember(runtimePlacementId, true))
 				return false;
-			}
-			m_DestructionDocument = std::move(staged);
 		}
 		m_bDestructionAddMemberArmed = false;
 	}
@@ -4180,7 +4771,18 @@ bool_t Client::CMapTool::Select_DestructionWall(
 	const DESTRUCTION_GROUP* owner =
 		m_DestructionDocument.Find_GroupOfMember(runtimePlacementId);
 	if (nullptr != owner)
+	{
 		m_SelectedDestructionGroupId = owner->groupId;
+		const auto profile = std::find_if(
+			m_DestructionSimulationDocument.Get_Profiles().begin(),
+			m_DestructionSimulationDocument.Get_Profiles().end(),
+			[owner](const DESTRUCTION_SIMULATION_PROFILE& value)
+			{
+				return value.groupId == owner->groupId;
+			});
+		if (profile != m_DestructionSimulationDocument.Get_Profiles().end())
+			Select_DestructionSimulationProfile(profile->profileId);
+	}
 	else if (!m_bDestructionAdvancedMode)
 		m_SelectedDestructionGroupId.clear();
 
@@ -5174,7 +5776,7 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 
 	ImGui::BeginDisabled(!m_DestructionDocument.Is_Dirty());
 	if (ImGui::Button("Save World Events"))
-		Save_WorldDestruction();
+		Save_AllAuthoring();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("Reload World Events"))
@@ -5218,6 +5820,18 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 				ImGuiSelectableFlags_SpanAllColumns))
 			{
 				m_SelectedDestructionGroupId = entry.groupId;
+				const auto profile = std::find_if(
+					m_DestructionSimulationDocument.Get_Profiles().begin(),
+					m_DestructionSimulationDocument.Get_Profiles().end(),
+					[&entry](const DESTRUCTION_SIMULATION_PROFILE& value)
+					{
+						return value.groupId == entry.groupId;
+					});
+				if (profile !=
+					m_DestructionSimulationDocument.Get_Profiles().end())
+				{
+					Select_DestructionSimulationProfile(profile->profileId);
+				}
 				Refresh_DestructionHighlight();
 			}
 			ImGui::TableSetColumnIndex(1);
@@ -5272,10 +5886,22 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 	ImGui::Text("Editing %s", group->groupId.c_str());
 	if (ImGui::Button("Delete Group"))
 	{
+		CWorldDestructionDocument stagedDestruction = m_DestructionDocument;
+		CDestructionSimulationDocument stagedSimulation =
+			m_DestructionSimulationDocument;
 		std::string status;
-		if (m_DestructionDocument.Remove_Group(
-			m_SelectedDestructionGroupId, status))
+		const std::string removedGroupId = m_SelectedDestructionGroupId;
+		if (stagedDestruction.Remove_Group(removedGroupId, status) &&
+			stagedSimulation.Remove_ProfilesForGroup(removedGroupId, status) &&
+			stagedSimulation.Validate_GroupReferences(
+				stagedDestruction, status))
 		{
+			if (nullptr != m_pDestructionSimulationController)
+				m_pDestructionSimulationController->Clear();
+			m_DestructionDocument = std::move(stagedDestruction);
+			m_DestructionSimulationDocument = std::move(stagedSimulation);
+			Reset_DestructionSimulationUI();
+			m_bDestructionSimulationClearRequested = false;
 			m_SelectedDestructionGroupId.clear();
 		}
 		m_DestructionStatus = status;
@@ -5313,11 +5939,11 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 	ImGui::BeginDisabled(0u == m_iSelectedDeployPlacementId);
 	if (ImGui::Button("Add Picked Wall"))
 	{
-		std::string status;
-		m_DestructionDocument.Add_Member(
-			group->groupId, m_iSelectedDeployPlacementId, status);
-		m_DestructionStatus = status;
-		Refresh_DestructionHighlight();
+		if (Modify_DestructionGroupMember(
+			m_iSelectedDeployPlacementId, true))
+		{
+			return;
+		}
 	}
 	ImGui::EndDisabled();
 
@@ -5349,10 +5975,9 @@ void Client::CMapTool::Render_DestructionGroupEditor()
 		}
 		ImGui::EndTable();
 		if (0u != removeRequest &&
-			m_DestructionDocument.Remove_Member(
-				m_SelectedDestructionGroupId, removeRequest))
+			Modify_DestructionGroupMember(removeRequest, false))
 		{
-			Refresh_DestructionHighlight();
+			return;
 		}
 	}
 
@@ -5718,6 +6343,519 @@ void Client::CMapTool::Render_WorldDestructionPanel(bool_t isAssetTest)
 	Render_DestructionDiagnostics();
 }
 
+void Client::CMapTool::Render_DestructionSimulationWindow(
+	const bool_t isAssetTest)
+{
+	if (!m_bOpen || !isAssetTest ||
+		TOOL_MODE::WORLD_DESTRUCTION != m_eToolMode)
+	{
+		return;
+	}
+	const EDITOR_AREA_DESCRIPTOR* descriptor = Get_ActiveEditorArea();
+	if (nullptr == descriptor || descriptor->destructionSimulationDocument.empty())
+		return;
+
+	ImGui::SetNextWindowPos(ImVec2(450.f, 35.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(820.f, 760.f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowBgAlpha(0.f);
+	if (!ImGui::Begin("Destruction Model View"))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::Text("Area %s | %zu profiles",
+		descriptor->areaId.c_str(),
+		m_DestructionSimulationDocument.Get_Profiles().size());
+	ImGui::SameLine();
+	ImGui::TextDisabled(
+		"Authoring preview only; Server state and collision are unchanged");
+	ImGui::BeginDisabled(!m_DestructionSimulationDocument.Is_Dirty() ||
+		m_bDestructionSimulationElementDraftDirty);
+	if (ImGui::Button("Save Simulations"))
+		Save_AllAuthoring();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload Simulations"))
+		Load_DestructionSimulation();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_SelectedDestructionGroupId.empty());
+	if (ImGui::Button("Create Default for Selected Group"))
+		Create_DefaultDestructionSimulationProfile();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextUnformatted(
+		m_DestructionSimulationDocument.Is_Dirty() ? "[unsaved]" : "[saved]");
+	ImGui::TextWrapped("%s", m_DestructionSimulationStatus.c_str());
+
+	Render_DestructionSimulationTimeline();
+	ImGui::Separator();
+	if (ImGui::BeginTable("DestructionSimulationColumns", 2,
+		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+	{
+		ImGui::TableSetupColumn("All Debris", ImGuiTableColumnFlags_WidthStretch,
+			0.43f);
+		ImGui::TableSetupColumn("Debris Detail", ImGuiTableColumnFlags_WidthStretch,
+			0.57f);
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		Render_DestructionSimulationOutliner();
+		ImGui::TableSetColumnIndex(1);
+		Render_DestructionSimulationDetail();
+		ImGui::EndTable();
+	}
+	ImGui::End();
+}
+
+void Client::CMapTool::Render_DestructionSimulationTimeline()
+{
+	ImGui::SeparatorText("Physics Timeline");
+	const DESTRUCTION_SIMULATION_PROFILE* profile =
+		Get_SelectedDestructionSimulationProfile();
+	const bool_t hasProfile = nullptr != profile;
+	const DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT snapshot =
+		nullptr != m_pDestructionSimulationController ?
+			m_pDestructionSimulationController->Get_Snapshot() :
+			DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT{};
+
+	ImGui::BeginDisabled(!hasProfile);
+	if (ImGui::Button("Stage Selected"))
+		Request_StageDestructionSimulation(*profile, false, false);
+	ImGui::SameLine();
+	if (ImGui::Button("Stage + Play All"))
+	{
+		if (Request_StageDestructionSimulation(*profile, false, true))
+		{
+			m_pDestructionSimulationController->Request_SetScope(
+				DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+		}
+	}
+	ImGui::SameLine();
+	const bool_t isPlaying =
+		DESTRUCTION_SIMULATION_PLAYBACK_STATE::PLAYING == snapshot.eState;
+	if (ImGui::Button(isPlaying ? "Pause" : "Play"))
+	{
+		if (isPlaying)
+			m_pDestructionSimulationController->Request_Pause();
+		else if (DESTRUCTION_SIMULATION_PLAYBACK_STATE::FINISHED == snapshot.eState)
+		{
+			m_pDestructionSimulationController->Request_Reset();
+			m_pDestructionSimulationController->Request_Play();
+		}
+		else if (m_pDestructionSimulationController->Get_Runtime().Is_Staged())
+			m_pDestructionSimulationController->Request_Play();
+		else
+			Request_StageDestructionSimulation(*profile, false, true);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Restart + Play"))
+	{
+		if (!m_pDestructionSimulationController->Get_Runtime().Is_Staged())
+			Request_StageDestructionSimulation(*profile, false, true);
+		else
+		{
+			m_pDestructionSimulationController->Request_Reset();
+			m_pDestructionSimulationController->Request_Play();
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Single 60 Hz Step"))
+		m_pDestructionSimulationController->Request_SingleStep();
+	ImGui::SameLine();
+	ImGui::Checkbox("Loop", &m_bDestructionSimulationLoop);
+
+	const bool_t allDebris =
+		DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == snapshot.eScope;
+	if (ImGui::RadioButton("All Debris", allDebris))
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
+	}
+	ImGui::SameLine();
+	const bool_t canSolo =
+		!m_SelectedDestructionSimulationElementId.empty();
+	ImGui::BeginDisabled(!canSolo);
+	if (ImGui::RadioButton("Solo Selected", !allDebris))
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+			m_SelectedDestructionSimulationElementId);
+	}
+	ImGui::EndDisabled();
+
+	ImGui::Text("%s | %.3f / %.3f s | fixed %.3f ms",
+		SimulationPlaybackStateLabel(snapshot.eState),
+		snapshot.fSampleTimeSeconds,
+		hasProfile ? profile->fDurationSeconds : snapshot.fDurationSeconds,
+		CDestructionSimulationController::FIXED_DELTA_SECONDS * 1000.f);
+	if (hasProfile)
+	{
+		f32_t sampleTime = (std::clamp)(snapshot.fSampleTimeSeconds,
+			0.f, profile->fDurationSeconds);
+		if (ImGui::SliderFloat("Sample Time", &sampleTime,
+			0.f, profile->fDurationSeconds, "%.3f s"))
+		{
+			if (!m_pDestructionSimulationController->Get_Runtime().Is_Staged())
+				Request_StageDestructionSimulation(*profile, false, false);
+			m_pDestructionSimulationController->Request_Seek(sampleTime);
+		}
+
+		const f32_t width = (std::max)(240.f,
+			ImGui::GetContentRegionAvail().x - 12.f);
+		constexpr f32_t barHeight = 18.f;
+		const ImVec2 origin = ImGui::GetCursorScreenPos();
+		ImDrawList* draw = ImGui::GetWindowDrawList();
+		draw->AddRectFilled(origin,
+			ImVec2(origin.x + width, origin.y + barHeight),
+			IM_COL32(45, 52, 68, 210));
+		for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile->Elements)
+		{
+			const f32_t triggerTime =
+				DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME ==
+					element.Trigger.eKind ? element.Trigger.fTimeSeconds : 0.f;
+			const f32_t markerX = origin.x + width *
+				triggerTime / profile->fDurationSeconds;
+			const ImU32 markerColor =
+				DESTRUCTION_SIMULATION_TRIGGER_KIND::COLLISION_IMPACT ==
+					element.Trigger.eKind ? IM_COL32(255, 95, 95, 255) :
+				IM_COL32(120, 235, 150, 255);
+			draw->AddLine(ImVec2(markerX, origin.y - 2.f),
+				ImVec2(markerX, origin.y + barHeight + 2.f), markerColor, 2.f);
+		}
+		draw->AddLine(
+			ImVec2(origin.x + width * sampleTime / profile->fDurationSeconds,
+				origin.y - 4.f),
+			ImVec2(origin.x + width * sampleTime / profile->fDurationSeconds,
+				origin.y + barHeight + 4.f),
+			IM_COL32(255, 220, 80, 255), 2.f);
+		ImGui::Dummy(ImVec2(width, barHeight + 6.f));
+
+		std::unordered_set<std::string> collisionReceivers;
+		for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile->Elements)
+		{
+			if (DESTRUCTION_SIMULATION_TRIGGER_KIND::COLLISION_IMPACT ==
+				element.Trigger.eKind &&
+				!element.Trigger.receiverCollisionId.empty())
+			{
+				collisionReceivers.insert(element.Trigger.receiverCollisionId);
+			}
+		}
+		for (const std::string& receiver : collisionReceivers)
+		{
+			ImGui::PushID(receiver.c_str());
+			if (ImGui::SmallButton(("Fire Collision: " + receiver).c_str()))
+				m_pDestructionSimulationController->Request_Collision(receiver);
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndDisabled();
+	if (nullptr != m_pDestructionSimulationController)
+	{
+		ImGui::TextDisabled("%s",
+			m_pDestructionSimulationController->Get_Snapshot().status.c_str());
+	}
+}
+
+void Client::CMapTool::Render_DestructionSimulationOutliner()
+{
+	ImGui::SeparatorText("All Debris");
+	ImGui::InputText("Filter", m_DestructionSimulationFilter,
+		IM_ARRAYSIZE(m_DestructionSimulationFilter));
+	const std::string filter = m_DestructionSimulationFilter;
+	const DESTRUCTION_SIMULATION_FRAME* frame =
+		nullptr != m_pDestructionSimulationController ?
+			&m_pDestructionSimulationController->Get_Runtime().Get_Frame() : nullptr;
+
+	if (ImGui::BeginChild("DestructionProfiles", ImVec2(0.f, 420.f), true))
+	{
+		for (const DESTRUCTION_SIMULATION_PROFILE& profile :
+			m_DestructionSimulationDocument.Get_Profiles())
+		{
+			const bool_t profileSelected =
+				profile.profileId == m_SelectedDestructionSimulationProfileId;
+			const std::string profileLabel = profile.profileId + "##profile";
+			const bool_t profileOpen = ImGui::TreeNodeEx(profileLabel.c_str(),
+				ImGuiTreeNodeFlags_OpenOnArrow |
+				(profileSelected ? ImGuiTreeNodeFlags_DefaultOpen : 0) |
+				(profileSelected ? ImGuiTreeNodeFlags_Selected : 0));
+			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+			{
+				Select_DestructionSimulationProfile(profile.profileId);
+				Refresh_DestructionHighlight();
+			}
+			if (!profileOpen)
+				continue;
+
+			ImGui::TextDisabled("group %s | %.2f s | %zu elements",
+				profile.groupId.c_str(), profile.fDurationSeconds,
+				profile.Elements.size());
+			for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
+			{
+				if (!filter.empty() && !MatchesFilter(element.elementId, filter.c_str()))
+					continue;
+				ImGui::PushID(element.elementId.c_str());
+				const bool_t elementSelected = profileSelected &&
+					element.elementId == m_SelectedDestructionSimulationElementId;
+				const f32_t soloWidth = 54.f;
+				const f32_t rowWidth = (std::max)(1.f,
+					ImGui::GetContentRegionAvail().x - soloWidth);
+				if (ImGui::Selectable(element.elementId.c_str(), elementSelected,
+					0, ImVec2(rowWidth, 0.f)))
+				{
+					if (!profileSelected)
+						Select_DestructionSimulationProfile(profile.profileId);
+					Select_DestructionSimulationElement(element.elementId);
+				}
+				if (ImGui::IsItemHovered())
+				{
+					ImGui::SetTooltip(
+						"Deploy %llu\nvelocity = direction x %.3f m/s",
+						static_cast<unsigned long long>(
+							element.sourceRuntimePlacementId),
+						element.fSpeedMetersPerSecond);
+				}
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Solo"))
+				{
+					if (!profileSelected)
+						Select_DestructionSimulationProfile(profile.profileId);
+					Select_DestructionSimulationElement(element.elementId);
+					const DESTRUCTION_SIMULATION_PROFILE* selected =
+						Get_SelectedDestructionSimulationProfile();
+					if (nullptr != selected)
+					{
+						const DESTRUCTION_SIMULATION_FRAME& activeFrame =
+							m_pDestructionSimulationController->Get_Runtime().Get_Frame();
+						const bool_t alreadyStaged =
+							m_pDestructionSimulationController->Get_Runtime().Is_Staged() &&
+							activeFrame.profileId == selected->profileId;
+						if (alreadyStaged || Request_StageDestructionSimulation(
+							*selected, false, true))
+						{
+							m_pDestructionSimulationController->Request_SetScope(
+								DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+								element.elementId);
+						}
+					}
+				}
+
+				if (nullptr != frame && frame->profileId == profile.profileId)
+				{
+					const auto runtimeElement = std::find_if(
+						frame->Elements.begin(), frame->Elements.end(),
+						[&element](const DESTRUCTION_SIMULATION_ELEMENT_FRAME& value)
+						{
+							return value.elementId == element.elementId;
+						});
+					if (runtimeElement != frame->Elements.end())
+					{
+						ImGui::TextDisabled("%s | life %.2f",
+							SimulationElementStateLabel(runtimeElement->eState),
+							runtimeElement->fNormalizedLife);
+					}
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+	}
+	ImGui::EndChild();
+	ImGui::TextDisabled(
+		"Profile = one complete destruction; Solo = one debris element");
+}
+
+void Client::CMapTool::Render_DestructionSimulationDetail()
+{
+	ImGui::SeparatorText("Debris Detail");
+	const DESTRUCTION_SIMULATION_PROFILE* profile =
+		Get_SelectedDestructionSimulationProfile();
+	if (nullptr == profile ||
+		!m_DestructionSimulationElementDraft.has_value())
+	{
+		ImGui::TextDisabled("Select one debris element in All Debris.");
+		return;
+	}
+
+	DESTRUCTION_SIMULATION_ELEMENT& draft =
+		*m_DestructionSimulationElementDraft;
+	ImGui::TextWrapped("%s", draft.elementId.c_str());
+	ImGui::Text("Source Deploy placement: %llu",
+		static_cast<unsigned long long>(draft.sourceRuntimePlacementId));
+	ImGui::TextDisabled(
+		"These are authored simulation semantics. PhysX receives the derived velocity and gravity policy.");
+
+	bool_t changed = false;
+	changed |= ImGui::DragFloat3("Spawn Offset", &draft.vSpawnOffset.x,
+		0.01f, -CDestructionSimulationDocument::MAX_ABSOLUTE_OFFSET,
+		CDestructionSimulationDocument::MAX_ABSOLUTE_OFFSET, "%.3f");
+	float3_t editedDirection = draft.vDirection;
+	const bool_t directionChanged = ImGui::DragFloat3(
+		"Direction (World Unit)", &editedDirection.x,
+		0.01f, -1.f, 1.f, "%.4f");
+	if (directionChanged)
+	{
+		if (!NormalizeSimulationDirection(editedDirection))
+		{
+			m_DestructionSimulationStatus =
+				"Direction cannot be zero; the previous preview was preserved";
+		}
+		else
+		{
+			draft.vDirection = editedDirection;
+			changed = true;
+		}
+	}
+	changed |= ImGui::DragFloat("Speed (m/s)",
+		&draft.fSpeedMetersPerSecond, 0.05f, 0.f,
+		CDestructionSimulationDocument::MAX_SPEED_METERS_PER_SECOND,
+		"%.3f", ImGuiSliderFlags_AlwaysClamp);
+	changed |= ImGui::DragFloat("Gravity Scale",
+		&draft.fGravityScale, 0.01f, 0.f,
+		CDestructionSimulationDocument::MAX_GRAVITY_SCALE,
+		"%.3f", ImGuiSliderFlags_AlwaysClamp);
+	f32_t maximumLifetime = profile->fDurationSeconds;
+	if (DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME ==
+		draft.Trigger.eKind)
+	{
+		maximumLifetime = (std::max)(
+			CDestructionSimulationController::FIXED_DELTA_SECONDS,
+			profile->fDurationSeconds - draft.Trigger.fTimeSeconds);
+	}
+	changed |= ImGui::DragFloat("Lifetime (s)",
+		&draft.fLifetimeSeconds, 0.01f,
+		CDestructionSimulationController::FIXED_DELTA_SECONDS,
+		maximumLifetime, "%.3f",
+		ImGuiSliderFlags_AlwaysClamp);
+
+	const float3_t velocity = {
+		draft.vDirection.x * draft.fSpeedMetersPerSecond,
+		draft.vDirection.y * draft.fSpeedMetersPerSecond,
+		draft.vDirection.z * draft.fSpeedMetersPerSecond
+	};
+	ImGui::TextDisabled("Derived velocity: %.3f, %.3f, %.3f m/s",
+		velocity.x, velocity.y, velocity.z);
+
+	const char_t* triggerLabels[] = {
+		"Immediate", "Timeline Time", "Collision Impact" };
+	int32_t triggerKind =
+		static_cast<int32_t>(draft.Trigger.eKind);
+	if (ImGui::Combo("Trigger Condition", &triggerKind,
+		triggerLabels, IM_ARRAYSIZE(triggerLabels)))
+	{
+		draft.Trigger.eKind =
+			static_cast<DESTRUCTION_SIMULATION_TRIGGER_KIND>(triggerKind);
+		if (DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME !=
+			draft.Trigger.eKind)
+		{
+			draft.Trigger.fTimeSeconds = 0.f;
+		}
+		if (DESTRUCTION_SIMULATION_TRIGGER_KIND::COLLISION_IMPACT !=
+			draft.Trigger.eKind)
+		{
+			draft.Trigger.receiverCollisionId.clear();
+			m_DestructionSimulationReceiverId[0] = '\0';
+		}
+		changed = true;
+	}
+	if (DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME ==
+		draft.Trigger.eKind)
+	{
+		const f32_t maximumTriggerTime = (std::max)(0.f,
+			profile->fDurationSeconds - draft.fLifetimeSeconds);
+		changed |= ImGui::DragFloat("Trigger Time (s)",
+			&draft.Trigger.fTimeSeconds, 0.01f, 0.f,
+			maximumTriggerTime, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+	}
+	else if (DESTRUCTION_SIMULATION_TRIGGER_KIND::COLLISION_IMPACT ==
+		draft.Trigger.eKind)
+	{
+		if (ImGui::InputText("Receiver Collision ID",
+			m_DestructionSimulationReceiverId,
+			IM_ARRAYSIZE(m_DestructionSimulationReceiverId)))
+		{
+			draft.Trigger.receiverCollisionId =
+				m_DestructionSimulationReceiverId;
+			changed = true;
+		}
+		if (!draft.Trigger.receiverCollisionId.empty() &&
+			ImGui::Button("Fire This Collision"))
+		{
+			m_pDestructionSimulationController->Request_Collision(
+				draft.Trigger.receiverCollisionId);
+		}
+	}
+
+	if (changed)
+	{
+		m_bDestructionSimulationElementDraftDirty = true;
+		m_DestructionSimulationStatus =
+			"Live Detail draft staged; Apply commits it to the authoring document";
+		Stage_DestructionElementDraftPreview();
+	}
+
+	ImGui::Separator();
+	ImGui::BeginDisabled(!m_bDestructionSimulationElementDraftDirty);
+	if (ImGui::Button("Apply Detail"))
+	{
+		std::string status;
+		const bool_t wasPlaying =
+			DESTRUCTION_SIMULATION_PLAYBACK_STATE::PLAYING ==
+				m_pDestructionSimulationController->Get_Snapshot().eState;
+		if (m_DestructionSimulationDocument.Update_Element(
+			m_SelectedDestructionSimulationProfileId, draft, status))
+		{
+			m_bDestructionSimulationElementDraftDirty = false;
+			m_DestructionSimulationStatus = status + "; Save required";
+			const DESTRUCTION_SIMULATION_PROFILE* committed =
+				Get_SelectedDestructionSimulationProfile();
+			if (nullptr != committed)
+				Request_StageDestructionSimulation(
+					*committed, true, wasPlaying);
+		}
+		else
+		{
+			m_DestructionSimulationStatus = status;
+		}
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Revert Detail"))
+	{
+		const DESTRUCTION_SIMULATION_ELEMENT* saved =
+			m_DestructionSimulationDocument.Find_Element(
+				m_SelectedDestructionSimulationProfileId,
+				m_SelectedDestructionSimulationElementId);
+		if (nullptr != saved)
+		{
+			m_DestructionSimulationElementDraft = *saved;
+			m_bDestructionSimulationElementDraftDirty = false;
+			strncpy_s(m_DestructionSimulationReceiverId,
+				saved->Trigger.receiverCollisionId.c_str(), _TRUNCATE);
+			Request_StageDestructionSimulation(*profile, true, false);
+			m_DestructionSimulationStatus =
+				"Reverted debris Detail to the saved authoring value";
+		}
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Audition Solo"))
+	{
+		const bool_t staged = m_bDestructionSimulationElementDraftDirty ?
+			Stage_DestructionElementDraftPreview() :
+			Request_StageDestructionSimulation(*profile, false, true);
+		if (staged)
+		{
+			m_pDestructionSimulationController->Request_SetScope(
+				DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+				draft.elementId);
+			m_pDestructionSimulationController->Request_Reset();
+			m_pDestructionSimulationController->Request_Play();
+		}
+	}
+	if (m_bDestructionSimulationElementDraftDirty)
+		ImGui::TextDisabled("Detail draft is local until Apply Detail.");
+}
+
 void Client::CMapTool::Render_DestructionEncounterSource()
 {
 	if (!ImGui::CollapsingHeader("Encounter Source",
@@ -6048,6 +7186,7 @@ void Client::CMapTool::Render_DestructionDiagnostics()
 
 void Client::CMapTool::Render_ModeBar()
 {
+	const TOOL_MODE previousMode = m_eToolMode;
 	if (ImGui::RadioButton(
 		"Map Assets",
 		TOOL_MODE::MAP_ASSETS == m_eToolMode))
@@ -6106,6 +7245,12 @@ void Client::CMapTool::Render_ModeBar()
 		m_bNavigationStrokeActive = false;
 		m_bDestructionPickArmed = false;
 		m_bDestructionAddMemberArmed = false;
+	}
+	if (TOOL_MODE::WORLD_DESTRUCTION == previousMode &&
+		TOOL_MODE::WORLD_DESTRUCTION != m_eToolMode &&
+		nullptr != m_pDestructionSimulationController)
+	{
+		m_bDestructionSimulationClearRequested = true;
 	}
 }
 

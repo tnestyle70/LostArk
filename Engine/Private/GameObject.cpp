@@ -56,6 +56,10 @@ void CGameObject::Update(f32_t fTimeDelta)
 {
 }
 
+void CGameObject::Post_Physics_Update(f32_t fTimeDelta)
+{
+}
+
 void CGameObject::Late_Update(f32_t fTimeDelta)
 {
 }

@@ -51,6 +51,10 @@ def runtime_shader_profile_id(parent_path: str, source_path: str) -> str:
         "fx_m.fx_j_pa_linearflow_02_tr": (
             "effect.ue3.linearflow-02.v1"
         ),
+        "fx_m.fx_j_pa_slice_01_tr": "effect.ue3.slice.v1",
+        "fx_m.fx_m_pa_missiletrail_01_tr": (
+            "effect.ue3.missiletrail-01.v1"
+        ),
         "fx_m.fx_j_me_localcrack_01_tr": "effect.ue3.local-crack.v1",
         "bfx_m.bfx_i_pa_glow_01_ad": (
             "effect.ue3.procedural-center-glow.v1"
@@ -322,6 +326,45 @@ def required_runtime_bindings(shader_profile_id: str) -> list[dict[str, str]]:
                 "assetId": (
                     "Effect/DimensionMaster/Textures/FX_TEX_00/"
                     "fx_a_noise_002.dds"
+                ),
+            },
+        ],
+        "effect.ue3.slice.v1": [
+            {
+                "slotId": "base",
+                "assetId": (
+                    "Effect/DimensionMaster/Textures/FX_TEX_06/"
+                    "fx_j_voronoi_tile_01.dds"
+                ),
+            },
+        ],
+        "effect.ue3.missiletrail-01.v1": [
+            {
+                "slotId": "base",
+                "assetId": (
+                    "Effect/DimensionMaster/Textures/FX_TEX_05/"
+                    "fx_m_atypical_007.dds"
+                ),
+            },
+            {
+                "slotId": "mask",
+                "assetId": (
+                    "Effect/DimensionMaster/Textures/FX_TEX_05/"
+                    "fx_m_atypical_007.dds"
+                ),
+            },
+            {
+                "slotId": "noise",
+                "assetId": (
+                    "Effect/DimensionMaster/Textures/FX_TEX_00/"
+                    "fx_a_cloud_022.dds"
+                ),
+            },
+            {
+                "slotId": "dissolve",
+                "assetId": (
+                    "Effect/DimensionMaster/Textures/FX_TEX_05/"
+                    "fx_m_noise_001.dds"
                 ),
             },
         ],
@@ -627,10 +670,10 @@ def blocked_runtime_asset_ids(
             asset_id = next(iter(matches)) if len(matches) == 1 else None
         if asset_id and asset_id not in allowed and asset_id not in result:
             result.append(asset_id)
-    # A TextureCube declared by the parent Material as reflection input is not
-    # a 2D Base/Mask/Emissive carrier.  The generic grouped shader has no
-    # reflection-vector or cubemap sampling path, so preserve the source
-    # evidence but remove the asset from every legacy 2D slot.
+    # A parent-declared reflection input is not a generic Base/Mask/Emissive
+    # carrier. Preserve it as named source evidence for a finite profile, but
+    # remove it from legacy slots. Names such as ``*_cube`` do not prove the
+    # UE export class; the sampling extractor validates the actual Texture2D.
     for row in role_diagnostics or []:
         if row.get("status") != "UNSUPPORTED_REFLECTION_RUNTIME_RESOURCE":
             continue
@@ -727,6 +770,12 @@ def normalize_texture_parameter(row: dict[str, Any]) -> dict[str, Any]:
             row.get("sourceObjectPath") or row.get("texture") or ""
         ),
         "assetId": str(row.get("assetId") or ""),
+        "addressU": str(row.get("addressU") or "wrap"),
+        "addressV": str(row.get("addressV") or "wrap"),
+        "colorSpace": str(row.get("colorSpace") or "linear"),
+        "samplingEvidence": str(
+            row.get("samplingEvidence") or "legacy_default"
+        ),
     }
     if row.get("group") is not None:
         result["group"] = str(row.get("group") or "")
@@ -823,7 +872,16 @@ def finite_profile_runtime_resource_contract_satisfied(
             and bool(bindings.get("mask"))
         )
     if runtime_shader_profile_id == "effect.ue3.blackline-aura.v1":
-        return bool(bindings.get("mask")) and bool(bindings.get("dissolve"))
+        required = {
+            "diffuse_tex", "flow_tex", "mask_a_tex", "mask_b_tex",
+            "dissolve_tex",
+        }
+        resolved = {
+            folded(row.get("name"))
+            for row in (source_profile or {}).get("textures", [])
+            if row.get("assetId")
+        }
+        return required.issubset(resolved)
     if runtime_shader_profile_id == "effect.ue3.linearflow-02.v1":
         required = {
             "diff_tex", "diff_noise_tex", "a_mask_tex", "a_noise_01_tex",
@@ -835,10 +893,45 @@ def finite_profile_runtime_resource_contract_satisfied(
             if row.get("assetId")
         }
         return required.issubset(resolved)
-    if runtime_shader_profile_id == "effect.ue3.local-crack.v1":
-        return bool(bindings.get("meshmodel")) and bool(
-            bindings.get("dissolve")
+    if runtime_shader_profile_id == "effect.ue3.slice.v1":
+        base = bindings.get("base", "")
+        return bool(base) and not is_normal_or_bump_texture(base)
+    if runtime_shader_profile_id == "effect.ue3.missiletrail-01.v1":
+        base = bindings.get("base", "")
+        return (
+            bool(base)
+            and not is_normal_or_bump_texture(base)
+            and bool(bindings.get("mask"))
+            and bool(bindings.get("noise"))
+            and bool(bindings.get("dissolve"))
+            and bool(bindings.get("meshmodel"))
         )
+    if runtime_shader_profile_id == "effect.ue3.local-crack.v1":
+        required = {"normal_tex", "refle_tex", "dissolve_tex"}
+        textures = {
+            folded(row.get("name")): row
+            for row in (source_profile or {}).get("textures", [])
+            if row.get("name")
+        }
+        if not bool(bindings.get("meshmodel")) or not required.issubset(
+            textures
+        ):
+            return False
+        for name in required:
+            row = textures[name]
+            if not row.get("assetId"):
+                return False
+            if folded(row.get("addressU")) not in {"wrap", "clamp"}:
+                return False
+            if folded(row.get("addressV")) not in {"wrap", "clamp"}:
+                return False
+            if folded(row.get("colorSpace")) not in {"linear", "srgb"}:
+                return False
+            if folded(row.get("samplingEvidence")) in {
+                "", "legacy_default", "missing_sampling_evidence",
+            }:
+                return False
+        return True
     if runtime_shader_profile_id == "effect.ue3.procedural-center-glow.v1":
         return True
     return True
@@ -865,8 +958,30 @@ def element_subuv_mode(element: dict[str, Any]) -> str:
     )
 
 
+def runtime_profile_subuv_mode(
+    runtime_shader_profile_id: str, element: dict[str, Any]
+) -> str:
+    # Aura owns two UV domains at runtime: its fixed glow uses local 0..1 UV,
+    # while the source cloud texture consumes the authored 8x4 SubUV frame.
+    return element_subuv_mode(element)
+
+
 def classify_dynamic_parameter(name: str) -> str:
     value = folded(name)
+    exact = {
+        "mask_a_offset": "mask_a_offset",
+        "mask_b_offset": "mask_b_offset",
+        "mask_a_distort": "mask_a_distort",
+        "mask_b_distort": "mask_b_distort",
+        "maksa_pan": "mask_a_pan",
+        "maska_pan": "mask_a_pan",
+        "flow_str": "flow_strength",
+        "maksb_pan": "mask_b_pan",
+        "maskb_pan": "mask_b_pan",
+        "diff_pan": "diffuse_pan",
+    }
+    if value in exact:
+        return exact[value]
     if "dissolve" in value:
         return "dissolve"
     if "pan" in value or "uv" in value:
@@ -906,6 +1021,38 @@ def dynamic_parameter_semantics(element: dict[str, Any]) -> list[str]:
             if 0 <= index < len(semantics):
                 semantics[index] = classify_dynamic_parameter(
                     str(literal.get("value") or "")
+                )
+    return semantics
+
+
+def runtime_profile_dynamic_parameter_semantics(
+    runtime_shader_profile_id: str, element: dict[str, Any]
+) -> list[str]:
+    if runtime_shader_profile_id != "effect.ue3.missiletrail-01.v1":
+        return dynamic_parameter_semantics(element)
+    exact = {
+        "alpha_pan": "missile_alpha_pan",
+        "uv_noise_velue": "missile_noise_strength",
+        "uv_noise_value": "missile_noise_strength",
+        "uv_noise_pan": "missile_noise_pan",
+        "alpha_dissolve": "missile_dissolve",
+    }
+    semantics = ["unbound", "unbound", "unbound", "unbound"]
+    modules = (element.get("sourceRecipe") or {}).get("modules", [])
+    for module in modules:
+        if folded(module.get("className")) != "particlemoduleparameterdynamic":
+            continue
+        for literal in module.get("literals", []):
+            match = re.fullmatch(
+                r"dynamicparams\[(\d+)\]\.paramname",
+                folded(literal.get("propertyPath")),
+            )
+            if not match:
+                continue
+            index = int(match.group(1))
+            if 0 <= index < len(semantics):
+                semantics[index] = exact.get(
+                    folded(literal.get("value")), "unbound"
                 )
     return semantics
 
@@ -953,8 +1100,14 @@ def upgrade_effect_document(
                 normalize_switch_parameter(row)
                 for row in parameters.get("staticSwitches") or []
             ],
-            "dynamicParameterSemantics": dynamic_parameter_semantics(element),
-            "subUVMode": element_subuv_mode(element),
+            "dynamicParameterSemantics": (
+                runtime_profile_dynamic_parameter_semantics(
+                    identity["runtimeShaderProfileId"], element
+                )
+            ),
+            "subUVMode": runtime_profile_subuv_mode(
+                identity["runtimeShaderProfileId"], element
+            ),
         }
         render_state = identity.get("renderState") or {}
         if render_state.get("twoSided") is False:
@@ -1034,6 +1187,7 @@ def build_contract(
     material_map: dict[str, Any],
     runtime_resource_root: Path | None = None,
     material_graph_evidence: dict[str, Any] | None = None,
+    texture_sampling_evidence: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     particle_elements = [
         row for row in effect_document.get("elements", [])
@@ -1071,6 +1225,16 @@ def build_contract(
         if row.get("sourceMaterialPath")
     }
     manifest_packages = source_asset_packages(resource_manifest)
+    sampling_by_path = {
+        folded(row.get("sourceObjectPath")): row
+        for row in (texture_sampling_evidence or {}).get("textures", [])
+        if row.get("sourceObjectPath")
+    }
+    sampling_by_object: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in sampling_by_path.values():
+        sampling_by_object[
+            folded(row.get("sourceObjectPath")).rsplit(".", 1)[-1]
+        ].append(row)
 
     identities: list[dict[str, Any]] = []
     profile_members: dict[str, list[str]] = defaultdict(list)
@@ -1194,6 +1358,41 @@ def build_contract(
             texture_parameter["sourceObjectPath"] = source_object_path
             texture_parameter["assetId"] = asset_id or ""
             texture_parameter["resolutionStatus"] = resolution_status
+            sampling = sampling_by_path.get(folded(source_object_path))
+            if sampling is None:
+                suffix_rows = sampling_by_object.get(
+                    folded(source_object_path).rsplit(".", 1)[-1], []
+                )
+                sampling = suffix_rows[0] if len(suffix_rows) == 1 else None
+            if sampling is not None:
+                texture_parameter["addressU"] = str(
+                    sampling.get("addressU") or "wrap"
+                )
+                texture_parameter["addressV"] = str(
+                    sampling.get("addressV") or "wrap"
+                )
+                texture_parameter["colorSpace"] = str(
+                    sampling.get("colorSpace") or "linear"
+                )
+                texture_parameter["samplingEvidence"] = str(
+                    sampling.get("samplingEvidence")
+                    or "ue3_property_or_class_default.v1"
+                )
+            else:
+                texture_parameter["addressU"] = "wrap"
+                texture_parameter["addressV"] = "wrap"
+                texture_parameter["colorSpace"] = "linear"
+                texture_parameter["samplingEvidence"] = "legacy_default"
+        if (
+            shader_profile_id == "effect.ue3.local-crack.v1"
+            and not finite_profile_runtime_resource_contract_satisfied(
+                shader_profile_id, current_bindings, source_parameters
+            )
+        ):
+            shader_profile_id = "effect.ue3.fallback-blocked.v1"
+            fallback_blocked_reason = (
+                "LOCAL_CRACK_NAMED_TEXTURE_OR_SAMPLING_CONTRACT_INCOMPLETE"
+            )
         profile_members[profile_id].append(source_path)
         identities.append({
             "sourceMaterialPath": source_path,
@@ -1319,6 +1518,7 @@ def main() -> int:
     parser.add_argument("--resource-manifest", required=True, type=Path)
     parser.add_argument("--material-map", required=True, type=Path)
     parser.add_argument("--material-graph-evidence", type=Path)
+    parser.add_argument("--texture-sampling-evidence", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--output-effect-document", type=Path)
@@ -1334,6 +1534,10 @@ def main() -> int:
             load_json(args.material_graph_evidence)
             if args.material_graph_evidence is not None else None
         ),
+        texture_sampling_evidence=(
+            load_json(args.texture_sampling_evidence)
+            if args.texture_sampling_evidence is not None else None
+        ),
     )
     receipt["sources"] = [
         {"path": path.as_posix(), "sha256": sha256_file(path)}
@@ -1346,6 +1550,10 @@ def main() -> int:
             *(
                 (args.material_graph_evidence,)
                 if args.material_graph_evidence is not None else ()
+            ),
+            *(
+                (args.texture_sampling_evidence,)
+                if args.texture_sampling_evidence is not None else ()
             ),
         )
     ]

@@ -186,6 +186,109 @@ try {
 		$mapToolSource -match 'IsBernLandscapePlacement' -and
 		$mapToolSource -match 'Show Bern Landscape'
 	Add-Check 'maps.product-editor-visual-scope' $productEditorVisualScopeValid 'Bern full published map excluding quarantined landscape; Valtan full published map; MapTool reversible Bern preview'
+
+	$physicsSdkRoot = Join-Path $repoRoot 'Engine\ThirdPartyLib\PhysX'
+	$physicsSdkRequired = @(
+		'Inc\PxPhysicsAPI.h',
+		'Lib\Debug\PhysX_64.lib',
+		'Lib\Debug\PhysXCommon_64.lib',
+		'Lib\Debug\PhysXFoundation_64.lib',
+		'Lib\Debug\PhysXExtensions_static_64.lib',
+		'Lib\Debug\PhysXPvdSDK_static_64.lib',
+		'Lib\Release\PhysX_64.lib',
+		'Lib\Release\PhysXCommon_64.lib',
+		'Lib\Release\PhysXFoundation_64.lib',
+		'Lib\Release\PhysXExtensions_static_64.lib',
+		'Lib\Release\PhysXPvdSDK_static_64.lib',
+		'Bin\Debug\PhysX_64.dll',
+		'Bin\Debug\PhysXCommon_64.dll',
+		'Bin\Debug\PhysXFoundation_64.dll',
+		'Bin\Release\PhysX_64.dll',
+		'Bin\Release\PhysXCommon_64.dll',
+		'Bin\Release\PhysXFoundation_64.dll',
+		'LICENSE.md',
+		'NOTICE.md')
+	$missingPhysicsSdk = @($physicsSdkRequired | Where-Object {
+		-not (Test-Path -LiteralPath (Join-Path $physicsSdkRoot $_))
+	})
+	Add-Check 'physics.physx-sdk-layout' ($missingPhysicsSdk.Count -eq 0) `
+		"missing=$($missingPhysicsSdk -join ',')"
+
+	$physicsManagerHeader = Get-Content 'Engine\Public\Physics_Manager.h' -Raw
+	$physicsManagerSource = Get-Content 'Engine\Private\Physics_Manager.cpp' -Raw
+	$rigidBodyHeader = Get-Content 'Engine\Public\RigidBody.h' -Raw
+	$gameInstanceSource = Get-Content 'Engine\Private\GameInstance.cpp' -Raw
+	$destructionRuntimeSource = Get-Content 'Client\Private\DestructionSimulationRuntime.cpp' -Raw
+	$destructionControllerSource = Get-Content 'Client\Private\DestructionSimulationController.cpp' -Raw
+	$physicsContractValid =
+		$physicsManagerHeader -match 'PHYSICS_ACTOR_HANDLE' -and
+		$physicsManagerHeader -match 'Simulate_DebugSteps\(uint32_t' -and
+		$physicsManagerHeader -notmatch '#include\s*[<\"]Px' -and
+		$physicsManagerSource -match 'simulate\(CPhysics_Manager::FIXED_TIMESTEP\)' -and
+		$physicsManagerSource -match 'fetchResults\(true\)' -and
+		$rigidBodyHeader -match 'Create_Runtime' -and
+		$gameInstanceSource -match 'm_pPhysics_Manager->Update\(fTimeDelta\)' -and
+		$gameInstanceSource -match 'Post_Physics_Update\(fTimeDelta\)' -and
+		$destructionRuntimeSource -match 'Begin_PhysicsPreview' -and
+		$destructionRuntimeSource -match 'Simulate_DebugSteps' -and
+		$destructionControllerSource -match 'Advance_Timeline\(FIXED_DELTA_SECONDS' -and
+		$destructionControllerSource -match 'Simulate_PhysicsSteps\(1u' -and
+		$destructionControllerSource -match 'Post_Physics_Update\(status\)'
+	Add-Check 'physics.fixed-step-destruction-preview' $physicsContractValid `
+		'handle facade; no public PhysX include; one paused 1/60 clock; Deploy pose pull'
+
+	$simulationPath = 'Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json'
+	$worldEventsPath = 'Data\Encounters\Valtan\ValtanWorldEvents.json'
+	$simulation = Read-Json $simulationPath
+	$worldEvents = Read-Json $worldEventsPath
+	$profile = @($simulation.profiles)[0]
+	$group = @($worldEvents.groups | Where-Object {
+		$_.groupId -eq $profile.groupId
+	})[0]
+	$simulationElementIds = @($profile.elements | ForEach-Object {
+		[string]$_.elementId
+	})
+	$simulationPlacementIds = @($profile.elements | ForEach-Object {
+		[string]$_.sourceRuntimePlacementId
+	})
+	$simulationVectorsValid = $true
+	foreach ($element in @($profile.elements)) {
+		$direction = @($element.direction)
+		$lengthSquared = if ($direction.Count -eq 3) {
+			[double]$direction[0] * [double]$direction[0] +
+			[double]$direction[1] * [double]$direction[1] +
+			[double]$direction[2] * [double]$direction[2]
+		} else { 0.0 }
+		$simulationVectorsValid = $simulationVectorsValid -and
+			[math]::Abs([math]::Sqrt($lengthSquared) - 1.0) -le 0.001 -and
+			[double]$element.speedMetersPerSecond -ge 0.0 -and
+			[double]$element.gravityScale -ge 0.0 -and
+			[double]$element.lifetimeSeconds -gt 0.0
+	}
+	$simulationAuthoringValid =
+		$simulation.schema -eq 'lostark.destruction-simulation' -and
+		[int]$simulation.formatVersion -eq 1 -and
+		$simulation.areaId -eq 'LV_LUT_HEARTRB_ED' -and
+		@($simulation.profiles).Count -eq 1 -and
+		$null -ne $group -and
+		$simulationElementIds.Count -eq 5 -and
+		@($simulationElementIds | Select-Object -Unique).Count -eq 5 -and
+		@($simulationPlacementIds | Select-Object -Unique).Count -eq 5 -and
+		@($simulationPlacementIds | Where-Object {
+			$_ -notin @($group.memberPlacementIds | ForEach-Object { [string]$_ })
+		}).Count -eq 0 -and
+		$simulationVectorsValid -and
+		@($worldEvents.bindings | Where-Object enabled).Count -eq 0
+	Add-Check 'maps.valtan-destruction-simulation-authoring' `
+		$simulationAuthoringValid `
+		"profiles=$(@($simulation.profiles).Count) elements=$($simulationElementIds.Count) bindingsEnabled=$(@($worldEvents.bindings | Where-Object enabled).Count)"
+
+	$worldPublisherSource = Get-Content 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
+	$destroyableProductGateClosed =
+		$worldPublisherSource -match "placement\.kind -notin @\('playerSpawn','npc','boss','triggerBox','collisionBox'\)" -and
+		$worldPublisherSource -notmatch "placement\.kind -eq 'destroyable'"
+	Add-Check 'world.destroyable-product-gate' $destroyableProductGateClosed `
+		'MapTool physics authoring is available; product destroyable admission remains fail-closed'
 	$singleAreaContractErrors = [Collections.Generic.List[string]]::new()
 	$exclusiveRuntimeAreaIds = @(
 		'LV_LOBBY_CLASSSELECT_SL00',

@@ -49,6 +49,29 @@ public:
 	bool_t Get_WorldBounds(
 		float3_t& outCenter,
 		float3_t& outHalfExtents) const;
+	/* Local box used when the object enters its fractured preview state.
+	   Values include placement uniform scale but not root rotation/translation. */
+	bool_t Get_PhysicsPreviewLocalBounds(
+		float3_t& outCenter,
+		float3_t& outHalfExtents) const;
+	/* MapTool destruction audition keeps the existing Deploy object and model
+	   alive, then lets a presentation-only rigid body drive its root pose.
+	   This is deliberately separate from the authored placement transform and
+	   from the persistent destroyable state. End_PhysicsPreview restores both
+	   values exactly, so scrubbing/restarting never dirties map data. */
+	bool_t Begin_PhysicsPreview(DEPLOY_PROP_STATE previewState);
+	bool_t Apply_PhysicsPreviewPose(
+		const float3_t& position,
+		const float4_t& rotationQuaternion);
+	/* Advances an animated fractured model on the destruction preview's fixed
+	   clock. Regular Update deliberately stops advancing it while the preview
+	   seam is active, so seek/restart and PhysX always sample the same tick. */
+	bool_t Advance_PhysicsPreviewAnimation(f32_t fixedDeltaSeconds);
+	void End_PhysicsPreview();
+	bool_t Is_PhysicsPreviewActive() const
+	{
+		return m_bPhysicsPreviewActive;
+	}
 
 private:
 	HRESULT Ready_Components(const DEPLOY_PROP_DESC& desc);
@@ -61,6 +84,12 @@ private:
 	DEPLOY_PROP_PLACEMENT m_Placement;
 	DEPLOY_PROP_MODEL_KIND m_ModelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 	DEPLOY_PROP_STATE m_State = DEPLOY_PROP_STATE::INTACT;
+	DEPLOY_PROP_STATE m_PrePhysicsPreviewState = DEPLOY_PROP_STATE::INTACT;
+	uint32_t m_iPrePhysicsPreviewAnimationIndex = UINT32_MAX;
+	f32_t m_fPrePhysicsPreviewAnimationTrackPosition = 0.f;
+	bool_t m_bPhysicsPreviewActive = false;
+	float3_t m_PhysicsPreviewPosition = {};
+	float4_t m_PhysicsPreviewRotation = float4_t(0.f, 0.f, 0.f, 1.f);
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pIntactModelCom = { nullptr };
 	shared_ptr<CModel> m_pFracturedModelCom = { nullptr };

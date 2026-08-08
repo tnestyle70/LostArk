@@ -663,7 +663,8 @@ Effect pipeline, Python 34 tests까지 통과했다. 전체 ProjectAudit에는 �
 
 정본 117 Elements를 검증할 수 없는 6 FPS 상태를 Material A/B보다 먼저 닫는다.
 
-1. Data Files Load는 리소스 stage만 수행하며 명시적 Play 전에는 preview를 숨기고 평가하지 않는다.
+1. Data Files Load는 문서 parse/validate/commit만 수행한다. 모델·DDS GPU stage는 명시적
+   Complete, Mesh, Sprite, Group, Solo Play에서 선택 범위에 한해 시작한다.
 2. Follow root와 preview time을 한 번의 playback update로 반영해 같은 프레임을 두 번 재구축하지 않는다.
 3. Renderer는 authored Element 순서를 유지하되 Element마다 전체 evaluated 목록을 다시 찾지 않고
    정렬된 contiguous range를 선형 순회한다.
@@ -674,3 +675,376 @@ Effect pipeline, Python 34 tests까지 통과했다. 전체 ProjectAudit에는 �
 
 수동 완료 기준은 Load 직후 idle FPS 회복, Mesh Emitters 네 타격 재생, Solo emitter의
 상호작용 가능한 프레임 유지다. Complete Effect의 최종 FPS는 실제 GPU 측정 전에는 PASS로 기록하지 않는다.
+
+Load 단계는 이전 Preview Object와 GPU resource를 먼저 내리고 새 Active Document만 commit한다.
+따라서 117-layer canonical A를 선택해도 48개 WModel과 반복 DDS를 메인 스레드에서 즉시 열지 않는다.
+원본 검증은 emitter 14, 15, 20을 각각 선택한 뒤 `Audition Selected`로 한 Element씩 stage하고,
+세 Element가 합격한 뒤 `Play Mesh Emitters`, 마지막에만 `Play Complete Effect` 순서로 넓힌다.
+
+## 15. G09 `particlespriteemitter_4` local-crack 파편 복구
+
+### 15.1 목표와 종료 증거
+
+첫 검격의 `_4`는 이름만 `particlespriteemitter`이고 실제로는 `fm_a_broken_012.wmodel`을
+그리는 Mesh-backed Cascade emitter다. 메인 백색 검격이나 dust가 아니라 원작 검격 외곽의
+검보라 균열 조각, 톱니 모양 파편, 반사 highlight를 보조한다.
+
+현재 Solo에서 보이는 세로 방향의 둥근 보라색 덩어리는 정상 파편 실루엣이 아니다. 이번 G는
+다음 상태까지 닫는다.
+
+```text
+0.35~0.45초  각진 broken mesh가 검격 외곽에서 식별됨
+0.45~1.25초  원본 SourceRecipe의 위치·속도·회전·축소가 결정적으로 재생됨
+수명 종료       파편이 Alpha/Dissolve 계약에 따라 사라짐
+최종 합성       메인 검격을 덮는 보라 구체나 세로 bead 열이 없음
+```
+
+원본 그래프의 소실된 edge를 추측으로 exact 처리하지 않는다. GPU A/B가 합격해도
+`semanticStatus=RECONSTRUCTED_PROFILE`, `RUNTIME_EXACT=0`을 유지한다.
+
+### 15.2 정본으로 확인된 `_4` 계약
+
+| 항목 | 정본값 |
+|---|---|
+| Element | `fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_4` |
+| Renderer | Cascade Particle / Mesh Renderer |
+| Mesh | `Effect/DimensionMaster/Meshes/fm_a_broken_012.wmodel` |
+| Source MI | `fx_m_mi_j_00.fx_mi.fx_j_me_localcrack_01_04_tr` |
+| Parent Material | `fx_m_mi_j_00.fx_m.fx_j_me_localcrack_01_tr` |
+| Runtime profile | `effect.ue3.local-crack.v1` |
+| Material status | `reconstructed_profile` |
+| Start / emitter delay | `0.25 s / 0.10 s` |
+| Burst / max particles | `10 / 12` |
+| Particle lifetime | `0.90~1.00 s` |
+| Particle size | source `4~6`, runtime meter scale 적용 |
+| Local space / billboard | `true / false` |
+| Root transform | UE3 source `(50,-50,-90)` → Client Position `(0.5,-0.9,0.5)`, Scale `(1.1,1.1,1.1)` |
+| Source velocity | UE3 source `(-300~-100, 0~60, 30~60)` |
+| Dynamic | `X=uvoffset`, `Y=vector_screenpos_str`, `Z=dissolve`, `W=_` |
+| Four occurrences | base, `source-event-030`, `source-event-045`, `source-event-060` |
+
+Material 입력으로 확인된 값은 다음과 같다.
+
+```text
+normal_tex    fx_j_normal_bc5_09.dds
+refle_tex     fx_b_atypical_004_cube.dds
+dissolve_tex  fx_h_atypical_01_1.dds
+dependency    fx_j_noise_tile_04.dds
+
+out_color     (0.1, 0.1, 0.1, 1)
+in_color      (1, 1, 1, 1)
+refle_color   (10, 10, 10, 1)
+fresnel_pow   0.2
+refle_pow     2.0
+dissolve_hardness 5.0
+dissolve_pan  (-0.1, 0.0)
+```
+
+`umodel_dependency`는 이름만 보고 새 Material parameter로 승격하지 않는다. 부모 graph evidence에서
+실제 입력 edge가 확인될 때만 executor가 소비하고, 그 전에는 dependency provenance로만 보존한다.
+
+### 15.3 현재 결함의 분리
+
+확정된 결함은 현재 `local-crack` profile이 Mesh와 Dissolve만 필수로 검사하고, shader에서
+Dissolve R과 앞의 Vector 두 개만 사용하는 점이다. 원본의 Normal, 2D reflection carrier, Fresnel,
+reflection power/desaturation, dissolve tile/pan/hardness는 실행되지 않는다. Named parameter도
+이름이 아니라 배열 앞 순서에 의존하므로 MI override 순서가 달라지면 의미가 바뀐다.
+
+다음 두 항목은 강한 후보지만 구현 전에 Runtime Probe로 분리한다.
+
+1. `ColorScaleOverLife`의 `30/1600/120` HDR 값이 vertex color에 그대로 곱해져 파편이 둥근
+   과노출 덩어리로 합쳐지는지 확인한다. 전체 Particle에 임의의 `/255`, clamp 또는 tone-map을
+   적용하지 않고 `_4`의 CPU pre-material color와 GPU 입력을 먼저 기록한다.
+2. SourceRecipe의 location, velocity, acceleration, mesh rotation에 UE3 좌표를 그대로 사용해
+   파편이 검격 접선이 아니라 세로 열로 정렬되는지 확인한다. Authored Element Transform은 이미
+   Client 기준이므로 재변환하지 않는다.
+
+빈 Alpha distribution의 곱셈 항등값 복구는 `_14/_20`에서 닫은 공통 회귀다. `_4`는 이미
+형상이 보이므로 이를 다시 전역 Alpha 문제로 분류하거나 Alpha를 강제로 1로 덮지 않는다.
+
+### 15.4 수정 파일과 책임
+
+| 파일 | 이번 G의 변경 책임 |
+|---|---|
+| `Tools/LevelPlacementExtractor/build_effect_source_material_contract.py` | local-crack의 named texture/scalar/vector/dynamic 계약을 이름 기준으로 생성하고 전체 MI chain override를 합성 |
+| `Tools/LevelPlacementExtractor/test_build_effect_source_material_contract.py` | 네 occurrence, parameter 순서 독립성, 중간 MI override, 누락 입력 fail-closed, sampler 계약 회귀 |
+| `Client/Public/Effect_MaterialTemplate.h` | local-crack finite resource 계약을 Mesh+Dissolve 축약에서 실제 executor 입력 계약으로 강화 |
+| `Client/Public/Effect_DocumentRenderer.h` | local-crack 전용 staged constants와 세 named Texture2D resource를 명시적으로 소유 |
+| `Client/Private/Effect_DocumentRenderer.cpp` | 이름 기반 constant 구성, 세 Texture2D stage, sampler·sRGB 계약 보존, 실패 시 이전 Preview 유지 |
+| `Client/Bin/ShaderFiles/Shader_EffectCommon.hlsli` | profile 9의 UV-only 색 보간을 local-crack finite 식으로 교체 |
+| `Client/Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl` | Mesh-backed particle의 world position/TBN과 camera position을 profile 9 surface executor에 전달 |
+| `Client/Private/Effect_Playback.cpp` | SourceRecipe vector/rotation에만 UE3→Client 축 변환을 한 번 적용하고 `_4`의 seeded replay를 보존 |
+| `Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp` | 축 단일 변환, 결정적 burst, finite color, lifetime/dissolve와 네 occurrence 회귀 |
+
+새 C++ 파일은 추가하지 않는다. 따라서 `Client.vcxproj`와 `Client.vcxproj.filters` 신규 등록도
+없다. Authored, Assembly, WFX는 source parser와 runtime 계약이 합격한 뒤 기존 publisher로
+재생성하며 생성물을 손으로 고치지 않는다.
+
+### 15.5 Material executor 구현 순서
+
+1. leaf MI만 읽지 말고 `parent material → intermediate MI → leaf MI` 순서로 named texture,
+   scalar, vector, static switch override를 병합한다. 이름이 같으면 가까운 child가 이긴다.
+2. `normal_tex`, `refle_tex`, `dissolve_tex`를 source name으로 stage한다. 이름이
+   `fx_b_atypical_004_cube`인 reflection 입력도 원 UPK 속성과 DDS header가 확인한 실제
+   `Texture2D`이므로 cube SRV로 추정하지 않고 2D wrap/sRGB 계약으로 바인딩한다.
+3. 각 texture의 wrap/clamp와 sRGB/linear 정보를
+   `DimensionMaster.texture-sampling-evidence.json`에서 읽어 shader sampling까지 보존한다.
+4. Dissolve는 tile, pan, hardness와 실제 particle age를 사용한다. Dynamic Z가 source에서
+   상수 `1`이면 이를 임의의 lifetime curve로 바꾸지 않고 `g_DissolveAmount`와의 역할을 Probe로
+   분리한다.
+5. `out_color`, `in_color`, `refle_color`, Fresnel과 reflection 세기를 이름 기준으로 묶는다.
+   dark shard와 밝은 반사 edge가 분리되어야 하며 RGB를 항상 emissive white로 만들지 않는다.
+6. `vector_screenpos_str`, distortion과 noise는 graph edge 또는 GPU A/B 근거가 확보된 항목만
+   소비한다. 미확정 채널은 `unbound`로 보존한다.
+7. cooked graph에 없는 연산은 bounded finite 식으로 구현하고 profile ID와 non-exact 상태를
+   그대로 유지한다.
+
+### 15.6 SourceRecipe 축과 색 불변식
+
+UE3 source vector 변환은 SourceRecipe module 평가 경계에만 둔다.
+
+```text
+UE3 location/velocity/acceleration/mesh rotation
+→ UE3→Client 좌표 변환 1회
+→ local-space particle update
+→ 이미 Client 기준인 Element World 적용
+```
+
+Action source의 UE3 Cue Local Position도 authoring recipe 생성 경계에서 같은 basis 변환을
+정확히 한 번 적용한다. 그 결과 SwingHit Position은 `(0.5,-0.9,0.5)`가 되고, runtime의
+Element World/root snapshot에는 다시 변환하지 않는다. `_30`과 dust에서 발견한 축 문제를
+공통 helper로 고치더라도 `_4` seeded
+burst의 동일 seed·동일 결과가 유지돼야 한다.
+
+Particle color는 원본 HDR 의도를 보존하되 NaN/Inf와 무제한 과노출을 허용하지 않는다.
+전역 정규화 상수를 추측하지 않고 다음 Probe를 먼저 남긴다.
+
+```text
+normalized age 0.00 / 0.25 / 0.50 / 0.75 / 1.00
+BaseColor / ColorScaleOverLife / final vertexColor
+Dynamic X/Y/Z/W
+position / velocity / mesh rotation
+local-crack pre-alpha / pre-emissive RGB
+```
+
+### 15.7 세 번째 Debug EXE 수동 A/B
+
+같은 실행에서 다음 순서를 지킨다.
+
+1. Data Files에서 `[Authored] effect.dimensionmaster.skill.2050210`을 Load한다.
+2. A animation `pc_sp_m_00_sk_sk_willowrend`와 Player Root snapshot을 유지한다.
+3. Screen Post를 OFF하고 정확한 `_4` Element를 선택한 뒤 `Solo Element`를 누른다.
+   `Particles Only`, `Sprite Emitters`, 선택 정보만 바뀐 집계 재생은 증거로 사용하지 않는다.
+4. `0.35 / 0.426 / 0.55 / 0.80 / 1.10 / 1.30초`를 같은 camera/FOV에서 캡처한다.
+5. 각진 파편 mesh, 검격 접선 방향의 분산, 어두운 body와 짧은 reflection edge, 점진적인
+   축소·소멸을 확인한다.
+6. base occurrence가 합격하면 `source-event-030/045/060`도 같은 상대 sample로 Solo한다.
+7. `_14/_15/_20/_3/_4`를 포함한 첫 검격 Group을 재생한다.
+8. 네 검격 Group이 합격한 뒤 `Play Complete Effect`, 마지막에만 Screen Post를 ON한다.
+
+실패 분기는 다음으로 고정한다.
+
+| 화면 결과 | 다음 조사 |
+|---|---|
+| 각진 형상이나 세로 열 | SourceRecipe 축·location·velocity·mesh rotation |
+| 방향은 맞지만 둥근 보라 덩어리 | vertex HDR color와 local-crack RGB/Fresnel 식 |
+| 형상은 맞고 즉시 사라짐/계속 남음 | Dynamic Z, particle age, Dissolve hardness/pan |
+| Solo 정상, Group에서만 깨짐 | Blend/Depth/authored order |
+| 모든 occurrence가 같은 위치 | source event root snapshot/occurrence transform |
+
+### 15.8 자동 검증과 publish 게이트
+
+시각 iteration 전에 최소한 다음 항목을 통과한다.
+
+```text
+local-crack contract Python tests
+Shader_EffectCommon.hlsli ps_5_0 compile
+ClientFrontendHarness targeted effect tests: failures 0
+Client x64 Debug compile/link: 오류 0
+JSON/XML parse와 git diff --check
+```
+
+수동 `_4` Solo가 합격하기 전에는 Assembly/WFX/Runtime Catalog를 최종 publish하지 않는다.
+합격 뒤 Authored 2050210을 기존 builder로 재컴파일하고 compile identity 일치, Effect pipeline,
+ProjectAudit, Debug runtime A 키 재생을 최종 게이트로 실행한다. 다른 클래스와 다른 Effect profile로
+확대하는 작업은 A의 `_4`와 네 occurrence가 합격한 뒤 별도 변경 단위로 진행한다.
+
+## 16. A 첫 검격 1회의 전체 레이어 해부와 원본 PNG 비교 계약
+
+### 16.1 비교 단위와 해석 경계
+
+원본 `DimensionMaster_A00.png`부터 `DimensionMaster_A04.png`까지는 하나의 밝은 호만 보여 주는
+자료가 아니다. canonical 2050210에는 `swinghit_00_1`이 `0.25 / 0.60 / 0.90 / 1.30초`에
+네 번 발생하고, 앞선 occurrence의 장수명 trail, crack, slice, dust가 다음 타격까지 남는다.
+따라서 마지막 PNG의 여러 겹 원형 잔상을 현재 타격 emitter 하나의 목표 밝기나 두께로 사용하지
+않는다.
+
+첫 타격 `0.25초`의 화면 형상 단위는 다음과 같다.
+
+| 묶음 | Element 수 | 역할 |
+|---|---:|---|
+| 선행 `core_00_1` | 2 | 타격 전 에너지와 접점 준비 |
+| `swinghit_00_1` | 19 | 중심 검격, rim, trail, crack, slice, smoke, glint |
+| 첫 타격 전용 `swingdeco_00_1` | 7 | 주변 백색 잔상 검격, 원형선, 바람, glow |
+| 첫 타격 전용 `swingdeco_00_2` | 1 | 다량의 경계 원형 particle |
+| `dust_00_1` | 1 | 검격 중심의 보라색 원형 dust |
+| Light | 1 | 원본 light container. 현재 복원값은 0이므로 시각 기여 미확정 |
+| 타격 순간 Screen Post | 2 | RGB noise와 zoom blur. Material 검증 뒤에만 합성 |
+
+즉 첫 타격은 최대 30개 Particle/Mesh 형상과 Light 1개, 타격 순간 Post 2개로 구성된다.
+`particlespriteemitter_N`은 UE3 object 이름일 뿐 Renderer 종류가 아니다. 아래 `_14`, `_15`,
+`_20`, `_3`, `_4`, `_24` 등은 이름과 달리 Mesh Renderer다.
+
+두 번째 이후 타격은 19개 `swinghit` occurrence를 반복하지만 첫 타격 전용 `swingdeco` 8개를
+새로 만들지 않는다. 대신 각 타격 직전의 `core` 2개, 해당 dust, Light, Screen Post가 붙고
+앞선 타격의 장수명 레이어가 계속 겹친다.
+
+### 16.2 원본 5 PNG에서 분리되는 시각 성분
+
+PNG에는 정확한 source time metadata가 없으므로 각 파일을 특정 occurrence와 일대일로
+단정하지 않는다. 다만 화면에서 분리되는 성분은 canonical emitter 계약과 다음처럼 대응된다.
+
+| 원본에서 보이는 성분 | canonical 주 후보 | 판정 |
+|---|---|---|
+| 가장 두껍고 밝은 백색·연보라 중심 호 | `swinghit/_15`, `_14` | `_15` Solo 정상 확인. `_14`는 B mask 합성 오류 수정 후 재검증 |
+| 중심 호 바깥의 검보라색 날카로운 rim | `swinghit/_3` | blackline 전용 profile 대상 |
+| 중심 주변의 여러 가는 백색 잔상 검격 | `swingdeco/_35`, `_36`, `_46`; `swinghit/_2`, `_19`, `_6` | 같은 `fm_h_swing_05/01` 계열의 별도 Mesh 층 |
+| 가장 오래 남는 넓은 잔상 호 | `swinghit/_20` | 수명 1.70초. 마지막 PNG 누적 잔상의 핵심 |
+| 호 경계의 가는 백색·보라 trail | `swinghit/_9`, `_50`, `_1`, `_10`; `swingdeco/_14` | Mesh body와 별도 Sprite/Ring 층 |
+| 검격 중심의 보라색 원형 dust | `dust_00_1/_42` | aura profile, spin·SubUV·축 수정 대상 |
+| 내부의 옅은 연기와 잔먼지 | `swinghit/_48`, `_52`; `swingdeco/_47` | turbulent smoke, glasshole, wind wave |
+| 경계에 다량으로 생기는 보라색 작은 particle | `swingdeco_00_2/_37`, `swinghit/_49`, `_52` | `_37`, `_49`는 fallback-blocked여서 전용 복원이 남음 |
+| 경계에 붙는 각진 균열·검보라 파편 | `swinghit/_4`, `_24`, `_13`, `_49` | local-crack 두 층, cube, additive fragment |
+| 같은 경계의 길고 반투명한 검은 무늬 선/판 | `swinghit/_30` | slice Sprite. UE3→Client 축과 전용 mask를 함께 검증 |
+| 검격 시작점의 강한 백색 bloom | `swinghit/_25`, `swingdeco/_3`, additive ring, RGB noise | `_25`는 정상 glint이므로 제거하지 않음 |
+| 마지막 PNG의 여러 겹 호 | 새 타격 body + 이전 `_20/_30/_42/_4/_24/_35/_36` | 단일 emitter 목표가 아닌 occurrence 누적 결과 |
+
+첫 PNG에서는 지연 없는 body, rim, white echo, ring과 lead-in core가 주로 보인다. 타격 후
+`+0.02초`부터 `_30`, `_52`, `_50`이 들어오고 `+0.10초`부터 `_4`, `_24`, `_48`이 들어오므로,
+두 번째 계열 프레임에서 세로 slice, dark crack, 내부 dust가 더 또렷해지는 것은 정본 시간 계약과
+일치한다.
+
+### 16.3 `swinghit_00_1` 19개 레이어와 authored 합성 순서
+
+다음 순서는 canonical base occurrence의 authored render order다. Alpha/Translucent 합성에서 이
+순서를 재정렬하지 않는다. `상대 구간`은 첫 타격 `0.25초`를 0으로 둔 근사 가시 구간이다.
+
+| 순서 | Element | Renderer / 형상 | 상대 구간 | 원본 역할 | 현재 상태 |
+|---:|---|---|---|---|---|
+| 0 | `_52` | Sprite / glasshole | `+0.02~0.32` | 짧은 방사형 dust·glass accent | generic 합성 Solo 필요 |
+| 1 | `_13` | Mesh `fm_j_cube_01` | `0~1.10` | 외곽의 떠 있는 cube 파편 | `fallback-blocked`, 전용 profile 필요 |
+| 2 | `_30` | Sprite / slice | `+0.02~1.37` | 경계의 길고 반투명한 절단선·dark texture | slice profile과 source-axis 수정 중 |
+| 3 | `_4` | Mesh `fm_a_broken_012` | `+0.10~1.10` | body 뒤쪽의 이동하는 밝은 reflection crack | local-crack 구현·Solo 미완료 |
+| 4 | `_2` | Mesh `fm_h_swing_05` | `0~0.35` | 짧은 외측 백색 echo arc | generic Material Solo 필요 |
+| 5 | `_14` | Mesh `fm_m_trail_002` | `0~0.30` | 중심 body의 짧은 flow/highlight 보강 | 음수 B mask black-output 수정 후 재검증 |
+| 6 | `_6` | Mesh `fm_h_swing_01` | `0~0.50` | 얇은 주변 백색 잔상 검격 | `fallback-blocked`, 현재 누락 가능성 큼 |
+| 7 | `_15` | Mesh `fm_h_swing_02` | `0~0.50` | 중심 백색·연보라 검격 body | `CONFIRMED_MATCH` 기준층 |
+| 8 | `_20` | Mesh `fm_m_trail_01` | `0~1.70` | 장수명 afterimage와 후반 잔상 | 빈 Alpha 항등값 수정됨, GPU 재확인 필요 |
+| 9 | `_3` | Mesh `fm_h_swing_02` | `0~0.30` | 검보라 outer rim / blackline | 전용 dynamic mapping 수정됨, GPU 재확인 필요 |
+| 10 | `_19` | Mesh `fm_h_swing_01` | `0~0.30` | 또 하나의 짧은 백색·보라 echo | generic Material Solo 필요 |
+| 11 | `_9` | Sprite / trail | `0~0.30` | 가는 경계 streak | generic 합성 Solo 필요 |
+| 12 | `_10` | Mesh `fm_b_ring_001` | `0~0.30` | 짧은 additive ring/highlight | generic 합성 Solo 필요 |
+| 13 | `_48` | Sprite / turbulent smoke | `+0.10~0.70` | 검격 내부의 옅은 smoke·dust | 위치·Alpha·축 Solo 필요 |
+| 14 | `_49` | Sprite / fragment | `0~0.60` | 작은 발광 polygon 파편 | `fallback-blocked`, 전용 profile 필요 |
+| 15 | `_24` | Mesh `fm_a_broken_012` | `+0.10~1.10` | body 앞쪽의 진한 고정형 crack cluster | local-crack 구현·Solo 미완료 |
+| 16 | `_25` | Sprite / additive glint | `0~0.30` | 검격 시작점의 백색 impact bloom | 정상 의도층, 제거·감쇠 금지 |
+| 17 | `_1` | Sprite / ring trail | `0~0.40` | 부드러운 외곽 ring/echo | generic 합성 Solo 필요 |
+| 18 | `_50` | Sprite / trail | `+0.03~0.38` | 짧은 미세 white/lilac streak | generic 합성 Solo 필요 |
+
+`_4`와 `_24`는 같은 broken Mesh의 중복이 아니다. `_4`는 body보다 먼저 그려지는 후면 이동·반사
+파편이고 `_24`는 smoke와 fragment 뒤, glint 앞에 그려지는 전면 crack이다. 하나만 맞추거나 둘을
+같은 MI 값으로 합치면 원본 외곽 파괴감과 depth layering이 사라진다.
+
+### 16.4 첫 타격 전용 보조 레이어
+
+| Group / Element | Renderer | 상대 구간 | 역할 | 현재 상태 |
+|---|---|---|---|---|
+| `core_00_1/_1` | Sprite | `-0.16~+0.19` | 타격 직전 caustic/electric contact | generic 합성 확인 필요 |
+| `core_00_1/_23` | Sprite | `-0.16~+0.24` | pivot 주변 movedissolve 에너지 | generic 합성 확인 필요 |
+| `dust_00_1/_42` | Sprite | `0~1.30` | 중심 보라 원형 dust volume | aura, spin, SubUV, source-axis 수정 중 |
+| `swingdeco/_44` | Sprite | `+0.05~1.05` | 긴 additive GL line/distortion accent | `fallback-blocked` |
+| `swingdeco/_14` | Sprite | `0~0.20` | 짧은 additive ring | generic 합성 확인 필요 |
+| `swingdeco/_35` | Mesh `fm_h_swing_05` | `0~1.20` | 첫 번째 장수명 백색 ghost slash | missiletrail 의미 복원 필요 |
+| `swingdeco/_36` | Mesh `fm_h_swing_05` | `0~1.20` | 다른 SourceRecipe Transform의 두 번째 ghost slash | `_35`와 분리 Solo 필요 |
+| `swingdeco/_46` | Mesh `fm_h_swing_05` | `0~0.30` | 짧게 여러 장 생기는 소형 echo slash | missiletrail 전용 profile 수정 중 |
+| `swingdeco/_47` | Sprite | `0~0.60` | 투명 wind/distortion wave | generic 합성 확인 필요 |
+| `swingdeco/_3` | Sprite | `0~0.15` | 접점의 짧은 circle glow | circle profile GPU 확인 필요 |
+| `swingdeco_00_2/_37` | Sprite, burst 120 | `0~0.60` | 호 경계의 다량 원형 particle halo | `fallback-blocked` |
+
+첫 타격 Light는 정본 container로 존재하지만 현재 Authored에는 range, intensity, color가 모두 0이다.
+따라서 지금 보이는 bloom을 Light 복원 완료의 증거로 취급하지 않는다. ZoomBlur도 현재 intensity가
+0이므로 Screen Post ON/OFF 비교와 별도로 원본 값 파싱 누락 여부를 추적한다. RGBNoise는 impact마다
+0.10초, intensity 1로 존재한다.
+
+### 16.5 누적 잔상이 생기는 실제 이유
+
+첫 타격 기준 장수명 종료 시점은 다음과 같다.
+
+```text
+0.55 s absolute  _14 / _3 / _19 / _9 / _10 / _25 종료
+0.75 s absolute  _15 / _6 종료
+0.85~0.95 s      _37 / _47 / _49 / _48 종료
+1.30~1.35 s      _44 / _13 / _4 / _24 종료
+1.45~1.55 s      _35 / _36 / _42 종료
+1.62 s           _30 slice 종료
+1.95 s           _20 long trail 종료
+```
+
+따라서 두 번째 타격 `0.60초`에는 첫 타격의 `_15`, `_6`, `_20`, `_13`, `_30`, `_4`, `_24`,
+`_35`, `_36`, `_42` 등이 아직 남아 있다. 네 번째 타격 `1.30초`에도 첫 타격의 `_20`, `_30`,
+`_35`, `_36`, `_42`와 수명 끝자락의 crack/cube가 남고, 두 번째·세 번째 occurrence의 동일 장수명
+레이어까지 겹친다. 마지막 PNG의 두꺼운 원과 여러 mesh 잔상은 이 누적이므로 단일 `_15`나 `_14`의
+Scale, opacity, emissive를 키워 재현하지 않는다.
+
+### 16.6 부모 세션의 즉시 Solo 비교 순서
+
+항상 `[Authored] effect.dimensionmaster.skill.2050210`과 실제 `Solo Element`를 사용한다.
+`Mesh Emitters`, `Sprite Emitters`, `Particles Only`는 범위 재생이며 선택된 Element의 Solo 증거가
+아니다. emitter 번호가 group마다 중복되므로 화면과 기록에는 `groupId/emitter`를 함께 남긴다.
+
+1. Screen Post OFF, 동일 camera/FOV/pivot에서 기준 body인 `swinghit/_15`를 캡처한다.
+2. 중심 합성을 `_14 → _3 → _2 → _19 → _6 → _20` 순서로 각각 Solo한다.
+3. 파괴층을 `_4 → _24 → _13 → _49 → _52` 순서로 확인한다.
+4. 선·glow·trail을 `_30 → _10 → _25 → _9 → _50 → _1 → _48` 순서로 확인한다.
+5. 주변 백색 잔상을 `swingdeco/_35 → _36 → _46`으로 분리한다.
+6. 나머지 deco를 `swingdeco/_44 → _14 → _47 → _3 → swingdeco_00_2/_37`로 확인한다.
+7. `dust_00_1/_42`, `core/_1`, `core/_23`을 각각 확인한다.
+8. 개별 Solo가 합격하면 첫 `swinghit` Group, 첫 타격 전체 보조 Group, Complete Effect Post OFF,
+   마지막에만 Complete Effect Post ON으로 넓힌다.
+
+첫 타격 절대 Sample Time은 다음 지점을 고정 비교한다.
+
+```text
+0.250  즉시 body/rim/ring/glint
+0.270  slice/glasshole 진입
+0.350  local-crack/smoke 진입, 전체 형상 최대 비교점
+0.450  short ring과 glow 소멸 직전
+0.550  short body/rim 종료점
+0.750  중심 body 종료점
+0.850  particle halo와 wind 종료점
+1.250  crack/cube/deco ghost 후반
+1.550  dust/deco ghost 종료점
+1.950  `_20` long trail 종료점
+```
+
+### 16.7 수정 우선순위와 완료 판정
+
+| 우선순위 | 수정 단위 | 완료 증거 |
+|---:|---|---|
+| 1 | `_14` linearflow B mask 합성, `_20` Alpha 항등값 | `_15`와 함께 밝은 body가 되고 검은 판·완전 투명 없음 |
+| 2 | SourceRecipe에만 UE3→Client 축 변환 1회 | `_30`, dust, crack가 검격 접선과 원본 spawn 위치를 따름 |
+| 3 | `_42` aura spin, 8×4 SubUV, alpha mask | 보라 사각판 없이 원형 dust가 중심에서 회전·소멸 |
+| 4 | `_30` slice envelope와 axis | 세로 거대 판이 아니라 경계에 붙는 얇은 반투명 dark line |
+| 5 | `_4/_24` local-crack 전체 MI chain·Normal·reflection·dissolve | 각진 후면/전면 파편이 분리되고 보라 bead 열 없음 |
+| 6 | `_35/_36/_46` missiletrail | 중심 외곽의 여러 백색 ghost slash가 서로 다른 Transform으로 보임 |
+| 7 | fallback-blocked `_6/_13/_49/_44/_37` | 얇은 white echo, cube, fragment, GL line, particle halo가 개별 Solo에서 식별됨 |
+| 8 | Light와 ZoomBlur의 0값 provenance | Material 합격 뒤 Post ON에서만 원본 impact amplification이 추가됨 |
+
+현재 PNG 비교에서 가장 큰 누락 가능성은 `_6`, `_13`, `_49`, `_44`, `_37`이다. 모두 정본
+Element와 SourceRecipe는 존재하지만 runtime profile이 `fallback-blocked`다. `_15`가 정상이라고
+해서 이 다섯 층까지 복원된 것으로 판정하지 않는다.
+
+완료 판정은 `중심 body`, `dark rim`, `white echo`, `slice line`, `purple dust`, `crack/cube/fragment`,
+`contact glint`, `long afterimage` 여덟 서명을 각각 Solo로 식별한 뒤 authored order의 첫 타격
+합성과 네 occurrence 누적을 별도로 통과하는 것이다. cooked graph의 소실 edge가 남아 있으므로
+시각 A/B 합격 후에도 각 finite profile은 `RECONSTRUCTED_PROFILE`, `RUNTIME_EXACT=0`을 유지한다.

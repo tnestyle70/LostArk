@@ -44,6 +44,9 @@
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
+    <ClInclude Include="..\Public\DestructionSimulationDocument.h" />
+    <ClInclude Include="..\Public\DestructionSimulationRuntime.h" />
+    <ClInclude Include="..\Public\DestructionSimulationController.h" />
     <ClInclude Include="..\Public\Trigger_Box.h" />
     <ClInclude Include="..\Public\ValtanPresentationAssetService.h" />
 	<ClInclude Include="..\Public\NpcPresentationAssetService.h" />
@@ -193,6 +196,9 @@
     <ClCompile Include="..\Private\DeployPropCatalog.cpp" />
     <ClCompile Include="..\Private\DeployPropObject.cpp" />
     <ClCompile Include="..\Private\DeployPropRuntime.cpp" />
+    <ClCompile Include="..\Private\DestructionSimulationDocument.cpp" />
+    <ClCompile Include="..\Private\DestructionSimulationRuntime.cpp" />
+    <ClCompile Include="..\Private\DestructionSimulationController.cpp" />
     <ClCompile Include="..\Private\MapAssetPreview.cpp" />
     <ClCompile Include="..\Private\MapPlacementDocument.cpp" />
     <ClCompile Include="..\Private\MapPlacementRuntime.cpp" />
@@ -276,6 +282,7 @@
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements" />
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_SHS_RCARENA_D\LV_SHS_RCARENA_D.mapplacements" />
     <None Include="..\..\Data\Maps\Editor\ACTIVE.maparea" />
@@ -755,6 +762,7 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.material-resource-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.texture-sampling-evidence.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.parent-material-graph-evidence.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.skeletal-mesh-sockets.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.source-material-evidence.json" />

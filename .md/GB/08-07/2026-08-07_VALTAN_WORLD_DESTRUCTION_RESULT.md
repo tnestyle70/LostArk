@@ -4,6 +4,10 @@
 최초 브랜치: `feature/maptool-world-destruction-bern-nav`
 2026-08-08 간편 편집기 브랜치: `codex/maptool-wall-editor`
 
+> 2026-08-08 문서 정합성 메모: 대응 PLAN은 현재 코드와 PhysX/Server 수직 슬라이스 기준으로 전면
+> 개정됐다. 아래 0절은 2026-08-07 당시 “최초 PLAN보다 코드가 먼저 진행됐다”는 실제 결과 기록이며,
+> 이번 계획서 개정이 C++ 구현 완료를 뜻하지는 않는다.
+
 ## 0. 계획과 실제 반영 범위가 다르다 — 먼저 읽을 것
 
 PLAN 2절은 이번 G1을 **읽기 전용 진단 모드**로 못박고 "저장 경로, dirty 플래그, runtime 상태
@@ -292,3 +296,95 @@ Play/Pause/Restart/Use Current Time이 stage와 offset을 올바르게 갱신하
 ```
 
 GUI 수동 검증은 이 세션에서 실행하지 않았으므로 PASS로 기록하지 않는다.
+
+---
+
+## 7. 2026-08-08 MapTool authoring PhysX slice 결과
+
+작업 브랜치: `codex/valtan-maptool-physics-sim`
+
+이 절은 PLAN 13절의 tool-only slice 실제 결과다. 제품 `destroyable` admission은 열지 않았고,
+MapTool에서 맵 담당자가 방향·속도·중력·수명·조건을 직접 audition할 수 있는 물리 경로만 닫았다.
+
+### 7.1 구현 완료
+
+- PhysX 5.6.1(`107.3-physx-5.6.1`) CPU SDK를 구성별 lib/DLL과 함께
+  `Engine/ThirdPartyLib/PhysX`에 고정했다. public H에는 PhysX 타입을 노출하지 않는다.
+- `CPhysics_Manager`와 `CRigidBody`가 generation actor handle, static/dynamic actor, box/sphere/capsule,
+  pose/velocity/force, gravity policy, fixed 1/60 step, paused deterministic steps와 level clear를 제공한다.
+- Engine frame에 `Post_Physics_Update`를 추가해 simulation 뒤 visible transform을 pull한다.
+- `CDestructionSimulationDocument`, `Runtime`, `Controller`를 추가했다. controller가 Play, Pause,
+  Restart, Loop, 1/60 Step, reset 후 fixed-step Seek, All/Solo와 collision preview의 단일 clock이다.
+- 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel`을 그대로 사용한다. actor root와 visible root를
+  공유하고 scaled local bounds center는 `ShapeLocalPose`로 분리해 collider 중심 관통과 world-AABB
+  이중 회전을 제거했다.
+- ANIM DeployProp은 preview 동안 실제 frame delta를 소비하지 않고 physics fixed step과 같은 tick에서
+  logical `off` clip을 전진한다. Reset/Seek는 clip 0부터 다시 계산하고 종료 시 기존 clip/track을 복원한다.
+- MapTool 실제 Development world 위 `Destruction Model View`에 Stage, Play/Pause, Restart, Loop,
+  timeline/marker, 1/60 Step, All Debris, Solo Selected, manual collision fire를 추가했다.
+- Detail local draft는 spawn offset, normalized direction, speed, derived velocity, gravity scale, lifetime,
+  Immediate/Timeline/Collision trigger를 live audition하고 Apply에서만 document를 dirty로 만든다.
+- `ValtanWorldEvents.json`의 group `3705102` 다섯 placement와 simulation 다섯 element를 정확히 맞췄다.
+  제품 collision receiver가 아직 없으므로 초기 binding은 disabled `STAGE_TIME` 250ms로 두고,
+  실제 Collision Box가 저작된 뒤에만 `COLLISION_IMPACT`로 전환한다.
+- WorldEvents와 simulation은 cross-validation 뒤 하나의 pair transaction으로 저장한다. 두 번째 canonical
+  replace가 실패하면 첫 파일을 byte-exact 원본으로 rollback하고 sidecar를 정리한다.
+
+### 7.2 자동 검증
+
+| 검증 | 결과 |
+|---|---|
+| Engine x64 Debug / Release | PASS |
+| `UpdateLib.bat Debug / Release` | PASS, PhysX/PhysXCommon/PhysXFoundation DLL 배포 |
+| PhysicsContractHarness Debug / Release | PASS, 180 fixed steps, local shape pose, settle, clear invalidation |
+| destruction document 정상/negative/cross-ref/단일-file rollback | PASS |
+| WorldEvents + simulation pair commit/두 번째 파일 잠금 rollback | PASS, 두 원본 byte-exact 보존·sidecar 0 |
+| Shared + NetworkProtocolHarness Debug / Release | PASS, failures 0 |
+| Server Debug / Release + `--contract-test` | PASS, failures 0 |
+| Client x64 Debug / Release | PASS, `Client.exe` 링크 |
+| ProjectAudit | PASS, 81 checks |
+| JSON/XML parse, MapTool CP949+CRLF, `git diff --check` | PASS |
+
+빌드 로그의 `C4819`와 Release DirectXTK `LNK4099`는 기존 인코딩/PDB 경고이며 새 컴파일 오류는 없다.
+
+### 7.3 수동 인게임 검증 — 아직 PASS 처리하지 않음
+
+자동 검증 뒤 통합 Server/Client를 실행했으며 GUI 결과는 사용자가 확인 중이다. 아직 PASS로 기록하지 않는다.
+
+```text
+1. Client/Bin/Debug/Client.exe를 Client/Default 작업 디렉터리에서 실행
+2. Lobby -> Test -> LEVEL::DEVELOPMENT
+3. F1 -> Map Tool -> Valtan -> World Destruction
+4. group destroyable.group.valtan.wall.3705102 선택
+5. Destruction Model View -> Stage + Play All
+6. All Debris / Solo Selected, Pause, 1/60 Step, Restart, timeline Seek 확인
+7. Detail에서 direction/speed/gravity/lifetime을 바꾸고 live audition 확인
+8. Apply Detail 뒤 Save All, Area 재진입 후 값 유지 확인
+9. Collision trigger element에서는 Fire Collision로 발화 확인
+10. tool close/Area switch에서 벽 pose와 physics actor가 원상복귀하는지 확인
+```
+
+### 7.4 의도적으로 미완료인 제품 경계
+
+`Publish-WorldGameplay.ps1`은 `Gameplay.world.json kind=destroyable`을 계속 fail-closed로 거부한다.
+이번 simulation JSON은 publisher 입력이 아니므로 MapTool audition은 그 거부 대상이 아니다. Server
+persistent state, dynamic collision/navigation, Valtan 실제 charge impact, Shared full/delta와 제품 Client
+debris presentation은 PLAN의 `WD-G05`~`WD-G08`에서 함께 구현하기 전까지 완료로 판단하지 않는다.
+
+### 7.5 Git 상태
+
+`codex/valtan-physics-maptool-integration`에서 MapTool 작업자 commit, Primary Effect 복구본과 PhysX slice를
+합친 뒤 Debug Engine/Server/Client와 PhysicsContractHarness를 다시 통과했다. 사용자의 명시적 요청에 따라
+GUI 검증과 병행해 이 통합 단위를 commit/push한다.
+
+### 7.6 Valtan Area 진입 회귀 원인과 방지
+
+- Git 제외 대상인 `Client/Bin/Resources/Map/LV_LUT_HEARTRB_ED`에서 catalog 요구 파일 654개
+  (`.wmodel` 235, `.dds` 407, 기타 12)가 빠져 strict MapAsset stage가 첫 누락 모델에서 rollback됐다.
+- 팀 runtime pack에서 **없는 파일만** 보충해 기존 파일을 덮지 않았고, catalog 요구 누락을 0으로 만들었다.
+- 상대 작업의 빈 `ValtanWorldEvents.json`은 simulation `groupId`를 해석하지 못한다. 반대로 존재하지 않는
+  collision ID를 binding에 남기면 external-reference validation에서 실패한다. 통합 데이터는 5-member group과
+  `STAGE_TIME` 250ms / 빈 receiver를 사용한다.
+- MapTool workspace bar에 Area stage 실패 status를 항상 표시해 다음 담당자가 조용한 실패로 오인하지 않게 했다.
+- 잘못된 별도 worktree EXE를 실행하면 Primary의 미커밋 Effect/Data/Shader를 읽지 않아 외형·성능이 회귀해
+  보일 수 있다. 통합 smoke는 실행 파일 경로, 작업 디렉터리, `LOSTARK_RESOURCE_ROOT`를 함께 고정한다.

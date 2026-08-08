@@ -217,6 +217,9 @@
     <Filter Include="02.Utility\15. Sound">
       <UniqueIdentifier>{58401d24-5b8f-4705-b240-42ad67f1a8a3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.Utility\16. Physics">
+      <UniqueIdentifier>{63aea2b1-10c7-48da-b94c-dc71a6fb98e6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Engine_Defines.h">
@@ -432,6 +435,12 @@
     <ClInclude Include="..\Public\Profiler.h">
       <Filter>02.Utility\13. Profiler</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Physics_Manager.h">
+      <Filter>02.Utility\16. Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RigidBody.h">
+      <Filter>02.Utility\16. Physics</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\NavGrid.h">
       <Filter>02.Utility\04.Component\Navigation</Filter>
     </ClInclude>
@@ -646,6 +655,12 @@
     </ClCompile>
     <ClCompile Include="..\Private\Profiler.cpp">
       <Filter>02.Utility\13. Profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Physics_Manager.cpp">
+      <Filter>02.Utility\16. Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\RigidBody.cpp">
+      <Filter>02.Utility\16. Physics</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\NavGrid.cpp">
       <Filter>02.Utility\04.Component\Navigation</Filter>

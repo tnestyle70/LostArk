@@ -282,6 +282,14 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
                 "effect.ue3.linearflow-02.v1",
             ),
             (
+                "fx_m_mi_j_00.fx_m.fx_j_pa_slice_01_tr",
+                "effect.ue3.slice.v1",
+            ),
+            (
+                "fx_m_mi_m_00.fx_m.fx_m_pa_missiletrail_01_tr",
+                "effect.ue3.missiletrail-01.v1",
+            ),
+            (
                 "fx_m_mi_j_00.fx_m.fx_j_me_localcrack_01_tr",
                 "effect.ue3.local-crack.v1",
             ),
@@ -328,29 +336,80 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
             "effect.ue3.shine.v1",
             [{"slotId": "base", "assetId": "Effect/fx_a_blankwhite_01.dds"}],
         ))
+        blackline_textures = {
+            "textures": [
+                {"name": name, "assetId": f"Effect/{name}.dds"}
+                for name in (
+                    "diffuse_tex", "flow_tex", "mask_a_tex", "mask_b_tex",
+                    "dissolve_tex",
+                )
+            ]
+        }
         self.assertTrue(MODULE.finite_profile_runtime_resource_contract_satisfied(
-            "effect.ue3.blackline-aura.v1",
-            [
-                {"slotId": "mask", "assetId": "Effect/line.dds"},
-                {"slotId": "dissolve", "assetId": "Effect/dissolve.dds"},
-            ],
+            "effect.ue3.blackline-aura.v1", [], blackline_textures,
         ))
         self.assertTrue(MODULE.finite_profile_runtime_resource_contract_satisfied(
             "effect.ue3.procedural-center-glow.v1", [],
         ))
+        local_crack_textures = {
+            "textures": [{
+                "name": name,
+                "assetId": f"Effect/{name}.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": color_space,
+                "samplingEvidence": "ue3_property_or_class_default.v1",
+            } for name, color_space in (
+                ("normal_tex", "linear"),
+                ("refle_tex", "srgb"),
+                ("dissolve_tex", "srgb"),
+            )]
+        }
+        local_crack_resources = [
+            {"slotId": "meshModel", "assetId": "Effect/crack.wmodel"},
+        ]
         self.assertTrue(MODULE.finite_profile_runtime_resource_contract_satisfied(
             "effect.ue3.local-crack.v1",
-            [
-                {"slotId": "meshModel", "assetId": "Effect/crack.wmodel"},
-                {"slotId": "dissolve", "assetId": "Effect/dissolve.dds"},
-            ],
+            local_crack_resources,
+            local_crack_textures,
         ))
+        local_crack_textures["textures"][1]["samplingEvidence"] = (
+            "legacy_default"
+        )
         self.assertFalse(MODULE.finite_profile_runtime_resource_contract_satisfied(
             "effect.ue3.local-crack.v1",
-            [
-                {"slotId": "meshModel", "assetId": "Effect/crack.wmodel"},
-                {"slotId": "noise", "assetId": "Effect/noise.dds"},
-            ],
+            local_crack_resources,
+            local_crack_textures,
+        ))
+        local_crack_textures["textures"][1]["samplingEvidence"] = (
+            "ue3_property_or_class_default.v1"
+        )
+        local_crack_textures["textures"].pop()
+        self.assertFalse(MODULE.finite_profile_runtime_resource_contract_satisfied(
+            "effect.ue3.local-crack.v1",
+            local_crack_resources,
+            local_crack_textures,
+        ))
+        self.assertTrue(MODULE.finite_profile_runtime_resource_contract_satisfied(
+            "effect.ue3.slice.v1",
+            [{"slotId": "base", "assetId": "Effect/slice.dds"}],
+        ))
+        self.assertFalse(MODULE.finite_profile_runtime_resource_contract_satisfied(
+            "effect.ue3.slice.v1",
+            [{"slotId": "noise", "assetId": "Effect/slice.dds"}],
+        ))
+        missile_resources = [
+            {"slotId": "meshModel", "assetId": "Effect/trail.wmodel"},
+            {"slotId": "base", "assetId": "Effect/trail.dds"},
+            {"slotId": "mask", "assetId": "Effect/trail.dds"},
+            {"slotId": "noise", "assetId": "Effect/noise.dds"},
+            {"slotId": "dissolve", "assetId": "Effect/dissolve.dds"},
+        ]
+        self.assertTrue(MODULE.finite_profile_runtime_resource_contract_satisfied(
+            "effect.ue3.missiletrail-01.v1", missile_resources,
+        ))
+        self.assertFalse(MODULE.finite_profile_runtime_resource_contract_satisfied(
+            "effect.ue3.missiletrail-01.v1", missile_resources[:-1],
         ))
 
         linearflow_textures = {
@@ -370,6 +429,66 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         self.assertFalse(MODULE.finite_profile_runtime_resource_contract_satisfied(
             "effect.ue3.linearflow-02.v1", [], linearflow_textures,
         ))
+
+    def test_local_crack_legacy_sampling_downgrades_to_fallback_blocked(self):
+        effect = {
+            "effectAssetId": "effect.test.local-crack",
+            "elements": [{
+                "id": "crack",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "meshModel",
+                    "assetId": "Effect/crack.wmodel",
+                }],
+                "material": {
+                    "sourceMaterialPath": "fx_mi.fx_local_crack",
+                },
+            }],
+        }
+        texture_rows = [{
+            "name": name,
+            "texture": f"fx_tex.{name}",
+            "sourceObjectPath": f"fx_tex.{name}",
+            "assetId": f"Effect/{name}.dds",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "colorSpace": color_space,
+            "samplingEvidence": evidence,
+        } for name, color_space, evidence in (
+            ("normal_tex", "linear", "ue3_property_or_class_default.v1"),
+            ("refle_tex", "srgb", "legacy_default"),
+            ("dissolve_tex", "srgb", "ue3_property_or_class_default.v1"),
+        )]
+        contract = {"materialIdentities": [{
+            "sourceMaterialPath": "fx_mi.fx_local_crack",
+            "profileId": "ue3.material.local-crack",
+            "runtimeShaderProfileId": "effect.ue3.local-crack.v1",
+            "parentMaterialPath": "fx_m.fx_local_crack",
+            "sourceParameters": {
+                "textures": texture_rows,
+                "scalars": [],
+                "vectors": [],
+                "staticSwitches": [],
+            },
+            "renderState": {},
+        }]}
+        upgraded = MODULE.upgrade_effect_document(effect, contract)
+        self.assertEqual(
+            "effect.ue3.fallback-blocked.v1",
+            upgraded["elements"][0]["material"]["sourceProfile"][
+                "runtimeShaderProfileId"
+            ],
+        )
+        texture_rows[1]["samplingEvidence"] = (
+            "ue3_property_or_class_default.v1"
+        )
+        upgraded = MODULE.upgrade_effect_document(effect, contract)
+        self.assertEqual(
+            "effect.ue3.local-crack.v1",
+            upgraded["elements"][0]["material"]["sourceProfile"][
+                "runtimeShaderProfileId"
+            ],
+        )
 
     def test_direct_parent_graph_evidence_adds_only_named_texture_defaults(self):
         selected = {
@@ -465,6 +584,30 @@ class BuildEffectSourceMaterialContractTests(unittest.TestCase):
         )
         self.assertEqual(
             "dissolve", MODULE.classify_dynamic_parameter("alpha_dissolve")
+        )
+        missile_element = {
+            "sourceRecipe": {
+                "modules": [{
+                    "className": "ParticleModuleParameterDynamic",
+                    "literals": [
+                        {"propertyPath": "DynamicParams[0].ParamName",
+                         "value": "alpha_pan"},
+                        {"propertyPath": "DynamicParams[1].ParamName",
+                         "value": "uv_noise_velue"},
+                        {"propertyPath": "DynamicParams[2].ParamName",
+                         "value": "uv_noise_pan"},
+                        {"propertyPath": "DynamicParams[3].ParamName",
+                         "value": "alpha_dissolve"},
+                    ],
+                }]
+            }
+        }
+        self.assertEqual(
+            ["missile_alpha_pan", "missile_noise_strength",
+             "missile_noise_pan", "missile_dissolve"],
+            MODULE.runtime_profile_dynamic_parameter_semantics(
+                "effect.ue3.missiletrail-01.v1", missile_element
+            ),
         )
 
     def test_parent_texture_groups_replace_name_heuristic_slots(self):

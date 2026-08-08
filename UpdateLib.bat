@@ -39,6 +39,9 @@ if /i "%BUILD_CONFIG%"=="Debug" (
 )
 xcopy /y ".\Engine\ThirdPartyLib\FMOD\Bin\fmod.dll" "%CLIENT_BIN%\" || exit /b 1
 xcopy /y ".\Engine\ThirdPartyLib\Assimp\Bin\%BUILD_CONFIG%\%ASSIMP_DLL%" "%CLIENT_BIN%\" || exit /b 1
+xcopy /y ".\Engine\ThirdPartyLib\PhysX\Bin\%BUILD_CONFIG%\PhysX_64.dll" "%CLIENT_BIN%\" || exit /b 1
+xcopy /y ".\Engine\ThirdPartyLib\PhysX\Bin\%BUILD_CONFIG%\PhysXCommon_64.dll" "%CLIENT_BIN%\" || exit /b 1
+xcopy /y ".\Engine\ThirdPartyLib\PhysX\Bin\%BUILD_CONFIG%\PhysXFoundation_64.dll" "%CLIENT_BIN%\" || exit /b 1
 xcopy /y ".\Engine\Bin\ShaderFiles\*.*" ".\EngineSDK\hlsl\" || exit /b 1
 xcopy /y ".\EngineSDK\hlsl\*.*" ".\Client\Bin\ShaderFiles\" || exit /b 1
 

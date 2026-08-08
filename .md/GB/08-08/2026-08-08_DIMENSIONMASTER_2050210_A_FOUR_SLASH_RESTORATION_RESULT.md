@@ -180,3 +180,65 @@ Solo
 
 수동 GPU FPS는 아직 측정 전이다. 따라서 6 FPS 해결 완료가 아니라, 원인이었던 숨김 해제·이중 평가·
 제곱 순회를 제거하고 검증 가능한 Mesh 전용 범위를 제공한 상태다.
+
+## 10. canonical A Load의 동기 GPU stage 제거
+
+추가 재현에서 숨김과 자동 재생을 막아도 `Load Document` 자체가 117 Elements의 GPU resource를
+동기 stage한다는 병목이 남아 있음을 확인했다. canonical A에는 701개 resource reference가 있고,
+stable asset ID 기준 고유 resource는 74개다. 기존 Renderer는 Element마다 같은 WModel과 DDS도
+다시 열기 때문에 Preview를 숨기기 전에 Load 호출이 장시간 막혔다.
+
+`Try_LoadDocumentPathStaged`의 Load 계약을 다음처럼 교정했다.
+
+```text
+Load Document
+  parse -> validate -> Active Document commit
+  이전 Preview Object와 GPU resource release
+  새 GPU stage 없음
+
+Play Complete / Mesh / Sprite / Group / Solo
+  Build_PreviewDocument로 선택 범위 생성
+  해당 범위만 GPU stage
+  Character root와 Animation source time 연결 후 재생
+```
+
+정적 계약 검증에서 Load 함수 안의 `Stage_WorldPreview` 호출이 0건이고,
+`Release_WorldPreview(true)`와 deferred GPU 상태 문구가 존재함을 확인했다. Client x64 Debug 전체
+컴파일과 정본 `Client.exe` 링크는 PASS했다. 하네스는 사용자 요청에 따라 실행하지 않았다.
+
+전체 Effect Tool audit는 같은 파일의 초기 인덱스 구간을 수정 중인 병렬 세션의 미완료 계약 때문에
+`Valid partial drafts must reload...`에서 중단됐다. A Load 독립 검사는 통과했으며 이 실패를 A Load
+회귀로 기록하지 않는다. 실제 Load 응답 시간, emitter Solo FPS, Mesh 48-layer FPS는 최신 Client
+수동 GPU 검증 전이므로 아직 PASS로 기록하지 않는다.
+
+## 11. A 1검격 Solo 검증으로 확정된 복구
+
+0.25초 전후의 원본 emitter를 개별 Solo한 결과로 다음 결함과 정상 레이어를 구분했다.
+
+- `particlespriteemitter_14`, `particlespriteemitter_20`: 빈 UE3 Alpha distribution이 0으로 평가되어
+  보이지 않았다. 빈 `StartAlpha`, `AlphaOverLife`, `AlphaScaleOverLife`는 곱셈 항등값 1로 평가하되
+  명시된 0 또는 0.5 같은 값은 그대로 보존하도록 playback을 수정했다.
+- `particlespriteemitter_3`: blackline의 Dynamic Parameter를 clamp texture UV에 절대 좌표처럼 더해
+  mask A/B가 범위를 벗어났다. 이름 기반 `mask_a_pan`, `flow_strength`, `mask_b_pan`,
+  `diffuse_pan`을 각 pan 강도로 소비하는 유한식으로 교정했다. 원본 그래프가 없으므로
+  `RUNTIME_EXACT=0`은 유지한다.
+- `dust_00_1.particlespriteemitter_42`: aura DDS의 불투명 alpha와 잘못 상속된 SubUV atlas가
+  흰 판을 만들었다. RGB luminance와 radial feather를 mask로 사용하고 이 profile의 SubUV를
+  `none`으로 고정했다.
+- `swinghit_00_1.particlespriteemitter_30`: 불투명 Voronoi carrier를 generic translucent로 그려
+  세로 흰 판이 됐다. `effect.ue3.slice.v1` 전용 유한 profile로 blade envelope와 flow mask를
+  계산하도록 분리했다.
+- `swinghit_00_1.particlespriteemitter_25`: `fx_i_atypical_02`를 쓰는 additive impact glint다.
+  Alpha 3에서 0으로 감쇠하는 정상 후반 emissive/highlight 레이어이며 distortion 채널은 없다.
+  원본 A 후반 프레임의 흰색 bloom과 대응하므로 수정하거나 제거하지 않는다.
+
+자동 검증 결과는 material contract 관련 Python 43건 PASS, ClientFrontendHarness `failures 0`,
+Effect Tool final audit PASS, HLSL `ps_5_0` 컴파일 PASS, Client x64 Debug/Release 빌드 PASS다.
+최종 GPU 판정은 새 Debug 실행에서 Screen Post OFF로 위 emitter들을 Solo한 뒤 그룹과 Complete를
+확인하고, 마지막에만 Screen Post를 ON 하는 수동 검증으로 남긴다.
+
+Authored 2050210 변경 뒤 기존 WFX compile identity가 불일치한 상태도 확인했다. 검증 시에는
+Assembly 행을 선택하지 않지만 실제 인게임 소비를 위해 `build_effect_components.py`로 Authored를
+다시 compile했다. 결과는 effect 16개, component 182개, emitter 947개이며 compile identity가
+완전하게 일치한다. 새 texture sampling evidence JSON도 Client 프로젝트의 `96.DataFiles` None 항목에
+등록했다.

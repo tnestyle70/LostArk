@@ -11,7 +11,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_rb_00_1|FX_PC_SWP_00.par_j_swp_willowrend_rb_00_1.particlespriteemitter_2",
       "fx_pc_swp_00.par_j_swp_willowrend_rb_00_1|FX_PC_SWP_00.par_j_swp_willowrend_rb_00_1.particlespriteemitter_5"
     ],
-    "sourceElementSha256": "eba66d5f32120fdb5d2bb49ede6ca9a2033fb1559c421af34ba0671a2f267202",
+    "sourceElementSha256": "2e18a3c8599244e4ba894c55a37a4c79f6797b7ba14812f665495e4af77c3982",
     "inputSlot": "A"
   },
   "emitters": [
@@ -83,30 +83,50 @@
                 "name": "tex_main",
                 "sourceObjectPath": "fx_tex_06.fx_j_auraline_17_ycl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_17_ycl.dds",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "maintex"
               },
               {
                 "name": "flowtex",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_10",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow"
               },
               {
                 "name": "colormap",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "colormap"
               },
               {
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "dissolve"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_flownoise_tile_04",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_flownoise_tile_04.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -1441,12 +1461,20 @@
                 "name": "spec_texture",
                 "sourceObjectPath": "fx_j_caustic_tile_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "None"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_caustic_tile_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -1681,8 +1709,8 @@
             ],
             "acceleration": [
               0.0,
-              0.0,
-              0.2
+              0.2,
+              -0.0
             ],
             "startSize": [
               0.01,

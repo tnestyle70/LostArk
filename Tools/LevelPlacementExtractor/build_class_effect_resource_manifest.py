@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -26,15 +26,38 @@ def asset_package(asset_path: str) -> str | None:
     return package if separator and package else None
 
 
+def folded(value: Any) -> str:
+    return str(value or "").strip().casefold()
+
+
+def parent_identity_matches(candidate: str, wanted: str) -> bool:
+    candidate_key = folded(candidate)
+    wanted_key = folded(wanted)
+    return bool(
+        candidate_key
+        and wanted_key
+        and (
+            candidate_key == wanted_key
+            or candidate_key.endswith("." + wanted_key)
+            or wanted_key.endswith("." + candidate_key)
+        )
+    )
+
+
 def build_manifest(
     graph_paths: list[Path],
     inventory_path: Path,
     character_class: str,
     material_map_path: Path | None = None,
+    parent_material_evidence_path: Path | None = None,
 ) -> dict[str, Any]:
     inventory = load_package_inventory(inventory_path)
     material_sources: dict[str, set[str]] = {}
     identical_material_sources: dict[str, str] = {}
+    texture_paths_by_object: dict[str, set[str]] = defaultdict(set)
+    parent_named_texture_defaults: list[tuple[str, list[str]]] = []
+    pending_parent_texture_skill_ids: set[tuple[str, int]] = set()
+    material_map: dict[str, Any] = {}
     if material_map_path is not None:
         material_map = json.loads(material_map_path.read_text(encoding="utf-8-sig"))
         for key, candidates in material_map.get("materials", {}).items():
@@ -65,11 +88,53 @@ def build_manifest(
                             separators=(",", ":"),
                         )
                     )
+                for texture in candidate.get("textures", []):
+                    texture_path = str(texture.get("texture") or "")
+                    if texture_path and asset_package(texture_path):
+                        texture_paths_by_object[
+                            folded(texture_path).rsplit(".", 1)[-1]
+                        ].add(texture_path)
             folded_key = str(key).casefold()
             if len(signatures) == 1 and material_sources.get(folded_key):
                 identical_material_sources[folded_key] = sorted(
                     material_sources[folded_key], key=str.casefold
                 )[0]
+    parent_material_evidence = material_map
+    if parent_material_evidence_path is not None:
+        parent_material_evidence = json.loads(
+            parent_material_evidence_path.read_text(encoding="utf-8-sig")
+        )
+    if parent_material_evidence:
+        for evidence in parent_material_evidence.get(
+            "parentMaterialEvidence", {}
+        ).values():
+            if not isinstance(evidence, dict):
+                continue
+            parent_path = str(evidence.get("parentMaterialPath") or "")
+            material_evidence = evidence.get("materialEvidence") or {}
+            named_defaults = []
+            for texture in material_evidence.get(
+                "collectedTextureParameters", []
+            ):
+                source_path = str(texture.get("texture") or "")
+                if not source_path:
+                    continue
+                if not asset_package(source_path):
+                    candidates = texture_paths_by_object.get(
+                        folded(source_path).rsplit(".", 1)[-1], set()
+                    )
+                    if len(candidates) == 1:
+                        source_path = next(iter(candidates))
+                    else:
+                        # Parent evidence may contain object names without a
+                        # package. Only the canonical material map can qualify
+                        # them; the evidence document must not widen admission.
+                        continue
+                named_defaults.append(source_path)
+            if parent_path and named_defaults:
+                parent_named_texture_defaults.append(
+                    (parent_path, named_defaults)
+                )
     assets: dict[str, dict[str, Any]] = {}
     unresolved_materials: dict[tuple[int, str], dict[str, Any]] = {}
 
@@ -146,8 +211,26 @@ def build_manifest(
                     else None
                 ),
             )
+            for parent_path, texture_defaults in parent_named_texture_defaults:
+                if not parent_identity_matches(
+                    parent_path, str(material.get("parent") or "")
+                ):
+                    continue
+                for texture_path in texture_defaults:
+                    pending_parent_texture_skill_ids.add(
+                        (folded(texture_path), skill_id)
+                    )
             for texture in material.get("textures", []):
                 add_asset(texture.get("texture"), "texture", skill_id)
+
+    # Parent defaults only propagate ownership onto assets already admitted by
+    # normalized graph evidence. They never create a new manifest asset row.
+    for texture_key, skill_id in pending_parent_texture_skill_ids:
+        row = assets.get(texture_key)
+        if row is None:
+            continue
+        row["roles"].add("texture")
+        row["skillIds"].add(skill_id)
 
     serialized_assets = []
     unresolved_packages = set()
@@ -217,6 +300,14 @@ def main() -> int:
     parser.add_argument("--inventory-csv", required=True, type=Path)
     parser.add_argument("--character-class", required=True)
     parser.add_argument("--material-map", type=Path)
+    parser.add_argument(
+        "--parent-material-evidence",
+        type=Path,
+        help=(
+            "Optional source-material evidence containing parent Material "
+            "named texture defaults."
+        ),
+    )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
         "--exclude-skill-id",
@@ -238,7 +329,11 @@ def main() -> int:
     if not graph_paths:
         raise ValueError(f"no normalized graphs below {args.graphs_root}")
     document = build_manifest(
-        graph_paths, args.inventory_csv, args.character_class, args.material_map
+        graph_paths,
+        args.inventory_csv,
+        args.character_class,
+        args.material_map,
+        args.parent_material_evidence,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

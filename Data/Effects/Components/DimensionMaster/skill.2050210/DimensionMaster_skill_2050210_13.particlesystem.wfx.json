@@ -28,7 +28,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1|FX_PC_SWP_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_6|event:source-event-030",
       "fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1|FX_PC_SWP_00.par_j_swp_willowrend_swinghit_00_1.particlespriteemitter_9|event:source-event-030"
     ],
-    "sourceElementSha256": "de59604d6e1a2106ef1e1ef443387bf5afbea318f756ae23533076ecc417b7dc",
+    "sourceElementSha256": "be3bc613e1094ad0c9ff5f1c41e0cc1fac121db93fd8d33a3940f06902a8ba5e",
     "inputSlot": "A"
   },
   "emitters": [
@@ -249,24 +249,40 @@
                 "name": "cracknormal_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "cracknormal"
               },
               {
                 "name": "in_hole_texture",
                 "sourceObjectPath": "fx_tex_06.fx_m_cybernoise_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "in"
               },
               {
                 "name": "aura_texture",
                 "sourceObjectPath": "fx_tex_06.fx_j_dustparticle_tile_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_08",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_08.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -457,7 +473,7 @@
             "staticSwitches": [],
             "dynamicParameterSemantics": [
               "radial_size",
-              "unbound",
+              "flow_strength",
               "uv_pan",
               "unbound"
             ],
@@ -492,8 +508,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -636,23 +652,23 @@
             ],
             "initialPositionMin": [
               2.0,
-              3.5,
-              0.0
+              0.0,
+              -3.5
             ],
             "initialPositionMax": [
               2.0,
-              3.5,
-              0.0
+              0.0,
+              -3.5
             ],
             "initialVelocityMin": [
               0.0,
-              -0.25,
-              0.0
+              0.0,
+              0.25
             ],
             "initialVelocityMax": [
               0.0,
-              -0.25,
-              0.0
+              0.0,
+              0.25
             ],
             "acceleration": [
               0.0,
@@ -1864,12 +1880,20 @@
                 "name": "spec_texture",
                 "sourceObjectPath": "fx_j_caustic_tile_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "None"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_caustic_tile_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -1940,8 +1964,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -2084,23 +2108,23 @@
             ],
             "initialPositionMin": [
               1.8,
-              -0.6,
-              0.0
+              0.0,
+              -1.6
             ],
             "initialPositionMax": [
               1.8,
-              1.6,
-              0.0
+              0.0,
+              0.6
             ],
             "initialVelocityMin": [
               0.05,
-              -0.3,
-              0.0
+              0.0,
+              0.1
             ],
             "initialVelocityMax": [
               0.1,
-              -0.1,
-              0.0
+              0.0,
+              0.3
             ],
             "acceleration": [
               0.0,
@@ -3543,7 +3567,7 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.slice.01.tr.afc439ecf232",
-            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "runtimeShaderProfileId": "effect.ue3.slice.v1",
             "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_slice_01_tr",
             "semanticStatus": "reconstructed_profile",
             "textures": [
@@ -3551,6 +3575,10 @@
                 "name": "slice_flow_texture",
                 "sourceObjectPath": "fx_tex_06.fx_j_voronoi_tile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_voronoi_tile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow"
               }
             ],
@@ -3611,7 +3639,7 @@
             "dynamicParameterSemantics": [
               "unbound",
               "opacity",
-              "unbound",
+              "flow_strength",
               "unbound"
             ],
             "subUVMode": "none"
@@ -3645,8 +3673,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -3789,23 +3817,23 @@
             ],
             "initialPositionMin": [
               2.1,
-              4.7,
-              0.0
+              0.0,
+              -4.7
             ],
             "initialPositionMax": [
               2.1,
-              4.7,
-              0.0
+              0.0,
+              -4.7
             ],
             "initialVelocityMin": [
               0.0,
-              0.2,
-              0.0
+              0.0,
+              -0.2
             ],
             "initialVelocityMax": [
               0.0,
-              0.2,
-              0.0
+              0.0,
+              -0.2
             ],
             "acceleration": [
               0.0,
@@ -5136,24 +5164,40 @@
                 "name": "normal_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "normal"
               },
               {
                 "name": "refle_tex",
                 "sourceObjectPath": "fx_b_atypical_004_cube",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "reflection"
               },
               {
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "dissolve"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -5324,8 +5368,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -5478,13 +5522,13 @@
             ],
             "initialVelocityMin": [
               0.3,
-              -3.0,
-              0.0
+              0.0,
+              1.0
             ],
             "initialVelocityMax": [
               0.6,
-              -1.0,
-              0.0
+              0.0,
+              3.0
             ],
             "acceleration": [
               0.0,
@@ -7066,36 +7110,60 @@
                 "name": "opacity_tex",
                 "sourceObjectPath": "fx_tex_05.fx_k_trail_up_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_trail_up_01.dds",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "opacity"
               },
               {
                 "name": "diff_tex1",
                 "sourceObjectPath": "fx_tex_05.fx_k_auraline_16",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_16.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "diff_tex2",
                 "sourceObjectPath": "fx_tex_05.fx_k_caustictile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "color_tex",
                 "sourceObjectPath": "fx_l_environment_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "color"
               },
               {
                 "name": "flowtex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_caustic_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_caustic_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -7291,8 +7359,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -7435,13 +7503,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              0.55
+              0.55,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              0.55
+              0.55,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -8768,48 +8836,80 @@
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "00_dissolve"
               },
               {
                 "name": "b_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b_noise"
               },
               {
                 "name": "b_mask_tex",
                 "sourceObjectPath": "fx_tex_05.fx_m_spatter_001_xyclamp",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b"
               },
               {
                 "name": "a_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a_noise"
               },
               {
                 "name": "a_mask_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_auraline_19_ycl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_19_ycl.dds",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a"
               },
               {
                 "name": "diff_noise_tex",
                 "sourceObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_bg_dustpanner_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "01_diffuse"
               },
               {
                 "name": "diff_tex",
                 "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_mirnoise_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "01_diffuse"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_08",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_08.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -9174,10 +9274,10 @@
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "unbound",
-              "unbound",
-              "distortion",
-              "distortion"
+              "mask_a_offset",
+              "mask_b_offset",
+              "mask_a_distort",
+              "mask_b_distort"
             ],
             "subUVMode": "none"
           }
@@ -9210,8 +9310,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -9354,13 +9454,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              -0.1,
-              0.0
+              0.0,
+              0.1
             ],
             "initialPositionMax": [
               0.0,
-              -0.1,
-              0.0
+              0.0,
+              0.1
             ],
             "initialVelocityMin": [
               0.0,
@@ -10676,6 +10776,10 @@
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_00.fx_a_noise_018",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_018.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -10719,8 +10823,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -10864,12 +10968,12 @@
             "initialPositionMin": [
               -0.3,
               0.0,
-              0.0
+              -0.0
             ],
             "initialPositionMax": [
               -0.3,
               0.0,
-              0.0
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -11972,48 +12076,80 @@
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "00_dissolve"
               },
               {
                 "name": "b_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b_noise"
               },
               {
                 "name": "b_mask_tex",
                 "sourceObjectPath": "fx_tex_05.fx_m_spatter_001_xyclamp",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b"
               },
               {
                 "name": "a_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a_noise"
               },
               {
                 "name": "a_mask_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_auraline_19_ycl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_auraline_19_ycl.dds",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a"
               },
               {
                 "name": "diff_noise_tex",
                 "sourceObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_bg_dustpanner_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "01_diffuse"
               },
               {
                 "name": "diff_tex",
                 "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_mirnoise_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "01_diffuse"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_08",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_08.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -12378,10 +12514,10 @@
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "unbound",
-              "unbound",
-              "distortion",
-              "distortion"
+              "mask_a_offset",
+              "mask_b_offset",
+              "mask_a_distort",
+              "mask_b_distort"
             ],
             "subUVMode": "none"
           }
@@ -12414,8 +12550,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -13774,48 +13910,80 @@
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "00_dissolve"
               },
               {
                 "name": "b_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b_noise"
               },
               {
                 "name": "b_mask_tex",
                 "sourceObjectPath": "fx_tex_05.fx_k_auraline_04_ycl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_04_ycl.dds",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_b"
               },
               {
                 "name": "a_noise_01_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a_noise"
               },
               {
                 "name": "a_mask_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_line_08_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_line_08_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "mask_a"
               },
               {
                 "name": "diff_noise_tex",
                 "sourceObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_bg_dustpanner_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "01_diffuse"
               },
               {
                 "name": "diff_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_cloud_tile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_cloud_tile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "01_diffuse"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_08",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_08.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -14180,10 +14348,10 @@
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "unbound",
-              "unbound",
-              "distortion",
-              "distortion"
+              "mask_a_offset",
+              "mask_b_offset",
+              "mask_a_distort",
+              "mask_b_distort"
             ],
             "subUVMode": "none"
           }
@@ -14216,8 +14384,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -15552,36 +15720,60 @@
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "dissolve"
               },
               {
                 "name": "flow_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "99_flow"
               },
               {
                 "name": "mask_b_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_line_03_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_line_03_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "01_mask_b"
               },
               {
                 "name": "mask_a_tex",
                 "sourceObjectPath": "fx_tex_06.fx_j_line_01_xcl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_line_01_xcl.dds",
+                "addressU": "clamp",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "00_mask_a"
               },
               {
                 "name": "diffuse_tex",
                 "sourceObjectPath": "fx_tex_05.fx_l_environment_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "02_diffuse"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_04",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_04.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -15906,10 +16098,10 @@
             ],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "uv_pan",
-              "unbound",
-              "uv_pan",
-              "uv_pan"
+              "mask_a_pan",
+              "flow_strength",
+              "mask_b_pan",
+              "diffuse_pan"
             ],
             "subUVMode": "none"
           }
@@ -15942,8 +16134,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -17306,36 +17498,60 @@
                 "name": "opacity_tex",
                 "sourceObjectPath": "fx_tex_01.fx_c_atypical_007_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "opacity"
               },
               {
                 "name": "diff_tex1",
                 "sourceObjectPath": "fx_tex_05.fx_k_auraline_16",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_16.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "diff_tex2",
                 "sourceObjectPath": "fx_tex_05.fx_k_caustictile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "color_tex",
                 "sourceObjectPath": "fx_l_environment_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "color"
               },
               {
                 "name": "flowtex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_caustic_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_caustic_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -17531,8 +17747,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -18977,24 +19193,40 @@
                 "name": "tex_uvnoise_01",
                 "sourceObjectPath": "fx_tex_05.fx_m_noise_004",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_004.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_flow"
               },
               {
                 "name": "tex_alpha_02",
                 "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_alpha"
               },
               {
                 "name": "tex_alpha_01",
                 "sourceObjectPath": "fx_tex_00.fx_a_trail_007",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_trail_007.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_alpha"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_trail_001_cl",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -19124,8 +19356,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -20414,42 +20646,70 @@
                 "name": "emissive_tex",
                 "sourceObjectPath": "fx_tex_00.fx_a_atypical_007",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_atypical_007.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "emissive"
               },
               {
                 "name": "uv_noise_01_tex",
                 "sourceObjectPath": "fx_tex.fx_e_noise",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "uv_noise"
               },
               {
                 "name": "alpha_tex",
                 "sourceObjectPath": "fx_tex.fx_e_alpha",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "emissive"
               },
               {
                 "name": "extra_alpha_tex",
                 "sourceObjectPath": "fx_tex.fx_e_alpha",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "extra_alpha"
               },
               {
                 "name": "mask_tex",
                 "sourceObjectPath": "fx_tex_00.fx_a_fire_003",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fire_003.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "emissive"
               },
               {
                 "name": "uv_noise_02_tex",
                 "sourceObjectPath": "fx_tex.fx_e_noise",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "uv_noise"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_mastermaterial.fx_e_adex",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -20634,8 +20894,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -20778,13 +21038,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.15,
-              0.0
+              0.0,
+              -0.15
             ],
             "initialPositionMax": [
               0.0,
-              0.15,
-              0.0
+              0.0,
+              -0.15
             ],
             "initialVelocityMin": [
               0.0,
@@ -21858,36 +22118,60 @@
                 "name": "edge_tex",
                 "sourceObjectPath": "fx_tex_03.fx_e_noise_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_noise_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "opacity"
               },
               {
                 "name": "diff_tex",
                 "sourceObjectPath": "fx_tex_00.fx_bg_fogsheet_cloudtex_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_bg_fogsheet_cloudtex_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "opacity_tex",
                 "sourceObjectPath": "fx_tex_00.fx_b_atypical_018",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_018.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "opacity"
               },
               {
                 "name": "add_tex",
                 "sourceObjectPath": "fx_tex_05.fx_k_smoketile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_smoketile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diff"
               },
               {
                 "name": "noise_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "noise"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_k_fluidtile_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_fluidtile_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -22017,8 +22301,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -23564,24 +23848,40 @@
                 "name": "emissive_tex",
                 "sourceObjectPath": "fx_tex.fx_e_adsi",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "emissive"
               },
               {
                 "name": "uv_noise_tex",
                 "sourceObjectPath": "fx_tex.fx_e_normal",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "uv_noise"
               },
               {
                 "name": "subuv_tex",
                 "sourceObjectPath": "fx_tex_00.fx_a_fragment_007",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_fragment_007.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_mastermaterial.fx_e_normal",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -23677,8 +23977,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -23841,8 +24141,8 @@
             ],
             "acceleration": [
               0.0,
-              0.0,
-              -3.0
+              -3.0,
+              -0.0
             ],
             "startSize": [
               0.01,
@@ -24876,24 +25176,40 @@
                 "name": "normal_tex",
                 "sourceObjectPath": "fx_j_normal_bc5_09",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "normal"
               },
               {
                 "name": "refle_tex",
                 "sourceObjectPath": "fx_b_atypical_004_cube",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_atypical_004_cube.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "reflection"
               },
               {
                 "name": "dissolve_tex",
                 "sourceObjectPath": "fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "dissolve"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -25064,8 +25380,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -25228,8 +25544,8 @@
             ],
             "acceleration": [
               0.0,
-              0.0,
-              -6.0
+              -6.0,
+              -0.0
             ],
             "startSize": [
               0.03,
@@ -26922,12 +27238,20 @@
                 "name": "emissive_tex",
                 "sourceObjectPath": "fx_tex_04.fx_i_atypical_02",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_atypical_02.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "emissive"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_mastermaterial.fx_e_adli",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -26971,8 +27295,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -28111,42 +28435,70 @@
                 "name": "1_1map_m",
                 "sourceObjectPath": "fx_c_ring_001",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "5_mask"
               },
               {
                 "name": "uvdistort_map",
                 "sourceObjectPath": "fx_d_noise_014",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "3_uvdistort"
               },
               {
                 "name": "emit tex2",
                 "sourceObjectPath": "fx_tex_05.fx_m_trail_002",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_trail_002.dds",
+                "addressU": "clamp",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "2_emission"
               },
               {
                 "name": "5_distortmap",
                 "sourceObjectPath": "fx_d_noise_009",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "4_distort"
               },
               {
                 "name": "emissionmap",
                 "sourceObjectPath": "fx_d_noise_004",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "2_emission"
               },
               {
                 "name": "hade_tex",
                 "sourceObjectPath": "fx_d_hit_007_1",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "None"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_elecircuit_001",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -28332,8 +28684,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,
@@ -29213,24 +29565,40 @@
                 "name": "tex_uvnoise_01",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_014_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_014_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_flow"
               },
               {
                 "name": "tex_alpha_02",
                 "sourceObjectPath": "fx_tex_02.fx_d_atypical_011",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_alpha"
               },
               {
                 "name": "tex_alpha_01",
                 "sourceObjectPath": "fx_tex_04.fx_h_trail_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_trail_01_1.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "tex_alpha"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_trail_001_cl",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -29360,8 +29728,8 @@
           "transform": {
             "position": [
               0.5,
-              -0.5,
-              0.8000000000000002
+              0.8000000000000002,
+              0.5
             ],
             "rotationDegrees": [
               0.0,

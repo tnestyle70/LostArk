@@ -150,6 +150,9 @@ try {
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'normal.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'reflection.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'dissolve.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'mesh.wmodel'), [byte[]](5,6,7,8))
     $modelCueResource = Join-Path $resourceRoot 'Character\Test'
     [IO.Directory]::CreateDirectory($modelCueResource) | Out-Null
@@ -351,6 +354,69 @@ try {
     & $publisher -Mode Publish -DataRoot $dataRoot `
         -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Procedural finite profile publish failed.' }
+
+    $groupedElement.resources = @([ordered]@{
+        slotId = 'meshModel'
+        assetId = 'Effect/Test/mesh.wmodel'
+    })
+    $groupedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.local-crack.v1'
+    $groupedElement.material.sourceProfile | Add-Member `
+        -NotePropertyName textures -NotePropertyValue @() -Force
+    $groupedElement.material.sourceProfile.textures = @(
+        [ordered]@{
+            name = 'normal_tex'
+            sourceObjectPath = 'fx_tex_06.fx_j_normal_bc5_09'
+            assetId = 'Effect/Test/normal.dds'
+            addressU = 'wrap'
+            addressV = 'wrap'
+            colorSpace = 'linear'
+            samplingEvidence = 'ue3_property_or_class_default.v1'
+        },
+        [ordered]@{
+            name = 'refle_tex'
+            sourceObjectPath = 'fx_tex_00.fx_b_atypical_004_cube'
+            assetId = 'Effect/Test/reflection.dds'
+            addressU = 'wrap'
+            addressV = 'wrap'
+            colorSpace = 'srgb'
+            samplingEvidence = 'ue3_property_or_class_default.v1'
+        },
+        [ordered]@{
+            name = 'dissolve_tex'
+            sourceObjectPath = 'fx_tex_04.fx_h_atypical_01_1'
+            assetId = 'Effect/Test/dissolve.dds'
+            addressU = 'wrap'
+            addressV = 'wrap'
+            colorSpace = 'srgb'
+            samplingEvidence = 'ue3_property_or_class_default.v1'
+        }
+    )
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'LocalCrack named texture publish failed.' }
+    $localCrackBaseline = [IO.File]::ReadAllBytes($output)
+
+    $localCrackReflection = $groupedElement.material.sourceProfile.textures[1]
+    $groupedElement.material.sourceProfile.textures = @(
+        $groupedElement.material.sourceProfile.textures |
+            Where-Object { $_.name -ne 'refle_tex' })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'LocalCrack without named reflection texture' `
+        $localCrackBaseline
+    $groupedElement.material.sourceProfile.textures = @(
+        $groupedElement.material.sourceProfile.textures[0],
+        $localCrackReflection,
+        $groupedElement.material.sourceProfile.textures[1]
+    )
+    $localCrackReflection.samplingEvidence = 'legacy_default'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'LocalCrack with legacy sampling fallback' `
+        $localCrackBaseline
+    $localCrackReflection.samplingEvidence =
+        'ue3_property_or_class_default.v1'
+    $groupedElement.material.sourceProfile.textures = @()
 
     $finiteBaseline = [IO.File]::ReadAllBytes($output)
     $groupedElement.material.sourceProfile.runtimeShaderProfileId =

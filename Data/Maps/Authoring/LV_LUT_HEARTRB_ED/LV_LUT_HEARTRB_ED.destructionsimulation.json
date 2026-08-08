@@ -1,0 +1,67 @@
+{
+  "schema": "lostark.destruction-simulation",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "profiles": [
+    {
+      "profileId": "destroyable.group.valtan.wall.3705102.preview",
+      "groupId": "destroyable.group.valtan.wall.3705102",
+      "durationSeconds": 5.0,
+      "previewGroundEnabled": true,
+      "previewGroundHeight": 20.0,
+      "previewGroundHalfExtents": [30.0, 30.0],
+      "elements": [
+        {
+          "elementId": "debris.9335938568718910930",
+          "sourceRuntimePlacementId": "9335938568718910930",
+          "spawnOffset": [0.0, 0.0, 0.0],
+          "direction": [0.67014796, 0.03807456, -0.74125033],
+          "speedMetersPerSecond": 8.0,
+          "gravityScale": 1.0,
+          "lifetimeSeconds": 4.0,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.9681544306002658031",
+          "sourceRuntimePlacementId": "9681544306002658031",
+          "spawnOffset": [0.0, 0.0, 0.0],
+          "direction": [-0.50183766, 0.03580043, -0.86422063],
+          "speedMetersPerSecond": 8.0,
+          "gravityScale": 1.0,
+          "lifetimeSeconds": 4.0,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.12037145985028191659",
+          "sourceRuntimePlacementId": "12037145985028191659",
+          "spawnOffset": [0.0, 0.0, 0.0],
+          "direction": [0.91219814, 0.03601969, 0.40816313],
+          "speedMetersPerSecond": 8.0,
+          "gravityScale": 1.0,
+          "lifetimeSeconds": 4.0,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.17280669848983777578",
+          "sourceRuntimePlacementId": "17280669848983777578",
+          "spawnOffset": [0.0, 0.0, 0.0],
+          "direction": [-0.99944060, 0.03275789, 0.00673802],
+          "speedMetersPerSecond": 8.0,
+          "gravityScale": 1.0,
+          "lifetimeSeconds": 4.0,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        },
+        {
+          "elementId": "debris.18177041425620847396",
+          "sourceRuntimePlacementId": "18177041425620847396",
+          "spawnOffset": [0.0, 0.0, 0.0],
+          "direction": [0.04985398, 0.03112693, 0.99827135],
+          "speedMetersPerSecond": 8.0,
+          "gravityScale": 1.0,
+          "lifetimeSeconds": 4.0,
+          "trigger": { "kind": "TIMELINE_TIME", "timeSeconds": 0.25, "receiverCollisionId": "" }
+        }
+      ]
+    }
+  ]
+}

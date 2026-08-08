@@ -87,6 +87,19 @@
 !/Engine/ThirdPartyLib/Assimp/Bin/Debug/assimp-vc143-mtd.dll
 !/Engine/ThirdPartyLib/Assimp/Bin/Release/
 !/Engine/ThirdPartyLib/Assimp/Bin/Release/assimp-vc143-mt.dll
+!/Engine/ThirdPartyLib/PhysX/
+!/Engine/ThirdPartyLib/PhysX/Inc/
+!/Engine/ThirdPartyLib/PhysX/Inc/**
+!/Engine/ThirdPartyLib/PhysX/Lib/
+!/Engine/ThirdPartyLib/PhysX/Lib/Debug/
+!/Engine/ThirdPartyLib/PhysX/Lib/Debug/*.lib
+!/Engine/ThirdPartyLib/PhysX/Lib/Release/
+!/Engine/ThirdPartyLib/PhysX/Lib/Release/*.lib
+!/Engine/ThirdPartyLib/PhysX/Bin/
+!/Engine/ThirdPartyLib/PhysX/Bin/Debug/
+!/Engine/ThirdPartyLib/PhysX/Bin/Debug/*.dll
+!/Engine/ThirdPartyLib/PhysX/Bin/Release/
+!/Engine/ThirdPartyLib/PhysX/Bin/Release/*.dll
 
 # Do not retain bundled viewer/runtime binaries inside resource folders.
 /Client/Bin/Resources/**/*.exe

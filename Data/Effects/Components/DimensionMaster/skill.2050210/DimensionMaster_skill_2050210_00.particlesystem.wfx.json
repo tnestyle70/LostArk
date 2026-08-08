@@ -11,7 +11,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_core_00_1|FX_PC_SWP_00.par_j_swp_willowrend_core_00_1.particlespriteemitter_1",
       "fx_pc_swp_00.par_j_swp_willowrend_core_00_1|FX_PC_SWP_00.par_j_swp_willowrend_core_00_1.particlespriteemitter_23"
     ],
-    "sourceElementSha256": "d51d07b9e173b41b2976c6a51d7622ff4c83be5f413e9b76454571ff728bbd50",
+    "sourceElementSha256": "232ddc8e1f32434f38f35f60c46698237bf8effc9dd9d26b43b2c22cfd3b24e3",
     "inputSlot": "A"
   },
   "emitters": [
@@ -79,18 +79,30 @@
                 "name": "alpha_texture",
                 "sourceObjectPath": "fx_tex_00.fx_a_electric_008",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_electric_008.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha"
               },
               {
                 "name": "flow_texture",
                 "sourceObjectPath": "fx_tex_06.fx_j_caustic_tile_05",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_caustic_tile_05.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_03.fx_e_noise_002",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_noise_002.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -190,7 +202,7 @@
             "staticSwitches": [],
             "dynamicParameterSemantics": [
               "dissolve",
-              "unbound",
+              "flow_strength",
               "unbound",
               "unbound"
             ],
@@ -225,8 +237,8 @@
           "transform": {
             "position": [
               0.0,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -240,8 +252,8 @@
             ],
             "scale": [
               1.0,
-              0.5,
-              1.0
+              1.0,
+              0.5
             ],
             "velocityPerSecond": [
               0.0,
@@ -1455,30 +1467,50 @@
                 "name": "alpha_texture",
                 "sourceObjectPath": "fx_tex_06.fx_g_petds_cotton_01",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_g_petds_cotton_01.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha"
               },
               {
                 "name": "diff_texture",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_09",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_09.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "diffuse"
               },
               {
                 "name": "flow_texture",
                 "sourceObjectPath": "fx_j_normal_bc5_10",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha_flow"
               },
               {
                 "name": "dissolve_texture",
                 "sourceObjectPath": "fx_tex_06.fx_j_noise_tile_07",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_noise_tile_07.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "dissolve"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_10",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_10.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -1654,8 +1686,8 @@
           "transform": {
             "position": [
               0.0,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -1669,8 +1701,8 @@
             ],
             "scale": [
               1.0,
-              0.5,
-              1.0
+              1.0,
+              0.5
             ],
             "velocityPerSecond": [
               0.0,
@@ -1798,23 +1830,23 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              -0.1
+              -0.1,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              -0.1
+              -0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
-              -0.1,
-              0.0
+              0.0,
+              0.1
             ],
             "initialVelocityMax": [
               0.0,
-              -0.1,
-              0.0
+              0.0,
+              0.1
             ],
             "acceleration": [
               0.0,

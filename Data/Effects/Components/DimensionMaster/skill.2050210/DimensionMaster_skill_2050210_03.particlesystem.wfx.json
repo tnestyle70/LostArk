@@ -10,7 +10,7 @@
     "sourceNodes": [
       "fx_pc_swp_00.par_j_swp_willowrend_dust_00_1|FX_PC_SWP_00.par_j_swp_willowrend_dust_00_1.particlespriteemitter_42"
     ],
-    "sourceElementSha256": "33e585d67cb38cdd29b00ad7b281aec54bd1e58d6766bec0314b559efac3ff6d",
+    "sourceElementSha256": "b2c73c109ea6c8bf926ccecefca28ae5b8049390caf93900d1a18a221397b741",
     "inputSlot": "A"
   },
   "emitters": [
@@ -69,6 +69,10 @@
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_high_00.fx_a_cloud_026",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -118,8 +122,8 @@
           "transform": {
             "position": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -272,13 +276,13 @@
             ],
             "initialVelocityMin": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMax": [
               0.0,
-              0.0,
-              0.15
+              0.15,
+              -0.0
             ],
             "acceleration": [
               0.0,

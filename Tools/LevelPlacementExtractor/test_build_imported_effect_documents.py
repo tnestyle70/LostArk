@@ -379,6 +379,8 @@ class ImportedEffectDocumentTests(unittest.TestCase):
                 "buselocalspace": value("boolproperty", True),
                 "emitterduration": value("floatproperty", 2.0),
             }
+            if prefix == "light_system":
+                del required_properties["buselocalspace"]
             if prefix == "sprite_system":
                 required_properties.update({
                     "subimages_horizontal": value("intproperty", 8),
@@ -635,8 +637,10 @@ class ImportedEffectDocumentTests(unittest.TestCase):
         self.assertTrue(sprite["sourceRecipe"]["enabled"])
         self.assertGreater(len(sprite["sourceRecipe"]["modules"]), 0)
         self.assertEqual(sprite["resources"][0]["slotId"], "base")
-        self.assertEqual(sprite["detail"]["particle"]["initialPositionMin"], [-1.0, -0.5, 0.0])
-        self.assertEqual(sprite["detail"]["particle"]["initialPositionMax"], [1.0, 0.5, 0.0])
+        self.assertEqual(sprite["detail"]["particle"]["initialPositionMin"], [-1.0, 0.0, -0.5])
+        self.assertEqual(sprite["detail"]["particle"]["initialPositionMax"], [1.0, 0.0, 0.5])
+        self.assertEqual(sprite["detail"]["particle"]["initialVelocityMin"], [-1.0, 0.0, -2.0])
+        self.assertEqual(sprite["detail"]["particle"]["initialVelocityMax"], [1.0, 0.0, 0.0])
         self.assertEqual(sprite["detail"]["transform"]["position"], [1.0, 2.0, 3.0])
         self.assertEqual(sprite["detail"]["transform"]["scale"], [2.0, 2.0, 2.0])
         self.assertEqual(sprite["detail"]["timing"]["lifeTimeSeconds"], 2.0)
@@ -702,6 +706,21 @@ class ImportedEffectDocumentTests(unittest.TestCase):
             row for row in conversion["elementConversions"]
             if row.get("sourceSystemId") == "sprite_system"
         )
+        light_conversion = next(
+            row for row in conversion["elementConversions"]
+            if row.get("sourceSystemId") == "light_system"
+        )
+        sprite_local_space = next(
+            row for row in sprite_conversion["detailMappings"]
+            if row["target"] == "particle.localSpace"
+        )
+        light_local_space = next(
+            row for row in light_conversion["detailMappings"]
+            if row["target"] == "particle.localSpace"
+        )
+        self.assertEqual("EXACT", sprite_local_space["status"])
+        self.assertEqual("SOURCE_CLASS_DEFAULT", light_local_space["status"])
+        self.assertTrue(light_local_space["value"])
         self.assertTrue(any(
             row["className"] == "particlemodulecameraoffset"
             for row in sprite_conversion["unrepresentedModules"]

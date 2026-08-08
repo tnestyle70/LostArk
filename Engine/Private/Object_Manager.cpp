@@ -136,6 +136,18 @@ void CObject_Manager::Update(f32_t fTimeDelta)
 	}
 }
 
+void CObject_Manager::Post_Physics_Update(f32_t fTimeDelta)
+{
+	for (uint32_t i = 0; i < m_iNumLevels; ++i)
+	{
+		for (auto& Pair : m_pLayers[i])
+		{
+			if (nullptr != Pair.second)
+				Pair.second->Post_Physics_Update(fTimeDelta);
+		}
+	}
+}
+
 void CObject_Manager::Late_Update(f32_t fTimeDelta)
 {
 	for (uint32_t i = 0; i < m_iNumLevels; ++i)

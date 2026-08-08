@@ -350,7 +350,7 @@ if ($effectToolSource -notmatch 'Restoration Session' -or
     throw 'Effect restoration authoring must expose one Apply/Save loop, explicit publish state, and the current Authored tree before stale runtime hierarchy.'
 }
 if ($effectToolSource -notmatch 'Loaded editable draft; preview is hidden' -or
-    $effectToolSource -notmatch 'Load rejected; active Document and preview were preserved' -or
+    $effectToolSource -notmatch 'Loaded existing Effect for inspection without GPU staging' -or
     $effectToolSource -notmatch 'open Detail draft before selecting another Element' -or
     $effectToolSource -notmatch 'open Detail draft before adding an Element' -or
     $effectToolSource -notmatch 'open Detail draft before deleting an Element' -or
@@ -552,20 +552,50 @@ $loadDocumentMatch = [regex]::Match(
     'bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged\([\s\S]*?bool_t Client::CEffect_Tool::Execute_PendingDocumentLoad')
 if (-not $loadDocumentMatch.Success -or
     $loadDocumentMatch.Value -match 'Start_WorldPreviewFromBeginning\(\)' -or
-    $loadDocumentMatch.Value -notmatch 'Set_Visible\(false\)' -or
+	$loadDocumentMatch.Value -match 'Stage_WorldPreview\(' -or
+	$loadDocumentMatch.Value -notmatch 'Release_WorldPreview\(true\)' -or
 	$loadDocumentMatch.Value -notmatch 'm_bPreviewVisibleRequested = false' -or
     $effectToolSource -notmatch 'Load = inspect saved data without autoplay' -or
+	$effectToolSource -notmatch 'GPU resources are deferred until an explicit preview scope is played' -or
 	$effectToolSource -notmatch 'bLivePreview = bDrawable &&\s*m_bPreviewVisibleRequested' -or
     $effectToolSource -notmatch 'pObject->Set_Visible\(true\)') {
-    throw 'Loading an Effect must stage it hidden; only explicit Complete, Group, or Solo play may start the character-pivot preview.'
+    throw 'Loading an Effect must not stage GPU resources; only explicit Complete, Group, or Solo play may create the character-pivot preview.'
+}
+$sessionBarMatch = [regex]::Match(
+    $effectToolSource,
+    'void Client::CEffect_Tool::Render_AuthoringSessionBar\(\)[\s\S]*?void Client::CEffect_Tool::Render_EffectDetailWindow')
+if (-not $sessionBarMatch.Success -or
+    $sessionBarMatch.Value -match 'Validate_Drawable' -or
+    $sessionBarMatch.Value -notmatch 'm_bActiveDocumentDrawable' -or
+    $effectToolHeader -notmatch 'm_strActiveDocumentDrawableError') {
+    throw 'Effect Detail must consume the mutation-time drawable cache instead of validating the complete document every frame.'
+}
+$allEffectsRefreshMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Refresh_AllEffects\([^)]*\)[\s\S]*?bool_t Client::CEffect_Tool::Refresh_DataFiles')
+$dataFilesRefreshMatch = [regex]::Match(
+    $effectToolSource,
+    'bool_t Client::CEffect_Tool::Refresh_DataFiles\(\)[\s\S]*?bool_t Client::CEffect_Tool::Try_SelectSkill')
+if (-not $allEffectsRefreshMatch.Success -or
+    -not $dataFilesRefreshMatch.Success -or
+    $allEffectsRefreshMatch.Value -match 'CEffectDocumentCodec::Load' -or
+    $dataFilesRefreshMatch.Value -match 'CEffectDocumentCodec::Load' -or
+    $effectToolSource -notmatch 'Try_DeriveEffectAssetIdFromFilename' -or
+    $effectToolSource -notmatch 'Ensure_PlayerSkillCatalog' -or
+    $effectToolSource -notmatch 'Refresh_AllEffects\(true\)') {
+    throw 'Initial Effect Tool indexes must not parse every authored/imported Effect JSON document.'
 }
 foreach ($scopeName in @(
+    'EffectTool.InitialIndexStep',
     'EffectTool.AuthoringWindow',
     'EffectTool.ModelViewWindow',
     'EffectTool.DetailWindow',
     'EffectTool.AllEffectsWindow',
     'EffectTool.DataFilesWindow',
-    'EffectTool.ThumbnailTrim')) {
+    'EffectTool.ThumbnailTrim',
+    'EffectTool.DocumentLoad.Parse',
+    'EffectTool.DocumentLoad.ValidateDrawable',
+    'EffectTool.DocumentLoad.CanonicalBaseline')) {
     if ($effectToolSource -notmatch [regex]::Escape($scopeName)) {
         throw "Effect Tool profiler capture is missing detail scope: $scopeName"
     }

@@ -26,6 +26,7 @@ public:
 	HRESULT Remove_GameObject_from_Layer(uint32_t iLevelIndex, const wstring_t& strLayerTag, const shared_ptr<CGameObject>& pGameObject);
 	void Priority_Update(f32_t fTimeDelta);
 	void Update(f32_t fTimeDelta);
+	void Post_Physics_Update(f32_t fTimeDelta);
 	void Late_Update(f32_t fTimeDelta);
 	HRESULT Clear(uint32_t iClearLevelID);
 

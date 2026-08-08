@@ -213,6 +213,15 @@
     <ClCompile Include="..\Private\WorldDestructionDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\DestructionSimulationDocument.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\DestructionSimulationRuntime.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\DestructionSimulationController.cpp">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\SpawnGroupDocument.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -476,6 +485,15 @@
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\WorldDestructionDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DestructionSimulationDocument.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DestructionSimulationRuntime.h">
+      <Filter>03. Tools\00. Map</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\DestructionSimulationController.h">
       <Filter>03. Tools\00. Map</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\SpawnGroupDocument.h">
@@ -899,6 +917,9 @@
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.deployplacements">
+      <Filter>96.DataFiles\Maps</Filter>
+    </None>
+    <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.destructionsimulation.json">
       <Filter>96.DataFiles\Maps</Filter>
     </None>
     <None Include="..\..\Data\Maps\Authoring\LV_LUT_HEARTRB_ED\LV_LUT_HEARTRB_ED.mapplacements">
@@ -2011,6 +2032,9 @@
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.A.source-material-contract.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.texture-sampling-evidence.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\ActionSource</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\ActionSource\DimensionMaster.parent-material-graph-evidence.json">

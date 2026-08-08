@@ -4,7 +4,39 @@
   "areaId": "LV_LUT_HEARTRB_ED",
   "encounterId": "ENCOUNTER_VALTAN",
   "provenance": "PROJECT_TUNED",
-  "groups": [],
-  "mutations": [],
-  "bindings": []
+  "groups": [
+    {
+      "groupId": "destroyable.group.valtan.wall.3705102",
+      "memberPlacementIds": [
+        "9335938568718910930",
+        "9681544306002658031",
+        "12037145985028191659",
+        "17280669848983777578",
+        "18177041425620847396"
+      ],
+      "navigationRegionIds": [],
+      "navPolarity": "BLOCK_WHILE_INTACT",
+      "initialState": "INTACT"
+    }
+  ],
+  "mutations": [
+    {
+      "mutationId": "mutation.valtan.wall.3705102.break",
+      "groupId": "destroyable.group.valtan.wall.3705102",
+      "targetState": "FRACTURED",
+      "breakingDurationMs": 250
+    }
+  ],
+  "bindings": [
+    {
+      "bindingId": "binding.valtan.wall.3705102.preview",
+      "mutationId": "mutation.valtan.wall.3705102.break",
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "stageId": "WALL_CHARGE",
+      "triggerKind": "STAGE_TIME",
+      "offsetMs": 250,
+      "receiverCollisionId": "",
+      "enabled": false
+    }
+  ]
 }

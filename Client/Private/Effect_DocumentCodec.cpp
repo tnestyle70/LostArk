@@ -62,6 +62,14 @@ namespace
 		"unsupported",
 		"missing_resource"
 	};
+	constexpr const char_t* TEXTURE_ADDRESS_MODE_TOKENS[] =
+	{
+		"wrap", "clamp"
+	};
+	constexpr const char_t* TEXTURE_COLOR_SPACE_TOKENS[] =
+	{
+		"linear", "srgb"
+	};
 	constexpr const char_t* SOURCE_LITERAL_KIND_TOKENS[] =
 	{
 		"boolean", "number", "string"
@@ -396,6 +404,41 @@ namespace
 						return false;
 					Texture.strGroup = pGroup->Get_String();
 				}
+				if (const Client::DATA_JSON_VALUE* pAddressU = Item.Find("addressU"))
+				{
+					if (!pAddressU->Is_String() ||
+						!Parse_Token(pAddressU->Get_String(),
+							TEXTURE_ADDRESS_MODE_TOKENS,
+							std::size(TEXTURE_ADDRESS_MODE_TOKENS),
+							Texture.eAddressU))
+						return false;
+				}
+				if (const Client::DATA_JSON_VALUE* pAddressV = Item.Find("addressV"))
+				{
+					if (!pAddressV->Is_String() ||
+						!Parse_Token(pAddressV->Get_String(),
+							TEXTURE_ADDRESS_MODE_TOKENS,
+							std::size(TEXTURE_ADDRESS_MODE_TOKENS),
+							Texture.eAddressV))
+						return false;
+				}
+				if (const Client::DATA_JSON_VALUE* pColorSpace =
+					Item.Find("colorSpace"))
+				{
+					if (!pColorSpace->Is_String() ||
+						!Parse_Token(pColorSpace->Get_String(),
+							TEXTURE_COLOR_SPACE_TOKENS,
+							std::size(TEXTURE_COLOR_SPACE_TOKENS),
+							Texture.eColorSpace))
+						return false;
+				}
+				if (const Client::DATA_JSON_VALUE* pEvidence =
+					Item.Find("samplingEvidence"))
+				{
+					if (!pEvidence->Is_String())
+						return false;
+					Texture.strSamplingEvidence = pEvidence->Get_String();
+				}
 				Out.Textures.push_back(std::move(Texture));
 			}
 		}
@@ -500,6 +543,18 @@ namespace
 					Source.Textures[i].strSourceObjectPath)
 				<< "\", \"assetId\": \""
 				<< Client::CDataJson::Escape(Source.Textures[i].strAssetId)
+				<< "\", \"addressU\": \""
+				<< TEXTURE_ADDRESS_MODE_TOKENS[
+					static_cast<size_t>(Source.Textures[i].eAddressU)]
+				<< "\", \"addressV\": \""
+				<< TEXTURE_ADDRESS_MODE_TOKENS[
+					static_cast<size_t>(Source.Textures[i].eAddressV)]
+				<< "\", \"colorSpace\": \""
+				<< TEXTURE_COLOR_SPACE_TOKENS[
+					static_cast<size_t>(Source.Textures[i].eColorSpace)]
+				<< "\", \"samplingEvidence\": \""
+				<< Client::CDataJson::Escape(
+					Source.Textures[i].strSamplingEvidence)
 				<< "\" }";
 		}
 		Output << "], \"scalars\": [";
@@ -1767,6 +1822,12 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					(!Texture.strAssetId.empty() &&
 						(!Is_SafeResourceAssetId(Texture.strAssetId, &eActualKind) ||
 							eActualKind != EFFECT_RESOURCE_FILE_KIND::TEXTURE)) ||
+					Texture.eAddressU >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
+					Texture.eAddressV >= EFFECT_TEXTURE_ADDRESS_MODE::END ||
+					Texture.eColorSpace >= EFFECT_TEXTURE_COLOR_SPACE::END ||
+					Texture.strSamplingEvidence.empty() ||
+					Texture.strSamplingEvidence.size() > 128u ||
+					!Is_StableId(Texture.strSamplingEvidence) ||
 					!TextureNames.insert(Texture.strName).second)
 				{
 					strOutError = "Effect source Material texture is invalid: " +
@@ -2169,6 +2230,10 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 			 SourceMaterial.strRuntimeShaderProfileId ==
 				"effect.ue3.blackline-aura.v1" ||
 			 SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.slice.v1" ||
+			 SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.missiletrail-01.v1" ||
+			 SourceMaterial.strRuntimeShaderProfileId ==
 				"effect.ue3.local-crack.v1" ||
 			 SourceMaterial.strRuntimeShaderProfileId ==
 				"effect.ue3.procedural-center-glow.v1");
@@ -2183,7 +2248,29 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 				{
 					return Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID;
 				});
-		if (bFiniteProfile &&
+		const bool_t bLocalCrackProfile = SourceMaterial.bEnabled &&
+			SourceMaterial.strRuntimeShaderProfileId ==
+				"effect.ue3.local-crack.v1";
+		const bool_t bHasDissolve = nullptr != FindBinding(
+			EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE);
+		if (bLocalCrackProfile)
+		{
+			const bool_t bLegacyContract =
+				Is_EffectLegacyLocalCrackResourceContractSatisfied(
+					SourceMaterial, bHasDissolve, bParticleMesh);
+			const bool_t bNamedContract =
+				!SourceMaterial.Textures.empty() &&
+				Is_EffectLocalCrackResourceContractSatisfied(
+					Has_EffectLocalCrackNamedTextureContract(SourceMaterial),
+					true, true, bParticleMesh);
+			if (!bLegacyContract && !bNamedContract)
+			{
+				strOutError =
+					"Local-crack source Material resource contract is not satisfied.";
+				return false;
+			}
+		}
+		else if (bFiniteProfile &&
 			!Is_EffectFiniteProfileResourceContractSatisfied(
 				SourceMaterial.strRuntimeShaderProfileId,
 				nullptr != pBaseBinding &&
@@ -2191,8 +2278,7 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 						pBaseBinding->strAssetId),
 				nullptr != FindBinding(
 					EFFECT_MATERIAL_INPUT_SEMANTIC::MASK),
-				nullptr != FindBinding(
-					EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE),
+				bHasDissolve,
 				bParticleMesh))
 		{
 			strOutError =

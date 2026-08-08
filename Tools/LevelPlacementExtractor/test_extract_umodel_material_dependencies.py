@@ -327,6 +327,80 @@ ReferencedTextures[0] = Texture2D'fx_tex.fx_alpha'
             self.assertEqual(parent_props, selected)
             self.assertEqual(1, count)
 
+    def test_candidate_merges_complete_instance_override_chain(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child = root / "fx_child" / "MaterialInstanceConstant"
+            middle = root / "fx_middle" / "MaterialInstanceConstant"
+            parent = root / "fx_parent" / "Material3"
+            texture = root / "fx_tex"
+            child.mkdir(parents=True)
+            middle.mkdir(parents=True)
+            parent.mkdir(parents=True)
+            texture.mkdir(parents=True)
+            (texture / "middle_mask.dds").write_bytes(b"dds")
+            (child / "child.props.txt").write_text(
+                """
+Parent = MaterialInstanceConstant'fx_middle.mi.middle'
+ScalarParameterValues[1] =
+{
+    ScalarParameterValues[0] =
+    {
+        ParameterValue = 4
+        ParameterName = shared_power
+    }
+}
+""",
+                encoding="utf-8",
+            )
+            (middle / "middle.props.txt").write_text(
+                """
+Parent = Material3'fx_parent.fx_material'
+ScalarParameterValues[2] =
+{
+    ScalarParameterValues[0] =
+    {
+        ParameterValue = 2
+        ParameterName = shared_power
+    }
+    ScalarParameterValues[1] =
+    {
+        ParameterValue = 3
+        ParameterName = inherited_power
+    }
+}
+TextureParameterValues[1] =
+{
+    TextureParameterValues[0] =
+    {
+        ParameterValue = Texture2D'fx_tex.middle_mask'
+        ParameterName = mask_b_tex
+    }
+}
+""",
+                encoding="utf-8",
+            )
+            (parent / "fx_material.props.txt").write_text(
+                "BlendMode = BLEND_Translucent\n", encoding="utf-8"
+            )
+
+            candidate = MODULE.build_candidate(
+                "fx_child.fx_mi.child", "child.upk", root,
+                inventory={"fx_parent": "parent.upk"},
+            )
+
+            self.assertEqual("fx_parent.fx_material", candidate["parent"])
+            self.assertEqual(
+                {"shared_power": 4.0, "inherited_power": 3.0},
+                {row["name"]: row["value"] for row in candidate["scalars"]},
+            )
+            self.assertEqual(
+                "fx_tex.middle_mask", candidate["textures"][0]["texture"]
+            )
+            self.assertEqual(2, len(candidate["materialInstanceChain"]))
+
     def test_material_evidence_parent_cycle_fails_closed(self) -> None:
         import tempfile
 

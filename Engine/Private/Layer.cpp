@@ -96,6 +96,15 @@ void CLayer::Update(f32_t fTimeDelta)
 	}
 }
 
+void CLayer::Post_Physics_Update(f32_t fTimeDelta)
+{
+	for (auto& pGameObject : m_GameObjects)
+	{
+		if (nullptr != pGameObject)
+			pGameObject->Post_Physics_Update(fTimeDelta);
+	}
+}
+
 void CLayer::Late_Update(f32_t fTimeDelta)
 {
 	for (auto& pGameObject : m_GameObjects)

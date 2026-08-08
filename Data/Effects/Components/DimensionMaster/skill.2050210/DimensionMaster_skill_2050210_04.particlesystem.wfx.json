@@ -16,7 +16,7 @@
       "fx_pc_swp_00.par_j_swp_willowrend_swingdeco_00_1|FX_PC_SWP_00.par_j_swp_willowrend_swingdeco_00_1.particlespriteemitter_46",
       "fx_pc_swp_00.par_j_swp_willowrend_swingdeco_00_1|FX_PC_SWP_00.par_j_swp_willowrend_swingdeco_00_1.particlespriteemitter_47"
     ],
-    "sourceElementSha256": "d17bbca77b431624ba440621e1ed20f3cd6e906b13b7e1322093379c4bbe0b09",
+    "sourceElementSha256": "3dee06719283c22f044b9260e4fd67c5eded2fb58b7c6548fa5d2b6367cb3a66",
     "inputSlot": "A"
   },
   "emitters": [
@@ -120,24 +120,40 @@
                 "name": "detail texture",
                 "sourceObjectPath": "",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": "detailtexture"
               },
               {
                 "name": "spread texture",
                 "sourceObjectPath": "fx_a_ring_001_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_ring_001_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "distortiontexture"
               },
               {
                 "name": "center texture",
                 "sourceObjectPath": "fx_b_glow_001_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_glow_001_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "distortiontexture"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_00.fx_b_glow_001_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_b_glow_001_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -217,8 +233,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -361,13 +377,13 @@
             ],
             "initialPositionMin": [
               1.6,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               1.6,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -1309,12 +1325,20 @@
                 "name": "emissive_tex",
                 "sourceObjectPath": "fx_tex_04.fx_f_ring_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_ring_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "emissive"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_mastermaterial.fx_e_adli",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -1358,8 +1382,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -1502,13 +1526,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -2608,20 +2632,20 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel"
           },
           {
-            "slotId": "mask",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds"
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
-            "slotId": "dissolve",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
+            "slotId": "mask",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
             "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds"
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds"
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
           }
         ],
         "material": {
@@ -2631,7 +2655,7 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.m.pa.missiletrail.01.tr.9641f8d91e6a",
-            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "runtimeShaderProfileId": "effect.ue3.missiletrail-01.v1",
             "parentMaterialPath": "fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr",
             "semanticStatus": "reconstructed_profile",
             "textures": [
@@ -2639,24 +2663,40 @@
                 "name": "uv_noise_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "uv_noise"
               },
               {
                 "name": "alpha_tex",
                 "sourceObjectPath": "fx_tex_nomipmap_00.fx_n_trail_001_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha_tex_01"
               },
               {
                 "name": "uv_dissolve_tex",
                 "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow_dissolve_tex"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_atypical_004_loc_int",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -2795,10 +2835,10 @@
             "vectors": [],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "uv_pan",
-              "uv_pan",
-              "uv_pan",
-              "dissolve"
+              "missile_alpha_pan",
+              "missile_noise_strength",
+              "missile_noise_pan",
+              "missile_dissolve"
             ],
             "subUVMode": "none"
           }
@@ -2831,8 +2871,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -2975,13 +3015,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -4387,20 +4427,20 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel"
           },
           {
-            "slotId": "mask",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds"
+            "slotId": "base",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
-            "slotId": "dissolve",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
+            "slotId": "mask",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
             "slotId": "noise",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds"
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds"
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
           }
         ],
         "material": {
@@ -4410,7 +4450,7 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.m.pa.missiletrail.01.tr.9641f8d91e6a",
-            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "runtimeShaderProfileId": "effect.ue3.missiletrail-01.v1",
             "parentMaterialPath": "fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr",
             "semanticStatus": "reconstructed_profile",
             "textures": [
@@ -4418,24 +4458,40 @@
                 "name": "uv_noise_tex",
                 "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "uv_noise"
               },
               {
                 "name": "alpha_tex",
                 "sourceObjectPath": "fx_tex_nomipmap_00.fx_n_trail_001_cl",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_NOMIPMAP_00/fx_n_trail_001_cl.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha_tex_01"
               },
               {
                 "name": "uv_dissolve_tex",
                 "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow_dissolve_tex"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_atypical_004_loc_int",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -4574,10 +4630,10 @@
             "vectors": [],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "uv_pan",
-              "uv_pan",
-              "uv_pan",
-              "dissolve"
+              "missile_alpha_pan",
+              "missile_noise_strength",
+              "missile_noise_pan",
+              "missile_dissolve"
             ],
             "subUVMode": "none"
           }
@@ -4610,8 +4666,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -4754,13 +4810,13 @@
             ],
             "initialPositionMin": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               0.0,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -6166,20 +6222,20 @@
             "assetId": "Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel"
           },
           {
-            "slotId": "mask",
+            "slotId": "base",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
-            "slotId": "dissolve",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
+            "slotId": "mask",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
           },
           {
             "slotId": "noise",
             "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds"
           },
           {
-            "slotId": "base",
-            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds"
+            "slotId": "dissolve",
+            "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds"
           }
         ],
         "material": {
@@ -6189,7 +6245,7 @@
           "sourceProfile": {
             "enabled": true,
             "profileId": "ue3.material.fx.m.mi.03.fx.m.fx.m.pa.missiletrail.01.tr.9641f8d91e6a",
-            "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+            "runtimeShaderProfileId": "effect.ue3.missiletrail-01.v1",
             "parentMaterialPath": "fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr",
             "semanticStatus": "reconstructed_profile",
             "textures": [
@@ -6197,24 +6253,40 @@
                 "name": "uv_noise_tex",
                 "sourceObjectPath": "fx_a_cloud_022",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_022.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "uv_noise"
               },
               {
                 "name": "alpha_tex",
                 "sourceObjectPath": "fx_tex_05.fx_m_atypical_007",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_atypical_007.dds",
+                "addressU": "clamp",
+                "addressV": "clamp",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "alpha_tex_01"
               },
               {
                 "name": "uv_dissolve_tex",
                 "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "flow_dissolve_tex"
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_05.fx_m_atypical_004_loc_int",
                 "assetId": "",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "linear",
+                "samplingEvidence": "legacy_default",
                 "group": ""
               }
             ],
@@ -6353,10 +6425,10 @@
             "vectors": [],
             "staticSwitches": [],
             "dynamicParameterSemantics": [
-              "uv_pan",
-              "uv_pan",
-              "uv_pan",
-              "dissolve"
+              "missile_alpha_pan",
+              "missile_noise_strength",
+              "missile_noise_pan",
+              "missile_dissolve"
             ],
             "subUVMode": "none"
           }
@@ -6389,8 +6461,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -6534,12 +6606,12 @@
             "initialPositionMin": [
               1.3,
               0.0,
-              0.0
+              -0.0
             ],
             "initialPositionMax": [
               1.3,
               0.0,
-              0.0
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
@@ -7782,24 +7854,40 @@
                 "name": "00.map_b",
                 "sourceObjectPath": "fx_tex_02.fx_d_atypical_032",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_032.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "02_alpha"
               },
               {
                 "name": "06.map",
                 "sourceObjectPath": "fx_d_noise_009",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": "08_uvdistort"
               },
               {
                 "name": "04.map_anew",
                 "sourceObjectPath": "fx_tex_02.fx_d_atypical_056",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_056.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               },
               {
                 "name": "umodel_dependency",
                 "sourceObjectPath": "fx_tex_02.fx_d_atypical_031",
                 "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_031.dds",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "colorSpace": "srgb",
+                "samplingEvidence": "ue3_property_or_class_default.v1",
                 "group": ""
               }
             ],
@@ -7985,8 +8073,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -9190,8 +9278,8 @@
           "transform": {
             "position": [
               0.2,
-              0.0,
-              0.7000000000000001
+              0.7000000000000001,
+              0.0
             ],
             "rotationDegrees": [
               0.0,
@@ -9334,13 +9422,13 @@
             ],
             "initialPositionMin": [
               1.8,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialPositionMax": [
               1.8,
-              0.0,
-              0.1
+              0.1,
+              -0.0
             ],
             "initialVelocityMin": [
               0.0,
