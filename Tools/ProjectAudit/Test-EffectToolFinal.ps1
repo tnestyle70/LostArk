@@ -871,7 +871,13 @@ $skillBindings = Read-JsonFile `
     'Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json'
 $clipOwners = @{}
 foreach ($binding in @($skillBindings.bindings)) {
-    foreach ($clipValue in @($binding.clips)) {
+    # formatVersion 3 lets a clips element be that stage's own clip array.
+    $bindingClips = @()
+    foreach ($element in @($binding.clips)) {
+        if ($element -is [Array]) { $bindingClips += @($element) }
+        else { $bindingClips += $element }
+    }
+    foreach ($clipValue in $bindingClips) {
         $clipName = if ($clipValue -is [string]) {
             [string]$clipValue
         }
@@ -928,6 +934,8 @@ if ($comboBinding.Count -ne 1 -or
 }
 for ($stage = 1; $stage -le @($comboBinding[0].clips).Count; ++$stage) {
     $clipValue = @($comboBinding[0].clips)[$stage - 1]
+    # A stage owns its own clip array; its Effect cue rides the first clip.
+    if ($clipValue -is [Array]) { $clipValue = @($clipValue)[0] }
     $comboClip = if ($clipValue -is [string]) {
         [string]$clipValue
     }

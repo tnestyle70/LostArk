@@ -907,11 +907,16 @@ bool_t Client::CAnimation_Tool::Create_SkillBindingDraft(
 			continue;
 		ANIMATION_SKILL_BINDING binding;
 		binding.iSkillId = definition.iSkillId;
-		const std::size_t clipCount =
+		const bool_t isStaged =
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
-			definition.eSkillKind ? definition.iComboStageCount : 1u;
-		binding.Clips.assign(
-			clipCount, ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
+				definition.eSkillKind ||
+			LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind;
+		const std::size_t stageCount =
+			isStaged ? definition.iComboStageCount : 1u;
+		ANIMATION_SKILL_STAGE seedStage;
+		seedStage.Clips.assign(
+			1u, ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
+		binding.Stages.assign(stageCount, seedStage);
 		staged.Bindings.push_back(std::move(binding));
 	}
 	if (staged.Bindings.empty())
@@ -1086,6 +1091,9 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 		const bool_t isCombo =
 			LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
 			definition->eSkillKind;
+		const bool_t isStaged = isCombo ||
+			LostArk::Shared::PLAYER_SKILL_KIND::HOLD ==
+				definition->eSkillKind;
 		char_t header[192]{};
 		snprintf(
 			header,
@@ -1097,103 +1105,144 @@ void Client::CAnimation_Tool::Render_SkillBindings(
 			isCombo ? "COMBO" : "ACTIVE");
 		if (ImGui::TreeNodeEx("##binding", ImGuiTreeNodeFlags_DefaultOpen, "%s", header))
 		{
-			for (int32_t clipIndex = 0;
-				clipIndex < static_cast<int32_t>(binding->Clips.size());
-				++clipIndex)
+			for (int32_t stageIndex = 0;
+				stageIndex < static_cast<int32_t>(binding->Stages.size());
+				++stageIndex)
 			{
-				ImGui::PushID(clipIndex);
-				char_t clipLabel[MAX_PATH + 32]{};
-				snprintf(
-					clipLabel,
-					sizeof(clipLabel),
-					isCombo ? "BA%d  %s" : "clip%d  %s",
-					clipIndex + 1,
-					binding->Clips[clipIndex].strClipName.c_str());
-				const bool_t selected =
-					m_iSelectedSkillBinding == bindingIndex &&
-					m_iSelectedSkillClip == clipIndex;
-				if (ImGui::Selectable(clipLabel, selected))
+				ImGui::PushID(stageIndex);
+				const ANIMATION_SKILL_STAGE& stage = binding->Stages[stageIndex];
+				if (isStaged)
+					ImGui::TextDisabled("BA%d", stageIndex + 1);
+				for (int32_t clipIndex = 0;
+					clipIndex < static_cast<int32_t>(stage.Clips.size());
+					++clipIndex)
 				{
-					m_iSelectedSkillBinding = bindingIndex;
-					m_iSelectedSkillClip = clipIndex;
-					Select_Clip(pModel, binding->Clips[clipIndex].strClipName);
+					ImGui::PushID(clipIndex);
+					char_t clipLabel[MAX_PATH + 32]{};
+					if (isStaged)
+					{
+						snprintf(
+							clipLabel,
+							sizeof(clipLabel),
+							"  BA%d.%d  %s",
+							stageIndex + 1,
+							clipIndex + 1,
+							stage.Clips[clipIndex].strClipName.c_str());
+					}
+					else
+					{
+						snprintf(
+							clipLabel,
+							sizeof(clipLabel),
+							"clip%d  %s",
+							clipIndex + 1,
+							stage.Clips[clipIndex].strClipName.c_str());
+					}
+					const bool_t selected =
+						m_iSelectedSkillBinding == bindingIndex &&
+						m_iSelectedSkillStage == stageIndex &&
+						m_iSelectedSkillClip == clipIndex;
+					if (ImGui::Selectable(clipLabel, selected))
+					{
+						m_iSelectedSkillBinding = bindingIndex;
+						m_iSelectedSkillStage = stageIndex;
+						m_iSelectedSkillClip = clipIndex;
+						Select_Clip(pModel, stage.Clips[clipIndex].strClipName);
+					}
+					ImGui::PopID();
 				}
 				ImGui::PopID();
 			}
 
+			int32_t selectedStage =
+				m_iSelectedSkillBinding == bindingIndex ?
+				m_iSelectedSkillStage : 0;
+			if (selectedStage < 0 ||
+				selectedStage >= static_cast<int32_t>(binding->Stages.size()))
+			{
+				selectedStage = 0;
+			}
+			std::vector<ANIMATION_SKILL_CLIP>& selectedClips =
+				binding->Stages[selectedStage].Clips;
 			int32_t selectedClip =
 				m_iSelectedSkillBinding == bindingIndex ?
 				m_iSelectedSkillClip : 0;
 			if (selectedClip < 0 ||
-				selectedClip >= static_cast<int32_t>(binding->Clips.size()))
+				selectedClip >= static_cast<int32_t>(selectedClips.size()))
 			{
 				selectedClip = 0;
 			}
+			std::size_t boundClips = 0u;
+			for (const ANIMATION_SKILL_STAGE& stage : binding->Stages)
+				boundClips += stage.Clips.size();
+
 			ImGui::BeginDisabled(nullptr == currentClip);
-			if (ImGui::Button(isCombo ?
-				"Assign Current Clip to Selected BA Stage" :
-				"Assign Current Clip to Selected Step"))
+			if (ImGui::Button("Assign Current Clip to Selected Step"))
 			{
-				binding->Clips[selectedClip].strClipName = currentClip;
+				selectedClips[selectedClip].strClipName = currentClip;
 				m_iSelectedSkillBinding = bindingIndex;
+				m_iSelectedSkillStage = selectedStage;
 				m_iSelectedSkillClip = selectedClip;
 				m_bSkillBindingDirty = true;
 				m_SkillBindingStatus =
 					"Assigned " + std::string(currentClip) + " to " +
-					slotLabel + (isCombo ?
-						(" BA" + std::to_string(selectedClip + 1)) :
+					slotLabel + (isStaged ?
+						(" BA" + std::to_string(selectedStage + 1) + "." +
+							std::to_string(selectedClip + 1)) :
 						(" clip" + std::to_string(selectedClip + 1)));
 			}
-			if (!isCombo)
+			ImGui::SameLine();
+			/* A stage may hold several clips, so this adds inside the selected
+			stage. The stage count itself stays Server-owned. */
+			if (ImGui::Button("Add Current Step") && boundClips < 16u)
 			{
-				ImGui::SameLine();
-				if (ImGui::Button("Add Current Step") &&
-					binding->Clips.size() < 16u)
-				{
-					binding->Clips.insert(
-						binding->Clips.begin() + selectedClip + 1,
-						ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
-					m_iSelectedSkillBinding = bindingIndex;
-					m_iSelectedSkillClip = selectedClip + 1;
-					m_bSkillBindingDirty = true;
-				}
+				selectedClips.insert(
+					selectedClips.begin() + selectedClip + 1,
+					ANIMATION_SKILL_CLIP{ currentClip, 0u, 1.f });
+				m_iSelectedSkillBinding = bindingIndex;
+				m_iSelectedSkillStage = selectedStage;
+				m_iSelectedSkillClip = selectedClip + 1;
+				m_bSkillBindingDirty = true;
 			}
 			ImGui::EndDisabled();
 
-			if (!isCombo && binding->Clips.size() > 1u)
+			if (selectedClips.size() > 1u)
 			{
 				if (ImGui::SmallButton("Up") && selectedClip > 0)
 				{
 					std::swap(
-						binding->Clips[selectedClip],
-						binding->Clips[selectedClip - 1]);
+						selectedClips[selectedClip],
+						selectedClips[selectedClip - 1]);
 					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillStage = selectedStage;
 					m_iSelectedSkillClip = selectedClip - 1;
 					m_bSkillBindingDirty = true;
 				}
 				ImGui::SameLine();
 				if (ImGui::SmallButton("Down") &&
-					selectedClip + 1 < static_cast<int32_t>(binding->Clips.size()))
+					selectedClip + 1 < static_cast<int32_t>(selectedClips.size()))
 				{
 					std::swap(
-						binding->Clips[selectedClip],
-						binding->Clips[selectedClip + 1]);
+						selectedClips[selectedClip],
+						selectedClips[selectedClip + 1]);
 					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillStage = selectedStage;
 					m_iSelectedSkillClip = selectedClip + 1;
 					m_bSkillBindingDirty = true;
 				}
 				ImGui::SameLine();
 				if (ImGui::SmallButton("Remove Step"))
 				{
-					binding->Clips.erase(binding->Clips.begin() + selectedClip);
+					selectedClips.erase(selectedClips.begin() + selectedClip);
 					m_iSelectedSkillBinding = bindingIndex;
+					m_iSelectedSkillStage = selectedStage;
 					m_iSelectedSkillClip = std::min(
 						selectedClip,
-						static_cast<int32_t>(binding->Clips.size()) - 1);
+						static_cast<int32_t>(selectedClips.size()) - 1);
 					m_bSkillBindingDirty = true;
 				}
 			}
-			else if (isCombo)
+			if (isStaged)
 			{
 				ImGui::TextDisabled(
 					"BA stage count is fixed by PlayerSkills comboStages (%zu).",

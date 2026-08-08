@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
   "bindings": [
@@ -31,10 +31,10 @@
     {
       "skillId": 34010,
       "clips": [
-        "flm_att_identity1_1_01",
-        "flm_att_identity1_1_02",
-        "flm_att_identity1_1_03",
-        "flm_att_identity1_1_04"
+        [ "flm_att_identity1_1_01" ],
+        [ "flm_att_identity1_1_02" ],
+        [ "flm_att_identity1_1_03" ],
+        [ "flm_att_identity1_1_04" ]
       ]
     },
     {
@@ -111,9 +111,9 @@
     {
       "skillId": 34510,
       "clips": [
-        "flm_att_identity2_1_01",
-        "flm_att_identity2_1_02",
-        "flm_att_identity2_1_03"
+        [ "flm_att_identity2_1_01" ],
+        [ "flm_att_identity2_1_02" ],
+        [ "flm_att_identity2_1_03" ]
       ]
     },
     {
@@ -156,9 +156,9 @@
     {
       "skillId": 34590,
       "clips": [
-        "flm_sk_lastwhisper_start",
-        "flm_sk_lastwhisper_loop",
-        "flm_sk_lastwhisper_end"
+        [ "flm_sk_lastwhisper_start" ],
+        [ "flm_sk_lastwhisper_loop" ],
+        [ "flm_sk_lastwhisper_end" ]
       ]
     },
     {

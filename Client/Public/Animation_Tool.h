@@ -301,6 +301,7 @@ private:
 	bool_t m_bSkillBindingDirty = false;
 	bool_t m_bSkillBindingReloadConfirmationRequested = false;
 	int32_t m_iSelectedSkillBinding = -1;
+	int32_t m_iSelectedSkillStage = 0;
 	int32_t m_iSelectedSkillClip = 0;
 	std::string m_SkillBindingStatus;
 	/* Which kinds Import_Notifies takes. Effects alone run to a few thousand

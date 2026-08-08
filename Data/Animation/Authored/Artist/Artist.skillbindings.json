@@ -1,16 +1,16 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "Artist",
   "characterClass": "ARTIST",
   "bindings": [
     {
       "skillId": 31000,
       "clips": [
-        "sdm_att_battle_1_03",
-        "sdm_att_battle_1_02",
-        "sdm_att_battle_1_01",
-        "sdm_att_battle_1_04"
+        [ "sdm_att_battle_1_03" ],
+        [ "sdm_att_battle_1_02" ],
+        [ "sdm_att_battle_1_01" ],
+        [ "sdm_att_battle_1_04" ]
       ]
     },
     {
@@ -34,10 +34,10 @@
     {
       "skillId": 31210,
       "clips": [
-        "sdm_sk_skykongkong_01",
-        "sdm_sk_skykongkong_03",
-        "sdm_sk_skykongkong_01",
-        "sdm_sk_skykongkong_02"
+        [ "sdm_sk_skykongkong_01" ],
+        [ "sdm_sk_skykongkong_03" ],
+        [ "sdm_sk_skykongkong_01" ],
+        [ "sdm_sk_skykongkong_02" ]
       ]
     },
     {

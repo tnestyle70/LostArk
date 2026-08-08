@@ -34,11 +34,19 @@ public:
 		bool_t loop = false;
 	};
 
+	/* A stage runs its own clips back to back. ACTIVE owns one stage, so its whole
+	chain still plays itself out; a staged skill owns one per Server combo stage
+	and waits on the last clip of the running stage. */
+	struct CLIP_STAGE
+	{
+		std::vector<CLIP_STEP> clips;
+	};
+
 	struct CLIP_CHAIN
 	{
 		int32_t iSkillId = {};
 		bool_t isServerStaged = false;
-		std::vector<CLIP_STEP> clips;
+		std::vector<CLIP_STAGE> stages;
 	};
 
 public:
@@ -155,6 +163,7 @@ private:
 	std::vector<CLIP_CHAIN> m_PendingChains;
 	/* The chain being played, and how far into it. Null when idle. */
 	const CLIP_CHAIN* m_pChain = { nullptr };
+	int32_t m_iChainStage = {};
 	int32_t m_iChainStep = {};
 
 	std::string m_strNickName;

@@ -1,16 +1,16 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "DimensionMaster",
   "characterClass": "DIMENSIONMASTER",
   "bindings": [
     {
       "skillId": 2050010,
       "clips": [
-        "pc_sp_m_00_sk_att_battle_1_01",
-        "pc_sp_m_00_sk_att_battle_1_02",
-        "pc_sp_m_00_sk_att_battle_1_03",
-        "pc_sp_m_00_sk_att_battle_1_04"
+        [ "pc_sp_m_00_sk_att_battle_1_01" ],
+        [ "pc_sp_m_00_sk_att_battle_1_02" ],
+        [ "pc_sp_m_00_sk_att_battle_1_03" ],
+        [ "pc_sp_m_00_sk_att_battle_1_04" ]
       ]
     },
     {

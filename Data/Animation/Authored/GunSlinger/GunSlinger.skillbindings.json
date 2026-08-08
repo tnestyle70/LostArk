@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-skill-bindings",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "GunSlinger",
   "characterClass": "GUNSLINGER",
   "bindings": [
@@ -83,9 +83,9 @@
     {
       "skillId": 38000,
       "clips": [
-        "gdh_att_battle_1_01",
-        "gdh_att_battle_1_02",
-        "gdh_att_battle_1_03"
+        [ "gdh_att_battle_1_01" ],
+        [ "gdh_att_battle_1_02" ],
+        [ "gdh_att_battle_1_03" ]
       ]
     }
   ]
