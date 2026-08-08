@@ -1,7 +1,8 @@
 # 발탄 아레나 World Destruction 저작 결과
 
 대응 계획: `2026-08-07_VALTAN_WORLD_DESTRUCTION_PLAN.md`
-브랜치: `feature/maptool-world-destruction-bern-nav`
+최초 브랜치: `feature/maptool-world-destruction-bern-nav`
+2026-08-08 간편 편집기 브랜치: `codex/maptool-wall-editor`
 
 ## 0. 계획과 실제 반영 범위가 다르다 — 먼저 읽을 것
 
@@ -166,16 +167,12 @@ Save 하지 않고 Area 를 바꿀 때 Has_UnsavedAuthoring 이 물어보는지
 
 ## 4. 남은 경계
 
-### 4.1 첫 Save가 ProjectAudit을 다시 깨뜨린다
+### 4.1 첫 Save 프로젝트 등록 — 2026-08-08 해결
 
-`Data/Encounters/Valtan/ValtanWorldEvents.json`은 아직 존재하지 않는다. 현재
-`Data/Encounters/Valtan/`에는 `ValtanEncounter.json` 하나뿐이다.
+`Data/Encounters/Valtan/ValtanWorldEvents.json` 빈 정본을 추가했고 schema/version/Area/
+Encounter/provenance와 빈 group/mutation/binding 배열을 저장했다.
 
-Map Tool에서 처음 Save하면 이 파일이 생기고, 그 순간 `projects.data-source-visibility`가
-`expected=546 project=545`로 다시 실패한다. audit이 `git ls-files --cached --others
---exclude-standard -- Data`로 tracked와 untracked를 모두 세기 때문이다.
-
-Save한 뒤에는 같은 변경 단위에서 다음을 함께 추가해야 한다.
+같은 변경 단위에서 다음 `96.DataFiles\Encounters` 항목을 프로젝트와 filters에 등록했다.
 
 ```xml
 <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
@@ -197,10 +194,10 @@ Save한 뒤에는 같은 변경 단위에서 다음을 함께 추가해야 한�
 G6(Server 상태와 collision receiver), G7(Shared 복제), G8(Client `Set_State` 서버 연결)이
 닫히기 전에는 "벽이 실제로 부서진다"고 판단하지 않는다.
 
-### 4.3 착수하지 않은 항목
+### 4.3 착수하지 않았거나 일부만 열린 항목
 
 ```text
-G9   타임라인 미리보기 재생
+G9   데이터 시간축 Play/Pause/Restart/현재 시점 복사는 구현. 실제 boss clip 동기 재생은 미구현
 G10  돌진 충돌 판정과 스킬 이동 sweep 보강
 G11  아레나 바닥 붕괴와 낙사 hazard
 G12  파괴 Effect / Camera / Audio
@@ -217,8 +214,81 @@ admission하는 G5에서 `AREA_DATA_LAYER_GUIDE.md`,
 ## 5. 다음 작업에서 먼저 할 것
 
 ```text
-1. 3절 수동 검증을 실행하고 결과를 이 문서에 채운다
-2. PLAN 본문을 실제 반영 코드(WorldDestructionDocument 포함)에 맞춰 교정한다
-3. 첫 Save 이후 4.1의 project 등록을 같은 커밋에 넣는다
-4. G5 publisher 검증부터 순서대로 연다
+1. 아래 6.4절 수동 검증을 실행하고 결과를 이 문서에 채운다
+2. navigation blocker region을 실제 벽 그룹에 저작한다
+3. G5 publisher 검증부터 순서대로 열어 Server 수직 슬라이스를 닫는다
 ```
+
+## 6. 2026-08-08 벽 중심 간편 편집기 결과
+
+### 6.1 구현 완료
+
+- `World Destruction`의 기본 화면을 `Easy Wall Editor`로 연결하고 기존 원본 그래프 UI는
+  `Advanced Graph Editor`로 보존했다.
+- 월드 클릭과 Deploy 목록 클릭을 `Select_DestructionWall()` 하나로 통합했다. 선택 성공 시
+  owner group 역조회, 기존 binding draft 동기화, 선택 벽/그룹 와이어 강조가 함께 갱신된다.
+- pick 실패는 렌더 표면 없음과 DeployProp 소유권 없음으로 나눠 상태 문자열을 남긴다.
+- 선택 모드의 LMB는 gameplay 입력으로 전달하지 않고 Escape/모드 전환에서 해제한다.
+- 선택 벽 Inspector에 asset, runtime placement ID, 위치, stateOff/trigger 원본 근거, 모델 종류,
+  fractured mesh 유무, 그룹과 함께 무너지는 벽 수를 표시한다.
+- INTACT/FRACTURED/DESPAWNED 프리뷰 버튼은 실제 적용 범위를 Wall/Group으로 표시한다.
+- pattern/stage/actionId/kind/duration을 선택하고 stage 시작/시간/종료/Collision Box 충돌 중 하나를
+  고를 수 있다. 정확한 actionId별 clip이 없다는 경고를 같은 화면에 표시한다.
+- 30Hz encounter 데이터 시간축에 Play/Pause/Restart/Loop/slider/Use Current Time을 추가했다.
+  실제 CValtan 모델 clip 재생이 아니라 파괴 offset 저작용 playhead다.
+- 간편 Apply는 document copy에 전부 stage한 뒤 commit한다. group identity 기반 deterministic
+  mutation/binding ID, semantic 중복 방지, hash 충돌 fail-closed를 적용했다.
+- Save 전에 모든 group member DeployProp, navigation region, pattern/stage/offset, collision receiver
+  외부 참조를 다시 검증한다. 새 binding은 기본 disabled다.
+- 여러 setting이 있는 그룹은 Existing/New을 명시하기 전까지 Apply할 수 없고, 기존 setting을
+  편집하면 같은 binding ID를 갱신한다. Easy Editor는 FRACTURED setting만 다룬다.
+- 비파괴 DeployProp은 벽 목록·월드 선택·그룹 추가에서 거부한다. Preview는 원래 상태를 기억해
+  다른 벽 선택, 모드 전환, F1 닫기와 ImGui 창의 `X` 닫기에서 자동 복원한다.
+- enabled setting은 실제 벽 멤버, 단일 소유 navigation region과 1개 이상의 cell, 활성 Collision
+  Box를 요구한다. 미저장 World Gameplay/Navigation을 참조한 단독 Save도 차단한다.
+- Reload와 Area 전환은 Deploy/Gameplay/Navigation/Encounter와의 cross-document 검증을 먼저
+  통과한 뒤 staged 문서를 commit한다.
+- `Reload Authoring Data`는 Encounter와 WorldEvents를 함께 stage/validate/commit한다. Encounter
+  단독 Reload도 기존 world-events가 계속 유효할 때만 교체하므로 두 정본이 반쪽만 갱신되지 않는다.
+- enabled setting은 `BOSS_VALTAN`과 `ENCOUNTER_VALTAN`이 정확히 연결된 boss placement가 하나일
+  때만 저장한다.
+- `Save All`, 개별 Gameplay 저장/재로드, Navigation 저장/재로드도 기존 world-events 참조를
+  깨뜨리는 Collision Box 삭제·blocker 삭제·0-cell 변경을 파일 쓰기 전에 거부한다.
+- 빈 `ValtanWorldEvents.json` 정본과 `Client.vcxproj/.filters` 데이터 노출 항목을 함께 추가했다.
+
+### 6.2 자동 검증
+
+| 항목 | 결과 |
+|---|---|
+| JSON / vcxproj / filters parse | PASS |
+| `git diff --check` | PASS |
+| Client x64 Debug | PASS, MSBuild exit 0, `Client/Bin/Debug/Client.exe` 링크 |
+| Client x64 Release | PASS, MSBuild exit 0, `Client/Bin/Release/Client.exe` 링크 |
+| `Publish-WorldGameplay.ps1 -Mode Validate` | PASS, 4 world + Valtan spawn groups |
+| `Publish-ServerNavigation.ps1 -Mode Validate` | PASS, Valtan/Training/Character Select |
+| ProjectAudit | 기존 `effect.g09-authoring-world-runtime-boundary` 1건만 FAIL. 이번 파일 관련 신규 실패 없음 |
+
+ProjectAudit 첫 실행의 `python` 미탐지는 Codex 번들 Python 경로를 연결해 재실행했고 제거됐다.
+남은 Effect Tool 실패는 이 작업 전 RESULT 2.1절에도 기록된 baseline이다.
+
+### 6.3 아직 제품 런타임이 아닌 것
+
+이번 변경은 사용자가 파괴 데이터를 쉽게 저작하는 화면과 정본 저장까지다.
+`Publish-WorldGameplay.ps1`은 여전히 destroyable을 admission하지 않으며 Server/Shared/Client
+replication, BREAKING→FRACTURED commit, 동적 collision/nav, late join, 돌진 receiver, 파괴 Effect/
+Camera/Audio는 연결되지 않았다. 따라서 Easy Editor에서 저장했다고 실제 레이드 벽이 바로
+무너지는 것은 아니다.
+
+### 6.4 수동 검증 대기
+
+```text
+Lobby -> Test -> Map Editor -> Valtan -> F1 -> World Destruction
+Easy Wall Editor가 기본으로 보이는지
+Pick Wall In Viewport와 왼쪽 목록이 같은 벽/그룹을 강조하는지
+Original/Broken/Hidden 프리뷰와 Group 범위 문구가 맞는지
+pattern/stage/time을 고른 뒤 Apply And Save가 JSON을 만들고 Reload 후 동일한지
+Play/Pause/Restart/Use Current Time이 stage와 offset을 올바르게 갱신하는지
+잘못된 Collision Box/외부 참조에서 기존 파일을 보존하고 저장을 거부하는지
+```
+
+GUI 수동 검증은 이 세션에서 실행하지 않았으므로 PASS로 기록하지 않는다.

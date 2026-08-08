@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.world-destruction-events",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "encounterId": "ENCOUNTER_VALTAN",
+  "provenance": "PROJECT_TUNED",
+  "groups": [],
+  "mutations": [],
+  "bindings": []
+}

@@ -271,6 +271,7 @@
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
+    <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_DEV_TRAINING_GROUND\LV_DEV_TRAINING_GROUND.mapplacements" />
     <None Include="..\..\Data\Maps\Authoring\LV_LOBBY_CLASSSELECT_SL00\LV_LOBBY_CLASSSELECT_SL00.mapplacements" />

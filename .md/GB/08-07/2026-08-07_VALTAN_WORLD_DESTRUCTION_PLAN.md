@@ -159,12 +159,12 @@ world transform 필드가 없다. 따라서 world-space effect spawn 경로가 G
 | G1 | MapTool `World Destruction` 읽기 전용 진단 모드 | 5번째 모드 표시, encounter/deploy/world/nav 네 정본을 한 화면에서 읽음, 저장 경로 0개 |
 | G2 | `ValtanWorldEvents.json` 문서와 strict parser, atomic save | 그룹 0개 문서 Save -> Load 왕복, 잘못된 문서에서 기존 문서 보존 |
 | G3 | 그룹 저작 UI와 벽 한 그룹 작성 | `3705102` 5개를 한 그룹으로 저장하고 재로드해 동일 |
-| G4 | 개별 `Set_State` 미리보기와 nav region 자동 셀 계산 | 벽 선택 -> INTACT/FRACTURED 전환이 화면에 보이고 셀 오버레이가 갱신 |
+| G4 | 개별 `Set_State` 미리보기, 벽 선택·간편 편집기, nav region 연결 | 벽 선택 -> 정보/설정/강조가 한 화면에 보이고 INTACT/FRACTURED 전환이 보임. nav region 자동 셀 계산은 별도 완료 증거 필요 |
 | G5 | Publisher의 destroyable / world event / navblocker 검증 | `Publish-WorldGameplay.ps1 -Mode Validate` 통과, 잘못된 참조에서 실패 |
 | G6 | Server `INTACT -> BREAKING -> FRACTURED` 상태와 collision receiver | `Server.exe --contract-test` 통과 |
 | G7 | Shared full sync / delta / late join | `NetworkProtocolHarness` failures 0 |
 | G8 | Client `CDeployPropRuntime::Set_State` 서버 연결 | Server 명령으로만 벽이 바뀌고 재접속 Client도 같은 상태 |
-| G9 | MapTool 타임라인과 파괴 미리보기 | stage 타임라인에서 요청 ms와 Server tick을 함께 표시하고 미리보기 재생 |
+| G9 | MapTool 타임라인과 파괴 미리보기 | stage 시간축 Play/Pause/Restart/현재 시점 복사. 실제 Valtan clip 동기 재생은 actionId→clip 계약 뒤 검증 |
 | G10 | 돌진 충돌 판정과 스킬 이동 sweep 보강 | 벽이 실제로 이동을 막고 `Q`로 통과되지 않음 |
 | G11 | 아레나 바닥 붕괴와 낙사 hazard | `VALTAN_ARENA_BREAK_80` 에서 반대 polarity가 동작 |
 | G12 | 파괴 Effect / Camera / Audio 와 world-space effect spawn | Valtan admitted effect로 파편·먼지 재생 |
@@ -173,7 +173,48 @@ world transform 필드가 없다. 따라서 world-space effect spawn 경로가 G
 첫 완료 단위는 G1~G8이다. 벽 한 그룹이 Server 확정으로 부서지고 collision/nav가 함께 열리며
 재접속 Client가 같은 상태를 받는 것까지가 하나의 검증 단위다.
 
-## 2. 이번 G1 경계
+### 1.1 2026-08-08 벽 중심 간편 편집기 보강
+
+기존 Group/Mutation/Binding 원본 구조는 `Advanced Graph Editor`로 보존한다. 기본 화면은 사용자가
+내부 stable ID를 직접 조립하지 않도록 다음 순서만 노출한다.
+
+```text
+벽 선택(월드 또는 목록)
+-> 선택 벽의 asset/runtimePlacementId/위치/원본 근거/그룹 표시
+-> Valtan pattern과 stage 선택
+-> stage 시작/선택 시점/종료/보스 충돌 조건 선택
+-> 그룹 BREAKING 표시 시간과 enabled 여부 선택
+-> group/mutation/binding stable ID 자동 생성
+-> 전체 외부 참조 검증
+-> atomic Save
+```
+
+월드 선택은 `Target_PickPos`가 돌려준 실제 렌더 표면점을 DeployProp world AABB 소유권과
+대조한다. 실패는 무음으로 삼키지 않고 `no rendered surface`와 `not a loaded DeployProp`을
+구분한다. 목록 선택도 같은 `Select_DestructionWall()` 경로를 사용해 그룹 역조회와 와이어
+강조가 항상 같이 갱신된다.
+
+시간축은 `ValtanEncounter.json`의 stage 누적 시간만 재생한다. 현재 제품에는 actionId별 실제
+clip binding이 없으므로 이 화면은 정확한 발탄 애니메이션을 재생한다고 주장하지 않는다.
+`patternWindup / patternActive / patternRecovery` 공통 클립이라는 현재 런타임 한계를 화면에
+명시한다.
+
+간편 Apply는 `CWorldDestructionDocument` 복사본에 group/member/mutation/binding을 모두 적용한
+뒤 성공할 때만 교체한다. 자동 ID는 선택 벽 순서가 아니라 stable group identity와 semantic
+hash를 사용하고, 같은 semantic 중복이나 hash 충돌은 저장하지 않는다. Save 직전에는 문서의
+모든 DeployProp, pattern/stage, Collision Box, navigation region 외부 참조를 다시 검증한다.
+같은 navigation region을 두 그룹이 동시에 소유하거나, enabled binding이 빈 벽 그룹·0-cell
+navigation region·비활성 Collision Box를 가리키면 저장을 거부한다. World Gameplay 또는
+Navigation에 미저장 변경이 있으면 world-events 단독 저장도 거부하고 `Save All` 순서를 요구한다.
+Encounter와 WorldEvents를 함께 Reload할 때는 두 파일을 모두 stage하고 서로 검증한 뒤 한 번에
+commit한다. Encounter 단독 Reload와 Area 전환도 같은 cross-document 검증을 통과한 문서만
+commit한다. enabled binding은 정확히 하나의 `BOSS_VALTAN` 배치가 `ENCOUNTER_VALTAN`에 연결된
+Area에서만 저장한다. 새 binding은 Server 수직 슬라이스가 닫히기 전까지 기본 `enabled=false`다.
+
+## 2. 최초 G1 경계 (2026-08-07 기록)
+
+아래 절은 최초 G1 계획을 보존한 기록이다. 현재 코드는 1.1절과 대응 RESULT에 적힌 대로
+G2/G3, G4 일부, G9의 데이터 시간축 일부까지 확장됐다.
 
 G1은 **읽기 전용 진단 모드**다. 저장 경로, dirty 플래그, runtime 상태 변경을 만들지 않는다.
 

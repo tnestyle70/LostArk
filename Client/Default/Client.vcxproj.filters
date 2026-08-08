@@ -886,6 +886,9 @@
     <None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
       <Filter>96.DataFiles\Encounters</Filter>
     </None>
+    <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json">
+      <Filter>96.DataFiles\Encounters</Filter>
+    </None>
     <None Include="..\..\Data\Maps\Authoring\LV_BER_BERNCASTLE\LV_BER_BERNCASTLE.mapplacements">
       <Filter>96.DataFiles\Maps</Filter>
     </None>

@@ -147,6 +147,10 @@ private:
 	void Render_WorldGameplayPanel(bool_t isAssetTest);
 	void Render_SpawnGroupsPanel();
 	void Render_WorldDestructionPanel(bool_t isAssetTest);
+	void Render_DestructionSimpleEditor();
+	void Render_DestructionSimpleWallList();
+	void Render_DestructionSimpleInspector();
+	void Render_DestructionSimpleTimeline();
 	void Render_DestructionEncounterSource();
 	void Render_DestructionDeployList();
 	void Render_DestructionWorldRows();
@@ -257,12 +261,34 @@ private:
 
 	/* World Destruction Authoring */
 	bool_t Load_EncounterReference();
+	bool_t Reload_DestructionAuthoring();
 	bool_t Load_WorldDestruction();
 	bool_t Save_WorldDestruction();
 	std::filesystem::path Get_WorldDestructionPath() const;
-	bool_t Try_PickDeployProp(uint64_t& outRuntimePlacementId) const;
+	bool_t Try_PickDeployProp(
+		uint64_t& outRuntimePlacementId,
+		std::string& outFailure) const;
+	bool_t Select_DestructionWall(
+		uint64_t runtimePlacementId,
+		const char_t* source);
+	void Sync_DestructionDraftFromSelection();
+	void Load_DestructionDraftFromBinding(
+		const DESTRUCTION_BINDING& binding);
+	const ENCOUNTER_STAGE_REFERENCE* Find_SelectedDestructionStage() const;
+	bool_t Apply_SimpleDestructionAuthoring();
+	bool_t Validate_DestructionExternalReferences(
+		const CWorldDestructionDocument& destruction,
+		const CDeployPropRuntime& deployRuntime,
+		const CNavRuntimeBlockerDocument& blockers,
+		const CWorldGameplayDocument& worldGameplay,
+		const CEncounterPatternReference& encounter,
+		std::string& outStatus) const;
+	bool_t Validate_CurrentDestructionReferences(
+		std::string& outStatus) const;
+	void Use_DestructionTimelineTime();
 	bool_t Refresh_DestructionHighlight();
 	void Apply_DestructionPreview(DEPLOY_PROP_STATE state);
+	void Restore_DestructionPreview();
 
 	/* Queries */
 	PLACED_ENTRY* Find_Placement(uint64_t placementId);
@@ -358,12 +384,22 @@ private:
 	   timeline; not a binding identity. */
 	std::string m_SelectedDestructionStageId;
 	vector<TRIGGER_BOX_ENTRY> m_DestructionHighlightBoxes;
+	vector<std::pair<uint64_t, DEPLOY_PROP_STATE>>
+		m_DestructionPreviewPreviousStates;
 	bool_t m_bDestructionPickArmed = false;
-	char m_DestructionGroupId[128] = "destroyable.group.valtan.wall.01";
-	char m_DestructionMutationId[128] = "mutation.valtan.wall.01.break";
-	char m_DestructionBindingId[128] = "binding.valtan.wall.01.break";
-	char m_DestructionReceiverId[128] = "collision.valtan.wall.01";
-	char m_DestructionRegionId[128]{};
+	bool_t m_bDestructionAddMemberArmed = false;
+	bool_t m_bDestructionAdvancedMode = false;
+	bool_t m_bDestructionOnlyUnassigned = false;
+	bool_t m_bDestructionBindingEnabled = false;
+	bool_t m_bDestructionNewSettingArmed = false;
+	bool_t m_bDestructionTimelinePlaying = false;
+	bool_t m_bDestructionTimelineLoop = true;
+	f32_t m_fDestructionTimelineMs = 0.f;
+	char m_DestructionGroupId[129] = "destroyable.group.valtan.wall.01";
+	char m_DestructionMutationId[129] = "mutation.valtan.wall.01.break";
+	char m_DestructionBindingId[129] = "binding.valtan.wall.01.break";
+	char m_DestructionReceiverId[129] = "collision.valtan.wall.01";
+	char m_DestructionRegionId[129]{};
 	int32_t m_iDestructionTriggerKind = 1;
 	int32_t m_iDestructionBreakingMs = 1900;
 	int32_t m_iDestructionOffsetMs = 0;
