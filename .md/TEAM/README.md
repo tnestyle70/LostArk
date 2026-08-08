@@ -11,8 +11,9 @@
 5. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
 6. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
 7. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
-8. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-9. 최근 통합 검증 증거: `../GB/08-05/2026-08-05_BALANCE_PROVENANCE_IMGUI_MAP_DATA_RESULT.md`
+8. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
+9. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+10. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -32,6 +33,7 @@
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
+| `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
 | 날짜별 `*_RESULT.md` | 실행한 검증과 당시 완료/미완료 증거를 남길 때 |
 

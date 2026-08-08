@@ -14,6 +14,154 @@ namespace
 {
 	constexpr f32_t PREVIEW_GROUND_HALF_THICKNESS = 0.25f;
 	constexpr f32_t MINIMUM_SHAPE_HALF_EXTENT = 0.01f;
+	constexpr f32_t PI = 3.14159265358979323846f;
+	constexpr f32_t DEBRIS_DIRECTION_SPREAD_RADIANS = 28.f * PI / 180.f;
+	constexpr f32_t DEBRIS_UPWARD_SPEED_METERS_PER_SECOND = 3.25f;
+	constexpr f32_t DEBRIS_MIN_SPEED_SCALE = 0.8f;
+	constexpr f32_t DEBRIS_MAX_SPEED_SCALE = 1.2f;
+	constexpr f32_t DEBRIS_MIN_ANGULAR_SPEED_RADIANS_PER_SECOND = 5.f;
+	constexpr f32_t DEBRIS_MAX_ANGULAR_SPEED_RADIANS_PER_SECOND = 11.f;
+	constexpr f32_t DEBRIS_MIN_VISUAL_SCALE = 0.8f;
+	constexpr f32_t DEBRIS_MAX_VISUAL_SCALE = 1.2f;
+	std::string Build_FragmentId(
+		const std::string& elementId,
+		const uint32_t pieceIndex)
+	{
+		return elementId + ".fragment." +
+			(pieceIndex < 10u ? "0" : "") + std::to_string(pieceIndex);
+	}
+
+	uint64_t Hash_Bytes(uint64_t seed, const std::string_view value)
+	{
+		constexpr uint64_t FNV_PRIME = 1099511628211ull;
+		for (const unsigned char byte : value)
+		{
+			seed ^= static_cast<uint64_t>(byte);
+			seed *= FNV_PRIME;
+		}
+		return seed;
+	}
+
+	uint64_t Build_DebrisSeed(
+		const std::string& profileId,
+		const std::string& elementId,
+		const uint32_t pieceIndex)
+	{
+		uint64_t seed = 14695981039346656037ull;
+		seed = Hash_Bytes(seed, profileId);
+		seed = Hash_Bytes(seed, elementId);
+		for (uint32_t shift = 0u; shift < 32u; shift += 8u)
+		{
+			seed ^= static_cast<uint64_t>((pieceIndex >> shift) & 0xffu);
+			seed *= 1099511628211ull;
+		}
+		return 0u == seed ? 0x9e3779b97f4a7c15ull : seed;
+	}
+
+	uint64_t Next_Random(uint64_t& state)
+	{
+		state ^= state >> 12u;
+		state ^= state << 25u;
+		state ^= state >> 27u;
+		return state * 2685821657736338717ull;
+	}
+
+	f32_t Random_Unit(uint64_t& state)
+	{
+		return static_cast<f32_t>((Next_Random(state) >> 40u) & 0xffffffu) /
+			static_cast<f32_t>(0xffffffu);
+	}
+
+	f32_t Random_Signed(uint64_t& state)
+	{
+		return Random_Unit(state) * 2.f - 1.f;
+	}
+
+	float3_t Rotate_Vector(
+		const float3_t& value,
+		const float4_t& rotation)
+	{
+		float3_t result{};
+		XMStoreFloat3(&result, XMVector3Rotate(
+			XMLoadFloat3(&value),
+			XMQuaternionNormalize(XMLoadFloat4(&rotation))));
+		return result;
+	}
+
+	float3_t InverseRotate_Vector(
+		const float3_t& value,
+		const float4_t& rotation)
+	{
+		float3_t result{};
+		XMStoreFloat3(&result, XMVector3InverseRotate(
+			XMLoadFloat3(&value),
+			XMQuaternionNormalize(XMLoadFloat4(&rotation))));
+		return result;
+	}
+
+	float3_t Normalize_Vector(const float3_t& value)
+	{
+		float3_t result{};
+		XMStoreFloat3(&result, XMVector3Normalize(XMLoadFloat3(&value)));
+		return result;
+	}
+
+	float3_t Build_SpreadDirection(
+		const float3_t& authoredDirection,
+		uint64_t& randomState)
+	{
+		const vector_t forward = XMVector3Normalize(
+			XMLoadFloat3(&authoredDirection));
+		const f32_t upDot = std::abs(XMVectorGetX(XMVector3Dot(
+			forward, XMVectorSet(0.f, 1.f, 0.f, 0.f))));
+		const vector_t reference = upDot > 0.95f ?
+			XMVectorSet(1.f, 0.f, 0.f, 0.f) :
+			XMVectorSet(0.f, 1.f, 0.f, 0.f);
+		const vector_t right = XMVector3Normalize(
+			XMVector3Cross(reference, forward));
+		const vector_t secondary = XMVector3Normalize(
+			XMVector3Cross(forward, right));
+		const f32_t angle = DEBRIS_DIRECTION_SPREAD_RADIANS *
+			std::sqrt(Random_Unit(randomState));
+		const f32_t azimuth = 2.f * PI * Random_Unit(randomState);
+		const vector_t radial = right * std::cos(azimuth) +
+			secondary * std::sin(azimuth);
+		float3_t result{};
+		XMStoreFloat3(&result, XMVector3Normalize(
+			forward * std::cos(angle) + radial * std::sin(angle)));
+		return result;
+	}
+
+	float4_t Build_RandomRotation(uint64_t& randomState)
+	{
+		float4_t result{};
+		XMStoreFloat4(&result, XMQuaternionNormalize(
+			XMQuaternionRotationRollPitchYaw(
+				Random_Signed(randomState) * PI,
+				Random_Signed(randomState) * PI,
+				Random_Signed(randomState) * PI)));
+		return result;
+	}
+
+	float3_t Build_RandomAngularVelocity(uint64_t& randomState)
+	{
+		float3_t axis = {
+			Random_Signed(randomState),
+			Random_Signed(randomState),
+			Random_Signed(randomState)
+		};
+		const f32_t lengthSquared = axis.x * axis.x + axis.y * axis.y +
+			axis.z * axis.z;
+		if (lengthSquared <= 0.000001f)
+			axis = { 0.f, 1.f, 0.f };
+		else
+			axis = Normalize_Vector(axis);
+		const f32_t speed = DEBRIS_MIN_ANGULAR_SPEED_RADIANS_PER_SECOND +
+			(DEBRIS_MAX_ANGULAR_SPEED_RADIANS_PER_SECOND -
+				DEBRIS_MIN_ANGULAR_SPEED_RADIANS_PER_SECOND) *
+			Random_Unit(randomState);
+		return { axis.x * speed, axis.y * speed, axis.z * speed };
+	}
 
 	const Client::DEPLOY_RUNTIME_ENTRY* Find_Entry(
 		const Client::CDeployPropRuntime& runtime,
@@ -37,6 +185,34 @@ namespace
 			std::isfinite(rotation.y) && std::isfinite(rotation.z) &&
 			std::isfinite(rotation.w);
 	}
+}
+
+const std::vector<Client::DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC>&
+Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
+{
+	static const std::vector<DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC> specs = {
+		{
+			L"Prototype_Component_Model_DestructionProxy_ValtanStone001",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f
+		},
+		{
+			L"Prototype_Component_Model_DestructionProxy_ValtanStone002",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f
+		},
+		{
+			L"Prototype_Component_Model_DestructionProxy_ValtanStone004",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f
+		},
+		{
+			L"Prototype_Component_Model_DestructionProxy_ValtanStone010",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f
+		}
+	};
+	return specs;
 }
 
 class Client::CDestructionSimulationRuntime::CPhysicsAdapter final
@@ -98,6 +274,7 @@ public:
 		const float3_t& shapeLocalCentre,
 		const float3_t& halfExtents,
 		const float3_t& linearVelocity,
+		const float3_t& angularVelocity,
 		const f32_t gravityScale,
 		shared_ptr<Engine::CRigidBody>& outBody,
 		std::string& outStatus)
@@ -128,7 +305,8 @@ public:
 		shared_ptr<Engine::CRigidBody> staged =
 			Engine::CRigidBody::Create_Runtime(desc);
 		if (nullptr == staged ||
-			FAILED(staged->Set_LinearVelocity(linearVelocity)))
+			FAILED(staged->Set_LinearVelocity(linearVelocity)) ||
+			FAILED(staged->Set_AngularVelocity(angularVelocity)))
 		{
 			if (nullptr != staged)
 				staged->Destroy_Actor();
@@ -189,9 +367,28 @@ private:
 
 struct Client::CDestructionSimulationRuntime::ELEMENT_RUNTIME final
 {
+	struct DEBRIS_PIECE_RUNTIME final
+	{
+		std::string fragmentId;
+		std::string modelAssetId;
+		uint32_t iVisualIndex = UINT32_MAX;
+		shared_ptr<Engine::CRigidBody> pBody;
+		float3_t vInitialPosition{};
+		float4_t vInitialRotation = { 0.f, 0.f, 0.f, 1.f };
+		float3_t vShapeLocalCentre{};
+		float3_t vHalfExtents = { 0.05f, 0.05f, 0.05f };
+		float3_t vInitialLinearVelocity{};
+		float3_t vInitialAngularVelocity{};
+		float3_t vCurrentPosition{};
+		float4_t vCurrentRotation = { 0.f, 0.f, 0.f, 1.f };
+		float3_t vCurrentLinearVelocity{};
+		f32_t fActivatedAtSeconds = 0.f;
+		DESTRUCTION_SIMULATION_ELEMENT_STATE eState =
+			DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING;
+	};
+
 	DESTRUCTION_SIMULATION_ELEMENT Desc;
 	shared_ptr<CDeployPropObject> pObject;
-	shared_ptr<Engine::CRigidBody> pBody;
 	float3_t vInitialPosition{};
 	float4_t vInitialRotation = { 0.f, 0.f, 0.f, 1.f };
 	float3_t vShapeLocalCentre{};
@@ -199,6 +396,7 @@ struct Client::CDestructionSimulationRuntime::ELEMENT_RUNTIME final
 	float3_t vCurrentPosition{};
 	float4_t vCurrentRotation = { 0.f, 0.f, 0.f, 1.f };
 	float3_t vLinearVelocity{};
+	std::vector<DEBRIS_PIECE_RUNTIME> DebrisPieces;
 	f32_t fActivatedAtSeconds = 0.f;
 	DESTRUCTION_SIMULATION_ELEMENT_STATE eState =
 		DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING;
@@ -350,6 +548,158 @@ bool_t Client::CDestructionSimulationRuntime::Stage_Profile(
 		return false;
 	}
 
+	const auto& modelSpecs = Get_ProjectAuthoredDebrisModelSpecs();
+	if (modelSpecs.empty())
+	{
+		stagedPhysics->Clear_Ground();
+		stagedPhysics->End_ExclusiveClock();
+		outStatus = "Project-authored debris model recipe is empty";
+		return false;
+	}
+
+	auto releaseStagedDebris = [&stagedElements]()
+	{
+		for (ELEMENT_RUNTIME& runtime : stagedElements)
+		{
+			if (nullptr != runtime.pObject &&
+				runtime.pObject->Is_DebrisPreviewActive())
+			{
+				runtime.pObject->End_DebrisPreview();
+			}
+		}
+	};
+	for (ELEMENT_RUNTIME& runtime : stagedElements)
+	{
+		CDeployPropObject::DEBRIS_PREVIEW_DESC previewDesc;
+		previewDesc.suppressSource = false;
+		previewDesc.instances.reserve(
+			PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
+		std::vector<uint64_t> randomStates;
+		randomStates.reserve(PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
+		for (uint32_t pieceIndex = 0u;
+			pieceIndex < PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT;
+			++pieceIndex)
+		{
+			uint64_t randomState = Build_DebrisSeed(
+				profile.profileId, runtime.Desc.elementId, pieceIndex);
+			const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& modelSpec =
+				modelSpecs[pieceIndex % modelSpecs.size()];
+			CDeployPropObject::DEBRIS_PREVIEW_INSTANCE_DESC instanceDesc;
+			instanceDesc.modelPrototypeTag = modelSpec.prototypeTag;
+			instanceDesc.uniformScale = DEBRIS_MIN_VISUAL_SCALE +
+					(DEBRIS_MAX_VISUAL_SCALE - DEBRIS_MIN_VISUAL_SCALE) *
+					Random_Unit(randomState);
+			previewDesc.instances.push_back(std::move(instanceDesc));
+			randomStates.push_back(randomState);
+		}
+
+		std::string debrisError;
+		if (!runtime.pObject->Begin_DebrisPreview(previewDesc, debrisError) ||
+			runtime.pObject->Get_DebrisPreviewInstanceCount() !=
+				PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT)
+		{
+			releaseStagedDebris();
+			stagedPhysics->Clear_Ground();
+			stagedPhysics->End_ExclusiveClock();
+			outStatus = "Project-authored debris prototypes are unavailable";
+			if (!debrisError.empty())
+				outStatus += ": " + debrisError;
+			return false;
+		}
+
+		runtime.DebrisPieces.reserve(
+			PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
+		const float3_t localImpactDirection = InverseRotate_Vector(
+			runtime.Desc.vDirection, runtime.vInitialRotation);
+		for (uint32_t pieceIndex = 0u;
+			pieceIndex < PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT;
+			++pieceIndex)
+		{
+			ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME piece;
+			const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& modelSpec =
+				modelSpecs[pieceIndex % modelSpecs.size()];
+			piece.fragmentId = Build_FragmentId(
+				runtime.Desc.elementId, pieceIndex);
+			piece.modelAssetId = modelSpec.assetId;
+			piece.iVisualIndex = pieceIndex;
+			if (!runtime.pObject->Get_DebrisPreviewLocalBounds(
+				pieceIndex, piece.vShapeLocalCentre, piece.vHalfExtents))
+			{
+				releaseStagedDebris();
+				stagedPhysics->Clear_Ground();
+				stagedPhysics->End_ExclusiveClock();
+				outStatus = "Project-authored debris model has no usable bounds";
+				return false;
+			}
+
+			uint64_t randomState = randomStates[pieceIndex];
+			float3_t localSpawn = {
+				runtime.vShapeLocalCentre.x + runtime.vHalfExtents.x *
+					Random_Signed(randomState) * 0.75f,
+				runtime.vShapeLocalCentre.y + runtime.vHalfExtents.y *
+					Random_Signed(randomState) * 0.75f,
+				runtime.vShapeLocalCentre.z + runtime.vHalfExtents.z *
+					Random_Signed(randomState) * 0.75f
+			};
+			/* Bias roots toward the authored impact-facing surface. This keeps
+			   the stones distributed over the visible wall volume without
+			   making every actor emerge from the placement origin. */
+			const f32_t surfaceFactor = 0.65f +
+				Random_Unit(randomState) * 0.3f;
+			const f32_t absX = std::abs(localImpactDirection.x);
+			const f32_t absY = std::abs(localImpactDirection.y);
+			const f32_t absZ = std::abs(localImpactDirection.z);
+			if (absX >= absY && absX >= absZ)
+			{
+				localSpawn.x = runtime.vShapeLocalCentre.x +
+					(localImpactDirection.x < 0.f ? -1.f : 1.f) *
+					runtime.vHalfExtents.x * surfaceFactor;
+			}
+			else if (absY >= absZ)
+			{
+				localSpawn.y = runtime.vShapeLocalCentre.y +
+					(localImpactDirection.y < 0.f ? -1.f : 1.f) *
+					runtime.vHalfExtents.y * surfaceFactor;
+			}
+			else
+			{
+				localSpawn.z = runtime.vShapeLocalCentre.z +
+					(localImpactDirection.z < 0.f ? -1.f : 1.f) *
+					runtime.vHalfExtents.z * surfaceFactor;
+			}
+			const float3_t worldSpawnOffset = Rotate_Vector(
+				localSpawn, runtime.vInitialRotation);
+			piece.vInitialPosition = {
+				runtime.vInitialPosition.x + worldSpawnOffset.x,
+				runtime.vInitialPosition.y + worldSpawnOffset.y,
+				runtime.vInitialPosition.z + worldSpawnOffset.z
+			};
+			piece.vInitialRotation = Build_RandomRotation(randomState);
+			const float3_t spreadDirection = Build_SpreadDirection(
+				runtime.Desc.vDirection, randomState);
+			const f32_t speedScale = DEBRIS_MIN_SPEED_SCALE +
+				(DEBRIS_MAX_SPEED_SCALE - DEBRIS_MIN_SPEED_SCALE) *
+				Random_Unit(randomState);
+			const f32_t upwardSpeed =
+				DEBRIS_UPWARD_SPEED_METERS_PER_SECOND *
+				(0.8f + Random_Unit(randomState) * 0.4f);
+			piece.vInitialLinearVelocity = {
+				spreadDirection.x * runtime.Desc.fSpeedMetersPerSecond *
+					speedScale,
+				spreadDirection.y * runtime.Desc.fSpeedMetersPerSecond *
+					speedScale + upwardSpeed,
+				spreadDirection.z * runtime.Desc.fSpeedMetersPerSecond *
+					speedScale
+			};
+			piece.vInitialAngularVelocity =
+				Build_RandomAngularVelocity(randomState);
+			piece.vCurrentPosition = piece.vInitialPosition;
+			piece.vCurrentRotation = piece.vInitialRotation;
+			piece.vCurrentLinearVelocity = piece.vInitialLinearVelocity;
+			runtime.DebrisPieces.push_back(std::move(piece));
+		}
+	}
+
 	m_pPhysics = std::move(stagedPhysics);
 	m_Profile = profile;
 	m_Elements = std::move(stagedElements);
@@ -372,9 +722,22 @@ void Client::CDestructionSimulationRuntime::Destroy_Actors()
 {
 	for (ELEMENT_RUNTIME& runtime : m_Elements)
 	{
-		if (nullptr != runtime.pBody)
-			runtime.pBody->Destroy_Actor();
-		runtime.pBody.reset();
+		for (ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece :
+			runtime.DebrisPieces)
+		{
+			if (nullptr != piece.pBody)
+				piece.pBody->Destroy_Actor();
+			piece.pBody.reset();
+			if (nullptr != runtime.pObject &&
+				runtime.pObject->Is_DebrisPreviewActive())
+			{
+				runtime.pObject->Apply_DebrisPreviewPose(
+					piece.iVisualIndex,
+					piece.vCurrentPosition,
+					piece.vCurrentRotation,
+					false);
+			}
+		}
 		if (nullptr != runtime.pObject &&
 			runtime.pObject->Is_PhysicsPreviewActive())
 		{
@@ -383,9 +746,22 @@ void Client::CDestructionSimulationRuntime::Destroy_Actors()
 	}
 }
 
+void Client::CDestructionSimulationRuntime::Release_DebrisPreviews()
+{
+	for (ELEMENT_RUNTIME& runtime : m_Elements)
+	{
+		if (nullptr != runtime.pObject &&
+			runtime.pObject->Is_DebrisPreviewActive())
+		{
+			runtime.pObject->End_DebrisPreview();
+		}
+	}
+}
+
 void Client::CDestructionSimulationRuntime::Clear()
 {
 	Destroy_Actors();
+	Release_DebrisPreviews();
 	if (nullptr != m_pPhysics)
 	{
 		m_pPhysics->Clear_Ground();
@@ -399,6 +775,7 @@ void Client::CDestructionSimulationRuntime::Clear()
 	m_fSampleTimeSeconds = 0.f;
 	m_eScope = DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS;
 	m_SelectedElementId.clear();
+	m_SelectedFragmentId.clear();
 	m_Status = "Destruction simulation is not staged";
 	m_isStaged = false;
 	m_isPhysicsPaused = true;
@@ -429,6 +806,34 @@ bool_t Client::CDestructionSimulationRuntime::Reset(
 				runtime.Desc.fSpeedMetersPerSecond
 		};
 		runtime.fActivatedAtSeconds = 0.f;
+		if (nullptr == runtime.pObject ||
+			!runtime.pObject->Is_DebrisPreviewActive() ||
+			runtime.pObject->Get_DebrisPreviewInstanceCount() !=
+				runtime.DebrisPieces.size())
+		{
+			outStatus = "Destruction debris preview resources changed during reset";
+			return false;
+		}
+		for (ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece :
+			runtime.DebrisPieces)
+		{
+			piece.vCurrentPosition = piece.vInitialPosition;
+			piece.vCurrentRotation = piece.vInitialRotation;
+			piece.vCurrentLinearVelocity = piece.vInitialLinearVelocity;
+			piece.fActivatedAtSeconds = 0.f;
+			piece.eState = Is_FragmentInScope(piece.fragmentId) ?
+				DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING :
+				DESTRUCTION_SIMULATION_ELEMENT_STATE::FILTERED;
+			if (!runtime.pObject->Apply_DebrisPreviewPose(
+				piece.iVisualIndex,
+				piece.vInitialPosition,
+				piece.vInitialRotation,
+				false))
+			{
+				outStatus = "DeployProp rejected a hidden debris reset pose";
+				return false;
+			}
+		}
 		runtime.eState = Is_ElementInScope(runtime.Desc.elementId) ?
 			DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING :
 			DESTRUCTION_SIMULATION_ELEMENT_STATE::FILTERED;
@@ -442,9 +847,45 @@ bool_t Client::CDestructionSimulationRuntime::Reset(
 bool_t Client::CDestructionSimulationRuntime::Is_ElementInScope(
 	const std::string& elementId) const
 {
-	return DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == m_eScope ||
-		(DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == m_eScope &&
-			elementId == m_SelectedElementId);
+	if (DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == m_eScope)
+		return true;
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == m_eScope)
+		return elementId == m_SelectedElementId;
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT != m_eScope)
+		return false;
+	const auto element = std::find_if(m_Elements.begin(), m_Elements.end(),
+		[&elementId](const ELEMENT_RUNTIME& runtime)
+		{
+			return runtime.Desc.elementId == elementId;
+		});
+	return m_Elements.end() != element && std::any_of(
+		element->DebrisPieces.begin(), element->DebrisPieces.end(),
+		[this](const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece)
+		{
+			return piece.fragmentId == m_SelectedFragmentId;
+		});
+}
+
+bool_t Client::CDestructionSimulationRuntime::Is_FragmentInScope(
+	const std::string& fragmentId) const
+{
+	if (DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == m_eScope)
+		return true;
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == m_eScope)
+		return fragmentId == m_SelectedFragmentId;
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED != m_eScope)
+		return false;
+	const auto element = std::find_if(m_Elements.begin(), m_Elements.end(),
+		[this](const ELEMENT_RUNTIME& runtime)
+		{
+			return runtime.Desc.elementId == m_SelectedElementId;
+		});
+	return m_Elements.end() != element && std::any_of(
+		element->DebrisPieces.begin(), element->DebrisPieces.end(),
+		[&fragmentId](const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece)
+		{
+			return piece.fragmentId == fragmentId;
+		});
 }
 
 bool_t Client::CDestructionSimulationRuntime::Set_Scope(
@@ -457,6 +898,7 @@ bool_t Client::CDestructionSimulationRuntime::Set_Scope(
 		outStatus = "Destruction simulation scope is invalid";
 		return false;
 	}
+	std::string selectedOwnerElementId;
 	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == scope)
 	{
 		const bool_t exists = std::any_of(m_Elements.begin(), m_Elements.end(),
@@ -469,23 +911,53 @@ bool_t Client::CDestructionSimulationRuntime::Set_Scope(
 			outStatus = "Solo debris element is not in the staged profile";
 			return false;
 		}
+		selectedOwnerElementId = selectedElementId;
+	}
+	else if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == scope)
+	{
+		for (const ELEMENT_RUNTIME& runtime : m_Elements)
+		{
+			const bool_t found = std::any_of(
+				runtime.DebrisPieces.begin(), runtime.DebrisPieces.end(),
+				[&selectedElementId](
+					const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece)
+				{
+					return piece.fragmentId == selectedElementId;
+				});
+			if (found)
+			{
+				selectedOwnerElementId = runtime.Desc.elementId;
+				break;
+			}
+		}
+		if (selectedOwnerElementId.empty())
+		{
+			outStatus = "Solo debris fragment is not in the staged profile";
+			return false;
+		}
 	}
 
 	const DESTRUCTION_SIMULATION_SCOPE previousScope = m_eScope;
 	const std::string previousSelection = m_SelectedElementId;
+	const std::string previousFragmentSelection = m_SelectedFragmentId;
 	m_eScope = scope;
-	m_SelectedElementId =
-		DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == scope ?
+	m_SelectedElementId = selectedOwnerElementId;
+	m_SelectedFragmentId =
+		DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == scope ?
 			selectedElementId : std::string{};
 	if (!Reset(outStatus))
 	{
 		m_eScope = previousScope;
 		m_SelectedElementId = previousSelection;
+		m_SelectedFragmentId = previousFragmentSelection;
 		return false;
 	}
-	m_Status = DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == scope ?
-		"Preview scope: All Debris" :
-		"Preview scope: Solo " + selectedElementId;
+	if (DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == scope)
+		m_Status = "Preview scope: All Debris";
+	else if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == scope)
+		m_Status = "Preview scope: Solo Fragment " + selectedElementId;
+	else
+		m_Status = "Preview scope: Solo Wall " + selectedElementId;
 	outStatus = m_Status;
 	return true;
 }
@@ -495,56 +967,134 @@ bool_t Client::CDestructionSimulationRuntime::Activate_Element(
 	std::string& outStatus)
 {
 	if (DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING != runtime.eState ||
-		nullptr == runtime.pObject || nullptr == m_pPhysics)
+		nullptr == runtime.pObject || nullptr == m_pPhysics ||
+		!runtime.pObject->Is_DebrisPreviewActive() ||
+		runtime.pObject->Get_DebrisPreviewInstanceCount() !=
+			runtime.DebrisPieces.size() ||
+		runtime.DebrisPieces.empty())
 	{
 		outStatus = "Destruction debris activation state is invalid";
 		return false;
 	}
-	shared_ptr<Engine::CRigidBody> stagedBody;
-	if (!m_pPhysics->Create_DynamicBox(
-		m_iLevelId,
-		runtime.vInitialPosition,
-		runtime.vInitialRotation,
-		runtime.vShapeLocalCentre,
-		runtime.vHalfExtents,
-		runtime.vLinearVelocity,
-		runtime.Desc.fGravityScale,
-		stagedBody,
-		outStatus))
+
+	std::vector<std::pair<size_t, shared_ptr<Engine::CRigidBody>>>
+		stagedBodies;
+	stagedBodies.reserve(runtime.DebrisPieces.size());
+	for (size_t pieceIndex = 0u;
+		pieceIndex < runtime.DebrisPieces.size(); ++pieceIndex)
 	{
+		const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece =
+			runtime.DebrisPieces[pieceIndex];
+		if (DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING != piece.eState)
+			continue;
+		shared_ptr<Engine::CRigidBody> stagedBody;
+		if (!m_pPhysics->Create_DynamicBox(
+			m_iLevelId,
+			piece.vInitialPosition,
+			piece.vInitialRotation,
+			piece.vShapeLocalCentre,
+			piece.vHalfExtents,
+			piece.vInitialLinearVelocity,
+			piece.vInitialAngularVelocity,
+			runtime.Desc.fGravityScale,
+			stagedBody,
+			outStatus))
+		{
+			for (auto& staged : stagedBodies)
+				staged.second->Destroy_Actor();
+			return false;
+		}
+		stagedBodies.emplace_back(pieceIndex, std::move(stagedBody));
+	}
+	if (stagedBodies.empty())
+	{
+		outStatus = "Destruction debris activation has no fragment in scope";
 		return false;
 	}
+
 	if (!runtime.pObject->Begin_PhysicsPreview(
-		DEPLOY_PROP_STATE::FRACTURED) ||
-		!runtime.pObject->Apply_PhysicsPreviewPose(
-			runtime.vInitialPosition, runtime.vInitialRotation))
+		DEPLOY_PROP_STATE::FRACTURED))
 	{
-		stagedBody->Destroy_Actor();
+		for (auto& staged : stagedBodies)
+			staged.second->Destroy_Actor();
 		if (runtime.pObject->Is_PhysicsPreviewActive())
 			runtime.pObject->End_PhysicsPreview();
-		outStatus = "DeployProp rejected its destruction preview pose";
+		outStatus = "DeployProp rejected its fractured source preview state";
 		return false;
 	}
-	runtime.pBody = std::move(stagedBody);
+
+	for (size_t index = 0u; index < runtime.DebrisPieces.size(); ++index)
+	{
+		ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece =
+			runtime.DebrisPieces[index];
+		const bool_t isVisible =
+			DESTRUCTION_SIMULATION_ELEMENT_STATE::WAITING == piece.eState;
+		if (!runtime.pObject->Apply_DebrisPreviewPose(
+			piece.iVisualIndex,
+			piece.vInitialPosition,
+			piece.vInitialRotation,
+			isVisible))
+		{
+			for (const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& hiddenPiece :
+				runtime.DebrisPieces)
+			{
+				runtime.pObject->Apply_DebrisPreviewPose(
+					hiddenPiece.iVisualIndex,
+					hiddenPiece.vInitialPosition,
+					hiddenPiece.vInitialRotation,
+					false);
+			}
+			for (auto& staged : stagedBodies)
+				staged.second->Destroy_Actor();
+			runtime.pObject->End_PhysicsPreview();
+			outStatus = "DeployProp rejected an initial debris proxy pose";
+			return false;
+		}
+		piece.vCurrentPosition = piece.vInitialPosition;
+		piece.vCurrentRotation = piece.vInitialRotation;
+		piece.vCurrentLinearVelocity = piece.vInitialLinearVelocity;
+	}
 	runtime.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE;
 	runtime.fActivatedAtSeconds =
 		DESTRUCTION_SIMULATION_TRIGGER_KIND::TIMELINE_TIME ==
 			runtime.Desc.Trigger.eKind ?
 			runtime.Desc.Trigger.fTimeSeconds : m_fSampleTimeSeconds;
+	for (auto& staged : stagedBodies)
+	{
+		ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece =
+			runtime.DebrisPieces[staged.first];
+		piece.pBody = std::move(staged.second);
+		piece.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE;
+		piece.fActivatedAtSeconds = runtime.fActivatedAtSeconds;
+	}
 	return true;
 }
 
 void Client::CDestructionSimulationRuntime::Expire_Element(
 	ELEMENT_RUNTIME& runtime)
 {
-	if (nullptr != runtime.pBody)
-		runtime.pBody->Destroy_Actor();
-	runtime.pBody.reset();
-	if (nullptr != runtime.pObject &&
-		runtime.pObject->Is_PhysicsPreviewActive())
+	for (ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece :
+		runtime.DebrisPieces)
 	{
-		runtime.pObject->Set_State(DEPLOY_PROP_STATE::DESPAWNED);
+		if (DESTRUCTION_SIMULATION_ELEMENT_STATE::FILTERED == piece.eState)
+			continue;
+		if (nullptr != piece.pBody)
+			piece.pBody->Destroy_Actor();
+		piece.pBody.reset();
+		if (nullptr != runtime.pObject &&
+			runtime.pObject->Is_DebrisPreviewActive())
+		{
+				runtime.pObject->Apply_DebrisPreviewPose(
+				piece.iVisualIndex,
+				piece.vCurrentPosition,
+				piece.vCurrentRotation,
+				false);
+		}
+		piece.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED;
 	}
+	/* The proxy stones are transient, but the source wall remains in its
+	   fractured preview state until Reset/Clear restores the exact authored
+	   state and animation cursor. */
 	runtime.eState = DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED;
 }
 
@@ -622,32 +1172,78 @@ bool_t Client::CDestructionSimulationRuntime::Post_Physics_Update(
 	bool_t succeeded = true;
 	for (ELEMENT_RUNTIME& runtime : m_Elements)
 	{
-		if (DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE != runtime.eState ||
-			nullptr == runtime.pBody)
+		if (DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE != runtime.eState)
 		{
 			continue;
 		}
-		Engine::PHYSICS_POSE pose{};
-		float3_t velocity{};
-		if (FAILED(runtime.pBody->Get_Pose(pose)) ||
-			FAILED(runtime.pBody->Get_LinearVelocity(velocity)) ||
-			!Is_FinitePose(pose.vPosition, pose.vRotationQuaternion) ||
-			nullptr == runtime.pObject ||
-			!runtime.pObject->Apply_PhysicsPreviewPose(
-				pose.vPosition, pose.vRotationQuaternion))
+		if (nullptr == runtime.pObject ||
+			!runtime.pObject->Is_DebrisPreviewActive())
 		{
 			succeeded = false;
 			continue;
 		}
-		runtime.vCurrentPosition = pose.vPosition;
-		runtime.vCurrentRotation = pose.vRotationQuaternion;
-		runtime.vLinearVelocity = velocity;
+
+		float3_t aggregatePosition{};
+		float3_t aggregateVelocity{};
+		size_t sampledPieces = 0u;
+		for (ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece :
+			runtime.DebrisPieces)
+		{
+			if (DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE != piece.eState)
+				continue;
+			Engine::PHYSICS_POSE pose{};
+			float3_t velocity{};
+			if (nullptr == piece.pBody ||
+				FAILED(piece.pBody->Get_Pose(pose)) ||
+				FAILED(piece.pBody->Get_LinearVelocity(velocity)) ||
+				!Is_FinitePose(pose.vPosition, pose.vRotationQuaternion) ||
+				!std::isfinite(velocity.x) || !std::isfinite(velocity.y) ||
+				!std::isfinite(velocity.z) ||
+				!runtime.pObject->Apply_DebrisPreviewPose(
+					piece.iVisualIndex,
+					pose.vPosition,
+					pose.vRotationQuaternion,
+					true))
+			{
+				succeeded = false;
+				continue;
+			}
+			piece.vCurrentPosition = pose.vPosition;
+			piece.vCurrentRotation = pose.vRotationQuaternion;
+			piece.vCurrentLinearVelocity = velocity;
+			aggregatePosition.x += pose.vPosition.x;
+			aggregatePosition.y += pose.vPosition.y;
+			aggregatePosition.z += pose.vPosition.z;
+			aggregateVelocity.x += velocity.x;
+			aggregateVelocity.y += velocity.y;
+			aggregateVelocity.z += velocity.z;
+			if (0u == sampledPieces)
+				runtime.vCurrentRotation = pose.vRotationQuaternion;
+			++sampledPieces;
+		}
+		if (0u == sampledPieces)
+		{
+			succeeded = false;
+			continue;
+		}
+		const f32_t inverseCount = 1.f /
+			static_cast<f32_t>(sampledPieces);
+		runtime.vCurrentPosition = {
+			aggregatePosition.x * inverseCount,
+			aggregatePosition.y * inverseCount,
+			aggregatePosition.z * inverseCount
+		};
+		runtime.vLinearVelocity = {
+			aggregateVelocity.x * inverseCount,
+			aggregateVelocity.y * inverseCount,
+			aggregateVelocity.z * inverseCount
+		};
 	}
 
 	Rebuild_Frame();
 	if (!succeeded)
 	{
-		m_Status = "One or more destruction preview poses could not be pulled";
+		m_Status = "One or more debris proxy poses could not be pulled";
 		outStatus = m_Status;
 		return false;
 	}
@@ -738,6 +1334,7 @@ void Client::CDestructionSimulationRuntime::Rebuild_Frame()
 	m_Frame.fDurationSeconds = m_Profile.fDurationSeconds;
 	m_Frame.eScope = m_eScope;
 	m_Frame.selectedElementId = m_SelectedElementId;
+	m_Frame.selectedFragmentId = m_SelectedFragmentId;
 	m_Frame.Elements.reserve(m_Elements.size());
 	for (const ELEMENT_RUNTIME& runtime : m_Elements)
 	{
@@ -757,6 +1354,30 @@ void Client::CDestructionSimulationRuntime::Rebuild_Frame()
 					0.f, 1.f) :
 			DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED == runtime.eState ?
 				1.f : 0.f;
+		frame.Fragments.reserve(runtime.DebrisPieces.size());
+		for (uint32_t pieceIndex = 0u;
+			pieceIndex < runtime.DebrisPieces.size(); ++pieceIndex)
+		{
+			const ELEMENT_RUNTIME::DEBRIS_PIECE_RUNTIME& piece =
+				runtime.DebrisPieces[pieceIndex];
+			DESTRUCTION_SIMULATION_FRAGMENT_FRAME fragmentFrame;
+			fragmentFrame.fragmentId = piece.fragmentId;
+			fragmentFrame.modelAssetId = piece.modelAssetId;
+			fragmentFrame.pieceIndex = pieceIndex;
+			fragmentFrame.eState = piece.eState;
+			fragmentFrame.vWorldPosition = piece.vCurrentPosition;
+			fragmentFrame.vWorldRotationQuaternion = piece.vCurrentRotation;
+			fragmentFrame.vLinearVelocity = piece.vCurrentLinearVelocity;
+			fragmentFrame.fNormalizedLife =
+				DESTRUCTION_SIMULATION_ELEMENT_STATE::ACTIVE == piece.eState ?
+					(std::clamp)(
+						(m_fSampleTimeSeconds - piece.fActivatedAtSeconds) /
+							runtime.Desc.fLifetimeSeconds,
+						0.f, 1.f) :
+				DESTRUCTION_SIMULATION_ELEMENT_STATE::EXPIRED == piece.eState ?
+					1.f : 0.f;
+			frame.Fragments.push_back(std::move(fragmentFrame));
+		}
 		m_Frame.Elements.push_back(std::move(frame));
 	}
 }

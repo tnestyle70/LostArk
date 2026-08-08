@@ -9,6 +9,7 @@
 #include <cfloat>
 #include <cmath>
 #include <string_view>
+#include <unordered_map>
 
 namespace
 {
@@ -96,6 +97,7 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 		return E_FAIL;
 	m_Placement = desc.placement;
 	m_ModelKind = desc.modelKind;
+	m_iPrototypeLevelIndex = desc.prototypeLevelIndex;
 	Apply_Transform();
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
 		m_pIntactModelCom->Get_NumAnimations() > 0 &&
@@ -116,7 +118,10 @@ void CDeployPropObject::Update(f32_t fTimeDelta)
 void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
-	if (m_State == DEPLOY_PROP_STATE::DESPAWNED)
+	const bool_t sourceVisible =
+		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+	if (!sourceVisible && !Has_VisibleDebrisPreviewInstance())
 		return;
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
@@ -125,14 +130,29 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 
 HRESULT CDeployPropObject::Render()
 {
-	if (m_State == DEPLOY_PROP_STATE::DESPAWNED ||
-		FAILED(Bind_CommonShaderResources()))
-		return m_State == DEPLOY_PROP_STATE::DESPAWNED ? S_OK : E_FAIL;
-	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
-		return Render_Animated();
-	return Render_Static(
-		m_State == DEPLOY_PROP_STATE::FRACTURED ?
-		m_pFracturedModelCom : m_pIntactModelCom);
+	const bool_t sourceVisible =
+		m_State != DEPLOY_PROP_STATE::DESPAWNED &&
+		!(m_bDebrisPreviewActive && m_bDebrisSuppressSource);
+	if (sourceVisible)
+	{
+		if (FAILED(Bind_CommonShaderResources()))
+			return E_FAIL;
+		if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM)
+		{
+			if (FAILED(Render_Animated()))
+				return E_FAIL;
+		}
+		else if (FAILED(Render_Static(
+			m_State == DEPLOY_PROP_STATE::FRACTURED ?
+			m_pFracturedModelCom : m_pIntactModelCom,
+			m_pShaderCom)))
+		{
+			return E_FAIL;
+		}
+	}
+
+	return Has_VisibleDebrisPreviewInstance() ?
+		Render_DebrisPreview() : S_OK;
 }
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
@@ -390,6 +410,184 @@ void CDeployPropObject::End_PhysicsPreview()
 	Apply_Transform();
 }
 
+bool_t CDeployPropObject::Begin_DebrisPreview(
+	const DEBRIS_PREVIEW_DESC& desc,
+	std::string& outError)
+{
+	outError.clear();
+	if (m_bDebrisPreviewActive)
+	{
+		outError = "Debris preview is already active";
+		return false;
+	}
+	if (desc.instances.empty())
+	{
+		outError = "Debris preview requires at least one instance";
+		return false;
+	}
+	if (m_iPrototypeLevelIndex >= ETOUI(LEVEL::END))
+	{
+		outError = "Debris preview shader level is invalid";
+		return false;
+	}
+
+	shared_ptr<CShader> stagedShader = dynamic_pointer_cast<CShader>(
+		CGameInstance::Get().Clone_Prototype(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_Component_Shader_VtxMeshBinary")));
+	if (nullptr == stagedShader)
+	{
+		outError = "Debris preview static shader clone failed";
+		return false;
+	}
+
+	std::vector<DEBRIS_PREVIEW_RESOURCE> stagedResources;
+	std::vector<DEBRIS_PREVIEW_INSTANCE> stagedInstances;
+	stagedInstances.reserve(desc.instances.size());
+	std::unordered_map<std::wstring, uint32_t> resourceLookup;
+	resourceLookup.reserve(desc.instances.size());
+
+	for (const DEBRIS_PREVIEW_INSTANCE_DESC& instanceDesc : desc.instances)
+	{
+		if (instanceDesc.modelPrototypeTag.empty() ||
+			!std::isfinite(instanceDesc.uniformScale) ||
+			instanceDesc.uniformScale <= 0.000001f)
+		{
+			outError = "Debris preview instance prototype/scale is invalid";
+			return false;
+		}
+
+		uint32_t resourceIndex = UINT32_MAX;
+		const auto existing = resourceLookup.find(
+			instanceDesc.modelPrototypeTag);
+		if (existing != resourceLookup.end())
+		{
+			resourceIndex = existing->second;
+		}
+		else
+		{
+			shared_ptr<CModel> clonedModel = dynamic_pointer_cast<CModel>(
+				CGameInstance::Get().Clone_Prototype(
+					m_iPrototypeLevelIndex,
+					instanceDesc.modelPrototypeTag));
+			if (nullptr == clonedModel || clonedModel->Is_Skinned() ||
+				!clonedModel->Has_LocalBounds())
+			{
+				outError =
+					"Debris preview admitted CModel/bounds clone failed";
+				return false;
+			}
+
+			resourceIndex = static_cast<uint32_t>(stagedResources.size());
+			DEBRIS_PREVIEW_RESOURCE resource{};
+			resource.modelPrototypeTag = instanceDesc.modelPrototypeTag;
+			resource.model = std::move(clonedModel);
+			stagedResources.push_back(std::move(resource));
+			resourceLookup.emplace(
+				instanceDesc.modelPrototypeTag, resourceIndex);
+		}
+
+		DEBRIS_PREVIEW_INSTANCE instance{};
+		instance.resourceIndex = resourceIndex;
+		instance.uniformScale = instanceDesc.uniformScale;
+		stagedInstances.push_back(instance);
+	}
+
+	/* Commit only after every shader/model/bounds validation succeeds. */
+	m_pDebrisShaderCom = std::move(stagedShader);
+	m_DebrisPreviewResources = std::move(stagedResources);
+	m_DebrisPreviewInstances = std::move(stagedInstances);
+	m_bDebrisSuppressSource = desc.suppressSource;
+	m_bDebrisPreviewActive = true;
+	return true;
+}
+
+uint32_t CDeployPropObject::Get_DebrisPreviewInstanceCount() const
+{
+	return m_bDebrisPreviewActive ?
+		static_cast<uint32_t>(m_DebrisPreviewInstances.size()) : 0u;
+}
+
+bool_t CDeployPropObject::Get_DebrisPreviewLocalBounds(
+	const uint32_t instanceIndex,
+	float3_t& outCenter,
+	float3_t& outHalfExtents) const
+{
+	if (!m_bDebrisPreviewActive ||
+		instanceIndex >= m_DebrisPreviewInstances.size())
+	{
+		return false;
+	}
+
+	const DEBRIS_PREVIEW_INSTANCE& instance =
+		m_DebrisPreviewInstances[instanceIndex];
+	if (instance.resourceIndex >= m_DebrisPreviewResources.size())
+		return false;
+	const shared_ptr<CModel>& model =
+		m_DebrisPreviewResources[instance.resourceIndex].model;
+	if (nullptr == model || !model->Has_LocalBounds())
+		return false;
+
+	const float3_t& minimum = model->Get_LocalBoundsMin();
+	const float3_t& maximum = model->Get_LocalBoundsMax();
+	outCenter = float3_t(
+		(minimum.x + maximum.x) * 0.5f * instance.uniformScale,
+		(minimum.y + maximum.y) * 0.5f * instance.uniformScale,
+		(minimum.z + maximum.z) * 0.5f * instance.uniformScale);
+	outHalfExtents = float3_t(
+		(maximum.x - minimum.x) * 0.5f * instance.uniformScale,
+		(maximum.y - minimum.y) * 0.5f * instance.uniformScale,
+		(maximum.z - minimum.z) * 0.5f * instance.uniformScale);
+	return std::isfinite(outCenter.x) && std::isfinite(outCenter.y) &&
+		std::isfinite(outCenter.z) && std::isfinite(outHalfExtents.x) &&
+		std::isfinite(outHalfExtents.y) && std::isfinite(outHalfExtents.z) &&
+		outHalfExtents.x > 0.f && outHalfExtents.y > 0.f &&
+		outHalfExtents.z > 0.f;
+}
+
+bool_t CDeployPropObject::Apply_DebrisPreviewPose(
+	const uint32_t instanceIndex,
+	const float3_t& position,
+	const float4_t& rotationQuaternion,
+	const bool_t visible)
+{
+	if (!m_bDebrisPreviewActive ||
+		instanceIndex >= m_DebrisPreviewInstances.size() ||
+		!std::isfinite(position.x) || !std::isfinite(position.y) ||
+		!std::isfinite(position.z) ||
+		!std::isfinite(rotationQuaternion.x) ||
+		!std::isfinite(rotationQuaternion.y) ||
+		!std::isfinite(rotationQuaternion.z) ||
+		!std::isfinite(rotationQuaternion.w))
+	{
+		return false;
+	}
+
+	const vector_t rotation = XMLoadFloat4(&rotationQuaternion);
+	const f32_t lengthSquared = XMVectorGetX(XMVector4LengthSq(rotation));
+	if (!std::isfinite(lengthSquared) || lengthSquared <= 0.000001f)
+		return false;
+
+	DEBRIS_PREVIEW_INSTANCE& instance =
+		m_DebrisPreviewInstances[instanceIndex];
+	instance.position = position;
+	XMStoreFloat4(&instance.rotation, XMQuaternionNormalize(rotation));
+	instance.visible = visible;
+	return true;
+}
+
+void CDeployPropObject::End_DebrisPreview()
+{
+	if (!m_bDebrisPreviewActive)
+		return;
+
+	m_bDebrisPreviewActive = false;
+	m_bDebrisSuppressSource = false;
+	m_DebrisPreviewInstances.clear();
+	m_DebrisPreviewResources.clear();
+	m_pDebrisShaderCom.reset();
+}
+
 HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
 {
 	const wchar_t* shaderTag =
@@ -437,9 +635,37 @@ HRESULT CDeployPropObject::Bind_CommonShaderResources()
 	return S_OK;
 }
 
-HRESULT CDeployPropObject::Render_Static(const shared_ptr<CModel>& model)
+HRESULT CDeployPropObject::Bind_DebrisShaderResources(
+	const float4x4_t& worldMatrix)
 {
-	if (nullptr == model)
+	if (nullptr == m_pDebrisShaderCom)
+		return E_FAIL;
+
+	matrix_t worldWithoutTranslation = XMLoadFloat4x4(&worldMatrix);
+	worldWithoutTranslation.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+	const matrix_t inverseTranspose = XMMatrixTranspose(
+		XMMatrixInverse(nullptr, worldWithoutTranslation));
+	float4x4_t storedInverseTranspose{};
+	XMStoreFloat4x4(&storedInverseTranspose, inverseTranspose);
+	if (FAILED(m_pDebrisShaderCom->Bind_Matrix(
+		"g_WorldMatrix", &worldMatrix)) ||
+		FAILED(m_pDebrisShaderCom->Bind_Matrix(
+			"g_WorldInvTransposeMatrix", &storedInverseTranspose)) ||
+		FAILED(CGameInstance::Get().Bind_Transform(
+			m_pDebrisShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_Transform(
+			m_pDebrisShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CDeployPropObject::Render_Static(
+	const shared_ptr<CModel>& model,
+	const shared_ptr<CShader>& shader)
+{
+	if (nullptr == model || nullptr == shader)
 		return E_FAIL;
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
@@ -458,25 +684,25 @@ HRESULT CDeployPropObject::Render_Static(const shared_ptr<CModel>& model)
 		const uint32_t hasSpecular =
 			model->Has_MaterialTexture(index, aiTextureType_SPECULAR) ? 1u : 0u;
 		if (FAILED(model->Bind_Material(
-			m_pShaderCom, "g_DiffuseTexture", index, aiTextureType_DIFFUSE)) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_UVScale", &uvScale, sizeof(uvScale))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_UVOffset", &uvOffset, sizeof(uvOffset))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_Opacity", &opacity, sizeof(opacity))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_ColorTint", &colorTint, sizeof(colorTint))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_HasNormalTexture", &hasNormal, sizeof(hasNormal))) ||
+			shader, "g_DiffuseTexture", index, aiTextureType_DIFFUSE)) ||
+			FAILED(shader->Bind_RawValue("g_UVScale", &uvScale, sizeof(uvScale))) ||
+			FAILED(shader->Bind_RawValue("g_UVOffset", &uvOffset, sizeof(uvOffset))) ||
+			FAILED(shader->Bind_RawValue("g_Opacity", &opacity, sizeof(opacity))) ||
+			FAILED(shader->Bind_RawValue("g_ColorTint", &colorTint, sizeof(colorTint))) ||
+			FAILED(shader->Bind_RawValue("g_HasNormalTexture", &hasNormal, sizeof(hasNormal))) ||
 			(0 != hasNormal && FAILED(model->Bind_Material(
-				m_pShaderCom, "g_NormalTexture", index, aiTextureType_NORMALS))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_HasEmissiveTexture", &hasEmissive, sizeof(hasEmissive))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_EmissiveIntensity", &emissiveIntensity, sizeof(emissiveIntensity))) ||
+				shader, "g_NormalTexture", index, aiTextureType_NORMALS))) ||
+			FAILED(shader->Bind_RawValue("g_HasEmissiveTexture", &hasEmissive, sizeof(hasEmissive))) ||
+			FAILED(shader->Bind_RawValue("g_EmissiveIntensity", &emissiveIntensity, sizeof(emissiveIntensity))) ||
 			(0 != hasEmissive && FAILED(model->Bind_Material(
-				m_pShaderCom, "g_EmissiveTexture", index, aiTextureType_EMISSIVE))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_HasSpecularTexture", &hasSpecular, sizeof(hasSpecular))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_SpecularIntensity", &specularIntensity, sizeof(specularIntensity))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_SpecularPower", &specularPower, sizeof(specularPower))) ||
+				shader, "g_EmissiveTexture", index, aiTextureType_EMISSIVE))) ||
+			FAILED(shader->Bind_RawValue("g_HasSpecularTexture", &hasSpecular, sizeof(hasSpecular))) ||
+			FAILED(shader->Bind_RawValue("g_SpecularIntensity", &specularIntensity, sizeof(specularIntensity))) ||
+			FAILED(shader->Bind_RawValue("g_SpecularPower", &specularPower, sizeof(specularPower))) ||
 			(0 != hasSpecular && FAILED(model->Bind_Material(
-				m_pShaderCom, "g_SpecularTexture", index, aiTextureType_SPECULAR))) ||
-			FAILED(m_pShaderCom->Bind_RawValue("g_HasOpacityTexture", &hasOpacity, sizeof(hasOpacity))) ||
-			FAILED(m_pShaderCom->Begin(0)) || FAILED(model->Render(index)))
+				shader, "g_SpecularTexture", index, aiTextureType_SPECULAR))) ||
+			FAILED(shader->Bind_RawValue("g_HasOpacityTexture", &hasOpacity, sizeof(hasOpacity))) ||
+			FAILED(shader->Begin(0)) || FAILED(model->Render(index)))
 			return E_FAIL;
 	}
 	return S_OK;
@@ -495,6 +721,57 @@ HRESULT CDeployPropObject::Render_Animated()
 			return E_FAIL;
 	}
 	return S_OK;
+}
+
+HRESULT CDeployPropObject::Render_DebrisPreview()
+{
+	if (!m_bDebrisPreviewActive || nullptr == m_pDebrisShaderCom)
+		return E_FAIL;
+
+	for (const DEBRIS_PREVIEW_INSTANCE& instance :
+		m_DebrisPreviewInstances)
+	{
+		if (!instance.visible)
+			continue;
+		if (instance.resourceIndex >= m_DebrisPreviewResources.size())
+			return E_FAIL;
+		const shared_ptr<CModel>& model =
+			m_DebrisPreviewResources[instance.resourceIndex].model;
+		if (nullptr == model)
+			return E_FAIL;
+
+		const vector_t rotation = XMQuaternionNormalize(
+			XMLoadFloat4(&instance.rotation));
+		const matrix_t world = XMMatrixScaling(
+			instance.uniformScale,
+			instance.uniformScale,
+			instance.uniformScale) * XMMatrixRotationQuaternion(rotation) *
+			XMMatrixTranslation(
+				instance.position.x,
+				instance.position.y,
+				instance.position.z);
+		float4x4_t storedWorld{};
+		XMStoreFloat4x4(&storedWorld, world);
+		if (FAILED(Bind_DebrisShaderResources(storedWorld)) ||
+			FAILED(Render_Static(model, m_pDebrisShaderCom)))
+		{
+			return E_FAIL;
+		}
+	}
+	return S_OK;
+}
+
+bool_t CDeployPropObject::Has_VisibleDebrisPreviewInstance() const
+{
+	if (!m_bDebrisPreviewActive)
+		return false;
+	return m_DebrisPreviewInstances.end() != std::find_if(
+		m_DebrisPreviewInstances.begin(),
+		m_DebrisPreviewInstances.end(),
+		[](const DEBRIS_PREVIEW_INSTANCE& instance)
+		{
+			return instance.visible;
+		});
 }
 
 void CDeployPropObject::Apply_Transform()

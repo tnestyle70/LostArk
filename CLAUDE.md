@@ -275,10 +275,14 @@ Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 
 Valtan의 `World Destruction` 모드에는 제품 Server와 분리된 `Destruction Model View`가 있다.
 `Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.destructionsimulation.json`의
 stable debris element를 기존 `CDeployPropRuntime -> CDeployPropObject -> CModel` world instance에
-연결하고, All/Solo, play/pause/restart, 1/60 single-step과 reset 후 고정-step seek로 PhysX를 audition한다.
-direction과 speed는 초기 linear velocity로 변환되고 gravity scale/lifetime/trigger는 authoring policy다.
+연결한다. source placement 하나는 Wall Mesh Emitter 하나이고 runtime이 stable fragment 12개를 파생해
+각각 CModel proxy와 PhysX actor로 재생한다. All Fragments/Solo Emitter/Solo Fragment,
+play/pause/restart, 1/60 single-step과 reset 후 고정-step seek를 제공한다. direction과 speed는 초기
+linear velocity로 변환되고 gravity scale/lifetime/trigger는 authoring policy다. source fractured wall은
+제자리에 남고 fragment model/state/life/pose/velocity는 read-only runtime sample이다.
 이 파일은 제품 publisher 입력이 아니며 `Gameplay.world.json kind=destroyable`의 Server admission,
 동적 navigation/collision과 Shared replication은 계속 fail-closed다.
+맵 담당자의 실제 실행·확장 절차는 `.md/TEAM/MAP_DESTRUCTION_PHYSX_HANDOFF.md`를 따른다.
 
 ### UI 레이아웃 authoring과 제품 런타임 전환
 

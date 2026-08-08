@@ -735,6 +735,23 @@ Server trigger authority까지 닫힌 `triggerBox`와 Server 이동 차단까지
 publisher가 admission한다. `destroyable`은 dynamic navigation, Shared replication, Client deploy
 presentation이 한 수직 슬라이스로 닫히지 않았으므로 계속 fail-closed다.
 
+#### 14.3.1 Debug destruction simulation sidecar
+
+`Data/Maps/Authoring/<AreaId>/<AreaId>.destructionsimulation.json`은 MapTool이 소유하고 Debug
+audition만 소비하는 sidecar다. 제품 World publisher 입력이 아니다.
+
+```text
+WorldEvents groupId
+  -> simulation profile.groupId
+  -> element.sourceRuntimePlacementId
+  -> runtime-generated <elementId>.fragment.NN
+```
+
+WorldEvents member 집합과 simulation element placement 집합은 정확히 일치해야 한다. fragment ID는
+vector index나 Prototype tag가 아니며 element stable ID와 고정 ordinal에서 결정한다. 현재 v1은 emitter
+공통 direction/speed/gravity/lifetime/trigger만 저장하고 fragment model/state/pose/velocity는 runtime
+projection이다. 이 sidecar가 존재해도 Server destroyable admission이 열린 것은 아니다.
+
 ### 14.4 Monster와 wave 확장
 
 Valtan 일반 Monster 수직 슬라이스는 다음 경로로 구현되어 있다.

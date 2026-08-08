@@ -17,6 +17,7 @@
 #include "Model.h"
 #include "Navigation.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 #include "Trigger_Box.h"
 
 #include <algorithm>
@@ -293,6 +294,23 @@ namespace
 		case DESTRUCTION_SIMULATION_ELEMENT_STATE::FILTERED:
 			return "FILTERED";
 		case DESTRUCTION_SIMULATION_ELEMENT_STATE::END:
+		default:
+			return "INVALID";
+		}
+	}
+
+	const char_t* SimulationScopeLabel(
+		const DESTRUCTION_SIMULATION_SCOPE scope)
+	{
+		switch (scope)
+		{
+		case DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS:
+			return "ALL FRAGMENTS";
+		case DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED:
+			return "SOLO EMITTER";
+		case DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT:
+			return "SOLO FRAGMENT";
+		case DESTRUCTION_SIMULATION_SCOPE::END:
 		default:
 			return "INVALID";
 		}
@@ -581,6 +599,7 @@ void Client::CMapTool::Render()
 		ImGui::Separator();
 		Render_ActiveMode(isMapAuthoringLevel);
 	}
+
 	ImGui::End();
 
 	if (isOpen != m_bOpen)
@@ -2261,6 +2280,103 @@ bool_t Client::CMapTool::Ensure_AuthoringPrototypes(
 	return admittedCount == catalog.Get_Entries().size();
 }
 
+bool_t Client::CMapTool::Ensure_DestructionDebrisAuthoringPrototypes()
+{
+	if (m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
+		nullptr == m_pDevice || nullptr == m_pContext)
+	{
+		m_Status =
+			"PROJECT_AUTHORED debris model admission is unavailable";
+		return false;
+	}
+
+	const auto& specs =
+		CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs();
+	if (specs.empty())
+	{
+		m_Status = "PROJECT_AUTHORED debris model recipe is empty";
+		return false;
+	}
+
+	vector<pair<wstring_t, unique_ptr<CPrototype>>> stagedPrototypes;
+	vector<pair<wstring_t, std::filesystem::path>> stagedFingerprints;
+	std::unordered_set<wstring_t> uniqueTags;
+	stagedPrototypes.reserve(specs.size());
+	stagedFingerprints.reserve(specs.size());
+	for (const DESTRUCTION_SIMULATION_DEBRIS_MODEL_SPEC& spec : specs)
+	{
+		if (spec.prototypeTag.empty() || spec.assetId.empty() ||
+			!std::isfinite(spec.fUniformScale) || spec.fUniformScale <= 0.f ||
+			!uniqueTags.emplace(spec.prototypeTag).second)
+		{
+			m_Status =
+				"PROJECT_AUTHORED debris model recipe is invalid or duplicated";
+			return false;
+		}
+
+		const std::filesystem::path modelPath =
+			CRuntimeAssetRoot::Resolve(spec.assetId).lexically_normal();
+		std::error_code modelError;
+		if (modelPath.empty() || !std::filesystem::is_regular_file(
+			modelPath, modelError) || modelError)
+		{
+			m_Status = "PROJECT_AUTHORED debris unavailable: missing " +
+				spec.assetId;
+			return false;
+		}
+
+		const shared_ptr<CModel> existing = dynamic_pointer_cast<CModel>(
+			CGameInstance::Get().Clone_Prototype(
+				m_iAuthoringLevelIndex, spec.prototypeTag));
+		if (nullptr != existing)
+		{
+			const auto fingerprint =
+				m_PrototypeModelPaths.find(spec.prototypeTag);
+			if (fingerprint == m_PrototypeModelPaths.end() ||
+				fingerprint->second.lexically_normal() != modelPath)
+			{
+				m_Status =
+					"PROJECT_AUTHORED debris prototype tag collision: " +
+					spec.assetId;
+				return false;
+			}
+			continue;
+		}
+
+		const f32_t modelScale = 0.01f * spec.fUniformScale;
+		auto model = CModel::Create(
+			m_pDevice,
+			m_pContext,
+			MODEL::NONANIM,
+			modelPath.string().c_str(),
+			XMMatrixScaling(modelScale, modelScale, modelScale));
+		if (nullptr == model)
+		{
+			m_Status = "PROJECT_AUTHORED debris model decode failed: " +
+				spec.assetId;
+			return false;
+		}
+
+		unique_ptr<CPrototype> prototype = std::move(model);
+		stagedPrototypes.emplace_back(
+			spec.prototypeTag, std::move(prototype));
+		stagedFingerprints.emplace_back(spec.prototypeTag, modelPath);
+	}
+
+	if (!stagedPrototypes.empty() && FAILED(
+		CGameInstance::Get().Add_Prototypes(
+			m_iAuthoringLevelIndex, std::move(stagedPrototypes))))
+	{
+		m_Status =
+			"PROJECT_AUTHORED debris prototype batch commit failed; no models admitted";
+		return false;
+	}
+	for (const auto& [prototypeTag, modelPath] : stagedFingerprints)
+		m_PrototypeModelPaths.emplace(prototypeTag, modelPath);
+
+	return true;
+}
+
 bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 	const CDeployPropCatalog& catalog)
 {
@@ -2736,6 +2852,14 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 
 	if (!Ensure_AuthoringPrototypes(stagedCatalog))
 		return false;
+	const bool_t stagedDebrisPrototypesReady =
+		!descriptor.destructionSimulationDocument.empty() &&
+		Ensure_DestructionDebrisAuthoringPrototypes();
+	const std::string stagedDebrisPrototypeStatus =
+		descriptor.destructionSimulationDocument.empty() ?
+		"PROJECT_AUTHORED debris is not declared for this Area" :
+		(stagedDebrisPrototypesReady ?
+			"PROJECT_AUTHORED debris models ready" : m_Status);
 
 	CMapAssetCatalog previousCatalog = m_Catalog;
 	m_Catalog = stagedCatalog;
@@ -2816,6 +2940,8 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 	m_NavigationBakeDesc = navigationLoaded ?
 		m_NavigationDocument.Get_BakeDesc() : NAVGRID_BAKE_DESC{};
 	m_iActiveEditorArea = descriptorIndex;
+	m_bDestructionDebrisPrototypesReady = stagedDebrisPrototypesReady;
+	m_DestructionDebrisPrototypeStatus = stagedDebrisPrototypeStatus;
 	m_iPendingEditorArea = SIZE_MAX;
 	m_isEditorAreaSwitchPending = false;
 	m_iSelectedPlacementId = 0;
@@ -2847,6 +2973,11 @@ bool_t Client::CMapTool::Switch_EditorArea(const size_t descriptorIndex)
 		m_SelectedDestructionGroupId = firstProfile.groupId;
 		Select_DestructionSimulationProfile(firstProfile.profileId);
 		Refresh_DestructionHighlight();
+	}
+	if (!m_bDestructionDebrisPrototypesReady &&
+		!descriptor.destructionSimulationDocument.empty())
+	{
+		m_DestructionSimulationStatus = m_DestructionDebrisPrototypeStatus;
 	}
 	m_DestructionStatus = descriptor.worldEventsDocument.empty() ?
 		"World destruction authoring disabled for this Area" :
@@ -2928,6 +3059,9 @@ void Client::CMapTool::Handle_LevelTransition(
 	m_isEditorAreaSwitchPending = false;
 	m_isEditorExitPending = false;
 	m_PrototypeModelPaths.clear();
+	m_bDestructionDebrisPrototypesReady = false;
+	m_DestructionDebrisPrototypeStatus =
+		"PROJECT_AUTHORED debris models are not admitted";
 	m_iAuthoringLevelIndex = targetLevelIndex;
 
 	if (!isMapAuthoringLevel)
@@ -4139,6 +4273,7 @@ void Client::CMapTool::Reset_DestructionSimulationUI()
 {
 	m_SelectedDestructionSimulationProfileId.clear();
 	m_SelectedDestructionSimulationElementId.clear();
+	m_SelectedDestructionSimulationFragmentId.clear();
 	m_DestructionSimulationElementDraft.reset();
 	m_bDestructionSimulationElementDraftDirty = false;
 	m_DestructionSimulationReceiverId[0] = '\0';
@@ -4169,6 +4304,7 @@ void Client::CMapTool::Select_DestructionSimulationProfile(
 	m_SelectedDestructionSimulationProfileId = profile->profileId;
 	m_SelectedDestructionGroupId = profile->groupId;
 	m_SelectedDestructionSimulationElementId.clear();
+	m_SelectedDestructionSimulationFragmentId.clear();
 	m_DestructionSimulationElementDraft.reset();
 	m_bDestructionSimulationElementDraftDirty = false;
 	m_DestructionSimulationReceiverId[0] = '\0';
@@ -4213,19 +4349,85 @@ void Client::CMapTool::Select_DestructionSimulationElement(
 	}
 
 	m_SelectedDestructionSimulationElementId = element->elementId;
+	m_SelectedDestructionSimulationFragmentId.clear();
 	m_DestructionSimulationElementDraft = *element;
 	m_bDestructionSimulationElementDraftDirty = false;
 	strncpy_s(m_DestructionSimulationReceiverId,
 		element->Trigger.receiverCollisionId.c_str(), _TRUNCATE);
 
-	if (nullptr != m_pDestructionSimulationController &&
-		DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED ==
-			m_pDestructionSimulationController->Get_Snapshot().eScope)
+	if (nullptr != m_pDestructionSimulationController)
+	{
+		const DESTRUCTION_SIMULATION_SCOPE scope =
+			m_pDestructionSimulationController->Get_Snapshot().eScope;
+		if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == scope ||
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == scope)
+		{
+			m_pDestructionSimulationController->Request_SetScope(
+				DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
+				element->elementId);
+		}
+	}
+}
+
+void Client::CMapTool::Select_DestructionSimulationFragment(
+	const std::string& elementId,
+	const std::string& fragmentId)
+{
+	if (nullptr == m_pDestructionSimulationController || fragmentId.empty())
+	{
+		m_DestructionSimulationStatus =
+			"Stage a destruction profile before selecting a fragment";
+		return;
+	}
+	const DESTRUCTION_SIMULATION_FRAME& frame =
+		m_pDestructionSimulationController->Get_Runtime().Get_Frame();
+	if (frame.profileId != m_SelectedDestructionSimulationProfileId)
+	{
+		m_DestructionSimulationStatus =
+			"Selected fragment is not in the active staged profile";
+		return;
+	}
+	const auto runtimeElement = std::find_if(
+		frame.Elements.begin(), frame.Elements.end(),
+		[&elementId](const DESTRUCTION_SIMULATION_ELEMENT_FRAME& value)
+		{
+			return value.elementId == elementId;
+		});
+	if (runtimeElement == frame.Elements.end())
+	{
+		m_DestructionSimulationStatus =
+			"Selected fragment emitter is missing from the runtime frame";
+		return;
+	}
+	const auto fragment = std::find_if(
+		runtimeElement->Fragments.begin(), runtimeElement->Fragments.end(),
+		[&fragmentId](const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& value)
+		{
+			return value.fragmentId == fragmentId;
+		});
+	if (fragment == runtimeElement->Fragments.end())
+	{
+		m_DestructionSimulationStatus =
+			"Selected fragment is missing from the runtime frame";
+		return;
+	}
+
+	const bool_t keepSoloFragment =
+		DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT ==
+			m_pDestructionSimulationController->Get_Snapshot().eScope;
+	if (m_SelectedDestructionSimulationElementId != elementId)
+		Select_DestructionSimulationElement(elementId);
+	if (m_SelectedDestructionSimulationElementId != elementId)
+		return;
+	m_SelectedDestructionSimulationFragmentId = fragment->fragmentId;
+	if (keepSoloFragment)
 	{
 		m_pDestructionSimulationController->Request_SetScope(
-			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
-			element->elementId);
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT,
+			fragment->fragmentId);
 	}
+	m_DestructionSimulationStatus = "Selected mesh fragment: " +
+		fragment->fragmentId;
 }
 
 bool_t Client::CMapTool::Create_DefaultDestructionSimulationProfile()
@@ -4336,6 +4538,11 @@ bool_t Client::CMapTool::Request_StageDestructionSimulation(
 	const bool_t preserveSampleTime,
 	const bool_t playAfterStage)
 {
+	if (!m_bDestructionDebrisPrototypesReady)
+	{
+		m_DestructionSimulationStatus = m_DestructionDebrisPrototypeStatus;
+		return false;
+	}
 	if (nullptr == m_pDestructionSimulationController ||
 		m_iAuthoringLevelIndex >= ETOUI(LEVEL::END) ||
 		profile.groupId != m_SelectedDestructionGroupId ||
@@ -4365,7 +4572,14 @@ bool_t Client::CMapTool::Request_StageDestructionSimulation(
 		m_DestructionDocument,
 		m_DeployRuntime,
 		m_iAuthoringLevelIndex);
-	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == previous.eScope &&
+	if (DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == previous.eScope &&
+		!m_SelectedDestructionSimulationFragmentId.empty())
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT,
+			m_SelectedDestructionSimulationFragmentId);
+	}
+	else if (DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == previous.eScope &&
 		!m_SelectedDestructionSimulationElementId.empty())
 	{
 		m_pDestructionSimulationController->Request_SetScope(
@@ -4382,8 +4596,9 @@ bool_t Client::CMapTool::Request_StageDestructionSimulation(
 			(std::min)(previous.fSampleTimeSeconds, profile.fDurationSeconds));
 	if (playAfterStage)
 		m_pDestructionSimulationController->Request_Play();
-	m_DestructionSimulationStatus = "Simulation stage requested: " +
-		profile.profileId;
+	m_DestructionSimulationStatus = playAfterStage ?
+		"Simulation stage + play requested: " + profile.profileId :
+		"Simulation staged paused at 0 s; press Play: " + profile.profileId;
 	return true;
 }
 
@@ -6370,6 +6585,23 @@ void Client::CMapTool::Render_DestructionSimulationWindow(
 	ImGui::SameLine();
 	ImGui::TextDisabled(
 		"Authoring preview only; Server state and collision are unchanged");
+	ImGui::TextColored(ImVec4(0.95f, 0.72f, 0.22f, 1.f),
+		"PROJECT_AUTHORED proxy debris cloud: %u PhysX stone pieces per wall",
+		CDestructionSimulationRuntime::PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT);
+	ImGui::TextWrapped(
+		"Source reference %s is not recovered. The preview uses four generic "
+		"Valtan stone meshes and is not source-exact.",
+		CDestructionSimulationRuntime::PROJECT_AUTHORED_SOURCE_PARTICLE_ID);
+	if (m_bDestructionDebrisPrototypesReady)
+	{
+		ImGui::TextColored(ImVec4(0.35f, 0.9f, 0.45f, 1.f), "%s",
+			m_DestructionDebrisPrototypeStatus.c_str());
+	}
+	else
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.35f, 0.3f, 1.f), "%s",
+			m_DestructionDebrisPrototypeStatus.c_str());
+	}
 	ImGui::BeginDisabled(!m_DestructionSimulationDocument.Is_Dirty() ||
 		m_bDestructionSimulationElementDraftDirty);
 	if (ImGui::Button("Save Simulations"))
@@ -6393,9 +6625,9 @@ void Client::CMapTool::Render_DestructionSimulationWindow(
 	if (ImGui::BeginTable("DestructionSimulationColumns", 2,
 		ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
 	{
-		ImGui::TableSetupColumn("All Debris", ImGuiTableColumnFlags_WidthStretch,
+		ImGui::TableSetupColumn("Emitters / Fragments", ImGuiTableColumnFlags_WidthStretch,
 			0.43f);
-		ImGui::TableSetupColumn("Debris Detail", ImGuiTableColumnFlags_WidthStretch,
+		ImGui::TableSetupColumn("Emitter / Fragment Detail", ImGuiTableColumnFlags_WidthStretch,
 			0.57f);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0);
@@ -6419,10 +6651,10 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 			DESTRUCTION_SIMULATION_CONTROLLER_SNAPSHOT{};
 
 	ImGui::BeginDisabled(!hasProfile);
-	if (ImGui::Button("Stage Selected"))
+	if (ImGui::Button("Stage Selected (Paused)"))
 		Request_StageDestructionSimulation(*profile, false, false);
 	ImGui::SameLine();
-	if (ImGui::Button("Stage + Play All"))
+	if (ImGui::Button("Play All Fragments"))
 	{
 		if (Request_StageDestructionSimulation(*profile, false, true))
 		{
@@ -6466,22 +6698,59 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 
 	const bool_t allDebris =
 		DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS == snapshot.eScope;
-	if (ImGui::RadioButton("All Debris", allDebris))
+	const bool_t soloEmitter =
+		DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED == snapshot.eScope;
+	const bool_t soloFragment =
+		DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT == snapshot.eScope;
+	if (ImGui::RadioButton("All Fragments", allDebris))
 	{
 		m_pDestructionSimulationController->Request_SetScope(
 			DESTRUCTION_SIMULATION_SCOPE::ALL_DEBRIS);
 	}
 	ImGui::SameLine();
-	const bool_t canSolo =
+	const bool_t canSoloEmitter =
 		!m_SelectedDestructionSimulationElementId.empty();
-	ImGui::BeginDisabled(!canSolo);
-	if (ImGui::RadioButton("Solo Selected", !allDebris))
+	ImGui::BeginDisabled(!canSoloEmitter);
+	if (ImGui::RadioButton("Solo Emitter", soloEmitter))
 	{
 		m_pDestructionSimulationController->Request_SetScope(
 			DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
 			m_SelectedDestructionSimulationElementId);
 	}
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	const bool_t canSoloFragment =
+		!m_SelectedDestructionSimulationFragmentId.empty();
+	ImGui::BeginDisabled(!canSoloFragment);
+	if (ImGui::RadioButton("Solo Fragment", soloFragment))
+	{
+		m_pDestructionSimulationController->Request_SetScope(
+			DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT,
+			m_SelectedDestructionSimulationFragmentId);
+	}
+	ImGui::EndDisabled();
+
+	size_t fragmentCount = hasProfile ? profile->Elements.size() *
+		CDestructionSimulationRuntime::PROJECT_AUTHORED_DEBRIS_PIECES_PER_ELEMENT :
+		0u;
+	if (nullptr != m_pDestructionSimulationController)
+	{
+		const DESTRUCTION_SIMULATION_FRAME& frame =
+			m_pDestructionSimulationController->Get_Runtime().Get_Frame();
+		if (hasProfile && frame.profileId == profile->profileId)
+		{
+			fragmentCount = 0u;
+			for (const DESTRUCTION_SIMULATION_ELEMENT_FRAME& elementFrame :
+				frame.Elements)
+			{
+				fragmentCount += elementFrame.Fragments.size();
+			}
+		}
+	}
+	ImGui::TextDisabled("Scope %s | %zu mesh emitters | %zu fragments",
+		SimulationScopeLabel(snapshot.eScope),
+		hasProfile ? profile->Elements.size() : 0u,
+		fragmentCount);
 
 	ImGui::Text("%s | %.3f / %.3f s | fixed %.3f ms",
 		SimulationPlaybackStateLabel(snapshot.eState),
@@ -6558,7 +6827,7 @@ void Client::CMapTool::Render_DestructionSimulationTimeline()
 
 void Client::CMapTool::Render_DestructionSimulationOutliner()
 {
-	ImGui::SeparatorText("All Debris");
+	ImGui::SeparatorText("Mesh Emitters / Fragments");
 	ImGui::InputText("Filter", m_DestructionSimulationFilter,
 		IM_ARRAYSIZE(m_DestructionSimulationFilter));
 	const std::string filter = m_DestructionSimulationFilter;
@@ -6586,21 +6855,59 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 			if (!profileOpen)
 				continue;
 
-			ImGui::TextDisabled("group %s | %.2f s | %zu elements",
+			ImGui::TextDisabled("group %s | %.2f s | %zu mesh emitters",
 				profile.groupId.c_str(), profile.fDurationSeconds,
 				profile.Elements.size());
 			for (const DESTRUCTION_SIMULATION_ELEMENT& element : profile.Elements)
 			{
-				if (!filter.empty() && !MatchesFilter(element.elementId, filter.c_str()))
+				const DESTRUCTION_SIMULATION_ELEMENT_FRAME* runtimeElement = nullptr;
+				if (nullptr != frame && frame->profileId == profile.profileId)
+				{
+					const auto found = std::find_if(
+						frame->Elements.begin(), frame->Elements.end(),
+						[&element](const DESTRUCTION_SIMULATION_ELEMENT_FRAME& value)
+						{
+							return value.elementId == element.elementId;
+						});
+					if (found != frame->Elements.end())
+						runtimeElement = &*found;
+				}
+
+				bool_t matches = filter.empty() ||
+					MatchesFilter(element.elementId, filter.c_str());
+				if (!matches && nullptr != runtimeElement)
+				{
+					matches = std::any_of(
+						runtimeElement->Fragments.begin(),
+						runtimeElement->Fragments.end(),
+						[&filter](const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& fragment)
+						{
+							return MatchesFilter(fragment.fragmentId, filter.c_str()) ||
+								MatchesFilter(fragment.modelAssetId, filter.c_str());
+						});
+				}
+				if (!matches)
 					continue;
+
 				ImGui::PushID(element.elementId.c_str());
 				const bool_t elementSelected = profileSelected &&
 					element.elementId == m_SelectedDestructionSimulationElementId;
-				const f32_t soloWidth = 54.f;
-				const f32_t rowWidth = (std::max)(1.f,
-					ImGui::GetContentRegionAvail().x - soloWidth);
-				if (ImGui::Selectable(element.elementId.c_str(), elementSelected,
-					0, ImVec2(rowWidth, 0.f)))
+				std::ostringstream emitterLabel;
+				emitterLabel << element.elementId << " (Emitter";
+				if (nullptr != runtimeElement)
+					emitterLabel << ": " << runtimeElement->Fragments.size();
+				emitterLabel << ")##emitter";
+				ImGuiTreeNodeFlags emitterFlags =
+					ImGuiTreeNodeFlags_OpenOnArrow |
+					ImGuiTreeNodeFlags_SpanAvailWidth;
+				if (elementSelected)
+					emitterFlags |= ImGuiTreeNodeFlags_Selected |
+						ImGuiTreeNodeFlags_DefaultOpen;
+				if (!filter.empty())
+					emitterFlags |= ImGuiTreeNodeFlags_DefaultOpen;
+				const bool_t emitterOpen = ImGui::TreeNodeEx(
+					emitterLabel.str().c_str(), emitterFlags);
+				if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
 				{
 					if (!profileSelected)
 						Select_DestructionSimulationProfile(profile.profileId);
@@ -6615,7 +6922,7 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 						element.fSpeedMetersPerSecond);
 				}
 				ImGui::SameLine();
-				if (ImGui::SmallButton("Solo"))
+				if (ImGui::SmallButton("Solo Emitter + Play"))
 				{
 					if (!profileSelected)
 						Select_DestructionSimulationProfile(profile.profileId);
@@ -6635,24 +6942,85 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 							m_pDestructionSimulationController->Request_SetScope(
 								DESTRUCTION_SIMULATION_SCOPE::SOLO_SELECTED,
 								element.elementId);
+							m_pDestructionSimulationController->Request_Reset();
+							m_pDestructionSimulationController->Request_Play();
+							m_DestructionSimulationStatus =
+								"Solo mesh emitter audition requested: " +
+								element.elementId;
 						}
 					}
 				}
 
-				if (nullptr != frame && frame->profileId == profile.profileId)
+				if (emitterOpen)
 				{
-					const auto runtimeElement = std::find_if(
-						frame->Elements.begin(), frame->Elements.end(),
-						[&element](const DESTRUCTION_SIMULATION_ELEMENT_FRAME& value)
-						{
-							return value.elementId == element.elementId;
-						});
-					if (runtimeElement != frame->Elements.end())
+					if (nullptr == runtimeElement)
 					{
-						ImGui::TextDisabled("%s | life %.2f",
+						ImGui::TextDisabled(
+							"Stage this profile to materialize its 12 fragment rows.");
+					}
+					else
+					{
+						ImGui::TextDisabled(
+							"Deploy %llu | %s | life %.2f",
+							static_cast<unsigned long long>(
+								runtimeElement->sourceRuntimePlacementId),
 							SimulationElementStateLabel(runtimeElement->eState),
 							runtimeElement->fNormalizedLife);
+						for (const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& fragment :
+							runtimeElement->Fragments)
+						{
+							if (!filter.empty() &&
+								!MatchesFilter(fragment.fragmentId, filter.c_str()) &&
+								!MatchesFilter(fragment.modelAssetId, filter.c_str()))
+							{
+								continue;
+							}
+							ImGui::PushID(fragment.fragmentId.c_str());
+							const bool_t fragmentSelected = profileSelected &&
+								fragment.fragmentId ==
+									m_SelectedDestructionSimulationFragmentId;
+							std::ostringstream fragmentLabel;
+							fragmentLabel << fragment.fragmentId << " ["
+								<< SimulationElementStateLabel(fragment.eState)
+								<< " | life " << std::fixed << std::setprecision(2)
+								<< fragment.fNormalizedLife << "]";
+							const f32_t soloWidth = 88.f;
+							const f32_t rowWidth = (std::max)(1.f,
+								ImGui::GetContentRegionAvail().x - soloWidth);
+							if (ImGui::Selectable(fragmentLabel.str().c_str(),
+								fragmentSelected, 0, ImVec2(rowWidth, 0.f)))
+							{
+								Select_DestructionSimulationFragment(
+									element.elementId, fragment.fragmentId);
+							}
+							if (ImGui::IsItemHovered())
+							{
+								ImGui::SetTooltip("Piece %u\n%s",
+									fragment.pieceIndex,
+									fragment.modelAssetId.c_str());
+							}
+							ImGui::SameLine();
+							if (ImGui::SmallButton("Solo + Play"))
+							{
+								Select_DestructionSimulationFragment(
+									element.elementId, fragment.fragmentId);
+								if (m_SelectedDestructionSimulationFragmentId ==
+									fragment.fragmentId)
+								{
+									m_pDestructionSimulationController->Request_SetScope(
+										DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT,
+										fragment.fragmentId);
+									m_pDestructionSimulationController->Request_Reset();
+									m_pDestructionSimulationController->Request_Play();
+									m_DestructionSimulationStatus =
+										"Solo fragment audition requested: " +
+										fragment.fragmentId;
+								}
+							}
+							ImGui::PopID();
+						}
 					}
+					ImGui::TreePop();
 				}
 				ImGui::PopID();
 			}
@@ -6661,12 +7029,12 @@ void Client::CMapTool::Render_DestructionSimulationOutliner()
 	}
 	ImGui::EndChild();
 	ImGui::TextDisabled(
-		"Profile = one complete destruction; Solo = one debris element");
+		"Profile = complete destruction; source wall = one 12-piece mesh emitter");
 }
 
 void Client::CMapTool::Render_DestructionSimulationDetail()
 {
-	ImGui::SeparatorText("Debris Detail");
+	ImGui::SeparatorText("Emitter / Fragment Detail");
 	const DESTRUCTION_SIMULATION_PROFILE* profile =
 		Get_SelectedDestructionSimulationProfile();
 	if (nullptr == profile ||
@@ -6678,6 +7046,87 @@ void Client::CMapTool::Render_DestructionSimulationDetail()
 
 	DESTRUCTION_SIMULATION_ELEMENT& draft =
 		*m_DestructionSimulationElementDraft;
+	if (!m_SelectedDestructionSimulationFragmentId.empty())
+	{
+		const DESTRUCTION_SIMULATION_FRAGMENT_FRAME* selectedFragment = nullptr;
+		if (nullptr != m_pDestructionSimulationController)
+		{
+			const DESTRUCTION_SIMULATION_FRAME& frame =
+				m_pDestructionSimulationController->Get_Runtime().Get_Frame();
+			if (frame.profileId == profile->profileId)
+			{
+				const auto runtimeElement = std::find_if(
+					frame.Elements.begin(), frame.Elements.end(),
+					[this](const DESTRUCTION_SIMULATION_ELEMENT_FRAME& value)
+					{
+						return value.elementId ==
+							m_SelectedDestructionSimulationElementId;
+					});
+				if (runtimeElement != frame.Elements.end())
+				{
+					const auto fragment = std::find_if(
+						runtimeElement->Fragments.begin(),
+						runtimeElement->Fragments.end(),
+						[this](const DESTRUCTION_SIMULATION_FRAGMENT_FRAME& value)
+						{
+							return value.fragmentId ==
+								m_SelectedDestructionSimulationFragmentId;
+						});
+					if (fragment != runtimeElement->Fragments.end())
+						selectedFragment = &*fragment;
+				}
+			}
+		}
+
+		ImGui::SeparatorText("Selected Fragment (Read-only Runtime Sample)");
+		if (nullptr == selectedFragment)
+		{
+			ImGui::TextDisabled(
+				"The selected fragment is unavailable. Stage the selected profile again.");
+		}
+		else
+		{
+			const f32_t speed = std::sqrt(
+				selectedFragment->vLinearVelocity.x *
+					selectedFragment->vLinearVelocity.x +
+				selectedFragment->vLinearVelocity.y *
+					selectedFragment->vLinearVelocity.y +
+				selectedFragment->vLinearVelocity.z *
+					selectedFragment->vLinearVelocity.z);
+			ImGui::TextWrapped("Stable ID: %s",
+				selectedFragment->fragmentId.c_str());
+			ImGui::Text("Piece index: %u", selectedFragment->pieceIndex);
+			ImGui::TextWrapped("Model: %s",
+				selectedFragment->modelAssetId.c_str());
+			ImGui::Text("State: %s | life %.3f",
+				SimulationElementStateLabel(selectedFragment->eState),
+				selectedFragment->fNormalizedLife);
+			ImGui::Text("Position: %.3f, %.3f, %.3f",
+				selectedFragment->vWorldPosition.x,
+				selectedFragment->vWorldPosition.y,
+				selectedFragment->vWorldPosition.z);
+			ImGui::Text("Velocity: %.3f, %.3f, %.3f m/s | speed %.3f",
+				selectedFragment->vLinearVelocity.x,
+				selectedFragment->vLinearVelocity.y,
+				selectedFragment->vLinearVelocity.z,
+				speed);
+			if (ImGui::Button("Solo + Play Selected Fragment"))
+			{
+				m_pDestructionSimulationController->Request_SetScope(
+					DESTRUCTION_SIMULATION_SCOPE::SOLO_FRAGMENT,
+					selectedFragment->fragmentId);
+				m_pDestructionSimulationController->Request_Reset();
+				m_pDestructionSimulationController->Request_Play();
+				m_DestructionSimulationStatus =
+					"Solo fragment audition requested: " +
+					selectedFragment->fragmentId;
+			}
+			ImGui::TextDisabled(
+				"Fragment values are generated deterministically from the emitter authoring below.");
+		}
+	}
+
+	ImGui::SeparatorText("Emitter Authoring (applies to all 12 fragments)");
 	ImGui::TextWrapped("%s", draft.elementId.c_str());
 	ImGui::Text("Source Deploy placement: %llu",
 		static_cast<unsigned long long>(draft.sourceRuntimePlacementId));
@@ -6838,7 +7287,7 @@ void Client::CMapTool::Render_DestructionSimulationDetail()
 	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
-	if (ImGui::Button("Audition Solo"))
+	if (ImGui::Button("Solo Emitter + Play"))
 	{
 		const bool_t staged = m_bDestructionSimulationElementDraftDirty ?
 			Stage_DestructionElementDraftPreview() :

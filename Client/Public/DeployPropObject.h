@@ -23,6 +23,24 @@ public:
 		std::wstring fracturedPrototypeTag;
 	};
 
+	/* A debris preview instance names a CModel prototype already admitted by
+	   MapTool and the additional scale applied after that prototype's fixed
+	   asset pretransform. Runtime owns the deterministic choice/scale; this
+	   object only clones and presents it. */
+	struct DEBRIS_PREVIEW_INSTANCE_DESC
+	{
+		std::wstring modelPrototypeTag;
+		f32_t uniformScale = 1.f;
+	};
+
+	struct DEBRIS_PREVIEW_DESC
+	{
+		std::vector<DEBRIS_PREVIEW_INSTANCE_DESC> instances;
+		/* false keeps the source fractured Deploy presentation visible while
+		   independent rigid bodies drive the flying debris. */
+		bool_t suppressSource = false;
+	};
+
 private:
 	CDeployPropObject(ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
@@ -72,12 +90,59 @@ public:
 	{
 		return m_bPhysicsPreviewActive;
 	}
+	/* Stages every referenced static CModel before committing any preview
+	   state. Instances begin hidden and do not mutate the Deploy state or root
+	   transform; Begin_PhysicsPreview(FRACTURED) remains the runtime's separate
+	   source-state seam. */
+	bool_t Begin_DebrisPreview(
+		const DEBRIS_PREVIEW_DESC& desc,
+		std::string& outError);
+	uint32_t Get_DebrisPreviewInstanceCount() const;
+	/* Model-local box after the admitted prototype's asset pretransform and
+	   the authored per-instance uniform scale. Runtime uses its center as the
+	   rigid-body local shape offset. */
+	bool_t Get_DebrisPreviewLocalBounds(
+		uint32_t instanceIndex,
+		float3_t& outCenter,
+		float3_t& outHalfExtents) const;
+	/* position/rotation describe the model root in world space. Visibility is
+	   explicit so staging and deterministic seek never flash at the origin. */
+	bool_t Apply_DebrisPreviewPose(
+		uint32_t instanceIndex,
+		const float3_t& position,
+		const float4_t& rotationQuaternion,
+		bool_t visible);
+	void End_DebrisPreview();
+	bool_t Is_DebrisPreviewActive() const
+	{
+		return m_bDebrisPreviewActive;
+	}
 
 private:
+	struct DEBRIS_PREVIEW_RESOURCE
+	{
+		std::wstring modelPrototypeTag;
+		shared_ptr<CModel> model;
+	};
+
+	struct DEBRIS_PREVIEW_INSTANCE
+	{
+		uint32_t resourceIndex = UINT32_MAX;
+		f32_t uniformScale = 1.f;
+		float3_t position = {};
+		float4_t rotation = float4_t(0.f, 0.f, 0.f, 1.f);
+		bool_t visible = false;
+	};
+
 	HRESULT Ready_Components(const DEPLOY_PROP_DESC& desc);
 	HRESULT Bind_CommonShaderResources();
-	HRESULT Render_Static(const shared_ptr<CModel>& model);
+	HRESULT Bind_DebrisShaderResources(const float4x4_t& worldMatrix);
+	HRESULT Render_Static(
+		const shared_ptr<CModel>& model,
+		const shared_ptr<CShader>& shader);
 	HRESULT Render_Animated();
+	HRESULT Render_DebrisPreview();
+	bool_t Has_VisibleDebrisPreviewInstance() const;
 	void Apply_Transform();
 
 private:
@@ -90,9 +155,15 @@ private:
 	bool_t m_bPhysicsPreviewActive = false;
 	float3_t m_PhysicsPreviewPosition = {};
 	float4_t m_PhysicsPreviewRotation = float4_t(0.f, 0.f, 0.f, 1.f);
+	uint32_t m_iPrototypeLevelIndex = ETOUI(LEVEL::END);
+	bool_t m_bDebrisPreviewActive = false;
+	bool_t m_bDebrisSuppressSource = false;
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
+	shared_ptr<CShader> m_pDebrisShaderCom = { nullptr };
 	shared_ptr<CModel> m_pIntactModelCom = { nullptr };
 	shared_ptr<CModel> m_pFracturedModelCom = { nullptr };
+	std::vector<DEBRIS_PREVIEW_RESOURCE> m_DebrisPreviewResources;
+	std::vector<DEBRIS_PREVIEW_INSTANCE> m_DebrisPreviewInstances;
 
 public:
 	static unique_ptr<CDeployPropObject> Create(
