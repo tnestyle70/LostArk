@@ -193,6 +193,9 @@ private:
 	//next goal pos that server notice
 	float3_t m_vNetworkTargetPosition = {};
 	f32_t m_fNetworkTargetYawDegrees = { 0.f };
+	/* Follows the network yaw at TURN_DEGREES_PER_SECOND instead of jumping to
+	it. Presentation only: the server's value stays the one gameplay reads. */
+	f32_t m_fPresentationYawDegrees = { 0.f };
 
 private:
 	HRESULT Ready_Components();
