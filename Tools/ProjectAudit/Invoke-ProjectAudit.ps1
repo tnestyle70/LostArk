@@ -1120,7 +1120,7 @@ try {
 		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
 		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
 		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
-		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 14' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 15' -and
 		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
 		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
 		$gameRoomSource -match 'Apply_CharacterClassChange' -and

@@ -904,7 +904,17 @@ void CCharacter::Update_ActionEmissiveOverride(
 
 void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
 {
+	const bool_t hasChanged = m_eStance != stance;
 	m_eStance = stance;
+	/* A stance that owns its own idle and run has to take over the pose the
+	character is already holding; Set_Locomotion only fires on a move edge. A
+	skill keeps its clip and picks the new stance up when it ends. */
+	if (hasChanged && !Is_PlayingSkill())
+	{
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+	}
 	for (uint32_t i = 0; i < m_pSpec->iNumWeapons; ++i)
 	{
 		const WEAPON_PART_SPEC& weapon = m_pSpec->pWeapons[i];
@@ -923,11 +933,29 @@ void CCharacter::Set_PartVisible(const tchar_t* pPartTag, const bool_t isVisible
 		pPart->Set_Visible(isVisible);
 }
 
+const char_t* CCharacter::Resolve_LocomotionClip(const CHARACTER_ANIM eAnim) const
+{
+	const char_t* pClipName = m_pSpec->AnimationClips[ETOUI(eAnim)];
+	if (CHARACTER_ANIM::IDLE != eAnim && CHARACTER_ANIM::RUN != eAnim)
+		return pClipName;
+	for (uint32_t i = 0; i < m_pSpec->iNumStanceLocomotion; ++i)
+	{
+		const STANCE_LOCOMOTION_SPEC& stance = m_pSpec->pStanceLocomotion[i];
+		if (stance.eStance != m_eStance)
+			continue;
+		const char_t* pOverride = CHARACTER_ANIM::IDLE == eAnim ?
+			stance.pIdleClip : stance.pRunClip;
+		if (nullptr != pOverride)
+			return pOverride;
+	}
+	return pClipName;
+}
+
 bool_t CCharacter::Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop)
 {
 	if (eAnim >= CHARACTER_ANIM::END)
 		return false;
-	return Set_Animation(m_pSpec->AnimationClips[ETOUI(eAnim)], isLoop);
+	return Set_Animation(Resolve_LocomotionClip(eAnim), isLoop);
 }
 
 bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)

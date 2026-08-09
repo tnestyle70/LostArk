@@ -48,7 +48,7 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  31,
-                     "fieldEntryCount":  2433
+                     "fieldEntryCount":  2457
                  },
     "entries":  [
                     {
@@ -3448,6 +3448,58 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:ARTIST",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  1.0,
+                        "transform":  "identity",
+                        "resultValue":  1.0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:ARTIST",
                         "targetField":  "defaultStance",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -3568,6 +3620,58 @@
                         "sourceValue":  612,
                         "transform":  "class map 612 -\u003e DIMENSIONMASTER",
                         "resultValue":  "DIMENSIONMASTER"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  1.0,
+                        "transform":  "identity",
+                        "resultValue":  1.0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:DIMENSIONMASTER",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3696,6 +3800,58 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:GUNSLINGER",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  1.0,
+                        "transform":  "identity",
+                        "resultValue":  1.0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:GUNSLINGER",
                         "targetField":  "defaultStance",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -3816,6 +3972,58 @@
                         "sourceValue":  305,
                         "transform":  "class map 305 -\u003e LANCE_MASTER",
                         "resultValue":  "LANCE_MASTER"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  1.0,
+                        "transform":  "identity",
+                        "resultValue":  1.0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:LANCE_MASTER",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
@@ -3944,6 +4152,58 @@
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
                         "targetId":  "player:SLAYER",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  1.0,
+                        "transform":  "identity",
+                        "resultValue":  1.0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "identity",
+                        "resultValue":  0
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:SLAYER",
                         "targetField":  "defaultStance",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -4059,6 +4319,58 @@
                         "sourceValue":  "WARLORD",
                         "transform":  "identity",
                         "resultValue":  "WARLORD"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "defenseStanceMoveSpeedScale",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-stance-movement-v1"
+                                   },
+                        "sourceValue":  0.6,
+                        "transform":  "identity",
+                        "resultValue":  0.6
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "identityDrainPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  120,
+                        "transform":  "identity",
+                        "resultValue":  120
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "identityRegenPerSecond",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  40,
+                        "transform":  "identity",
+                        "resultValue":  40
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerProfiles.json",
+                        "targetId":  "player:WARLORD",
+                        "targetField":  "maximumIdentity",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-identity-gauge-v1"
+                                   },
+                        "sourceValue":  1000,
+                        "transform":  "identity",
+                        "resultValue":  1000
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerProfiles.json",
