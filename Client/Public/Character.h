@@ -189,11 +189,18 @@ private:
 	//next goal pos that server notice
 	float3_t m_vNetworkTargetPosition = {};
 	f32_t m_fNetworkTargetYawDegrees = { 0.f };
+	/* Follows the network yaw at TURN_DEGREES_PER_SECOND instead of jumping to
+	it. Presentation only: the server's value stays the one gameplay reads. */
+	f32_t m_fPresentationYawDegrees = { 0.f };
+	CBoneChainSimulation m_BoneChains;
 
 private:
 	HRESULT Ready_Components();
 	HRESULT Ready_PartObjects();
 	void Set_Locomotion(bool_t isMoving);
+	/* IDLE and RUN can belong to the current stance instead of the class. Every
+	other state resolves straight off the spec. */
+	const char_t* Resolve_LocomotionClip(CHARACTER_ANIM eAnim) const;
 	bool_t Load_ClipChains();
 	void Commit_PendingClipChains();
 	/* Plays a clip from its first frame. Set_Animation alone only switches the

@@ -330,6 +330,10 @@ namespace LostArk::Shared
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iCurrentResource = 0;
 		std::uint32_t iMaximumResource = 1;
+		// The class identity gauge. A maximum of 0 says the class has none, and
+		// the HUD then has nothing to draw.
+		std::uint32_t iCurrentIdentity = 0;
+		std::uint32_t iMaximumIdentity = 0;
 		bool isCombatReady = true;
 		// 0 outside a staged action, 1-based stage index while one runs: combo
 		// stages, and start/loop/end for a HOLD skill. The server owns it; the

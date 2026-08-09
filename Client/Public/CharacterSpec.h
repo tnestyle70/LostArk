@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+#include "BoneChainSimulation.h"
 #include "Network/PacketMessages.h"
 
 NS_BEGIN(Client)
@@ -59,6 +60,17 @@ struct SKILL_SURFACE_EMISSIVE_SPEC
 	f32_t fIntensity = 0.f;
 };
 
+/* A stance the class stands and runs differently in. Only the stances a class
+lists here replace the shared IDLE and RUN clips; every other stance keeps them,
+so a class that merely swaps weapons needs no entry. */
+struct STANCE_LOCOMOTION_SPEC
+{
+	LostArk::Shared::PLAYER_STANCE_ID eStance =
+		LostArk::Shared::PLAYER_STANCE_ID::NONE;
+	const char_t* pIdleClip = nullptr;
+	const char_t* pRunClip = nullptr;
+};
+
 /* Everything that makes one class different, as data. Held as a constant next to
 that class's logic; CCharacter itself stays class-agnostic. */
 struct CHARACTER_SPEC
@@ -93,6 +105,14 @@ struct CHARACTER_SPEC
 
 	const SKILL_SURFACE_EMISSIVE_SPEC* pSkillSurfaceEmissives = nullptr;
 	uint32_t iNumSkillSurfaceEmissives = 0u;
+
+	const STANCE_LOCOMOTION_SPEC* pStanceLocomotion = nullptr;
+	uint32_t iNumStanceLocomotion = 0u;
+
+	/* Hair and cloth chains this class solves after the animation. Empty leaves
+	every bone exactly where the clip put it. */
+	const BONE_CHAIN_SPEC* pBoneChains = nullptr;
+	uint32_t iNumBoneChains = 0u;
 };
 
 NS_END

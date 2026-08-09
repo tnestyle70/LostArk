@@ -1142,18 +1142,31 @@
       "inputSlot": "E",
       "displayName": "대쉬 어퍼 파이어",
       "actionId": "warlord.skill.17080",
-      "skillKind": "ACTIVE",
+      "skillKind": "COMBO",
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 16000,
-      "actionDurationMs": 3500,
+      "actionDurationMs": 1800,
       "hitTimeMs": 250,
       "resourceCost": 412,
       "movementDistance": 0.0,
       "maximumRange": 4.0,
       "serverDamageProfileId": "damage.player.17080",
       "effectId": "",
-      "comboStages": []
+      "comboStages": [
+        {
+          "actionDurationMs": 1800,
+          "hitTimeMs": 250,
+          "inputOpenMs": 200,
+          "inputCloseMs": 1800
+        },
+        {
+          "actionDurationMs": 1700,
+          "hitTimeMs": 120,
+          "inputOpenMs": 0,
+          "inputCloseMs": 0
+        }
+      ]
     },
     {
       "skillId": 17090,
@@ -1355,7 +1368,7 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 90000,
-      "actionDurationMs": 15367,
+      "actionDurationMs": 6200,
       "hitTimeMs": 0,
       "resourceCost": 0,
       "movementDistance": 0.0,
