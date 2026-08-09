@@ -18,6 +18,9 @@
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	/* Fast enough that a deliberate turn onto a skill's aim still lands inside a
+	quarter second, slow enough to swallow the per-cell steps of a grid path. */
+	constexpr f32_t TURN_DEGREES_PER_SECOND = 720.f;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
 	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
@@ -691,10 +694,25 @@ void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 		STATE::POSITION,
 		XMVectorSetW(next, 1.f));
 
-	//G3에서는 위치만 보간하고, Yaw는 서버 최신값을 즉시 반영
+	/* The server recomputes yaw per path segment, and a grid path changes
+	direction at every cell, so copying the latest value straight in reads as a
+	series of snaps. Turning toward it at a fixed rate keeps the server's yaw
+	authoritative and only spreads the change over a few frames. */
+	f32_t difference = m_fNetworkTargetYawDegrees - m_fPresentationYawDegrees;
+	while (difference > 180.f)
+		difference -= 360.f;
+	while (difference < -180.f)
+		difference += 360.f;
+
+	const f32_t step = TURN_DEGREES_PER_SECOND * fTimeDelta;
+	if (fabsf(difference) <= step)
+		m_fPresentationYawDegrees = m_fNetworkTargetYawDegrees;
+	else
+		m_fPresentationYawDegrees += difference > 0.f ? step : -step;
+
 	m_pTransformCom->Rotation(
 		0.f,
-		m_fNetworkTargetYawDegrees,
+		m_fPresentationYawDegrees,
 		0.f);
 }
 
@@ -723,6 +741,10 @@ bool_t CCharacter::Apply_NetworkState(const float3_t& position, f32_t yawDegrees
 		return false;
 	}
 	//network state apply!
+	/* The first snapshot is where the character is, not somewhere it turned to,
+	so it takes the yaw outright; spawning would otherwise spin into place. */
+	if (!m_hasNetworkState)
+		m_fPresentationYawDegrees = yawDegrees;
 	m_hasNetworkState = true;
 	m_vNetworkTargetPosition = position;
 	m_fNetworkTargetYawDegrees = yawDegrees;
