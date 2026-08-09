@@ -66,6 +66,24 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
 	m_wasKeyDown.fill(false);
+	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	m_byHeldKeyCode = 0;
+	m_wasLeftMouseDown = false;
+	m_LastBasicAttackSentAt = {};
+	m_LastMoveGoalSentAt = {};
+	m_LastSentMoveGoal = {};
+}
+
+void Client::CPlayerController::Rebind_LocalCharacter(
+	const shared_ptr<CCharacter>& character)
+{
+	if (m_pLocalCharacter.lock() == character)
+		return;
+	m_pLocalCharacter = character;
+	m_wasRightMouseDown = false;
+	m_wasKeyDown.fill(false);
+	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	m_byHeldKeyCode = 0;
 	m_wasLeftMouseDown = false;
 	m_LastBasicAttackSentAt = {};
 	m_LastMoveGoalSentAt = {};

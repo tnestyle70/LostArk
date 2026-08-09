@@ -273,9 +273,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	Set_Status(TEXT("CHARACTER SELECT: playable classes"));
 	if (FAILED(Ready_Character_Rendering(
 			ETOUI(LEVEL::CHARACTER_SELECT),
-			characterClasses)) ||
-		FAILED(Ready_AnimationPreviewModels(
-			ETOUI(LEVEL::CHARACTER_SELECT))))
+			characterClasses)))
 	{
 		return E_FAIL;
 	}

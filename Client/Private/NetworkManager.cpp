@@ -232,6 +232,7 @@ bool CNetworkManager::Connect_To_Server(
 	m_StreamParser.Reset();
 	m_ReplicationEvents.clear();
 	m_WorldEntitySpawnResults.clear();
+	m_CharacterClassChangeResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -378,6 +379,26 @@ bool CNetworkManager::Send_RevivePlayer(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_ChangeCharacterClass(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_CHANGE_CHARACTER_CLASS message{};
+	message.iClientSequence = clientSequence;
+	message.eCharacterClass = characterClass;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CHANGE_CHARACTER_CLASS,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_SpawnWorldEntity(
 	const std::string_view placementId)
 {
@@ -421,6 +442,16 @@ bool CNetworkManager::Try_Consume_WorldEntitySpawnResult(
 	return true;
 }
 
+bool CNetworkManager::Try_Consume_CharacterClassChangeResult(
+	LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message)
+{
+	if (m_CharacterClassChangeResults.empty())
+		return false;
+	message = std::move(m_CharacterClassChangeResults.front());
+	m_CharacterClassChangeResults.pop_front();
+	return true;
+}
+
 bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EVENT& event)
 {
 	if (m_ReplicationEvents.empty())
@@ -456,6 +487,7 @@ void CNetworkManager::Close_ServerConnection()
 	m_StreamParser.Reset();
 	m_ReplicationEvents.clear();
 	m_WorldEntitySpawnResults.clear();
+	m_CharacterClassChangeResults.clear();
 	m_hasPendingEnterAccepted = false;
 	m_PendingEnterAccepted = {};
 	m_iLocalPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -691,6 +723,23 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 			return;
 		}
 		m_WorldEntitySpawnResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT:
+	{
+		S2C_CHARACTER_CLASS_CHANGE_RESULT result{};
+		if (!Read_Message(reader, result) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		if (CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == result.eResult)
+		{
+			m_eLocalCharacterClass = result.eActiveClass;
+			if (m_hasLocalSpawn)
+				m_LocalSpawn.eCharacterClass = result.eActiveClass;
+		}
+		m_CharacterClassChangeResults.push_back(std::move(result));
 		break;
 	}
 	//snapshot

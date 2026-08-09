@@ -1,6 +1,7 @@
 #include "ServerGameplayContractTests.h"
 
 #include "GameplayCatalog.h"
+#include "GameRoom.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
@@ -236,6 +237,114 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	TESTS tests{};
 	CGameplayCatalog catalog;
 	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	{
+		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		tests.Require(room.Is_Ready(),
+			"Initialize Character Select room for class changes");
+		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+			room.Find_AvailablePlayerSpawn();
+		tests.Require(nullptr != spawn,
+			"Resolve Character Select class-change respawn placement");
+		if (room.Is_Ready() && nullptr != spawn)
+		{
+			SERVER_PLAYER player{};
+			player.iSessionId = 11u;
+			player.iPlayerId = 12u;
+			player.iNetEntityId = 112u;
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.strNickName = "ClassSwitch";
+			player.strSpawnPlacementId = spawn->strPlacementId;
+			player.fPositionX = 17.f;
+			player.fPositionY = 3.f;
+			player.fPositionZ = -9.f;
+			player.fYawDegrees = 33.f;
+			player.iCurrentHp = 10u;
+			player.iMaximumHp = 100u;
+			player.iCurrentResource = 2u;
+			player.iMaximumResource = 10u;
+			player.eAction = PLAYER_ACTION_STATE::SKILL;
+			player.iCurrentSkillId = 34120u;
+			player.iActionStartTick = 9u;
+			player.iLastMoveSequence = 7u;
+			player.iLastSkillSequence = 8u;
+			player.hasMoveGoal = true;
+			player.CooldownEndTickBySkillId.emplace(34120u, 100u);
+
+			C2S_CHANGE_CHARACTER_CLASS request{};
+			request.iClientSequence = 1u;
+			request.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			tests.Require(
+				CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED ==
+					room.Apply_CharacterClassChange(player, request) &&
+				CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass &&
+				17.f == player.fPositionX && -9.f == player.fPositionZ &&
+				12u == player.iPlayerId && 112u == player.iNetEntityId &&
+				7u == player.iLastMoveSequence &&
+				8u == player.iLastSkillSequence &&
+				PLAYER_ACTION_STATE::NONE == player.eAction &&
+				INVALID_SKILL_ID == player.iCurrentSkillId &&
+				!player.hasMoveGoal && player.CooldownEndTickBySkillId.empty() &&
+				player.iCurrentHp == player.iMaximumHp &&
+				player.iCurrentResource == player.iMaximumResource,
+				"Change class during action, preserve identity/position/sequences, and reset state");
+
+			C2S_USE_SKILL oldClassSkill{};
+			oldClassSkill.iClientSequence = 9u;
+			oldClassSkill.iSkillId = 34120u;
+			oldClassSkill.fAimX = 1.f;
+			oldClassSkill.fAimZ = 0.f;
+			C2S_USE_SKILL newClassSkill = oldClassSkill;
+			newClassSkill.iSkillId = 31200u;
+			tests.Require(
+				!room.m_PlayerSkillSystem.Try_Start(
+					player, oldClassSkill, room.m_GameplayCatalog, 10u) &&
+				room.m_PlayerSkillSystem.Try_Start(
+					player, newClassSkill, room.m_GameplayCatalog, 10u) &&
+				31200u == player.iCurrentSkillId &&
+				9u == player.iLastSkillSequence,
+				"Reject old-class skill and approve new-class skill after class change");
+
+			const SERVER_PLAYER accepted = player;
+			tests.Require(
+				CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STALE_SEQUENCE ==
+					room.Apply_CharacterClassChange(player, request) &&
+				accepted.eCharacterClass == player.eCharacterClass &&
+				accepted.iCurrentHp == player.iCurrentHp,
+				"Reject stale class change without mutating player");
+
+			player.iCurrentHp = 0u;
+			player.eAction = PLAYER_ACTION_STATE::DEAD;
+			player.fPositionX = 999.f;
+			player.fPositionY = 999.f;
+			player.fPositionZ = 999.f;
+			request.iClientSequence = 2u;
+			request.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+			SERVER_NAV_POINT projected{};
+			const bool projectedSpawn = room.m_ServerNavigation.Project_Point(
+				spawn->fPositionX, spawn->fPositionZ, projected);
+			tests.Require(projectedSpawn &&
+				CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED ==
+					room.Apply_CharacterClassChange(player, request) &&
+				CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass &&
+				projected.x == player.fPositionX &&
+				projected.y == player.fPositionY &&
+				projected.z == player.fPositionZ &&
+				PLAYER_ACTION_STATE::NONE == player.eAction &&
+				0u != player.iCurrentHp,
+				"Change dead player class and respawn at projected original spawn");
+
+			CGameRoom bernRoom{ WORLD_ID::BERN };
+			const SERVER_PLAYER beforeWrongWorld = player;
+			request.iClientSequence = 3u;
+			request.eCharacterClass = CHARACTER_CLASS_ID::SLAYER;
+			tests.Require(bernRoom.Is_Ready() &&
+				CHARACTER_CLASS_CHANGE_RESULT::REJECTED_WRONG_WORLD ==
+					bernRoom.Apply_CharacterClassChange(player, request) &&
+				beforeWrongWorld.eCharacterClass == player.eCharacterClass &&
+				beforeWrongWorld.iCurrentHp == player.iCurrentHp,
+				"Reject class change outside Character Select without mutation");
+		}
+	}
 	for (const QUICK_SKILL_CONTRACT& contract : QUICK_SKILLS)
 	{
 		const PLAYER_SKILL_DEFINITION* skill =

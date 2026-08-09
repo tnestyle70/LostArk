@@ -188,6 +188,16 @@ bool Client::CClientReplication::Has_WorldEntity(
 	return false;
 }
 
+bool Client::CClientReplication::Try_Consume_PresentationFailure(
+	std::string& outStatus)
+{
+	if (m_strPendingPresentationFailure.empty())
+		return false;
+	outStatus = std::move(m_strPendingPresentationFailure);
+	m_strPendingPresentationFailure.clear();
+	return true;
+}
+
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
 	return m_Registry.Resolve(m_LocalCharacterHandle);
@@ -629,6 +639,21 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
 	{
+		const NET_PLAYER_RECORD* record =
+			m_Registry.Find_Record(player.iNetEntityId);
+		if (nullptr != record &&
+			record->eCharacterClass != player.eCharacterClass)
+		{
+			const CHARACTER_REPLACE_RESULT replaceResult =
+				Replace_CharacterClass(player);
+			if (CHARACTER_REPLACE_RESULT::FATAL_FAILURE == replaceResult)
+			{
+				allSucceeded = false;
+				continue;
+			}
+			if (CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE == replaceResult)
+				continue;
+		}
 		OBJECT_HANDLE handle{};
 
 		if (!m_Registry.Find_Handle(
@@ -780,6 +805,79 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	return allSucceeded;
 }
 
+Client::CClientReplication::CHARACTER_REPLACE_RESULT
+Client::CClientReplication::Replace_CharacterClass(
+	const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
+{
+	const NET_PLAYER_RECORD* currentRecord =
+		m_Registry.Find_Record(snapshot.iNetEntityId);
+	if (nullptr == currentRecord)
+		return CHARACTER_REPLACE_RESULT::FATAL_FAILURE;
+	const NET_PLAYER_RECORD oldRecord = *currentRecord;
+	OBJECT_HANDLE oldHandle{};
+	if (!m_Registry.Find_Handle(snapshot.iNetEntityId, oldHandle))
+		return CHARACTER_REPLACE_RESULT::FATAL_FAILURE;
+	const std::shared_ptr<CCharacter> oldCharacter =
+		m_Registry.Resolve(oldHandle);
+	if (nullptr == oldCharacter)
+		return CHARACTER_REPLACE_RESULT::FATAL_FAILURE;
+
+	const bool_t isLocallyControlled = snapshot.iNetEntityId ==
+		CNetworkManager::Get().Get_LocalEntityId();
+	std::shared_ptr<CCharacter> stagedCharacter;
+	if (!Create_Character(
+		snapshot.eCharacterClass,
+		oldRecord.strNickName,
+		float3_t(snapshot.fPositionX, snapshot.fPositionY, snapshot.fPositionZ),
+		snapshot.fYawDegrees,
+		isLocallyControlled,
+		stagedCharacter))
+	{
+		m_strPendingPresentationFailure =
+			"Class change asset admission failed; the previous character remains active.";
+		return CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE;
+	}
+
+	NET_PLAYER_RECORD newRecord = oldRecord;
+	newRecord.eCharacterClass = snapshot.eCharacterClass;
+	newRecord.fPositionX = snapshot.fPositionX;
+	newRecord.fPositionY = snapshot.fPositionY;
+	newRecord.fPositionZ = snapshot.fPositionZ;
+	newRecord.fYawDegrees = snapshot.fYawDegrees;
+	OBJECT_HANDLE newHandle{};
+	if (!m_Registry.Replace(
+		snapshot.iNetEntityId, newRecord, stagedCharacter, newHandle))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			m_Desc.iLayerLevelIndex, m_Desc.strPlayerLayerTag, stagedCharacter);
+		m_strPendingPresentationFailure =
+			"Class change registry commit failed; the previous character was kept.";
+		return CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE;
+	}
+
+	if (FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
+		m_Desc.iLayerLevelIndex, m_Desc.strPlayerLayerTag, oldCharacter)))
+	{
+		OBJECT_HANDLE restoredHandle{};
+		const bool removedStaged = SUCCEEDED(
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				m_Desc.iLayerLevelIndex, m_Desc.strPlayerLayerTag, stagedCharacter));
+		const bool restored = m_Registry.Replace(
+			snapshot.iNetEntityId, oldRecord, oldCharacter, restoredHandle);
+		if (!removedStaged || !restored)
+			return CHARACTER_REPLACE_RESULT::FATAL_FAILURE;
+		if (isLocallyControlled)
+			m_LocalCharacterHandle = restoredHandle;
+		m_strPendingPresentationFailure =
+			"Class change layer commit failed; the previous character was restored.";
+		return CHARACTER_REPLACE_RESULT::RECOVERED_FAILURE;
+	}
+
+	if (isLocallyControlled)
+		m_LocalCharacterHandle = newHandle;
+	return CHARACTER_REPLACE_RESULT::REPLACED;
+}
+
 void Client::CClientReplication::Reset_World()
 {
 	//?묒냽???딄꼈?????꾩옱 registry???댁븘?덈뒗 character瑜?紐⑤몢 layer?먯꽌 ?쒓굅?섍퀬,
@@ -823,5 +921,6 @@ void Client::CClientReplication::Reset_World()
 	m_Registry.Reset();
 	m_LocalCharacterHandle = {};
 	m_iLastServerTick = 0;
+	m_strPendingPresentationFailure.clear();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
 }

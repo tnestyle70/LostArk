@@ -211,6 +211,10 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::REVIVE_PLAYER:
 			Handle_RevivePlayer(command.iSessionId, command.RevivePlayer);
 			break;
+		case ROOM_COMMAND_TYPE::CHANGE_CHARACTER_CLASS:
+			Handle_ChangeCharacterClass(
+				command.iSessionId, command.ChangeCharacterClass);
+			break;
 		case ROOM_COMMAND_TYPE::SPAWN_WORLD_ENTITY:
 			Handle_SpawnWorldEntity(
 				command.iSessionId,
@@ -615,6 +619,121 @@ void LostArk::Server::CGameRoom::Handle_ReleaseSkill(
 		m_GameplayCatalog);
 }
 
+LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT
+LostArk::Server::CGameRoom::Apply_CharacterClassChange(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request)
+{
+	using namespace LostArk::Shared;
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId)
+		return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_WRONG_WORLD;
+	if (!Is_NewerSequence(
+		request.iClientSequence, player.iLastClassChangeSequence))
+	{
+		return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STALE_SEQUENCE;
+	}
+	if (!Is_Supported_Playable_Character_Class(request.eCharacterClass) ||
+		nullptr == m_GameplayCatalog.Find_Player(request.eCharacterClass))
+	{
+		return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_UNSUPPORTED_CLASS;
+	}
+	if (request.eCharacterClass == player.eCharacterClass)
+		return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_SAME_CLASS;
+
+	const bool isDead = 0u == player.iCurrentHp &&
+		PLAYER_ACTION_STATE::DEAD == player.eAction;
+	if ((0u == player.iCurrentHp) !=
+		(PLAYER_ACTION_STATE::DEAD == player.eAction))
+	{
+		return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STATE;
+	}
+
+	const PLAYER_RUNTIME_PROFILE* profile =
+		m_GameplayCatalog.Find_Player(request.eCharacterClass);
+	SERVER_PLAYER staged = player;
+	if (isDead)
+	{
+		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+			Find_Placement(player.strSpawnPlacementId);
+		if (nullptr == spawn || !spawn->isEnabled ||
+			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn->eKind)
+		{
+			return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STATE;
+		}
+		staged.fPositionX = spawn->fPositionX;
+		staged.fPositionY = spawn->fPositionY;
+		staged.fPositionZ = spawn->fPositionZ;
+		staged.fYawDegrees = spawn->fYawDegrees;
+		if (m_ServerNavigation.Is_Loaded())
+		{
+			SERVER_NAV_POINT projected{};
+			if (!m_ServerNavigation.Project_Point(
+				staged.fPositionX, staged.fPositionZ, projected))
+			{
+				return CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STATE;
+			}
+			staged.fPositionX = projected.x;
+			staged.fPositionY = projected.y;
+			staged.fPositionZ = projected.z;
+		}
+	}
+
+	staged.eCharacterClass = request.eCharacterClass;
+	staged.iLastClassChangeSequence = request.iClientSequence;
+	staged.fMoveGoalX = 0.f;
+	staged.fMoveGoalZ = 0.f;
+	staged.fMoveSpeed = profile->fMoveSpeed;
+	staged.hasMoveGoal = false;
+	staged.MovePath.clear();
+	staged.iMovePathIndex = 0u;
+	staged.iCurrentHp = profile->iMaximumHp;
+	staged.iMaximumHp = profile->iMaximumHp;
+	staged.iCurrentResource = profile->iMaximumResource;
+	staged.iMaximumResource = profile->iMaximumResource;
+	staged.iResourceAccumulator = 0u;
+	staged.eAction = PLAYER_ACTION_STATE::NONE;
+	staged.eStance = profile->eDefaultStance;
+	staged.iCurrentSkillId = INVALID_SKILL_ID;
+	staged.iActionStartTick = 0u;
+	staged.TriggerMove = {};
+	staged.fActionElapsedSeconds = 0.f;
+	staged.fSkillAimDirectionX = 0.f;
+	staged.fSkillAimDirectionZ = 1.f;
+	staged.hasAppliedSkillDamage = false;
+	staged.iComboStage = 0u;
+	staged.hasBufferedComboInput = false;
+	staged.hasReleasedHold = false;
+	staged.CooldownEndTickBySkillId.clear();
+	staged.isCombatReady = true;
+
+	player = std::move(staged);
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+	return CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED;
+}
+
+void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	SERVER_PLAYER& player = playerIter->second;
+	const CHARACTER_CLASS_CHANGE_RESULT result =
+		Apply_CharacterClassChange(player, request);
+	if (!Send_CharacterClassChangeResult(
+		session, request, result, player.eCharacterClass))
+	{
+		session->Request_Close();
+	}
+}
+
 void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 	const SESSION_ID sessionId,
 	const LostArk::Shared::C2S_SPAWN_WORLD_ENTITY& request)
@@ -826,6 +945,25 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawnResult(
 			writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_CharacterClassChangeResult(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
+	const LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT result,
+	const LostArk::Shared::CHARACTER_CLASS_ID activeClass)
+{
+	using namespace LostArk::Shared;
+	S2C_CHARACTER_CLASS_CHANGE_RESULT message{};
+	message.iClientSequence = request.iClientSequence;
+	message.eResult = result;
+	message.eRequestedClass = request.eCharacterClass;
+	message.eActiveClass = activeClass;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_CHARACTER_CLASS_CHANGE_RESULT,
+			writer.Get_Buffer());
+}
+
 void LostArk::Server::CGameRoom::Broadcast_WorldEntitySpawned(
 	const SERVER_WORLD_ENTITY& entity)
 {
@@ -866,6 +1004,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		(void)playerId;
 		PLAYER_SNAPSHOT snapshot{};
 		snapshot.iNetEntityId = player.iNetEntityId;
+		snapshot.eCharacterClass = player.eCharacterClass;
 		snapshot.fPositionX = player.fPositionX;
 		snapshot.fPositionY = player.fPositionY;
 		snapshot.fPositionZ = player.fPositionZ;

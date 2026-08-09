@@ -19,6 +19,7 @@ namespace LostArk::Server
 		USE_SKILL,
 		RELEASE_SKILL,
 		REVIVE_PLAYER,
+		CHANGE_CHARACTER_CLASS,
 		SPAWN_WORLD_ENTITY,
 		LEAVE
 	};
@@ -40,6 +41,7 @@ namespace LostArk::Server
 
 		LostArk::Shared::C2S_RELEASE_SKILL ReleaseSkill;
 		LostArk::Shared::C2S_REVIVE_PLAYER RevivePlayer;
+		LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS ChangeCharacterClass;
 
 		LostArk::Shared::C2S_SPAWN_WORLD_ENTITY SpawnWorldEntity;
 

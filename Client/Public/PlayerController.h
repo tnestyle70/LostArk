@@ -23,6 +23,8 @@ namespace Client
 	public:
 		void Set_LocalCharacter(
 			const shared_ptr<CCharacter>& character);
+		void Rebind_LocalCharacter(
+			const shared_ptr<CCharacter>& character);
 		void Set_CommandSink(
 			const shared_ptr<IPlayerCommandSink>& commandSink);
 		void Set_AllowCapturedKeyboardInput(bool_t allow)

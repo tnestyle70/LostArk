@@ -128,25 +128,6 @@ bool_t CLevel_Lobby::Begin_StageRequest(const LOBBY_COMMAND& command)
 		return false;
 	}
 
-	if (LOBBY_STAGE::CHARACTER_SELECT == command.eStage)
-	{
-		if (LOBBY_COMMAND_PURPOSE::GAMEPLAY != command.ePurpose)
-		{
-			m_strStatus = "Character Select rejected an invalid command purpose.";
-			return false;
-		}
-		if (!CLevelTransitionService::Request_Load(
-			LEVEL::CHARACTER_SELECT,
-			"lobby.character-select"))
-		{
-			m_strStatus = CLevelTransitionService::Get_Status();
-			return false;
-		}
-
-		m_strStatus = "Opening Character Select.";
-		return true;
-	}
-
 	LostArk::Shared::WORLD_ID worldId = LostArk::Shared::WORLD_ID::END;
 	LEVEL targetLevel = LEVEL::END;
 	if (!Resolve_Stage(
@@ -167,22 +148,16 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	const LEVEL eTargetLevel,
 	const LOBBY_COMMAND_PURPOSE purpose)
 {
-	const bool_t entersCharacterSelectArena =
-		LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == eWorldId;
 	if (LOBBY_COMMAND_PURPOSE::END == purpose ||
 		(LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose &&
 			LEVEL::DEVELOPMENT != eTargetLevel))
 	{
-		if (entersCharacterSelectArena)
-			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "The entry purpose is not valid for the selected stage.";
 		return false;
 	}
 #ifndef _DEBUG
 	if (LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose)
 	{
-		if (entersCharacterSelectArena)
-			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "Map Editor workspace is available only in Debug.";
 		return false;
 	}
@@ -193,8 +168,6 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 	bool_t usedDefaultClass = false;
 	if (!Resolve_EntryCharacterClass(characterClass, usedDefaultClass))
 	{
-		if (entersCharacterSelectArena)
-			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "The default entry class could not be committed.";
 		return false;
 	}
@@ -206,8 +179,6 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 		serverHost,
 		CNetworkManager::DEFAULT_SERVER_PORT))
 	{
-		if (entersCharacterSelectArena)
-			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "Server connection failed for " +
 			serverHost + ":" +
 			to_string(CNetworkManager::DEFAULT_SERVER_PORT) + " (WSA " +
@@ -220,8 +191,6 @@ bool_t CLevel_Lobby::Begin_NetworkEntry(
 		characterClass,
 		PLAYER_NICKNAME))
 	{
-		if (entersCharacterSelectArena)
-			CCharacterSelectionState::Clear_TestEntryMode();
 		m_strStatus = "C2S_ENTER_WORLD send failed (WSA " +
 			to_string(networkManager.Get_LastErrorCode()) + ").";
 		networkManager.Close_ServerConnection();
@@ -252,6 +221,12 @@ bool_t CLevel_Lobby::Resolve_Stage(
 
 	switch (eStage)
 	{
+	case LOBBY_STAGE::CHARACTER_SELECT:
+		if (LOBBY_COMMAND_PURPOSE::GAMEPLAY != purpose)
+			return false;
+		outWorldId = WORLD_ID::CHARACTER_SELECT_ARENA;
+		outTargetLevel = LEVEL::CHARACTER_SELECT;
+		return true;
 	case LOBBY_STAGE::TEST:
 		if (LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE == purpose)
 		{
@@ -300,15 +275,6 @@ void CLevel_Lobby::Consume_EnterAccepted()
 	}
 
 	const LEVEL approvedLevel = m_ePendingLevel;
-	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA ==
-		accepted.eWorldId &&
-		!CCharacterSelectionState::Stage_TestEntryMode(
-			CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY))
-	{
-		Cancel_PendingEntry(
-			"Character Select gameplay handoff could not be staged.");
-		return;
-	}
 #ifdef _DEBUG
 	const bool_t opensMapEditorWorkspace =
 		LOBBY_COMMAND_PURPOSE::MAP_EDITOR_WORKSPACE ==
@@ -343,11 +309,6 @@ void CLevel_Lobby::Consume_EnterAccepted()
 
 void CLevel_Lobby::Cancel_PendingEntry(const string& reason)
 {
-	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA ==
-		m_ePendingWorldId)
-	{
-		CCharacterSelectionState::Clear_TestEntryMode();
-	}
 	CNetworkManager::Get().Close_ServerConnection();
 	m_eEntryState = ENTRY_STATE::IDLE;
 	m_ePendingWorldId = LostArk::Shared::WORLD_ID::END;

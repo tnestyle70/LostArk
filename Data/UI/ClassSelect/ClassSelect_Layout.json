@@ -2,7 +2,7 @@
   "schema": "lostark.ui-layout",
   "formatVersion": 1,
   "resolution": { "width": 1280, "height": 720 },
-  "classes": ["Default", "Warlord", "LanceMaster", "Artist", "DimensionMaster"],
+  "classes": ["Default", "Warlord", "Slayer", "LanceMaster", "Gunslinger", "Artist", "DimensionMaster"],
   "slots": [
     {
       "id": "PanelBgLeft",
