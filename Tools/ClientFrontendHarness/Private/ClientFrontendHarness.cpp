@@ -3654,6 +3654,293 @@ namespace
 		std::filesystem::remove(stagedCatalog, error);
 		resourceRootEnvironment.Restore();
 	}
+
+	void Test_Artist31470SourceContractRoundTrip(
+		TEST_RUNNER& runner,
+		const std::filesystem::path& path)
+	{
+		using namespace Client;
+		EFFECT_DOCUMENT_DESC document;
+		std::string status;
+		const bool_t loaded = CEffectDocumentCodec::Load(path, document, status) &&
+			CEffectDocumentCodec::Validate_SourceContract(document, status);
+		const std::string serialized = loaded ?
+			CEffectDocumentCodec::Serialize(document) : std::string{};
+		EFFECT_DOCUMENT_DESC roundTrip;
+		const bool_t parsed = loaded &&
+			CEffectDocumentCodec::Parse(serialized, roundTrip, status) &&
+			CEffectDocumentCodec::Validate_SourceContract(roundTrip, status) &&
+			CEffectDocumentCodec::Serialize(roundTrip) == serialized;
+		const auto SameFloat3 = [](const float3_t& left, const float3_t& right)
+		{
+			return left.x == right.x && left.y == right.y && left.z == right.z;
+		};
+		const auto NearFloat3 = [](const float3_t& actual,
+			const float3_t& expected)
+		{
+			return std::abs(actual.x - expected.x) <= 0.000001f &&
+				std::abs(actual.y - expected.y) <= 0.000001f &&
+				std::abs(actual.z - expected.z) <= 0.000001f;
+		};
+		struct EXPECTED_CUE final
+		{
+			float3_t vPosition;
+			float3_t vScale;
+			size_t iParameterOverrideCount = 0u;
+		};
+		const std::map<std::string, EXPECTED_CUE> expectedCues = {
+			{ "skill-31470/clip-000/notify-000",
+				{ { 0.3f, 0.f, 0.f }, { 1.f, 1.f, 1.f }, 1u } },
+			{ "skill-31470/clip-000/notify-014",
+				{ { 0.f, 0.f, 0.f }, { 3.f, 3.f, 3.f }, 0u } },
+			{ "skill-31470/clip-000/notify-018",
+				{ { 1.f, 0.f, 1.f }, { 3.f, 3.f, 3.f }, 0u } },
+			{ "skill-31470/clip-000/notify-022",
+				{ { 0.6f, 0.f, 0.f },
+					{ 1.2999999523162842f, 1.2999999523162842f,
+						1.2999999523162842f }, 1u } },
+			{ "skill-31470/clip-000/notify-026",
+				{ { 1.f, 0.f, 0.f },
+					{ 0.4000000059604645f, 0.4000000059604645f,
+						0.4000000059604645f }, 1u } },
+			{ "skill-31470/clip-000/notify-028",
+				{ { 0.f, 0.6f, 0.f }, { 1.f, 1.f, 1.f }, 0u } },
+			{ "skill-31470/clip-000/notify-029",
+				{ { 2.f, 1.f, 0.f }, { 1.f, 1.f, 1.f }, 6u } }
+		};
+
+		bool_t preserved = parsed && document.Elements.size() == 35u &&
+			roundTrip.Elements.size() == document.Elements.size();
+		size_t moduleReferenceCount = 0u;
+		size_t meshGeometryCount = 0u;
+		size_t nonMeshGeometryIdentityCount = 0u;
+		std::set<std::string> evidenceIds;
+		std::set<std::string> cueIds;
+		std::map<std::string, size_t> cueParameterOverrideCounts;
+		std::set<std::string> evidenceFileHashes;
+		std::set<std::string> evidenceSelfHashes;
+		std::set<std::string> localReferenceFileHashes;
+		std::set<std::string> localReferenceSelfHashes;
+		std::set<std::string> geometryFileHashes;
+		std::set<std::string> geometrySelfHashes;
+		for (size_t iElement = 0u;
+			preserved && iElement < document.Elements.size(); ++iElement)
+		{
+			const EFFECT_CASCADE_RECIPE_DESC& before =
+				document.Elements[iElement].SourceRecipe;
+			const EFFECT_CASCADE_RECIPE_DESC& after =
+				roundTrip.Elements[iElement].SourceRecipe;
+			const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& left =
+				before.CompilerEvidence;
+			const EFFECT_SOURCE_COMPILER_EVIDENCE_DESC& right =
+				after.CompilerEvidence;
+			evidenceIds.insert(left.strEvidenceId);
+			cueIds.insert(left.strSourceCueId);
+			evidenceFileHashes.insert(left.strArtifactFileSha256);
+			evidenceSelfHashes.insert(left.strArtifactSelfSha256);
+			localReferenceFileHashes.insert(
+				left.strLocalReferenceClosureFileSha256);
+			localReferenceSelfHashes.insert(
+				left.strLocalReferenceClosureSelfSha256);
+			geometryFileHashes.insert(left.strGeometryParityFileSha256);
+			geometrySelfHashes.insert(left.strGeometryParitySelfSha256);
+			moduleReferenceCount += left.ModuleReferenceOrder.size();
+			if (before.GeometryBinding.bEnabled)
+				++meshGeometryCount;
+			else if (before.GeometryBinding.fCarrierGeometryPreScale == 1.f)
+				++nonMeshGeometryIdentityCount;
+			const auto cue = expectedCues.find(left.strSourceCueId);
+			if (cue == expectedCues.end() ||
+				!NearFloat3(left.CueLocalTransform.vPosition,
+					cue->second.vPosition) ||
+				!NearFloat3(left.CueLocalTransform.vRotationDegrees,
+					{ 0.f, 0.f, 0.f }) ||
+				!NearFloat3(left.CueLocalTransform.vScale,
+					cue->second.vScale) ||
+				left.ParameterOverrides.size() !=
+					cue->second.iParameterOverrideCount)
+			{
+				preserved = false;
+				break;
+			}
+			const auto insertedOverrideCount = cueParameterOverrideCounts.emplace(
+				left.strSourceCueId, left.ParameterOverrides.size());
+			if (!insertedOverrideCount.second &&
+				insertedOverrideCount.first->second != left.ParameterOverrides.size())
+			{
+				preserved = false;
+				break;
+			}
+			preserved = left.strArtifactFileSha256 == right.strArtifactFileSha256 &&
+				left.strArtifactSelfSha256 == right.strArtifactSelfSha256 &&
+				left.strEvidenceId == right.strEvidenceId &&
+				left.strSourceCueId == right.strSourceCueId &&
+				left.strSourceOccurrenceId == right.strSourceOccurrenceId &&
+				left.strSelectedLodPath == right.strSelectedLodPath &&
+				left.ModuleReferenceOrder.size() ==
+					right.ModuleReferenceOrder.size() &&
+				SameFloat3(left.vCueSourcePositionUeUnits,
+					right.vCueSourcePositionUeUnits) &&
+				SameFloat3(left.CueLocalTransform.vPosition,
+					right.CueLocalTransform.vPosition) &&
+				SameFloat3(left.CueLocalTransform.vRotationDegrees,
+					right.CueLocalTransform.vRotationDegrees) &&
+				SameFloat3(left.CueLocalTransform.vScale,
+					right.CueLocalTransform.vScale) &&
+				left.ParameterOverrides.size() == right.ParameterOverrides.size() &&
+				left.CompositionOrder == right.CompositionOrder &&
+				left.strLocalReferenceClosureFileSha256 ==
+					right.strLocalReferenceClosureFileSha256 &&
+				left.strLocalReferenceClosureSelfSha256 ==
+					right.strLocalReferenceClosureSelfSha256 &&
+				left.strGeometryParityFileSha256 ==
+					right.strGeometryParityFileSha256 &&
+				left.strGeometryParitySelfSha256 ==
+					right.strGeometryParitySelfSha256 &&
+				before.CompiledExecutionAdmission.bAllowed ==
+					after.CompiledExecutionAdmission.bAllowed &&
+				before.CompiledExecutionAdmission.Blockers ==
+					after.CompiledExecutionAdmission.Blockers &&
+				before.MaterialAdmission.strStatus == after.MaterialAdmission.strStatus &&
+				before.MaterialAdmission.Blockers == after.MaterialAdmission.Blockers &&
+				before.GeometryBinding.strReceiptFileSha256 ==
+					after.GeometryBinding.strReceiptFileSha256 &&
+				before.GeometryBinding.strReceiptSelfSha256 ==
+					after.GeometryBinding.strReceiptSelfSha256 &&
+				before.GeometryBinding.fCarrierGeometryPreScale ==
+					after.GeometryBinding.fCarrierGeometryPreScale &&
+				before.GeometryBinding.strParticleScaleSemantics ==
+					after.GeometryBinding.strParticleScaleSemantics &&
+				before.ModuleCoverage.size() == after.ModuleCoverage.size();
+			for (size_t iModule = 0u;
+				preserved && iModule < left.ModuleReferenceOrder.size(); ++iModule)
+			{
+				const EFFECT_SOURCE_MODULE_REFERENCE_DESC& a =
+					left.ModuleReferenceOrder[iModule];
+				const EFFECT_SOURCE_MODULE_REFERENCE_DESC& b =
+					right.ModuleReferenceOrder[iModule];
+				preserved = a.iOrder == b.iOrder &&
+					a.iSourceReferenceIndex == b.iSourceReferenceIndex &&
+					a.strRole == b.strRole &&
+					a.strSourceObjectId == b.strSourceObjectId &&
+					a.strSourceRecordSha256 == b.strSourceRecordSha256;
+			}
+			for (size_t iCoverage = 0u;
+				preserved && iCoverage < before.ModuleCoverage.size(); ++iCoverage)
+			{
+				const EFFECT_SOURCE_MODULE_COVERAGE_DESC& a =
+					before.ModuleCoverage[iCoverage];
+				const EFFECT_SOURCE_MODULE_COVERAGE_DESC& b =
+					after.ModuleCoverage[iCoverage];
+				preserved = a.Blockers == b.Blockers &&
+					a.Properties.size() == b.Properties.size();
+				for (size_t iProperty = 0u;
+					preserved && iProperty < a.Properties.size(); ++iProperty)
+				{
+					preserved = a.Properties[iProperty].strProvenance ==
+						b.Properties[iProperty].strProvenance;
+				}
+			}
+		}
+		size_t uniqueParameterOverrideCount = 0u;
+		for (const auto& cue : cueParameterOverrideCounts)
+			uniqueParameterOverrideCount += cue.second;
+		preserved = preserved && evidenceIds.size() == 35u &&
+			cueIds.size() == 7u && moduleReferenceCount == 399u &&
+			cueParameterOverrideCounts.size() == 7u &&
+			uniqueParameterOverrideCount == 9u &&
+			meshGeometryCount == 13u && nonMeshGeometryIdentityCount == 22u &&
+			evidenceFileHashes.size() == 1u && evidenceSelfHashes.size() == 1u &&
+			localReferenceFileHashes.size() == 1u &&
+			localReferenceSelfHashes.size() == 1u &&
+			geometryFileHashes.size() == 1u && geometrySelfHashes.size() == 1u;
+		runner.Require(preserved,
+			"Artist F Source Contract Preserves 35 Occurrences 7 Cue Transforms 9 Overrides 399 Module References And Receipt Hashes");
+
+		std::string legacy = serialized;
+		const std::string version14 = "\"version\": 14";
+		const size_t versionOffset = legacy.find(version14);
+		if (std::string::npos != versionOffset)
+			legacy.replace(versionOffset, version14.size(), "\"version\": 13");
+		const std::string purpose = "  \"purpose\": \"source_contract\",\n";
+		const size_t purposeOffset = legacy.find(purpose);
+		if (std::string::npos != purposeOffset)
+			legacy.erase(purposeOffset, purpose.size());
+		EFFECT_DOCUMENT_DESC rejected;
+		runner.Require(std::string::npos != versionOffset &&
+			std::string::npos != purposeOffset &&
+			!CEffectDocumentCodec::Parse(legacy, rejected, status),
+			"Legacy Effect Rejects Native V14 Source Evidence Instead Of Erasing It");
+
+		EFFECT_DOCUMENT_DESC badScale = roundTrip;
+		const auto meshCarrier = std::find_if(
+			badScale.Elements.begin(), badScale.Elements.end(),
+			[](const EFFECT_ELEMENT_DESC& element)
+			{
+				return element.SourceRecipe.GeometryBinding.bEnabled;
+			});
+		if (meshCarrier != badScale.Elements.end())
+			meshCarrier->SourceRecipe.GeometryBinding.fCarrierGeometryPreScale = 1.f;
+		runner.Require(meshCarrier != badScale.Elements.end() &&
+			!CEffectDocumentCodec::Validate_SourceContract(badScale, status),
+			"Artist F Source Contract Fails Closed When Mesh Carrier PreScale Changes");
+
+		std::string badOrder = serialized;
+		const std::string sourceOrder =
+			"\"moduleReferenceOrder\": [{ \"order\": 0";
+		const size_t orderOffset = badOrder.find(sourceOrder);
+		if (std::string::npos != orderOffset)
+			badOrder.replace(orderOffset, sourceOrder.size(),
+				"\"moduleReferenceOrder\": [{ \"order\": 99");
+		runner.Require(std::string::npos != orderOffset &&
+			!CEffectDocumentCodec::Parse(badOrder, rejected, status),
+			"Artist F Source Contract Fails Closed When Module Reference Order Changes");
+
+		EFFECT_DOCUMENT_DESC legacyInMemory;
+		legacyInMemory.strEffectAssetId = "effect.legacy.native.field.guard";
+		legacyInMemory.strDisplayName = "Legacy Native Field Guard";
+		EFFECT_ELEMENT_DESC legacyElement;
+		legacyElement.strElementId = "sprite";
+		legacyElement.strDisplayName = "Sprite";
+		legacyElement.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		legacyElement.bVisible = false;
+		legacyInMemory.Elements.push_back(legacyElement);
+		const bool_t legacyBaselineValid =
+			CEffectDocumentCodec::Validate(legacyInMemory, status);
+		const auto RejectsLegacyNativeFields = [&](EFFECT_DOCUMENT_DESC candidate)
+		{
+			return !CEffectDocumentCodec::Validate(candidate, status);
+		};
+		EFFECT_DOCUMENT_DESC legacyCompilerEvidence = legacyInMemory;
+		legacyCompilerEvidence.Elements.front().SourceRecipe.CompilerEvidence.
+			strEvidenceId = "forbidden.native.evidence";
+		EFFECT_DOCUMENT_DESC legacyCompiledAdmission = legacyInMemory;
+		legacyCompiledAdmission.Elements.front().SourceRecipe.
+			CompiledExecutionAdmission.Blockers.push_back("FORBIDDEN_NATIVE_BLOCKER");
+		EFFECT_DOCUMENT_DESC legacyMaterialAdmission = legacyInMemory;
+		legacyMaterialAdmission.Elements.front().SourceRecipe.MaterialAdmission.
+			strStatus = "BLOCKED_MATERIAL_RECIPE_MISSING";
+		EFFECT_DOCUMENT_DESC legacyGeometryBinding = legacyInMemory;
+		legacyGeometryBinding.Elements.front().SourceRecipe.GeometryBinding.
+			strReceiptFileSha256 = std::string(64u, '0');
+		EFFECT_DOCUMENT_DESC legacyCoverage = legacyInMemory;
+		EFFECT_SOURCE_MODULE_COVERAGE_DESC legacyModuleCoverage;
+		legacyModuleCoverage.strModuleStableId = "forbidden.native.coverage";
+		legacyModuleCoverage.Blockers.push_back("FORBIDDEN_NATIVE_BLOCKER");
+		EFFECT_SOURCE_PROPERTY_COVERAGE_DESC legacyPropertyCoverage;
+		legacyPropertyCoverage.strPropertyPath = "forbidden";
+		legacyPropertyCoverage.strProvenance = "UNRESOLVED";
+		legacyModuleCoverage.Properties.push_back(legacyPropertyCoverage);
+		legacyCoverage.Elements.front().SourceRecipe.ModuleCoverage.push_back(
+			legacyModuleCoverage);
+		runner.Require(legacyBaselineValid &&
+			RejectsLegacyNativeFields(legacyCompilerEvidence) &&
+			RejectsLegacyNativeFields(legacyCompiledAdmission) &&
+			RejectsLegacyNativeFields(legacyMaterialAdmission) &&
+			RejectsLegacyNativeFields(legacyGeometryBinding) &&
+			RejectsLegacyNativeFields(legacyCoverage),
+			"Legacy In-Memory Document Rejects Every Native V14 Evidence Family Before Serialization");
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -3669,6 +3956,13 @@ int main(const int argc, char* argv[])
 		std::cout << (loaded ? "[PASS] " : "[FAILURE] ")
 			<< "Effect Document V12 Parse: " << status << '\n';
 		return loaded ? 0 : 1;
+	}
+	if (Mode == "--effect-source-contract" && argc > 2 && nullptr != argv[2])
+	{
+		Test_Artist31470SourceContractRoundTrip(
+			runner, std::filesystem::path(argv[2]));
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
 	}
 	if (Mode == "--skill-binding-fast")
 	{

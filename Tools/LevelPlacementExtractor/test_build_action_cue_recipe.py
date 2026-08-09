@@ -17,6 +17,44 @@ class ActionCueRecipeTests(unittest.TestCase):
         encoded = value.encode("ascii") + b"\x00"
         return struct.pack("<i", len(encoded)) + encoded
 
+    @classmethod
+    def _particle_payload(
+        cls,
+        enabled: bool,
+        parameters: list[tuple[str, str, float | list[float]]],
+    ) -> str:
+        raw = bytearray(2048)
+        signature = b"CEFActionNotify_PlayParticleEffect\x00"
+        raw[: len(signature)] = signature
+        raw[47] = int(enabled)
+        particle_system = b"ParticleSystem'FX_TEST.Par_Test'\x00"
+        reference_start = 120
+        struct.pack_into("<i", raw, reference_start, len(particle_system))
+        raw[
+            reference_start + 4 : reference_start + 4 + len(particle_system)
+        ] = particle_system
+        base = reference_start + 4 + len(particle_system)
+        transform_start = base + 60
+        struct.pack_into("<fff", raw, transform_start + 76, 1.0, 1.0, 1.0)
+        parameter_count_offset = transform_start + 88
+        struct.pack_into("<i", raw, parameter_count_offset, len(parameters))
+        cursor = parameter_count_offset + 4
+        for name, parameter_type, value in parameters:
+            encoded_name = cls._payload_string(name)
+            raw[cursor : cursor + len(encoded_name)] = encoded_name
+            cursor += len(encoded_name)
+            type_code = 1 if parameter_type == "scalar" else 3
+            struct.pack_into("<i", raw, cursor, type_code)
+            if parameter_type == "scalar":
+                struct.pack_into("<f", raw, cursor + 4, float(value))
+            else:
+                assert isinstance(value, list)
+                struct.pack_into("<fff", raw, cursor + 12, *value)
+            sentinel = cls._payload_string("None")
+            raw[cursor + 56 : cursor + 56 + len(sentinel)] = sentinel
+            cursor += 69
+        return base64.b64encode(bytes(raw[: cursor + 16])).decode("ascii")
+
     def test_decodes_standalone_skeletal_model_transform_once(self) -> None:
         raw = bytearray(512)
         signature = b"CEFActionNotify_PlaySkeletalMesh\x00"
@@ -201,6 +239,77 @@ class ActionCueRecipeTests(unittest.TestCase):
         self.assertEqual(result["cues"][0]["runtimeChannel"], "CHARACTER_AFTERIMAGE")
         self.assertEqual(result["cues"][0]["globalTimeSeconds"], 1.25)
 
+    def test_explicit_clip_alias_joins_runtime_clip_to_source_stage(self) -> None:
+        payload = base64.b64encode(b"notify").decode("ascii")
+        notify = {
+            "notifyId": "action-31470/stage-000/notify-000",
+            "sourceType": "TrailGhostEffect",
+            "category": "trail",
+            "authority": "PRESENTATION",
+            "localTimeSeconds": 0.0,
+            "durationSeconds": 1.0,
+            "assetReferences": [],
+            "serializedPayload": {
+                "encoding": "base64",
+                "byteOffset": 0,
+                "byteSize": 6,
+                "sha256": "0" * 64,
+                "data": payload,
+            },
+        }
+        source = {
+            "source": {"sha256": "1" * 64},
+            "actions": [{
+                "actionId": 31470,
+                "stages": [{
+                    "stageIndex": 0,
+                    "stageName": "base",
+                    "animationClips": [{"clipName": "SK_OneStroke"}],
+                    "notifies": [notify],
+                }],
+            }],
+        }
+        receipt = {
+            "characterClass": "ARTIST",
+            "skillId": 31470,
+            "inputSlot": "F",
+            "timeline": {
+                "clips": [{
+                    "sequenceIndex": 0,
+                    "clip": "sdm_sk_onestroke",
+                    "offsetSeconds": 0.0,
+                }],
+                "events": [{
+                    "clip": "sdm_sk_onestroke",
+                    "sourceType": "TrailGhostEffect",
+                    "localTimeSeconds": 0.0,
+                    "durationSeconds": 1.0,
+                }],
+            },
+        }
+        aliases = {
+            "schema": "lostark.effect-clip-aliases",
+            "formatVersion": 1,
+            "aliases": [{
+                "runtimeClip": "sdm_sk_onestroke",
+                "sourceClip": "SK_OneStroke",
+                "evidence": "skill-31470-reference-event-join",
+            }],
+        }
+        result = build_action_cue_recipe(
+            source, receipt, clip_alias_contract=aliases
+        )
+        selected = result["selectedStages"][0]
+        self.assertTrue(result["sourceExtractionComplete"])
+        self.assertTrue(selected["clipAliasApplied"])
+        self.assertEqual(selected["clip"], "sdm_sk_onestroke")
+        self.assertEqual(selected["sourceClip"], "SK_OneStroke")
+        self.assertEqual(
+            selected["clipAliasEvidence"],
+            "skill-31470-reference-event-join",
+        )
+        self.assertEqual(len(result["source"]["clipAliasContractSha256"]), 64)
+
     def test_decodes_play_particle_enabled_header_without_using_label(self) -> None:
         raw = bytearray(96)
         signature = b"CEFActionNotify_PlayParticleEffect\x00"
@@ -263,7 +372,44 @@ class ActionCueRecipeTests(unittest.TestCase):
         self.assertTrue(cue["executionEnabled"])
         self.assertEqual(cue["typedPayload"]["sourceByteOffset"], 47)
         self.assertFalse(cue["typedPayload"]["particleDataDecoded"])
+        self.assertEqual(
+            cue["sourceOccurrence"],
+            {
+                "notifyId": "action-10/stage-000/notify-000",
+                "stageIndex": 0,
+                "stageNotifyIndex": 0,
+                "enabled": True,
+            },
+        )
         self.assertEqual(cue["sourceReceiptEventIndex"], 0)
+
+    def test_decodes_particle_scalar_and_vector_parameter_overrides(self) -> None:
+        typed = decode_typed_payload(
+            "PlayParticleEffect",
+            {
+                "data": self._particle_payload(
+                    False,
+                    [
+                        ("life", "scalar", 0.6000000238418579),
+                        ("Color", "vector", [5.0, 1.0, 1.0]),
+                    ],
+                )
+            },
+        )
+        self.assertFalse(typed["enabled"])
+        self.assertTrue(typed["parameterOverridesDecoded"])
+        self.assertEqual(
+            [row["name"] for row in typed["parameterOverrides"]],
+            ["life", "Color"],
+        )
+        scalar = typed["parameterOverrides"][0]
+        self.assertEqual(scalar["type"], "scalar")
+        self.assertAlmostEqual(scalar["scalarValue"], 0.6000000238418579)
+        vector = typed["parameterOverrides"][1]
+        self.assertEqual(vector["type"], "vector")
+        self.assertEqual(vector["vectorValue"], [5.0, 1.0, 1.0])
+        self.assertNotIn("vectorValue", scalar)
+        self.assertNotIn("scalarValue", vector)
 
     def test_decodes_particle_anchor_and_local_transform(self) -> None:
         raw = bytearray(512)

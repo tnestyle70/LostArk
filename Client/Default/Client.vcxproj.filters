@@ -700,6 +700,9 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\Effect_ComponentDocument.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
@@ -1551,11 +1554,20 @@
     <Filter Include="96.DataFiles\Effects\Components\Warlord\skill.17820.authored-baseline.clip8">
       <UniqueIdentifier>{b697f898-6012-52ec-9ece-00e3020e89c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Contracts">
+      <UniqueIdentifier>{5b20a7b1-e45d-5326-bed8-14bcf3f3d075}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported">
       <UniqueIdentifier>{94b89e0f-c55f-4f0d-8d90-a6bd2b7a3d8e}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist">
       <UniqueIdentifier>{bad9600d-5720-5eee-bbeb-786a1ea7f519}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\ActionSource">
+      <UniqueIdentifier>{b6f142eb-f411-5260-b92c-b7af9d53065e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Candidates">
+      <UniqueIdentifier>{f5bfbc1e-c42b-543d-8dae-a68d856eccb3}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Converted">
       <UniqueIdentifier>{cdcb6770-cd8a-5064-a526-d483f7f46d63}</UniqueIdentifier>
@@ -1577,6 +1589,12 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Drafts">
       <UniqueIdentifier>{7af8d9d0-3c29-5a4d-a9df-64f00c30f9c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Graphs">
+      <UniqueIdentifier>{85e72a31-f89a-51e5-ad5a-ac9accef3442}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\Materials">
+      <UniqueIdentifier>{0700f394-98c0-589c-8647-973673fcf88d}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist\Modules">
       <UniqueIdentifier>{cf593182-df82-506a-82cb-b8ced23f43e9}</UniqueIdentifier>
@@ -4380,8 +4398,14 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json">
       <Filter>96.DataFiles\Effects\Components\Warlord\skill.17820.authored-baseline.clip8</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\EffectCatalog.json">
       <Filter>96.DataFiles\Effects</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\ActionSource</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Artist.combat-source-stage-manifest.json">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
@@ -4391,6 +4415,12 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Artist.skill-effect-source-inventory.json">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Candidates\skill.31470.native-v14.source-contract-candidate.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Candidates</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Converted\effect.artist.skill.31000.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Converted</Filter>
@@ -4581,7 +4611,25 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31920.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Drafts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Graphs\skill.31470.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Graphs</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\fx_o_transition_01_ma.material-graph-evidence.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.active-material-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.exact-dds-recovery.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.material-parent-resolution.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Materials</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31470.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\Modules</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\README.md">
@@ -4597,6 +4645,15 @@
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31410.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.action-cue-recipe.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.clip-alias-contract.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-active-effect-inventory.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\skill.31470.source-receipt.json">

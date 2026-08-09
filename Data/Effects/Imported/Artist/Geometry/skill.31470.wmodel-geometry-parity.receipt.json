@@ -1,0 +1,2592 @@
+{
+  "schema": "lostark.effect-wmodel-geometry-parity-receipt",
+  "formatVersion": 1,
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "scope": "ACTIVE_FIRST_LOD_MESH_CARRIERS",
+  "runtimeAdmission": false,
+  "inputs": {
+    "activeInventoryAssetId": "Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json",
+    "activeInventorySha256": "96ac2147e97c9c7ba2a442367b1e55882eec0d8d021278185900cb5c3837c29a"
+  },
+  "upkToUmodelGltfProvenance": {
+    "status": "UNRESOLVED_NOT_REPRODUCED_IN_THIS_SLICE",
+    "scopeBoundary": "This receipt proves selected glTF/bin to current WModel only.",
+    "blockers": [
+      "SOURCE_UPK_EXPORT_SERIAL_HASH_NOT_PINNED",
+      "UMODEL_EXECUTABLE_SHA256_NOT_PINNED",
+      "UMODEL_FULL_COMMAND_LINE_NOT_PINNED",
+      "CLEAN_EXPORT_DIRECTORY_OR_NOOVERWRITE_RESIDUE_NOT_PROVEN",
+      "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+    ]
+  },
+  "converterEvidence": {
+    "toolAssetId": "Tools/ModelAssetConverter/Bin/ModelAssetConverter.exe",
+    "toolSha256": "0aa6b7e659f0c10d72574aa2e5c9f1cf1c47a5753a81d9d0e1e4d700e3b07a63",
+    "cookScriptAssetId": "Tools/LevelPlacementExtractor/cook_effect_runtime_resources.py",
+    "cookScriptSha256": "9c5df05315eaa51e33dc263e9172531241f579e4b6ae47fbeab85588a8faa32c",
+    "recipeArguments": [
+      "--pretransform",
+      "--scale",
+      "100",
+      "--no-auto-textures"
+    ],
+    "actualHistoricalInvocationProven": false,
+    "provenanceStatus": "RECIPE_PRESENT_AND_OUTPUT_NUMERIC_RELATION_PROVEN_HISTORICAL_INVOCATION_UNRESOLVED",
+    "converterSourceStatus": "BINARY_ONLY_SOURCE_NOT_PRESENT"
+  },
+  "globalScaleContract": {
+    "meshParticleStartSize": {
+      "semantic": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+      "scale": 1.0
+    },
+    "carrierGeometry": {
+      "cookedPositionScale": 100.0,
+      "reflectionAxis": "Z",
+      "carrierGeometryPreScale": 0.01
+    },
+    "forbiddenCollapse": "Do not replace particle scale and carrierGeometryPreScale with one implicit legacy 0.01 multiplier.",
+    "recookAlternative": "A future scale=1 recook may remove carrierGeometryPreScale, but is outside this source-contract slice."
+  },
+  "assets": [
+    {
+      "assetId": "Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+      "sourceObjectPath": "fx_sm_01.fm_v_wp_wsdm_base_01",
+      "activeElementIds": [
+        "source-active-004"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 596124,
+        "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_01/StaticMesh3/fm_v_wp_wsdm_base_01.gltf",
+        "gltfBytes": 2444,
+        "gltfSha256": "d49750caa5210335d93d9c4def148fa17bccef18047d3af0ea41ea59405523c4",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 11686,
+              "byteOffset": 29088,
+              "byteStride": 12,
+              "decodedValueBytes": 140232,
+              "decodedValueSha256": "a622ee747b73619ed4442c8a43f1a3c8af246aa9676aacd6187f8e41b27b4f77",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 11686,
+              "byteOffset": 169320,
+              "byteStride": 12,
+              "decodedValueBytes": 140232,
+              "decodedValueSha256": "6dfbf9629afac9c280df895da6ef8ca08b7d96311780a303bcf1f10c9448680a",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 5,
+              "bufferIndex": 0,
+              "bufferViewIndex": 5,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 11686,
+              "byteOffset": 543272,
+              "byteStride": 8,
+              "decodedValueBytes": 93488,
+              "decodedValueSha256": "0dc1ad18e0238cb366918f3531a8eecb3b68fe6d8a931a68d28ae1f11c94deed",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 11686,
+              "byteOffset": 309552,
+              "byteStride": 16,
+              "decodedValueBytes": 186976,
+              "decodedValueSha256": "65ccf666917bc445f5518d7ee9a0747179b79c6e88f46de4a22995ce949252fb",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ],
+          "COLOR_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5121,
+              "type": "VEC4",
+              "normalized": true,
+              "count": 11686,
+              "byteOffset": 496528,
+              "byteStride": 4,
+              "decodedValueBytes": 46744,
+              "decodedValueSha256": "682061616df851cbd495eea014265f9f86f21e829bdddedaaecf6500d342207e",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 14544,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 29088,
+              "decodedValueSha256": "85f023cfc3179cd1b9c9863aa85ceb8f4d3d5536e44dd14cbec3a922c1e5044c",
+              "bufferLogicalPath": "fm_v_wp_wsdm_base_01.bin",
+              "bufferBytes": 636760,
+              "bufferSha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_v_wp_wsdm_base_01.bin",
+            "declaredBytes": 636760,
+            "physicalBytes": 636760,
+            "sha256": "36371e28d517ae0ffa92443389ceb336568016e4cf7b820c2fc12141e5fe17ed"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_v_wp_wsdm_base_01",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 11686,
+        "indexCount": 14544,
+        "aabb": {
+          "minimum": [
+            -0.03300100192427635,
+            -0.020668331533670425,
+            -0.24172115325927734
+          ],
+          "maximum": [
+            0.03300102800130844,
+            0.02068568579852581,
+            0.1771100014448166
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_v_wp_wsdm_base_01.wmodel",
+        "bytes": 596124,
+        "sha256": "65037ccd81c8194ef88603124c85227d59fac6a9ba454082be4153b993ef6764",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 11608,
+        "indexCount": 14544,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -3.300100088119507,
+            -2.066833257675171,
+            -17.711000442504883
+          ],
+          "maximum": [
+            3.300102710723877,
+            2.068568468093872,
+            24.172115325927734
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.03300100192427635,
+            -0.020668331533670425,
+            -0.1771100014448166,
+            0.03300102800130844,
+            0.02068568579852581,
+            0.24172115325927734,
+            1.30385160446167e-08,
+            8.677132427692413e-06,
+            0.03230557590723038,
+            0.20941558480262756
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 11608,
+          "matchedRuntimeVertexCount": 11608,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 9.5367431640625e-07,
+          "maximumClientMeterErrorAfterCarrierPreScale": 9.5367431640625e-09,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "1.0": 11686
+          },
+          "runtimeCounts": {
+            "1.0": 11608
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 14544,
+          "runtimeIndexCount": 14544,
+          "triangleCount": 4848,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 4848,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_v_wp_wsdm_base_0",
+              "sourceVertexCount": 11686,
+              "sourceReferencedVertexCount": 11686,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 11608,
+              "sourceDuplicateFullPayloadVertexCount": 78,
+              "runtimeVertexCount": 11608,
+              "runtimeReferencedVertexCount": 11608,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 11608,
+              "indexCount": 14544,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 11686,
+          "sourceReferencedVertexCount": 11686,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 78,
+          "runtimeVertexCount": 11608,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.03300100192427635,
+                -0.020668331533670425,
+                -0.1771100014448166
+              ],
+              "storedMaximum": [
+                0.03300102800130844,
+                0.02068568579852581,
+                0.24172115325927734
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -3.300100088119507,
+                  -2.066833257675171,
+                  -17.711000442504883
+                ],
+                "maximum": [
+                  3.300102710723877,
+                  2.068568468093872,
+                  24.172115325927734
+                ]
+              },
+              "extentScalePerAxis": [
+                99.99999706501306,
+                99.99999981983417,
+                100.00000071155935
+              ],
+              "derivedStoredToRuntimeScale": 99.99999981983417,
+              "maximumAabbComponentErrorAtDerivedScale": 3.299323942940191e-07
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": true,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED_NOT_PRESERVED"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UNTRUSTED_SOURCE_COLOR0_NOT_PRESERVED",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+      "sourceObjectPath": "fx_sm_01.fm_m_trail_002",
+      "activeElementIds": [
+        "source-active-007",
+        "source-active-008",
+        "source-active-017",
+        "source-active-018"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 13356,
+        "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_01/StaticMesh3/fm_m_trail_002.gltf",
+        "gltfBytes": 2123,
+        "gltfSha256": "0031627327ff2ebf1f0b26fb938810c1986a4de093384cec1a9b4e849f0193be",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 63,
+              "byteOffset": 480,
+              "byteStride": 12,
+              "decodedValueBytes": 756,
+              "decodedValueSha256": "3a8d92d19ee5628e59ce475ed9049743146e05f6cf6ceb2cc93031919a304a42",
+              "bufferLogicalPath": "fm_m_trail_002.bin",
+              "bufferBytes": 3504,
+              "bufferSha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 63,
+              "byteOffset": 1236,
+              "byteStride": 12,
+              "decodedValueBytes": 756,
+              "decodedValueSha256": "eb1232d9272c6388a66d40a8f9c511d62140631b079d3e698329de95286d8b26",
+              "bufferLogicalPath": "fm_m_trail_002.bin",
+              "bufferBytes": 3504,
+              "bufferSha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 63,
+              "byteOffset": 3000,
+              "byteStride": 8,
+              "decodedValueBytes": 504,
+              "decodedValueSha256": "c600edc25f4cc0cbff865efbf39aae64bcdc2c9231cc038626b2dad8fb3b4255",
+              "bufferLogicalPath": "fm_m_trail_002.bin",
+              "bufferBytes": 3504,
+              "bufferSha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 63,
+              "byteOffset": 1992,
+              "byteStride": 16,
+              "decodedValueBytes": 1008,
+              "decodedValueSha256": "0e7c6ba13c2497a90922994592e991184ce4e3bb0feac017c2beb9715fab763a",
+              "bufferLogicalPath": "fm_m_trail_002.bin",
+              "bufferBytes": 3504,
+              "bufferSha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 240,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 480,
+              "decodedValueSha256": "7da51c5ac4bc84e3f705b8c415141befdd56e013988a2d854e09749ba2674049",
+              "bufferLogicalPath": "fm_m_trail_002.bin",
+              "bufferBytes": 3504,
+              "bufferSha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_m_trail_002.bin",
+            "declaredBytes": 3504,
+            "physicalBytes": 3504,
+            "sha256": "aa007406b7e6c2c4032891009d826816f7e68cac6c7017237c838fb7fecfdec5"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_m_trail_002",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 63,
+        "indexCount": 240,
+        "aabb": {
+          "minimum": [
+            -0.4397134780883789,
+            -0.01254791859537363,
+            -0.43339231610298157
+          ],
+          "maximum": [
+            0.43564721941947937,
+            0.014803268946707249,
+            0.4426339268684387
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_m_trail_002.wmodel",
+        "bytes": 13356,
+        "sha256": "7b89b33d931b28a17b4ac825f95c2f90ab2b2418d9806565a72f1dd44cafe863",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 63,
+        "indexCount": 240,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -43.97134780883789,
+            -1.2547918558120728,
+            -44.26339340209961
+          ],
+          "maximum": [
+            43.564720153808594,
+            1.4803268909454346,
+            43.3392333984375
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.4397134780883789,
+            -0.01254791859537363,
+            -0.4426339268684387,
+            0.43564721941947937,
+            0.014803268946707249,
+            0.43339231610298157,
+            -0.002033129334449768,
+            0.001127675175666809,
+            -0.004620805382728577,
+            0.4410516917705536
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 63,
+          "matchedRuntimeVertexCount": 63,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 1.9073486328125e-06,
+          "maximumClientMeterErrorAfterCarrierPreScale": 1.9073486328125e-08,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "1.0": 63
+          },
+          "runtimeCounts": {
+            "1.0": 63
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 240,
+          "runtimeIndexCount": 240,
+          "triangleCount": 80,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 80,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_m_trail_002",
+              "sourceVertexCount": 63,
+              "sourceReferencedVertexCount": 63,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 63,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 63,
+              "runtimeReferencedVertexCount": 63,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 63,
+              "indexCount": 240,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 63,
+          "sourceReferencedVertexCount": 63,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 63,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.4397134780883789,
+                -0.01254791859537363,
+                -0.4426339268684387
+              ],
+              "storedMaximum": [
+                0.43564721941947937,
+                0.014803268946707249,
+                0.43339231610298157
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -43.97134780883789,
+                  -1.2547918558120728,
+                  -44.26339340209961
+                ],
+                "maximum": [
+                  43.564720153808594,
+                  1.4803268909454346,
+                  43.3392333984375
+                ]
+              },
+              "extentScalePerAxis": [
+                99.99999795725425,
+                99.99999972759572,
+                100.00000285767133
+              ],
+              "derivedStoredToRuntimeScale": 99.99999972759572,
+              "maximumAabbComponentErrorAtDerivedScale": 1.906197262258047e-06
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": false,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "SOURCE_CHANNEL_ABSENT"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "sourceObjectPath": "fx_sm_00.fm_h_swing_03",
+      "activeElementIds": [
+        "source-active-009",
+        "source-active-010"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 31440,
+        "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_03.gltf",
+        "gltfBytes": 2373,
+        "gltfSha256": "4d33d26efa1bf27f658eca45fc4169b5588c4c2e5df65e2edb4f6b09271090b7",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 378,
+              "byteOffset": 3444,
+              "byteStride": 12,
+              "decodedValueBytes": 4536,
+              "decodedValueSha256": "1309006fa4a0df4511e80712b967596e77f35352503eb8049cb8158e0bcaa50f",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 378,
+              "byteOffset": 7980,
+              "byteStride": 12,
+              "decodedValueBytes": 4536,
+              "decodedValueSha256": "74ca9475d54544bd7d390789bd33084adbe6bd409c349bcf74b8f0cbd392f16a",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 5,
+              "bufferIndex": 0,
+              "bufferViewIndex": 5,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 378,
+              "byteOffset": 20076,
+              "byteStride": 8,
+              "decodedValueBytes": 3024,
+              "decodedValueSha256": "d8fbf28ec8394876b83c69e0c70ea9e2c2525a64d4a09f42cdc2d902300ffa0f",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 378,
+              "byteOffset": 12516,
+              "byteStride": 16,
+              "decodedValueBytes": 6048,
+              "decodedValueSha256": "fd00528d2114fcd3bf92c77c0ac78c0235d1d9217b2827422a430e8481546d40",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ],
+          "COLOR_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5121,
+              "type": "VEC4",
+              "normalized": true,
+              "count": 378,
+              "byteOffset": 18564,
+              "byteStride": 4,
+              "decodedValueBytes": 1512,
+              "decodedValueSha256": "a80bf8e0172c07ca51720d1330533373d5d452c06dee84c7be6241fb1fb50088",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 1722,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 3444,
+              "decodedValueSha256": "7cad683297b52ab674d7a2e2b9384039131ea8a74b8279b0755adf9c5e646483",
+              "bufferLogicalPath": "fm_h_swing_03.bin",
+              "bufferBytes": 23100,
+              "bufferSha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_h_swing_03.bin",
+            "declaredBytes": 23100,
+            "physicalBytes": 23100,
+            "sha256": "fafb41e0dc694b51515f093243ba550f980bb3350f4f6c171adf6222a69df779"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_h_swing_03",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 378,
+        "indexCount": 1722,
+        "aabb": {
+          "minimum": [
+            -0.8889999985694885,
+            -0.20000001788139343,
+            -0.8889999985694885
+          ],
+          "maximum": [
+            0.8889999985694885,
+            0.20000001788139343,
+            0.8889999985694885
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+        "bytes": 31440,
+        "sha256": "7ea83865d4ef379f806642c4574229906b4e15d61551cafcf49cfb15ca6cd046",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 378,
+        "indexCount": 1722,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -88.9000015258789,
+            -20.000001907348633,
+            -88.9000015258789
+          ],
+          "maximum": [
+            88.9000015258789,
+            20.000001907348633,
+            88.9000015258789
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.8889999985694885,
+            -0.20000001788139343,
+            -0.8889999985694885,
+            0.8889999985694885,
+            0.20000001788139343,
+            0.8889999985694885,
+            0.0,
+            0.0,
+            0.0,
+            0.8890000581741333
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 378,
+          "matchedRuntimeVertexCount": 378,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 3.814697265625e-06,
+          "maximumClientMeterErrorAfterCarrierPreScale": 3.814697265625e-08,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "-1.0": 159,
+            "1.0": 219
+          },
+          "runtimeCounts": {
+            "1.0": 378
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 1722,
+          "runtimeIndexCount": 1722,
+          "triangleCount": 574,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 574,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_h_swing_03",
+              "sourceVertexCount": 378,
+              "sourceReferencedVertexCount": 378,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 378,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 378,
+              "runtimeReferencedVertexCount": 378,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 378,
+              "indexCount": 1722,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 378,
+          "sourceReferencedVertexCount": 378,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 378,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.8889999985694885,
+                -0.20000001788139343,
+                -0.8889999985694885
+              ],
+              "storedMaximum": [
+                0.8889999985694885,
+                0.20000001788139343,
+                0.8889999985694885
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -88.9000015258789,
+                  -20.000001907348633,
+                  -88.9000015258789
+                ],
+                "maximum": [
+                  88.9000015258789,
+                  20.000001907348633,
+                  88.9000015258789
+                ]
+              },
+              "extentScalePerAxis": [
+                100.00000187731165,
+                100.00000059604639,
+                100.00000187731165
+              ],
+              "derivedStoredToRuntimeScale": 100.00000187731165,
+              "maximumAabbComponentErrorAtDerivedScale": 2.562530738714486e-07
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": true,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED_NOT_PRESERVED"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UNTRUSTED_SOURCE_COLOR0_NOT_PRESERVED",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "sourceObjectPath": "fx_sm_00.fm_h_swing_05",
+      "activeElementIds": [
+        "source-active-011"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 26916,
+        "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_05.gltf",
+        "gltfBytes": 2121,
+        "gltfSha256": "b839fdc69dd6c1d4f106f2d9da6a51ced08a01f89ec7cd56d4bb7d58fb2affdb",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 294,
+              "byteOffset": 2952,
+              "byteStride": 12,
+              "decodedValueBytes": 3528,
+              "decodedValueSha256": "24fe6f2216ca391b64db4d785170696696985fe373b3d20eaf87818ebdb41aef",
+              "bufferLogicalPath": "fm_h_swing_05.bin",
+              "bufferBytes": 17064,
+              "bufferSha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 294,
+              "byteOffset": 6480,
+              "byteStride": 12,
+              "decodedValueBytes": 3528,
+              "decodedValueSha256": "f70f60dac41c56f7447781fb2f09e63310fe9dc9827e28dbd03570dfe981141e",
+              "bufferLogicalPath": "fm_h_swing_05.bin",
+              "bufferBytes": 17064,
+              "bufferSha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 294,
+              "byteOffset": 14712,
+              "byteStride": 8,
+              "decodedValueBytes": 2352,
+              "decodedValueSha256": "4820258daf7d8bc7b2983bc371568a5a2065525fd1fe8161217ea8aaff6faf34",
+              "bufferLogicalPath": "fm_h_swing_05.bin",
+              "bufferBytes": 17064,
+              "bufferSha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 294,
+              "byteOffset": 10008,
+              "byteStride": 16,
+              "decodedValueBytes": 4704,
+              "decodedValueSha256": "fc8ce843d3a3709e48506277ff3b1ce6527dfbc265acf07105b221d1377d4a4f",
+              "bufferLogicalPath": "fm_h_swing_05.bin",
+              "bufferBytes": 17064,
+              "bufferSha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 1476,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 2952,
+              "decodedValueSha256": "dbfb797108e1bb3685953f1d3fb8663d94f24fab6add5669b91312e2676f4223",
+              "bufferLogicalPath": "fm_h_swing_05.bin",
+              "bufferBytes": 17064,
+              "bufferSha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_h_swing_05.bin",
+            "declaredBytes": 17064,
+            "physicalBytes": 17064,
+            "sha256": "91f4f7844eed85bb5b7454f9c909da25beb80da8508c890944f4a6ca0fba4782"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_h_swing_05",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 294,
+        "indexCount": 1476,
+        "aabb": {
+          "minimum": [
+            -0.8698028922080994,
+            -0.20000001788139343,
+            -0.8698028922080994
+          ],
+          "maximum": [
+            0.8698030114173889,
+            0.20000001788139343,
+            0.8698030114173889
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+        "bytes": 26916,
+        "sha256": "1c6b8470f0808b880bce5cc1c019bab02f2a706c70ccb2e2c2b365ec59265ea8",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 294,
+        "indexCount": 1476,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -86.98028564453125,
+            -20.000001907348633,
+            -86.98030090332031
+          ],
+          "maximum": [
+            86.98030090332031,
+            20.000001907348633,
+            86.98028564453125
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.8698028922080994,
+            -0.20000001788139343,
+            -0.8698030114173889,
+            0.8698030114173889,
+            0.20000001788139343,
+            0.8698028922080994,
+            5.960464477539063e-08,
+            0.0,
+            -5.960464477539063e-08,
+            0.8698030114173889
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 294,
+          "matchedRuntimeVertexCount": 294,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 3.814697265625e-06,
+          "maximumClientMeterErrorAfterCarrierPreScale": 3.814697265625e-08,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "1.0": 294
+          },
+          "runtimeCounts": {
+            "1.0": 294
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 1476,
+          "runtimeIndexCount": 1476,
+          "triangleCount": 492,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 492,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_h_swing_05",
+              "sourceVertexCount": 294,
+              "sourceReferencedVertexCount": 294,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 294,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 294,
+              "runtimeReferencedVertexCount": 294,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 294,
+              "indexCount": 1476,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 294,
+          "sourceReferencedVertexCount": 294,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 294,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.8698028922080994,
+                -0.20000001788139343,
+                -0.8698030114173889
+              ],
+              "storedMaximum": [
+                0.8698030114173889,
+                0.20000001788139343,
+                0.8698028922080994
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -86.98028564453125,
+                  -20.000001907348633,
+                  -86.98030090332031
+                ],
+                "maximum": [
+                  86.98030090332031,
+                  20.000001907348633,
+                  86.98028564453125
+                ]
+              },
+              "extentScalePerAxis": [
+                99.99999780714859,
+                100.00000059604639,
+                99.99999780714859
+              ],
+              "derivedStoredToRuntimeScale": 99.99999780714859,
+              "maximumAabbComponentErrorAtDerivedScale": 1.66893018160863e-06
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": false,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "SOURCE_CHANNEL_ABSENT"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+      "sourceObjectPath": "fx_sm_00.fm_h_swing_01",
+      "activeElementIds": [
+        "source-active-012"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 18312,
+        "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_00/StaticMesh3/fm_h_swing_01.gltf",
+        "gltfBytes": 2111,
+        "gltfSha256": "3302d89b7e001c792d84f6e7b3f5f3333e1d14ecba766b91e0a30cc34abf5b90",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 166,
+              "byteOffset": 492,
+              "byteStride": 12,
+              "decodedValueBytes": 1992,
+              "decodedValueSha256": "0f67883197f57bbd540bd6e19982fae2aafcf4e1fa4794b590aced11b36cfa3c",
+              "bufferLogicalPath": "fm_h_swing_01.bin",
+              "bufferBytes": 8460,
+              "bufferSha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 166,
+              "byteOffset": 2484,
+              "byteStride": 12,
+              "decodedValueBytes": 1992,
+              "decodedValueSha256": "93a54f716172ed3c030c8305c27d68697a4e46b93d0ac423870fd41906faeba8",
+              "bufferLogicalPath": "fm_h_swing_01.bin",
+              "bufferBytes": 8460,
+              "bufferSha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 166,
+              "byteOffset": 7132,
+              "byteStride": 8,
+              "decodedValueBytes": 1328,
+              "decodedValueSha256": "ba7991720ac9f450123fce1bfc4b4e37df65957f2b2e3f6a9d55d8a0fc3be22c",
+              "bufferLogicalPath": "fm_h_swing_01.bin",
+              "bufferBytes": 8460,
+              "bufferSha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 166,
+              "byteOffset": 4476,
+              "byteStride": 16,
+              "decodedValueBytes": 2656,
+              "decodedValueSha256": "f7c59888f41158fac42d5e2e3fb76a8517d343b80552297cd3e23f48e79f862a",
+              "bufferLogicalPath": "fm_h_swing_01.bin",
+              "bufferBytes": 8460,
+              "bufferSha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 246,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 492,
+              "decodedValueSha256": "ced9ad8512cef543096e1193a2e0a62f9375e67dc10672c5d61e23d85024aca0",
+              "bufferLogicalPath": "fm_h_swing_01.bin",
+              "bufferBytes": 8460,
+              "bufferSha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_h_swing_01.bin",
+            "declaredBytes": 8460,
+            "physicalBytes": 8460,
+            "sha256": "376ee45e16af7df4aef76c578d42589558fc189de1cd39f6179515e69fe3528c"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_h_swing_01",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 166,
+        "indexCount": 246,
+        "aabb": {
+          "minimum": [
+            -0.699999988079071,
+            -4.2862636531758425e-17,
+            -0.699999988079071
+          ],
+          "maximum": [
+            0.699999988079071,
+            4.2862636531758425e-17,
+            0.699999988079071
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_h_swing_01.wmodel",
+        "bytes": 18312,
+        "sha256": "35136ddbd932dc4231678ed0a1b68f05bce90d7101604b6070c8b5800341fa22",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 166,
+        "indexCount": 246,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -70.0,
+            -4.286263692880512e-15,
+            -70.0
+          ],
+          "maximum": [
+            70.0,
+            4.286263692880512e-15,
+            70.0
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.699999988079071,
+            -4.2862636531758425e-17,
+            -0.699999988079071,
+            0.699999988079071,
+            4.2862636531758425e-17,
+            0.699999988079071,
+            0.0,
+            0.0,
+            0.0,
+            0.7000000476837158
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 166,
+          "matchedRuntimeVertexCount": 166,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 3.5762786865234375e-06,
+          "maximumClientMeterErrorAfterCarrierPreScale": 3.5762786865234374e-08,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "-1.0": 83,
+            "1.0": 83
+          },
+          "runtimeCounts": {
+            "1.0": 166
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 246,
+          "runtimeIndexCount": 246,
+          "triangleCount": 82,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 82,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_h_swing_01",
+              "sourceVertexCount": 166,
+              "sourceReferencedVertexCount": 166,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 166,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 166,
+              "runtimeReferencedVertexCount": 166,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 166,
+              "indexCount": 246,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 166,
+          "sourceReferencedVertexCount": 166,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 166,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.699999988079071,
+                -4.2862636531758425e-17,
+                -0.699999988079071
+              ],
+              "storedMaximum": [
+                0.699999988079071,
+                4.2862636531758425e-17,
+                0.699999988079071
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -70.0,
+                  -4.286263692880512e-15,
+                  -70.0
+                ],
+                "maximum": [
+                  70.0,
+                  4.286263692880512e-15,
+                  70.0
+                ]
+              },
+              "extentScalePerAxis": [
+                100.00000170298988,
+                null,
+                100.00000170298988
+              ],
+              "derivedStoredToRuntimeScale": 100.00000170298988,
+              "maximumAabbComponentErrorAtDerivedScale": 3.328996648792834e-23
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": false,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "SOURCE_CHANNEL_ABSENT"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+      "sourceObjectPath": "fx_sm_00.fm_o_swing_02",
+      "activeElementIds": [
+        "source-active-013",
+        "source-active-014",
+        "source-active-015"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 18156,
+        "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_00/StaticMesh3/fm_o_swing_02.gltf",
+        "gltfBytes": 2126,
+        "gltfSha256": "c7344452bd8d2d399b1e5c6644e5039bde2b92ab39dd39bb9b9dc82de1626bd2",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 145,
+              "byteOffset": 1344,
+              "byteStride": 12,
+              "decodedValueBytes": 1740,
+              "decodedValueSha256": "a575443ed16637177450d5e73efed57a9a6e7871d318dd2fdac883f810c7af6a",
+              "bufferLogicalPath": "fm_o_swing_02.bin",
+              "bufferBytes": 8304,
+              "bufferSha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 145,
+              "byteOffset": 3084,
+              "byteStride": 12,
+              "decodedValueBytes": 1740,
+              "decodedValueSha256": "d199cdac37393f46d57a7fd1e37920194c3715dcdcbfef8f8badc01d1b83a1d0",
+              "bufferLogicalPath": "fm_o_swing_02.bin",
+              "bufferBytes": 8304,
+              "bufferSha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 145,
+              "byteOffset": 7144,
+              "byteStride": 8,
+              "decodedValueBytes": 1160,
+              "decodedValueSha256": "f1753a723577b741eb3eab31f5afcfcaad80d58f7d4afe534758a76ede07942e",
+              "bufferLogicalPath": "fm_o_swing_02.bin",
+              "bufferBytes": 8304,
+              "bufferSha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 145,
+              "byteOffset": 4824,
+              "byteStride": 16,
+              "decodedValueBytes": 2320,
+              "decodedValueSha256": "e73adec6e19e3f1a32e189e9e7abfb0364d967bb3e13146e959dbfc30d863ffa",
+              "bufferLogicalPath": "fm_o_swing_02.bin",
+              "bufferBytes": 8304,
+              "bufferSha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 672,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 1344,
+              "decodedValueSha256": "0c040b552e10a14a9c88d370150d574ecf9e5e338b8ff3ac573a8bd55453748f",
+              "bufferLogicalPath": "fm_o_swing_02.bin",
+              "bufferBytes": 8304,
+              "bufferSha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_o_swing_02.bin",
+            "declaredBytes": 8304,
+            "physicalBytes": 8304,
+            "sha256": "8c85587a6b81bdada147abbbe333a418bd5e70c59410011f9d5a7d26733cdc1a"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_o_swing_02",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 145,
+        "indexCount": 672,
+        "aabb": {
+          "minimum": [
+            -0.6760937571525574,
+            -0.12705521285533905,
+            -0.5179178714752197
+          ],
+          "maximum": [
+            0.6760936379432678,
+            0.12705498933792114,
+            0.6760940551757812
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_o_swing_02.wmodel",
+        "bytes": 18156,
+        "sha256": "c8d2fa4c28d5aa98fae5092d8c79d5314b7ecd5ccfa48a926b137c8f118bc126",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 145,
+        "indexCount": 672,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -67.609375,
+            -12.705521583557129,
+            -67.60940551757812
+          ],
+          "maximum": [
+            67.60936737060547,
+            12.705498695373535,
+            51.791786193847656
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.6760937571525574,
+            -0.12705521285533905,
+            -0.6760940551757812,
+            0.6760936379432678,
+            0.12705498933792114,
+            0.5179178714752197,
+            -5.960464477539063e-08,
+            -1.1175870895385742e-07,
+            -0.07908809185028076,
+            0.7384305596351624
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 145,
+          "matchedRuntimeVertexCount": 145,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 3.5762786865234375e-06,
+          "maximumClientMeterErrorAfterCarrierPreScale": 3.5762786865234374e-08,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "-1.0": 101,
+            "1.0": 44
+          },
+          "runtimeCounts": {
+            "1.0": 145
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 672,
+          "runtimeIndexCount": 672,
+          "triangleCount": 224,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 224,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_o_swing_02",
+              "sourceVertexCount": 145,
+              "sourceReferencedVertexCount": 145,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 145,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 145,
+              "runtimeReferencedVertexCount": 145,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 145,
+              "indexCount": 672,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 145,
+          "sourceReferencedVertexCount": 145,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 145,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.6760937571525574,
+                -0.12705521285533905,
+                -0.6760940551757812
+              ],
+              "storedMaximum": [
+                0.6760936379432678,
+                0.12705498933792114,
+                0.5179178714752197
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -67.609375,
+                  -12.705521583557129,
+                  -67.60940551757812
+                ],
+                "maximum": [
+                  67.60936737060547,
+                  12.705498695373535,
+                  51.791786193847656
+                ]
+              },
+              "extentScalePerAxis": [
+                100.00000211584796,
+                100.0000002345622,
+                99.99999920128577
+              ],
+              "derivedStoredToRuntimeScale": 100.0000002345622,
+              "maximumAabbComponentErrorAtDerivedScale": 3.41769268175085e-06
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": false,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "SOURCE_CHANNEL_ABSENT"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    },
+    {
+      "assetId": "Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+      "sourceObjectPath": "fx_sm_00.fm_a_stone_001",
+      "activeElementIds": [
+        "source-active-026"
+      ],
+      "activeInventoryIdentity": {
+        "assetId": "Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+        "resourceKind": "WModel",
+        "bytes": 11460,
+        "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882"
+      },
+      "source": {
+        "gltfLogicalPath": "FX_SM_00/StaticMesh3/fm_a_stone_001.gltf",
+        "gltfBytes": 2123,
+        "gltfSha256": "a3cc66b66ddd55b5e8539f9035856aed08deb8924a11ccca8f41169dde9f955b",
+        "accessors": {
+          "POSITION": [
+            {
+              "accessorIndex": 1,
+              "bufferIndex": 0,
+              "bufferViewIndex": 1,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 32,
+              "byteOffset": 72,
+              "byteStride": 12,
+              "decodedValueBytes": 384,
+              "decodedValueSha256": "beff81f53cb2efcc735a4592c97fba858768673558b596b001b5f12104881faf",
+              "bufferLogicalPath": "fm_a_stone_001.bin",
+              "bufferBytes": 1608,
+              "bufferSha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          ],
+          "NORMAL": [
+            {
+              "accessorIndex": 2,
+              "bufferIndex": 0,
+              "bufferViewIndex": 2,
+              "componentType": 5126,
+              "type": "VEC3",
+              "normalized": false,
+              "count": 32,
+              "byteOffset": 456,
+              "byteStride": 12,
+              "decodedValueBytes": 384,
+              "decodedValueSha256": "f9c89a545b41cd4bc83b043c54078a29f3a4994090c9f6264c993c16ad4d28cb",
+              "bufferLogicalPath": "fm_a_stone_001.bin",
+              "bufferBytes": 1608,
+              "bufferSha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          ],
+          "TEXCOORD_0": [
+            {
+              "accessorIndex": 4,
+              "bufferIndex": 0,
+              "bufferViewIndex": 4,
+              "componentType": 5126,
+              "type": "VEC2",
+              "normalized": false,
+              "count": 32,
+              "byteOffset": 1352,
+              "byteStride": 8,
+              "decodedValueBytes": 256,
+              "decodedValueSha256": "a0096c94acab67baaed7996404a17458d5f1a988ede2c88b8a4b253b292bb207",
+              "bufferLogicalPath": "fm_a_stone_001.bin",
+              "bufferBytes": 1608,
+              "bufferSha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          ],
+          "TANGENT": [
+            {
+              "accessorIndex": 3,
+              "bufferIndex": 0,
+              "bufferViewIndex": 3,
+              "componentType": 5126,
+              "type": "VEC4",
+              "normalized": false,
+              "count": 32,
+              "byteOffset": 840,
+              "byteStride": 16,
+              "decodedValueBytes": 512,
+              "decodedValueSha256": "ab50c6ca14ad4165a886cc74f9d18153647b706e97eea3d0c641b8b976cd9b9f",
+              "bufferLogicalPath": "fm_a_stone_001.bin",
+              "bufferBytes": 1608,
+              "bufferSha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          ],
+          "INDICES": [
+            {
+              "accessorIndex": 0,
+              "bufferIndex": 0,
+              "bufferViewIndex": 0,
+              "componentType": 5123,
+              "type": "SCALAR",
+              "normalized": false,
+              "count": 36,
+              "byteOffset": 0,
+              "byteStride": 2,
+              "decodedValueBytes": 72,
+              "decodedValueSha256": "be474f712dde9adbaf50e87ae76642cf71245897a4044cef6cd8a237910ca8c0",
+              "bufferLogicalPath": "fm_a_stone_001.bin",
+              "bufferBytes": 1608,
+              "bufferSha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+            }
+          ]
+        },
+        "buffers": [
+          {
+            "bufferIndex": 0,
+            "logicalPath": "fm_a_stone_001.bin",
+            "declaredBytes": 1608,
+            "physicalBytes": 1608,
+            "sha256": "ccb891ecdb3c1da396e6b8c5da2552417c31990c2d33e1fd38f92fe3fd062b9b"
+          }
+        ],
+        "meshNodeTransforms": [
+          {
+            "matrix": [],
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationQuaternion": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "status": "IDENTITY_PROVEN",
+            "nodeIndex": 0,
+            "nodeName": "fm_a_stone_001",
+            "meshIndex": 0,
+            "parentNodeIndex": null
+          }
+        ],
+        "primitiveCount": 1,
+        "vertexCount": 32,
+        "indexCount": 36,
+        "aabb": {
+          "minimum": [
+            -0.05270214378833771,
+            -0.03296653553843498,
+            -0.04679971560835838
+          ],
+          "maximum": [
+            0.05266811326146126,
+            0.026904411613941193,
+            0.052989616990089417
+          ]
+        }
+      },
+      "runtime": {
+        "resourceAssetId": "Effect/Artist/Meshes/fm_a_stone_001.wmodel",
+        "bytes": 11460,
+        "sha256": "87cffc75195100b5e49bbbb56975ffa4ceeb1bec737ba27fc32479a5b72d4882",
+        "outerVersion": [
+          1,
+          0
+        ],
+        "meshVersion": [
+          1,
+          0
+        ],
+        "sectionCount": 2,
+        "submeshCount": 1,
+        "vertexCount": 32,
+        "indexCount": 36,
+        "vertexFormatFlags": 15,
+        "vertexStride": 48,
+        "indexStride": 2,
+        "aabb": {
+          "minimum": [
+            -5.270214557647705,
+            -3.2966535091400146,
+            -5.298961639404297
+          ],
+          "maximum": [
+            5.266811370849609,
+            2.690441131591797,
+            4.679971694946289
+          ]
+        },
+        "embeddedBounds": [
+          [
+            -0.05270214378833771,
+            -0.03296653553843498,
+            -0.052989616990089417,
+            0.05266811326146126,
+            0.026904411613941193,
+            0.04679971560835838,
+            -1.7015263438224792e-05,
+            -0.003031061962246895,
+            -0.0030949506908655167,
+            0.06984012573957443
+          ]
+        ]
+      },
+      "parity": {
+        "position": {
+          "relation": "runtime = source * diag(100, 100, -100)",
+          "tolerance": 0.002,
+          "runtimeVertexCount": 32,
+          "matchedRuntimeVertexCount": 32,
+          "unmatchedRuntimeVertexCount": 0,
+          "maximumMatchedError": 2.086162567138672e-07,
+          "maximumClientMeterErrorAfterCarrierPreScale": 2.086162567138672e-09,
+          "status": "PROVEN"
+        },
+        "normal": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentXYZ": {
+          "relation": "runtime = source * diag(1, 1, -1)",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "tangentHandedness": {
+          "sourceCounts": {
+            "-1.0": 11,
+            "1.0": 21
+          },
+          "runtimeCounts": {
+            "1.0": 32
+          },
+          "status": "UNTRUSTED_EXPORT_CHANNEL_BLOCKED"
+        },
+        "uv0": {
+          "relation": "runtime = source",
+          "maximumMatchedError": 0.0,
+          "status": "PROVEN"
+        },
+        "topology": {
+          "sourceIndexCount": 36,
+          "runtimeIndexCount": 36,
+          "triangleCount": 12,
+          "cornerPayload": "POSITION+NORMAL+TANGENT_XYZ+UV0",
+          "positionTolerance": 0.002,
+          "attributeTolerance": 1e-05,
+          "missingTriangleCount": 0,
+          "extraTriangleCount": 0,
+          "sameWindingTriangleCount": 0,
+          "reversedWindingTriangleCount": 12,
+          "reflection": "Z_AXIS",
+          "windingStatus": "REVERSED_AFTER_REFLECTION_PROVEN"
+        },
+        "indexedFullPayloadPartitions": {
+          "primitiveSubmeshPartitionCount": 1,
+          "partitions": [
+            {
+              "sourceMeshIndex": 0,
+              "sourcePrimitiveIndex": 0,
+              "runtimeSubmeshName": "fm_a_stone_001",
+              "sourceVertexCount": 32,
+              "sourceReferencedVertexCount": 32,
+              "sourceUnreferencedVertexCount": 0,
+              "sourceUniqueFullPayloadVertexCount": 32,
+              "sourceDuplicateFullPayloadVertexCount": 0,
+              "runtimeVertexCount": 32,
+              "runtimeReferencedVertexCount": 32,
+              "runtimeUnreferencedVertexCount": 0,
+              "runtimeUniqueFullPayloadVertexCount": 32,
+              "indexCount": 36,
+              "referencedFullPayloadSetEqual": true,
+              "indexedCornerFullPayloadMultisetEqual": true,
+              "status": "PROVEN_EXACT_FULL_PAYLOAD_DEDUP"
+            }
+          ],
+          "sourceVertexCount": 32,
+          "sourceReferencedVertexCount": 32,
+          "sourceUnreferencedVertexCount": 0,
+          "sourceDuplicateFullPayloadVertexCount": 0,
+          "runtimeVertexCount": 32,
+          "allPartitionsProven": true
+        },
+        "bounds": {
+          "storedBoundsCount": 1,
+          "storedToRuntimeRelations": [
+            {
+              "storedMinimum": [
+                -0.05270214378833771,
+                -0.03296653553843498,
+                -0.052989616990089417
+              ],
+              "storedMaximum": [
+                0.05266811326146126,
+                0.026904411613941193,
+                0.04679971560835838
+              ],
+              "runtimeVertexAabb": {
+                "minimum": [
+                  -5.270214557647705,
+                  -3.2966535091400146,
+                  -5.298961639404297
+                ],
+                "maximum": [
+                  5.266811370849609,
+                  2.690441131591797,
+                  4.679971694946289
+                ]
+              },
+              "extentScalePerAxis": [
+                100.00000212125721,
+                99.99999875555993,
+                100.00000074663097
+              ],
+              "derivedStoredToRuntimeScale": 100.00000074663097,
+              "maximumAabbComponentErrorAtDerivedScale": 1.3946488142124736e-07
+            }
+          ],
+          "runtimeConsumption": false,
+          "status": "STORED_AT_SOURCE_SCALE_RUNTIME_READER_SKIPS_NOT_CULLING_AUTHORITY"
+        },
+        "originPivot": {
+          "geometryOriginRelation": "origin unchanged by scale/reflection",
+          "upkToGltfPivotProvenance": "UNRESOLVED",
+          "occurrenceTransformAuthority": "HASH_LINKED_ACTION_CUE_EVIDENCE",
+          "status": "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        },
+        "color0": {
+          "sourceAccessorPresent": false,
+          "runtimeVertexFormatHasColor0": false,
+          "status": "SOURCE_CHANNEL_ABSENT"
+        }
+      },
+      "scaleContract": {
+        "sourceGeometryUnit": "UMODEL_GLTF_MODEL_UNIT",
+        "runtimeGeometryRelation": "source * diag(100, 100, -100)",
+        "sourceToRuntimePositionScale": 100.0,
+        "carrierGeometryPreScale": 0.01,
+        "particleMeshStartSizeScale": 1.0,
+        "particleMeshStartSizeSemantics": "DIMENSIONLESS_AXIS_REORDER_ONLY",
+        "combinedWorldMagnitude": 1.0,
+        "status": "PROVEN_SEPARATE_CARRIER_AND_PARTICLE_SCALE"
+      },
+      "admission": {
+        "compiledExecutionAllowed": false,
+        "blockers": [
+          "MATERIAL_RECIPE_NOT_COMPILED",
+          "RENDER_STATE_NOT_COMPILED",
+          "SOURCE_TANGENT_HANDEDNESS_UNTRUSTED_AND_NOT_PROVEN",
+          "UPK_TO_GLTF_PIVOT_PROVENANCE_UNRESOLVED"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "wmodelCount": 7,
+    "positionRelationProvenCount": 7,
+    "normalRelationProvenCount": 7,
+    "tangentXyzRelationProvenCount": 7,
+    "tangentHandednessPreservedCount": 0,
+    "tangentHandednessBlockedCount": 7,
+    "uv0RelationProvenCount": 7,
+    "topologyAndReversedWindingProvenCount": 7,
+    "indexedFullPayloadPartitionProvenCount": 7,
+    "sourceVertexCount": 12764,
+    "sourceReferencedVertexCount": 12764,
+    "sourceUnreferencedVertexCount": 0,
+    "sourceDuplicateFullPayloadVertexCount": 78,
+    "runtimeVertexCount": 12686,
+    "sourceColor0PresentButBlockedCount": 2,
+    "runtimeBoundsConsumedCount": 0,
+    "compiledExecutionAllowedCount": 0
+  },
+  "receiptSha256": "9e2ef99fb3ed340396b668eb9c8a188ff6801615286fedcb05ffcd8c5230227e"
+}

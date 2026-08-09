@@ -571,6 +571,88 @@ def decode_typed_payload(
     scale = vector3(76 + transform_variant_offset)
     if any(value <= 0.0 for value in scale):
         raise ValueError("CEFParticleData transform scale must be positive")
+
+    parameter_count_offset = transform_start + 88 + transform_variant_offset
+    if parameter_count_offset + 4 > len(raw):
+        raise ValueError("CEFParticleData parameter table count is truncated")
+    parameter_count = struct.unpack_from("<i", raw, parameter_count_offset)[0]
+    if parameter_count < 0 or parameter_count > 128:
+        raise ValueError(
+            "CEFParticleData parameter table count is invalid: "
+            f"{parameter_count}"
+        )
+    parameter_cursor = parameter_count_offset + 4
+    parameter_overrides: list[dict[str, Any]] = []
+    for parameter_index in range(parameter_count):
+        record_offset = parameter_cursor
+        parsed_name = read_string(parameter_cursor)
+        if parsed_name is None:
+            raise ValueError(
+                "CEFParticleData parameter name is malformed at index "
+                f"{parameter_index}"
+            )
+        parameter_name, parameter_cursor = parsed_name
+        if parameter_cursor + 69 > len(raw):
+            raise ValueError(
+                "CEFParticleData parameter record is truncated at index "
+                f"{parameter_index}"
+            )
+        source_type_code = struct.unpack_from("<i", raw, parameter_cursor)[0]
+        parameter: dict[str, Any] = {
+            "sourceIndex": parameter_index,
+            "name": parameter_name,
+            "sourceTypeCode": source_type_code,
+            "sourceRecordByteOffset": record_offset,
+        }
+        if source_type_code == 1:
+            scalar_value = struct.unpack_from("<f", raw, parameter_cursor + 4)[0]
+            if not math.isfinite(scalar_value):
+                raise ValueError(
+                    "CEFParticleData scalar parameter contains a non-finite "
+                    f"value at index {parameter_index}"
+                )
+            parameter.update({
+                "type": "scalar",
+                "scalarValue": scalar_value,
+                "sourceValueByteOffset": parameter_cursor + 4,
+            })
+        elif source_type_code == 3:
+            vector_value = list(
+                struct.unpack_from("<fff", raw, parameter_cursor + 12)
+            )
+            if not all(math.isfinite(value) for value in vector_value):
+                raise ValueError(
+                    "CEFParticleData vector parameter contains a non-finite "
+                    f"value at index {parameter_index}"
+                )
+            parameter.update({
+                "type": "vector",
+                "vectorValue": vector_value,
+                "sourceValueByteOffset": parameter_cursor + 12,
+            })
+        else:
+            raise ValueError(
+                "CEFParticleData parameter type is not an admitted scalar or "
+                f"vector at index {parameter_index}: {source_type_code}"
+            )
+
+        parsed_sentinel = read_string(parameter_cursor + 56)
+        if parsed_sentinel is None or parsed_sentinel[0] != "None":
+            raise ValueError(
+                "CEFParticleData parameter sentinel is malformed at index "
+                f"{parameter_index}"
+            )
+        sentinel_end = parsed_sentinel[1]
+        if (
+            sentinel_end + 4 > len(raw)
+            or raw[sentinel_end : sentinel_end + 4] != b"\0" * 4
+        ):
+            raise ValueError(
+                "CEFParticleData parameter trailer is malformed at index "
+                f"{parameter_index}"
+            )
+        parameter_cursor = sentinel_end + 4
+        parameter_overrides.append(parameter)
     socket_index = {
         str(row.get("socketName") or "").casefold(): row
         for row in (socket_contract or {}).get("sockets", [])
@@ -676,6 +758,9 @@ def decode_typed_payload(
             "scale": ue3_axis_scale_to_client(scale),
         },
         "sourceTransformByteOffset": transform_start,
+        "parameterOverridesDecoded": True,
+        "sourceParameterCountByteOffset": parameter_count_offset,
+        "parameterOverrides": parameter_overrides,
     })
     return result
 
@@ -684,6 +769,7 @@ def build_action_cue_recipe(
     action_source: dict[str, Any],
     source_receipt: dict[str, Any],
     socket_contract: dict[str, Any] | None = None,
+    clip_alias_contract: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     skill_id = int(source_receipt["skillId"])
     action = next(
@@ -699,20 +785,47 @@ def build_action_cue_recipe(
 
     timeline = source_receipt["timeline"]
     reference_events = list(timeline.get("events", []))
+    clip_alias_rows = list((clip_alias_contract or {}).get("aliases", []))
+    clip_aliases: dict[str, dict[str, Any]] = {}
+    for row in clip_alias_rows:
+        if not isinstance(row, dict):
+            raise ValueError("clip alias row must be an object")
+        runtime_clip = str(row.get("runtimeClip") or "")
+        source_clip = str(row.get("sourceClip") or "")
+        evidence = str(row.get("evidence") or "")
+        if not runtime_clip or not source_clip or not evidence:
+            raise ValueError(
+                "clip alias requires runtimeClip, sourceClip, and evidence"
+            )
+        key = runtime_clip.casefold()
+        if key in clip_aliases:
+            raise ValueError(f"duplicate clip alias for {runtime_clip}")
+        clip_aliases[key] = row
     selected_stages = []
     cues = []
     matched_total = 0
     for clip in timeline.get("clips", []):
         clip_name = str(clip["clip"])
+        clip_alias = clip_aliases.get(clip_name.casefold())
+        source_clip_name = (
+            str(clip_alias["sourceClip"]) if clip_alias is not None else clip_name
+        )
         clip_events = [
             row for row in reference_events if row.get("clip") == clip_name
         ]
-        stage, evidence = select_stage(action, clip_name, clip_events)
+        stage, evidence = select_stage(action, source_clip_name, clip_events)
         matched_total += int(evidence["matchedReferenceEventCount"])
         selected_stages.append(
             {
                 "sequenceIndex": int(clip["sequenceIndex"]),
                 "clip": clip_name,
+                "sourceClip": source_clip_name,
+                "clipAliasApplied": clip_alias is not None,
+                "clipAliasEvidence": (
+                    str(clip_alias["evidence"])
+                    if clip_alias is not None
+                    else "IDENTICAL_CLIP_NAME"
+                ),
                 "clipOffsetSeconds": float(clip["offsetSeconds"]),
                 "sourceStageName": str(stage.get("stageName") or ""),
                 **evidence,
@@ -723,7 +836,9 @@ def build_action_cue_recipe(
             for index, event in enumerate(reference_events)
             if event.get("clip") == clip_name
         ]
-        for notify in stage.get("notifies", []):
+        for source_stage_notify_index, notify in enumerate(
+            stage.get("notifies", [])
+        ):
             if notify.get("authority") != "PRESENTATION":
                 continue
             if notify.get("category") == "animation":
@@ -772,6 +887,12 @@ def build_action_cue_recipe(
                     "serializedLabels": notify.get("serializedLabels", []),
                     "serializedPayload": payload,
                     "typedPayload": typed_payload,
+                    "sourceOccurrence": {
+                        "notifyId": str(notify["notifyId"]),
+                        "stageIndex": int(stage["stageIndex"]),
+                        "stageNotifyIndex": source_stage_notify_index,
+                        "enabled": bool(typed_payload["enabled"]),
+                    },
                     "executionEnabled": bool(typed_payload["enabled"]),
                     "sourceReceiptEventIndex": reference_event_index,
                     "sourceExecutionStatus": source_execution_status(
@@ -800,6 +921,17 @@ def build_action_cue_recipe(
                 ).encode("utf-8")
             ).hexdigest(),
             "loaSha256": str(action_source["source"]["sha256"]),
+            "clipAliasContractSha256": (
+                hashlib.sha256(
+                    json.dumps(
+                        clip_alias_contract,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ).encode("utf-8")
+                ).hexdigest()
+                if clip_alias_contract is not None
+                else ""
+            ),
         },
         "selectedStages": selected_stages,
         "cues": cues,
@@ -819,6 +951,11 @@ def build_action_cue_recipe(
                 row["sourceType"].casefold() == "playparticleeffect"
                 and not row["executionEnabled"]
                 for row in cues
+            ),
+            "typedParticleParameterOverrideCount": sum(
+                len(row["typedPayload"].get("parameterOverrides", []))
+                for row in cues
+                if row["sourceType"].casefold() == "playparticleeffect"
             ),
             "typedDirectionalLightCueCount": sum(
                 row["runtimeChannel"] == "DIRECTIONAL_LIGHT"
@@ -886,12 +1023,14 @@ def main() -> int:
     parser.add_argument("--action-source", required=True, type=Path)
     parser.add_argument("--source-receipt", required=True, type=Path)
     parser.add_argument("--socket-contract", type=Path)
+    parser.add_argument("--clip-alias-contract", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     recipe = build_action_cue_recipe(
         read_json(args.action_source),
         read_json(args.source_receipt),
         read_json(args.socket_contract) if args.socket_contract else None,
+        read_json(args.clip_alias_contract) if args.clip_alias_contract else None,
     )
     write_json_atomic(args.output, recipe)
     print(json.dumps(recipe["summary"], ensure_ascii=False, sort_keys=True))

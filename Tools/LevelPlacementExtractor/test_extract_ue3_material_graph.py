@@ -4,10 +4,16 @@ from extract_ue3_material_graph import (
     classify_topology,
     expression_input,
     expression_inputs,
+    is_effect_material_class,
 )
 
 
 class ExtractUE3MaterialGraphTests(unittest.TestCase):
+    def test_decal_material_uses_the_same_cooked_graph_extractor(self) -> None:
+        self.assertTrue(is_effect_material_class("Material"))
+        self.assertTrue(is_effect_material_class("DecalMaterial"))
+        self.assertFalse(is_effect_material_class("MaterialInstanceConstant"))
+
     def test_expression_input_preserves_channel_contract(self) -> None:
         value = {
             "properties": {

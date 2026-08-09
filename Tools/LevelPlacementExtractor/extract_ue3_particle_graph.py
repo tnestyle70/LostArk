@@ -32,6 +32,8 @@ def is_particle_graph_class(class_name: str) -> bool:
         or folded.startswith("efparticlemodule")
         or folded.startswith("distributionfloat")
         or folded.startswith("distributionvector")
+        or folded.startswith("efdistributionfloat")
+        or folded.startswith("efdistributionvector")
     )
 
 

@@ -31,9 +31,15 @@ MATERIAL_OUTPUTS = (
     "worldpositionoffset",
 )
 
+EFFECT_MATERIAL_CLASSES = frozenset(("material", "decalmaterial"))
+
 
 def folded(value: Any) -> str:
     return str(value or "").casefold()
+
+
+def is_effect_material_class(value: Any) -> bool:
+    return folded(value) in EFFECT_MATERIAL_CLASSES
 
 
 def property_value(properties: dict[str, Any], name: str) -> Any:
@@ -117,8 +123,13 @@ def extract_material_contract(
             break
     if material is None:
         raise ValueError(f"Material export is missing: {material_path}")
-    if folded(package_ref_name(material.class_index, imports, exports)) != "material":
-        raise ValueError(f"Source object is not a Material: {material_path}")
+    material_class = package_ref_name(
+        material.class_index, imports, exports
+    ) or ""
+    if not is_effect_material_class(material_class):
+        raise ValueError(
+            f"Source object is not an effect Material: {material_path}"
+        )
 
     serial = logical[
         material.serial_offset : material.serial_offset + material.serial_size
@@ -214,6 +225,7 @@ def extract_material_contract(
         "formatVersion": 1,
         "sourcePackage": package_path.name,
         "sourcePackageVersion": summary.version,
+        "materialClassName": material_class,
         "materialPath": package_ref_path(
             material.index + 1, imports, exports
         ),

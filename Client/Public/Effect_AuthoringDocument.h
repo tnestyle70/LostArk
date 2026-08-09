@@ -14,6 +14,7 @@ NS_BEGIN(Client)
 
 inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 13u;
 inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
+inline constexpr uint32_t EFFECT_SOURCE_CONTRACT_FORMAT_VERSION = 14u;
 
 enum class EFFECT_ELEMENT_KIND : uint8_t
 {
@@ -25,6 +26,34 @@ enum class EFFECT_ELEMENT_KIND : uint8_t
 	LIGHT,
 	SCREEN_POST,
 	END
+};
+
+enum class EFFECT_RENDERER_TYPE : uint8_t
+{
+	STANDALONE_MESH,
+	LEGACY_STANDALONE_SPRITE,
+	MESH_PARTICLE,
+	SPRITE_PARTICLE,
+	DECAL_PARTICLE,
+	ANIM_TRAIL,
+	CASCADE_RIBBON,
+	LIGHT_PARTICLE,
+	SCREEN_POST,
+	END
+};
+
+enum class EFFECT_SOURCE_SPACE : uint8_t
+{
+	CLIENT_METERS_V1,
+	UE3_CASCADE_V1,
+	SCREEN_SPACE_V1,
+	END
+};
+
+struct EFFECT_RENDERER_DESC final
+{
+	EFFECT_RENDERER_TYPE eType = EFFECT_RENDERER_TYPE::END;
+	EFFECT_SOURCE_SPACE eSourceSpace = EFFECT_SOURCE_SPACE::END;
 };
 
 enum class EFFECT_RESOURCE_SLOT : uint8_t
@@ -255,6 +284,111 @@ enum class EFFECT_SOURCE_LITERAL_KIND : uint8_t
 	END
 };
 
+enum class EFFECT_SOURCE_COVERAGE_STATUS : uint8_t
+{
+	SOURCE_DECODED,
+	DETERMINISTIC_CONVERSION,
+	METADATA_ONLY,
+	UNRESOLVED,
+	END
+};
+
+struct EFFECT_SOURCE_PROPERTY_COVERAGE_DESC final
+{
+	std::string strPropertyPath;
+	std::string strStorage;
+	std::string strProvenance;
+	EFFECT_SOURCE_COVERAGE_STATUS eStatus =
+		EFFECT_SOURCE_COVERAGE_STATUS::END;
+};
+
+struct EFFECT_SOURCE_MODULE_COVERAGE_DESC final
+{
+	std::string strModuleStableId;
+	std::string strNormalizedClass;
+	EFFECT_SOURCE_COVERAGE_STATUS eStatus =
+		EFFECT_SOURCE_COVERAGE_STATUS::END;
+	std::vector<std::string> Blockers;
+	std::vector<EFFECT_SOURCE_PROPERTY_COVERAGE_DESC> Properties;
+};
+
+struct EFFECT_SOURCE_MODULE_REFERENCE_DESC final
+{
+	uint32_t iOrder = 0u;
+	uint32_t iSourceReferenceIndex = 0u;
+	std::string strRole;
+	std::string strSourceObjectId;
+	std::string strSourceRecordSha256;
+};
+
+struct EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC final
+{
+	uint32_t iSourceIndex = 0u;
+	std::string strName;
+	uint32_t iSourceTypeCode = 0u;
+	uint32_t iSourceRecordByteOffset = 0u;
+	std::string strType;
+	f64_t fScalarValue = 0.0;
+	float3_t vVectorValue = { 0.f, 0.f, 0.f };
+	uint32_t iSourceValueByteOffset = 0u;
+};
+
+struct EFFECT_SOURCE_COMPILER_EVIDENCE_DESC final
+{
+	std::string strArtifactFileSha256;
+	std::string strArtifactSelfSha256;
+	std::string strEvidenceId;
+	std::string strSourceEvidenceStatus;
+	std::string strSourceCueId;
+	std::string strSourceOccurrenceId;
+	std::string strSourceSystemId;
+	std::string strSourceEmitterPath;
+	std::string strSourceEmitterNodeId;
+	std::string strLodSelectionPolicy;
+	std::string strSelectedLodPath;
+	std::string strSelectedLodNodeId;
+	uint32_t iSelectedLodArrayIndex = 0u;
+	std::string strSelectedLodLevelProvenance;
+	std::string strSelectedLodEnabledProvenance;
+	uint32_t iNonSelectedLodCount = 0u;
+	std::vector<EFFECT_SOURCE_MODULE_REFERENCE_DESC> ModuleReferenceOrder;
+	float3_t vCueSourcePositionUeUnits = { 0.f, 0.f, 0.f };
+	EFFECT_TRANSFORM_DESC CueLocalTransform;
+	std::vector<EFFECT_SOURCE_PARAMETER_OVERRIDE_DESC> ParameterOverrides;
+	std::vector<std::string> CompositionOrder;
+	std::string strLocalReferenceClosureFileSha256;
+	std::string strLocalReferenceClosureSelfSha256;
+	std::string strGeometryParityFileSha256;
+	std::string strGeometryParitySelfSha256;
+};
+
+struct EFFECT_SOURCE_ADMISSION_DESC final
+{
+	bool_t bAllowed = false;
+	std::vector<std::string> Blockers;
+};
+
+struct EFFECT_SOURCE_MATERIAL_ADMISSION_DESC final
+{
+	std::string strStatus;
+	std::vector<std::string> SourceMaterialPaths;
+	std::string strMaterialRecipeId;
+	std::string strRenderStateRecipeId;
+	std::vector<std::string> Blockers;
+};
+
+struct EFFECT_SOURCE_GEOMETRY_BINDING_DESC final
+{
+	bool_t bEnabled = false;
+	std::string strAssetId;
+	std::string strReceiptFileSha256;
+	std::string strReceiptSelfSha256;
+	f32_t fCarrierGeometryPreScale = 1.f;
+	std::string strParticleScaleSemantics;
+	std::string strStatus;
+	std::vector<std::string> Blockers;
+};
+
 struct EFFECT_SOURCE_LITERAL_DESC final
 {
 	std::string strPropertyPath;
@@ -284,11 +418,22 @@ struct EFFECT_CASCADE_RECIPE_DESC final
 {
 	bool_t bEnabled = false;
 	std::string strRendererShape;
+	std::string strSourceContractProfileId;
+	std::string strSourceContractSha256;
+	std::string strSourceGraphSha256;
+	std::string strSourceClosureSha256;
+	std::string strSourceMaterialClosureSha256;
+	uint32_t iSourcePeakActiveParticles = 0u;
 	f32_t fEmitterDelaySeconds = 0.f;
 	f32_t fEmitterDurationSeconds = 0.f;
 	uint32_t iEmitterLoopCount = 1u;
 	std::vector<EFFECT_PARTICLE_BURST_DESC> Bursts;
 	std::vector<EFFECT_SOURCE_MODULE_DESC> Modules;
+	std::vector<EFFECT_SOURCE_MODULE_COVERAGE_DESC> ModuleCoverage;
+	EFFECT_SOURCE_COMPILER_EVIDENCE_DESC CompilerEvidence;
+	EFFECT_SOURCE_ADMISSION_DESC CompiledExecutionAdmission;
+	EFFECT_SOURCE_MATERIAL_ADMISSION_DESC MaterialAdmission;
+	EFFECT_SOURCE_GEOMETRY_BINDING_DESC GeometryBinding;
 };
 
 struct EFFECT_TRAIL_DESC final
@@ -451,6 +596,7 @@ struct EFFECT_ELEMENT_DESC final
 	std::string strSourceNode;
 	bool_t bVisible = true;
 	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
+	EFFECT_RENDERER_DESC Renderer;
 	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
 	EFFECT_MATERIAL_DESC Material;
 	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
@@ -484,6 +630,8 @@ struct EFFECT_PARTICLE_SYSTEM_DESC final
 struct EFFECT_DOCUMENT_DESC final
 {
 	uint32_t iFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	uint32_t iLoadedFormatVersion = EFFECT_AUTHORING_FORMAT_VERSION;
+	bool_t bSourceContract = false;
 	std::string strEffectAssetId;
 	std::string strDisplayName;
 	EFFECT_PARTICLE_SYSTEM_DESC ParticleSystem;

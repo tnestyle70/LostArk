@@ -739,6 +739,22 @@ try {
 		$effectFinalAuditDetail = $_.Exception.Message
 	}
 	Add-Check 'effect.g09-cross-document-contract' $effectFinalAuditPassed $effectFinalAuditDetail
+	$artistSourceContractPassed = $false
+	$artistSourceContractDetail = ''
+	try {
+		$artistSourceContractDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470SourceContract.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistSourceContractPassed =
+			$artistSourceContractDetail -match
+			'PASS: Artist F 31470 Source Contract cues=7 elements=35'
+	}
+	catch {
+		$artistSourceContractDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-source-contract' `
+		$artistSourceContractPassed `
+		$artistSourceContractDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'

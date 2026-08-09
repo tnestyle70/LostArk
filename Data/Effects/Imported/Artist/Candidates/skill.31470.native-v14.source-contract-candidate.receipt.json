@@ -1,0 +1,2655 @@
+{
+  "schema": "lostark.effect-source-contract-candidate-receipt",
+  "formatVersion": 1,
+  "characterClass": "Artist",
+  "skillId": 31470,
+  "derivedInputSlot": "F",
+  "importedReceiptInputSlot": "R",
+  "status": "SOURCE_EXTRACTED",
+  "aggregateSourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
+  "manualAssemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING",
+  "visualApprovalStatus": "NOT_VISUAL_APPROVED",
+  "runtimeAdmission": "NOT_IMPLEMENTED_IN_THIS_SLICE",
+  "productAdmission": {
+    "allowed": false,
+    "reason": "NATIVE_V14_SOURCE_CONTRACT_IS_NOT_RUNTIME_EXECUTABLE",
+    "publisherStillAcceptsVersions": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  "source": {
+    "sourceReceipt": {
+      "path": "Data/Effects/Imported/Artist/skill.31470.source-receipt.json",
+      "sha256": "dd9d2eb7f9d536c1772865dfa62f92e51e55acbff2b19cbf6e8296ba0517a580"
+    },
+    "actionCueRecipe": {
+      "path": "Data/Effects/Imported/Artist/skill.31470.action-cue-recipe.json",
+      "sha256": "188364c612b65cd037385136ab8b99f5cab6e6b80def739c10f5306d951fafe1"
+    },
+    "activeInventory": {
+      "path": "Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json",
+      "sha256": "96ac2147e97c9c7ba2a442367b1e55882eec0d8d021278185900cb5c3837c29a"
+    },
+    "normalizedGraph": {
+      "path": "Data/Effects/Imported/Artist/Graphs/skill.31470.normalized-effect-graph.json",
+      "sha256": "1ad52c6bf49df8ef1d273f02b3b58ad7d9cf4a0b24bcbc263bf8de00b187dcab"
+    },
+    "moduleClosure": {
+      "path": "Data/Effects/Imported/Artist/Modules/skill.31470.external-module-closure.json",
+      "sha256": "44c042b85f614d120fff2a13e1843b10a0b79a4105bd2b21905650bb4e6f1f6d"
+    },
+    "materialClosure": {
+      "path": "Data/Effects/Imported/Artist/Materials/skill.31470.active-material-closure.json",
+      "sha256": "92eac4d8c6d5e6a028267619f0c29400d27fd017c36bfa2a46abadacb7da6577"
+    },
+    "sourceEvidence": {
+      "path": "Data/Effects/Imported/Artist/skill.31470.source-evidence-envelope.json",
+      "fileSha256": "0daa64fa99cd961e6692c864c7996f60df7c800dd69845d9709714d48ecf6fde",
+      "selfSha256": "b1b0fa12798c6cb8d577faf7c573c86e17212f7df41dfc2afcc41b070b809648"
+    },
+    "localReferenceClosure": {
+      "path": "Data/Effects/Imported/Artist/Graphs/skill.31470.local-reference-closure.json",
+      "fileSha256": "a421c2dbb354189259a9b421614f5f347500a63e2dcdcb0d9bc3445f3c664ae4",
+      "selfSha256": "85776bf1d35c59adc74ea5e324600db5099e5b92bb594aa1efbb623d8ba64c0d"
+    },
+    "wmodelGeometryParity": {
+      "path": "Data/Effects/Imported/Artist/Geometry/skill.31470.wmodel-geometry-parity.receipt.json",
+      "fileSha256": "a200f9b3bb368b0d512eff0beb0e03a94427a12f6f083ca0faa2ae6ba3e134cb",
+      "selfSha256": "9e2ef99fb3ed340396b668eb9c8a188ff6801615286fedcb05ffcd8c5230227e"
+    }
+  },
+  "candidate": {
+    "artifactName": "effect.artist.skill.31470.native-v14.source-contract-candidate.effect.json",
+    "sha256": "7f4d6827fac6eab2e58d43e72c401d92bda1462e344bc5b4f16245d09dbb50be",
+    "registryArtifactName": "ue3-cascade-source-v1.registry.json",
+    "registrySha256": "49ff19a8a30db7ffa2573141f4e2afbe76e743f30de917a0b819b76a59217b81",
+    "contractSha256": "28f75bc5b8e1f56be42d962636c7dd43c932892036655ef3a414392115c252f4"
+  },
+  "elements": [
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_21",
+      "cueId": "skill-31470/clip-000/notify-000",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_21",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_21.particlelodlevel_14",
+      "sourcePeakActiveParticles": 6,
+      "sourceMaterials": [
+        "fx_m_mi_03.fx_mi.fx_m_pa_skull_02_23_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": true,
+        "sourceAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeBoneName": "b_wp_1",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-000",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          30.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.3,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 497,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 519
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
+      "cueId": "skill-31470/clip-000/notify-000",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_1",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_1.particlelodlevel_0",
+      "sourcePeakActiveParticles": 5,
+      "sourceMaterials": [
+        "fx_m_mi_o_00.fx_mi.fx_o_pa_master_01_17_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": true,
+        "sourceAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeBoneName": "b_wp_1",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-000",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          30.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.3,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 497,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 519
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_6",
+      "cueId": "skill-31470/clip-000/notify-000",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_6",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_6.particlelodlevel_8",
+      "sourcePeakActiveParticles": 39,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_m.fx_f_pa_wind_05_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": true,
+        "sourceAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeBoneName": "b_wp_1",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-000",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          30.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.3,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 497,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 519
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01.particlespriteemitter_0",
+      "cueId": "skill-31470/clip-000/notify-000",
+      "rendererType": "CascadeRibbon",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_ink_spw_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_0",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_ink_spw_01.particlespriteemitter_0.particlelodlevel_1",
+      "sourcePeakActiveParticles": 594,
+      "sourceMaterials": [
+        "fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": true,
+        "sourceAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeBoneName": "b_wp_1",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-000",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          30.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.3,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 497,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 519
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6",
+      "cueId": "skill-31470/clip-000/notify-014",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_weapon_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_weapon_01.particlespriteemitter_6.particlelodlevel_10",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_o_00.fx_mi.fx_o_transition_05_2_ma"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": true,
+        "sourceAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeAnchorSlotId": "WP_SDM_R_Battle",
+        "runtimeBoneName": "b_wp_1",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-014",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_23",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_23",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_23.particlelodlevel_30",
+      "sourcePeakActiveParticles": 7,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_mi.fx_m_pa_sqc_01_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_26",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_26",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_26.particlelodlevel_36",
+      "sourcePeakActiveParticles": 8,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_mi.fx_m_pa_sqc_01_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_4",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_4",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_4.particlelodlevel_6",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_mi.fx_m_me_missiletrail_01_1_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_2",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_2",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_2.particlelodlevel_4",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_mi.fx_m_me_missiletrail_01_1_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_7.particlelodlevel_0",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_13.particlelodlevel_2",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_6.particlelodlevel_10",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_m_pa_spritewave_01_19_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_0.particlelodlevel_1",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_03_03_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_28.particlelodlevel_31",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_o_me_flow_02_24_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_30",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_30",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_30.particlelodlevel_36",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_o_me_flow_02_24_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_3",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_3",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_3.particlelodlevel_0",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_24_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_15",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_15",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_15.particlelodlevel_28",
+      "sourcePeakActiveParticles": 53,
+      "sourceMaterials": [
+        "bfx_m_mi_00.bfx_mi.bfx_o_pa_master_01_17_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_9",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_9",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_9.particlelodlevel_0",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_s_00.fx_mi.fx_s_me_missiletrail_01_5_ts_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_10.particlelodlevel_2",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_m_mi_m_00.fx_mi.fx_m_pa_missiletrail_01_17_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01.particlespriteemitter_17",
+      "cueId": "skill-31470/clip-000/notify-018",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_smd_onestroke_swing_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_17",
+      "sourceLod": "FX_PC_SDM_07.par_v_smd_onestroke_swing_01.particlespriteemitter_17.particlelodlevel_24",
+      "sourcePeakActiveParticles": 23,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_m.fx_f_pa_wind_05_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-018",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          -100.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          1.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          3.0,
+          3.0,
+          3.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "DecalParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_43.particlelodlevel_2",
+      "sourcePeakActiveParticles": 77,
+      "sourceMaterials": [
+        "fx_m_mi_w_00.mi.fx_w_de_master_01_77_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_6",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "DecalParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_6",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_6.particlelodlevel_10",
+      "sourcePeakActiveParticles": 77,
+      "sourceMaterials": [
+        "fx_m_mi_w_00.mi.fx_w_de_master_01_77_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "DecalParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_15.particlelodlevel_0",
+      "sourcePeakActiveParticles": 77,
+      "sourceMaterials": [
+        "fx_m_mi_04.fx_mi.fx_d_de_unlit_01_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_9",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_9",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_9.particlelodlevel_14",
+      "sourcePeakActiveParticles": 5,
+      "sourceMaterials": [
+        "fx_m_mi_d_00.fx_mi.fx_d_pa_glow_01_05_dt_ad"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_16.particlelodlevel_22",
+      "sourcePeakActiveParticles": 17,
+      "sourceMaterials": [
+        "fx_m_mi_00.fx_mi.fx_d_pa_atta_02_01_ts_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_7",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_7",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_7.particlelodlevel_13",
+      "sourcePeakActiveParticles": 12,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_d_pa_spla_05_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "MeshParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_17.particlelodlevel_24",
+      "sourcePeakActiveParticles": 13,
+      "sourceMaterials": [
+        "fx_m_mi_05.fx_mi.fx_e_me_ht_03_4_ma"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_0.particlelodlevel_0",
+      "sourcePeakActiveParticles": 6,
+      "sourceMaterials": [
+        "fx_m_mi_05.fx_mi.fx_e_pa_fd_18_2_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_10.particlelodlevel_0",
+      "sourcePeakActiveParticles": 6,
+      "sourceMaterials": [
+        "fx_m_mi_k_00.fx_mi.fx_k_pa_flowmask_01_04_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_3.particlelodlevel_4",
+      "sourcePeakActiveParticles": 17,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_mi.fx_d_pa_spla_05_02_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_4",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_4",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_4.particlelodlevel_6",
+      "sourcePeakActiveParticles": 17,
+      "sourceMaterials": [
+        "fx_gibs_00.m_mi.fx_o_pa_master_01_31_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_18",
+      "cueId": "skill-31470/clip-000/notify-022",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_pc_sdm_07.par_v_sdm_onestroke_hit_01",
+      "sourceEmitter": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_18",
+      "sourceLod": "FX_PC_SDM_07.par_v_sdm_onestroke_hit_01.particlespriteemitter_18.particlelodlevel_26",
+      "sourcePeakActiveParticles": 11,
+      "sourceMaterials": [
+        "fx_m_mi_01.fx_m.fx_f_pa_wind_05_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-022",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.6,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.2999999523162842,
+          1.2999999523162842,
+          1.2999999523162842
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 489,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 511
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_post.fx_par.par_c_zoomblur_03.particlespriteemitter_0",
+      "cueId": "skill-31470/clip-000/notify-026",
+      "rendererType": "ScreenPost",
+      "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_03",
+      "sourceEmitter": "FX_POST.fx_par.par_c_zoomblur_03.particlespriteemitter_0",
+      "sourceLod": "FX_POST.fx_par.par_c_zoomblur_03.particlespriteemitter_0.particlelodlevel_0",
+      "sourcePeakActiveParticles": 3,
+      "sourceMaterials": [
+        "fx_mi.fx_c_pa_zoomblur_01_tr"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-026",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          100.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          1.0,
+          0.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          0.4000000059604645,
+          0.4000000059604645,
+          0.4000000059604645
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "life",
+          "sourceTypeCode": 1,
+          "sourceRecordByteOffset": 477,
+          "type": "scalar",
+          "scalarValue": 0.6000000238418579,
+          "sourceValueByteOffset": 490
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushi.particlespriteemitter_21",
+      "cueId": "skill-31470/clip-000/notify-028",
+      "rendererType": "SpriteParticle",
+      "sourceSystemId": "fx_cm_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01",
+      "sourceEmitter": "FX_CM_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01.particlespriteemitter_21",
+      "sourceLod": "FX_CM_01.distortion_onelayer.par_convatedisol_fsm_pushinghit_01.particlespriteemitter_21.particlelodlevel_4",
+      "sourcePeakActiveParticles": 5,
+      "sourceMaterials": [
+        "fx_mastermaterial.fx_mi.fx_k_pa_onelayerdistortion_03_01_ad"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-028",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          0.0,
+          0.0,
+          60.0
+        ],
+        "position": [
+          0.0,
+          0.6,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    },
+    {
+      "elementId": "fx_cm_02.light.par_mp_light_01.particlespriteemitter_2",
+      "cueId": "skill-31470/clip-000/notify-029",
+      "rendererType": "LightParticle",
+      "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
+      "sourceEmitter": "FX_CM_02.light.par_mp_light_01.particlespriteemitter_2",
+      "sourceLod": "FX_CM_02.light.par_mp_light_01.particlespriteemitter_2.particlelodlevel_4",
+      "sourcePeakActiveParticles": 177,
+      "sourceMaterials": [
+        "enginematerials.defaultparticle"
+      ],
+      "attachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "socketLocalTransform": {
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotationDegrees": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "sourceOccurrenceId": "action-31470/stage-000/notify-029",
+      "cueLocalTransform": {
+        "sourcePositionUeUnits": [
+          200.0,
+          0.0,
+          100.0
+        ],
+        "position": [
+          2.0,
+          1.0,
+          -0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "parameterOverrides": [
+        {
+          "sourceIndex": 0,
+          "name": "Spawn",
+          "sourceTypeCode": 1,
+          "sourceRecordByteOffset": 480,
+          "type": "scalar",
+          "scalarValue": 0.0,
+          "sourceValueByteOffset": 494
+        },
+        {
+          "sourceIndex": 1,
+          "name": "Lifetime",
+          "sourceTypeCode": 1,
+          "sourceRecordByteOffset": 559,
+          "type": "scalar",
+          "scalarValue": 0.20000000298023224,
+          "sourceValueByteOffset": 576
+        },
+        {
+          "sourceIndex": 2,
+          "name": "Size",
+          "sourceTypeCode": 1,
+          "sourceRecordByteOffset": 641,
+          "type": "scalar",
+          "scalarValue": 600.0,
+          "sourceValueByteOffset": 654
+        },
+        {
+          "sourceIndex": 3,
+          "name": "Color",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 719,
+          "type": "vector",
+          "vectorValue": [
+            2.0,
+            2.0,
+            2.0
+          ],
+          "sourceValueByteOffset": 741
+        },
+        {
+          "sourceIndex": 4,
+          "name": "Alpha",
+          "sourceTypeCode": 1,
+          "sourceRecordByteOffset": 798,
+          "type": "scalar",
+          "scalarValue": 1.0,
+          "sourceValueByteOffset": 812
+        },
+        {
+          "sourceIndex": 5,
+          "name": "Location",
+          "sourceTypeCode": 3,
+          "sourceRecordByteOffset": 877,
+          "type": "vector",
+          "vectorValue": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceValueByteOffset": 902
+        }
+      ],
+      "coverageStatus": "UNRESOLVED",
+      "assemblyStatus": "MANUAL_MASTER_ASSEMBLY_PENDING"
+    }
+  ],
+  "boundaries": {
+    "wmodel": "GEOMETRY_ONLY",
+    "wmodelParityScope": "SELECTED_GLTF_BIN_TO_CURRENT_WMODEL_ONLY",
+    "upkToUmodelGltf": "UNRESOLVED_AND_COMPILED_ADMISSION_BLOCKED",
+    "cascadePlacement": "SOURCE_EVIDENCE_NOT_FINAL_ASSEMBLY",
+    "materialRuntime": "COOKED_PARTIAL_NOT_SHADER_EXACT",
+    "playbackRendererShader": "OWNED_BY_TRACK_A_AFTER_SOURCE_CONTRACT_MERGE",
+    "productCatalog": "UNCHANGED_AND_BLOCKED"
+  },
+  "summary": {
+    "activeCueCount": 7,
+    "activeElementCount": 35,
+    "rendererCounts": {
+      "SpriteParticle": 16,
+      "CascadeRibbon": 1,
+      "MeshParticle": 13,
+      "DecalParticle": 3,
+      "ScreenPost": 1,
+      "LightParticle": 1
+    },
+    "excludedExecutionDisabledElementCount": 93,
+    "materialCount": 28,
+    "materialShaderTopologyStatusCounts": {
+      "COOKED_PARTIAL": 27,
+      "NON_RENDER_BUILTIN": 1
+    },
+    "sourceContractRuntimeAdmission": false,
+    "visualApprovalComplete": false,
+    "aggregateSourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
+    "coverageDenominators": {
+      "activeCueCount": 7,
+      "activeOccurrenceCount": 35,
+      "activeSelectedModuleReferenceOrderCount": 399,
+      "activeModuleTopLevelTaggedPropertyCount": 1434,
+      "activeModulePrimitiveLeafCount": 1572,
+      "activeDistributionWrapperCount": 629,
+      "distributionOperationDeterministicConversionCount": 409,
+      "distributionChunkSizeDeterministicConversionCount": 257,
+      "distributionNumElementsDeterministicConversionCount": 257,
+      "activeSystemRootTaggedPropertyCount": 61,
+      "activeEmitterTaggedPropertyCount": 53,
+      "activeSelectedLodTaggedPropertyCount": 158,
+      "activeInternalModuleNativeTailProvenOccurrenceCount": 151,
+      "activeExternalModuleNativeTailUnresolvedOccurrenceCount": 248,
+      "activeSeededModuleOccurrenceCount": 14,
+      "activeOpaqueSeedHexOccurrenceCount": 8,
+      "activeOpaqueSeedHexBytes": 256,
+      "activeSeedArrayOnlyOccurrenceCount": 5,
+      "activeSeedClassDefaultOccurrenceCount": 1,
+      "activeTwoLodEmitterOccurrenceCount": 30,
+      "fullSourceSelectedLodCount": 125,
+      "fullSourceSelectedLodExternalReferenceCount": 913,
+      "fullSourceNonSelectedLodCount": 117,
+      "fullSourceNonSelectedLodExternalReferenceCount": 875,
+      "fullSourceFilteredLocalReferenceCount": 5,
+      "fullSourceNonSelectedOrFilteredReferenceBlockedCount": 880,
+      "sourceEvidenceStatus": "SOURCE_EVIDENCE_PARTIAL",
+      "compiledExecutionAllowedOccurrenceCount": 0
+    },
+    "localReferenceDenominators": {
+      "distributionTargetUniqueCount": 15,
+      "distributionTargetOccurrenceCount": 17,
+      "distributionTargetPayloadDecodedUniqueCount": 14,
+      "distributionTargetPayloadUnresolvedUniqueCount": 1,
+      "distributionTargetPayloadUnresolvedOccurrenceCount": 2,
+      "pointLightTargetUniqueCount": 1,
+      "pointLightTargetOccurrenceCount": 1,
+      "decodedParticleParameterSemanticFieldCounts": {
+        "MaxInput": 7,
+        "MaxOutput": 7,
+        "ParamMode": 25
+      },
+      "compiledExecutionAllowedReferenceCount": 0
+    },
+    "geometryParityDenominators": {
+      "wmodelCount": 7,
+      "positionRelationProvenCount": 7,
+      "normalRelationProvenCount": 7,
+      "tangentXyzRelationProvenCount": 7,
+      "tangentHandednessPreservedCount": 0,
+      "tangentHandednessBlockedCount": 7,
+      "uv0RelationProvenCount": 7,
+      "topologyAndReversedWindingProvenCount": 7,
+      "indexedFullPayloadPartitionProvenCount": 7,
+      "sourceVertexCount": 12764,
+      "sourceReferencedVertexCount": 12764,
+      "sourceUnreferencedVertexCount": 0,
+      "sourceDuplicateFullPayloadVertexCount": 78,
+      "runtimeVertexCount": 12686,
+      "sourceColor0PresentButBlockedCount": 2,
+      "runtimeBoundsConsumedCount": 0,
+      "compiledExecutionAllowedCount": 0
+    }
+  },
+  "legacyProjectionReceiptSummary": {
+    "sourceEmitterPartitionCount": 125,
+    "graphEmitterPartitionCount": 125,
+    "inactiveSourceSystemEmitterPartitionCount": 0,
+    "emittedElementCount": 128,
+    "convertedEmitterCount": 125,
+    "unsupportedEmitterCount": 0,
+    "missingResourceEmitterCount": 0,
+    "sourceMaterialPendingEmitterCount": 28,
+    "presentationSourceExactEmitterCount": 0,
+    "presentationReconstructedEmitterCount": 0,
+    "presentationUnresolvedEmitterCount": 1,
+    "particleBudget": 1121,
+    "externalPackageCount": 70,
+    "externalRequestCount": 913,
+    "externalUnresolvedRequestCount": 0
+  }
+}

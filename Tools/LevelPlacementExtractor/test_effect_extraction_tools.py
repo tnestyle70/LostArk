@@ -38,6 +38,14 @@ class EffectExtractionToolTests(unittest.TestCase):
         self.assertTrue(is_particle_graph_class("EFParticleModuleTypeDataDecal"))
         self.assertTrue(is_particle_graph_class("PointLightComponent"))
         self.assertTrue(is_particle_graph_class("DistributionVectorConstantCurve"))
+        self.assertTrue(
+            is_particle_graph_class(
+                "EFDistributionVectorMultiplyParticleParameter"
+            )
+        )
+        self.assertTrue(
+            is_particle_graph_class("EFDistributionFloatParticleParameter")
+        )
         self.assertFalse(is_particle_graph_class("CameraActor"))
 
     def test_inventory_resolution_preserves_logical_physical_and_size(self):
