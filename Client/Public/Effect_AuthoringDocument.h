@@ -5,13 +5,14 @@
 #include "Effect_Distribution.h"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
 
-inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 12u;
+inline constexpr uint32_t EFFECT_AUTHORING_FORMAT_VERSION = 13u;
 inline constexpr uint32_t EFFECT_AUTHORING_MIN_SUPPORTED_VERSION = 3u;
 
 enum class EFFECT_ELEMENT_KIND : uint8_t
@@ -436,6 +437,12 @@ struct EFFECT_ACTION_CUE_ATTACHMENT_DESC final
 	EFFECT_TRANSFORM_DESC SocketLocalTransform;
 };
 
+struct EFFECT_TRANSFORM_INHERITANCE_DESC final
+{
+	bool_t bEnabled = false;
+	std::string strMasterElementId;
+};
+
 struct EFFECT_ELEMENT_DESC final
 {
 	std::string strElementId;
@@ -447,6 +454,7 @@ struct EFFECT_ELEMENT_DESC final
 	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
 	EFFECT_MATERIAL_DESC Material;
 	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
+	EFFECT_TRANSFORM_INHERITANCE_DESC TransformInheritance;
 	EFFECT_DETAIL_DESC Detail;
 	EFFECT_CASCADE_RECIPE_DESC SourceRecipe;
 	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
@@ -482,6 +490,186 @@ struct EFFECT_DOCUMENT_DESC final
 	std::vector<EFFECT_MODEL_CUE_DESC> ModelCues;
 	std::vector<EFFECT_ELEMENT_DESC> Elements;
 };
+
+inline bool_t Try_ApplyEffectMasterGroupTranslation(
+	EFFECT_DOCUMENT_DESC& Document,
+	const EFFECT_ELEMENT_DESC& DraftMaster,
+	std::string& strOutError)
+{
+	strOutError.clear();
+	EFFECT_ELEMENT_DESC* pCommittedMaster = nullptr;
+	for (EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (Element.strElementId == DraftMaster.strElementId)
+		{
+			pCommittedMaster = &Element;
+			break;
+		}
+	}
+	if (nullptr == pCommittedMaster)
+	{
+		strOutError =
+			"Move Group With This Mesh rejected: the selected Element is missing.";
+		return false;
+	}
+	if (EFFECT_ELEMENT_KIND::MESH != pCommittedMaster->eKind ||
+		EFFECT_ELEMENT_KIND::MESH != DraftMaster.eKind)
+	{
+		strOutError =
+			"Move Group With This Mesh is available only for standalone Mesh elements.";
+		return false;
+	}
+	const bool_t bManualGroup =
+		pCommittedMaster->strGroupId.starts_with("manual.") ||
+		pCommittedMaster->strGroupId.starts_with("authored.baseline.") ||
+		pCommittedMaster->strGroupId.starts_with("authored.trackb.");
+	if (!bManualGroup ||
+		DraftMaster.strGroupId != pCommittedMaster->strGroupId)
+	{
+		strOutError =
+			"Move Group With This Mesh requires one unchanged manual.*, authored.baseline.*, or authored.trackb.* group.";
+		return false;
+	}
+
+	const auto SameFloat3 = [](const float3_t& Left, const float3_t& Right)
+	{
+		return Left.x == Right.x && Left.y == Right.y && Left.z == Right.z;
+	};
+	if (!SameFloat3(DraftMaster.Detail.Transform.vRotationDegrees,
+		pCommittedMaster->Detail.Transform.vRotationDegrees) ||
+		!SameFloat3(DraftMaster.Detail.Transform.vScale,
+			pCommittedMaster->Detail.Transform.vScale))
+	{
+		strOutError =
+			"Move Group With This Mesh is translation-only; revert master Rotation and Scale to committed values.";
+		return false;
+	}
+	const auto IsZeroFloat3 = [](const float3_t& Value)
+	{
+		return 0.f == Value.x && 0.f == Value.y && 0.f == Value.z;
+	};
+	const auto SameTransform = [&SameFloat3](
+		const EFFECT_TRANSFORM_DESC& Left,
+		const EFFECT_TRANSFORM_DESC& Right)
+	{
+		return SameFloat3(Left.vPosition, Right.vPosition) &&
+			SameFloat3(Left.vRotationDegrees, Right.vRotationDegrees) &&
+			SameFloat3(Left.vRevolutionDegreesPerSecond,
+				Right.vRevolutionDegreesPerSecond) &&
+			SameFloat3(Left.vScale, Right.vScale) &&
+			SameFloat3(Left.vVelocityPerSecond, Right.vVelocityPerSecond);
+	};
+	const auto SameAttachment = [&SameTransform](
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Left,
+		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Right)
+	{
+		return Left.bEnabled == Right.bEnabled &&
+			Left.bFollow == Right.bFollow &&
+			Left.strSourceAnchorSlotId == Right.strSourceAnchorSlotId &&
+			Left.strRuntimeAnchorSlotId == Right.strRuntimeAnchorSlotId &&
+			Left.strRuntimeBoneName == Right.strRuntimeBoneName &&
+			SameTransform(Left.SocketLocalTransform, Right.SocketLocalTransform);
+	};
+	if (!SameAttachment(DraftMaster.ActionCueAttachment,
+		pCommittedMaster->ActionCueAttachment))
+	{
+		strOutError =
+			"Move Group With This Mesh rejects a changed master attachment space.";
+		return false;
+	}
+	const auto HasDynamicTransform = [&IsZeroFloat3](
+		const EFFECT_ELEMENT_DESC& Element)
+	{
+		const EFFECT_TRANSFORM_DESC& Transform = Element.Detail.Transform;
+		const EFFECT_LINEAR_LERP_DESC& LinearLerp = Element.Detail.LinearLerp;
+		return !IsZeroFloat3(Transform.vRevolutionDegreesPerSecond) ||
+			!IsZeroFloat3(Transform.vVelocityPerSecond) ||
+			LinearLerp.bPosition || LinearLerp.bRotation ||
+			LinearLerp.bRevolution || LinearLerp.bScale ||
+			LinearLerp.bVelocity;
+	};
+	if (HasDynamicTransform(DraftMaster))
+	{
+		strOutError =
+			"Move Group With This Mesh rejects dynamic transform groups.";
+		return false;
+	}
+
+	size_t iGroupMemberCount = 0u;
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (Element.strGroupId != pCommittedMaster->strGroupId)
+			continue;
+		++iGroupMemberCount;
+		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
+			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			strOutError =
+				"Move Group With This Mesh rejects Particle and Screen Post group members.";
+			return false;
+		}
+		if (HasDynamicTransform(Element))
+		{
+			strOutError =
+				"Move Group With This Mesh rejects dynamic transform groups.";
+			return false;
+		}
+		if (!SameAttachment(Element.ActionCueAttachment,
+			pCommittedMaster->ActionCueAttachment))
+		{
+			strOutError =
+				"Move Group With This Mesh requires every follower to use the same attachment parent space.";
+			return false;
+		}
+	}
+	if (iGroupMemberCount < 2u)
+	{
+		strOutError =
+			"Move Group With This Mesh requires at least one follower in the same group.";
+		return false;
+	}
+
+	const float3_t Delta = {
+		DraftMaster.Detail.Transform.vPosition.x -
+			pCommittedMaster->Detail.Transform.vPosition.x,
+		DraftMaster.Detail.Transform.vPosition.y -
+			pCommittedMaster->Detail.Transform.vPosition.y,
+		DraftMaster.Detail.Transform.vPosition.z -
+			pCommittedMaster->Detail.Transform.vPosition.z
+	};
+	if (!std::isfinite(Delta.x) || !std::isfinite(Delta.y) ||
+		!std::isfinite(Delta.z))
+	{
+		strOutError =
+			"Move Group With This Mesh rejected a non-finite translation delta.";
+		return false;
+	}
+	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (Element.strGroupId != pCommittedMaster->strGroupId ||
+			Element.strElementId == pCommittedMaster->strElementId)
+			continue;
+		const float3_t& Position = Element.Detail.Transform.vPosition;
+		if (!std::isfinite(Position.x + Delta.x) ||
+			!std::isfinite(Position.y + Delta.y) ||
+			!std::isfinite(Position.z + Delta.z))
+		{
+			strOutError =
+				"Move Group With This Mesh rejected a non-finite follower position.";
+			return false;
+		}
+	}
+	for (EFFECT_ELEMENT_DESC& Element : Document.Elements)
+	{
+		if (Element.strGroupId != pCommittedMaster->strGroupId ||
+			Element.strElementId == pCommittedMaster->strElementId)
+			continue;
+		Element.Detail.Transform.vPosition.x += Delta.x;
+		Element.Detail.Transform.vPosition.y += Delta.y;
+		Element.Detail.Transform.vPosition.z += Delta.z;
+	}
+	return true;
+}
 
 inline void Apply_EffectElementDetailDraft(
 	EFFECT_ELEMENT_DESC& Target,

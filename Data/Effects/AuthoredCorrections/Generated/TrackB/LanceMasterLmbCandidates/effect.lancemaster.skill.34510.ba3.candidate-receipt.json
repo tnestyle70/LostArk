@@ -1,0 +1,708 @@
+{
+  "schema": "lostark.effect-restoration-candidate-receipt",
+  "version": 1,
+  "characterClass": "LANCE_MASTER",
+  "skillId": 34510,
+  "baStage": 3,
+  "clip": "flm_att_identity2_1_03",
+  "productEffectAssetId": "effect.lancemaster.skill.34510.ba3",
+  "candidateEffectAssetId": "effect.lancemaster.skill.34510.ba3.restoration-candidate",
+  "candidatePath": "Effects/Authored/effect.lancemaster.skill.34510.ba3.restoration-candidate.effect.json",
+  "restorationStatus": {
+    "current": "SOURCE_EXTRACTED",
+    "sourceExtraction": "SOURCE_EXTRACTED",
+    "manualAssembly": "MANUAL_VISUAL_PENDING",
+    "visualApproval": "NOT_VISUAL_APPROVED"
+  },
+  "candidateExecutionBoundary": {
+    "documentFormatVersion": 13,
+    "currentWorktreeRuntimeFormatVersion": 13,
+    "currentWorktreeResourceRootPresent": false,
+    "executableInCurrentWorktree": false,
+    "codecPlaybackValidatedWithCanonicalResourceRoot": true,
+    "status": "V13_CANDIDATE_VALIDATED_NOT_PRODUCT",
+    "standaloneHarnessSelfRootIntegratedInCurrentWorktree": false,
+    "standaloneHarnessRequiresExplicitResourceRoot": true,
+    "upstreamHarnessSelfRootValidated": true,
+    "productOrRuntimeCatalogMutation": false
+  },
+  "productAdmission": "BLOCKED_UNTIL_MANUAL_VISUAL_APPROVAL",
+  "sourceExactClaimed": false,
+  "runtimeParticleOutputAllowed": false,
+  "candidateDocumentSha256": "3579c5b5c346c0a74aa7bd951707bed9749a418f4d4f89f2cbbdb3e9017cb0dd",
+  "manualRestorationWorklist": {
+    "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
+    "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9",
+    "schema": "lostark.effect-manual-restoration-worklist",
+    "formatVersion": 1,
+    "globalSummary": {
+      "targetCount": 101,
+      "groupCount": 590,
+      "elementCount": 2168,
+      "kindCounts": {
+        "decal": 46,
+        "mesh": 888,
+        "sprite": 1234
+      },
+      "statusCounts": {
+        "CARRIER_INVENTORY_VISUAL_UNVERIFIED": 95,
+        "MANUAL_MASTER_CARRIER_VISUAL_PENDING": 5,
+        "MANUAL_VISUAL_APPROVED": 1
+      },
+      "riskGroupCounts": {
+        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY": 5,
+        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED": 11,
+        "SOURCE_WHITE_CARRIER_REQUIRES_VISUAL_APPROVAL": 14
+      }
+    },
+    "productDocumentPath": "Data/Effects/Authored/effect.lancemaster.skill.34510.ba3.effect.json",
+    "productDocumentSha256": "d81143518eef7780349f639fb0df3b10492dec476ebf6b0ca98d9c4298d50dd6",
+    "productVisualStatus": "CARRIER_INVENTORY_VISUAL_UNVERIFIED",
+    "productGroupCount": 1,
+    "productMasterElementIds": [
+      "authored.approx.s001.mesh01"
+    ],
+    "productRisks": [],
+    "productGroups": [
+      {
+        "groupId": "authored.approx.s001",
+        "masterElementId": "authored.approx.s001.mesh01",
+        "masterSelectionBasis": "PROVISIONAL_FIRST_CARRIER",
+        "manualAuditionOrder": [
+          "authored.approx.s001.mesh01",
+          "authored.approx.s001.mesh02",
+          "authored.approx.s001.mesh03",
+          "authored.approx.s001.sprite01",
+          "authored.approx.s001.sprite02",
+          "authored.approx.s001.sprite03"
+        ],
+        "risks": []
+      }
+    ],
+    "candidateStatus": "SOURCE_EXTRACTED_V13_CANDIDATE_MANUAL_VISUAL_PENDING"
+  },
+  "sourceEvidence": [
+    {
+      "path": "Data/Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+      "sha256": "1759765544d2b7e8fb316a3abf81a8c72588db56beaccc0212e556c6673a5dd2"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/effect.lancemaster.skill.34510.imported.effect.json",
+      "sha256": "0bb82e2df5bda23faf573d179e5fbb616a979105cf4957c123fba992da38e1bf"
+    },
+    {
+      "path": "Data/Animation/Reference/LanceMaster/LanceMaster.animnotify",
+      "sha256": "733ebeabf5d4f388b43152b8cf6e4d78fabd1af349e85228c2a3555971f70155"
+    },
+    {
+      "path": "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
+      "sha256": "ad2e04d04b7008bb52f1ce63570d5784dfc06ef12ec2a6c3ae4f170917d8ca74",
+      "hashNormalization": "UTF8_LF"
+    },
+    {
+      "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
+      "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9"
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/zhj4tc4pck4pc4j22hixeyuxeu.materials.json",
+      "sha256": "821148cbede5249ede6e4c9625cf47285fd656fd3f6cba86e70912d7c6ad8b48",
+      "owns": [
+        "fx_m_pa_ribbonmaster_03_3_tr",
+        "fx_m_pa_missiletrail_01_17_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o1mgump6qmp8b5.materials.json",
+      "sha256": "b5b2fc6021191c59da2875b18426bf8f4dc5f9ddb1766d55078d7b9bd2ea3c7f",
+      "owns": [
+        "fx_m_pa_ribbonmaster_01_9_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o1fgump6qmp8y5.materials.json",
+      "sha256": "496b01ea6040c74d06514200940ea3a98204263179e52507a06e159a55ef03a0",
+      "owns": [
+        "fx_k_me_makeflow_02_38_tr",
+        "fx_k_me_makeflow_02_39_tr",
+        "fx_k_pa_veldust_01_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o11gump6qmp885.materials.json",
+      "sha256": "1852b140d3182c38f5377c420d1dd83e6eb3063fec8e0cc5b6a06581dee085f2",
+      "owns": [
+        "fx_a_pa_db_01_1_ad"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o18gump6qmp8l5.materials.json",
+      "sha256": "8824cf428a59b1df56d156371b8bf5648407e79dee8854807ef03d58a22ac121",
+      "owns": [
+        "fx_k_pa_fd_01_05_tr",
+        "fx_e_pa_ht_08_1_ad"
+      ]
+    }
+  ],
+  "manualApproval": {
+    "soloElement": "PENDING_MANUAL",
+    "soloGroupOrTrail": "PENDING_MANUAL",
+    "characterSelectInput": "NOT_ADMITTED_TO_PRODUCT",
+    "automaticImageJudgement": false
+  },
+  "fallbackPolicy": {
+    "whiteTextureFallbackAllowed": false,
+    "blackTextureFallbackAllowed": false,
+    "crossEmitterDdsProxyAllowed": false,
+    "sameSourceMaterialPreviewAliasAllowed": true,
+    "genericPreviewCompletionAllowed": false,
+    "missingRequiredBaseBehavior": "FAIL_CLOSE"
+  },
+  "sourceDrivenAbsence": {
+    "decal": true
+  },
+  "masterCarrier": {
+    "roleId": "short-flow-master",
+    "sourceEmitterIndex": 9,
+    "targetElementId": "manual.trackb.ba3.short-flow-master",
+    "targetKind": "mesh",
+    "master": true,
+    "masterRoleId": "short-flow-master",
+    "sourceRelativeTransformEvidence": {
+      "masterLocalPosition": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "masterLocalRotationMatrix": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "decodedFlatPosition": [
+        0.0,
+        0.0,
+        -0.3
+      ],
+      "decodedFlatRotationDegrees": [
+        0.0,
+        -90.0,
+        0.0
+      ],
+      "decodedFlatRotationMatrix": [
+        [
+          0.0,
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          -1.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "previousFlatteningInheritance": "MASTER_POSITION_AND_ROTATION_NO_VISUAL_SCALE",
+      "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+    },
+    "runtimeTransformExecution": "TERMINAL_MASTER_FINAL_MATRIX",
+    "sourceEmitterStartOffsetNotApplied": 0.0,
+    "commonPhaseStartDelaySeconds": 0.08,
+    "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+    "positionStatus": "SOURCE_DETERMINISTIC",
+    "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_9.event_source-event-010",
+    "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+    "resourceBindings": [
+      {
+        "slotId": "meshModel",
+        "assetId": "Effect/LanceMaster/Meshes/fm_d_plane_003.wmodel"
+      },
+      {
+        "slotId": "base",
+        "assetId": "Effect/LanceMaster/Textures/fx_l_environment_001.dds"
+      },
+      {
+        "slotId": "noise",
+        "assetId": "Effect/LanceMaster/Textures/fx_d_noise_002.dds"
+      },
+      {
+        "slotId": "mask",
+        "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds"
+      }
+    ],
+    "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+  },
+  "companionCarriers": [
+    {
+      "roleId": "short-flow-pair",
+      "sourceEmitterIndex": 8,
+      "targetElementId": "manual.trackb.ba3.short-flow-pair",
+      "targetKind": "mesh",
+      "master": false,
+      "masterRoleId": "short-flow-master",
+      "sourceRelativeTransformEvidence": {
+        "masterLocalPosition": [
+          0.6,
+          0.0,
+          0.0
+        ],
+        "masterLocalRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "decodedFlatPosition": [
+          0.0,
+          0.0,
+          0.3
+        ],
+        "decodedFlatRotationDegrees": [
+          0.0,
+          -90.0,
+          0.0
+        ],
+        "decodedFlatRotationMatrix": [
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "previousFlatteningInheritance": "MASTER_POSITION_AND_ROTATION_NO_VISUAL_SCALE",
+        "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+      },
+      "runtimeTransformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+      "sourceEmitterStartOffsetNotApplied": 0.0,
+      "commonPhaseStartDelaySeconds": 0.08,
+      "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+      "positionStatus": "SOURCE_DETERMINISTIC",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_8.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_38_tr",
+      "resourceBindings": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/LanceMaster/Meshes/fm_d_plane_003.wmodel"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/LanceMaster/Textures/fx_l_environment_001.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/LanceMaster/Textures/fx_d_noise_002.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds"
+        }
+      ],
+      "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+    },
+    {
+      "roleId": "short-flow-cap",
+      "sourceEmitterIndex": 12,
+      "targetElementId": "manual.trackb.ba3.short-flow-cap",
+      "targetKind": "mesh",
+      "master": false,
+      "masterRoleId": "short-flow-master",
+      "sourceRelativeTransformEvidence": {
+        "masterLocalPosition": [
+          0.3000000000000001,
+          0.0,
+          -2.0
+        ],
+        "masterLocalRotationMatrix": [
+          [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "decodedFlatPosition": [
+          2.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "previousFlatteningInheritance": "MASTER_POSITION_AND_ROTATION_NO_VISUAL_SCALE",
+        "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+      },
+      "runtimeTransformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+      "sourceEmitterStartOffsetNotApplied": 0.0,
+      "commonPhaseStartDelaySeconds": 0.08,
+      "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+      "positionStatus": "SOURCE_DETERMINISTIC",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_12.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_39_tr",
+      "resourceBindings": [
+        {
+          "slotId": "meshModel",
+          "assetId": "Effect/LanceMaster/Meshes/fm_a_hemisphere_012.wmodel"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_16.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/LanceMaster/Textures/fx_m_caustic_001.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/LanceMaster/Textures/fx_d_noise_002.dds"
+        }
+      ],
+      "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+    },
+    {
+      "roleId": "short-spatter-back",
+      "sourceEmitterIndex": 7,
+      "targetElementId": "manual.trackb.ba3.short-spatter-back",
+      "targetKind": "sprite",
+      "master": false,
+      "masterRoleId": "short-flow-master",
+      "sourceRelativeTransformEvidence": {
+        "masterLocalPosition": [
+          -0.7,
+          0.0,
+          0.3
+        ],
+        "masterLocalRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "decodedFlatPosition": [
+          -0.7,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "previousFlatteningInheritance": "MASTER_TRANSLATION_ONLY",
+        "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+      },
+      "runtimeTransformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+      "sourceEmitterStartOffsetNotApplied": 0.0,
+      "commonPhaseStartDelaySeconds": 0.08,
+      "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+      "positionStatus": "SOURCE_DETERMINISTIC",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_7.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+      "resourceBindings": [
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/LanceMaster/Textures/fx_e_noise_008.dds"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds"
+        }
+      ],
+      "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+    },
+    {
+      "roleId": "short-fragment-manual-position",
+      "sourceEmitterIndex": 2,
+      "targetElementId": "manual.trackb.ba3.short-fragment-manual-position",
+      "targetKind": "sprite",
+      "master": false,
+      "masterRoleId": "short-flow-master",
+      "sourceRelativeTransformEvidence": {
+        "masterLocalPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "masterLocalRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "decodedFlatPosition": [
+          0.0,
+          0.0,
+          -0.3
+        ],
+        "decodedFlatRotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "previousFlatteningInheritance": "MASTER_TRANSLATION_ONLY",
+        "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+      },
+      "runtimeTransformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+      "sourceEmitterStartOffsetNotApplied": 0.1,
+      "commonPhaseStartDelaySeconds": 0.08,
+      "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+      "positionStatus": "MANUAL_PENDING_RANDOM_DISTRIBUTION",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_2.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "resourceBindings": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_007.dds"
+        }
+      ],
+      "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+    },
+    {
+      "roleId": "short-fragment-back",
+      "sourceEmitterIndex": 11,
+      "targetElementId": "manual.trackb.ba3.short-fragment-back",
+      "targetKind": "sprite",
+      "master": false,
+      "masterRoleId": "short-flow-master",
+      "sourceRelativeTransformEvidence": {
+        "masterLocalPosition": [
+          -1.0,
+          0.0,
+          0.3
+        ],
+        "masterLocalRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "decodedFlatPosition": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "decodedFlatRotationMatrix": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "previousFlatteningInheritance": "MASTER_TRANSLATION_ONLY",
+        "executionStatus": "EVIDENCE_ONLY_NOT_FINAL_LAYOUT"
+      },
+      "runtimeTransformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+      "sourceEmitterStartOffsetNotApplied": 0.0,
+      "commonPhaseStartDelaySeconds": 0.08,
+      "scaleAndPivotStatus": "MANUAL_PENDING_TRACK_A",
+      "positionStatus": "SOURCE_DETERMINISTIC",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_11.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_ht_08_1_ad",
+      "resourceBindings": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_001.dds"
+        }
+      ],
+      "materialExecutionStatus": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+    }
+  ],
+  "blockedCarriers": [
+    {
+      "roleId": "short-veldust-low",
+      "emitter": 0,
+      "reason": "MANUAL_PENDING_TEXTURELESS_SOURCE_MATERIAL",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_0.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_k_pa_veldust_01_tr",
+      "renderElementCreated": false,
+      "forbiddenProxyAssetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds"
+    },
+    {
+      "roleId": "short-veldust-high",
+      "emitter": 1,
+      "reason": "MANUAL_PENDING_TEXTURELESS_SOURCE_MATERIAL",
+      "sourceElementId": "fx_pc_flm_00.par_k_flm_shortnormal_atk_01.particlespriteemitter_1.event_source-event-010",
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_k_pa_veldust_01_tr",
+      "renderElementCreated": false,
+      "forbiddenProxyAssetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds"
+    }
+  ],
+  "masterFinalMatrixContract": {
+    "authoringVersion": 13,
+    "masterElementId": "manual.trackb.ba3.short-flow-master",
+    "commonStartDelaySeconds": 0.08,
+    "runtimeExecution": "ALL_VISIBLE_COMPANIONS_USE_TRANSFORM_INHERITANCE",
+    "companionIndependentFields": [
+      "material",
+      "color",
+      "uv",
+      "timing.lifeTimeSeconds",
+      "dissolve"
+    ],
+    "sourceRelativeTransforms": "EVIDENCE_ONLY_NOT_EXECUTED",
+    "elementLifetimeTransformNormalizationAllowed": false,
+    "eulerComponentAdditionAllowed": false
+  },
+  "candidateComposition": {
+    "meshCount": 3,
+    "spriteCount": 3,
+    "blockedTexturelessSpriteCount": 2,
+    "runtimeParticleCount": 0,
+    "trailCount": 0,
+    "decalCount": 0
+  },
+  "unrestoredSourceCarriers": [
+    {
+      "sourceSystem": "FX_CM_02.Light.Par_MP_Light_01",
+      "sourceKind": "light",
+      "stageLocalStartDelaySeconds": 0.08,
+      "emitterDurationSeconds": 1.75,
+      "status": "MISSING_OUTSIDE_CURRENT_MASTER_STACK_SLICE"
+    }
+  ]
+}

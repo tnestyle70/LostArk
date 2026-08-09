@@ -1,0 +1,480 @@
+{
+  "schema": "lostark.effect-restoration-candidate-receipt",
+  "version": 1,
+  "characterClass": "LANCE_MASTER",
+  "skillId": 34010,
+  "baStage": 4,
+  "clip": "flm_att_identity1_1_04",
+  "productEffectAssetId": "effect.lancemaster.skill.34010.ba4",
+  "candidateEffectAssetId": "effect.lancemaster.skill.34010.ba4.restoration-candidate",
+  "candidatePath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.restoration-candidate.effect.json",
+  "restorationStatus": {
+    "current": "SOURCE_EXTRACTED",
+    "sourceExtraction": "SOURCE_EXTRACTED",
+    "manualAssembly": "MANUAL_VISUAL_PENDING",
+    "visualApproval": "NOT_VISUAL_APPROVED"
+  },
+  "candidateExecutionBoundary": {
+    "documentFormatVersion": 13,
+    "currentWorktreeRuntimeFormatVersion": 13,
+    "currentWorktreeResourceRootPresent": false,
+    "executableInCurrentWorktree": false,
+    "codecPlaybackValidatedWithCanonicalResourceRoot": true,
+    "status": "V13_CANDIDATE_VALIDATED_NOT_PRODUCT",
+    "standaloneHarnessSelfRootIntegratedInCurrentWorktree": false,
+    "standaloneHarnessRequiresExplicitResourceRoot": true,
+    "upstreamHarnessSelfRootValidated": true,
+    "productOrRuntimeCatalogMutation": false
+  },
+  "productAdmission": "BLOCKED_UNTIL_MANUAL_VISUAL_APPROVAL",
+  "sourceExactClaimed": false,
+  "runtimeParticleOutputAllowed": false,
+  "candidateDocumentSha256": "160965c8f6ad48589099c3b1d81df793b55e01462caaed01f7d85c5e9cfe9619",
+  "manualRestorationWorklist": {
+    "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
+    "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9",
+    "schema": "lostark.effect-manual-restoration-worklist",
+    "formatVersion": 1,
+    "globalSummary": {
+      "targetCount": 101,
+      "groupCount": 590,
+      "elementCount": 2168,
+      "kindCounts": {
+        "decal": 46,
+        "mesh": 888,
+        "sprite": 1234
+      },
+      "statusCounts": {
+        "CARRIER_INVENTORY_VISUAL_UNVERIFIED": 95,
+        "MANUAL_MASTER_CARRIER_VISUAL_PENDING": 5,
+        "MANUAL_VISUAL_APPROVED": 1
+      },
+      "riskGroupCounts": {
+        "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY": 5,
+        "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED": 11,
+        "SOURCE_WHITE_CARRIER_REQUIRES_VISUAL_APPROVAL": 14
+      }
+    },
+    "productDocumentPath": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json",
+    "productDocumentSha256": "6068a6c26f9d5b9f262a45cd5152b63a7551e6a358b6079107592bfee4bbdf81",
+    "productVisualStatus": "CARRIER_INVENTORY_VISUAL_UNVERIFIED",
+    "productGroupCount": 2,
+    "productMasterElementIds": [
+      "authored.approx.s001.mesh01",
+      "authored.approx.s003.mesh01"
+    ],
+    "productRisks": [
+      "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY",
+      "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED"
+    ],
+    "productGroups": [
+      {
+        "groupId": "authored.approx.s001",
+        "masterElementId": "authored.approx.s001.mesh01",
+        "masterSelectionBasis": "PROVISIONAL_FIRST_CARRIER",
+        "manualAuditionOrder": [
+          "authored.approx.s001.mesh01",
+          "authored.approx.s001.sprite01",
+          "authored.approx.s001.sprite02",
+          "authored.approx.s001.sprite03"
+        ],
+        "risks": [
+          "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY",
+          "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED"
+        ]
+      },
+      {
+        "groupId": "authored.approx.s003",
+        "masterElementId": "authored.approx.s003.mesh01",
+        "masterSelectionBasis": "PROVISIONAL_FIRST_CARRIER",
+        "manualAuditionOrder": [
+          "authored.approx.s003.mesh01"
+        ],
+        "risks": [
+          "EXTREME_EMISSIVE_SOURCE_VALUE_REQUIRES_SHADER_PARITY",
+          "RECONSTRUCTED_MATERIAL_PROFILE_VISUAL_UNVERIFIED"
+        ]
+      }
+    ],
+    "candidateStatus": "SOURCE_EXTRACTED_V13_CANDIDATE_MANUAL_VISUAL_PENDING"
+  },
+  "sourceEvidence": [
+    {
+      "path": "Data/Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+      "sha256": "1759765544d2b7e8fb316a3abf81a8c72588db56beaccc0212e556c6673a5dd2"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/CurrentCombat/Converted/effect.lancemaster.skill.34510.imported.effect.json",
+      "sha256": "0bb82e2df5bda23faf573d179e5fbb616a979105cf4957c123fba992da38e1bf"
+    },
+    {
+      "path": "Data/Animation/Reference/LanceMaster/LanceMaster.animnotify",
+      "sha256": "733ebeabf5d4f388b43152b8cf6e4d78fabd1af349e85228c2a3555971f70155"
+    },
+    {
+      "path": "Data/Animation/Authored/LanceMaster/LanceMaster.animevents",
+      "sha256": "ad2e04d04b7008bb52f1ce63570d5784dfc06ef12ec2a6c3ae4f170917d8ca74",
+      "hashNormalization": "UTF8_LF"
+    },
+    {
+      "path": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.manual-restoration-worklist.json",
+      "sha256": "e26482034a8d0c16497786dec9ebc94f4f9b25d46d9e43cb9eed8a6926004ad9"
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/zhj4tc4pck4pc4j22hixeyuxeu.materials.json",
+      "sha256": "821148cbede5249ede6e4c9625cf47285fd656fd3f6cba86e70912d7c6ad8b48",
+      "owns": [
+        "fx_m_pa_ribbonmaster_03_3_tr",
+        "fx_m_pa_missiletrail_01_17_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o1mgump6qmp8b5.materials.json",
+      "sha256": "b5b2fc6021191c59da2875b18426bf8f4dc5f9ddb1766d55078d7b9bd2ea3c7f",
+      "owns": [
+        "fx_m_pa_ribbonmaster_01_9_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o1fgump6qmp8y5.materials.json",
+      "sha256": "496b01ea6040c74d06514200940ea3a98204263179e52507a06e159a55ef03a0",
+      "owns": [
+        "fx_k_me_makeflow_02_38_tr",
+        "fx_k_me_makeflow_02_39_tr",
+        "fx_k_pa_veldust_01_tr"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o11gump6qmp885.materials.json",
+      "sha256": "1852b140d3182c38f5377c420d1dd83e6eb3063fec8e0cc5b6a06581dee085f2",
+      "owns": [
+        "fx_a_pa_db_01_1_ad"
+      ]
+    },
+    {
+      "pathHint": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/DIMENSIONMASTER/materials/ygi3sb3obj3o18gump6qmp8l5.materials.json",
+      "sha256": "8824cf428a59b1df56d156371b8bf5648407e79dee8854807ef03d58a22ac121",
+      "owns": [
+        "fx_k_pa_fd_01_05_tr",
+        "fx_e_pa_ht_08_1_ad"
+      ]
+    }
+  ],
+  "manualApproval": {
+    "soloElement": "PENDING_MANUAL",
+    "soloGroupOrTrail": "PENDING_MANUAL",
+    "characterSelectInput": "NOT_ADMITTED_TO_PRODUCT",
+    "automaticImageJudgement": false
+  },
+  "fallbackPolicy": {
+    "whiteTextureFallbackAllowed": false,
+    "blackTextureFallbackAllowed": false,
+    "crossEmitterDdsProxyAllowed": false,
+    "sameSourceMaterialPreviewAliasAllowed": true,
+    "genericPreviewCompletionAllowed": false,
+    "missingRequiredBaseBehavior": "FAIL_CLOSE"
+  },
+  "sourceDrivenAbsence": {
+    "decal": true
+  },
+  "masterCarrier": {
+    "roleId": "ring-master",
+    "targetElementId": "manual.trackb.ba4.ring-master",
+    "what": "MESH_PARTICLE_ORIGIN_STANDALONE_MESH",
+    "where": "PLAYER_ROOT_SNAPSHOT_MANUAL_TRANSFORM",
+    "sourceElementId": "fx_pc_flm_01.par_m_flm_pyungmtrail_01.particlespriteemitter_4.event_source-event-024",
+    "sourceModelAssetId": "Effect/LanceMaster/Meshes/fm_m_ring_001.wmodel",
+    "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_missiletrail_01_17_tr",
+    "sourceResourceBindings": [
+      {
+        "slotId": "meshModel",
+        "assetId": "Effect/LanceMaster/Meshes/fm_m_ring_001.wmodel"
+      },
+      {
+        "slotId": "mask",
+        "assetId": "Effect/LanceMaster/Textures/fx_m_trail_007.dds"
+      },
+      {
+        "slotId": "base",
+        "assetId": "Effect/LanceMaster/Textures/fx_h_atypical_01_1.dds"
+      },
+      {
+        "slotId": "emissive",
+        "assetId": "Effect/LanceMaster/Textures/fx_m_noise_003.dds"
+      },
+      {
+        "slotId": "dissolve",
+        "assetId": "Effect/LanceMaster/Textures/fx_m_noise_001.dds"
+      },
+      {
+        "slotId": "noise",
+        "assetId": "Effect/LanceMaster/Textures/fx_d_noise_030.dds"
+      }
+    ],
+    "sourceExtracted": {
+      "startDelaySeconds": 0.4673000000000007,
+      "lifeTimeSeconds": 0.6000000238418579,
+      "decodedScale": [
+        0.02700000047683716,
+        0.03,
+        0.02700000047683716
+      ],
+      "decodedPositionNotApplied": [
+        0.0,
+        -0.1,
+        0.0
+      ],
+      "meshStartRotationTurnsNotApplied": 0.7,
+      "rotationRateTurnsPerSecondNotApplied": 0.5,
+      "particleColorAppliedAsPreviewMultiply": [
+        0.2,
+        0.375,
+        0.5,
+        0.5
+      ]
+    },
+    "transformExecution": "TERMINAL_MASTER_FINAL_MATRIX",
+    "materialExecutionStatus": "MANUAL_ASSEMBLY_PENDING_SOURCE_SHADER_PARITY",
+    "manualPending": {
+      "finalPositionRotationScale": true,
+      "meshPivot": true,
+      "sourceMaterialGraph": true,
+      "effectiveFinalColor": true
+    }
+  },
+  "anchorCompanions": [
+    {
+      "roleId": "animtrail-companion",
+      "targetElementId": "manual.trackb.ba4.animtrail-companion",
+      "what": "ANIMTRAIL",
+      "where": "WEAPON_TIP_MANUAL_OFFSET",
+      "sourceTypeData": "ParticleModuleTypeDataAnimTrail",
+      "sourceSystem": "FX_PC_FLM_01.Par_M_FLM_Trail_03_2",
+      "sourceNotifyObjectId": "LanceMaster_25010_0_4_0",
+      "sourceControlEdgeEvidence": "midcontrol",
+      "runtimeBoneName": "b_weapon_rhand",
+      "runtimeAnchorMappingStatus": "INFERRED_PROJECT_MAPPING_NOT_SOURCE_ENDPOINT",
+      "adjacentRibbonAnchorEvidence": "WP_FLM_1_Battle_IS_RIBBON_EVENT_EVIDENCE_NOT_ANIMTRAIL_ENDPOINT",
+      "transformInheritance": false,
+      "inheritanceReason": "TRAIL_REQUIRES_WEAPON_FOLLOW_ANCHOR_NOT_ROOT_MESH_MATRIX",
+      "sourceExact": {
+        "startDelaySeconds": 0.422839999,
+        "notifyDurationSeconds": 0.454925001,
+        "materialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_03_3_tr",
+        "textureRoles": [
+          {
+            "parameter": "alpha_texture",
+            "sourceTexture": "fx_tex_05.fx_m_trail_006",
+            "candidateSlotId": "mask",
+            "decision": "EXACT_ASSET_AND_ROLE"
+          },
+          {
+            "parameter": "dissolve_tex_01",
+            "sourceTexture": "fx_tex_05.fx_k_caustictile_01",
+            "candidateSlotId": "dissolve",
+            "decision": "EXACT_ASSET_AND_ROLE"
+          },
+          {
+            "parameter": "emissive_tex_01",
+            "sourceTexture": "fx_tex_04.fx_h_atypical_01_1",
+            "candidateSlotId": "emissive",
+            "decision": "EXACT_ASSET_AND_ROLE"
+          },
+          {
+            "parameter": "1_uv_noise_texture",
+            "sourceTexture": "fx_tex_02.fx_d_noise_030",
+            "candidateSlotId": "noise",
+            "decision": "EXACT_ASSET_AND_ROLE"
+          },
+          {
+            "parameter": "uv_noise_texture_emissive",
+            "sourceTexture": "fx_tex_02.fx_d_noise_030",
+            "candidateSlotId": "noise",
+            "decision": "EXACT_ASSET_ALIAS_SHARED_WITH_NOISE"
+          },
+          {
+            "parameter": "candidate-preview-base",
+            "sourceTexture": "fx_tex_04.fx_h_atypical_01_1",
+            "candidateSlotId": "base",
+            "decision": "SAME_MATERIAL_PREVIEW_ALIAS_NOT_SOURCE_GRAPH_EXACT"
+          }
+        ],
+        "controlEdgeName": "midcontrol",
+        "tilingDistance": 100.0,
+        "distanceTessellationStep": 1.0,
+        "tangentTessellationScalar": 1.0
+      },
+      "manualPending": {
+        "weaponTipLocalOffset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "twoEdgeWidth": [
+          0.35,
+          0.04
+        ],
+        "pointLifeTimeSeconds": 0.22,
+        "shaderExecution": "MANUAL_PENDING_SOURCE_MATERIAL_GRAPH"
+      }
+    },
+    {
+      "roleId": "ribbon-companion",
+      "sourceElementId": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0.event_source-event-022",
+      "targetElementId": "manual.trackb.ba4.ribbon-companion-blocked",
+      "renderElementCreated": true,
+      "visible": false,
+      "what": "PARTICLE_MODULE_TYPE_DATA_RIBBON",
+      "where": "WEAPON_TIP_MANUAL_OFFSET",
+      "sourceStartDelaySeconds": 0.425729007,
+      "sourceDurationSeconds": 0.451970994,
+      "sourceSystem": "FX_PC_FLM_01.Par_M_FLM_Ribbon_02",
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+      "sourceAnchorEvidence": "WP_FLM_1_Battle",
+      "status": "SOURCE_EXTRACTED_FAIL_CLOSED_MATERIAL_AMBIGUOUS_AND_RIBBON_RUNTIME_MISSING",
+      "failCloseReason": "SOURCE_MATERIAL_PATH_RESOLVES_TO_TWO_PHYSICAL_PACKAGES_AND_GENERIC_TRAIL_IS_NOT_RIBBON_SEMANTICS",
+      "materialResolution": {
+        "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+        "status": "AMBIGUOUS_MATERIAL_PATH",
+        "physicalPackageCandidates": [
+          "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+          "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk"
+        ],
+        "candidateEvidence": [
+          {
+            "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+            "parent": "fx_mi.fx_m_pa_ribbonmaster_01_tr",
+            "textures": {
+              "alpha_texture": "fx_b_trail_004",
+              "emissive_tex_01": "fx_e_noise_001",
+              "emissive_tex_02": "fx_j_mirnoise_01",
+              "uv_noise_texture": "fx_d_normal_001_n"
+            },
+            "emissive_strength": 300.0,
+            "emissive_core_strength": 100.0
+          },
+          {
+            "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk",
+            "parent": "fx_m.fx_m_pa_ribbonmaster_04_tr",
+            "textures": {
+              "alpha_texture": "fx_bg_lightbeam_falloff_03",
+              "dissolve_tex_01": "fx_d_noise_004_1",
+              "emissive_tex_01": "fx_d_noise_030",
+              "emissive_tex_02": "fx_a_noise_008_n",
+              "uv_noise_texture": "fx_m_flow_02_n"
+            },
+            "emissive_strength": 44.0,
+            "emissive_core_strength": 1.0
+          }
+        ]
+      },
+      "requiredBeforeVisible": [
+        "PROVEN_LOGICAL_TO_PHYSICAL_MATERIAL_JOIN",
+        "EXACT_DDS_ROLE_BINDINGS",
+        "PARTICLE_MODULE_TYPE_DATA_RIBBON_RUNTIME_SEMANTICS",
+        "WEAPON_TIP_OR_DUAL_EDGE_ENDPOINT"
+      ]
+    }
+  ],
+  "impactStack": {
+    "status": "MANUAL_ASSEMBLY_PENDING",
+    "commonStartDelaySeconds": 0.18880000000000052,
+    "masterElementId": "manual.trackb.ba4.impact-master",
+    "carriers": [
+      {
+        "roleId": "impact-master",
+        "sourceElementId": "fx_pc_flm_01.par_m_flm_pyungimpact_01.particlespriteemitter_7",
+        "targetElementId": "manual.trackb.ba4.impact-master",
+        "master": true,
+        "transformExecution": "TERMINAL_MASTER_FINAL_MATRIX",
+        "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_me_ap_02_5_ts_tr",
+        "resourceBindings": [
+          {
+            "slotId": "meshModel",
+            "assetId": "Effect/LanceMaster/Meshes/fm_d_helix_015_1.wmodel"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_e_atypical_002.dds"
+          }
+        ],
+        "materialExecutionStatus": "MANUAL_ASSEMBLY_PENDING_SOURCE_SHADER_PARITY"
+      },
+      {
+        "roleId": "impact-wave",
+        "sourceElementId": "fx_pc_flm_01.par_m_flm_pyungimpact_01.particlespriteemitter_5",
+        "targetElementId": "manual.trackb.ba4.impact-wave",
+        "master": false,
+        "transformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+        "sourceMaterialPath": "fx_m_mi_m_00.fx_mi.fx_m_pa_spritewave_01_7_tr",
+        "resourceBindings": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_m_trail_004_cl.dds"
+          },
+          {
+            "slotId": "dissolve",
+            "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_05_ycl.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_cloud_022.dds"
+          }
+        ],
+        "materialExecutionStatus": "MANUAL_ASSEMBLY_PENDING_SOURCE_SHADER_PARITY"
+      },
+      {
+        "roleId": "impact-glow-short",
+        "sourceElementId": "fx_pc_flm_01.par_m_flm_pyungimpact_01.particlespriteemitter_1",
+        "targetElementId": "manual.trackb.ba4.impact-glow-short",
+        "master": false,
+        "transformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+        "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_2_ad",
+        "resourceBindings": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_glow_003.dds"
+          }
+        ],
+        "materialExecutionStatus": "MANUAL_ASSEMBLY_PENDING_SOURCE_SHADER_PARITY"
+      },
+      {
+        "roleId": "impact-glow-long",
+        "sourceElementId": "fx_pc_flm_01.par_m_flm_pyungimpact_01.particlespriteemitter_21",
+        "targetElementId": "manual.trackb.ba4.impact-glow-long",
+        "master": false,
+        "transformExecution": "MASTER_FINAL_MATRIX_INHERITED",
+        "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_2_ad",
+        "resourceBindings": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_glow_003.dds"
+          }
+        ],
+        "materialExecutionStatus": "MANUAL_ASSEMBLY_PENDING_SOURCE_SHADER_PARITY"
+      }
+    ]
+  },
+  "whiteCaptureRca": {
+    "screenshotElementKind": "mesh",
+    "screenshotElementId": "authored.approx.s002.mesh01",
+    "screenshotWasDecal": false,
+    "screenshotWasTrail": false,
+    "missingDdsFallback": false,
+    "sourceScalarEvidence": {
+      "emissive_tex_strength": 5000.0,
+      "emissive_tex_power": 2.0,
+      "alpha_tex_strength": 4.0
+    },
+    "rootCause": "RECONSTRUCTED_GROUPED_SHADER_HDR_SATURATION_WITHOUT_SOURCE_PARTICLE_COLOR_ALPHA"
+  },
+  "candidateComposition": {
+    "meshCount": 2,
+    "spriteCount": 3,
+    "trailElementCount": 2,
+    "visibleGenericTrailCount": 1,
+    "blockedRibbonCount": 1,
+    "decalCount": 0,
+    "runtimeParticleCount": 0
+  }
+}

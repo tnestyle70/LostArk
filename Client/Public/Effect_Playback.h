@@ -341,6 +341,7 @@ private:
 	EFFECT_DOCUMENT_DESC m_Document;
 	std::shared_ptr<const PREPARED_RESOURCES> m_pPreparedResources;
 	std::unordered_map<std::string, ELEMENT_STATE> m_States;
+	std::unordered_map<std::string, size_t> m_TransformMasterIndices;
 	std::unordered_map<std::string, float4x4_t> m_SourceAnchorWorlds;
 	std::vector<SOURCE_PARTICLE_EVENT> m_PendingSourceEvents;
 	EFFECT_EVALUATED_FRAME m_Frame;
