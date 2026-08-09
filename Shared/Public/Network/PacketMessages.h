@@ -97,6 +97,7 @@ namespace LostArk::Shared
 	{
 		SPAWNED,
 		ALREADY_EXISTS,
+		ACTIVATED,
 		REJECTED,
 		END
 	};
@@ -145,6 +146,9 @@ namespace LostArk::Shared
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
 		float fYawDegrees = 0.f;
+		// Server-authoritative XZ combat body radius. NPC presentations have no
+		// combat body and therefore publish zero.
+		float fCollisionRadius = 0.f;
 	};
 
 	bool Write_Message(
@@ -283,6 +287,41 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_REVIVE_PLAYER& message);
 
+	struct C2S_CHANGE_CHARACTER_CLASS
+	{
+		std::uint32_t iClientSequence = 0;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
+	};
+
+	enum class CHARACTER_CLASS_CHANGE_RESULT : std::uint8_t
+	{
+		ACCEPTED,
+		REJECTED_WRONG_WORLD,
+		REJECTED_STALE_SEQUENCE,
+		REJECTED_UNSUPPORTED_CLASS,
+		REJECTED_SAME_CLASS,
+		REJECTED_STATE,
+		END
+	};
+
+	struct S2C_CHARACTER_CLASS_CHANGE_RESULT
+	{
+		std::uint32_t iClientSequence = 0;
+		CHARACTER_CLASS_CHANGE_RESULT eResult =
+			CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STATE;
+		CHARACTER_CLASS_ID eRequestedClass = CHARACTER_CLASS_ID::END;
+		CHARACTER_CLASS_ID eActiveClass = CHARACTER_CLASS_ID::END;
+	};
+
+	bool Write_Message(CPacketWriter& writer,
+		const C2S_CHANGE_CHARACTER_CLASS& message);
+	bool Read_Message(CPacketReader& reader,
+		C2S_CHANGE_CHARACTER_CLASS& message);
+	bool Write_Message(CPacketWriter& writer,
+		const S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
+	bool Read_Message(CPacketReader& reader,
+		S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
+
 	enum class PLAYER_ACTION_STATE : std::uint8_t
 	{
 		NONE,
@@ -313,6 +352,7 @@ namespace LostArk::Shared
 	{
 		NET_ENTITY_ID iNetEntityId =
 			INVALID_NET_ENTITY_ID;
+		CHARACTER_CLASS_ID eCharacterClass = CHARACTER_CLASS_ID::END;
 
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;

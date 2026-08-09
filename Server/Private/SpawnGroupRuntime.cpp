@@ -49,6 +49,50 @@ bool LostArk::Server::CSpawnGroupRuntime::Activate(const std::string& spawnGroup
 	return true;
 }
 
+bool LostArk::Server::CSpawnGroupRuntime::Activate_Immediate(
+	const std::string& spawnGroupId,
+	const CSpawnGroupBootstrap& bootstrap,
+	const SPAWN_CALLBACK& spawn)
+{
+	RUNTIME_GROUP* group = Find(spawnGroupId);
+	if (nullptr == group || GROUP_STATE::DORMANT != group->eState ||
+		nullptr == group->pDefinition || !spawn)
+	{
+		return false;
+	}
+
+	const SPAWN_GROUP_DEFINITION& definition = *group->pDefinition;
+	if (!definition.strRequiredCompletedGroupId.empty() ||
+		1u != definition.iMaxAlive || 1u != definition.Waves.size())
+	{
+		return false;
+	}
+	const SPAWN_GROUP_WAVE& wave = definition.Waves.front();
+	if (0u != wave.iStartDelayMs || 1u != wave.Entries.size())
+		return false;
+	const SPAWN_GROUP_ENTRY& entry = wave.Entries.front();
+	if (1u != entry.iCount || 0u != entry.iInitialDelayMs ||
+		0u != entry.iSpawnIntervalMs)
+	{
+		return false;
+	}
+	const SPAWN_GROUP_ANCHOR* anchor =
+		bootstrap.Find_Anchor(entry.strAnchorId);
+	const MONSTER_RUNTIME_PROFILE* profile =
+		bootstrap.Find_Profile(entry.strArchetypeId);
+	if (nullptr == anchor || nullptr == profile ||
+		!spawn(spawnGroupId, entry, *anchor, *profile, 0u))
+	{
+		return false;
+	}
+
+	group->eState = GROUP_STATE::RUNNING;
+	group->iWaveIndex = 0u;
+	Begin_Wave(*group);
+	group->SpawnedByEntry[0] = 1u;
+	return true;
+}
+
 void LostArk::Server::CSpawnGroupRuntime::Update(
 	const float fixedDeltaSeconds,
 	const CSpawnGroupBootstrap& bootstrap,
@@ -125,6 +169,13 @@ bool LostArk::Server::CSpawnGroupRuntime::Is_Completed(
 {
 	const RUNTIME_GROUP* group = Find(spawnGroupId);
 	return nullptr != group && GROUP_STATE::COMPLETED == group->eState;
+}
+
+bool LostArk::Server::CSpawnGroupRuntime::Is_ActiveOrCompleted(
+	const std::string& spawnGroupId) const
+{
+	const RUNTIME_GROUP* group = Find(spawnGroupId);
+	return nullptr != group && GROUP_STATE::DORMANT != group->eState;
 }
 
 LostArk::Server::CSpawnGroupRuntime::RUNTIME_GROUP*

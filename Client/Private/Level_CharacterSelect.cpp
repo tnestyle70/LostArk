@@ -25,19 +25,39 @@
 
 namespace
 {
-	constexpr f32_t PREVIEW_POSITION_X = -772.017f;
-	constexpr f32_t PREVIEW_POSITION_Y = -142.55f;
-	constexpr f32_t PREVIEW_POSITION_Z = 197.538f;
+	constexpr f32_t ARENA_INITIAL_TARGET_X = -772.017f;
+	constexpr f32_t ARENA_INITIAL_TARGET_Y = -142.55f;
+	constexpr f32_t ARENA_INITIAL_TARGET_Z = 197.538f;
 	constexpr f32_t CHARACTER_SELECT_CAMERA_SIDE = 0.4f;
 	constexpr f32_t CHARACTER_SELECT_CAMERA_HEIGHT = 7.5f;
 	constexpr f32_t CHARACTER_SELECT_CAMERA_DISTANCE = 4.5f;
 	constexpr f32_t CHARACTER_SELECT_CAMERA_LOOK_HEIGHT = 1.05f;
 	constexpr f32_t CHARACTER_SELECT_CAMERA_FOV_Y = 45.f;
 	constexpr std::chrono::seconds CONNECTION_TIMEOUT{ 5 };
-	constexpr std::chrono::seconds VALTAN_REQUEST_TIMEOUT{ 5 };
+	constexpr std::chrono::seconds CLASS_CHANGE_TIMEOUT{ 5 };
+	constexpr std::chrono::seconds ARENA_SPAWN_REQUEST_TIMEOUT{ 5 };
 	constexpr char_t PLAYER_NICKNAME[] = "Player";
-	constexpr char_t VALTAN_PLACEMENT_ID[] =
-		"boss.valtan.character-select.lazy";
+
+	struct ARENA_SPAWN_OPTION final
+	{
+		const char_t* pLabel = nullptr;
+		const char_t* pStableId = nullptr;
+		const char_t* pArchetypeId = nullptr;
+		bool_t requiresValtanPrewarm = false;
+	};
+
+	constexpr std::array<ARENA_SPAWN_OPTION, 3> ARENA_SPAWN_OPTIONS =
+	{
+		ARENA_SPAWN_OPTION{
+			"Monster", "spawn.character-select.monster",
+			"MONSTER_VALTAN_PADD_01", false },
+		ARENA_SPAWN_OPTION{
+			"Mid Boss (Lugaru)", "spawn.character-select.miniboss",
+			"MINIBOSS_LUGARU", false },
+		ARENA_SPAWN_OPTION{
+			"Valtan", "boss.valtan.character-select.lazy",
+			"BOSS_VALTAN", true }
+	};
 
 	const char_t* Get_CharacterClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -72,8 +92,8 @@ namespace
 	{
 		switch (stage)
 		{
-		case LOBBY_STAGE::TEST: return "Character Select Server Play";
-		case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select Preview";
+		case LOBBY_STAGE::TEST: return "Character Select";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "Character Select";
 		case LOBBY_STAGE::BERN: return "Bern";
 		case LOBBY_STAGE::VALTAN: return "Valtan";
 		default: return "Unknown";
@@ -85,7 +105,7 @@ namespace
 		switch (stage)
 		{
 		case LOBBY_STAGE::TEST: return "character-select.server-play";
-		case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.return-preview";
+		case LOBBY_STAGE::CHARACTER_SELECT: return "character-select.server-entry";
 		case LOBBY_STAGE::BERN: return "character-select.enter-bern";
 		case LOBBY_STAGE::VALTAN: return "character-select.enter-valtan";
 		default: return nullptr;
@@ -102,8 +122,7 @@ CLevel_CharacterSelect::CLevel_CharacterSelect(
 
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
-	CAnimationTargetService::Unbind(m_pPreviewCharacter);
-	CAnimationTargetService::Unbind(m_Replication.Get_LocalCharacter());
+	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
 	CCombatHUDViewModel::Get().Reset_RuntimeState();
@@ -144,11 +163,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 			initialClass);
 		if (SUPPORTED_CLASSES.end() == selected)
 			return E_INVALIDARG;
-		m_iPreviewIndex = static_cast<size_t>(
+		m_iSelectedClassIndex = static_cast<size_t>(
 			std::distance(SUPPORTED_CLASSES.begin(), selected));
 	}
 
-	if (FAILED(Ready_Preview(initialClass)) || FAILED(Ready_Camera()))
+	if (FAILED(Ready_Camera()))
 		return E_FAIL;
 
 	m_pClassSelectView = std::make_unique<CHUDRuntimeView>(
@@ -156,17 +175,13 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		L"UI/ClassSelect/ClassSelect_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
-	CHARACTER_TEST_ENTRY_MODE entryMode = CHARACTER_TEST_ENTRY_MODE::NONE;
-	if (CCharacterSelectionState::Try_Consume_TestEntryMode(entryMode) &&
-		CHARACTER_TEST_ENTRY_MODE::SERVER_GAMEPLAY == entryMode)
-	{
-		m_eMode = MODE::CONNECTING;
-		m_isValtanSpawnRequested = false;
-		m_ConnectionDeadline =
-			std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
-		m_strStatus =
-			"Lobby-approved Server Arena handoff; waiting for replicated character...";
-	}
+	m_eMode = MODE::CONNECTING;
+	m_iPendingArenaSpawnIndex.reset();
+	m_ArenaSpawnAccepted.fill(false);
+	m_ConnectionDeadline =
+		std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
+	m_strStatus =
+		"Lobby-approved Server Arena; waiting for replicated character...";
 	return S_OK;
 }
 
@@ -183,7 +198,6 @@ void CLevel_CharacterSelect::Update(const f32_t fTimeDelta)
 		break;
 	case MODE::RETURNING_TO_LOBBY:
 		break;
-	case MODE::PREVIEW:
 	default:
 		break;
 	}
@@ -197,9 +211,7 @@ HRESULT CLevel_CharacterSelect::Render()
 #ifdef _DEBUG
 	SetWindowText(
 		g_hWnd,
-		MODE::SERVER_ARENA == m_eMode ?
-		TEXT("LostArk Character Select - Server Arena") :
-		TEXT("LostArk Character Select - Preview"));
+		TEXT("LostArk Character Select - Server Arena"));
 #endif
 	Render_SelectionPanel();
 	Render_ClassList();
@@ -213,34 +225,28 @@ HRESULT CLevel_CharacterSelect::Ready_Lights()
 
 HRESULT CLevel_CharacterSelect::Ready_Camera()
 {
-	if (nullptr == m_pPreviewCharacter ||
-		nullptr == m_pPreviewCharacter->Get_Transform())
-	{
-		return E_FAIL;
-	}
-
 	CCamera_Free::CAMERA_FREE_DESC desc{};
 	const float3_t positionOffset = CharacterSelectCameraPositionOffset();
 	const float3_t lookOffset = CharacterSelectCameraLookOffset();
 	desc.vEye = float3_t(
-		PREVIEW_POSITION_X + positionOffset.x,
-		PREVIEW_POSITION_Y + positionOffset.y,
-		PREVIEW_POSITION_Z + positionOffset.z);
+		ARENA_INITIAL_TARGET_X + positionOffset.x,
+		ARENA_INITIAL_TARGET_Y + positionOffset.y,
+		ARENA_INITIAL_TARGET_Z + positionOffset.z);
 	desc.vAt = float3_t(
-		PREVIEW_POSITION_X + lookOffset.x,
-		PREVIEW_POSITION_Y + lookOffset.y,
-		PREVIEW_POSITION_Z + lookOffset.z);
+		ARENA_INITIAL_TARGET_X + lookOffset.x,
+		ARENA_INITIAL_TARGET_Y + lookOffset.y,
+		ARENA_INITIAL_TARGET_Z + lookOffset.z);
 	desc.fFovy = CHARACTER_SELECT_CAMERA_FOV_Y;
 	desc.fNear = 0.1f;
 	desc.fFar = 2000.f;
 	desc.fSpeedPerSec = 20.f;
 	desc.fRotationPerSec = 90.f;
 	desc.fMouseSensor = 0.1f;
-	desc.pFollowTarget = m_pPreviewCharacter->Get_Transform();
+	desc.pFollowTarget = nullptr;
 	desc.vPositionOffset = positionOffset;
 	desc.vLookOffset = lookOffset;
 	desc.fFollowResponse = 18.f;
-	desc.isFollowEnabled = true;
+	desc.isFollowEnabled = false;
 	desc.allowCapturedKeyboardInput = true;
 
 	shared_ptr<CGameObject> gameObject;
@@ -263,7 +269,7 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 			gameObject);
 		return E_FAIL;
 	}
-	m_pCameraTarget = m_pPreviewCharacter;
+	m_pCameraTarget.reset();
 	return S_OK;
 }
 
@@ -299,142 +305,136 @@ bool_t CLevel_CharacterSelect::Bind_CameraTarget(
 	if (m_pCameraTarget.lock() == character)
 		return true;
 
-	const bool_t wasFollowEnabled = m_pCamera->Is_FollowRequested();
 	m_pCamera->Set_FollowTarget(character->Get_Transform());
 	m_pCamera->Set_PositionOffset(positionOffset);
-	m_pCamera->Set_FollowEnabled(wasFollowEnabled);
+	m_pCamera->Set_FollowEnabled(true);
 	m_pCameraTarget = character;
 	return true;
 }
 
-HRESULT CLevel_CharacterSelect::Ready_Preview(
-	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
+bool_t CLevel_CharacterSelect::Request_ClassChange(const size_t index)
 {
-	shared_ptr<CCharacter> stagedCharacter;
-	if (FAILED(Stage_Preview(characterClass, stagedCharacter)))
-		return E_FAIL;
-	if (FAILED(Commit_Preview(characterClass, stagedCharacter)))
+	if (MODE::SERVER_ARENA != m_eMode || m_iPendingClassIndex.has_value() ||
+		index >= SUPPORTED_CLASSES.size() || nullptr == m_pPlayerCommandSink)
 	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			TEXT("Layer_PreviewCharacter"),
-			stagedCharacter);
-		return E_FAIL;
-	}
-	return S_OK;
-}
-
-HRESULT CLevel_CharacterSelect::Stage_Preview(
-	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	shared_ptr<CCharacter>& outCharacter)
-{
-	outCharacter.reset();
-	if (!LostArk::Shared::Is_Supported_Playable_Character_Class(characterClass))
-		return E_INVALIDARG;
-	const CHARACTER_SPEC* spec = CCharacterCatalog::Find_Spec(characterClass);
-	if (nullptr == spec)
-		return E_FAIL;
-
-	CCharacter::CHARACTER_DESC desc{};
-	desc.iPrototypeLevelIndex = ETOUI(LEVEL::CHARACTER_SELECT);
-	desc.pSpec = spec;
-	desc.pNavigationPrototypeTag = nullptr;
-	desc.fSpeedPerSec = 0.f;
-	desc.fRotationPerSec = 90.f;
-	desc.vPosition = float3_t(
-		PREVIEW_POSITION_X,
-		PREVIEW_POSITION_Y,
-		PREVIEW_POSITION_Z);
-	desc.strNickName = Get_CharacterClassName(characterClass);
-	desc.isLocallyControlled = false;
-
-	shared_ptr<CGameObject> stagedObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		ETOUI(LEVEL::CHARACTER_SELECT),
-		TEXT("Prototype_GameObject_Character"),
-		ETOUI(LEVEL::CHARACTER_SELECT),
-		TEXT("Layer_PreviewCharacter"),
-		&desc,
-		&stagedObject)))
-	{
-		return E_FAIL;
-	}
-	const shared_ptr<CCharacter> stagedCharacter =
-		dynamic_pointer_cast<CCharacter>(stagedObject);
-	if (nullptr == stagedCharacter ||
-		nullptr == stagedCharacter->Get_Transform() ||
-		!stagedCharacter->Set_Animation(CHARACTER_ANIM::IDLE, true))
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			TEXT("Layer_PreviewCharacter"),
-			stagedObject);
-		return E_FAIL;
-	}
-	stagedCharacter->Get_Transform()->Rotation(0.f, 180.f, 0.f);
-	outCharacter = stagedCharacter;
-	return S_OK;
-}
-
-HRESULT CLevel_CharacterSelect::Commit_Preview(
-	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-	const shared_ptr<CCharacter>& stagedCharacter)
-{
-	if (nullptr == stagedCharacter ||
-		!CCombatHUDViewModel::Get().Apply_CharacterPreview(characterClass))
-	{
-		return E_FAIL;
-	}
-	const shared_ptr<CCharacter> previous = m_pPreviewCharacter;
-	m_pPreviewCharacter = stagedCharacter;
-	if (nullptr != previous)
-		CAnimationTargetService::Unbind(previous);
-	CAnimationTargetService::Bind(m_pPreviewCharacter);
-	if (nullptr != m_pCamera)
-	{
-		Bind_CameraTarget(
-			m_pPreviewCharacter,
-			CharacterSelectCameraPositionOffset());
-	}
-	if (nullptr != previous)
-	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			TEXT("Layer_PreviewCharacter"),
-			previous);
-	}
-	return S_OK;
-}
-
-bool_t CLevel_CharacterSelect::Select_Preview(const size_t index)
-{
-	if (MODE::PREVIEW != m_eMode || index >= SUPPORTED_CLASSES.size())
 		return false;
-	if (index == m_iPreviewIndex && nullptr != m_pPreviewCharacter)
+	}
+	if (index == m_iSelectedClassIndex)
+	{
+		m_strStatus = "The selected class is already active.";
 		return true;
-
+	}
 	const auto characterClass = SUPPORTED_CLASSES[index];
-	if (!CPlayableCharacterAssetService::Is_Ready(
-		ETOUI(LEVEL::CHARACTER_SELECT), characterClass) &&
-		FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-			m_pDevice,
-			m_pContext,
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			characterClass)))
+	if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+		m_pDevice,
+		m_pContext,
+		ETOUI(LEVEL::CHARACTER_SELECT),
+		characterClass)))
 	{
 		m_strStatus =
-			"The selected class assets failed to load. Previous preview kept.";
+			"The selected class assets failed to load. The active character was kept.";
 		return false;
 	}
-	if (FAILED(Ready_Preview(characterClass)))
+
+	const std::uint32_t sequence = m_iNextClassChangeSequence++;
+	if (0u == m_iNextClassChangeSequence)
+		m_iNextClassChangeSequence = 1u;
+	if (!m_pPlayerCommandSink->Request_ChangeCharacterClass(
+		sequence, characterClass))
 	{
-		m_strStatus =
-			"The selected preview failed to stage. Previous preview kept.";
+		m_strStatus = "The class change request could not be sent.";
 		return false;
 	}
-	m_iPreviewIndex = index;
-	m_strStatus = std::string("Previewing ") +
+	m_iPendingClassIndex = index;
+	m_iPendingClassChangeSequence = sequence;
+	m_ClassChangeDeadline =
+		std::chrono::steady_clock::now() + CLASS_CHANGE_TIMEOUT;
+	m_strStatus = std::string("Server class change requested: ") +
 		Get_CharacterClassName(characterClass) + ".";
+	return true;
+}
+
+void CLevel_CharacterSelect::Consume_ClassChangeResults()
+{
+	using namespace LostArk::Shared;
+	S2C_CHARACTER_CLASS_CHANGE_RESULT result{};
+	while (CNetworkManager::Get().Try_Consume_CharacterClassChangeResult(result))
+	{
+		if (!m_iPendingClassIndex.has_value() ||
+			result.iClientSequence != m_iPendingClassChangeSequence ||
+			result.eRequestedClass != SUPPORTED_CLASSES[*m_iPendingClassIndex])
+		{
+			continue;
+		}
+		if (CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED == result.eResult)
+		{
+			m_strStatus = "Server approved the class change; waiting for snapshot.";
+			continue;
+		}
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		switch (result.eResult)
+		{
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_SAME_CLASS:
+			m_strStatus = "Server reports that class is already active.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_STALE_SEQUENCE:
+			m_strStatus = "Server rejected a stale class change request.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_UNSUPPORTED_CLASS:
+			m_strStatus = "Server rejected an unsupported class.";
+			break;
+		case CHARACTER_CLASS_CHANGE_RESULT::REJECTED_WRONG_WORLD:
+			m_strStatus = "Class changes are unavailable in this Server world.";
+			break;
+		default:
+			m_strStatus = "Server rejected the class change; the active character was kept.";
+			break;
+		}
+	}
+}
+
+bool_t CLevel_CharacterSelect::Synchronize_LocalCharacter()
+{
+	const shared_ptr<CCharacter> localCharacter =
+		m_Replication.Get_LocalCharacter();
+	if (nullptr == localCharacter || nullptr == localCharacter->Get_Spec())
+		return false;
+	const auto selected = std::find(
+		SUPPORTED_CLASSES.begin(), SUPPORTED_CLASSES.end(),
+		localCharacter->Get_Spec()->eCharacterClass);
+	if (SUPPORTED_CLASSES.end() == selected)
+		return false;
+	const size_t selectedIndex = static_cast<size_t>(
+		std::distance(SUPPORTED_CLASSES.begin(), selected));
+
+	if (m_pActiveCharacter != localCharacter)
+	{
+		CAnimationTargetService::Unbind(m_pActiveCharacter);
+		CAnimationTargetService::Bind(localCharacter);
+		if (!Bind_CameraTarget(
+			localCharacter, CharacterSelectCameraPositionOffset()))
+		{
+			return false;
+		}
+		m_PlayerController.Rebind_LocalCharacter(localCharacter);
+		m_pActiveCharacter = localCharacter;
+	}
+	m_iSelectedClassIndex = selectedIndex;
+	if (!CCharacterSelectionState::Select(
+		localCharacter->Get_Spec()->eCharacterClass))
+	{
+		return false;
+	}
+	if (m_iPendingClassIndex.has_value() &&
+		*m_iPendingClassIndex == selectedIndex)
+	{
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		m_strStatus = std::string("Class changed to ") +
+			Get_CharacterClassName(localCharacter->Get_Spec()->eCharacterClass) +
+			". Skills now resolve from the new class.";
+	}
 	return true;
 }
 
@@ -454,7 +454,7 @@ void CLevel_CharacterSelect::Update_Connecting()
 	if (nullptr != m_Replication.Get_LocalCharacter())
 	{
 		if (!Commit_ServerArena())
-			Fail_ServerArena("Replicated character could not replace the preview.");
+			Fail_ServerArena("Replicated character could not bind to Server Arena.");
 		return;
 	}
 	if (std::chrono::steady_clock::now() >= m_ConnectionDeadline)
@@ -465,59 +465,63 @@ bool_t CLevel_CharacterSelect::Commit_ServerArena()
 {
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
-	if (nullptr == localCharacter ||
-		!Bind_CameraTarget(
-			localCharacter,
-			CharacterSelectCameraPositionOffset()))
+	if (nullptr == localCharacter)
 	{
 		return false;
 	}
-
-	const shared_ptr<CCharacter> preview = m_pPreviewCharacter;
-	CAnimationTargetService::Unbind(preview);
-	CAnimationTargetService::Bind(localCharacter);
 	m_PlayerController.Set_LocalCharacter(localCharacter);
-	if (nullptr != preview &&
-		FAILED(CGameInstance::Get().Remove_GameObject_from_Layer(
-			ETOUI(LEVEL::CHARACTER_SELECT),
-			TEXT("Layer_PreviewCharacter"),
-			preview)))
-	{
+	m_pActiveCharacter.reset();
+	if (!Synchronize_LocalCharacter())
 		return false;
-	}
-	m_pPreviewCharacter.reset();
 
 	m_eMode = MODE::SERVER_ARENA;
 	m_strStatus =
-		"Server Arena active. Skill keys and F6 remain available with F1 tools.";
+		"Server Arena active. Select a class thumbnail, then test its skill keys.";
 	return true;
 }
 
 void CLevel_CharacterSelect::Update_ServerArena()
 {
+	Consume_ClassChangeResults();
 	LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT spawnResult{};
 	while (CNetworkManager::Get().Try_Consume_WorldEntitySpawnResult(
 		spawnResult))
 	{
-		if (spawnResult.strPlacementId != VALTAN_PLACEMENT_ID)
+		const auto option = std::find_if(
+			ARENA_SPAWN_OPTIONS.begin(),
+			ARENA_SPAWN_OPTIONS.end(),
+			[&spawnResult](const ARENA_SPAWN_OPTION& candidate)
+			{
+				return spawnResult.strPlacementId == candidate.pStableId;
+			});
+		if (ARENA_SPAWN_OPTIONS.end() == option)
 			continue;
+		const size_t optionIndex = static_cast<size_t>(
+			std::distance(ARENA_SPAWN_OPTIONS.begin(), option));
 		if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED ==
 			spawnResult.eResult)
 		{
-			m_isValtanSpawnRequested = false;
-			m_strStatus = "Server rejected the Valtan spawn request.";
+			m_ArenaSpawnAccepted[optionIndex] = false;
+			m_strStatus = std::string{ "Server rejected " } +
+				option->pLabel + " spawn.";
 		}
 		else
 		{
-			m_strStatus =
-				"Server accepted the Valtan placement; awaiting presentation.";
+			m_ArenaSpawnAccepted[optionIndex] = true;
+			m_strStatus = std::string{ "Server accepted " } +
+				option->pLabel + " spawn.";
 		}
+		if (m_iPendingArenaSpawnIndex == optionIndex)
+			m_iPendingArenaSpawnIndex.reset();
 	}
 	if (!m_Replication.Update())
 	{
 		Fail_ServerArena("Server presentation failed.");
 		return;
 	}
+	string presentationFailure;
+	if (m_Replication.Try_Consume_PresentationFailure(presentationFailure))
+		m_strStatus = std::move(presentationFailure);
 	if (m_Replication.Has_PendingConnectionLoss() ||
 		!CNetworkManager::Get().Is_Connected())
 	{
@@ -525,33 +529,51 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		return;
 	}
 
-	const shared_ptr<CCharacter> localCharacter =
-		m_Replication.Get_LocalCharacter();
-	m_PlayerController.Set_LocalCharacter(localCharacter);
+	if (!Synchronize_LocalCharacter())
+	{
+		Fail_ServerArena("The replicated local character is unavailable.");
+		return;
+	}
 	m_PlayerController.Update(
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled());
-	if (m_Replication.Has_WorldEntity("BOSS_VALTAN"))
+	if (m_iPendingClassIndex.has_value() &&
+		std::chrono::steady_clock::now() >= m_ClassChangeDeadline)
 	{
-		if (m_isValtanSpawnRequested)
-			m_strStatus = "Valtan spawned from the Server world template.";
-		m_isValtanSpawnRequested = false;
+		m_iPendingClassIndex.reset();
+		m_iPendingClassChangeSequence = 0u;
+		m_strStatus =
+			"Class change was not observed within 5 seconds; the active presentation was kept.";
 	}
-	else if (m_isValtanSpawnRequested &&
-		std::chrono::steady_clock::now() >= m_ValtanRequestDeadline)
+	for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
 	{
-		m_isValtanSpawnRequested = false;
-		m_strStatus = "Valtan spawn was not observed; retry is available.";
+		if (m_Replication.Has_WorldEntity(
+			ARENA_SPAWN_OPTIONS[index].pArchetypeId))
+		{
+			m_ArenaSpawnAccepted[index] = true;
+			if (m_iPendingArenaSpawnIndex == index)
+				m_iPendingArenaSpawnIndex.reset();
+		}
+	}
+	if (m_iPendingArenaSpawnIndex.has_value() &&
+		std::chrono::steady_clock::now() >= m_ArenaSpawnRequestDeadline)
+	{
+		m_iPendingArenaSpawnIndex.reset();
+		m_strStatus =
+			"Arena spawn response timed out; retry is available.";
 	}
 }
 
 void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 {
-	CAnimationTargetService::Unbind(m_Replication.Get_LocalCharacter());
+	CAnimationTargetService::Unbind(m_pActiveCharacter);
+	m_pActiveCharacter.reset();
 	CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
 	m_PlayerController.Set_LocalCharacter(nullptr);
 	m_eMode = MODE::RETURNING_TO_LOBBY;
-	m_isValtanSpawnRequested = false;
+	m_iPendingArenaSpawnIndex.reset();
+	m_iPendingClassIndex.reset();
+	m_iPendingClassChangeSequence = 0u;
 	m_strStatus = reason + " Returning to Lobby; local gameplay fallback is disabled.";
 	if (!CLevelTransitionService::Request_Load(
 		LEVEL::LOBBY,
@@ -561,34 +583,43 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	}
 }
 
-bool_t CLevel_CharacterSelect::Request_ValtanSpawn()
+bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 {
-	if (MODE::SERVER_ARENA != m_eMode || m_isValtanSpawnRequested ||
-		m_Replication.Has_WorldEntity("BOSS_VALTAN"))
+	if (MODE::SERVER_ARENA != m_eMode ||
+		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
+		m_iPendingArenaSpawnIndex.has_value() ||
+		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
 	{
 		return false;
 	}
-	m_strStatus = "Preparing Valtan presentation assets...";
-	if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::CHARACTER_SELECT))))
+	const ARENA_SPAWN_OPTION& option =
+		ARENA_SPAWN_OPTIONS[m_iSelectedArenaSpawnIndex];
+	if (option.requiresValtanPrewarm)
 	{
-		m_strStatus =
-			"Valtan assets failed to prepare; no Server spawn was requested.";
-		return false;
+		m_strStatus = "Preparing Valtan presentation assets...";
+		if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::CHARACTER_SELECT))))
+		{
+			m_strStatus =
+				"Valtan assets failed to prepare; no Server spawn was requested.";
+			return false;
+		}
 	}
 	if (nullptr == m_pWorldEntityCommandSink ||
 		!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(
-			VALTAN_PLACEMENT_ID))
+			option.pStableId))
 	{
-		m_strStatus = "Valtan spawn request could not be sent.";
+		m_strStatus = std::string{ option.pLabel } +
+			" spawn request could not be sent.";
 		return false;
 	}
-	m_isValtanSpawnRequested = true;
-	m_ValtanRequestDeadline =
-		std::chrono::steady_clock::now() + VALTAN_REQUEST_TIMEOUT;
-	m_strStatus = "Valtan spawn requested from Server.";
+	m_iPendingArenaSpawnIndex = m_iSelectedArenaSpawnIndex;
+	m_ArenaSpawnRequestDeadline =
+		std::chrono::steady_clock::now() + ARENA_SPAWN_REQUEST_TIMEOUT;
+	m_strStatus = std::string{ option.pLabel } +
+		" spawn requested from Server.";
 	return true;
 }
 
@@ -597,21 +628,20 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 	const char_t* stageName = Get_StageName(stage);
 	const char_t* transitionSource = Get_StageTransitionSource(stage);
 	if (nullptr == transitionSource ||
-		m_iPreviewIndex >= SUPPORTED_CLASSES.size())
+		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size())
 	{
 		m_strStatus = "The selected stage is not supported here.";
 		return false;
 	}
-	if (!CCharacterSelectionState::Select(SUPPORTED_CLASSES[m_iPreviewIndex]))
+	if (!CCharacterSelectionState::Select(
+		SUPPORTED_CLASSES[m_iSelectedClassIndex]))
 		return false;
-	if (MODE::PREVIEW != m_eMode)
-	{
-		CAnimationTargetService::Unbind(m_Replication.Get_LocalCharacter());
-		CNetworkManager::Get().Close_ServerConnection();
-		m_Replication.Reset();
-		m_PlayerController.Set_LocalCharacter(nullptr);
-		m_eMode = MODE::RETURNING_TO_LOBBY;
-	}
+	CAnimationTargetService::Unbind(m_pActiveCharacter);
+	m_pActiveCharacter.reset();
+	CNetworkManager::Get().Close_ServerConnection();
+	m_Replication.Reset();
+	m_PlayerController.Set_LocalCharacter(nullptr);
+	m_eMode = MODE::RETURNING_TO_LOBBY;
 
 	LOBBY_COMMAND_TOKEN token = INVALID_LOBBY_COMMAND_TOKEN;
 	if (!CLobbyCommandService::Request(stage, token))
@@ -655,67 +685,72 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		return;
 	}
 
-	ImGui::TextUnformatted("Mode");
-	const bool_t isPreview = MODE::PREVIEW == m_eMode;
+	ImGui::TextUnformatted("Server-authorized Character Select");
 	const bool_t isConnecting = MODE::CONNECTING == m_eMode;
 	const bool_t isServerArena = MODE::SERVER_ARENA == m_eMode;
 	const bool_t isReturning = MODE::RETURNING_TO_LOBBY == m_eMode;
 	const bool_t transitionPending = CLevelTransitionService::Is_Pending();
-	const bool_t isModeTransitioning =
-		isConnecting || isReturning || transitionPending;
-	const bool_t isServerSelected =
-		isConnecting || isServerArena || isReturning;
-
-	ImGui::BeginDisabled(isModeTransitioning);
-	if (ImGui::RadioButton("Preview", isPreview) && !isPreview)
-		Enter_Stage(LOBBY_STAGE::CHARACTER_SELECT);
-	ImGui::SameLine();
-	if (ImGui::RadioButton(
-		"Server Play (Lobby-approved)",
-		isServerSelected) && isPreview)
-	{
-		Enter_Stage(LOBBY_STAGE::TEST);
-	}
-	ImGui::EndDisabled();
 	if (isConnecting)
-		ImGui::TextDisabled("Connecting... existing preview is preserved");
+		ImGui::TextDisabled("Waiting for the approved Server character...");
 	else if (isReturning)
-		ImGui::TextDisabled("Returning to socket-free Preview...");
+		ImGui::TextDisabled("Returning to Lobby...");
 
 	ImGui::Separator();
 	ImGui::TextUnformatted("Playable class");
-	ImGui::BeginDisabled(!isPreview || transitionPending);
+	ImGui::BeginDisabled(!isServerArena || transitionPending ||
+		m_iPendingClassIndex.has_value());
 	for (size_t index = 0; index < SUPPORTED_CLASSES.size(); ++index)
 	{
 		if (ImGui::Selectable(
 			Get_CharacterClassName(SUPPORTED_CLASSES[index]),
-			index == m_iPreviewIndex))
+			index == m_iSelectedClassIndex))
 		{
-			Select_Preview(index);
+			Request_ClassChange(index);
 		}
 	}
 	ImGui::EndDisabled();
-	if (!isPreview)
-		ImGui::TextDisabled("Return to Preview to change the Server session class.");
+	if (m_iPendingClassIndex.has_value())
+		ImGui::TextDisabled("Waiting for Server class-change approval and snapshot...");
 
 	if (isServerArena)
 	{
 		ImGui::Separator();
-		const bool_t valtanSpawned =
-			m_Replication.Has_WorldEntity("BOSS_VALTAN");
+		ImGui::TextUnformatted("Server arena spawn");
+		for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
+		{
+			if (ImGui::RadioButton(
+				ARENA_SPAWN_OPTIONS[index].pLabel,
+				m_iSelectedArenaSpawnIndex == index))
+			{
+				m_iSelectedArenaSpawnIndex = index;
+			}
+			if (index + 1u < ARENA_SPAWN_OPTIONS.size())
+				ImGui::SameLine();
+		}
 		ImGui::BeginDisabled(
-			m_isValtanSpawnRequested || valtanSpawned);
-		if (ImGui::Button("Summon Valtan (Lazy)"))
-			Request_ValtanSpawn();
+			m_iPendingArenaSpawnIndex.has_value() ||
+			m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex]);
+		if (ImGui::Button("Spawn Selected"))
+			Request_SelectedArenaSpawn();
 		ImGui::EndDisabled();
-		if (valtanSpawned)
+		if (m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
 			ImGui::SameLine(), ImGui::TextDisabled("Spawned");
-		else if (m_isValtanSpawnRequested)
+		else if (m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex)
 			ImGui::SameLine(), ImGui::TextDisabled("Requested");
+#ifdef _DEBUG
+		if (ImGui::Checkbox(
+			"Show Combat Colliders",
+			&m_isCombatColliderDebugVisible))
+		{
+			m_Replication.Set_CombatColliderDebugVisible(
+				m_isCombatColliderDebugVisible);
+		}
+#endif
 	}
 
 	ImGui::Separator();
-	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending);
+	ImGui::BeginDisabled(isConnecting || isReturning || transitionPending ||
+		m_iPendingClassIndex.has_value());
 	if (ImGui::Button("Enter Bern"))
 		Enter_Stage(LOBBY_STAGE::BERN);
 	ImGui::SameLine();
@@ -723,22 +758,11 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
-	{
-		if (MODE::PREVIEW != m_eMode)
-		{
-			Fail_ServerArena("Leaving Server Arena.");
-		}
-		else if (!CLevelTransitionService::Request_Load(
-			LEVEL::LOBBY,
-			"character-select.back"))
-		{
-			m_strStatus = CLevelTransitionService::Get_Status();
-		}
-	}
+		Fail_ServerArena("Leaving Server Arena.");
 	ImGui::EndDisabled();
 
 	ImGui::TextDisabled(
-		"F1: tools  |  F6: follow/free  |  Server Play: skill input enabled");
+		"F1: tools  |  F6: follow/free  |  Server-authorized skill input enabled");
 	ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
 }
@@ -773,7 +797,9 @@ namespace
 	constexpr CLASS_LIST_ENTRY CLASS_LIST_ENTRIES[] =
 	{
 		{ 950.f, 280.f, 48.f, 5, "Warlord",         "\xec\xa0\x84\xec\x82\xac(\xeb\x82\xa8)", "\xec\x9b\x8c\xeb\xa1\x9c\xeb\x93\x9c", "CategorySymbol_Warrior.png" },
+		{ 950.f, 280.f, 48.f, 2, "Slayer",          "\xec\xa0\x84\xec\x82\xac(\xec\x97\xac)", "\xec\x8a\xac\xeb\xa0\x88\xec\x9d\xb4\xec\x96\xb4", "CategorySymbol_Warrior.png" },
 		{ 950.f, 280.f, 48.f, 0, "LanceMaster",     "\xeb\xac\xb4\xeb\x8f\x84\xea\xb0\x80(\xec\x97\xac)", "\xec\xb0\xbd\xec\x88\xa0\xec\x82\xac", "CategorySymbol_MartialW.png" },
+		{ 950.f, 280.f, 48.f, 1, "Gunslinger",      "\xed\x97\x8c\xed\x84\xb0(\xec\x97\xac)", "\xea\xb1\xb4\xec\x8a\xac\xeb\xa7\x81\xea\xb1\xb0", nullptr },
 		{ 950.f, 280.f, 48.f, 3, "Artist",          "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xec\x97\xac)", "\xeb\x8f\x84\xed\x99\x94\xea\xb0\x80", "CategorySymbol_SpecialistF.png" },
 		{ 950.f, 280.f, 48.f, 4, "DimensionMaster", "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xeb\x82\xa8)", "\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac", nullptr },
 	};
@@ -833,6 +859,10 @@ namespace
 	constexpr f32_t THUMB_H = 78.f;
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
 	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
+	constexpr f32_t CONFIRM_W = 349.f;
+	constexpr f32_t CONFIRM_H = 52.f;
+	constexpr f32_t CONFIRM_X = (REF_WIDTH - CONFIRM_W) * 0.5f;
+	constexpr f32_t CONFIRM_Y = 668.f;
 
 	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
 	{
@@ -845,17 +875,17 @@ void CLevel_CharacterSelect::Render_ClassList()
 	if (nullptr == m_pClassSelectView)
 		return;
 
-	const string strPreviewClass = m_iPreviewIndex < SUPPORTED_CLASSES.size()
+	const string strSelectedClass = m_iSelectedClassIndex < SUPPORTED_CLASSES.size()
 		? [this]() -> string
 		{
 			for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
-				if (Entry.iSupportedClassIndex == m_iPreviewIndex)
+				if (Entry.iSupportedClassIndex == m_iSelectedClassIndex)
 					return Entry.pJsonClassName;
 			return {};
 		}()
 		: string{};
 
-	m_pClassSelectView->Render(strPreviewClass, 0);
+	m_pClassSelectView->Render(strSelectedClass, 0);
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
@@ -871,9 +901,9 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 	const ImVec2 vMouse = ImGui::GetMousePos();
 	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-	/* Changing preview class only makes sense while nothing server-authoritative is in
-	flight; Render_SelectionPanel's own Selectable list gates the same way. */
-	const bool_t bInteractable = MODE::PREVIEW == m_eMode;
+	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_iPendingClassIndex.has_value() &&
+		!CLevelTransitionService::Is_Pending();
 
 	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"
 	here is the standard faux-bold trick: the same glyphs redrawn a few pixels apart so their
@@ -918,7 +948,7 @@ void CLevel_CharacterSelect::Render_ClassList()
 	the tags, so no text is drawn there. */
 	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
 	{
-		if (Entry.iSupportedClassIndex != m_iPreviewIndex)
+		if (Entry.iSupportedClassIndex != m_iSelectedClassIndex)
 			continue;
 
 		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
@@ -998,14 +1028,18 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 		if (bExpanded)
 		{
-			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iPreviewIndex;
+			const bool_t bConfirmed = Entry.iSupportedClassIndex == m_iSelectedClassIndex;
 			const f32_t fThumbY = fRowY + THUMB_MARGIN_TOP;
 
 			const ImVec2 vThumbTopLeft = Fn_ToScreen(Entry.fX, fThumbY);
 			const ImVec2 vThumbBotRight = Fn_ToScreen(Entry.fX + THUMB_W, fThumbY + THUMB_H);
 
-			if (ID3D11ShaderResourceView* pThumbSRV = m_pClassSelectView->Load_Texture(
-				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png")))
+			ID3D11ShaderResourceView* pThumbSRV = m_pClassSelectView->Load_Texture(
+				Build_ClassSelectAssetPath(Entry.pJsonClassName, "IllustrationSmall.png"));
+			if (nullptr == pThumbSRV)
+				pThumbSRV = m_pClassSelectView->Load_Texture(
+					"UI/ClassSelect/Common/CategorySelected.png");
+			if (nullptr != pThumbSRV)
 			{
 				pDrawList->AddImage(pThumbSRV, vThumbTopLeft, vThumbBotRight);
 			}
@@ -1039,10 +1073,29 @@ void CLevel_CharacterSelect::Render_ClassList()
 			}
 
 			if (bThumbHovered && bClicked)
-				Select_Preview(Entry.iSupportedClassIndex);
+				Request_ClassChange(Entry.iSupportedClassIndex);
 
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
+	}
+
+	{
+		const ImVec2 vConfirmTopLeft = Fn_ToScreen(CONFIRM_X, CONFIRM_Y);
+		const ImVec2 vConfirmBotRight = Fn_ToScreen(CONFIRM_X + CONFIRM_W, CONFIRM_Y + CONFIRM_H);
+
+		if (ID3D11ShaderResourceView* pEdgeSRV =
+			m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/ConfirmEdge.png"))
+		{
+			pDrawList->AddImage(pEdgeSRV, vConfirmTopLeft, vConfirmBotRight);
+		}
+
+		const char* pConfirmLabel = "\xec\x84\xa0\xed\x83\x9d \xec\xa6\x89\xec\x8b\x9c \xeb\xb3\x80\xea\xb2\xbd";
+		const ImVec2 vLabelSize = ImGui::CalcTextSize(pConfirmLabel);
+		pDrawList->AddText(
+			ImVec2(
+				(vConfirmTopLeft.x + vConfirmBotRight.x) * 0.5f - vLabelSize.x * 0.5f,
+				(vConfirmTopLeft.y + vConfirmBotRight.y) * 0.5f - vLabelSize.y * 0.5f),
+			IM_COL32(255, 255, 255, 255), pConfirmLabel);
 	}
 }
 

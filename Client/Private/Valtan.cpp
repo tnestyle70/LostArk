@@ -2,6 +2,7 @@
 
 #include "ActorCatalog.h"
 #include "Body_Valtan.h"
+#include "Collider.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
@@ -59,8 +60,16 @@ HRESULT CValtan::Initialize(void* pArg)
 	m_pTransformCom->Set_State(STATE::POSITION,
 		XMVectorSet(desc.vPosition.x, desc.vPosition.y, desc.vPosition.z, 1.f));
 
-	if (FAILED(Ready_Components()))
+	if (!std::isfinite(desc.fCollisionRadius) || desc.fCollisionRadius < 0.f)
+		return E_INVALIDARG;
+
+	if (FAILED(Ready_Components(desc.fCollisionRadius)))
 		return E_FAIL;
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
 
 	return Ready_PartObjects();
 }
@@ -158,6 +167,8 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
+	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
+		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 #endif
 }
 
@@ -224,8 +235,24 @@ HRESULT CValtan::Ready_PartObjects()
 		&weaponDesc);
 }
 
-HRESULT CValtan::Ready_Components()
+HRESULT CValtan::Ready_Components(const f32_t collisionRadius)
 {
+	if (collisionRadius > 0.f)
+	{
+		Engine::CBounding_Sphere::BOUNDING_SPHERE_DESC colliderDesc{};
+		colliderDesc.vCenter = float3_t(0.f, collisionRadius, 0.f);
+		colliderDesc.fRadius = collisionRadius;
+		if (FAILED(__super::Add_Component(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_Component_Collider_WorldEntity"),
+			TEXT("Com_CombatCollider"),
+			m_pColliderCom,
+			&colliderDesc)))
+		{
+			return E_FAIL;
+		}
+	}
+
 	if (m_strNavigationPrototypeTag.empty())
 		return S_OK;
 
@@ -306,6 +333,11 @@ bool_t CValtan::Apply_NetworkState(
 		STATE::POSITION,
 		XMVectorSet(position.x, position.y, position.z, 1.f));
 	m_pTransformCom->Rotation(0.f, yawDegrees, 0.f);
+	if (nullptr != m_pColliderCom)
+	{
+		m_pColliderCom->Update(XMMatrixTranslationFromVector(
+			m_pTransformCom->Get_State(STATE::POSITION)));
+	}
 	m_strServerActionId.assign(actionId);
 	if (m_iState != nextState && nullptr != m_pBodyModelCom)
 	{

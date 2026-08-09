@@ -11,6 +11,7 @@ NS_BEGIN(Engine)
 class CModel;
 class CNavigation;
 class CTransform;
+class CCollider;
 NS_END
 
 NS_BEGIN(Client)
@@ -26,6 +27,7 @@ public:
 		float3_t vPosition = {};
 		f32_t fScale = 1.5f;
 		bool_t isServerAuthoritative = false;
+		f32_t fCollisionRadius = 0.f;
 	} VALTAN_DESC;
 
 	enum VALTAN_STATE
@@ -63,6 +65,9 @@ public:
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
+	void Set_CombatColliderDebugVisible(bool_t isVisible) {
+		m_isCombatColliderDebugVisible = isVisible;
+	}
 #endif
 
 private:
@@ -75,6 +80,7 @@ private:
 	wstring_t m_strNavigationPrototypeTag;
 	weak_ptr<CTransform> m_pTargetTransform;
 	shared_ptr<CNavigation> m_pNavigationCom = { nullptr };
+	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
@@ -82,11 +88,12 @@ private:
 	std::string m_strServerActionId;
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
+	bool_t m_isCombatColliderDebugVisible = { false };
 #endif
 
 private:
 	HRESULT Ready_PartObjects();
-	HRESULT Ready_Components();
+	HRESULT Ready_Components(f32_t collisionRadius);
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 

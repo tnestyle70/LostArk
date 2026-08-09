@@ -984,6 +984,11 @@ try {
 	$frontendHarnessProject = Get-Content -LiteralPath 'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj' -Raw
 	$buildRegressionSource = Get-Content -LiteralPath 'Tools\Build\Invoke-BuildAndRegression.ps1' -Raw
 	$characterSelectionStateSource = Get-Content -LiteralPath 'Client\Private\CharacterSelectionState.cpp' -Raw
+	$packetTypeSource = Get-Content -LiteralPath 'Shared\Public\Network\PacketType.h' -Raw
+	$packetMessagesSource = Get-Content -LiteralPath 'Shared\Public\Network\PacketMessages.h' -Raw
+	$gameRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw
+	$networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
+	$playerControllerSourceForClassSwitch = Get-Content -LiteralPath 'Client\Private\PlayerController.cpp' -Raw
     Add-Check 'levels.character-select-contract' (
         $levelRegistrySource -match 'LEVEL::CHARACTER_SELECT' -and
 		$levelRegistrySource -match 'LV_LOBBY_CLASSSELECT_SL00' -and
@@ -992,17 +997,17 @@ try {
 		$characterSelectLoaderFunction -match 'Ready_MapArea\(' -and
 		$characterSelectLoaderFunction -notmatch 'Ready_Camera_Prototype\(' -and
 		$characterSelectLoaderFunction -match 'Ready_Character_Rendering\(' -and
-		$characterSelectLoaderFunction -match 'Ready_AnimationPreviewModels\(' -and
+		$characterSelectLoaderFunction -notmatch 'Ready_AnimationPreviewModels\(' -and
 		$characterSelectLoaderFunction -match 'CCharacterSelectionState::Try_Get_SelectedClass' -and
 		$characterSelectLoaderFunction -match 'const std::array characterClasses = \{ initialClass \}' -and
-		$characterSelectSource -match 'CPlayableCharacterAssetService::Is_Ready' -and
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
 		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
 		$levelRegistrySource -match 'scene\.character-select\.warm-high-key\.v1' -and
 		$mainAppSource -match 'm_RenderingProfiles\.Activate_Profile' -and
 		$characterSelectSource -match 'CCharacterSelectionState::Select' -and
 		$characterSelectSource -match 'MODE::CONNECTING' -and
-		$characterSelectSource -match 'Try_Consume_TestEntryMode' -and
+		$characterSelectSource -notmatch 'MODE::PREVIEW|Stage_Preview|Select_Preview|Ready_Preview' -and
+		$characterSelectionStateSource -notmatch 'TestEntryMode|TEST_ENTRY_MODE' -and
 		$characterSelectSource -notmatch 'Request_ServerArena\(' -and
 		$characterSelectSource -notmatch 'Connect_To_Server\(' -and
 		$characterSelectSource -notmatch 'Send_EnterWorld\(' -and
@@ -1010,20 +1015,22 @@ try {
 		$characterSelectSource -match 'CONNECTION_TIMEOUT' -and
 		$characterSelectSource -notmatch 'Return_ToPreview\(' -and
 		$characterSelectSource -match 'character-select\.server-disconnect' -and
-		$characterSelectSource -match 'Stage_Preview\(' -and
-		$characterSelectionStateSource -match 'Try_Consume_TestEntryMode' -and
 		$lobbyCommandHeaderSource -match 'LOBBY_COMMAND_PURPOSE' -and
 		$lobbyCommandHeaderSource -match 'MAP_EDITOR_WORKSPACE' -and
 		$characterSelectSource -match 'character-select\.enter-bern' -and
 		$characterSelectSource -match 'character-select\.enter-valtan' -and
-		$characterSelectSource -match 'character-select\.server-play' -and
-		$characterSelectSource -match 'character-select\.return-preview' -and
-		$characterSelectSource -match 'ImGui::RadioButton\("Preview"' -and
-		$characterSelectSource -match 'Server Play \(Lobby-approved\)' -and
-		$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::TEST\)' -and
-		$characterSelectSource -match 'Enter_Stage\(LOBBY_STAGE::CHARACTER_SELECT\)' -and
+		$characterSelectSource -notmatch 'ImGui::RadioButton\("Preview"|Server Play \(Lobby-approved\)' -and
+		$characterSelectSource -match 'Request_ClassChange' -and
+		$characterSelectSource -match 'Request_ChangeCharacterClass' -and
+		$characterSelectSource -match 'Try_Consume_CharacterClassChangeResult' -and
+		$characterSelectSource -match 'm_iPendingClassChangeSequence' -and
 		$characterSelectSource -notmatch 'ImGui::BeginDisabled\(true\)' -and
-		$characterSelectSource -match 'ImGui::Button\("Summon Valtan \(Lazy\)"\)' -and
+		$characterSelectSource -match 'ARENA_SPAWN_OPTIONS' -and
+		$characterSelectSource -match 'spawn\.character-select\.monster' -and
+		$characterSelectSource -match 'spawn\.character-select\.miniboss' -and
+		$characterSelectSource -match 'boss\.valtan\.character-select\.lazy' -and
+		$characterSelectSource -match 'ImGui::Button\("Spawn Selected"\)' -and
+		$characterSelectSource -match 'Show Combat Colliders' -and
 		$characterSelectSource -notmatch 'ImGui::Button\("Enter Test"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Bern"\)' -and
 		$characterSelectSource -match 'ImGui::Button\("Enter Valtan Map"\)' -and
@@ -1037,17 +1044,28 @@ try {
 		$lobbySource -match 'DEFAULT_ENTRY_CLASS' -and
 		$lobbySource -match 'Resolve_EntryCharacterClass' -and
 		$lobbySource -match 'Send_EnterWorld\(' -and
-		$lobbySource -match 'Stage_TestEntryMode' -and
+		$lobbySource -match 'case LOBBY_STAGE::CHARACTER_SELECT:[\s\S]{0,180}WORLD_ID::CHARACTER_SELECT_ARENA' -and
+		$lobbySource -notmatch 'Stage_TestEntryMode|Clear_TestEntryMode' -and
 		$lobbySource -match 'accepted\.iProtocolVersion' -and
 		$lobbySource -match 'accepted\.iPlayerId' -and
 		$lobbySource -match 'accepted\.iNetEntityId' -and
 		$frontendHarnessProject -match 'CharacterSelectionState\.cpp' -and
-		$frontendHarnessSource -match 'Test_CharacterSelectServerHandoff' -and
-		$frontendHarnessSource -match 'Test_CharacterSelectPreviewReturnCommand' -and
+		$frontendHarnessProject -match 'NetObjectRegistry\.cpp' -and
+		$frontendHarnessSource -match 'Test_CharacterSelectAuthorizedSelection' -and
+		$frontendHarnessSource -match 'Test_NetObjectRegistryClassReplacement' -and
+		$packetTypeSource -match 'NETWORK_PROTOCOL_VERSION = 14' -and
+		$packetTypeSource -match 'C2S_CHANGE_CHARACTER_CLASS' -and
+		$packetMessagesSource -match 'PLAYER_SNAPSHOT[\s\S]{0,180}eCharacterClass' -and
+		$gameRoomSource -match 'Apply_CharacterClassChange' -and
+		$gameRoomSource -match 'snapshot\.eCharacterClass = player\.eCharacterClass' -and
+		$networkManagerSource -match 'S2C_CHARACTER_CLASS_CHANGE_RESULT' -and
+		$replicationSource -match 'Replace_CharacterClass' -and
+		$replicationSource -match 'RECOVERED_FAILURE' -and
+		$playerControllerSourceForClassSwitch -match 'Rebind_LocalCharacter' -and
         $lobbySource -match '"Test"' -and
 		$lobbySource -match '"Character Select"' -and
 		$lobbySource -match '"Valtan"' -and
-		$lobbySource -match '"Bern"') 'Character Select keeps one visual Level while Server approval swaps preview and replicated presentation; Valtan spawn uses a typed command sink'
+		$lobbySource -match '"Bern"') 'Character Select requires Lobby Server approval, changes class through a typed Server command, provides Server-only monster/miniboss/Valtan spawn controls, and transactionally replaces replicated presentation'
 	Add-Check 'levels.character-select-camera-framing' (
 		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_SIDE = 0\.4f' -and
 		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_HEIGHT = 7\.5f' -and
@@ -1056,7 +1074,7 @@ try {
 		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_FOV_Y = 45\.f' -and
 		$characterSelectSource -match 'desc\.vLookOffset = lookOffset' -and
 		$characterSelectSource -match 'Bind_CameraTarget\([\s\S]{0,100}CharacterSelectCameraPositionOffset\(\)' -and
-		$characterSelectSource -notmatch 'PREVIEW_CAMERA_HEIGHT|SERVER_CAMERA_HEIGHT') 'Character Select Preview and Server Play share one fixed top-down position/look/FOV preset'
+		$characterSelectSource -notmatch 'PREVIEW_POSITION|PREVIEW_CAMERA_HEIGHT|SERVER_CAMERA_HEIGHT') 'Character Select Server Arena uses one initial framing preset and rebinds the replicated local target'
 	$renderingProfiles = Read-Json `
 		'Data\Rendering\Authored\RenderingProfiles.json'
 	$renderingProfileIds = @($renderingProfiles.profiles | ForEach-Object {
@@ -1395,12 +1413,13 @@ try {
 	$characterSelectSource = Get-Content -LiteralPath 'Client\Private\Level_CharacterSelect.cpp' -Raw
 	Add-Check 'hud.selected-class-boundary' (
 		$hudViewModelHeader -match 'HUD_PLAYER_STATE[\s\S]{0,300}eCharacterClass' -and
-		$hudViewModelHeader -match 'Apply_CharacterPreview' -and
+		$hudViewModelHeader -match 'Apply_LocalPlayer' -and
 		$hudViewModelSource -match 'definition\.eCharacterClass != characterClass' -and
 		$hudViewModelSource -match 'Balance/PlayerProfiles\.json' -and
-		$characterSelectSource -match 'Apply_CharacterPreview\(characterClass\)' -and
+		$replicationSource -match 'Apply_LocalPlayer\([\s\S]{0,160}localRecord->eCharacterClass' -and
+		$replicationSource -match 'Replace_CharacterClass' -and
 		$mainAppSource -match 'LEVEL::CHARACTER_SELECT' -and
-		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD carries local class and Character Select preview while filtering skill definitions by class'
+		$mainAppSource -match 'RenderCombatHUD\(\);') 'runtime HUD follows the Server snapshot class while filtering skill definitions by class'
 	$playerSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
 	$missingQuickSlots = [Collections.Generic.List[string]]::new()
 	$classQuickSlotContracts = [ordered]@{
@@ -1767,6 +1786,9 @@ try {
         'Data\Actors\MonsterCatalog.json',
         'Data\Balance\MonsterProfiles.json',
         'Data\Worlds\LV_LUT_HEARTRB_ED\SpawnGroups.world.json',
+		'Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\SpawnGroups.world.json',
+		'Shared\Public\Gameplay\CombatCollisionContract.h',
+		'Shared\Private\Gameplay\CombatCollisionContract.cpp',
         'Server\Public\SpawnGroupRuntime.h',
         'Server\Private\SpawnGroupRuntime.cpp',
         'Server\Public\MonsterBrain.h',
@@ -1782,13 +1804,18 @@ try {
             'Client\Private\MonsterPresentationAssetService.cpp') `
             -Pattern '#include\s+"Monster\.h"|CMonster::Create|Logic_Monster')
     $spawnGroupPublisherSource = Get-Content -LiteralPath 'Tools\WorldPipeline\Publish-WorldGameplay.ps1' -Raw
+	$spawnGroupRuntimeSource = Get-Content -LiteralPath 'Server\Private\SpawnGroupRuntime.cpp' -Raw
     $staleWorldPublishFiles = @(Get-ChildItem -LiteralPath 'Server\Bin\DataFiles\World' -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match '\.(tmp|rollback)\.' })
     Add-Check 'world.monster-spawn-group-contract' (
         $missingMonsterContractFiles.Count -eq 0 -and
         $legacyMonsterRuntimeHits.Count -eq 0 -and
         $spawnGroupPublisherSource -match 'SpawnGroups\.world\.json' -and
-        $spawnGroupPublisherSource -match 'spawngroupsbootstrap') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
+		$spawnGroupPublisherSource -match 'spawngroupsbootstrap' -and
+		$gameRoomSource -match 'WORLD_ENTITY_SPAWN_RESULT::ACTIVATED' -and
+		$gameRoomSource -match 'Reset_CharacterSelectArenaWhenEmpty' -and
+		$spawnGroupRuntimeSource -match 'Activate_Immediate' -and
+		$replicationSource -match 'Set_CombatColliderDebugVisible') "missing=$($missingMonsterContractFiles -join ',') legacyRuntimeHits=$($legacyMonsterRuntimeHits.Count)"
     Add-Check 'world.publish-cleanup' ($staleWorldPublishFiles.Count -eq 0) "stale=$($staleWorldPublishFiles.Name -join ',')"
 
     $serverRoomSource = Get-Content -LiteralPath 'Server\Private\GameRoom.cpp' -Raw

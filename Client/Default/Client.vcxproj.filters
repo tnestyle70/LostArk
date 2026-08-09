@@ -1123,6 +1123,9 @@
     <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\Gameplay.world.json">
       <Filter>96.DataFiles\Worlds</Filter>
     </None>
+    <None Include="..\..\Data\Worlds\LV_LOBBY_CLASSSELECT_SL00\SpawnGroups.world.json">
+      <Filter>96.DataFiles\Worlds</Filter>
+    </None>
 	<None Include="..\..\Data\Worlds\LV_LUT_HEARTRB_ED\Gameplay.world.json">
 	  <Filter>96.DataFiles\Worlds</Filter>
 	</None>

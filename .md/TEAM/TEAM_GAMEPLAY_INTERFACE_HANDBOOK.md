@@ -19,7 +19,7 @@ Input/UI intent
 
 Client는 입력을 빠르게 제출하지만 위치, damage, cooldown, HP, boss phase를 확정하지 않는다. Server가 확정한 snapshot만 제품 화면의 정답이다.
 
-Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 최초 Character Select는 socket 없는 3D Preview Level이다. Character Select 창의 `Server Play`는 선택 class와 tokenized TEST만 Lobby에 제출하고, Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 Server gameplay로 다시 연다. Server Arena의 `Preview`는 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 Lobby에 제출하여 socket 없는 Preview로 재진입한다. 재진입 Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 `IWorldEntityCommandSink`를 통해 stable placement ID만 제출하고 Server가 world template/navigation/profile을 검증한 결과를 broadcast한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
+Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. Character Select는 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` 승인 payload를 검증한 뒤 기존 socket을 one-shot handoff하여 같은 visual map을 여는 Server 전용 Level이다. offline Preview와 `Preview / Server Play` mode 선택은 없다. Level은 직접 connect/send하지 않고 `CClientReplication`, `CNetworkPlayerCommandSink`, `CPlayerController`로 HUD·우클릭 이동·quick-slot 스킬을 Server snapshot에 연결한다. class thumbnail 선택은 target asset admission 뒤 즉시 typed class-change command를 제출하며, Server 승인 snapshot이 같은 entity presentation과 skill catalog class를 교체한다. 살아 있는 위치와 identity는 유지하고 전투 상태는 새 profile로 초기화하며, 사망 중 변경은 원래 projected spawn에서 부활한다. 연결 실패·거부·5초 timeout은 Lobby에 남고 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. Debug ImGui의 일반 몬스터, `MINIBOSS_LUGARU`, Valtan 선택은 `IWorldEntityCommandSink`를 통해 stable SpawnGroup/placement ID만 제출한다. Server는 Character Select Area 문서, navigation, profile을 검증해 실제 entity 생성이 성공한 뒤 활성화 결과를 회신하고 기존 monster brain 또는 Valtan brain으로 broadcast하며 Client local spawn은 없다. 마지막 플레이어가 퇴장하면 동적 audition entity와 SpawnGroup 상태를 초기화해 다음 입장을 새 세대로 시작한다. Bern/Valtan map 진입도 마지막 Server 승인 class로 Lobby Server 승인이 필수다.
 
 2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 `Ctrl+F5`로 시작한다.
 
@@ -330,6 +330,8 @@ payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 
 
 수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 실제 4개 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
 
+combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContract.h`의 pure XZ primitive로 평가한다. 플레이어 스킬은 target body radius, 일반 몬스터와 Lugaru는 player footprint, Valtan은 circle/ring/cone/forward-box/cross와 player footprint의 교차를 Server fixed tick에서 판정한다. HP·damage·counter·death는 기존 Data와 Server 순서를 유지한다. Client `CCollider`는 spawn packet의 Server radius를 표시하는 Debug mirror일 뿐 damage 판정이나 PhysX 권위가 아니다.
+
 ## 8. MapTool과 gameplay 저장
 
 정적 visual 배치와 gameplay 배치는 분리한다.
@@ -480,7 +482,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Protocol Harness `failures : 0`
 - Server gameplay contract `failures : 0`
 - Debug/Release Client와 Server 빌드 성공
-- 실제 Server+Client에서 Lobby → Character Select → Lobby → Test/Bern/Valtan 진입 확인
+- 실제 Server+Client에서 Lobby → Character Select 승인 진입 → class 연속 변경/스킬 → Lobby → Bern/Valtan 진입 확인
 - 연결 실패 시 Lobby 유지와 제품 Level disconnect 후 Lobby 복귀 확인
 - ProjectAudit 성공
 - `git diff --check` 성공
@@ -499,7 +501,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - world gameplay와 navigation 배치 정합성 검사
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
-- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Character Select visual map, Enter-to-Test token handoff, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
+- Lobby의 Lance Master/Gunslinger/Slayer/Artist/DimensionMaster/Warlord 여섯 선택 slot, Lobby 승인 Character Select visual map, Server-authoritative class 변경, 여섯 class Loader/Server profile과 runtime HUD. DimensionMaster는 combined body와 L/S/P/E 네 정적 기본 무기 파츠를 사용하며 runtime payload는 팀장 관리 Resources 물리 폴더를 사용한다.
 
 별도 수직 슬라이스:
 

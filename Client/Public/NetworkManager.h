@@ -65,12 +65,17 @@ public:
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId);
 	bool Send_RevivePlayer(std::uint32_t clientSequence);
+	bool Send_ChangeCharacterClass(
+		std::uint32_t clientSequence,
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
 
 	bool Try_Consume_EnterAccepted(
 		LostArk::Shared::S2C_ENTER_ACCEPTED& message);
 	bool Try_Consume_WorldEntitySpawnResult(
 		LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT& message);
+	bool Try_Consume_CharacterClassChangeResult(
+		LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT& message);
 
 	bool Try_Consume_ReplicationEvent(
 		Client::CLIENT_REPLICATION_EVENT& event);
@@ -112,6 +117,8 @@ private:
 	std::deque<Client::CLIENT_REPLICATION_EVENT> m_ReplicationEvents;
 	std::deque<LostArk::Shared::S2C_WORLD_ENTITY_SPAWN_RESULT>
 		m_WorldEntitySpawnResults;
+	std::deque<LostArk::Shared::S2C_CHARACTER_CLASS_CHANGE_RESULT>
+		m_CharacterClassChangeResults;
 
 	bool m_hasPendingEnterAccepted = false;
 

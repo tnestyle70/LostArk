@@ -10,6 +10,7 @@
 
 #include <array>
 #include <chrono>
+#include <optional>
 
 NS_BEGIN(Client)
 
@@ -24,7 +25,6 @@ class CLevel_CharacterSelect final : public CLevel
 private:
 	enum class MODE
 	{
-		PREVIEW,
 		CONNECTING,
 		SERVER_ARENA,
 		RETURNING_TO_LOBBY
@@ -47,23 +47,17 @@ private:
 	HRESULT Ready_Lights();
 	HRESULT Ready_Camera();
 	HRESULT Ready_ServerGameplay();
-	HRESULT Ready_Preview(
-		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
-	HRESULT Stage_Preview(
-		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		shared_ptr<CCharacter>& outCharacter);
-	HRESULT Commit_Preview(
-		LostArk::Shared::CHARACTER_CLASS_ID characterClass,
-		const shared_ptr<CCharacter>& stagedCharacter);
 	bool_t Bind_CameraTarget(
 		const shared_ptr<CCharacter>& character,
 		const float3_t& positionOffset);
-	bool_t Select_Preview(size_t index);
+	bool_t Request_ClassChange(size_t index);
+	void Consume_ClassChangeResults();
+	bool_t Synchronize_LocalCharacter();
 	void Fail_ServerArena(const string& reason);
 	void Update_Connecting();
 	void Update_ServerArena();
 	bool_t Commit_ServerArena();
-	bool_t Request_ValtanSpawn();
+	bool_t Request_SelectedArenaSpawn();
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
 	void Render_ClassList();
@@ -83,9 +77,12 @@ private:
 	CMapPlacementRuntime m_MapRuntime;
 	unique_ptr<CHUDRuntimeView> m_pClassSelectView = { nullptr };
 	int32_t m_iExpandedCategory = -1;
-	MODE m_eMode = MODE::PREVIEW;
-	size_t m_iPreviewIndex = 0;
-	shared_ptr<CCharacter> m_pPreviewCharacter = { nullptr };
+	MODE m_eMode = MODE::CONNECTING;
+	size_t m_iSelectedClassIndex = 0;
+	std::optional<size_t> m_iPendingClassIndex;
+	std::uint32_t m_iNextClassChangeSequence = 1u;
+	std::uint32_t m_iPendingClassChangeSequence = 0u;
+	shared_ptr<CCharacter> m_pActiveCharacter = { nullptr };
 	shared_ptr<CCamera_Free> m_pCamera = { nullptr };
 	weak_ptr<CCharacter> m_pCameraTarget;
 	CClientReplication m_Replication;
@@ -93,10 +90,16 @@ private:
 	shared_ptr<IWorldEntityCommandSink> m_pWorldEntityCommandSink;
 	CPlayerController m_PlayerController;
 	std::chrono::steady_clock::time_point m_ConnectionDeadline{};
-	std::chrono::steady_clock::time_point m_ValtanRequestDeadline{};
-	bool_t m_isValtanSpawnRequested = false;
+	std::chrono::steady_clock::time_point m_ClassChangeDeadline{};
+	std::chrono::steady_clock::time_point m_ArenaSpawnRequestDeadline{};
+	size_t m_iSelectedArenaSpawnIndex = 0;
+	std::optional<size_t> m_iPendingArenaSpawnIndex;
+	std::array<bool_t, 3> m_ArenaSpawnAccepted{};
+#ifdef _DEBUG
+	bool_t m_isCombatColliderDebugVisible = false;
+#endif
 	string m_strStatus =
-		"Choose a class, then select Server Play.";
+		"Waiting for the Lobby-approved Server character.";
 
 public:
 	static unique_ptr<CLevel_CharacterSelect> Create(

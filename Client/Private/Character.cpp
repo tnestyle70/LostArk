@@ -1016,7 +1016,7 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 	if (m_isNavigationDebugVisible && nullptr != m_pNavigationCom)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
-	if (m_isNavigationDebugVisible && nullptr != m_pColliderCom)
+	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 #endif
 }

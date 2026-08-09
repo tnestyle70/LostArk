@@ -1,0 +1,66 @@
+{
+  "schema": "lostark.world-spawn-groups",
+  "formatVersion": 1,
+  "areaId": "LV_LOBBY_CLASSSELECT_SL00",
+  "revision": 1,
+  "anchors": [
+    {
+      "anchorId": "anchor.character-select.monster",
+      "position": [-767.0, -142.71846, 204.0],
+      "yawDegrees": 180.0
+    },
+    {
+      "anchorId": "anchor.character-select.miniboss",
+      "position": [-777.0, -142.71846, 204.0],
+      "yawDegrees": 180.0
+    }
+  ],
+  "spawnGroups": [
+    {
+      "spawnGroupId": "spawn.character-select.monster",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 1,
+      "repeatPolicy": "ONCE",
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.character-select.monster.immediate",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            {
+              "archetypeId": "MONSTER_VALTAN_PADD_01",
+              "count": 1,
+              "anchorId": "anchor.character-select.monster",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "spawnGroupId": "spawn.character-select.miniboss",
+      "requiredCompletedGroupId": null,
+      "maxAlive": 1,
+      "repeatPolicy": "ONCE",
+      "completionPolicy": "ALL_WAVES_CLEARED",
+      "waves": [
+        {
+          "waveId": "wave.character-select.miniboss.immediate",
+          "startDelayMs": 0,
+          "nextWavePolicy": "ALL_DEAD",
+          "entries": [
+            {
+              "archetypeId": "MINIBOSS_LUGARU",
+              "count": 1,
+              "anchorId": "anchor.character-select.miniboss",
+              "initialDelayMs": 0,
+              "spawnIntervalMs": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

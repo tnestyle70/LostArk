@@ -118,6 +118,9 @@ public:
 	void Set_NavigationDebugVisible(bool_t isVisible) {
 		m_isNavigationDebugVisible = isVisible;
 	}
+	void Set_CombatColliderDebugVisible(bool_t isVisible) {
+		m_isCombatColliderDebugVisible = isVisible;
+	}
 #endif
 
 	/* Applies an approved skill action to presentation. Input code must never call
@@ -160,6 +163,7 @@ private:
 
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
+	bool_t m_isCombatColliderDebugVisible = { false };
 #endif
 
 	std::vector<CLIP_CHAIN> m_Chains;

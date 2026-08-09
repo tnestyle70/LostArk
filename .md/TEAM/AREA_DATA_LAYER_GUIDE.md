@@ -2,7 +2,7 @@
 
 ## 1. 결론
 
-Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 현재 일반 몬스터, wave/증분 spawn, trigger runtime, Area별 balance override, NPC client presentation은 제품 계약이 없다.
+Area별 visual, gameplay placement, navigation은 분리 저장된다. 어떤 entity placement가 없으면 해당 entity는 생성되지 않는다. 그러나 모든 레이어가 완전한 plug-in 구조인 것은 아니다. 일반 몬스터와 wave spawn은 Valtan Arena와 Character Select Arena의 명시된 SpawnGroups만 제품 계약이 있고, Area별 balance override는 아직 없다.
 
 편집·추출 정본은 전부 repository root의 `Data` 아래에 둔다. `Data/Maps/Imported`는
 재추출한 catalog와 shard 기준, `Data/Maps/Authoring`은 현재 visual placement,
@@ -26,7 +26,7 @@ LevelCatalog scenario
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
 | `LV_LUT_HEARTRB_ED` | 275 assets / 13,115 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
-| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay |
+| `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
 
 수련장은 Lobby의 `Enter Training`에서 Server 승인을 받은 뒤 `LEVEL::DEVELOPMENT`로 진입한다. Debug/Release network smoke는 map load, player spawn, Q command, Server action 승인, cooldown HUD 반영까지 검사한다.
@@ -98,7 +98,7 @@ Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이
 Server world entity로 생성되고 `CClientReplication`이 catalog → on-demand model prototype → `CNpc`
 경로로 표현한다. 다른 NPC model은 catalog row와 검증을 추가하기 전까지 fail-closed다.
 
-Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. `triggerBox`는
+Valtan 일반 몬스터와 spawn wave는 `Data/Worlds/LV_LUT_HEARTRB_ED/SpawnGroups.world.json`이 정본이다. Character Select의 즉시 audition은 `Data/Worlds/LV_LOBBY_CLASSSELECT_SL00/SpawnGroups.world.json`에 일반 몬스터와 `MINIBOSS_LUGARU`를 각각 zero-delay 단일 wave로 저장한다. Character Select Debug ImGui는 이 stable group ID 또는 disabled Valtan placement ID만 Server에 제출하며 transform/archetype을 보내거나 Client object를 직접 만들지 않는다. `triggerBox`는
 world formatVersion 4의 strict parse/save 구조와 Debug Development MapTool 배치·선택·크기·목적지
 편집·저장/재로드 UI를 제공한다. typed action이 없는 draft는 `enabled: false`, `events: []`로만 저장한다.
 제품 publisher/runtime가 admission하는 action은 정확히 하나의 `movePlayer`, `changeLevel`, `activateSpawnGroup`, `activateEncounter`다. movePlayer는
@@ -185,9 +185,9 @@ Area는 수치를 복사하지 않고 stable actor/encounter ID를 참조한다.
 저작 → provenance 동기화 → Validate/Publish를 수행하고 Server를 재시작해 적용한다. 레벨별 override가
 필요하면 별도 schema와 우선순위/rollback 계약부터 정해야 한다.
 
-## 6. 다섯 캐릭터 roster 상태
+## 6. 여섯 캐릭터 roster 상태
 
-Lobby는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot을 모두 보여주고 선택할 수 있다. 실제 world 진입은 `Is_Supported_Playable_Character_Class`가 승인한 class만 가능하다.
+Lobby와 Character Select는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 class를 선택할 수 있다. 실제 world 진입과 Character Select class 변경은 `Is_Supported_Playable_Character_Class`가 승인한 class만 가능하다.
 
 | Class | Lobby 선택 | Resource pack | Client Loader/Spec | Server profile | World 진입 |
 |---|---:|---:|---:|---:|---:|
@@ -196,10 +196,11 @@ Lobby는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster 다섯 slot�
 | Slayer | 가능 | 있음 | 완료 | training baseline | 가능 |
 | Artist | 가능 | 있음 | 완료 | training baseline | 가능 |
 | DimensionMaster | 가능 | `.3`에는 없음, 로컬만 | 완료 | training baseline | 가능(로컬 payload 필요) |
+| Warlord | 가능 | 있음 | 완료 | 완료 | 가능 |
 
-앞의 네 class는 body·equipment·weapon `.wmodel`과 texture를 6-root resource pack에 admission한다. DimensionMaster는 combined body `Character/DimensionMaster/DimensionMaster_Character.wmodel`과 `Character/WP_WSWP_M_06`의 L/S/P/E 네 정적 기본 무기 파츠를 로컬 payload로 사용한다. 다섯 class 모두 `CharacterCatalog`, `CCharacterCatalog`, Loader prototype, Server `PlayerProfiles`, class parser, spawn/remote presentation까지 연결한다. 현재 비-Lance class의 profile 수치는 class별 스킬 계약 전까지 명시적인 training baseline이며, LanceMaster로 조용히 대체하는 identity fallback은 금지한다.
+기존 resource pack class는 body·equipment·weapon `.wmodel`과 texture를 6-root resource pack에 admission한다. DimensionMaster는 combined body `Character/DimensionMaster/DimensionMaster_Character.wmodel`과 `Character/WP_WSWP_M_06`의 L/S/P/E 네 정적 기본 무기 파츠를 로컬 payload로 사용한다. 여섯 class 모두 `CharacterCatalog`, `CCharacterCatalog`, Loader prototype, Server `PlayerProfiles`, class parser, spawn/remote presentation까지 연결한다. LanceMaster로 조용히 대체하는 identity fallback은 금지한다.
 
-Area 진입 시 다섯 class binary를 모두 선로드하지 않는다. Lobby 선택 class만 먼저 준비하고 다른 class는 실제 remote spawn에서 최초 한 번만 같은 `CPlayableCharacterAssetService`로 admission한다. 이 규칙은 mixed-class 표현을 유지하면서 불필요한 Level 로딩 증가를 막는 고정 경계다.
+Area 진입 시 여섯 class binary를 모두 선로드하지 않는다. Lobby가 승인한 class만 먼저 준비하고 다른 class는 Character Select의 class-change 요청 전 또는 실제 remote snapshot에서 최초 한 번만 같은 `CPlayableCharacterAssetService`로 admission한다. 이 규칙은 mixed-class 표현을 유지하면서 불필요한 Level 로딩 증가를 막는 고정 경계다.
 
 ## 7. 새 Area 추가 체크리스트
 

@@ -33,6 +33,9 @@ public:
 		LostArk::Shared::SKILL_ID skillId) override;
 	bool Request_RevivePlayer(
 		std::uint32_t clientSequence) override;
+	bool Request_ChangeCharacterClass(
+		std::uint32_t clientSequence,
+		LostArk::Shared::CHARACTER_CLASS_ID characterClass) override;
 
 private:
 	static std::atomic_uint32_t s_iLiveInstanceCount;

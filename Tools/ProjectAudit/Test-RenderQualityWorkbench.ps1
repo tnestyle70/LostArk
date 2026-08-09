@@ -237,7 +237,7 @@ Assert-Match $mainApp 'Publish Runtime' `
 Assert-Match $mainApp 'Reload Runtime' `
     'Rendering Workbench must expose atomic runtime reload.'
 Assert-Match $characterSelect 'CharacterSelectCameraPositionOffset\(\)' `
-    'Character Select Preview and Server Arena must share one camera position preset.'
+    'Character Select Server Arena must use one initial/rebind camera position preset.'
 Assert-Match $characterSelect 'CHARACTER_SELECT_CAMERA_FOV_Y\s*=\s*45\.f' `
     'Character Select shared camera preset must own its fixed FOV.'
 Assert-Match $shader 'Out\.vBackBuffer\s*=\s*vLitColor\s*\+\s*vEmissive' `
@@ -264,5 +264,5 @@ Write-Host '  F1 workbench: typed live apply'
 Write-Host '  Effect diagnostics: typed Light/Post toggles and submitted counts'
 Write-Host '  scene lighting: descriptor-owned Character Select/Valtan profiles'
 Write-Host '  persistence: authored save, validated publish, atomic reload'
-Write-Host '  Character Select camera: one Preview/Server Arena preset'
+Write-Host '  Character Select camera: one Server Arena initial/rebind preset'
 Write-Host '  shader deployment hash: equal'

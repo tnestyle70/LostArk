@@ -10,6 +10,9 @@
 	<Filter Include="Public\Gameplay">
 	  <UniqueIdentifier>{2EFBFD79-7C18-4DFC-AD54-D73A710BD66C}</UniqueIdentifier>
 	</Filter>
+	<Filter Include="Private\Gameplay">
+	  <UniqueIdentifier>{31E24345-33B6-4CE5-99EB-92D0FD469F8A}</UniqueIdentifier>
+	</Filter>
     <Filter Include="Private">
       <UniqueIdentifier>{A16AD881-5291-4B14-934F-F578E797EF72}</UniqueIdentifier>
     </Filter>
@@ -18,6 +21,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+	<ClInclude Include="..\Public\Gameplay\CombatCollisionContract.h">
+	  <Filter>Public\Gameplay</Filter>
+	</ClInclude>
 	<ClInclude Include="..\Public\Gameplay\WorldCollisionContract.h">
 	  <Filter>Public\Gameplay</Filter>
 	</ClInclude>
@@ -44,6 +50,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+	<ClCompile Include="..\Private\Gameplay\CombatCollisionContract.cpp">
+	  <Filter>Private\Gameplay</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\Network\PacketWriter.cpp">
       <Filter>Private\Network</Filter>
     </ClCompile>

@@ -430,11 +430,11 @@ Server와 remote Client는 `CHARACTER_CLASS_ID`만 공유하며 각 Client가 �
 
 ### 14.4 현재 Animation Tool 연결
 
-Character Select가 preview `CCharacter`를 교체할 때 `CAnimationTargetService::Bind`를 호출한다. Animation
-Tool에서 `Scene Character`를 선택하면 다음 경로를 사용한다.
+Character Select가 Server snapshot class에 맞춰 replicated `CCharacter` presentation을 교체할 때
+`CAnimationTargetService::Bind`를 호출한다. Animation Tool에서 `Scene Character`를 선택하면 다음 경로를 사용한다.
 
 ```text
-CLevel_CharacterSelect preview CCharacter
+CLevel_CharacterSelect replicated local CCharacter
   -> CAnimationTargetService::Bind(character)
   -> Resolve_Character()
   -> Resolve_Model() == character body CModel
@@ -728,14 +728,15 @@ DimensionMaster의 `ALT_V`는 `PlayerSkills.json`의 `2050540`과 skill binding�
 
 ## 16. Character Select Server Arena 검증 흐름 (2026-08-05)
 
-Character Select ImGui 상단의 `Preview / Server Play`는 실제 mode 선택 UI다. Animation 담당자는 socket 없는 Preview에서
-class와 clip mapping을 저작한 뒤 `Server Play`를 선택한다. tokenized TEST command는 Lobby가 Server 승인을
-검증하고, 같은 visual map을 Server Arena로 다시 열 때 기존 socket과 queued snapshot을 one-shot handoff한다.
-Character Select Level 자체는 connect/send/approval을 반복하지 않는다.
+Character Select는 Lobby가 Server 승인을 받은 뒤에만 같은 visual map을 연다. offline Preview와
+`Preview / Server Play` mode 선택은 없다. Animation 담당자는 Server Arena에서 class thumbnail을 선택하고,
+Server 승인 snapshot으로 `Scene Character`가 교체된 뒤 clip mapping과 실제 skill presentation을 확인한다.
+Character Select Level 자체는 connect/send/entry approval을 반복하지 않는다.
 
 ```text
-Preview: class 선택 -> F1 Animation Tool -> key/skill row 편집 -> Save -> Server Play 선택
-   -> Lobby Server approval -> 같은 map Server Arena 재진입
+Lobby Character Select -> Server approval -> 같은 map Server Arena 진입
+   -> class thumbnail 선택 -> Server class-change approval/snapshot -> Scene Character 교체
+   -> F1 Animation Tool -> key/skill row 편집 -> Save
    -> Q/W/E/R/A/S/D/F/T/V 또는 LMB 입력
    -> Server approval/snapshot -> 저장한 ACTIVE/COMBO clip 재생 확인
 ```

@@ -273,9 +273,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	Set_Status(TEXT("CHARACTER SELECT: playable classes"));
 	if (FAILED(Ready_Character_Rendering(
 			ETOUI(LEVEL::CHARACTER_SELECT),
-			characterClasses)) ||
-		FAILED(Ready_AnimationPreviewModels(
-			ETOUI(LEVEL::CHARACTER_SELECT))))
+			characterClasses)))
 	{
 		return E_FAIL;
 	}
@@ -815,7 +813,11 @@ HRESULT CLoader::Ready_Character_Shared_Prototypes(
 		FAILED(CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_Component_Collider_Player"),
-		CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))))
+		CCollider::Create(m_pDevice, m_pContext, COLLIDER::OBB))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Collider_WorldEntity"),
+		CCollider::Create(m_pDevice, m_pContext, COLLIDER::SPHERE))))
 	{
 		return E_FAIL;
 	}

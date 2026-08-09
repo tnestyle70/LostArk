@@ -248,7 +248,7 @@ namespace
 				CHARACTER_CLASS_ID::ARTIST) &&
 			Is_Supported_Playable_Character_Class(
 				CHARACTER_CLASS_ID::DIMENSIONMASTER),
-			"Accept Five Playable Character Classes");
+			"Accept Six Playable Character Classes");
 
 		testRunner.Require(
 			!Is_Supported_Playable_Character_Class(
@@ -553,6 +553,7 @@ namespace
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
 		source.fYawDegrees = 225.f;
+		source.fCollisionRadius = 3.f;
 
 		std::vector<std::uint8_t> payload;
 		testRunner.Require(
@@ -569,7 +570,8 @@ namespace
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
 			decoded.fPositionX == source.fPositionX &&
-			decoded.fYawDegrees == source.fYawDegrees,
+			decoded.fYawDegrees == source.fYawDegrees &&
+			decoded.fCollisionRadius == source.fCollisionRadius,
 			"World Entity Spawned Round Trip");
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -581,6 +583,27 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Unstable World Archetype ID");
+		invalid = source;
+		invalid.fCollisionRadius = 0.f;
+		CPacketWriter zeroRadiusWriter;
+		testRunner.Require(
+			!Write_Message(zeroRadiusWriter, invalid),
+			"Reject Combat Entity Without Collision Radius");
+		invalid = source;
+		invalid.eKind = WORLD_ENTITY_KIND::NPC;
+		CPacketWriter npcRadiusWriter;
+		testRunner.Require(
+			!Write_Message(npcRadiusWriter, invalid),
+			"Reject NPC With Combat Collision Radius");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		S2C_WORLD_ENTITY_SPAWNED unchanged{};
+		unchanged.iNetEntityId = 77u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			unchanged.iNetEntityId == 77u,
+			"Reject Truncated World Entity Collision Radius Without Mutation");
 	}
 
 	void Test_WorldEntityDespawnedRoundTrip(TEST_RUNNER& testRunner)
@@ -1236,6 +1259,49 @@ namespace
 			"Reject Truncated Revive Without Mutation");
 	}
 
+	void Test_CharacterClassChangeRoundTrip(TEST_RUNNER& testRunner)
+	{
+		C2S_CHANGE_CHARACTER_CLASS request{};
+		request.iClientSequence = 41u;
+		request.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+		CPacketWriter requestWriter;
+		testRunner.Require(Write_Message(requestWriter, request),
+			"Writer Character Class Change");
+		CPacketReader requestReader{ requestWriter.Get_Buffer() };
+		C2S_CHANGE_CHARACTER_CLASS decodedRequest{};
+		testRunner.Require(Read_Message(requestReader, decodedRequest) &&
+			0u == requestReader.Get_RemainingSize() &&
+			request.iClientSequence == decodedRequest.iClientSequence &&
+			request.eCharacterClass == decodedRequest.eCharacterClass,
+			"Character Class Change Round Trip");
+
+		S2C_CHARACTER_CLASS_CHANGE_RESULT result{};
+		result.iClientSequence = request.iClientSequence;
+		result.eResult = CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED;
+		result.eRequestedClass = request.eCharacterClass;
+		result.eActiveClass = request.eCharacterClass;
+		CPacketWriter resultWriter;
+		testRunner.Require(Write_Message(resultWriter, result),
+			"Writer Character Class Change Result");
+		CPacketReader resultReader{ resultWriter.Get_Buffer() };
+		S2C_CHARACTER_CLASS_CHANGE_RESULT decodedResult{};
+		testRunner.Require(Read_Message(resultReader, decodedResult) &&
+			0u == resultReader.Get_RemainingSize() &&
+			result.iClientSequence == decodedResult.iClientSequence &&
+			result.eResult == decodedResult.eResult &&
+			result.eActiveClass == decodedResult.eActiveClass,
+			"Character Class Change Result Round Trip");
+
+		result.eActiveClass = CHARACTER_CLASS_ID::WARLORD;
+		CPacketWriter inconsistentWriter;
+		testRunner.Require(!Write_Message(inconsistentWriter, result),
+			"Reject Accepted Class Change With Different Active Class");
+		request.iClientSequence = 0u;
+		CPacketWriter staleWriter;
+		testRunner.Require(!Write_Message(staleWriter, request),
+			"Reject Zero Class Change Sequence");
+	}
+
 	void Test_WorldSnapshotRoundTrip(
 		TEST_RUNNER& testRunner)
 	{
@@ -1244,6 +1310,7 @@ namespace
 
 		PLAYER_SNAPSHOT first{};
 		first.iNetEntityId = 100;
+		first.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		first.fPositionX = 1.f;
 		first.fPositionY = 0.f;
 		first.fPositionZ = 2.f;
@@ -1263,6 +1330,7 @@ namespace
 
 		PLAYER_SNAPSHOT second{};
 		second.iNetEntityId = 101;
+		second.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
 		second.fPositionX = 3.f;
 		second.fPositionY = 0.f;
 		second.fPositionZ = 4.f;
@@ -1302,7 +1370,7 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1;
 		constexpr std::size_t playerFixedBytes =
-			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1 + 1;
+			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
@@ -1330,9 +1398,12 @@ namespace
 			decoded.Players.size() == 2 &&
 			decoded.Entities.size() == 1,
 			"World Snapshot Header Round Trip");
+		if (2u != decoded.Players.size() || 1u != decoded.Entities.size())
+			return;
 
 		testRunner.Require(
 			decoded.Players[0].iNetEntityId == 100 &&
+			decoded.Players[0].eCharacterClass == CHARACTER_CLASS_ID::LANCE_MASTER &&
 			decoded.Players[0].fPositionX == 1.f &&
 			decoded.Players[0].fPositionZ == 2.f &&
 			decoded.Players[0].eLocomotionState ==
@@ -1488,6 +1559,20 @@ namespace
 		testRunner.Require(
 			Write_Message(rejectionWriter, result),
 			"Accept Explicit World Entity Spawn Rejection");
+
+		result.eResult = WORLD_ENTITY_SPAWN_RESULT::ACTIVATED;
+		CPacketWriter activationWriter;
+		testRunner.Require(
+			Write_Message(activationWriter, result),
+			"Accept Spawn Group Activation Without Entity ID");
+		CPacketReader activationReader{ activationWriter.Get_Buffer() };
+		S2C_WORLD_ENTITY_SPAWN_RESULT activated{};
+		testRunner.Require(
+			Read_Message(activationReader, activated) &&
+			activated.eResult == WORLD_ENTITY_SPAWN_RESULT::ACTIVATED &&
+			activated.iNetEntityId == INVALID_NET_ENTITY_ID &&
+			0u == activationReader.Get_RemainingSize(),
+			"Spawn Group Activation Result Round Trip");
 	}
 }
 
@@ -1513,6 +1598,7 @@ int main()
 	Test_UseSkillRoundTrip(testRunner);
 	Test_ReleaseSkillRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
+	Test_CharacterClassChangeRoundTrip(testRunner);
 	Test_WorldEntitySpawnCommandRoundTrip(testRunner);
 	Test_WorldSnapshotRoundTrip(testRunner);
 
