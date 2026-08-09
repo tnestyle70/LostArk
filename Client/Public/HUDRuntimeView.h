@@ -59,6 +59,12 @@ public:
 	duplicating DDS/WIC loading, or standing up a second CHUDRuntimeView, for that. */
 	ID3D11ShaderResourceView* Load_Texture(const string& strPath);
 
+	/* Reference-resolution rect of the authored slot with this JSON "id" (e.g. "Skill_Q"), or
+	false if no such slot exists. For callers that need to draw a dynamic overlay (a skill
+	cooldown sweep, ...) aligned to a slot this view already owns the authored position of,
+	instead of duplicating the JSON's numbers a second time. */
+	bool_t Get_SlotRect(const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
+
 private:
 	struct TEXTURE_LAYER
 	{
@@ -70,6 +76,7 @@ private:
 
 	struct HUD_SLOT
 	{
+		string					strId;
 		string					strOwnerClass;
 		f32_t					fX = 0.f, fY = 0.f, fSizeX = 0.f, fSizeY = 0.f;
 		f32_t					fRotation = 0.f;
