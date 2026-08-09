@@ -75,6 +75,30 @@ namespace
 		return elapsedMs >= static_cast<float>(stage.iInputOpenMs) &&
 			elapsedMs <= static_cast<float>(stage.iInputCloseMs);
 	}
+
+	/* The aim arrives as a world point, so it is only a direction once the
+	player's own position is taken out of it. A press on top of the player
+	carries no direction and keeps the facing it already had. */
+	void ResolveAimDirection(
+		const LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Shared::C2S_USE_SKILL& command,
+		float& outDirectionX,
+		float& outDirectionZ)
+	{
+		outDirectionX = command.fAimX - player.fPositionX;
+		outDirectionZ = command.fAimZ - player.fPositionZ;
+		const float length = std::sqrt(
+			outDirectionX * outDirectionX + outDirectionZ * outDirectionZ);
+		if (length > 0.0001f)
+		{
+			outDirectionX /= length;
+			outDirectionZ /= length;
+			return;
+		}
+		const float yawRadians = player.fYawDegrees / RADIANS_TO_DEGREES;
+		outDirectionX = std::sin(yawRadians);
+		outDirectionZ = std::cos(yawRadians);
+	}
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_Start(
@@ -113,6 +137,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		{
 			player.iLastSkillSequence = command.iClientSequence;
 			player.hasBufferedComboInput = true;
+			ResolveAimDirection(
+				player,
+				command,
+				player.fBufferedComboAimX,
+				player.fBufferedComboAimZ);
 		}
 		return false;
 	}
@@ -126,20 +155,9 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		return false;
 	}
 
-	float directionX = command.fAimX - player.fPositionX;
-	float directionZ = command.fAimZ - player.fPositionZ;
-	const float length = std::sqrt(directionX * directionX + directionZ * directionZ);
-	if (length > 0.0001f)
-	{
-		directionX /= length;
-		directionZ /= length;
-	}
-	else
-	{
-		const float yawRadians = player.fYawDegrees / RADIANS_TO_DEGREES;
-		directionX = std::sin(yawRadians);
-		directionZ = std::cos(yawRadians);
-	}
+	float directionX = 0.f;
+	float directionZ = 0.f;
+	ResolveAimDirection(player, command, directionX, directionZ);
 
 	player.iLastSkillSequence = command.iClientSequence;
 	player.eAction = PLAYER_ACTION_STATE::SKILL;
@@ -387,6 +405,17 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		if (hasNextStage)
 		{
+			/* The press that bought this stage aimed somewhere, and that is where
+			the stage plays: facing and root motion both turn to it. A hold
+			advances on its own clock, so it keeps the facing it started with. */
+			if (player.hasBufferedComboInput)
+			{
+				player.fSkillAimDirectionX = player.fBufferedComboAimX;
+				player.fSkillAimDirectionZ = player.fBufferedComboAimZ;
+				player.fYawDegrees = std::atan2(
+					player.fBufferedComboAimX,
+					player.fBufferedComboAimZ) * RADIANS_TO_DEGREES;
+			}
 			player.iComboStage = holdSkipsLoop || holdLeavesLoop ?
 				3u : player.iComboStage + 1u;
 			player.hasBufferedComboInput = false;

@@ -83,6 +83,10 @@ namespace LostArk::Server
 		std::uint8_t iComboStage = 0;
 		// Set by a press inside the open window, consumed when the stage ends.
 		bool hasBufferedComboInput = false;
+		// The aim that press carried. The next stage turns to it, so a combo
+		// follows the cursor instead of repeating the first stage's facing.
+		float fBufferedComboAimX = 0.f;
+		float fBufferedComboAimZ = 1.f;
 		// Set when a HOLD skill's key is let go, consumed when its loop ends.
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>

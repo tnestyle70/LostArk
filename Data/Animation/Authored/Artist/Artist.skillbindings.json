@@ -34,8 +34,7 @@
     {
       "skillId": 31210,
       "clips": [
-        [ "sdm_sk_skykongkong_01" ],
-        [ "sdm_sk_skykongkong_03" ],
+        [ "sdm_sk_skykongkong_01", "sdm_sk_skykongkong_03" ],
         [ "sdm_sk_skykongkong_01" ],
         [ "sdm_sk_skykongkong_02" ]
       ]
@@ -99,7 +98,6 @@
     {
       "skillId": 31020,
       "clips": [
-        "sdm_sk_moving_normal_1",
         "sdm_sk_spacing"
       ]
     }
