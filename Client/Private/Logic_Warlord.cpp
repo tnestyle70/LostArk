@@ -44,6 +44,15 @@ namespace
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 0) | (1u << 1) | (1u << 2) | (1u << 3);
 
+	/* Defence stance is a posture, not a weapon swap: the class crouches behind
+	the shield and keeps that pose until it leaves the stance, so idle and run
+	both belong to the stance rather than to the class. */
+	constexpr STANCE_LOCOMOTION_SPEC StanceLocomotion[] =
+	{
+		{ LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE,
+		  "wgl_sk_defence_loop", "wgl_run_defence_1" },
+	};
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Warlord>();
@@ -90,6 +99,12 @@ const CHARACTER_SPEC Spec_Warlord =
 	},
 
 	&Create_Logic,
+
+	nullptr,
+	0u,
+
+	StanceLocomotion,
+	static_cast<uint32_t>(size(StanceLocomotion)),
 };
 
 NS_END

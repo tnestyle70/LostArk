@@ -125,6 +125,9 @@ namespace LostArk::Server
 			std::uint32_t ordinal);
 		std::uint32_t Count_SpawnGroupEntities(
 			const std::string& spawnGroupId) const;
+		/* 1 unless the player is standing in the stance its identity gauge pays
+		for, which is the only thing that changes how fast anyone walks. */
+		float Resolve_StanceMoveSpeedScale(const SERVER_PLAYER& player) const;
 		void Update_Players(float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 

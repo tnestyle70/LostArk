@@ -1302,7 +1302,7 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1;
 		constexpr std::size_t playerFixedBytes =
-			4 + (4 * 4) + 1 + 1 + 1 + (4 * 6) + 1 + 1 + 1;
+			4 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +

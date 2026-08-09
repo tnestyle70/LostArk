@@ -182,6 +182,58 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	return true;
 }
 
+bool LostArk::Server::CPlayerSkillSystem::Is_HoldingGaugedStance(
+	const SERVER_PLAYER& player,
+	const PLAYER_RUNTIME_PROFILE& profile)
+{
+	return 0u != profile.iMaximumIdentity &&
+		player.eStance != profile.eDefaultStance;
+}
+
+/* The gauge fills whenever the stance it pays for is not held, and empties while
+it is. Reaching empty is what drops the stance, so the player never has to press
+the toggle to be let out. */
+void LostArk::Server::CPlayerSkillSystem::Update_Identity(
+	SERVER_PLAYER& player,
+	const PLAYER_RUNTIME_PROFILE& profile)
+{
+	if (0u == profile.iMaximumIdentity)
+		return;
+	const bool isHolding = Is_HoldingGaugedStance(player, profile);
+	const std::uint32_t rate = isHolding ?
+		profile.iIdentityDrainPerSecond : profile.iIdentityRegenPerSecond;
+	if (0u == rate ||
+		(!isHolding && player.iCurrentIdentity >= player.iMaximumIdentity))
+	{
+		player.iIdentityAccumulator = 0u;
+	}
+	else
+	{
+		player.iIdentityAccumulator += rate;
+		while (player.iIdentityAccumulator >= SERVER_TICK_HZ)
+		{
+			player.iIdentityAccumulator -= SERVER_TICK_HZ;
+			if (isHolding)
+			{
+				if (0u == player.iCurrentIdentity)
+					break;
+				--player.iCurrentIdentity;
+			}
+			else
+			{
+				if (player.iCurrentIdentity >= player.iMaximumIdentity)
+					break;
+				++player.iCurrentIdentity;
+			}
+		}
+	}
+	if (isHolding && 0u == player.iCurrentIdentity)
+	{
+		player.eStance = profile.eDefaultStance;
+		player.iIdentityAccumulator = 0u;
+	}
+}
+
 void LostArk::Server::CPlayerSkillSystem::Update(
 	SERVER_PLAYER& player,
 	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
@@ -200,6 +252,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
 		return;
+	}
+	if (const PLAYER_RUNTIME_PROFILE* identityProfile =
+		catalog.Find_Player(player.eCharacterClass))
+	{
+		Update_Identity(player, *identityProfile);
 	}
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
 	{

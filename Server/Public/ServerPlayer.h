@@ -66,6 +66,11 @@ namespace LostArk::Server
 		// out one resource per SERVER_TICK_HZ accumulated, so a second restores
 		// exactly resourceRegenPerSecond with integers only.
 		std::uint32_t iResourceAccumulator = 0;
+		// The class identity gauge, and the same fixed-point carry the resource
+		// pool uses. Both stay 0 for a class whose profile has no gauge.
+		std::uint32_t iCurrentIdentity = 0;
+		std::uint32_t iMaximumIdentity = 0;
+		std::uint32_t iIdentityAccumulator = 0;
 		LostArk::Shared::PLAYER_ACTION_STATE eAction =
 			LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 		LostArk::Shared::PLAYER_STANCE_ID eStance =
