@@ -1,0 +1,1599 @@
+{
+  "schema": "lostark.effect-component",
+  "version": 1,
+  "componentAssetId": "effect.component.lancemaster.skill.34650.authored-baseline.clip1.01",
+  "displayName": "LanceMaster_skill_34650_authored-baseline_clip1_01.visual",
+  "componentType": "visual",
+  "source": {
+    "effectAssetId": "effect.lancemaster.skill.34650.authored-baseline.clip1",
+    "groupId": "authored.approx.s002",
+    "sourceNodes": [
+      "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_27",
+      "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_35",
+      "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_6",
+      "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68",
+      "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_88"
+    ],
+    "sourceElementSha256": "1e504d835d24db284f9332d0d7c7b2acf30a5ed4db44b4e98619fe799aa63183",
+    "inputSlot": "T"
+  },
+  "emitters": [
+    {
+      "emitterId": "authored.approx.s002.mesh01",
+      "elementId": "authored.approx.s002.mesh01",
+      "sourceElementIndex": 2,
+      "renderer": "mesh",
+      "visible": true,
+      "resourceBindingCount": 3,
+      "moduleCount": 0
+    },
+    {
+      "emitterId": "authored.approx.s002.mesh02",
+      "elementId": "authored.approx.s002.mesh02",
+      "sourceElementIndex": 3,
+      "renderer": "mesh",
+      "visible": true,
+      "resourceBindingCount": 2,
+      "moduleCount": 0
+    },
+    {
+      "emitterId": "authored.approx.s002.sprite01",
+      "elementId": "authored.approx.s002.sprite01",
+      "sourceElementIndex": 4,
+      "renderer": "sprite",
+      "visible": true,
+      "resourceBindingCount": 1,
+      "moduleCount": 0
+    },
+    {
+      "emitterId": "authored.approx.s002.sprite02",
+      "elementId": "authored.approx.s002.sprite02",
+      "sourceElementIndex": 5,
+      "renderer": "sprite",
+      "visible": true,
+      "resourceBindingCount": 1,
+      "moduleCount": 0
+    },
+    {
+      "emitterId": "authored.approx.s002.sprite03",
+      "elementId": "authored.approx.s002.sprite03",
+      "sourceElementIndex": 6,
+      "renderer": "sprite",
+      "visible": true,
+      "resourceBindingCount": 1,
+      "moduleCount": 0
+    }
+  ],
+  "document": {
+    "schema": "lostark.effect-authoring",
+    "version": 12,
+    "effectAssetId": "effect.component.lancemaster.skill.34650.authored-baseline.clip1.01",
+    "displayName": "LanceMaster_skill_34650_authored-baseline_clip1_01.visual",
+    "particleSystem": {
+      "uniformScaleMultiplier": 1.0,
+      "yawOffsetDegrees": 0.0,
+      "directionYawDegrees": 0.0,
+      "initialSpeedMultiplier": 1.0
+    },
+    "modelCues": [],
+    "elements": [
+      {
+        "id": "authored.approx.s002.mesh01",
+        "displayName": "authored.approx.s002.mesh01",
+        "groupId": "authored.approx.s002",
+        "sourceNode": "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_68",
+        "visible": true,
+        "kind": "mesh",
+        "resources": [
+          {
+            "slotId": "meshModel",
+            "assetId": "Effect/LanceMaster/Meshes/fm_c_square_001.wmodel"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_b_atypical_004.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_trail_004.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_me_ringmaster_01_12_ts_fs_ad",
+          "renderProfile": "additive_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              0.02,
+              0.02,
+              0.02
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              -1.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.4000000059604645,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": false,
+            "billboardRollDegrees": 0.0
+          },
+          "decal": {
+            "size": [
+              0.02,
+              0.02
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": true,
+            "endScale": [
+              0.026400001621246363,
+              0.026400001621246363,
+              0.026400001621246363
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 6,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 90,
+            "lifeTimeSeconds": [
+              0.30000001192092896,
+              0.4000000059604645
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.05,
+              -0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.05,
+              -0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              0.02,
+              0.02
+            ],
+            "endSize": [
+              0.024000000953674317,
+              0.024000000953674317
+            ],
+            "localSpace": true,
+            "billboard": false
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 0,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
+        }
+      },
+      {
+        "id": "authored.approx.s002.mesh02",
+        "displayName": "authored.approx.s002.mesh02",
+        "groupId": "authored.approx.s002",
+        "sourceNode": "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_6",
+        "visible": true,
+        "kind": "mesh",
+        "resources": [
+          {
+            "slotId": "meshModel",
+            "assetId": "Effect/LanceMaster/Meshes/fm_d_helix_031.wmodel"
+          },
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_trail_005_cl.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_05_ad",
+          "renderProfile": "additive_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              0.015,
+              0.015,
+              0.015
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.5599999986588955,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": false,
+            "billboardRollDegrees": 0.0
+          },
+          "decal": {
+            "size": [
+              0.015,
+              0.015
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": true,
+            "endScale": [
+              0.005400000429153451,
+              0.005400000429153451,
+              0.005400000429153451
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 10,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 91,
+            "lifeTimeSeconds": [
+              0.3499999940395355,
+              0.5
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              0.015,
+              0.015
+            ],
+            "endSize": [
+              0.004500000178813934,
+              0.004500000178813934
+            ],
+            "localSpace": true,
+            "billboard": false
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 0,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
+        }
+      },
+      {
+        "id": "authored.approx.s002.sprite01",
+        "displayName": "authored.approx.s002.sprite01",
+        "groupId": "authored.approx.s002",
+        "sourceNode": "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_35",
+        "visible": true,
+        "kind": "sprite",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_f_ring_001.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_05_07_ad",
+          "renderProfile": "additive_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              0.75,
+              0.01,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.30000001192092896,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": true,
+            "billboardRollDegrees": -90.0
+          },
+          "decal": {
+            "size": [
+              0.75,
+              0.01
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": true,
+            "endScale": [
+              3.0,
+              0.04,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 3,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 87,
+            "lifeTimeSeconds": [
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              0.75,
+              0.01
+            ],
+            "endSize": [
+              3.0,
+              0.04
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 0,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
+        }
+      },
+      {
+        "id": "authored.approx.s002.sprite02",
+        "displayName": "authored.approx.s002.sprite02",
+        "groupId": "authored.approx.s002",
+        "sourceNode": "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_27",
+        "visible": true,
+        "kind": "sprite",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_a_glow_004.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_gl_01_9_ad",
+          "renderProfile": "additive_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              4.0,
+              0.5,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.30000001192092896,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": true,
+            "billboardRollDegrees": -90.0
+          },
+          "decal": {
+            "size": [
+              4.0,
+              0.5
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": true,
+            "endScale": [
+              0.04,
+              1.0,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 3,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 83,
+            "lifeTimeSeconds": [
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              4.0,
+              0.5
+            ],
+            "endSize": [
+              0.0,
+              1.0
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 0,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
+        }
+      },
+      {
+        "id": "authored.approx.s002.sprite03",
+        "displayName": "authored.approx.s002.sprite03",
+        "groupId": "authored.approx.s002",
+        "sourceNode": "authored-approximation:effect.lancemaster.skill.34650.authored-baseline|source:effect.lance_master.skill.34650.imported|element:fx_pc_wgl_07.par_s_superawake_exmove_01.particlespriteemitter_88",
+        "visible": true,
+        "kind": "sprite",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/LanceMaster/Textures/fx_e_ring_003.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_ri_04_1_ad",
+          "renderProfile": "additive_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              2.0,
+              0.01,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": true,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.0,
+            "lifeTimeSeconds": 0.30000001192092896,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": false
+          },
+          "sprite": {
+            "billboard": true,
+            "billboardRollDegrees": -90.0
+          },
+          "decal": {
+            "size": [
+              2.0,
+              0.01
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": true,
+            "endScale": [
+              3.200000047683716,
+              0.01600000023841858,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 3,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 89,
+            "lifeTimeSeconds": [
+              0.30000001192092896,
+              0.30000001192092896
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              2.0,
+              0.01
+            ],
+            "endSize": [
+              3.200000047683716,
+              0.01600000023841858
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 0,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false,
+          "schema": "lostark.effect-source-presentation",
+          "version": 1,
+          "profileId": "",
+          "status": "unresolved",
+          "sourceObjectPath": "",
+          "sourceActionCueId": "",
+          "sourceEventId": "",
+          "sourceOccurrenceIndex": 0,
+          "sourceTimeSeconds": 0.0,
+          "parameters": []
+        }
+      }
+    ]
+  }
+}

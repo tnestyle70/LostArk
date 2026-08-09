@@ -50,6 +50,15 @@ struct WEAPON_PART_SPEC
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
+/* Optional per-skill presentation authored beside the owning class.  This is
+visual state only; Server action snapshots still decide when it is active. */
+struct SKILL_SURFACE_EMISSIVE_SPEC
+{
+	LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	float4_t vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	f32_t fIntensity = 0.f;
+};
+
 /* Everything that makes one class different, as data. Held as a constant next to
 that class's logic; CCharacter itself stays class-agnostic. */
 struct CHARACTER_SPEC
@@ -81,6 +90,9 @@ struct CHARACTER_SPEC
 	const char_t* AnimationClips[ETOUI(CHARACTER_ANIM::END)];
 
 	unique_ptr<ICharacterLogic> (*pCreateLogic)();
+
+	const SKILL_SURFACE_EMISSIVE_SPEC* pSkillSurfaceEmissives = nullptr;
+	uint32_t iNumSkillSurfaceEmissives = 0u;
 };
 
 NS_END

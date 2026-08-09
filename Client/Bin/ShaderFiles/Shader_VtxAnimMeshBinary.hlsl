@@ -12,6 +12,9 @@ float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
 float4 g_EmissiveColor = 1.f;
 float g_EmissiveIntensity = 1.f;
+uint g_HasFullSurfaceEmissiveOverride = 0;
+float4 g_FullSurfaceEmissiveColor = 1.f;
+float g_FullSurfaceEmissiveIntensity = 0.f;
 matrix g_BoneMatrices[512];
 
 struct VS_IN
@@ -73,11 +76,6 @@ struct PS_OUT
     float4 vEmissive : SV_TARGET4;
 };
 
-struct PS_OUT_SHADOW
-{
-    float4 vLightDepth : SV_TARGET0;
-};
-
 PS_OUT PS_MAIN(VS_OUT input)
 {
     PS_OUT output;
@@ -120,17 +118,22 @@ PS_OUT PS_MAIN(VS_OUT input)
         output.vEmissive = float4(
             emissive * g_EmissiveColor.rgb * g_EmissiveIntensity, 0.f);
     }
+    if (0 != g_HasFullSurfaceEmissiveOverride)
+    {
+        const float textureDetail = saturate(
+            0.35f + dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
+        output.vEmissive.rgb +=
+            g_FullSurfaceEmissiveColor.rgb *
+            g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+    }
     return output;
 }
 
-PS_OUT_SHADOW PS_MAIN_SHADOW(VS_OUT input)
+void PS_MAIN_SHADOW(VS_OUT input)
 {
-    PS_OUT_SHADOW output;
     float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
     if (diffuse.a < 0.3f)
         discard;
-    output.vLightDepth = float4(input.vProjPos.w / 1000.f, 0.f, 0.f, 0.f);
-    return output;
 }
 
 technique11 DefaultTechnique

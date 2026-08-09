@@ -20,6 +20,26 @@ namespace
 	constexpr float MAX_ABS_MOVE_GOAL = 10000.f;
 	constexpr float MOVE_STOP_DISTANCE = 0.05f;
 	constexpr float RADIANS_TO_DEGREES = 57.2957795f;
+#ifdef _DEBUG
+	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
+
+	constexpr std::uint32_t Add_ServerTicksSkippingReservedZero(
+		const std::uint32_t startTick,
+		const std::uint32_t elapsedTicks)
+	{
+		constexpr std::uint64_t SERVER_TICK_CARDINALITY =
+			(static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)()));
+		return static_cast<std::uint32_t>(
+			((static_cast<std::uint64_t>(startTick - 1u) + elapsedTicks) %
+				SERVER_TICK_CARDINALITY) + 1u);
+	}
+
+	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
+	static_assert(90u == Add_ServerTicksSkippingReservedZero(
+		(std::numeric_limits<std::uint32_t>::max)(), 90u));
+	static_assert(1u == Add_ServerTicksSkippingReservedZero(
+		(std::numeric_limits<std::uint32_t>::max)() - 89u, 90u));
+#endif
 
 	bool Is_Valid_EnterWorld(const C2S_ENTER_WORLD& message)
 	{
@@ -488,6 +508,19 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	const std::uint32_t actionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+#ifdef _DEBUG
+	/* Character Select Server Arena is the presentation audition room.  Keep
+	its retries Server-authoritative with a fixed three-second audition cooldown
+	and full resources; action-running, sequence, class, aim and snapshot gates
+	remain in CPlayerSkillSystem::Try_Start.  Release rooms retain authored
+	balance. */
+	if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
+	{
+		playerIter->second.iCurrentResource =
+			playerIter->second.iMaximumResource;
+		playerIter->second.iResourceAccumulator = 0u;
+	}
+#endif
 	// A valid but currently unavailable skill is rejected as gameplay state;
 	// malformed payloads are already closed at the ServerApp packet boundary.
 	if (m_PlayerSkillSystem.Try_Start(
@@ -496,6 +529,16 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		m_GameplayCatalog,
 		actionStartTick))
 	{
+#ifdef _DEBUG
+		if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
+		{
+			playerIter->second.CooldownEndTickBySkillId.insert_or_assign(
+				useSkill.iSkillId,
+				Add_ServerTicksSkippingReservedZero(
+					actionStartTick,
+					CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS));
+		}
+#endif
 		playerIter->second.isCombatReady = true;
 	}
 }

@@ -312,3 +312,58 @@ Screen Post를 끄면 mesh/sprite 형상은 유지되고 화면 왜곡만 사라
 따라서 원작 UE3 로아와의 `100%`는 현재 주장하지 않는다. 완료 기준은 먼저 Effect 채널 누락 0,
 fallback 0, 고정 A/B manifest 100%를 달성한 뒤, 장면별 노출·색·Bloom·shadow와 Effect 실루엣을
 reference-condition perceptual match로 승인하는 것이다.
+
+## 10. 08-09 Renderer Stage 0 후속 결과
+
+이 절은 7장과 9.4의 SSAO/shadow/session-only profile 미구현 표기를 현재 상태로 대체한다.
+
+### 10.1 실제 구현 완료
+
+- `Data/Rendering/Authored/RenderingProfiles.json` → strict publisher → runtime catalog →
+  `CRenderingProfileService` 경계를 추가했다.
+- F1 Rendering Workbench에서 global SSAO/Bloom/Hable/FXAA와 active scene의 directional light,
+  exposure/Bloom multiplier, orthographic shadow를 분리해 편집·저장·publish·reload할 수 있다.
+- Character Select Preview/Server Arena는 `(0.4, 7.5, 4.5)`, look Y `1.05`, FOV 45도의 같은
+  top-down preset을 사용한다.
+- half-resolution view-space SSAO와 bilateral resolve를 추가했고 ambient만 감쇠한다.
+- 2048² true depth directional shadow, 3×3 PCF, Character body/equipment 및 opaque map caster를
+  연결했다. object/effect emissive와 transient Effect light는 shadow 영향을 받지 않는다.
+- profile activation과 level 교체 실패 rollback, invalid live draft 복구, duplicate JSON key와
+  strict numeric/casing 검증을 닫았다.
+
+### 10.2 실행한 자동 검증
+
+| 검증 | 결과 |
+|---|---|
+| Rendering profile Publish | PASS |
+| `Test-RenderingProfiles.ps1` | PASS |
+| `Test-RenderQualityWorkbench.ps1` | PASS |
+| Authored/runtime JSON semantic match | PASS |
+| Client project/filter XML parse | PASS |
+| Engine/Client deferred shader SHA-256 | 동일 |
+| Engine x64 Debug | PASS |
+| `UpdateLib.bat Debug` | PASS, PhysX 3종 포함 runtime 배포 |
+| Client x64 Debug | PASS |
+| Debug Client loader smoke | PASS, `Client/Default`에서 숨김 5초 생존 후 테스트 process 종료 |
+| 이미지/스크린샷 판정 | 수행하지 않음 |
+
+첫 Client 빌드는 F1 clamp의 Windows `min/max` macro 충돌 3곳을 검출했고 `(std::min)` /
+`(std::max)` 호출로 교정한 뒤 재빌드가 통과했다. 새 SSAO/shadow shader의 uninitialized warning은
+제거했으며 남은 FXAA/Effects11 warning은 기존 경로다.
+
+정본 `Invoke-ProjectAudit.ps1`에서 Rendering Profile, Rendering Workbench, Effect Tool,
+Gameplay/Navigation 검사는 통과했다. 전체 종료 코드는 렌더 범위 밖의 기존
+`maps.product-editor-visual-scope` 한 항목 때문에 실패했다.
+
+### 10.3 수동 상태와 남은 경계
+
+- 이번 검증에서는 원본/모작 이미지 캡처, 스크린샷 비교, 눈 판정을 전혀 하지 않았다.
+  Character Select와 Valtan profile의 미술 수치는 사용자가 F1으로 직접 승인해야 한다.
+- PBR/GGX/IBL은 구현 완료가 아니다. WMA2 ORM channel order가 불명확하고 Valtan visible 자산에
+  metallic/roughness/AO 근거와 실제 environment cubemap/BRDF LUT가 없어서 추측 구현을 막았다.
+- Valtan body와 Deploy/visible debris caster까지 닫았다. Bern의 `CNpc`는 Bern shadow가
+  비활성인 현재 범위에서 제외하고 다음 profile 확장 단위로 남겼다.
+- F1 intermediate RT 진단은 아직 없다. 필요 시 기존 Renderer 안의 `_DEBUG` 단일 RGBA8 resolve
+  target으로만 추가하고 raw SRV 공개나 별도 Final/tone-map 경로는 만들지 않는다.
+- 다음 구현은 renderer baseline 수동 승인 뒤 Particle Mesh/Sprite를 제외한 DimensionMaster A
+  standalone large Mesh Track B다. 그 뒤 실제 source cue가 확인된 나머지 스킬로 확장한다.

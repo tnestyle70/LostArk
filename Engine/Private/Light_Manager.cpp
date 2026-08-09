@@ -64,23 +64,35 @@ HRESULT CLight_Manager::Replace_SceneLights(vector<LIGHT_DESC> SceneLights)
 	return S_OK;
 }
 
-HRESULT CLight_Manager::Render_Lights(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer)
+HRESULT CLight_Manager::Render_Lights(
+	shared_ptr<class CShader> pShader,
+	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+	bool_t bEnableSceneDirectionalShadow)
 {
 	HRESULT hResult = S_OK;
+	bool_t bSceneDirectionalShadowConsumed = false;
     for (const LIGHT_DESC& LightDesc : m_SceneLights)
     {
-		if (FAILED(CLight::Render_Desc(LightDesc, pShader, pVIBuffer)))
+		const bool_t bApplyShadow =
+			bEnableSceneDirectionalShadow &&
+			!bSceneDirectionalShadowConsumed &&
+			LIGHT::DIRECTIONAL == LightDesc.eType;
+		if (FAILED(CLight::Render_Desc(
+			LightDesc, pShader, pVIBuffer, bApplyShadow)))
 		{
 			hResult = E_FAIL;
 			break;
 		}
+		if (bApplyShadow)
+			bSceneDirectionalShadowConsumed = true;
     }
 	if (SUCCEEDED(hResult))
 	{
 		for (const LIGHT_DESC& LightDesc :
 			CPresentation_Manager::Get().Get_TransientLights())
 		{
-			if (FAILED(CLight::Render_Desc(LightDesc, pShader, pVIBuffer)))
+			if (FAILED(CLight::Render_Desc(
+				LightDesc, pShader, pVIBuffer, false)))
 			{
 				hResult = E_FAIL;
 				break;

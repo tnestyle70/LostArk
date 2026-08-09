@@ -465,6 +465,18 @@ namespace
 	}
 }
 
+struct Client::CEffectCatalog::RUNTIME_SNAPSHOT final
+{
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>, std::less<>> Effects;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_ASSEMBLY_DESC>, std::less<>> Assemblies;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_COMPONENT_DESC>, std::less<>> Components;
+	uint64_t iRuntimeRevision = 0u;
+	std::string strStatus;
+};
+
 bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 {
     const std::filesystem::path Path = Find_RuntimeCatalog();
@@ -677,6 +689,37 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		" Components.";
     strOutStatus = g_strStatus;
     return true;
+}
+
+std::shared_ptr<const Client::CEffectCatalog::RUNTIME_SNAPSHOT>
+Client::CEffectCatalog::Capture_Runtime()
+{
+	auto Snapshot = std::make_shared<RUNTIME_SNAPSHOT>();
+	Snapshot->Effects = g_Effects;
+	Snapshot->Assemblies = g_Assemblies;
+	Snapshot->Components = g_Components;
+	Snapshot->iRuntimeRevision = g_iRuntimeRevision;
+	Snapshot->strStatus = g_strStatus;
+	return Snapshot;
+}
+
+bool_t Client::CEffectCatalog::Restore_Runtime(
+	std::shared_ptr<const RUNTIME_SNAPSHOT> pSnapshot,
+	std::string& strOutStatus)
+{
+	if (nullptr == pSnapshot)
+	{
+		strOutStatus = "Effect runtime rollback snapshot is missing.";
+		return false;
+	}
+	g_Effects = pSnapshot->Effects;
+	g_Assemblies = pSnapshot->Assemblies;
+	g_Components = pSnapshot->Components;
+	g_iRuntimeRevision = pSnapshot->iRuntimeRevision;
+	g_strStatus = pSnapshot->strStatus;
+	strOutStatus = "Restored Effect runtime catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
 }
 
 std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>

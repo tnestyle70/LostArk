@@ -57,6 +57,12 @@ void CBody_Valtan::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 }
 
 HRESULT CBody_Valtan::Render()
@@ -77,6 +83,31 @@ HRESULT CBody_Valtan::Render()
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CBody_Valtan::Render_Shadow()
+{
+	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
+	if (FAILED(Bind_ShadowShaderResources()))
+		return E_FAIL;
+
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		const DEFERRED_MATERIAL_PROFILE Profile =
+			Resolve_DeferredMaterialProfile(
+				"material.valtan.monster-base.v1",
+				m_pModelCom->Get_MaterialName(i));
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, Profile)) ||
+			FAILED(m_pModelCom->Bind_BoneMatrices(
+				m_pShaderCom, "g_BoneMatrices", i)) ||
+			FAILED(m_pShaderCom->Begin(ANIMATED_SHADOW_PASS)) ||
+			FAILED(m_pModelCom->Render(i)))
+		{
+			return E_FAIL;
+		}
 	}
 	return S_OK;
 }
@@ -108,6 +139,20 @@ HRESULT CBody_Valtan::Bind_ShaderResources()
 		FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
+	return S_OK;
+}
+
+HRESULT CBody_Valtan::Bind_ShadowShaderResources()
+{
+	if (FAILED(__super::Bind_WorldMatrix(
+			m_pShaderCom, "g_WorldMatrix")) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

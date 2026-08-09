@@ -17,6 +17,25 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 | LostArk 맵 에셋 검색, UModel 추출, ModelAssetConverter, MapTool 적용 | `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md` |
 | 맵 에셋이 생성됐지만 안 보임, diffuse 누락, 스케일 오류, 레거시 런타임 혼선 | `.md/GB/07-29/gotchas.md` |
 
+### 2026-08-20까지 세션 시작 시 팀 LAN 자동 설정
+
+2026-08-20 23:59 KST까지 이 저장소에서 시작하는 모든 에이전트 세션은 다른 작업보다 먼저
+다음 명령을 실행한다. 사용자에게 IP를 다시 묻거나 `127.0.0.1`로 임의 복원하지 않는다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
+```
+
+`Tools/Network/TeamLanEndpoint.json`이 이 기간의 단일 endpoint 정본이다. 스크립트는 모든 PC의
+Git 제외 `Client.vcxproj.user`를 `LOSTARK_SERVER_HOST=192.168.200.103`으로 갱신한다.
+현재 endpoint 주소를 실제로 가진 PC만 `server-host`로 판정해 `Server.vcxproj.user`의
+`--bind-address 0.0.0.0`과 TCP 7777 LocalSubnet 방화벽 규칙도 확인한다. 출력이
+`server-host`이면 `Server + Client` profile, `client`이면 Client project만 `Ctrl+F5`로 시작한다.
+관리자 권한이 있어야 방화벽 규칙을 추가할 수 있으면 그 사실을 즉시 보고한다.
+현재 Server가 꺼져 있어 endpoint probe가 `not-listening`이어도 로컬 설정은 완료된 것이므로 작업을
+막지 않는다. 만료 뒤에는 `-AllowExpired`로 조용히 우회하지 말고 endpoint 정본과 public 계약을
+먼저 갱신한다.
+
 ## 정본 문서 역할과 일일 유지 관리
 
 문서는 같은 내용을 복제하지 않고 다음 역할로 나눈다.
@@ -110,7 +129,7 @@ LostArk 팀 저장소에서 사용하는 공통 작업 규칙이다.
 
 - Client 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다. 별도 시나리오 catalog나 Client 실행 인자로 시작 Level을 바꾸지 않는다.
 - `CHARACTER_SELECT`는 최초 진입에서 socket을 열지 않고 `LV_LOBBY_CLASSSELECT_SL00` visual map과 여섯 class preview를 제공한다. Character Select 창의 `Server Play` 선택은 선택 class와 tokenized `TEST` command를 commit하고 Lobby가 `WORLD_ID::CHARACTER_SELECT_ARENA` Server 승인을 받은 뒤 같은 visual map을 Server gameplay로 다시 연다. Server Arena의 `Preview` 선택은 현재 replicated state와 socket을 정리한 뒤 tokenized `CHARACTER_SELECT`를 Lobby에 제출해 socket 없는 Preview로 재진입한다. gameplay 재진입은 승인된 기존 socket을 one-shot handoff로 소비하고 `CClientReplication -> CPlayerController -> IPlayerCommandSink`를 사용해 우클릭 이동과 class quick-slot 스킬을 Server snapshot으로 반영한다. Character Select가 직접 connect/send/approval을 반복하지 않는다. Server는 필수이며 연결 실패·거부 또는 5초 이내 승인 부재는 Lobby에 남고 자동 local fallback은 없다. 진입 후 disconnect는 replicated state를 정리하고 Lobby로 복귀한다. Server Arena의 Valtan은 disabled world template의 stable placement ID를 typed command sink로 요청하고 Server가 navigation/profile을 검증해 broadcast한 뒤 Client presentation prototype을 batch lazy-load한다. Bern/Valtan도 확정 class를 `C2S_ENTER_WORLD`로 보내고 `S2C_ENTER_ACCEPTED`를 받은 뒤에만 진입한다.
-- Server listener 기본 bind는 `127.0.0.1`이다. LAN 공동 플레이는 `Server.exe --bind-address 0.0.0.0` 또는 특정 사설 IPv4를 명시할 때만 허용한다. Client는 process-local `LOSTARK_SERVER_HOST` 값을 읽고, 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 개인 IP·방화벽 설정·탐색 결과는 `.vcxproj.user` 같은 Git 제외 로컬 설정에만 두고 Git 데이터에 저장하지 않는다.
+- 2026-08-20 23:59 KST까지 팀 LAN 검증 Server listener 기본 bind는 `0.0.0.0`이고 Client 기본 endpoint는 `192.168.200.103:7777`이다. endpoint와 만료일 정본은 `Tools/Network/TeamLanEndpoint.json`이다. `Framework.slnLaunch`의 `Server + Client` profile과 공유 x64 debugger 설정도 같은 계약을 사용한다. `LOSTARK_SERVER_HOST`로 Client endpoint를 명시하면 그 값을 우선하며 `0.0.0.0`은 Client 접속 주소로 사용하지 않는다. 이 주소 계약을 바꿀 때는 Server/Client 기본값, 공유 debugger 설정, 팀 사용서와 ProjectAudit을 같은 변경 단위에서 갱신한다.
 - 최소 수련장은 `dev.training.ground -> LEVEL::DEVELOPMENT -> LV_DEV_TRAINING_GROUND -> WORLD_ID::TRAINING_GROUND` 계약을 사용한다. 새 `LEVEL::TRAINING`을 만들지 않는다.
 - 레벨은 `STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, DEVELOPMENT`만 사용한다. 새 레벨은 enum, registry, loader, 프로젝트 등록과 실제 Server+Client 진입 검증을 한 변경 단위로 추가한다.
 - 제품 맵은 `CLevelRegistry` descriptor의 `MAP_LOAD_SCOPE`로 선언한 진입/전투 범위와 배경만 로드한다. Loader와 runtime placement는 반드시 같은 scope를 소비한다.

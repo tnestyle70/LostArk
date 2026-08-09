@@ -85,6 +85,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientFrontendHarness.cpp" />
+	<ClCompile Include="..\..\..\Client\Private\ActionPresentationTimeline.cpp">
+	  <Link>Client\ActionPresentationTimeline.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Link>Client\AnimationSkillBindingDocument.cpp</Link>
 	</ClCompile>

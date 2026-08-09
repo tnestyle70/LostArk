@@ -58,6 +58,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 public:
 	//Instance Update
@@ -73,6 +74,12 @@ public:
 	{
 		return static_cast<uint32_t>(
 			m_VisibleInstances.size());
+	}
+
+	uint32_t Get_ShadowInstanceCount() const
+	{
+		return static_cast<uint32_t>(
+			m_ShadowInstances.size());
 	}
 
 	const std::string& Get_AssetId() const
@@ -91,8 +98,11 @@ private:
 
 	HRESULT Ensure_InstanceCapacity(
 		uint32_t requiredCount);
+	HRESULT Ensure_ShadowInstanceCapacity(
+		uint32_t requiredCount);
 
 	HRESULT Upload_VisibleInstances();
+	HRESULT Upload_ShadowInstances();
 	HRESULT Rebuild_PlacementLookup();
 
 private:
@@ -102,19 +112,24 @@ private:
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
 
 	bool_t m_bMirrored = false;
+	bool_t m_bShadowInstancesDirty = true;
 	f32_t m_fElapsedTime = {};
 	//해당 batch에 소속된 전체 placement
 	//vector - 메모리 연속, 순회가 빠름, index O(1), 프레임마다 전체 순회 좋음
 	std::vector<FMapStaticInstance>	m_Instances;
 	//이번 프레임에 실제 보이는 GPU용 인스턴스 배열
 	std::vector<VTXMESHINSTANCE> m_VisibleInstances;
+	/* Authored-visible instances are independent from the camera-frustum list. */
+	std::vector<VTXMESHINSTANCE> m_ShadowInstances;
 	//placementId로 m_Instances의 index를 O(1)로 찾을 수 있게 한다.
 	std::unordered_map<uint64_t, uint32_t>
 		m_PlacementLookup;
 
 	uint32_t m_iInstanceCapacity = {};
+	uint32_t m_iShadowInstanceCapacity = {};
 	
 	ComPtr<ID3D11Buffer> m_pInstanceBuffer = { nullptr };
+	ComPtr<ID3D11Buffer> m_pShadowInstanceBuffer = { nullptr };
 
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };

@@ -2,9 +2,9 @@
   "schema": "lostark.effect-component-build-receipt",
   "version": 1,
   "characterClass": "DIMENSIONMASTER",
-  "effectCount": 16,
-  "componentCount": 182,
-  "emitterCount": 947,
+  "effectCount": 17,
+  "componentCount": 186,
+  "emitterCount": 971,
   "sourceActionCueCount": 526,
   "removedStaleComponentFileCount": 0,
   "removedStaleComponentFiles": [],
@@ -19,7 +19,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010",
       "componentDirectory": "skill.2050010",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050010.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.assembly.json",
       "componentCount": 21,
       "emitterCount": 75,
       "sourceActionCueCount": 49,
@@ -31,7 +31,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
       "componentDirectory": "skill.2050010.ba1",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050010.ba1.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba1.assembly.json",
       "componentCount": 4,
       "emitterCount": 18,
       "sourceActionCueCount": 11,
@@ -44,7 +44,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2",
       "componentDirectory": "skill.2050010.ba2",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050010.ba2.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba2.assembly.json",
       "componentCount": 3,
       "emitterCount": 14,
       "sourceActionCueCount": 6,
@@ -57,7 +57,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
       "componentDirectory": "skill.2050010.ba3",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050010.ba3.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba3.assembly.json",
       "componentCount": 2,
       "emitterCount": 9,
       "sourceActionCueCount": 6,
@@ -70,7 +70,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4",
       "componentDirectory": "skill.2050010.ba4",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050010.ba4.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050010.ba4.assembly.json",
       "componentCount": 12,
       "emitterCount": 34,
       "sourceActionCueCount": 26,
@@ -83,7 +83,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050100",
       "componentDirectory": "skill.2050100",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050100.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050100.assembly.json",
       "componentCount": 2,
       "emitterCount": 10,
       "sourceActionCueCount": 15,
@@ -95,7 +95,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050120",
       "componentDirectory": "skill.2050120",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050120.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050120.assembly.json",
       "componentCount": 16,
       "emitterCount": 95,
       "sourceActionCueCount": 35,
@@ -107,7 +107,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050160",
       "componentDirectory": "skill.2050160",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050160.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050160.assembly.json",
       "componentCount": 7,
       "emitterCount": 56,
       "sourceActionCueCount": 21,
@@ -119,7 +119,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050180",
       "componentDirectory": "skill.2050180",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050180.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050180.assembly.json",
       "componentCount": 9,
       "emitterCount": 33,
       "sourceActionCueCount": 28,
@@ -131,7 +131,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050210",
       "componentDirectory": "skill.2050210",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050210.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050210.assembly.json",
       "componentCount": 33,
       "emitterCount": 117,
       "sourceActionCueCount": 80,
@@ -141,9 +141,21 @@
       "inputSlot": "A"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
+      "componentDirectory": "skill.2050210.authored-baseline",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050210.authored-baseline.assembly.json",
+      "componentCount": 4,
+      "emitterCount": 24,
+      "sourceActionCueCount": 0,
+      "sourceDocumentSha256": "61f2c6024ab352481b55be042b15bd2831d590def5a42783e1e1e9efcaac7e79",
+      "compiledDocumentSha256": "61f2c6024ab352481b55be042b15bd2831d590def5a42783e1e1e9efcaac7e79",
+      "compileIdentity": true,
+      "inputSlot": "A"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050220",
       "componentDirectory": "skill.2050220",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050220.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050220.assembly.json",
       "componentCount": 7,
       "emitterCount": 30,
       "sourceActionCueCount": 44,
@@ -155,7 +167,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050230",
       "componentDirectory": "skill.2050230",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050230.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050230.assembly.json",
       "componentCount": 10,
       "emitterCount": 69,
       "sourceActionCueCount": 34,
@@ -167,7 +179,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050240",
       "componentDirectory": "skill.2050240",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050240.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050240.assembly.json",
       "componentCount": 13,
       "emitterCount": 51,
       "sourceActionCueCount": 49,
@@ -179,7 +191,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050500",
       "componentDirectory": "skill.2050500",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050500.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050500.assembly.json",
       "componentCount": 13,
       "emitterCount": 89,
       "sourceActionCueCount": 33,
@@ -191,7 +203,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050520",
       "componentDirectory": "skill.2050520",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050520.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050520.assembly.json",
       "componentCount": 6,
       "emitterCount": 19,
       "sourceActionCueCount": 16,
@@ -203,7 +215,7 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050540",
       "componentDirectory": "skill.2050540",
-      "assembly": "C:\\Users\\user\\Desktop\\LostArk\\.codex_tmp\\exe3-a-stage\\ComponentBuild\\Assemblies\\effect.dimensionmaster.skill.2050540.assembly.json",
+      "assembly": "Data\\Effects\\Assemblies\\DimensionMaster\\effect.dimensionmaster.skill.2050540.assembly.json",
       "componentCount": 24,
       "emitterCount": 228,
       "sourceActionCueCount": 73,

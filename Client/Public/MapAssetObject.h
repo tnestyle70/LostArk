@@ -40,6 +40,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 	uint64_t Get_PlacementId() const { return m_iPlacementId; }
 	const std::string& Get_AssetId() const { return m_AssetId; }
@@ -81,6 +82,7 @@ private:
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
 		const std::wstring& modelPrototypeTag);
 	HRESULT Bind_ShaderResources();
+	HRESULT Bind_ShadowShaderResources();
 	//Frustum Culling
 	void Ready_CullBounds();
 	void Update_WorldCullBounds();

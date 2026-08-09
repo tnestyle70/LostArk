@@ -1,0 +1,49 @@
+{
+  "schema": "lostark.effect-assembly",
+  "version": 1,
+  "effectAssetId": "effect.artist.skill.31000.ba3",
+  "displayName": "effect.artist.skill.31000.ba3",
+  "sourceAuthoringVersion": 12,
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "modelCues": [],
+  "componentCues": [
+    {
+      "cueId": "component-00",
+      "componentAssetId": "effect.component.artist.skill.31000.ba3.00",
+      "startDelaySeconds": 0.5776999999999997,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sourceDocumentSha256": "75c83e8e2c48f99cbae7e9833a75680f2ccdc1ef7b7fbb44172c4cc7cbde301a",
+  "inputSlot": "BA",
+  "sourceDocumentFileSha256": "836159f7937f3f7717cc77507ffd1eaeb2ae832c2c7243dc51733aa29172c58d",
+  "sourceActionCues": [],
+  "sourceActionCueSummary": {
+    "cueCount": 0,
+    "channels": {},
+    "byteLosslessPayloadComplete": true
+  }
+}

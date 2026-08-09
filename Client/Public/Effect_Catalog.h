@@ -14,7 +14,13 @@ NS_BEGIN(Client)
 class CEffectCatalog final
 {
 public:
+    struct RUNTIME_SNAPSHOT;
+
     static bool_t Load(std::string& strOutStatus);
+    static std::shared_ptr<const RUNTIME_SNAPSHOT> Capture_Runtime();
+    static bool_t Restore_Runtime(
+        std::shared_ptr<const RUNTIME_SNAPSHOT> pSnapshot,
+        std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
         const std::string& strEffectAssetId);
     static std::shared_ptr<const EFFECT_ASSEMBLY_DESC> Find_Assembly(

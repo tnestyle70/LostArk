@@ -1,0 +1,171 @@
+{
+  "schema": "lostark.rendering-profiles",
+  "formatVersion": 1,
+  "revision": 8,
+  "globalQuality": {
+    "ssaoEnabled": true,
+    "ssaoRadius": 0.0399999991,
+    "ssaoBias": 0,
+    "ssaoIntensity": 0.689999998,
+    "ssaoPower": 2.0999999,
+    "ssaoDistanceFade": 132.5,
+    "bloomEnabled": true,
+    "bloomThreshold": 2.74000001,
+    "bloomSoftKnee": 1,
+    "bloomIntensity": 2.6099999,
+    "bloomScatter": 2.75999999,
+    "exposure": 0.730000019,
+    "whitePoint": 1,
+    "gamma": 1.90499997,
+    "fxaaEnabled": true,
+    "fxaaSubpixel": 0,
+    "fxaaEdgeThreshold": 0.0312,
+    "fxaaEdgeThresholdMin": 0.0183000006
+  },
+  "profiles": [
+    {
+      "profileId": "scene.bern.neutral-day.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0.800000012, 0.800000012, 0.800000012, 1],
+        "ambient": [0.25, 0.25, 0.25, 1],
+        "specular": [0.5, 0.5, 0.5, 1]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 100,
+        "orthographicWidth": 120,
+        "orthographicHeight": 120,
+        "near": 0.5,
+        "far": 250,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0299999993,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.character-select.warm-high-key.v1",
+      "exposureMultiplier": 0.870000005,
+      "bloomIntensityMultiplier": 0,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0.714999974, 0.779999971, 0.980000019, 1],
+        "ambient": [0.280000001, 0.270000011, 0.25999999, 1],
+        "specular": [0, 0, 0, 1]
+      },
+      "shadow": {
+        "enabled": true,
+        "focus": [-772.017029, -141.5, 197.537994],
+        "distance": 27.1000004,
+        "orthographicWidth": 24,
+        "orthographicHeight": 24,
+        "near": 0.100000001,
+        "far": 80,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.75
+      }
+    },
+    {
+      "profileId": "scene.development.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0.800000012, 0.800000012, 0.800000012, 1],
+        "ambient": [0.25, 0.25, 0.25, 1],
+        "specular": [0.5, 0.5, 0.5, 1]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 80,
+        "orthographicWidth": 64,
+        "orthographicHeight": 64,
+        "near": 0.100000001,
+        "far": 180,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0250000004,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.loading.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0, 0, 0, 0],
+        "ambient": [0, 0, 0, 0],
+        "specular": [0, 0, 0, 0]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 40,
+        "orthographicWidth": 40,
+        "orthographicHeight": 40,
+        "near": 0.100000001,
+        "far": 150,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0199999996,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.lobby.neutral.v1",
+      "exposureMultiplier": 1,
+      "bloomIntensityMultiplier": 1,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0, 0, 0, 0],
+        "ambient": [0, 0, 0, 0],
+        "specular": [0, 0, 0, 0]
+      },
+      "shadow": {
+        "enabled": false,
+        "focus": [0, 0, 0],
+        "distance": 40,
+        "orthographicWidth": 40,
+        "orthographicHeight": 40,
+        "near": 0.100000001,
+        "far": 150,
+        "depthBias": 0.00150000001,
+        "normalBias": 0.0199999996,
+        "strength": 0.699999988
+      }
+    },
+    {
+      "profileId": "scene.valtan.cool-low-key.v1",
+      "exposureMultiplier": 2.3499999,
+      "bloomIntensityMultiplier": 0.995000005,
+      "light": {
+        "type": "directional",
+        "direction": [0.5, -1, 0.5, 0],
+        "diffuse": [0.100000001, 0.100000001, 0.100000001, 1],
+        "ambient": [0.444999993, 0.414999992, 0.224999994, 1],
+        "specular": [0, 0, 0, 1]
+      },
+      "shadow": {
+        "enabled": true,
+        "focus": [80, 16, -72],
+        "distance": 180,
+        "orthographicWidth": 220,
+        "orthographicHeight": 220,
+        "near": 0.5,
+        "far": 450,
+        "depthBias": 0.00260000001,
+        "normalBias": 0.0340000018,
+        "strength": 0.805000007
+      }
+    }
+  ]
+}

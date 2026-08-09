@@ -7,9 +7,12 @@
 #include "Effect_Playback.h"
 
 #include <array>
+#include <cstdint>
+#include <memory>
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -22,8 +25,26 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct EFFECT_RENDER_PREWARM_PROBE final
+{
+	uint64_t iCoreBuildCount = 0u;
+	uint64_t iCatalogCommitCount = 0u;
+	uint64_t iPreparedDocumentBuildCount = 0u;
+	uint64_t iModelDiskLoadCount = 0u;
+	uint64_t iTextureDiskLoadCount = 0u;
+	uint64_t iVectorFieldDiskLoadCount = 0u;
+	uint64_t iPreparedAttachCount = 0u;
+	uint64_t iSynchronousDocumentStageCount = 0u;
+	uint64_t iPreparedLookupMissCount = 0u;
+	uint64_t iCatalogRevision = 0u;
+	uint32_t iPreparedDocumentCount = 0u;
+};
+
 class CEffectDocumentRenderer final
 {
+public:
+	struct PREPARED_DOCUMENT;
+
 private:
 	struct ELEMENT_RESOURCE final
 	{
@@ -65,7 +86,28 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext);
 	~CEffectDocumentRenderer();
 
+	static bool_t Prepare_Catalog(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint64_t iCatalogRevision,
+		const std::vector<std::pair<std::string,
+			std::shared_ptr<const EFFECT_DOCUMENT_DESC>>>& Documents,
+		std::string& strOutError);
+	static std::shared_ptr<const PREPARED_DOCUMENT> Find_Prepared(
+		uint64_t iCatalogRevision,
+		const std::string& strEffectAssetId,
+		const EFFECT_DOCUMENT_DESC& Document);
+	static std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+		Get_PlaybackResources(
+			const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared);
+	static EFFECT_RENDER_PREWARM_PROBE Get_PrewarmProbe();
+	static void Clear_Prepared_Catalog();
+
 	HRESULT Initialize();
+	bool_t Stage_Prepared(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
+		std::string& strOutError);
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
@@ -74,21 +116,40 @@ public:
 	const std::string& Get_Status() const { return m_strStatus; }
 
 private:
+	struct PREWARM_ASSET_CACHE;
+
 	HRESULT Stage_ElementResource(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& OutResource,
-		std::string& strOutError) const;
+		std::string& strOutError,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
 	HRESULT Stage_ModelCueResource(
 		const EFFECT_MODEL_CUE_DESC& Cue,
 		MODEL_CUE_RESOURCE& OutResource,
+		std::string& strOutError,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
+	bool_t Build_PreparedDocument(
+		uint64_t iCatalogRevision,
+		const std::string& strEffectAssetId,
+		const EFFECT_DOCUMENT_DESC& Document,
+		PREWARM_ASSET_CACHE* pSharedAssets,
+		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
 		std::string& strOutError) const;
+	bool_t Clone_ModelCueResources(
+		const PREPARED_DOCUMENT& Prepared,
+		std::unordered_map<std::string, MODEL_CUE_RESOURCE>& OutResources,
+		std::string& strOutError) const;
+	bool_t Ensure_MutableInstanceBuffers(
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
 	HRESULT Load_Texture(
 		const std::string& strAssetId,
-		ComPtr<ID3D11ShaderResourceView>& OutSRV) const;
+		ComPtr<ID3D11ShaderResourceView>& OutSRV,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
 	HRESULT Load_SourceTexture(
 		const EFFECT_NAMED_TEXTURE_DESC& Texture,
-		ComPtr<ID3D11ShaderResourceView>& OutSRV) const;
-	HRESULT Create_FallbackTextures();
+		ComPtr<ID3D11ShaderResourceView>& OutSRV,
+		PREWARM_ASSET_CACHE* pSharedAssets = nullptr) const;
 	HRESULT Bind_Common(
 		const shared_ptr<Engine::CShader>& pShader,
 		const EFFECT_EVALUATED_ELEMENT& Element,
@@ -144,7 +205,7 @@ private:
 	ComPtr<ID3D11Device> m_pDevice;
 	ComPtr<ID3D11DeviceContext> m_pContext;
 	EFFECT_DOCUMENT_DESC m_Document;
-	std::unordered_map<std::string, ELEMENT_RESOURCE> m_Resources;
+	std::shared_ptr<const PREPARED_DOCUMENT> m_pPreparedDocument;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE> m_ModelCueResources;
 	shared_ptr<Engine::CShader> m_pMeshShader;
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;

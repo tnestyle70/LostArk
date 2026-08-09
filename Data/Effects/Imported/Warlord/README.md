@@ -1,41 +1,48 @@
 # Warlord Effect Import Status
 
-## Extraction status
+## Extraction evidence
 
-- ParticleSystem graphs: 680 / 680 cataloged
+- ParticleSystem graphs cataloged: 680 / 680
 - Material references: 883
-- Mesh runtime assets: 143 / 143 cooked
-- Texture runtime assets: 618 / 618 cooked
-- Missing global Material map entries: 34 reviewed
-  - MaterialInstance parameter sets recovered: 32
-  - Unsupported UE3 DecalMaterial: 2
-- `EngineMaterials.DefaultParticle`: UE3 engine fallback, not a missing game asset
-- Runtime resource candidates referenced by the unbound draft index: 0 missing or ambiguous
+- Mesh runtime assets cooked: 143 / 143
+- Texture runtime assets cooked: 618 / 618
+- MaterialInstance parameter sets recovered: 32
+- Unsupported UE3 DecalMaterial: 2
+- Missing or ambiguous runtime candidates in the legacy unbound index: 0
 
-`Warlord.unbound-effect-draft-index.json` is the Effect Tool extraction reference for all
-680 source ParticleSystems. It preserves original source asset names and resolved runtime
-Mesh/Texture candidates so resource-level review can start without re-running extraction.
+`Warlord.unbound-effect-draft-index.json` remains the historical resource-level reference for
+all 680 source systems. It is not the product skill ownership source.
 
-## Skill binding status
+## Current skill-bound evidence
 
-- Warlord animation source found: 371 AnimSequences
-- AnimSequence `Notifies` properties found: 0
-- Normalized `Warlord.animnotify`: not available
-- Authored `Warlord.skillbindings.json`: not available
-- Skill-bound source systems: 0
+Warlord is no longer in the earlier unbound-only state. The repository now contains:
 
-`FX_PC_WGL_*` package names and ParticleSystem object names are search labels only. They
-are not accepted as evidence that a graph belongs to a particular skill or Q/W/E slot.
-This directory is an authoring staging root and does not declare Warlord as a playable
-runtime class.
+- `Data/Animation/Authored/Warlord/Warlord.skillbindings.json`
+- `Data/Animation/Authored/Warlord/Warlord.animevents`
+- Warlord rows in `Data/Balance/PlayerSkills.json`
+- `Warlord.action-particle-resource-catalog.json`
 
-The final `Q | skill name` Effect Tool connection must use the same evidence chain as the
-existing animation-owned classes:
+The action-bound catalog contains 29 source packages, 398 action-bound ParticleSystems,
+1,528 resolved assets, 113 Mesh assets, 518 Texture assets, and zero missing requested source
+systems. Representative product rollout begins with `LMB / 17000`, whose binding has three
+combo stages.
 
-1. approved Warlord skill rows with stable skill ID, input slot, and display name;
-2. `Warlord.skillbindings.json` mapping each skill ID to real model clips;
-3. `Warlord.animnotify` or approved `.animevents` mapping clip-local time to source effect;
-4. normalized source receipts and authored Effect Documents generated from those inputs.
+The exact `LMB / 17000` diagnostic source chain is now materialized under this folder without
+creating a product Authored Effect or cue. Its source receipt resolves all six particle notify
+occurrences to three source systems, selects nine action-owned material bindings from the audited
+catalog (eight exact source packages plus the explicit engine default-particle fallback), and
+resolves all 17 required runtime Mesh/Texture assets from `Effect/Warlord`. The external module
+closure remains 157 / 157 with zero unresolved requests. The Imported conversion emits 31
+diagnostic elements from 21 emitter partitions with zero missing-resource partitions; four
+partitions still require an executable source-material profile, and no source-exact/reconstructed
+player anchor contract is available yet.
 
-Until those inputs exist, the 680 graphs remain explicitly unbound and must not be assigned
-to skills by filename heuristics.
+Filename heuristics are still forbidden. A package/object is assigned to a skill only through
+the current action/animation binding evidence. A source catalog or receipt is not a finished
+product Effect Document; the output must be materialized into `Data/Effects/Authored`, published
+through the existing Effect pipeline, and referenced by the actual animation cue.
+
+The first product pass keeps standalone Mesh, Cascade Mesh Particle, standalone Sprite, and
+Cascade Sprite Particle as distinct source types. It restores evidence-backed standalone Mesh
+and Sprite carriers, excludes Mesh Particle output, and stores Sprite rotation correction per
+Authored element.

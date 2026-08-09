@@ -2,6 +2,20 @@
 
 이 폴더는 팀원이 pull 후 가장 먼저 보는 살아 있는 public 계약의 정본이다. 날짜별 PLAN/RESULT는 구현 당시의 증거이므로 `.md/GB/<MM-DD>/`에 그대로 보존하고, 여기서 현재 유효한 문서만 연결한다.
 
+## 2026-08-20까지 팀 LAN 세션 시작
+
+모든 팀원과 에이전트는 pull 후 다른 작업보다 먼저 아래 명령을 실행한다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File Tools/Network/Sync-TeamLanEndpoint.ps1
+```
+
+endpoint와 만료일 정본은 `../../Tools/Network/TeamLanEndpoint.json`, 실행·실패 진단 정본은
+`TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`이다.
+현재 Server가 꺼져 있으면 `not-listening`이 정상일 수 있으며, 스크립트가 로컬 debugger 설정을
+동기화한 뒤 출력이 `server-host`이면 Visual Studio의 `Server + Client` profile, `client`이면
+Client project만 `Ctrl+F5`로 시작한다.
+
 ## 읽는 순서
 
 1. 저장소 금지 경계와 완료 조건: `../../AGENTS.md`
@@ -35,6 +49,7 @@
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
+| `Tools/Network/TeamLanEndpoint.json` | 임시 팀 Server 주소나 만료일이 바뀔 때 |
 | 날짜별 `*_RESULT.md` | 실행한 검증과 당시 완료/미완료 증거를 남길 때 |
 
 같은 설명을 여러 문서에 복제하지 않는다. 이 README는 입구와 문서 역할만 소유하고, 세부 계약은 연결된 정본에서 읽는다.

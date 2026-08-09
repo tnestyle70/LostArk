@@ -2,6 +2,7 @@
 #include "Engine_Shader_Defines.hlsli"
 
 float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;
+float4x4    g_CameraViewMatrix, g_CameraProjMatrix;
 float4x4    g_ViewMatrixInverse, g_ProjMatrixInverse;
 float4x4    g_LightViewMatrix, g_LightProjMatrix;
 texture2D   g_Texture;
@@ -14,7 +15,20 @@ texture2D   g_SceneHDRTexture;
 texture2D   g_PostProcessTexture;
 texture2D   g_BloomTexture;
 texture2D   g_DistortionTexture;
+texture2D   g_SSAOTexture;
 
+float2      g_vSSAOTexelSize;
+uint        g_iSSAOEnabled = 0u;
+float       g_fSSAORadius;
+float       g_fSSAOBias;
+float       g_fSSAOIntensity;
+float       g_fSSAOPower;
+float       g_fSSAODistanceFade;
+uint        g_iApplyDirectionalShadow = 0u;
+float2      g_vShadowTexelSize;
+float       g_fShadowDepthBias;
+float       g_fShadowNormalBias;
+float       g_fShadowStrength;
 float2      g_vBloomTexelSize;
 float2      g_vInverseSceneSize;
 uint        g_iBloomEnabled;
@@ -43,6 +57,15 @@ sampler PostProcessSampler = sampler_state
     AddressU = CLAMP;
     AddressV = CLAMP;
     AddressW = CLAMP;
+};
+
+sampler ShadowSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_POINT;
+    AddressU = BORDER;
+    AddressV = BORDER;
+    AddressW = BORDER;
+    BorderColor = float4(1.f, 1.f, 1.f, 1.f);
 };
 
 vector      g_vCamPosition;
@@ -107,6 +130,67 @@ struct PS_OUT_LIGHT
     float4 vSpecular : SV_TARGET1;
 };
 
+float Resolve_AmbientOcclusion(float2 vTexcoord)
+{
+    float fAmbientOcclusion = 1.f;
+    if (0u != g_iSSAOEnabled)
+    {
+        fAmbientOcclusion = saturate(g_SSAOTexture.Sample(
+            PostProcessSampler, vTexcoord).r);
+    }
+    return fAmbientOcclusion;
+}
+
+float Resolve_DirectionalShadow(float4 vWorldPos, float3 vNormal)
+{
+    float fShadow = 1.f;
+    if (0u != g_iApplyDirectionalShadow)
+    {
+        float4 vBiasedWorldPos = vWorldPos;
+        vBiasedWorldPos.xyz += normalize(vNormal) * g_fShadowNormalBias;
+        float4 vShadowClip = mul(vBiasedWorldPos, g_LightViewMatrix);
+        vShadowClip = mul(vShadowClip, g_LightProjMatrix);
+        if (vShadowClip.w > 0.f)
+        {
+            float3 vShadowNDC = vShadowClip.xyz / vShadowClip.w;
+            float2 vShadowUV = float2(
+                vShadowNDC.x * 0.5f + 0.5f,
+                vShadowNDC.y * -0.5f + 0.5f);
+            const bool bInsideShadowMap =
+                vShadowUV.x >= 0.f && vShadowUV.x <= 1.f &&
+                vShadowUV.y >= 0.f && vShadowUV.y <= 1.f &&
+                vShadowNDC.z > 0.f && vShadowNDC.z < 1.f;
+            if (bInsideShadowMap)
+            {
+                const float fReceiverDepth =
+                    vShadowNDC.z - max(g_fShadowDepthBias, 0.f);
+                float fLitSamples = 0.f;
+                [unroll]
+                for (int iY = -1; iY <= 1; ++iY)
+                {
+                    [unroll]
+                    for (int iX = -1; iX <= 1; ++iX)
+                    {
+                        const float2 vSampleUV = vShadowUV +
+                            float2((float)iX, (float)iY) *
+                            g_vShadowTexelSize;
+                        const float fStoredDepth =
+                            g_LightDepthTexture.SampleLevel(
+                                ShadowSampler, vSampleUV, 0.f).r;
+                        fLitSamples +=
+                            fReceiverDepth <= fStoredDepth ? 1.f : 0.f;
+                    }
+                }
+
+                const float fPCF = fLitSamples / 9.f;
+                fShadow = lerp(
+                    1.f, fPCF, saturate(g_fShadowStrength));
+            }
+        }
+    }
+    return fShadow;
+}
+
 /* 픽셀 셰이더 */
 /* 전달받은 픽셀의 정보를 바탕으로하여 픽셀의 색을 결정한다 */
 
@@ -130,10 +214,6 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     
 
     
-    Out.vShade = g_vLightDiffuse * (saturate(dot(normalize(g_vLightDir) * -1.f, normalize(vNormal)))
-    + (g_vLightAmbient * g_vMtrlAmbient));
-    
-    
     vector vReflect = reflect(g_vLightDir, vNormal);
     
     
@@ -156,13 +236,23 @@ PS_OUT_LIGHT PS_MAIN_DIRECTIONAL(PS_IN In)
     
     /* 로컬위치 * 월드행렬  */
     vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
+
+    const float fDirectDiffuse = saturate(dot(
+        normalize(g_vLightDir) * -1.f, normalize(vNormal)));
+    const float fDirectionalShadow = Resolve_DirectionalShadow(
+        vWorldPos, vNormal.xyz);
+    const float fAmbientOcclusion =
+        Resolve_AmbientOcclusion(In.vTexcoord);
+    Out.vShade = g_vLightDiffuse *
+        (fDirectDiffuse * fDirectionalShadow +
+        (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion);
     
     vector vLook = vWorldPos - g_vCamPosition;
     
     const float specularPower = vDepthDesc.z > 0.f ? vDepthDesc.z : 50.f;
     Out.vSpecular = g_vLightSpecular *
         pow(saturate(dot(normalize(vReflect) * -1.f, normalize(vLook))),
-            specularPower) * vNormalDesc.a;
+            specularPower) * vNormalDesc.a * fDirectionalShadow;
     
     return Out;
 }
@@ -202,8 +292,9 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
     
     float fAtt = saturate((g_fLightRange - length(vLightDir)) / g_fLightRange);
     
+    float fAmbientOcclusion = Resolve_AmbientOcclusion(In.vTexcoord);
     Out.vShade = (g_vLightDiffuse * (saturate(dot(normalize(vLightDir) * -1.f, normalize(vNormal)))
-    + (g_vLightAmbient * g_vMtrlAmbient))) * fAtt;
+    + (g_vLightAmbient * g_vMtrlAmbient) * fAmbientOcclusion)) * fAtt;
     
     
     vector vReflect = reflect(vLightDir, vNormal);
@@ -221,6 +312,183 @@ PS_OUT_LIGHT PS_MAIN_POINT(PS_IN In)
 
 
 
+bool Is_SSAOBackground(float4 vDepthDesc)
+{
+    return vDepthDesc.x >= 0.99999f || vDepthDesc.y >= 0.99999f;
+}
+
+float3 Decode_SSAONormal(float2 vTexcoord)
+{
+    float3 vNormal = g_NormalTexture.Sample(
+        PostProcessSampler, vTexcoord).xyz * 2.f - 1.f;
+    float fLengthSquared = dot(vNormal, vNormal);
+    return fLengthSquared > 0.000001f ?
+        vNormal * rsqrt(fLengthSquared) : float3(0.f, 0.f, 1.f);
+}
+
+float3 Decode_SSAOViewNormal(float2 vTexcoord)
+{
+    float3 vWorldNormal = Decode_SSAONormal(vTexcoord);
+    return normalize(mul(
+        float4(vWorldNormal, 0.f), g_CameraViewMatrix).xyz);
+}
+
+float3 Reconstruct_SSAOViewPosition(
+    float2 vTexcoord, float4 vDepthDesc)
+{
+    float fViewDepth = max(vDepthDesc.y * 1000.f, 0.001f);
+    float4 vClipPosition = float4(
+        vTexcoord.x * 2.f - 1.f,
+        vTexcoord.y * -2.f + 1.f,
+        vDepthDesc.x,
+        1.f) * fViewDepth;
+    float4 vViewPosition = mul(vClipPosition, g_ProjMatrixInverse);
+    return vViewPosition.xyz / max(abs(vViewPosition.w), 0.000001f);
+}
+
+float SSAO_Hash(float2 vPosition)
+{
+    return frac(sin(dot(vPosition,
+        float2(12.9898f, 78.233f))) * 43758.5453f);
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_SSAO_RAW(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float4 vCenterDepthDesc = g_DepthTexture.Sample(
+        PostProcessSampler, In.vTexcoord);
+    if (Is_SSAOBackground(vCenterDepthDesc))
+    {
+        Out.vBackBuffer = 1.f;
+        return Out;
+    }
+
+    float fCenterViewDepth = max(vCenterDepthDesc.y * 1000.f, 0.001f);
+    float3 vCenterViewPosition = Reconstruct_SSAOViewPosition(
+        In.vTexcoord, vCenterDepthDesc);
+    float3 vCenterNormal = Decode_SSAOViewNormal(In.vTexcoord);
+    if (dot(vCenterNormal, vCenterViewPosition) > 0.f)
+        vCenterNormal *= -1.f;
+    float fProjectionY = max(abs(g_CameraProjMatrix[1][1]), 0.0001f);
+    float fRadiusPixels = clamp(
+        g_fSSAORadius * fProjectionY * 0.5f /
+        (fCenterViewDepth * max(g_vSSAOTexelSize.y, 0.000001f)),
+        1.f, 64.f);
+    float2 vPixel = floor(In.vTexcoord /
+        max(g_vSSAOTexelSize, 0.000001f));
+    float fRotation = SSAO_Hash(vPixel) * 6.28318530718f;
+    float fOcclusion = 0.f;
+    float fWeight = 0.f;
+
+    [unroll]
+    for (int iSample = 0; iSample < 12; ++iSample)
+    {
+        float fSampleFraction = ((float)iSample + 0.5f) / 12.f;
+        float fAngle = fRotation + fSampleFraction * 6.28318530718f;
+        float fSampleRadius = lerp(0.25f, 1.f, fSampleFraction);
+        float2 vDirection = float2(cos(fAngle), sin(fAngle));
+        float2 vSampleUV = In.vTexcoord + vDirection *
+            fRadiusPixels * fSampleRadius * g_vSSAOTexelSize;
+        if (vSampleUV.x <= 0.f || vSampleUV.x >= 1.f ||
+            vSampleUV.y <= 0.f || vSampleUV.y >= 1.f)
+        {
+            continue;
+        }
+        float4 vSampleDepthDesc = g_DepthTexture.Sample(
+            PostProcessSampler, vSampleUV);
+        if (Is_SSAOBackground(vSampleDepthDesc))
+            continue;
+
+        float3 vSampleViewPosition = Reconstruct_SSAOViewPosition(
+            vSampleUV, vSampleDepthDesc);
+        float3 vCenterToSample =
+            vSampleViewPosition - vCenterViewPosition;
+        float fSampleDistance = length(vCenterToSample);
+        if (fSampleDistance <= 0.0001f ||
+            fSampleDistance >= g_fSSAORadius)
+        {
+            continue;
+        }
+
+        float fRangeWeight = saturate(
+            1.f - fSampleDistance / max(g_fSSAORadius, 0.001f));
+        float fHemisphereOcclusion = saturate(
+            (dot(vCenterNormal, vCenterToSample) - g_fSSAOBias) /
+            max(fSampleDistance, 0.001f));
+        float fRadialWeight = lerp(1.f, 0.5f, fSampleFraction);
+        float fSampleWeight = fRangeWeight * fRadialWeight;
+        fWeight += fSampleWeight;
+        fOcclusion += fHemisphereOcclusion * fSampleWeight;
+    }
+
+    fOcclusion = fWeight > 0.00001f ? fOcclusion / fWeight : 0.f;
+    float fAmbientOcclusion = pow(saturate(
+        1.f - fOcclusion * g_fSSAOIntensity), g_fSSAOPower);
+    float fFadeStart = max(
+        g_fSSAODistanceFade * 0.65f, g_fSSAORadius);
+    float fDistanceFade = saturate(
+        (fCenterViewDepth - fFadeStart) /
+        max(g_fSSAODistanceFade - fFadeStart, 0.001f));
+    fAmbientOcclusion = lerp(fAmbientOcclusion, 1.f, fDistanceFade);
+    Out.vBackBuffer = fAmbientOcclusion;
+    return Out;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_SSAO_BLUR(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float4 vCenterDepthDesc = g_DepthTexture.Sample(
+        PostProcessSampler, In.vTexcoord);
+    if (Is_SSAOBackground(vCenterDepthDesc))
+    {
+        Out.vBackBuffer = 1.f;
+        return Out;
+    }
+
+    float fCenterViewDepth = vCenterDepthDesc.y * 1000.f;
+    float3 vCenterNormal = Decode_SSAONormal(In.vTexcoord);
+    float fDepthSigma = max(
+        g_fSSAORadius * 0.25f, g_fSSAOBias * 4.f + 0.001f);
+    float fWeightedAO = 0.f;
+    float fWeight = 0.f;
+
+    [unroll]
+    for (int iY = -2; iY <= 2; ++iY)
+    {
+        [unroll]
+        for (int iX = -2; iX <= 2; ++iX)
+        {
+            float2 vOffset = float2((float)iX, (float)iY);
+            float2 vSampleUV = clamp(
+                In.vTexcoord + vOffset * g_vSSAOTexelSize, 0.f, 1.f);
+            float4 vSampleDepthDesc = g_DepthTexture.Sample(
+                PostProcessSampler, vSampleUV);
+            if (Is_SSAOBackground(vSampleDepthDesc))
+                continue;
+
+            float fSampleViewDepth = vSampleDepthDesc.y * 1000.f;
+            float3 vSampleNormal = Decode_SSAONormal(vSampleUV);
+            float fSpatialWeight = exp(-dot(vOffset, vOffset) * 0.35f);
+            float fDepthWeight = exp(-abs(
+                fCenterViewDepth - fSampleViewDepth) / fDepthSigma);
+            float fNormalWeight = pow(
+                saturate(dot(vCenterNormal, vSampleNormal)), 16.f);
+            float fSampleWeight =
+                fSpatialWeight * fDepthWeight * fNormalWeight;
+            fWeightedAO += g_SSAOTexture.Sample(
+                PostProcessSampler, vSampleUV).r * fSampleWeight;
+            fWeight += fSampleWeight;
+        }
+    }
+
+    float fCenterAO = g_SSAOTexture.Sample(
+        PostProcessSampler, In.vTexcoord).r;
+    float fAmbientOcclusion = fWeight > 0.00001f ?
+        fWeightedAO / fWeight : fCenterAO;
+    Out.vBackBuffer = saturate(fAmbientOcclusion);
+    return Out;
+}
+
 PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
 {
     PS_OUT_BACKBUFFER Out;
@@ -236,48 +504,6 @@ PS_OUT_BACKBUFFER PS_MAIN_COMBINED(PS_IN In)
     
     
     vector vLitColor = vDiffuse * vShade + vSpecular;
-    
-    vector vDepthDesc = g_DepthTexture.Sample(LinearSampler, In.vTexcoord);
-    float fViewZ = vDepthDesc.y * 1000.f;
-    
-    vector vWorldPos;
-    
-    /* 로컬위치 * 월드행렬 * 뷰행렬 * 투영행렬 / w -> 투영공간상의 위치부터 구한다. */
-    vWorldPos.x = In.vTexcoord.x * 2.f - 1.f;
-    vWorldPos.y = In.vTexcoord.y * -2.f + 1.f;
-    vWorldPos.z = vDepthDesc.x;
-    vWorldPos.w = 1.f;
-    
-    /* 로컬위치 * 월드행렬 * 뷰행렬 * 투영행렬 */
-    vWorldPos = vWorldPos * fViewZ;
-    
-    /* 로컬위치 * 월드행렬 * 뷰행렬 */
-    vWorldPos = mul(vWorldPos, g_ProjMatrixInverse);
-    
-    /* 로컬위치 * 월드행렬  */
-    vWorldPos = mul(vWorldPos, g_ViewMatrixInverse);
-    
-    vWorldPos = mul(vWorldPos, g_LightViewMatrix);
-    vWorldPos = mul(vWorldPos, g_LightProjMatrix);
-    
-    float2 vTexcoord;
-    
-    /* -1, 1 ~ 1, -1 */ 
-    /*  0, 0 ~ 1,  1 */
-    
-    vTexcoord.x = (vWorldPos.x / vWorldPos.w) * 0.5f + 0.5f;
-    vTexcoord.y = (vWorldPos.y / vWorldPos.w) * -0.5f + 0.5f;
-    
-    float4      vOldZ = g_LightDepthTexture.Sample(LinearSampler, vTexcoord);
-       
-    
-    // if (현재 그리는 픽셀의 광원기준 깊이가 >= 이전에 광원기준으로 그려져있던 픽셀의 깊이보다. )
-    if (vWorldPos.w - 0.1f >= vOldZ.x * 1000.f)
-    {
-        vLitColor *= 0.3f;
-
-    }
-
     /* Emissive and Effect HDR energy are light sources, not receivers.  They
        must remain available to bloom even when the carrier is in shadow. */
     Out.vBackBuffer = vLitColor + vEmissive;
@@ -666,6 +892,26 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_FILM_NOISE();
+    }
+
+    pass SSAORaw
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SSAO_RAW();
+    }
+
+    pass SSAOBilateralBlur
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SSAO_BLUR();
     }
 
 }

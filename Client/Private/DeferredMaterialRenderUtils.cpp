@@ -3,10 +3,14 @@
 #include "Model.h"
 #include "Shader.h"
 
+#include <cmath>
+
 namespace
 {
 	constexpr std::string_view VALTAN_MATERIAL_PROFILE =
 		"material.valtan.monster-base.v1";
+	constexpr float4_t VALTAN_MASKED_TEAL_COLOR =
+		float4_t(0.f, 1.35f, 1.55f, 1.f);
 
 	f32_t Resolve_ValtanEmissiveIntensity(std::string_view strMaterialName)
 	{
@@ -18,7 +22,7 @@ namespace
 		if (strMaterialName == "mn_rpbf_01_mi" ||
 			strMaterialName == "wp_mn_rpbf_01_mi")
 			return 5.f;
-		return 1.f;
+		return 0.f;
 	}
 }
 
@@ -29,9 +33,10 @@ Client::DEFERRED_MATERIAL_PROFILE Client::Resolve_DeferredMaterialProfile(
 	DEFERRED_MATERIAL_PROFILE Profile{};
 	if (strProfileId == VALTAN_MATERIAL_PROFILE)
 	{
-		/* UE3 parent MI evidence: the E map is a grayscale carrier.  Tint and
-		   intensity are material parameters, not colors baked into that map. */
-		Profile.vEmissiveColor = float4_t(0.15f, 1.5f, 0.9f, 1.f);
+		/* The deferred path has no per-material ambient RGB target.  The
+		   authored E map is the exact body/axe part mask for unlit ambient
+		   energy, so keep the mask and apply the teal weights here. */
+		Profile.vEmissiveColor = VALTAN_MASKED_TEAL_COLOR;
 		Profile.fEmissiveIntensity =
 			Resolve_ValtanEmissiveIntensity(strMaterialName);
 	}
@@ -42,7 +47,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 	Engine::CModel& Model,
 	const shared_ptr<Engine::CShader>& pShader,
 	uint32_t iMeshIndex,
-	const DEFERRED_MATERIAL_PROFILE& Profile)
+	const DEFERRED_MATERIAL_PROFILE& Profile,
+	const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride)
 {
 	if (nullptr == pShader || iMeshIndex >= Model.Get_NumMeshes())
 	{
@@ -55,6 +61,16 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		iMeshIndex, aiTextureType_SPECULAR) ? 1u : 0u;
 	const uint32_t iHasEmissive = Model.Has_MaterialTexture(
 		iMeshIndex, aiTextureType_EMISSIVE) ? 1u : 0u;
+	const bool_t hasValidOverride =
+		nullptr != pEmissiveOverride && pEmissiveOverride->isEnabled &&
+		std::isfinite(pEmissiveOverride->fIntensity) &&
+		pEmissiveOverride->fIntensity > 0.f;
+	const uint32_t iHasFullSurfaceEmissiveOverride =
+		hasValidOverride ? 1u : 0u;
+	const float4_t vFullSurfaceEmissiveColor = hasValidOverride ?
+		pEmissiveOverride->vColor : float4_t(1.f, 1.f, 1.f, 1.f);
+	const f32_t fFullSurfaceEmissiveIntensity = hasValidOverride ?
+		pEmissiveOverride->fIntensity : 0.f;
 
 	if (FAILED(Model.Bind_Material(
 		pShader, "g_DiffuseTexture", iMeshIndex, aiTextureType_DIFFUSE, 0)) ||
@@ -76,6 +92,15 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 			&Profile.vEmissiveColor, sizeof(Profile.vEmissiveColor))) ||
 		FAILED(pShader->Bind_RawValue("g_EmissiveIntensity",
 			&Profile.fEmissiveIntensity, sizeof(Profile.fEmissiveIntensity))) ||
+		FAILED(pShader->Bind_RawValue("g_HasFullSurfaceEmissiveOverride",
+			&iHasFullSurfaceEmissiveOverride,
+			sizeof(iHasFullSurfaceEmissiveOverride))) ||
+		FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveColor",
+			&vFullSurfaceEmissiveColor,
+			sizeof(vFullSurfaceEmissiveColor))) ||
+		FAILED(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
+			&fFullSurfaceEmissiveIntensity,
+			sizeof(fFullSurfaceEmissiveIntensity))) ||
 		(0u != iHasEmissive && FAILED(Model.Bind_Material(
 			pShader, "g_EmissiveTexture", iMeshIndex, aiTextureType_EMISSIVE, 0))))
 	{

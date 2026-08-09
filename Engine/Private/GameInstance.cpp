@@ -123,9 +123,11 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 	m_pObject_Manager->Update(fTimeDelta);
 	m_pPhysics_Manager->Update(fTimeDelta);
 	m_pObject_Manager->Post_Physics_Update(fTimeDelta);
-	m_pObject_Manager->Late_Update(fTimeDelta);
 
+	/* Level gameplay can commit authoritative transforms and bind the
+	follow camera. Run it before render submission and frustum culling. */
 	m_pLevel_Manager->Update(fTimeDelta);
+	m_pObject_Manager->Late_Update(fTimeDelta);
 }
 
 void CGameInstance::Refresh_CameraState()
@@ -375,9 +377,13 @@ HRESULT CGameInstance::Add_Light(const LIGHT_DESC& LightDesc)
 	return m_pLight_Manager->Add_Light(LightDesc);
 }
 
-HRESULT CGameInstance::Render_Lights(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer)
+HRESULT CGameInstance::Render_Lights(
+	shared_ptr<class CShader> pShader,
+	shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+	bool_t bEnableSceneDirectionalShadow)
 {
-	return m_pLight_Manager->Render_Lights(pShader, pVIBuffer);
+	return m_pLight_Manager->Render_Lights(
+		pShader, pVIBuffer, bEnableSceneDirectionalShadow);
 }
 
 HRESULT CGameInstance::Add_Font(const wstring& strFontTag, const tchar_t* pFontFilePath)
@@ -410,6 +416,17 @@ HRESULT CGameInstance::End_MRT()
 	return m_pTarget_Manager->End_MRT();
 }
 
+HRESULT CGameInstance::Begin_DepthOnly(
+	ComPtr<ID3D11DepthStencilView> pDSV)
+{
+	return m_pTarget_Manager->Begin_DepthOnly(pDSV);
+}
+
+HRESULT CGameInstance::End_DepthOnly()
+{
+	return m_pTarget_Manager->End_DepthOnly();
+}
+
 HRESULT CGameInstance::Bind_RT_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName)
 {
 	return m_pTarget_Manager->Bind_SRV(strTargetTag, pShader, pConstantName);
@@ -439,14 +456,37 @@ bool_t CGameInstance::Picking(float4_t& vOut)
 	return m_pPicking->Picking(vOut);	
 }
 
-HRESULT CGameInstance::Add_Shadow_Light(const SHADOW_LIGHT_DESC& ShadowLightDesc)
+HRESULT CGameInstance::Apply_Shadow_Light(
+	const SHADOW_LIGHT_DESC& ShadowLightDesc)
 {
-	return m_pShadow->Add_Shadow_Light(ShadowLightDesc);
+	return m_pShadow->Apply_Shadow_Light(ShadowLightDesc);
+}
+
+HRESULT CGameInstance::Add_Shadow_Light(
+	const SHADOW_LIGHT_DESC& ShadowLightDesc)
+{
+	return Apply_Shadow_Light(ShadowLightDesc);
+}
+
+bool_t CGameInstance::Is_ShadowLightEnabled() const
+{
+	return m_pShadow->Is_Enabled();
+}
+
+const SHADOW_LIGHT_DESC& CGameInstance::Get_ShadowLightDesc() const
+{
+	return m_pShadow->Get_Desc();
 }
 
 HRESULT CGameInstance::Bind_ShadowLight_ShaderResource(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType)
 {
 	return m_pShadow->Bind_ShaderResource(pShader, pConstantName, eType);
+}
+
+HRESULT CGameInstance::Bind_ShadowLight_LightingResources(
+	shared_ptr<class CShader> pShader)
+{
+	return m_pShadow->Bind_LightingShaderResources(pShader);
 }
 
 void CGameInstance::Update_Frustum_InLocalSpace(fmatrix_t WorldMatrix)

@@ -355,6 +355,19 @@ PS_OUT_FORWARD PS_MAIN_SKY(
     return output;
 }
 
+void PS_MAIN_SHADOW(
+	VS_OUT input)
+{
+    float4 diffuse =
+		g_DiffuseTexture.Sample(
+			LinearSampler,
+			input.vTexcoord) *
+		g_ColorTint;
+
+    if (diffuse.a < 0.3f)
+        discard;
+}
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -523,5 +536,47 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_ALPHA();
+    }
+
+    pass ShadowBackPass
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(
+			BS_Default,
+			float4(0.f, 0.f, 0.f, 0.f),
+			0xffffffff);
+
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+
+    pass ShadowFrontPass
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(
+			BS_Default,
+			float4(0.f, 0.f, 0.f, 0.f),
+			0xffffffff);
+
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+
+    pass ShadowTwoSidedPass
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(
+			BS_Default,
+			float4(0.f, 0.f, 0.f, 0.f),
+			0xffffffff);
+
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
     }
 }

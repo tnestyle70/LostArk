@@ -1,0 +1,42 @@
+{
+  "schema": "lostark.effect-source-material-contract-receipt",
+  "formatVersion": 1,
+  "effectAssetId": "effect.lancemaster.skill.34010.imported",
+  "summary": {
+    "particleElementCount": 21,
+    "materialIdentityCount": 10,
+    "parentProfileGroupCount": 8,
+    "pendingRuntimeOccurrenceCount": 9,
+    "standardRuntimeOccurrenceCount": 12,
+    "parameterNameHeuristicCount": 18,
+    "failureCount": 0,
+    "sourceExactIdentityCount": 10,
+    "runtimeExactProfileCount": 0,
+    "reconstructedProfileCount": 8,
+    "roleResolvedIdentityCount": 0,
+    "roleResolvedRuntimeBindingCount": 0,
+    "blockedNormalBumpRuntimeBindingCount": 1,
+    "fallbackBlockedMaterialIdentityCount": 4,
+    "productAdmissibleMaterialIdentityCount": 6,
+    "productMaterialAdmissionComplete": false
+  },
+  "failures": [],
+  "sources": [
+    {
+      "path": "Data/Effects/Imported/LanceMaster/Converted/effect.lancemaster.skill.34010.imported.effect.json",
+      "sha256": "42096e8e83ffdc350968fbec5388d40a9fbe16bf7777f05a23b4be73997eb9c2"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/skill.34010.source-receipt.json",
+      "sha256": "ba0af561ba5f222a4a669b4718f58bf3277732e1c21e062612d37e20ed21e949"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/Converted/skill.34010.element-conversion-receipt.json",
+      "sha256": "9dd7cc67227fe93fb4608b7431d2e032eba09637c5ba41b1040cecf6645bc4e0"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/LanceMaster.resource-source-manifest.json",
+      "sha256": "327762c3c24c7a9135623a88fe8f5671bc9fd41d878b1b522137070b765fce5d"
+    }
+  ]
+}

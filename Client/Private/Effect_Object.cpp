@@ -42,11 +42,20 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
 	m_fPlaybackRate = Desc.fPlaybackRate;
-	if (nullptr != Desc.pDocument &&
-		!Stage_Document(*Desc.pDocument, m_strStatus))
+	if (nullptr != Desc.pDocument && nullptr != Desc.pPreparedResources &&
+		!Stage_PreparedDocument(*Desc.pDocument,
+			Desc.pPreparedResources, m_strStatus))
 	{
 		return E_FAIL;
 	}
+	if (nullptr != Desc.pDocument && nullptr == Desc.pPreparedResources &&
+		(Desc.bRequirePreparedResources ||
+			!Stage_Document(*Desc.pDocument, m_strStatus)))
+	{
+		return E_FAIL;
+	}
+	if (nullptr == Desc.pDocument && Desc.bRequirePreparedResources)
+		return E_FAIL;
 	return S_OK;
 }
 
@@ -62,6 +71,30 @@ bool_t Client::CEffectObject::Stage_Document(
 	m_Playback = std::move(StagedPlayback);
 	m_Playback.Seek(0.f, m_RootWorld);
 	m_strStatus = "Effect Document staged.";
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectObject::Stage_PreparedDocument(
+	const EFFECT_DOCUMENT_DESC& Document,
+	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+		pPreparedResources,
+	std::string& strOutError)
+{
+	CEffectPlayback StagedPlayback;
+	const std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+		pPlaybackResources =
+			CEffectDocumentRenderer::Get_PlaybackResources(pPreparedResources);
+	if (!StagedPlayback.Stage_PrevalidatedDocument(
+		Document, pPlaybackResources, strOutError))
+		return false;
+	if (!m_pRenderer->Stage_Prepared(
+		Document, std::move(pPreparedResources), strOutError))
+	{
+		return false;
+	}
+	m_Playback = std::move(StagedPlayback);
+	m_strStatus = "Prepared Effect Document staged.";
 	strOutError.clear();
 	return true;
 }

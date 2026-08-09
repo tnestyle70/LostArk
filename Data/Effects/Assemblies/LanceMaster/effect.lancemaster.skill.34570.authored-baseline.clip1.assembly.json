@@ -1,0 +1,313 @@
+{
+  "schema": "lostark.effect-assembly",
+  "version": 1,
+  "effectAssetId": "effect.lancemaster.skill.34570.authored-baseline.clip1",
+  "displayName": "effect.lancemaster.skill.34570.authored-baseline.clip1",
+  "sourceAuthoringVersion": 12,
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "modelCues": [],
+  "componentCues": [
+    {
+      "cueId": "component-00",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.00",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-01",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.01",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-02",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.02",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-03",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.03",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-04",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.04",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-05",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.05",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-06",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.06",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-07",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.07",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-08",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.08",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-09",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.09",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-10",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.10",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "cueId": "component-11",
+      "componentAssetId": "effect.component.lancemaster.skill.34570.authored-baseline.clip1.11",
+      "startDelaySeconds": 0.4283,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sourceDocumentSha256": "72f84f8b368c01be3f3f97fbaf49cb34a906a0fd850004f8e5217d6cd3738652",
+  "inputSlot": "R",
+  "sourceDocumentFileSha256": "91449169c23d5020474bd37805b72083e1afe2d3b30241b0d9822ff691031c31",
+  "sourceActionCues": [],
+  "sourceActionCueSummary": {
+    "cueCount": 0,
+    "channels": {},
+    "byteLosslessPayloadComplete": true
+  }
+}

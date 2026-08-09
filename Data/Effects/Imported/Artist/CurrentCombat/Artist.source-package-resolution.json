@@ -1,0 +1,174 @@
+{
+  "schema": "lostark.effect-source-package-resolution",
+  "version": 1,
+  "characterClass": "ARTIST",
+  "sourceResourceManifest": {
+    "path": "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json",
+    "sha256": "f4d76e47b28c648720cfa612627508502bd54916a294e24d31c2afeb03b29c9b"
+  },
+  "packages": [
+    {
+      "logicalPackage": "bfx_m",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk"
+    },
+    {
+      "logicalPackage": "bfx_m_mi_00",
+      "physicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk"
+    },
+    {
+      "logicalPackage": "bfx_sm_00",
+      "physicalPackage": "5XFB2CGA2C00F8C4YEC00XKC.upk"
+    },
+    {
+      "logicalPackage": "bg_rad_foliage_a",
+      "physicalPackage": "542N9YJ2RXO3IY4Q2CYF0MPE.upk"
+    },
+    {
+      "logicalPackage": "efmaster_material_prologue",
+      "physicalPackage": "U1E2KRUD6GE2RUDM276RZDS7S8YU.upk"
+    },
+    {
+      "logicalPackage": "fx_gibs_00",
+      "physicalPackage": "XFH2R4I5G2H00FGSIZ4EB00X.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_01",
+      "physicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_02",
+      "physicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_03",
+      "physicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_04",
+      "physicalPackage": "YGI3SB3OBJ3O1TGUMP6QMP8O5.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_05",
+      "physicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_d_00",
+      "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_h_00",
+      "physicalPackage": "ZHJ4TC4PCK4PD4J22HIXEYUXLU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_k_00",
+      "physicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_l_00",
+      "physicalPackage": "ZHJ4TC4PCK4P54J22HIXEYUX1U.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_m_00",
+      "physicalPackage": "ZHJ4TC4PCK4PC4J22HIXEYUXEU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_n_00",
+      "physicalPackage": "ZHJ4TC4PCK4PJ4J22HIXEYUXRU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_o_00",
+      "physicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_s_00",
+      "physicalPackage": "ZHJ4TC4PCK4PI4J22HIXEYUXKU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_t_00",
+      "physicalPackage": "ZHJ4TC4PCK4PP4J22HIXEYUXXU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_u_00",
+      "physicalPackage": "ZHJ4TC4PCK4PW4J22HIXEYUXAU.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_w_00",
+      "physicalPackage": "ZHJ4TC4PCK4PA4J22HIXEYUX0U.upk"
+    },
+    {
+      "logicalPackage": "fx_m_mi_y_00",
+      "physicalPackage": "ZHJ4TC4PCK4PO4J22HIXEYUXQU.upk"
+    },
+    {
+      "logicalPackage": "fx_mastermaterial",
+      "physicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk"
+    },
+    {
+      "logicalPackage": "fx_mm",
+      "physicalPackage": "WEG1Q9XFMP89XMP8HX2EZ1Q.upk"
+    },
+    {
+      "logicalPackage": "fx_sm_00",
+      "physicalPackage": "XFH2RGA2R00F04YE900X0SMQ.upk"
+    },
+    {
+      "logicalPackage": "fx_sm_01",
+      "physicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk"
+    },
+    {
+      "logicalPackage": "fx_sm_02",
+      "physicalPackage": "XFH2RGA2R0EF04YE90QX0SMQ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_03",
+      "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_04",
+      "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_05",
+      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_06",
+      "physicalPackage": "YGI3SORGM3I17GHA5BMJ8E5CZ.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_high_00",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T22H2DJURL.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_high_03",
+      "physicalPackage": "ZHJ4TPSHN4JDK6D4T2NH2DJURL.upk"
+    },
+    {
+      "logicalPackage": "fx_tex_nomipmap_00",
+      "physicalPackage": "ZHJ4TPSHN4JJQCKXC0X4T22H2D.upk"
+    },
+    {
+      "logicalPackage": "wp_mn_lrcn_01",
+      "physicalPackage": "8V2NAH2N39CH2C07F8BEHLRC.upk"
+    }
+  ],
+  "summary": {
+    "resolvedPackageCount": 40
+  }
+}

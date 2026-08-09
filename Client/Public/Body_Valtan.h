@@ -32,6 +32,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
@@ -42,6 +43,7 @@ private:
 private:
 	HRESULT Ready_Components();
 	HRESULT Bind_ShaderResources();
+	HRESULT Bind_ShadowShaderResources();
 
 public:
 	static unique_ptr<CBody_Valtan> Create(ComPtr<ID3D11Device> pDevice,

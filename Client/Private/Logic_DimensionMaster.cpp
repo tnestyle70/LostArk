@@ -23,6 +23,11 @@ namespace
 		  "b_wp_swm_m_4_02", 180.f },
 	};
 
+	constexpr SKILL_SURFACE_EMISSIVE_SPEC SkillSurfaceEmissives[] =
+	{
+		{ 2050210u, float4_t(1.f, 1.f, 1.f, 1.f), 4.f },
+	};
+
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<Client::CLogic_DimensionMaster>();
@@ -63,6 +68,9 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 	},
 
 	&Create_Logic,
+
+	SkillSurfaceEmissives,
+	static_cast<uint32_t>(size(SkillSurfaceEmissives)),
 };
 
 NS_END

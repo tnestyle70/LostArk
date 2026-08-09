@@ -1,0 +1,4537 @@
+{
+  "schema": "lostark.effect-source-receipt",
+  "schemaVersion": 2,
+  "characterClass": "LANCE_MASTER",
+  "inputSlot": "E",
+  "skillId": 34560,
+  "productSkillId": 34560,
+  "sourceSkillIds": [
+    34560
+  ],
+  "animationAssetId": "LanceMaster",
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "flm_sk_penetrationlunge_01",
+        "sequenceIndex": 0,
+        "sourceSkillId": 34560,
+        "sourceLine": 2505
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_02",
+        "sequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "sourceLine": 2511
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_03",
+        "sequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "sourceLine": 2527
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_04",
+        "sequenceIndex": 3,
+        "sourceSkillId": 34560,
+        "sourceLine": 2553
+      }
+    ]
+  },
+  "animationVisualContract": {
+    "combinedMeshAnimationStatus": "ORIGINAL_MATCH_CONFIRMED",
+    "combinedMeshAnimationOwner": "Animation/CModel",
+    "reconstructCombinedMeshAsEffectElement": false,
+    "effectExtractionScope": [
+      "particle",
+      "texture_or_sprite",
+      "trail",
+      "distortion",
+      "post_effect",
+      "particle_owned_mesh_emitter"
+    ]
+  },
+  "timeline": {
+    "durationSeconds": 2.25,
+    "bindingClips": [
+      {
+        "clip": "flm_sk_penetrationlunge_01",
+        "playMs": 699,
+        "playRate": 1.2
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_02",
+        "playMs": 200,
+        "playRate": 1.2
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_03",
+        "playMs": 800,
+        "playRate": 1.2
+      },
+      {
+        "clip": "flm_sk_penetrationlunge_04",
+        "playRate": 1.2
+      }
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "flm_sk_penetrationlunge_01",
+        "sourceSkillId": 34560,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 0.7,
+        "sourceLine": 2505
+      },
+      {
+        "sequenceIndex": 1,
+        "clip": "flm_sk_penetrationlunge_02",
+        "sourceSkillId": 34560,
+        "offsetSeconds": 0.7,
+        "lengthSeconds": 0.25,
+        "sourceLine": 2511
+      },
+      {
+        "sequenceIndex": 2,
+        "clip": "flm_sk_penetrationlunge_03",
+        "sourceSkillId": 34560,
+        "offsetSeconds": 0.95,
+        "lengthSeconds": 0.8667,
+        "sourceLine": 2527
+      },
+      {
+        "sequenceIndex": 3,
+        "clip": "flm_sk_penetrationlunge_04",
+        "sourceSkillId": 34560,
+        "offsetSeconds": 1.8167,
+        "lengthSeconds": 0.4333,
+        "sourceLine": 2553
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2516,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.25,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "sourceLine": 2517,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_00"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2518,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.25,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "sourceLine": 2519,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_00"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2520,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.25,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02",
+        "sourceLine": 2521,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_02"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2522,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "flm_sk_penetrationlunge_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.7,
+        "durationSeconds": 0.25,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02",
+        "sourceLine": 2523,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_02"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.02,
+        "globalTimeSeconds": 0.97,
+        "durationSeconds": 0.0373,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 2533,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00",
+        "sourceLine": 2536,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_dust_00"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2537,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "sourceLine": 2538,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_00"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2539,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "sourceLine": 2540,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_04"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2541,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "sourceLine": 2542,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_02"
+      },
+      {
+        "eventId": "source-event-017",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+        "sourceLine": 2543,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_01"
+      },
+      {
+        "eventId": "source-event-018",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "sourceLine": 2544,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_24"
+      },
+      {
+        "eventId": "source-event-019",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3,
+        "globalTimeSeconds": 1.25,
+        "durationSeconds": 0.0,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 2546,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-020",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.3019,
+        "globalTimeSeconds": 1.2519,
+        "durationSeconds": 0.0689,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 2547,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-021",
+        "clip": "flm_sk_penetrationlunge_03",
+        "clipSequenceIndex": 2,
+        "sourceSkillId": 34560,
+        "localTimeSeconds": 0.55,
+        "globalTimeSeconds": 1.5,
+        "durationSeconds": 0.0689,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 2549,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      }
+    ]
+  },
+  "sourcePackages": [
+    {
+      "logicalPackage": "FX_CM_02",
+      "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
+      "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
+      "graphSummary": {
+        "graphObjectCount": 7014,
+        "particleSystemCount": 194,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 636,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 6908,
+        "decodedInterpCurveCount": 47,
+        "decodedInterpCurvePointCount": 151,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 255488,
+      "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
+    },
+    {
+      "logicalPackage": "FX_PC_FLM_00",
+      "physicalPackage": "YGI3SWD3SY4B3D11G9KMHNT6M.upk",
+      "graphSha256": "40ca25dd97d6ca435dd3f0f463ad4804e60c2d3ea264f9493532224c4cb1d4d2",
+      "graphSummary": {
+        "graphObjectCount": 4170,
+        "particleSystemCount": 83,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 660,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2885,
+        "decodedInterpCurveCount": 23,
+        "decodedInterpCurvePointCount": 65,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 159051,
+      "sourcePackageSha256": "d83f1280c56424376e069f7b0ee17184361425e3b8668ef3fede3d364f4cc22a"
+    }
+  ],
+  "sourceSystems": [
+    {
+      "sourceSystemId": "fx_cm_02.light.par_mp_light_01",
+      "sourceAsset": "FX_CM_02.Light.Par_MP_Light_01",
+      "logicalPackage": "FX_CM_02",
+      "objectName": "par_mp_light_01",
+      "objectPath": "light.par_mp_light_01",
+      "rootNodeId": "FX_CM_02:export:7013",
+      "summary": {
+        "nodeCount": 9,
+        "edgeCount": 11,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 3,
+        "distributionCount": 2,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 11,
+        "featureClasses": [
+          "efparticlemoduletypedatalight"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_CM_02:export:4127",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -78,
+          "objectPath": "enginematerials.defaultparticle",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_00",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_atk_00",
+      "objectPath": "par_k_flm_penetrationlunge_atk_00",
+      "rootNodeId": "FX_PC_FLM_00:export:4131",
+      "summary": {
+        "nodeCount": 81,
+        "edgeCount": 155,
+        "emitterCount": 14,
+        "lodLevelCount": 28,
+        "moduleCount": 37,
+        "distributionCount": 1,
+        "resourceBindingCount": 15,
+        "unresolvedExternalReferenceCount": 212,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2372",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -102,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2370",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -163,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3294",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3296",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2375",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -116,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3297",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2373",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -117,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3295",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2369",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -124,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2374",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2371",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -86,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2368",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3293",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1524,
+          "objectPath": "fx_sm_00.fm_m_helix_006",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2376",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2377",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_02",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_atk_02",
+      "objectPath": "par_k_flm_penetrationlunge_atk_02",
+      "rootNodeId": "FX_PC_FLM_00:export:4132",
+      "summary": {
+        "nodeCount": 79,
+        "edgeCount": 149,
+        "emitterCount": 14,
+        "lodLevelCount": 28,
+        "moduleCount": 35,
+        "distributionCount": 1,
+        "resourceBindingCount": 15,
+        "unresolvedExternalReferenceCount": 220,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2382",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -102,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2380",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -163,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3299",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3301",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2385",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -116,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3302",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2383",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -117,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3300",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2379",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -124,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2384",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2381",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -86,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2378",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -109,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3298",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1524,
+          "objectPath": "fx_sm_00.fm_m_helix_006",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2386",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2387",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_04",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_atk_04",
+      "objectPath": "par_k_flm_penetrationlunge_atk_04",
+      "rootNodeId": "FX_PC_FLM_00:export:4133",
+      "summary": {
+        "nodeCount": 78,
+        "edgeCount": 140,
+        "emitterCount": 14,
+        "lodLevelCount": 28,
+        "moduleCount": 35,
+        "distributionCount": 0,
+        "resourceBindingCount": 17,
+        "unresolvedExternalReferenceCount": 230,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2392",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -163,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3305",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3307",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2396",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -116,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3308",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2388",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3303",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1519,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2389",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3304",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1519,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2394",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -117,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3306",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2390",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -124,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2391",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -122,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2395",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2393",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -86,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2397",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2398",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_atk_24",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_atk_24",
+      "objectPath": "par_k_flm_penetrationlunge_atk_24",
+      "rootNodeId": "FX_PC_FLM_00:export:4136",
+      "summary": {
+        "nodeCount": 75,
+        "edgeCount": 132,
+        "emitterCount": 14,
+        "lodLevelCount": 28,
+        "moduleCount": 32,
+        "distributionCount": 0,
+        "resourceBindingCount": 17,
+        "unresolvedExternalReferenceCount": 238,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2449",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -163,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3335",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3337",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1521,
+          "objectPath": "fx_sm_00.fm_d_trail_005",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2453",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -116,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3338",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2445",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3333",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1519,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2446",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3334",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1519,
+          "objectPath": "fx_sm_00.fm_d_plane_003",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2451",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -117,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_43_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:3336",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1528,
+          "objectPath": "fx_sm_01.fm_k_halfcylinder_01",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2447",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -124,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2448",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -122,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2452",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2450",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -86,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2454",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2455",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -81,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_00",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_cast_00",
+      "objectPath": "par_k_flm_penetrationlunge_cast_00",
+      "rootNodeId": "FX_PC_FLM_00:export:4147",
+      "summary": {
+        "nodeCount": 12,
+        "edgeCount": 11,
+        "emitterCount": 3,
+        "lodLevelCount": 3,
+        "moduleCount": 5,
+        "distributionCount": 0,
+        "resourceBindingCount": 3,
+        "unresolvedExternalReferenceCount": 22,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2524",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2526",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -172,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_worldoffset_02_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2525",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -87,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_cast_02",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_cast_02",
+      "objectPath": "par_k_flm_penetrationlunge_cast_02",
+      "rootNodeId": "FX_PC_FLM_00:export:4148",
+      "summary": {
+        "nodeCount": 12,
+        "edgeCount": 11,
+        "emitterCount": 3,
+        "lodLevelCount": 3,
+        "moduleCount": 5,
+        "distributionCount": 0,
+        "resourceBindingCount": 3,
+        "unresolvedExternalReferenceCount": 22,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2527",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -103,
+          "objectPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2529",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -172,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_worldoffset_02_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2528",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -87,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_flm_00.par_k_flm_penetrationlunge_dust_00",
+      "sourceAsset": "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00",
+      "logicalPackage": "FX_PC_FLM_00",
+      "objectName": "par_k_flm_penetrationlunge_dust_00",
+      "objectPath": "par_k_flm_penetrationlunge_dust_00",
+      "rootNodeId": "FX_PC_FLM_00:export:4153",
+      "summary": {
+        "nodeCount": 32,
+        "edgeCount": 47,
+        "emitterCount": 7,
+        "lodLevelCount": 14,
+        "moduleCount": 10,
+        "distributionCount": 0,
+        "resourceBindingCount": 6,
+        "unresolvedExternalReferenceCount": 130,
+        "featureClasses": [
+          "efparticlemoduletypedatadecal"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2556",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -134,
+          "objectPath": "fx_m_mi_04.fx_mi.fx_k_de_master_01_09_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2558",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -73,
+          "objectPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2557",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -70,
+          "objectPath": "fx_m_mi_02.fx_m.fx_k_pa_veldust_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2559",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -70,
+          "objectPath": "fx_m_mi_02.fx_m.fx_k_pa_veldust_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2561",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -91,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_pa_frag_07_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_FLM_00:export:2560",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -83,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_02_1_tr",
+          "role": "material"
+        }
+      ]
+    }
+  ],
+  "materialParameterBindings": [
+    {
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "sourceLogicalPackage": "enginematerials",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+      "candidateCount": 0,
+      "candidates": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_01_1_ad",
+      "objectName": "fx_a_pa_db_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_02_1_tr",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_02_1_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_02_1_tr",
+      "objectName": "fx_a_pa_db_02_1_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_03_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_004"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "dynamic_parameter_explanation",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_desturation",
+          "value": 0.0
+        },
+        {
+          "name": "light_intensity",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_ht_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_ht_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_ht_01_1_ad",
+      "objectName": "fx_a_pa_ht_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_00.fx_a_fragment_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_002.dds"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_c_pa_lensflare_01_03_ad",
+      "objectName": "fx_c_pa_lensflare_01_03_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_pa_lensflare_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "lensflaretexture",
+          "texture": "fx_tex_high_00.fx_c_glow_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_HIGH_00/fx_c_glow_007.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "select texture(0 or 0.5)",
+          "value": 0.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_frag_07_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_frag_07_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_pa_frag_07_02_tr",
+      "objectName": "fx_d_pa_frag_07_02_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_03_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_02.fx_d_fragment_013"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_02.fx_d_noise_009",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_009.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "dynamic_parameter_explanation",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_intensity",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_panning_y",
+          "value": 0.10000000149011612
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_j_pa_lbeam_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_j_pa_lbeam_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_j_pa_lbeam_01_1_ad",
+      "objectName": "fx_j_pa_lbeam_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m_mi_00.bfx_m.bfx_d_pa_shine_02_ad_dt",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "01.range",
+          "value": 20.0
+        },
+        {
+          "name": "02.power",
+          "value": 1.0
+        },
+        {
+          "name": "power",
+          "value": 6.0
+        },
+        {
+          "name": "str",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_k_pa_fd_01_05_tr",
+      "sourceLogicalPackage": "fx_m_mi_01",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_pa_fd_01_05_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O18GUMP6QMP8L5.upk",
+      "materialPath": "fx_mi.fx_k_pa_fd_01_05_tr",
+      "objectName": "fx_k_pa_fd_01_05_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "dissolve_noise_tex",
+          "texture": "fx_tex_03.fx_e_noise_008",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_noise_008.dds"
+        },
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "depth_alpha_bias",
+          "value": -30.0
+        },
+        {
+          "name": "dissolve_noise_intensity",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_noise_power",
+          "value": 1.0
+        },
+        {
+          "name": "dissolve_power",
+          "value": 100.0
+        },
+        {
+          "name": "emissive_desaturation",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "dissolve_color&intensity",
+          "value": {
+            "r": 0.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_k_pa_veldust_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_k_pa_veldust_01_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_m.fx_k_pa_veldust_01_tr",
+      "objectName": "fx_k_pa_veldust_01_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_03_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 2,
+      "catalogKey": "fx_mi.fx_k_me_makeflow_02_03_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_me_makeflow_02_03_tr",
+      "objectName": "fx_k_me_makeflow_02_03_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_me_makeflow_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex1",
+          "texture": "fx_tex_05.fx_m_caustic_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_caustic_001.dds"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_04.fx_i_atypical_03_2_xcl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_atypical_03_2_xcl.dds"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_006",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_006.dds"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_05.fx_m_spatter_001_xyclamp",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_m_spatter_001_xyclamp.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff1_tile_u",
+          "value": 0.5
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff2_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff_des",
+          "value": 1.0
+        },
+        {
+          "name": "diff_pow",
+          "value": 1.0
+        },
+        {
+          "name": "diff_str",
+          "value": 30.0
+        },
+        {
+          "name": "distort_str",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "flow_bias",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_pan_v",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "flow_tile_v",
+          "value": 2.0
+        },
+        {
+          "name": "gra_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "opacity_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_rot",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_tile_v",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_42_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_makeflow_02_42_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_me_makeflow_02_42_tr",
+      "objectName": "fx_k_me_makeflow_02_42_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_me_makeflow_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex1",
+          "texture": "fx_tex_05.fx_k_auraline_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_02.dds"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_05.fx_k_caustictile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_01.dds"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_00.fx_a_line_010",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_line_010.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff1_tile_u",
+          "value": 2.0
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 0.6000000238418579
+        },
+        {
+          "name": "diff2_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff_des",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "diff_pow",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "diff_str",
+          "value": 20.0
+        },
+        {
+          "name": "flow_bias",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_pan_v",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "flow_tile_u",
+          "value": 5.0
+        },
+        {
+          "name": "flow_tile_v",
+          "value": 0.5
+        },
+        {
+          "name": "gra_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "opacity_pow",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "opacity_rot",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_v",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "cameravec_pow",
+          "value": 2.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_k_me_makeflow_02_43_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_makeflow_02_43_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_k_me_makeflow_02_43_tr",
+      "objectName": "fx_k_me_makeflow_02_43_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_me_makeflow_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex1",
+          "texture": "fx_tex_05.fx_k_auraline_14",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_14.dds"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_05.fx_k_caustictile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_01.dds"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_006",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_006.dds"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_00.fx_a_line_010",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_line_010.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff1_tile_u",
+          "value": 2.0
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "diff2_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff_des",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "diff_pow",
+          "value": 1.0
+        },
+        {
+          "name": "diff_str",
+          "value": 50.0
+        },
+        {
+          "name": "flow_bias",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_pan_v",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "flow_tile_u",
+          "value": 5.0
+        },
+        {
+          "name": "flow_tile_v",
+          "value": 0.5
+        },
+        {
+          "name": "gra_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "opacity_pow",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "opacity_rot",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_u",
+          "value": 3.0
+        },
+        {
+          "name": "opacity_tile_v",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "cameravec_pow",
+          "value": 2.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_o_pa_shine_02_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_shine_02_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_o_pa_shine_02_02_tr",
+      "objectName": "fx_o_pa_shine_02_02_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_shine_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "01.height.power",
+          "value": 2.0
+        },
+        {
+          "name": "02.height.strength",
+          "value": 1.0
+        },
+        {
+          "name": "11.width.power",
+          "value": 40.0
+        },
+        {
+          "name": "12.width.strength",
+          "value": 1.0
+        },
+        {
+          "name": "11.range",
+          "value": 20.0
+        },
+        {
+          "name": "12.power",
+          "value": 1.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_k_pa_worldoffset_02_03_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 2,
+      "catalogKey": "fx_mi.fx_k_pa_worldoffset_02_03_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_k_pa_worldoffset_02_03_tr",
+      "objectName": "fx_k_pa_worldoffset_02_03_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mi.fx_m_pa_worldoffset_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "alpha_texture2",
+          "texture": "fx_tex_05.fx_k_auraline_16",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_16.dds"
+        },
+        {
+          "name": "emissive_tex_01",
+          "texture": "fx_tex_05.fx_k_caustictile_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_03.dds"
+        },
+        {
+          "name": "emissive_tex_02",
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
+        },
+        {
+          "name": "uv_noise_texture",
+          "texture": "fx_tex_00.fx_a_fluid_017_n",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fluid_017_n.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_tex_power",
+          "value": 5.0
+        },
+        {
+          "name": "mainalpha_move_u",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "mainalpha_move_v",
+          "value": 0.0
+        },
+        {
+          "name": "mainalpha_rotator",
+          "value": 0.0
+        },
+        {
+          "name": "mainalpha_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "mainalpha_tile_v",
+          "value": 0.5
+        },
+        {
+          "name": "emissive_background_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_background_strength",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_core_power",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "emissive_core_strength",
+          "value": 100.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_strength",
+          "value": 10.0
+        },
+        {
+          "name": "emissive_tex_01_move_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_move_v",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_panspeed_x",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "emissive_tex_01_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_01_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_tile_v",
+          "value": 1.5
+        },
+        {
+          "name": "emissive_tex_02_move_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_move_v",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_panspeed_x",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_02_panspeed_y",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "emissive_tex_02_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_tile_v",
+          "value": 2.0
+        },
+        {
+          "name": "uv_noise_panspeed_x",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_tile_v",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "uv_noise_velue",
+          "value": 0.20000000298023224
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_04.fx_mi.fx_k_de_master_01_09_tr",
+      "sourceLogicalPackage": "fx_m_mi_04",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_de_master_01_09_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_mi.fx_k_de_master_01_09_tr",
+      "objectName": "fx_k_de_master_01_09_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_04.fx_m.fx_d_de_master_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.alphamaskmap",
+          "texture": "fx_tex_02.fx_d_normal_016_1"
+        },
+        {
+          "name": "01.diffmap_a",
+          "texture": "fx_tex_00.fx_a_decal_014_2"
+        },
+        {
+          "name": "01.emismap",
+          "texture": "fx_tex_00.fx_a_decal_010"
+        },
+        {
+          "name": "06.normalmap",
+          "texture": "fx_tex_00.fx_a_decal_008_n"
+        },
+        {
+          "name": "01.heightmap",
+          "texture": "fx_tex_00.fx_a_decal_008"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "09.str",
+          "value": 1.0
+        },
+        {
+          "name": "10.power",
+          "value": 1.0
+        },
+        {
+          "name": "31.dissolvemapscale",
+          "value": 0.5
+        },
+        {
+          "name": "81.diffusedesat",
+          "value": 0.699999988079071
+        },
+        {
+          "name": "03.emap_uv.x.scale",
+          "value": 1.0
+        },
+        {
+          "name": "04.emap_uv.y.scale",
+          "value": 1.0
+        },
+        {
+          "name": "15.emissiion_power",
+          "value": 1.100000023841858
+        },
+        {
+          "name": "21.phasepantimescale",
+          "value": 0.05000000074505806
+        },
+        {
+          "name": "02.bumpheight",
+          "value": 5.0
+        },
+        {
+          "name": "04.bumpzero.pos",
+          "value": 0.10000000149011612
+        }
+      ],
+      "vectors": [
+        {
+          "name": "82.diffusecolor",
+          "value": {
+            "r": 1.32,
+            "g": 1.2,
+            "b": 1.08,
+            "a": 0.4
+          }
+        },
+        {
+          "name": "19.emissiion_color",
+          "value": {
+            "r": 0.5,
+            "g": 1.5,
+            "b": 9.0,
+            "a": 60.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_05",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_c_pa_aura_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O10GUMP6QMP815.upk",
+      "materialPath": "fx_m.fx_c_pa_aura_02_tr",
+      "objectName": "fx_c_pa_aura_02_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_me_makeflow_02_25_tr",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 2,
+      "catalogKey": "fx_mi.fx_k_me_makeflow_02_25_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_mi.fx_k_me_makeflow_02_25_tr",
+      "objectName": "fx_k_me_makeflow_02_25_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_02.fx_m.fx_k_me_makeflow_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "diff_tex1",
+          "texture": "fx_tex_03.fx_e_atypical_037",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_03/fx_e_atypical_037.dds"
+        },
+        {
+          "name": "diff_tex2",
+          "texture": "fx_tex_05.fx_k_caustictile_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_caustictile_01.dds"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds"
+        },
+        {
+          "name": "opacity_tex",
+          "texture": "fx_tex_00.fx_a_atypical_002_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_atypical_002_cl.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "diff1_tile_u",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "diff1_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "diff2_pan_v",
+          "value": 0.0
+        },
+        {
+          "name": "diff2_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "diff2_tile_v",
+          "value": 2.0
+        },
+        {
+          "name": "diff_des",
+          "value": 1.0
+        },
+        {
+          "name": "diff_pow",
+          "value": 1.0
+        },
+        {
+          "name": "diff_str",
+          "value": 100.0
+        },
+        {
+          "name": "distort_str",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "flow_bias",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "flow_pan_v",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "flow_tile_u",
+          "value": 0.5
+        },
+        {
+          "name": "flow_tile_v",
+          "value": 2.0
+        },
+        {
+          "name": "gra_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_distort_str",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "opacity_pow",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_rot",
+          "value": 0.0
+        },
+        {
+          "name": "opacity_str",
+          "value": 5.0
+        },
+        {
+          "name": "opacity_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "opacity_tile_v",
+          "value": 1.25
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_mi.fx_k_me_master_01_01_ts_dt_tr",
+      "objectName": "fx_k_me_master_01_01_ts_dt_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_atypical_055_2",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_055_2.dds"
+        },
+        {
+          "name": "11.map_b",
+          "texture": "fx_tex_04.fx_i_noise_03",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_noise_03.dds"
+        },
+        {
+          "name": "21.map_c",
+          "texture": "fx_tex_04.fx_j_smoke_01_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_smoke_01_cl.dds"
+        },
+        {
+          "name": "02.map_e",
+          "texture": "fx_tex_04.fx_j_mirnoise_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": -1.0
+        },
+        {
+          "name": "12.map_b_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "13.map_b_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "14.map_b_panning_x",
+          "value": 0.20000000298023224
+        },
+        {
+          "name": "15.map_b_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "29.cmap.direct",
+          "value": 9.0
+        },
+        {
+          "name": "36.str",
+          "value": 20.0
+        },
+        {
+          "name": "37.power",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_r",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "04.map_e_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "05.map_e_panning_x",
+          "value": 0.5
+        },
+        {
+          "name": "06.map_e_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "92.emissiion_power",
+          "value": 3.0
+        },
+        {
+          "name": "01.depthbiasdalpha_bias",
+          "value": 35.0
+        },
+        {
+          "name": "05.distort_str",
+          "value": 0.25
+        },
+        {
+          "name": "07.map_d_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "08.map_d_uvscale_g",
+          "value": 2.0
+        },
+        {
+          "name": "09.map_d_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "10.map_d_panning_y",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "93.emissiion_color",
+          "value": {
+            "r": 10.0,
+            "g": 10.0,
+            "b": 10.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_worldoffset_02_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 2,
+      "catalogKey": "fx_mi.fx_k_pa_worldoffset_02_01_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_mi.fx_k_pa_worldoffset_02_01_tr",
+      "objectName": "fx_k_pa_worldoffset_02_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_03.fx_mi.fx_m_pa_worldoffset_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "alpha_texture2",
+          "texture": "fx_tex_05.fx_k_auraline_20",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_k_auraline_20.dds"
+        },
+        {
+          "name": "emissive_tex_01",
+          "texture": "fx_tex_04.fx_j_mirnoise_02",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_02.dds"
+        },
+        {
+          "name": "emissive_tex_02",
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
+        },
+        {
+          "name": "uv_noise_texture",
+          "texture": "fx_tex_00.fx_a_fluid_017_n",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fluid_017_n.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "alpha_tex_power",
+          "value": 4.0
+        },
+        {
+          "name": "mainalpha_move_u",
+          "value": 0.0
+        },
+        {
+          "name": "mainalpha_move_v",
+          "value": -0.5
+        },
+        {
+          "name": "mainalpha_rotator",
+          "value": 0.0
+        },
+        {
+          "name": "mainalpha_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "mainalpha_tile_v",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_background_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_background_strength",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_core_power",
+          "value": 1.5
+        },
+        {
+          "name": "emissive_core_strength",
+          "value": 100.0
+        },
+        {
+          "name": "emissive_power",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_strength",
+          "value": 10.0
+        },
+        {
+          "name": "emissive_tex_01_move_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_move_v",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_panspeed_x",
+          "value": -0.20000000298023224
+        },
+        {
+          "name": "emissive_tex_01_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_01_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_01_tile_v",
+          "value": 1.5
+        },
+        {
+          "name": "emissive_tex_02_move_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_move_v",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_panspeed_x",
+          "value": 0.0
+        },
+        {
+          "name": "emissive_tex_02_panspeed_y",
+          "value": -0.10000000149011612
+        },
+        {
+          "name": "emissive_tex_02_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "emissive_tex_02_tile_v",
+          "value": 2.0
+        },
+        {
+          "name": "uv_noise_panspeed_x",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_panspeed_y",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_tile_u",
+          "value": 1.0
+        },
+        {
+          "name": "uv_noise_tile_v",
+          "value": 0.5
+        },
+        {
+          "name": "uv_noise_velue",
+          "value": 0.15000000596046448
+        }
+      ],
+      "vectors": []
+    }
+  ],
+  "runtimeResourceBindings": [
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_plane_003",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_plane_003.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_trail_005",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_d_trail_005.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_m_helix_006",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_m_helix_006.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_01.fm_k_halfcylinder_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Meshes/fm_k_halfcylinder_01.wmodel",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_atypical_002_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_atypical_002_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_decal_008",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_decal_008.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_decal_008_n",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_decal_008_n.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_decal_010",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_decal_010.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_decal_014_2",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_decal_014_2.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fluid_017_n",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_004",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_004.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_fragment_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_line_010",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_a_line_010.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_055_2",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_atypical_055_2.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_fragment_013",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_fragment_013.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_006",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_006.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_noise_009.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_normal_016_1",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_d_normal_016_1.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_atypical_037",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_03.fx_e_noise_008",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_e_noise_008.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_atypical_03_2_xcl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_i_atypical_03_2_xcl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_noise_03",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_i_noise_03.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_mirnoise_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_02",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_mirnoise_02.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_smoke_01_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_j_smoke_01_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_02",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_02.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_14",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_14.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_16",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_auraline_16.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_20",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_caustictile_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_k_caustictile_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_k_caustictile_03",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_caustic_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_caustic_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_m_spatter_001_xyclamp",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_00.fx_c_glow_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/LanceMaster/Textures/fx_c_glow_007.dds",
+      "candidateCount": 1
+    }
+  ],
+  "unsupportedUnresolved": [
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_20",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 12,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 78,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 20,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulerotation_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_02.particlemodulelifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_13.light.par_d_unseallight_start_01.particlemodulelifetime_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishhook_02.particlemodulerotation_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_stone_001.particlemodulelifetime_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_stone_001.particlemodulerotationrate_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_darkbomb_h_01.particlemodulelifetime_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_nethit_001.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_counterhit_01.particlemodulelifetime_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitarrow_01.particlemodulelocation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitfire_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_k_flms_hit_defaultcri_01.particlemodulecolor_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 18,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_v_kzsd_hit_05.particlemodulesize_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_y_snowflowerwand_hit_01.particlemodulesizemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_y_snowflowerwand_hit_01.particlemodulesizemultiplylife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_c_it_epic_003.particlemodulesizemultiplylife_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulespawn_16",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_bi_holyamul_01.particlemodulecolor_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_bi_holyamul_01.particlemodulemeshrotation_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_d_colosseum2_buff_01.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_d_dustdrop_011.particlemodulespawn_7",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_madness_03.particlemodulevelocity_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_h_spdup_s_01_01.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_debuffcancel_01.particlemodulesize_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_elitemn_fastmv_e_01.particlemodulerotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_re_provoke_03.particlemoduleacceleration_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_voyageboost_01_loop.particlemodulemeshrotationrate_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesize_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_v_pvp_master_buff_exp_01.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_x_dh_arkpassive_wp_flare_01.particlemodulespawn_12",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.par_y_kazemood_prj_01.particlemodulecolor_95",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_165",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_b_projholy_001.particlemodulespawn_3",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_c_ballista_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_e_shoot_01.particlemodulespawn_1",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_bomb_bottle_prj_01.particlemodulemeshrotationrate_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_wind_prj_01.particlemodulesubuv_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_h_arrow_02_03.particlemodulelocation_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_h_firebomb_prj_01_01.particlemodulecolor_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_k_chaosdeathsnipe_cast_01.particlemodulespawn_47",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_02484_exp_01.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_sworda_prj_01.particlemodulecolor_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_throwstone_exp_01.particlemoduleacceleration_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_n_steelbomb_prj_02.particlemodulecolor_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_rocket_mk-9_01.particlemodulevelocity_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 14,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_57_wind_01.particlemodulesizemultiplylife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_06.skill.par_d_ft_moving_01.particlemodulespawn_10",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_coredebris_sk_01_3.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_dreamlantern_sk_03.particlemodulecolorscaleoverlife_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_dreamlantern_sk_03.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_v_naul_sk2_01.particlemodulelocation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_l_kamen_blackspace_01.efparticlemodulevelocityoverlifetime_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_l_kamen_blackspace_01.particlemodulelifetime_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_l_kamen_blackspace_01.particlemodulesizemultiplylife_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_l_playship_buff_02.particlemodulesize_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_s_azakiel_02_e.particlemodulemeshrotationrate_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_w_egblessing_04.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 9,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_y_prison_04loop_pp.particlemodulemeshrotation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.item.par_l_machete_e_01.particlemodulemeshrotationrate_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_18.buff.par_u_quest_thessalia_dust_01.particlemoduleparameterdynamic_31",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_00.dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.explosion.par_k_pheromonebomb_atk_01.particlemodulevelocityoverlifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.explosion.par_l_bomb_01.particlemodulevelocityoverlifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_ppnn_00.par_l_ppnn_esther_sk_03_4.particlemodulecolorscaleoverlife_25",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_slann_00.par_n_slann_atk_04_02.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_adcs_00c.par_u_adcs_empbomb_exp_02.particlemodulecolor_30",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulelocation_42",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulelocation_44",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulemeshrotation_25",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulemeshrotation_26",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemodulemeshrotation_31",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boga_00.par_h_boga_13_2.particlemoduleparameterdynamic_32",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_borz_00_v.par_v_borz_spiral_prj_01.particlemoduleparameterdynamic_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boss_13.rpbu.par_h_rpbs_02_atk_01_01_loc_int.particlemodulelocation_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkch_00_l.par_l_cdkch_sk_01_prj_01.particlemodulelocation_37",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_04_n.par_n_cdkcn_de_atk_02.particlemodulesize_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_04_n.par_n_cdkcn_de_atk_02.particlemodulesize_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_04_n.par_n_cdkcn_prjexp_01_06.particlemodulemeshrotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbz_00_z.par_z_cnbz_sk13_01.particlemodulesize_59",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnct_00_s.par_s_cnct_sk41_prj_02_b.particlemodulemeshrotation_62",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cndn_00_z.par_z_cndn_trophy_01.particlemodulesize_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00-4_y.par_y_cuas_00-4_skill08_01_02.particlemodulecolor_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00.par_k_cuas_fireroad_exp_01_loc_int.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00.par_k_cuas_fireroad_exp_01_loc_int.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00.par_k_cuas_fireroad_exp_01_loc_int.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00.par_k_cuas_fireroad_exp_03_loc_int.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_01_l.par_l_cuas_sk_24_prj_01.particlemodulecolor_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_01_w.par_w_cuas_shadowthorn.particlemodulevelocity_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cubk_00_n.par_n_cubk_potal_01_02_loc_int.particlemodulecolor_29",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cupt_00.par_o_cupt_atk_03_01.particlemodulelifetime_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.efparticlemodulelocationprimitivecylinderspin_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.efparticlemodulelocationprimitivecylinderspin_seeded_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulecolorscaleoverlife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulecolorscaleoverlife_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulecolorscaleoverlife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulecolorscaleoverlife_36",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulelocation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulelocation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulelocation_71",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemoduleorbit_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemoduleparameterdynamic_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesize_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesizemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesizemultiplylife_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulesizemultiplylife_24",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kznr_00_z.par_z_kznr_atk_25.particlemodulevelocity_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_ldac_01_l.par_l_phantasm_cube_pc_01.particlemodulecolor_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_ppcd_00_t.par_t_ppcd_nahinir_teleport_01.particlemodulesizemultiplylife_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rlab_00_n.par_n_rlab_handswing_01.particlemodulecolorscaleoverlife_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rlab_00_n.par_n_rlab_handswing_01.particlemodulesizemultiplylife_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rlhn_00.par_x_rlhn_prjspike_03_01.particlemodulevelocity_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_rljr_00.par_k_rljr_sk_08_06.particlemodulevelocity_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_tslc_01_r.par_r_tslc_01_sk_29_01.particlemodulelocation_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_bladeburst_exp_01.particlemodulecolorscaleoverlife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_bladebust_cast_01.particlemodulesizemultiplylife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Cast_02"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_earthslash_exp_07.particlemodulesize_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_00.par_k_dbl_maelstrom_atk_01.particlemodulecolorscaleoverlife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 32,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_01.par_m_dbl_decal_01.particlemodulecolorscaleoverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulelocationprimitivecylinder_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulelocationprimitivecylinder_seeded_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulevelocity_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dbl_08.par_y_dbl_dust_01_1.particlemodulevelocity_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulecolor_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocation_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocation_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocation_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocationprimitivesphere_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_03.par_n_drp_cloneblow_dust_00.particlemodulelocationprimitivesphere_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Dust_00"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_07.par_s_fbm_dragon_02.particlemoduleparameterdynamic_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbmm_05.par_k_fbmm_hypertiger_head_02.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_01.par_o_fif_fbf_03_1.particlemodulesizemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 16,
+      "sourceSystems": [
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_00",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_02",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_04",
+        "FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24"
+      ]
+    },
+    {
+      "sourceObjectPath": "light.par_mp_light_01.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+      "property": "pointlightcomponent",
+      "reason": "local_reference_is_not_a_decoded_particle_graph_node",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_01"
+      ]
+    }
+  ],
+  "conversionState": {
+    "normalizedSourceGraph": "EXTRACTED",
+    "materialInstanceParameterBindings": "PARTIAL",
+    "runtimeElementMapping": "PENDING",
+    "importedEffectDocument": "PENDING"
+  },
+  "summary": {
+    "sourceSystemCount": 8,
+    "effectEventCount": 20,
+    "resolvedParticleEventCount": 17,
+    "unsupportedNotifyCount": 0,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 1,
+    "unsupportedUnresolvedUniqueCount": 158,
+    "uniqueMaterialBindingCount": 19,
+    "resolvedMaterialBindingCount": 18,
+    "runtimeResourceBindingCount": 36,
+    "resolvedRuntimeResourceBindingCount": 32,
+    "missingParticleGraphPackageCount": 0
+  }
+}

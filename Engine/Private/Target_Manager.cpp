@@ -95,6 +95,31 @@ HRESULT CTarget_Manager::End_MRT()
 	return S_OK;
 }
 
+HRESULT CTarget_Manager::Begin_DepthOnly(
+	ComPtr<ID3D11DepthStencilView> pDSV)
+{
+	if (nullptr == pDSV)
+		return E_INVALIDARG;
+
+	ID3D11ShaderResourceView* pSRVs[
+		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+	m_pContext->PSSetShaderResources(
+		0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, pSRVs);
+
+	m_pContext->OMGetRenderTargets(
+		1, &m_pBackBufferRTV, &m_pOriginalDSV);
+	m_pContext->ClearDepthStencilView(
+		pDSV.Get(), D3D11_CLEAR_DEPTH, 1.f, 0);
+	m_pContext->OMSetRenderTargets(0, nullptr, pDSV.Get());
+
+	return S_OK;
+}
+
+HRESULT CTarget_Manager::End_DepthOnly()
+{
+	return End_MRT();
+}
+
 HRESULT CTarget_Manager::Bind_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName)
 {
 	auto		pRenderTarget = Find_RenderTarget(strTargetTag);

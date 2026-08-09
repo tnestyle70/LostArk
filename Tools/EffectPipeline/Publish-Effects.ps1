@@ -337,6 +337,30 @@ function Copy-JsonValue([object]$Value) {
     return ($Value | ConvertTo-Json -Depth 100 -Compress) | ConvertFrom-Json
 }
 
+function Test-JsonNumericIdentity([object]$Expected, [object]$Actual) {
+    $expectedDouble = [double]$Expected
+    $actualDouble = [double]$Actual
+    if ($expectedDouble -eq $actualDouble) { return $true }
+    if ([double]::IsNaN($expectedDouble) -or
+        [double]::IsNaN($actualDouble) -or
+        [double]::IsInfinity($expectedDouble) -or
+        [double]::IsInfinity($actualDouble) -or
+        (($expectedDouble -lt 0) -ne ($actualDouble -lt 0))) {
+        return $false
+    }
+    $expectedBits = [BitConverter]::ToInt64(
+        [BitConverter]::GetBytes($expectedDouble), 0)
+    $actualBits = [BitConverter]::ToInt64(
+        [BitConverter]::GetBytes($actualDouble), 0)
+    $distance = [Math]::Abs([decimal]$expectedBits - [decimal]$actualBits)
+    # ConvertFrom-Json in Windows PowerShell 5.1 parses long JSON fractions as
+    # Decimal before the validator casts them to Double. Direct JSON readers
+    # (and the Python component compiler) round those literals straight to
+    # Double, which can differ by exactly one ULP. Anything larger remains a
+    # lossless compile failure.
+    return $distance -le 1
+}
+
 function Assert-JsonEquivalent(
     [object]$Expected,
     [object]$Actual,
@@ -355,7 +379,7 @@ function Assert-JsonEquivalent(
         $Actual -is [decimal]
     if ($expectedIsNumber -or $actualIsNumber) {
         if (-not $expectedIsNumber -or -not $actualIsNumber -or
-            [double]$Expected -ne [double]$Actual) {
+            -not (Test-JsonNumericIdentity $Expected $Actual)) {
             throw "JSON numeric identity mismatch at ${Path}: $Expected != $Actual"
         }
         return
@@ -412,6 +436,11 @@ function Compile-EffectAssembly(
         [int](Get-RequiredProperty $Assembly 'version' Number) -ne 1) {
         throw 'Unsupported Effect assembly.'
     }
+    $assemblyDisplayName = Get-RequiredProperty $Assembly 'displayName' String
+    if ([string]::IsNullOrWhiteSpace($assemblyDisplayName) -or
+        [Text.Encoding]::UTF8.GetByteCount($assemblyDisplayName) -gt 64) {
+        throw 'Effect Assembly displayName must be 1-64 UTF-8 bytes.'
+    }
     $rows = [Collections.Generic.List[object]]::new()
     $compiledIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
@@ -439,10 +468,18 @@ function Compile-EffectAssembly(
                 $componentId) {
             throw "Effect Component header mismatch: $componentId"
         }
+        $componentDisplayName = Get-RequiredProperty $component 'displayName' String
         $document = Get-RequiredProperty $component 'document' Object
         if ((Get-RequiredProperty $document 'effectAssetId' String) -cne
                 $componentId) {
             throw "Effect Component Document identity mismatch: $componentId"
+        }
+        $documentDisplayName = Get-RequiredProperty $document 'displayName' String
+        if ([string]::IsNullOrWhiteSpace($componentDisplayName) -or
+            [Text.Encoding]::UTF8.GetByteCount($componentDisplayName) -gt 64 -or
+            [string]::IsNullOrWhiteSpace($documentDisplayName) -or
+            [Text.Encoding]::UTF8.GetByteCount($documentDisplayName) -gt 64) {
+            throw "Effect Component and its Document displayName must each be 1-64 UTF-8 bytes: $componentId"
         }
         $elementsById = [Collections.Generic.Dictionary[string,object]]::new(
             [StringComparer]::Ordinal)
@@ -500,7 +537,11 @@ function Compile-EffectAssembly(
             @(Get-RequiredProperty $Assembly 'modelCues' Array)
     }
     $compiledDocument['elements'] = $orderedElements
-    return Copy-JsonValue $compiledDocument
+    # Keep IEEE-754 values produced by local-delay + cue-offset intact for the
+    # identity check. Windows PowerShell 5.1 ConvertTo-Json rounds some doubles
+    # to 15 decimal digits, so a final JSON copy here can introduce a one-ULP
+    # mismatch even when the compiled value is exactly the source value.
+    return [pscustomobject]$compiledDocument
 }
 
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(

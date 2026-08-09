@@ -1,0 +1,1970 @@
+{
+  "schema": "lostark.four-class-combat-effect-source-blocker-matrix",
+  "version": 1,
+  "policy": {
+    "genericFallback": "FORBIDDEN",
+    "crossSkillEffectBorrowing": "FORBIDDEN",
+    "numericSkillAliasJoin": "FORBIDDEN",
+    "exactBoundClipIdentityJoin": "REQUIRED"
+  },
+  "classStageManifests": [
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/DimensionMaster.combat-source-stage-manifest.json",
+      "sha256": "9dccb7d9ce48c182ac81e10ad17b73bb866577351476bf6b1d5d53c9e877a9b9"
+    },
+    {
+      "path": "Data/Effects/Imported/LanceMaster/LanceMaster.combat-source-stage-manifest.json",
+      "sha256": "a22ab8babdc7bada4b699838fd7ed4c32588f020bda49c5681a0ec4ecc151b90"
+    },
+    {
+      "path": "Data/Effects/Imported/Artist/Artist.combat-source-stage-manifest.json",
+      "sha256": "95d5a4db6806b89539f240d21d26bcccc29f183da990b921262a52693a9192ac"
+    },
+    {
+      "path": "Data/Effects/Imported/Warlord/Warlord.combat-source-stage-manifest.json",
+      "sha256": "a2ed3002f6d961412797d1a112c3c8f450309ecdabdcb708f14192dba70c294a"
+    }
+  ],
+  "skills": [
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050010,
+      "sourceSkillIds": [
+        2050010
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 14
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 31
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050100,
+      "sourceSkillIds": [
+        2050100
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 2
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 8
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050120,
+      "sourceSkillIds": [
+        2050120
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 12
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 44
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050160,
+      "sourceSkillIds": [
+        2050160
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 22
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050180,
+      "sourceSkillIds": [
+        2050180
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 20
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050210,
+      "sourceSkillIds": [
+        2050210
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 7
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 29
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050220,
+      "sourceSkillIds": [
+        2050220
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 29
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050230,
+      "sourceSkillIds": [
+        2050230
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultmaterial",
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 13
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 54
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050240,
+      "sourceSkillIds": [
+        2050240
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultmaterial",
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 10
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 32
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050500,
+      "sourceSkillIds": [
+        2050500
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultmaterial",
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 88
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050520,
+      "sourceSkillIds": [
+        2050520
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 14
+        }
+      ]
+    },
+    {
+      "animationAssetId": "DimensionMaster",
+      "characterClass": "DIMENSIONMASTER",
+      "productSkillId": 2050540,
+      "sourceSkillIds": [
+        2050540
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 181
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34040,
+      "sourceSkillIds": [
+        34040
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 5,
+          "sourceObjectPaths": [
+            "fx_tex_00.fx_a_cloud_007",
+            "fx_tex_01.fx_c_fire_007_cl",
+            "fx_tex_02.fx_d_fluid_008",
+            "fx_tex_05.fx_m_atypical_001_cl",
+            "fx_tex_high_03.fx_d_fire_028"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 21
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 26
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34090,
+      "sourceSkillIds": [
+        34090
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 9
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 27
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34100,
+      "sourceSkillIds": [
+        34100
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 3,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_simple_01_33_tr",
+            "fx_m_mi_v_00.fx_mi.fx_v_me_flame_01_1_ad"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 3,
+          "sourceObjectPaths": [
+            "fx_tex_02.fx_d_cloud_035",
+            "fx_tex_04.fx_h_wave_02",
+            "fx_tex_05.fx_k_auraline_04"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 26
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 82
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34160,
+      "sourceSkillIds": [
+        34160
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_40_tr"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 3,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_d_hemisphere_005",
+            "fx_tex_00.fx_a_cloud_016",
+            "fx_tex_04.fx_i_atypical_03_1_ycl"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 1
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 6
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 19
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34140,
+      "sourceSkillIds": [
+        34140
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 6,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_d_hemisphere_005",
+            "fx_tex_00.fx_a_cloud_016",
+            "fx_tex_04.fx_h_wave_01",
+            "fx_tex_04.fx_i_atypical_03_1_ycl",
+            "fx_tex_05.fx_k_fluidtile_01",
+            "fx_tex_05.fx_k_smoke_02"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 1
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 5
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 39
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34120,
+      "sourceSkillIds": [
+        34120
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 6
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 19
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34650,
+      "sourceSkillIds": [
+        34650
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 3,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_15_tr",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 5,
+          "sourceObjectPaths": [
+            "fx_tex_02.fx_d_atypical_010",
+            "fx_tex_02.fx_d_fluid_004",
+            "fx_tex_04.fx_i_atypical_03_1_ycl",
+            "fx_tex_05.fx_m_atypical_003",
+            "fx_tex_high_03.sk_flm_gdr_02_s"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 32
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 61
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34610,
+      "sourceSkillIds": [
+        34610
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 18,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_h_swing_01",
+            "fx_sm_00.fm_m_sphere_003",
+            "fx_sm_00.fm_o_plane_01",
+            "fx_tex_00.fx_a_fluid_017_n",
+            "fx_tex_00.fx_b_ring_001",
+            "fx_tex_01.fx_c_atypical_007_cl",
+            "fx_tex_03.fx_e_ring_001_cl",
+            "fx_tex_04.fx_h_wave_01",
+            "fx_tex_05.fx_k_auraline_20",
+            "fx_tex_05.fx_k_caustictile_03",
+            "fx_tex_05.fx_k_trail_up_01",
+            "fx_tex_05.fx_m_atypical_003",
+            "fx_tex_05.fx_n_decal_01",
+            "fx_tex_05.fx_n_decal_02",
+            "fx_tex_05.fx_n_decal_04",
+            "fx_tex_05.fx_n_decal_05",
+            "fx_tex_high_03.fx_k_8trisymbol_01",
+            "fx_tex_high_03.fx_k_flm_symbol_01"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 32
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 77
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34630,
+      "sourceSkillIds": [
+        34630
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 3,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_19_tr",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_99_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 3,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 3
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 55,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_a_sprial_011",
+            "fx_sm_00.fm_d_cone_003_1",
+            "fx_sm_00.fm_d_cylinder_004",
+            "fx_sm_00.fm_d_helix_012",
+            "fx_sm_00.fm_d_helix_021",
+            "fx_sm_00.fm_d_hemisphere_007",
+            "fx_sm_00.fm_h_swing_01",
+            "fx_sm_01.fm_m_sphere_004",
+            "fx_sm_02.fx_o_swing_03",
+            "fx_tex_00.fx_a_electric_009",
+            "fx_tex_00.fx_a_fragment_004_cl",
+            "fx_tex_00.fx_a_hit_007",
+            "fx_tex_00.fx_a_line_005",
+            "fx_tex_00.fx_a_noise_018",
+            "fx_tex_00.fx_a_trail_011",
+            "fx_tex_00.fx_b_ring_001",
+            "fx_tex_00.fx_bg_softriver_01_n",
+            "fx_tex_00.fx_bg_softriver_02_n",
+            "fx_tex_01.fx_c_atypical_007_cl",
+            "fx_tex_01.fx_c_atypical_009_cl",
+            "fx_tex_01.fx_c_noise_008",
+            "fx_tex_01.fx_c_ring_004_cl",
+            "fx_tex_02.fx_d_atypical_010",
+            "fx_tex_02.fx_d_atypical_057",
+            "fx_tex_02.fx_d_environ_034",
+            "fx_tex_02.fx_d_environ_047_cl",
+            "fx_tex_02.fx_d_fluid_006_cl",
+            "fx_tex_02.fx_d_fluid_010",
+            "fx_tex_02.fx_d_fluid_072_cl",
+            "fx_tex_02.fx_d_hit_001_cl",
+            "fx_tex_02.fx_d_hit_007",
+            "fx_tex_02.fx_d_hit_007_1",
+            "fx_tex_02.fx_d_hit_010",
+            "fx_tex_03.fx_e_atypical_005",
+            "fx_tex_03.fx_e_atypical_005_cl",
+            "fx_tex_03.fx_e_atypical_012",
+            "fx_tex_03.fx_e_cloud_001",
+            "fx_tex_03.fx_e_cloud_007",
+            "fx_tex_03.fx_e_electric_002",
+            "fx_tex_03.fx_e_noise_012",
+            "fx_tex_03.fx_e_ring_001_cl",
+            "fx_tex_04.fx_f_shine_003_1",
+            "fx_tex_04.fx_h_wave_01",
+            "fx_tex_04.fx_i_atypical_03_1_ycl",
+            "fx_tex_05.fx_k_auraline_06",
+            "fx_tex_05.fx_k_electile_01",
+            "fx_tex_05.fx_k_fluidtile_02",
+            "fx_tex_05.fx_k_smoke_01",
+            "fx_tex_05.fx_k_trail_up_01",
+            "fx_tex_05.fx_m_atypical_003",
+            "fx_tex_05.fx_m_spinsmokesq_01",
+            "fx_tex_05.fx_m_trail_006_xwarp",
+            "fx_tex_high_03.fx_k_8trisymbol_01",
+            "fx_tex_high_03.fx_k_flm_symbol_01",
+            "fx_tex_high_03.sk_flm_gdr_02_s"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 17
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 70
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 175
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34010,
+      "sourceSkillIds": [
+        34010
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 4,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_01.fx_mi.fx_c_pa_flickline_01_1_ad",
+            "fx_m_mi_m_00.fx_mi.fx_m_pa_ribbonmaster_01_9_tr",
+            "fx_m_mi_m_00.fx_mi.fx_m_pa_trail_01_4_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 7,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 7
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 3
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 10
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34510,
+      "sourceSkillIds": [
+        34510
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 1,
+          "sourceObjectPaths": [
+            "fx_tex_02.fx_d_fluid_004"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 2
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 7
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34540,
+      "sourceSkillIds": [
+        34540
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 1,
+          "sourceObjectPaths": [
+            "fx_tex_02.fx_d_fluid_004"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 34
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34550,
+      "sourceSkillIds": [
+        34550
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 13
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 97
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34560,
+      "sourceSkillIds": [
+        34560
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 4,
+          "sourceObjectPaths": [
+            "fx_tex_00.fx_a_fluid_017_n",
+            "fx_tex_03.fx_e_atypical_037",
+            "fx_tex_05.fx_k_auraline_20",
+            "fx_tex_05.fx_k_caustictile_03"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 8
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 62
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34570,
+      "sourceSkillIds": [
+        34570
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 2,
+          "sourceObjectPaths": [
+            "fx_tex_03.fx_e_ring_001_cl",
+            "fx_tex_05.fx_m_atypical_004_loc_int"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 11
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 62
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34580,
+      "sourceSkillIds": [
+        34580
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 9,
+          "sourceObjectPaths": [
+            "fx_tex_00.fx_a_fluid_017_n",
+            "fx_tex_02.fx_d_hit_007",
+            "fx_tex_02.fx_d_hit_007_1",
+            "fx_tex_03.fx_e_noise_012",
+            "fx_tex_03.fx_e_ring_023",
+            "fx_tex_05.fx_k_auraline_04",
+            "fx_tex_05.fx_k_auraline_20",
+            "fx_tex_05.fx_k_trail_up_01",
+            "fx_tex_high_02.fx_k_tslr_magiccircle_02"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 16
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 44
+        }
+      ]
+    },
+    {
+      "animationAssetId": "LanceMaster",
+      "characterClass": "LANCE_MASTER",
+      "productSkillId": 34590,
+      "sourceSkillIds": [
+        34590
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 5,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_56_tr",
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_65_tr",
+            "fx_m_mi_v_00.fx_mi.fx_v_pa_spritewave_01_22_tr",
+            "fx_m_mi_v_00.fx_mi.fx_v_transition_05_4_ma"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 2,
+          "sourceObjectPaths": [
+            "fx_tex_04.fx_i_atypical_03_1_ycl",
+            "fx_tex_05.fx_m_trail_015"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 77
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 195
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31000,
+      "sourceSkillIds": [
+        31000
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 11,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 11
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 20
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31200,
+      "sourceSkillIds": [
+        31200
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 20,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_d_ring_014",
+            "fx_sm_01.fm_m_sphere_006",
+            "fx_tex_00.fx_a_atypical_024_cl",
+            "fx_tex_00.fx_bg_lightbeam_falloff_01_ycl",
+            "fx_tex_01.fx_c_atypical_014",
+            "fx_tex_01.fx_c_ice_003",
+            "fx_tex_02.fx_d_atypical_055_1_cl",
+            "fx_tex_02.fx_d_atypical_122_ycl",
+            "fx_tex_02.fx_d_fluid_058_cl",
+            "fx_tex_03.fx_e_atypical_005",
+            "fx_tex_03.fx_e_atypical_009",
+            "fx_tex_03.fx_e_noise_002",
+            "fx_tex_04.fx_i_fragment_02_1_cl",
+            "fx_tex_05.fx_k_liquid_02",
+            "fx_tex_05.fx_m_flow_03_n",
+            "fx_tex_05.fx_m_noise_006_n",
+            "fx_tex_05.fx_m_spatter_001_xyclamp",
+            "fx_tex_05.fx_m_trail_006",
+            "fx_tex_05.fx_u_trail_001",
+            "fx_tex_06.fx_w_inkpaddle"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 3
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 6
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 24
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31430,
+      "sourceSkillIds": [
+        31430
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 7,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_d_helix_016_1",
+            "fx_sm_00.fm_m_sphere_005",
+            "fx_sm_01.fm_o_sector_01",
+            "fx_tex_02.fx_d_atypical_011",
+            "fx_tex_02.fx_d_symbol_020_cl",
+            "fx_tex_05.fx_u_wave_01",
+            "fx_tex_06.fx_t_ink_02"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 10
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 9
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 20
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31480,
+      "sourceSkillIds": [
+        31480
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 1,
+          "sourceObjectPaths": [
+            "fx_tex_03.fx_e_atypical_005"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 18
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 39
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31210,
+      "sourceSkillIds": [
+        31210
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 17
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 35
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31460,
+      "sourceSkillIds": [
+        31460
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "fx_m_mi_04.fx_o_de_fi_07_2_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 5,
+          "sourceObjectPaths": [
+            "fx_tex_00.fx_a_cloud_005",
+            "fx_tex_00.fx_a_line_003",
+            "fx_tex_05.fx_k_auratile_02",
+            "fx_tex_06.fx_o_grass_03",
+            "fx_tex_06.fx_o_grass_04"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 22
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 38
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31420,
+      "sourceSkillIds": [
+        31420
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 2,
+          "sourceObjectPaths": [
+            "fx_tex_00.fx_a_electric_009",
+            "fx_tex_02.fx_d_environ_015"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 11
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31910,
+      "sourceSkillIds": [
+        31910
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 26,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_d_helix_030",
+            "fx_sm_00.fm_d_helix_031",
+            "fx_sm_00.fm_d_hemisphere_001_3",
+            "fx_sm_00.fm_d_ring_007",
+            "fx_tex_00.fx_a_atypical_041",
+            "fx_tex_00.fx_b_glow_010",
+            "fx_tex_00.fx_b_ring_005_cl",
+            "fx_tex_02.fx_d_atypical_011",
+            "fx_tex_02.fx_d_atypical_034_1_ycl",
+            "fx_tex_02.fx_d_atypical_055",
+            "fx_tex_02.fx_d_atypical_055_ycl",
+            "fx_tex_02.fx_d_environ_075_ycl",
+            "fx_tex_02.fx_d_shockwave_008_ycl",
+            "fx_tex_02.fx_d_typical_031",
+            "fx_tex_02.fx_d_typical_032",
+            "fx_tex_03.fx_e_atypical_037",
+            "fx_tex_03.fx_e_fire_005_1",
+            "fx_tex_03.fx_e_noise_005",
+            "fx_tex_03.fx_e_noise_011",
+            "fx_tex_04.fx_f_noise_0191",
+            "fx_tex_04.fx_h_fluid_01_1",
+            "fx_tex_04.fx_i_environment_002",
+            "fx_tex_05.fx_k_caustictile_03",
+            "fx_tex_05.fx_m_bubble_001",
+            "fx_tex_05.fx_m_flare_001",
+            "fx_tex_05.fx_m_water_01"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 6
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 26
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 44
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Artist",
+      "characterClass": "ARTIST",
+      "productSkillId": 31930,
+      "sourceSkillIds": [
+        31930
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 6,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 6
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 61,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_b_cylinder_003",
+            "fx_sm_00.fm_b_cylinder_005",
+            "fx_sm_00.fm_d_bendplane_006_1",
+            "fx_sm_00.fm_d_hemisphere_016",
+            "fx_sm_00.fm_d_ring_007",
+            "fx_sm_00.fm_d_ring_014",
+            "fx_sm_01.fm_m_helix_011",
+            "fx_sm_01.fm_m_sphere_004",
+            "fx_sm_03.fx_m_flowergarden_01",
+            "fx_sm_03.fx_m_flowergarden_02",
+            "fx_sm_03.fx_m_flowergarden_04",
+            "fx_sm_03.fx_m_petal_01",
+            "fx_tex_00.fx_a_hit_008",
+            "fx_tex_00.fx_a_line_010_ycl",
+            "fx_tex_00.fx_bg_fogsheet_falloff_02",
+            "fx_tex_00.fx_bg_lightbeam_falloff_01_ycl",
+            "fx_tex_00.fx_bg_waterfall01_d",
+            "fx_tex_01.fx_c_line_003_xcl",
+            "fx_tex_01.fx_d_noise_040",
+            "fx_tex_02.fx_d_atypical_034_1_ycl",
+            "fx_tex_02.fx_d_atypical_114_cl",
+            "fx_tex_02.fx_d_cloud_027_cl",
+            "fx_tex_02.fx_d_environ_075_ycl",
+            "fx_tex_02.fx_d_fragment_003",
+            "fx_tex_02.fx_d_symbol_130_cl",
+            "fx_tex_02.fx_d_symbol_133_cl",
+            "fx_tex_03.fx_e_atypical_018_cl",
+            "fx_tex_03.fx_e_atypical_019_cl",
+            "fx_tex_03.fx_e_atypical_024",
+            "fx_tex_03.fx_e_atypical_028",
+            "fx_tex_03.fx_e_fire_005_1",
+            "fx_tex_03.fx_e_glow_001",
+            "fx_tex_03.fx_e_noise_002",
+            "fx_tex_03.fx_e_noise_003",
+            "fx_tex_03.fx_e_noise_004",
+            "fx_tex_04.fx_f_star_002",
+            "fx_tex_04.fx_i_environment_002",
+            "fx_tex_04.fx_i_noise_04",
+            "fx_tex_04.fx_i_shockwave_01_ycl",
+            "fx_tex_04.fx_i_smoke_01",
+            "fx_tex_04.fx_j_hexagongradient_01",
+            "fx_tex_04.fx_j_ylinestream_01",
+            "fx_tex_05.fx_k_auraline_10",
+            "fx_tex_05.fx_k_caustictile_03",
+            "fx_tex_05.fx_m_atypical_013",
+            "fx_tex_05.fx_m_flare_001",
+            "fx_tex_05.fx_m_flow_03_n",
+            "fx_tex_05.fx_m_trail_010_2_ycl",
+            "fx_tex_05.fx_m_watertile_001",
+            "fx_tex_06.fx_m_coloraura_01",
+            "fx_tex_06.fx_m_flowergarden_a_01",
+            "fx_tex_06.fx_m_flowergarden_d_01",
+            "fx_tex_06.fx_m_flowergarden_n_01",
+            "fx_tex_06.fx_m_gracylinder_02_ycl",
+            "fx_tex_06.fx_m_normallinenoise_01",
+            "lv_grass_01.tex.lv_common_grass_19_d",
+            "lv_grass_01.tex.lv_common_grass_31_d",
+            "lv_grass_01.tex.lv_common_grass_31_n",
+            "mn_pmsec_00.fx_n_flower_02_d",
+            "mn_pmsec_00.fx_n_flower_a",
+            "mn_pmsec_00.fx_n_flower_n"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 51
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 64
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 77
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17000,
+      "sourceSkillIds": [
+        17000
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 17
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17030,
+      "sourceSkillIds": [
+        17030
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 5
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 38
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17040,
+      "sourceSkillIds": [
+        17040
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 19
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 43
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17060,
+      "sourceSkillIds": [
+        17060
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 7
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17080,
+      "sourceSkillIds": [
+        17080
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 16
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 25
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17090,
+      "sourceSkillIds": [
+        17090
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 1
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 15
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17100,
+      "sourceSkillIds": [
+        17100
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_IDENTICAL_COPIES": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 25
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 29
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17110,
+      "sourceSkillIds": [
+        17110
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_IDENTICAL_COPIES": 1,
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 12
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 54
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17140,
+      "sourceSkillIds": [
+        17140
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 35
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 59
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17170,
+      "sourceSkillIds": [
+        17170
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_IDENTICAL_COPIES": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 7
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 24
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17240,
+      "sourceSkillIds": [
+        17240
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 3,
+          "statusCounts": {
+            "RESOLVED_IDENTICAL_COPIES": 1,
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 33
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 62
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17250,
+      "sourceSkillIds": [
+        17250
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 4,
+          "statusCounts": {
+            "RESOLVED_IDENTICAL_COPIES": 2,
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 26
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 135
+        }
+      ]
+    },
+    {
+      "animationAssetId": "Warlord",
+      "characterClass": "WARLORD",
+      "productSkillId": 17820,
+      "sourceSkillIds": [
+        17820
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_m.fx_j_de_ring_01_ad"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 26
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 40
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "skillCount": 51,
+    "stageCount": 74,
+    "readySkillCount": 0,
+    "availableWithBlockersSkillCount": 51,
+    "blockedSkillCount": 0,
+    "sourceReceiptCount": 51,
+    "closureCount": 51,
+    "importedDocumentCount": 51,
+    "blockerCodeCounts": {
+      "IMPORTED_EMITTER_MISSING_RESOURCE": 8,
+      "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING": 47,
+      "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING": 51,
+      "SOURCE_MATERIAL_NON_EXACT_PACKAGE": 35,
+      "UNRESOLVED_RUNTIME_RESOURCE": 20,
+      "UNRESOLVED_SOURCE_MATERIAL": 45
+    }
+  }
+}

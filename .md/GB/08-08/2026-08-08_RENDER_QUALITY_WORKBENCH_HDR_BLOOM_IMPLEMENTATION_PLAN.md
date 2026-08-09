@@ -381,3 +381,124 @@ Effect ON/OFF는 Authored 문서를 변경하지 않는 preview 진단 기능이
 PBR/GGX와 IBL은 지원 checkbox로 먼저 선언하지 않는다. 원본 spec/gloss 계약과 WMA2의
 metallic/roughness/AO 증거를 분리한 뒤 G-buffer consumer, BRDF, irradiance/prefilter cube, BRDF LUT가
 실제 연결되고 GPU A/B를 통과할 때만 완료로 기록한다.
+
+## 11. Stage0A 구현 델타: 장면 렌더 프로필과 Character Select 고정 탑뷰
+
+### 11.1 목표와 단일 런타임 경계
+
+- 기존 `CGameInstance -> CRenderer`의 `Apply_RenderQualitySettings`와
+  `CGameInstance -> CLight_Manager`의 `Add_Light`만 소비한다.
+- 두 번째 Renderer, Light Manager, Scene 전용 post 경로를 만들지 않는다.
+- `CLIENT_LEVEL_DESCRIPTOR::pRenderingProfileId`가 Lobby, Character Select, Bern,
+  Valtan Arena, Development의 stable profile ID를 소유한다. Loading만 MainApp의 고정
+  `scene.loading.neutral.v1` 계약을 사용한다.
+- Character Select Preview와 Server Arena는 위치 offset, look offset, FOV 45도를 하나의
+  고정 top-down preset에서 함께 읽는다. 캐릭터 교체와 replicated player handoff도 같은
+  position offset helper를 사용한다.
+
+### 11.2 데이터와 publish 경계
+
+```text
+Data/Rendering/Authored/RenderingProfiles.json
+  -> Tools/RenderingPipeline/Publish-RenderingProfiles.ps1
+  -> Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json
+  -> CRenderingProfileService
+  -> 기존 Renderer + Light_Manager
+```
+
+- schema는 `lostark.rendering-profiles`, `formatVersion`은 1이다.
+- 전역 기술 설정은 현재 실제 Renderer가 소비하는 Bloom/Hable/FXAA 값을 소유한다.
+- scene artistic profile은 directional light 하나와 `exposureMultiplier`,
+  `bloomIntensityMultiplier`만 소유한다.
+- SSAO/PBR/IBL/shadow는 실제 consumer가 별도 슬라이스에서 닫히기 전까지 scene schema에
+  placeholder field로 추가하지 않는다.
+- effective 설정은 언제나 저장된 전역 `RENDER_QUALITY_SETTINGS` 전체 복사본에서 시작하여
+  exposure와 bloom intensity에 scene multiplier를 한 번만 곱한다. 현재 renderer의 effective
+  값을 다음 장면의 base로 다시 읽지 않으므로 profile 전환 누적 drift가 없다.
+
+### 11.3 parse, validate, stage, commit
+
+- JSON object key, profile ID, schema/version/revision, 정확한 필드 집합, 유한수와 범위,
+  방향 벡터 non-zero, color, effective multiplier 결과를 전부 검증한다.
+- startup은 runtime catalog 전체를 stage한 뒤에만 catalog를 교체한다.
+- reload는 새 catalog에 현재 active profile ID가 있고 effective 설정까지 유효한 경우에만
+  Renderer와 persistent scene light를 적용하고 catalog를 commit한다.
+- renderer apply 뒤 light apply가 실패하면 이전 renderer 설정을 복구한다. `Add_Light` 자체는
+  검증 실패 전에 기존 persistent light를 교체하지 않으므로 active 상태가 보존된다.
+- F1 Rendering Workbench의 `Save Authored`, `Publish Runtime`, `Reload Runtime`은 각각
+  authoring atomic save, publisher validate/promote, active profile 보존 reload를 수행한다.
+
+### 11.4 정적 검증
+
+- `Tools/ProjectAudit/Test-RenderingProfiles.ps1`은 authored/runtime semantic equality와 정상
+  parser를 확인한다.
+- unsupported version, duplicate profile ID, non-finite number, zero direction, effective 범위
+  초과, 지원하지 않는 placeholder field가 거부되는지 확인한다.
+- project/filter XML parse, JSON parse, `Test-RenderQualityWorkbench.ps1`, `git diff --check`를
+  수행한다.
+- 이번 사용자 경계에 따라 Client 빌드/실행, 이미지 캡처와 눈 검증은 수행하지 않는다.
+
+## 12. 08-09 Stage0B/C 확정 델타: SSAO, 실제 directional shadow, 튜닝 기준면
+
+이 절은 11장의 Stage0A 당시 미구현 표기를 현재 계약으로 대체한다. 두 번째 Renderer나
+Character Select 전용 shading path를 만들지 않고 기존 `CRenderer::Draw` 안에서만 확장한다.
+
+### 12.1 전역 SSAO
+
+- `RENDER_QUALITY_SETTINGS`와 Rendering Profile `globalQuality`가 Enabled, Radius, Bias,
+  Intensity, Power, Distance Fade를 함께 소유한다.
+- G-Buffer 뒤, Light accumulation 전에 half-resolution R16 raw AO와 depth/normal bilateral
+  resolve를 실행한다.
+- depth descriptor에서 view-space position을 복원하고 world normal을 camera view basis로
+  변환한 뒤 center-normal hemisphere를 평가한다. 서로 직교하는 바닥/벽 normal이라는 이유만으로
+  접점 sample을 버리지 않는다.
+- AO는 directional/point의 ambient 항에만 곱한다. direct diffuse, specular, object/effect
+  emissive와 Bloom은 AO로 감쇠하지 않는다.
+- OFF는 두 pass를 생략하고 light resolve에서 AO 1을 사용한다.
+
+### 12.2 실제 directional shadow producer와 caster
+
+- 기존 viewport 크기 RGBA32F `Target_LightDepth`를 제거한다.
+- 2048×2048 `R32_TYPELESS` texture에 `D32_FLOAT` DSV와 `R32_FLOAT` SRV를 만든다.
+- scene profile은 focus, light distance, orthographic width/height, near/far, depth/normal bias,
+  strength를 소유한다. light eye는 focus와 normalized scene directional vector에서 유도한다.
+- shadow state는 validate → stage → atomic replace를 따르며 disabled profile은 identity/비활성
+  상태를 명시한다.
+- depth-only begin/end와 viewport 복구는 draw/bind 실패에도 균형을 유지한다.
+- BORDER=1 3×3 PCF를 첫 persistent scene directional의 direct diffuse/specular에만 적용한다.
+  ambient, SSAO, point/transient Effect light, emissive는 shadow 밖에 둔다.
+- Character Select body/equipment와 opaque MapAsset/MapStaticBatch가 caster다. static batch shadow
+  instance는 camera frustum과 분리하며 authored visibility가 바뀔 때만 다시 올린다.
+- Valtan body와 Deploy/visible debris caster까지 이번 단위에서 닫는다. Bern의 `CNpc`는 Bern
+  shadow가 비활성인 현재 범위에서 제외하고 다음 profile 확장 단위로 남긴다.
+
+### 12.3 profile/F1 저장 계약
+
+- Character Select와 Valtan은 서로 다른 light/shadow/exposure/Bloom multiplier profile을 사용한다.
+- level 교체 전에 목표 profile을 활성화하고 `Change_Level` 실패 시 이전 profile을 복구한다.
+- F1은 global SSAO/Bloom/Hable/FXAA와 active scene light/shadow/multiplier를 분리해 live apply한다.
+  거부된 draft는 즉시 마지막 accepted 값으로 되돌린다.
+- Save Authored → strict publisher → Runtime Reload 경계를 유지한다. field casing, numeric string,
+  non-finite/range, duplicate profile ID뿐 아니라 같은 JSON object의 duplicate key도 거부한다.
+- publish 성공 뒤 backup 삭제 실패는 이미 commit된 runtime을 실패로 오인하지 않고 best-effort
+  cleanup warning으로 남긴다.
+
+### 12.4 PBR/IBL 적용 보류의 데이터 근거
+
+- WMA2는 `ormPath` 하나만 보존하며 `_orm`, `_mra`, `_rma` channel order를 구분하는 enum이 없다.
+- Character Select 실제 visible material에는 ORM이 극소수이고 Valtan visible material에는
+  metallic/roughness/AO 근거가 없다. legacy spec/gloss를 ORM으로 추측 변환하지 않는다.
+- runtime resource에는 irradiance cube, prefiltered environment cube, BRDF LUT를 구성할 실제
+  cubemap asset과 consumer가 없다.
+- 따라서 PBR/IBL checkbox나 상수 fallback을 먼저 만들지 않는다. material별 channel evidence와
+  legacy/PBR workflow 분기 → G-Buffer → GGX direct → irradiance/prefilter/BRDF LUT 순서로만 확장한다.
+
+### 12.5 이 단계의 완료와 다음 순서
+
+1. Character Select 공통 top-down에서 F1 profile을 수동 튜닝해 Authored에 저장한다.
+2. 같은 renderer에서 Valtan profile을 별도로 튜닝한다.
+3. 필요하면 Renderer 내부 `_DEBUG` 단일 diagnostic resolve target으로 G-Buffer/AO/Shadow/HDR/
+   Bloom을 노출한다. generic raw SRV API나 두 번째 tone-map path는 만들지 않는다.
+4. 렌더 기준을 고정한 뒤 DimensionMaster A의 standalone large Mesh Track B를 재개한다.
+5. 이 Track B 단계에서는 Particle Mesh와 Sprite를 제외하고, 검증된 source Mesh cue만 스킬별로
+   확장한다.

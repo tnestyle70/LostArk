@@ -64,6 +64,32 @@ class DimensionMasterBaseEffectTests(unittest.TestCase):
         self.assertIn("particlemodulelifetime", PARTIAL_RUNTIME_MODULE_CLASSES)
         self.assertNotIn("particlemodulerequired", PARTIAL_RUNTIME_MODULE_CLASSES)
 
+    def test_combo_stage_clip_groups_are_flattened_for_admission(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            player_skills = root / "PlayerSkills.json"
+            bindings = root / "DimensionMaster.skillbindings.json"
+            player_skills.write_text(json.dumps({"skills": [{
+                "skillId": 10,
+                "characterClass": "DIMENSIONMASTER",
+                "inputSlot": "LMB",
+                "skillKind": "COMBO",
+                "effectId": "effect.dimensionmaster.skill.10",
+                "comboStages": [{}, {}],
+            }]}), encoding="utf-8")
+            bindings.write_text(json.dumps({
+                "characterClass": "DIMENSIONMASTER",
+                "bindings": [{
+                    "skillId": 10,
+                    "clips": [["ba1"], ["ba2"]],
+                }],
+            }), encoding="utf-8")
+
+            admitted = dimensionmaster_admitted_skills(player_skills, bindings)
+
+            self.assertEqual(["ba1", "ba2"], admitted[0]["clips"])
+            self.assertEqual([["ba1"], ["ba2"]], admitted[0]["clipBindings"])
+
 
 if __name__ == "__main__":
     unittest.main()

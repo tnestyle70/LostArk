@@ -73,6 +73,25 @@ class ClassSkillEffectInventoryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate skillId"):
                 build_inventory(bindings, animnotify)
 
+    def test_combo_stage_binding_is_admitted_in_stage_order(self) -> None:
+        with tempfile.TemporaryDirectory() as raw_root:
+            root = Path(raw_root)
+            bindings, animnotify = self.write_inputs(root)
+            document = json.loads(bindings.read_text(encoding="utf-8"))
+            document["bindings"][0]["clips"] = [
+                ["clip_a"],
+                [{"clip": "clip_b", "playRate": 1.1}],
+            ]
+            bindings.write_text(json.dumps(document), encoding="utf-8")
+
+            result = build_inventory(bindings, animnotify)
+
+        self.assertEqual(3.0, result["skills"][0]["durationSeconds"])
+        self.assertEqual(
+            ["clip_a", "clip_b"],
+            [row["clip"] for row in result["skills"][0]["clips"]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

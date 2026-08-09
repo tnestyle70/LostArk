@@ -18,6 +18,233 @@ SPEC.loader.exec_module(MODULE)
 
 
 class BuildEffectSourceMaterialContractTests(unittest.TestCase):
+    def test_unique_normalized_graph_row_is_safe_mapless_fallback(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "base", "assetId": "Effect/safe.dds",
+                }],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.unique",
+                },
+                "sourceRecipe": {"modules": []},
+            }],
+        }
+        graph = {"materialParameterBindings": [{
+            "sourceMaterialPath": "fx_pkg.fx_mi.unique",
+            "sourcePhysicalPackage": "EXACT.upk",
+            "parent": "fx_m.parent",
+            "scalars": [{"name": "power", "value": 3.0}],
+        }]}
+
+        contract, receipt = MODULE.build_contract(
+            effect, graph, {"elementConversions": []}, {"assets": []}
+        )
+
+        self.assertEqual([], receipt["failures"])
+        identity = contract["materialIdentities"][0]
+        self.assertEqual(
+            "NORMALIZED_GRAPH_EXACT", identity["materialEvidenceSource"]
+        )
+        self.assertEqual("EXACT.upk", identity["sourcePhysicalPackage"])
+        self.assertEqual(
+            "ADMITTED_RECONSTRUCTED_PROFILE",
+            identity["productAdmissionStatus"],
+        )
+        self.assertTrue(receipt["summary"]["productMaterialAdmissionComplete"])
+        upgraded = MODULE.upgrade_effect_document(effect, contract)
+        self.assertEqual(
+            "NORMALIZED_GRAPH_EXACT",
+            upgraded["elements"][0]["material"]["sourceProfile"]
+            ["materialEvidenceSource"],
+        )
+
+    def test_missing_mapless_graph_row_fails_closed(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "base", "assetId": "Effect/safe.dds",
+                }],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.missing",
+                },
+                "sourceRecipe": {"modules": []},
+            }],
+        }
+        manifest = {"assets": [{
+            "sourceAssetPath": "fx_pkg.fx_mi.missing",
+            "physicalPackage": "EXACT.upk",
+        }]}
+
+        contract, receipt = MODULE.build_contract(
+            effect, {"materialParameterBindings": []},
+            {"elementConversions": []}, manifest,
+        )
+
+        self.assertEqual(
+            ["MISSING_NORMALIZED_GRAPH_MATERIAL_BINDING"],
+            [row["status"] for row in receipt["failures"]],
+        )
+        self.assertEqual(
+            "BLOCKED_SOURCE_EVIDENCE",
+            contract["materialIdentities"][0]["productAdmissionStatus"],
+        )
+        self.assertFalse(receipt["summary"]["productMaterialAdmissionComplete"])
+
+    def test_ambiguous_mapless_graph_rows_fail_closed(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "base", "assetId": "Effect/safe.dds",
+                }],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.duplicate",
+                },
+                "sourceRecipe": {"modules": []},
+            }],
+        }
+        graph_row = {
+            "sourceMaterialPath": "fx_pkg.fx_mi.duplicate",
+            "sourcePhysicalPackage": "EXACT.upk",
+            "parent": "fx_m.parent",
+        }
+        manifest = {"assets": [{
+            "sourceAssetPath": "fx_pkg.fx_mi.duplicate",
+            "physicalPackage": "EXACT.upk",
+        }]}
+
+        contract, receipt = MODULE.build_contract(
+            effect, {"materialParameterBindings": [graph_row, dict(graph_row)]},
+            {"elementConversions": []}, manifest,
+        )
+
+        self.assertEqual(
+            ["AMBIGUOUS_NORMALIZED_GRAPH_MATERIAL_BINDING"],
+            [row["status"] for row in receipt["failures"]],
+        )
+        self.assertEqual(
+            "BLOCKED_SOURCE_EVIDENCE",
+            contract["materialIdentities"][0]["productAdmissionStatus"],
+        )
+
+    def test_fallback_blocked_profile_is_not_product_admissible(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [{
+                    "slotId": "noise", "assetId": "Effect/noise.dds",
+                }],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.no_carrier",
+                },
+                "sourceRecipe": {"modules": []},
+            }],
+        }
+        graph = {"materialParameterBindings": [{
+            "sourceMaterialPath": "fx_pkg.fx_mi.no_carrier",
+            "sourcePhysicalPackage": "EXACT.upk",
+            "parent": "fx_m.unknown",
+        }]}
+
+        contract, receipt = MODULE.build_contract(
+            effect, graph, {"elementConversions": []}, {"assets": []}
+        )
+
+        self.assertEqual([], receipt["failures"])
+        identity = contract["materialIdentities"][0]
+        self.assertEqual(
+            "effect.ue3.fallback-blocked.v1",
+            identity["runtimeShaderProfileId"],
+        )
+        self.assertEqual(
+            "BLOCKED_FALLBACK_PROFILE", identity["productAdmissionStatus"]
+        )
+        self.assertEqual(
+            1, receipt["summary"]["fallbackBlockedMaterialIdentityCount"]
+        )
+        self.assertFalse(receipt["summary"]["productMaterialAdmissionComplete"])
+
+    def test_hydrated_document_rebuild_preserves_blocked_source_evidence(self):
+        effect = {
+            "effectAssetId": "effect.test",
+            "elements": [{
+                "id": "p0",
+                "kind": "particle",
+                "resources": [
+                    {"slotId": "base", "assetId": "Effect/safe.dds"},
+                    {"slotId": "mask", "assetId": "Effect/normal.dds"},
+                ],
+                "material": {
+                    "templateId": "effect.source_material",
+                    "sourceMaterialPath": "fx_pkg.fx_mi.child",
+                },
+                "sourceRecipe": {"modules": []},
+            }],
+        }
+        graph = {
+            "materialParameterBindings": [{
+                "sourceMaterialPath": "fx_pkg.fx_mi.child",
+                "sourcePhysicalPackage": "EXACT.upk",
+                "parent": "fx_m.parent",
+                "textures": [{
+                    "name": "normal_tex", "texture": "fx_tex.normal",
+                }],
+                "materialEvidence": {
+                    "collectedTextureParameters": [{
+                        "name": "normal_tex",
+                        "group": "alpha",
+                        "texture": "fx_tex.normal",
+                    }],
+                },
+            }],
+            "runtimeResourceBindings": [{
+                "sourceObjectPath": "fx_tex.normal",
+                "assetId": "Effect/normal.dds",
+                "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+            }],
+        }
+
+        first_contract, first_receipt = MODULE.build_contract(
+            effect, graph, {"elementConversions": []}, {"assets": []}
+        )
+        first_upgrade = MODULE.upgrade_effect_document(effect, first_contract)
+        second_contract, second_receipt = MODULE.build_contract(
+            first_upgrade, graph, {"elementConversions": []}, {"assets": []}
+        )
+        second_upgrade = MODULE.upgrade_effect_document(
+            first_upgrade, second_contract
+        )
+
+        self.assertEqual(
+            1,
+            first_receipt["summary"]["blockedNormalBumpRuntimeBindingCount"],
+        )
+        self.assertEqual(first_receipt["summary"], second_receipt["summary"])
+        self.assertEqual(first_upgrade, second_upgrade)
+        self.assertEqual(
+            [
+                {"slotId": "base", "assetId": "Effect/safe.dds"},
+                {"slotId": "mask", "assetId": "Effect/normal.dds"},
+            ],
+            first_upgrade["elements"][0]["material"]["sourceProfile"]
+            ["sourceResourceBindings"],
+        )
+
     def test_duplicate_material_path_uses_exact_source_package_evidence(self):
         effect = {
             "effectAssetId": "effect.test",

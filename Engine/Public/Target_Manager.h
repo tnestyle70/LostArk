@@ -16,6 +16,8 @@ public:
 	HRESULT Add_MRT(const wstring_t& strMRTTag, const wstring_t& strTargetTag);
 	HRESULT Begin_MRT(const wstring_t& strMRTTag, ComPtr<ID3D11DepthStencilView> pDSV = nullptr);
 	HRESULT End_MRT();
+	HRESULT Begin_DepthOnly(ComPtr<ID3D11DepthStencilView> pDSV);
+	HRESULT End_DepthOnly();
 	HRESULT Bind_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName);
 	HRESULT Copy_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D);
 

@@ -242,3 +242,137 @@ Assembly 행을 선택하지 않지만 실제 인게임 소비를 위해 `build_
 다시 compile했다. 결과는 effect 16개, component 182개, emitter 947개이며 compile identity가
 완전하게 일치한다. 새 texture sampling evidence JSON도 Client 프로젝트의 `96.DataFiles` None 항목에
 등록했다.
+
+---
+
+## 12. 2026-08-09 Track B 4타 실제 A audition 수직 슬라이스
+
+### 12.1 동기화와 실제 입력 경로
+
+작업 브랜치와 `origin/main`이 모두 MapTool PR #72 merge commit
+`5c98aa62117b582d181878dc7134b99f6e0e4919`를 가리키는 상태에서 이어서 구현했다. 과거 physics
+worktree EXE는 사용하지 않았다.
+
+실제 A 입력은 socketless Character Select Preview가 아니다. DimensionMaster 선택 뒤
+`Server Play (Lobby-approved)`로 Server Arena에 진입하고 F6 follow 상태에서 A를 누른다. F6 free
+camera에서는 gameplay command가 차단된다.
+
+2050210 이동은 새로 구현하지 않았다. 기존 Server bootstrap의 84-sample root-motion, 최종 전진
+약 2.3053m를 Server가 aim 방향으로 적용하며 Client는 snapshot을 소비한다. 따라서 Track B local
+position에는 누적 대시 이동량을 중복 bake하지 않았다.
+
+### 12.2 최종 Authored Track B 데이터
+
+일회성 correction을 version 2로 올리고 다음 6 layer를 네 hit에 각각 materialize했다.
+
+```text
+white-echo _2
+flow       _14
+body       _15
+afterimage _20
+rim        _3
+sprite     _9
+```
+
+결과는 정확히 Mesh 20 / Sprite 4 / Particle 0, 총 24 Element다. 네 hit의 공통 snapshot 시점과
+초기 root-relative seed는 다음과 같다.
+
+| hit | delay | position |
+|---|---:|---|
+| hit01 | 0.25s | `[-0.55, 0.15, 0.95]` |
+| hit02 | 0.60s | `[-0.60, 0.15, 1.05]` |
+| hit03 | 0.90s | `[-0.65, 0.20, 1.15]` |
+| hit04 | 1.30s | `[-0.70, 0.25, 1.25]` |
+
+각 hit의 여섯 Element는 `root`, `follow=false`로 같은 시점의 이동된 Player root/facing을 캡처한다.
+로컬 X 음수는 Player 왼쪽, Z 양수는 Player 앞이다. 모든 `sourceRecipe`와 `sourcePresentation`은
+비활성이고 Imported/canonical SourceRecipe는 바뀌지 않았다. 24개 모두 선택한 원본 emitter의
+`sourceMaterialPath`, `sourceProfile`, texture slot을 보존하며 명시적 emissive slot을 추가했다.
+네 Sprite만 billboard roll `-90°`이고 전역 Sprite나 Cascade Mesh Particle에는 적용하지 않았다.
+
+materializer는 기존 Authored 결과를 덮어쓰지 않으며, seed 생성 뒤 수동 정본은 다음 한 파일이다.
+
+```text
+Data/Effects/Authored/
+  effect.dimensionmaster.skill.2050210.authored-baseline.effect.json
+```
+
+### 12.3 탑뷰, 캐릭터 백색 emissive, 반복 audition
+
+Server Arena follow camera를 높이 7.5m, 뒤 거리 4.5m의 높은 대각 탑뷰로 조정했다. Preview의 근접
+카메라는 유지한다.
+
+DimensionMaster `CharacterSpec`에 2050210의 white full-surface emissive 한 행을 추가했다. Server
+snapshot의 SKILL action 동안 Body, skinned equipment, 네 socket weapon이 같은 transient override를
+사용한다. animated/static deferred shader는 기존 emissive map을 보존하면서 diffuse detail/alpha를
+마스크로 HDR emissive를 더한다. NONE, DEAD, 다른 action/skill snapshot에서 즉시 0으로 초기화되며
+로컬과 원격 캐릭터가 같은 경로를 사용한다. shared material은 변경하지 않았다.
+
+Effect Tool에는 exact clean Authored Track B에서만 활성화되는 Debug 버튼을 추가했다.
+
+```text
+Save Authored
+  -> Publish + Reload A Test
+  -> existing component builder
+  -> existing publisher
+  -> transactional CEffectCatalog::Load
+  -> F1 close / F6 follow / A
+```
+
+실패하면 기존 Runtime Catalog를 유지하며 Authored 문서를 EffectObject에 직접 넣는 두 번째 런타임
+경로는 없다. 다음 A spawn부터 새 revision을 사용한다.
+
+정식 2050210 cooldown 55초와 resource cost 839가 반복 검증을 막으므로 Debug
+`CHARACTER_SELECT_ARENA`에서만 Server가 요청 skill의 cooldown entry와 resource를 초기화한다.
+Release와 다른 world의 balance는 그대로다. action-running, sequence, class, aim, root-motion,
+snapshot은 계속 기존 Server `Try_Start` 경로가 승인한다.
+
+### 12.4 자동 검증 결과
+
+- authored materializer: 13/13 PASS
+- component/base builder unit test: 14/14 PASS
+- generated authored document: 24 Element, Mesh 20 / Sprite 4 / Particle 0,
+  sourceProfile 24, recipe/presentation disabled 24 PASS
+- component build: Effect 17 / Component 186 / Emitter 971,
+  `compileIdentityComplete=true`
+- `Publish-Effects.ps1 -Mode Validate`: 17 Effects PASS
+- `Publish-Effects.ps1 -Mode Publish`: 17 Effects / 186 Components PASS
+- Effect Tool final audit: PASS
+- Render Quality Workbench audit: PASS
+- Client x64 Debug + HLSL compile/link: PASS
+- Server x64 Debug build: PASS
+- `Server.exe --contract-test`: `failures : 0`
+- ProjectAudit: 83 checks PASS
+- scoped `git diff --check`: 최종 실행 전 재확인 대상
+
+### 12.5 아직 수동 판정이 필요한 항목
+
+자동 검증과 빌드는 완료했지만 원작 PNG와의 GPU 시각 일치는 아직 PASS로 기록하지 않는다. 최신
+Server와 Client를 실행한 뒤 다음 순서로 확인해야 한다.
+
+1. Lobby → Character Select → DimensionMaster → Server Play.
+2. Server Arena active와 F6 follow 상태를 확인하고 A를 누른다.
+3. 전진 중 0.25/0.60/0.90/1.30초의 네 원호가 Player 왼쪽에서 앞 방향으로 생성되는지 확인한다.
+4. 몸·장비·무기가 하얗게 발광하고 action 종료 뒤 원복되는지 확인한다.
+5. F1 Effect Tool에서 authored-baseline을 열어 한 layer의 position 또는 UV tiling을 바꾼다.
+6. Save Authored → Publish + Reload A Test → F1 닫기 → A로 다음 spawn 반영을 확인한다.
+7. Shape/anchor 합격 뒤에만 emissive/bloom/material을 원작 PNG 기준으로 미세 조정한다.
+
+검증용 최신 프로세스도 실행했다. Debug Server는 `0.0.0.0:7777` listener를 확인했고, Debug Client는
+`Client/Default` working directory와 process-local `LOSTARK_SERVER_HOST=127.0.0.1`로 실행했다.
+프로세스 실행은 수동 GPU 합격을 의미하지 않으며 위 일곱 단계의 화면 판정이 남아 있다.
+
+최초 실행은 Windows loader가 `PhysX_64.dll` 누락으로 거부했다. 원인은 정식 `UpdateLib.bat`에는
+PhysX runtime 3종 복사가 있었지만 직접 `Client.vcxproj` 빌드의 `AfterTargets=Build` 배포 목록에는
+Assimp/FMOD/Engine만 있고 PhysX가 빠져 있었기 때문이다. Client project에 configuration별
+`PhysXRuntimeRoot`, 세 DLL 존재 검사, 다음 runtime 복사를 추가했다.
+
+```text
+PhysX_64.dll
+PhysXCommon_64.dll
+PhysXFoundation_64.dll
+```
+
+Client x64 Debug 재빌드가 세 파일을 `Client/Bin/Debug`에 배포했고 source/destination SHA-256 일치를
+확인했다. 재실행한 Client는 loader dialog 없이 2.5초 이상 정상 생존했다. ProjectAudit에도 직접
+Client 빌드와 UpdateLib 양쪽의 3-DLL 배포 계약을 추가했다.

@@ -75,6 +75,36 @@ def parse_animnotify(path: Path) -> dict[str, dict[str, Any]]:
     return clips
 
 
+def flatten_bound_clips(values: Any, skill_id: int) -> list[str]:
+    """Flatten ACTIVE and COMBO binding shapes without losing source order."""
+    if not isinstance(values, list) or not values:
+        raise ValueError(f"skill {skill_id} has an invalid clips array")
+    result: list[str] = []
+
+    def append(value: Any) -> None:
+        if isinstance(value, str):
+            clip_name = value
+        elif isinstance(value, dict):
+            clip_name = str(value.get("clip") or "")
+        elif isinstance(value, list):
+            if not value:
+                raise ValueError(
+                    f"skill {skill_id} has an invalid combo stage"
+                )
+            for nested in value:
+                append(nested)
+            return
+        else:
+            clip_name = ""
+        if not clip_name:
+            raise ValueError(f"skill {skill_id} has an invalid clip entry")
+        result.append(clip_name)
+
+    for item in values:
+        append(item)
+    return result
+
+
 def load_bound_clips(path: Path, skill_id: int) -> tuple[dict[str, Any], list[str]]:
     document = json.loads(path.read_text(encoding="utf-8-sig"))
     matches = [
@@ -82,20 +112,7 @@ def load_bound_clips(path: Path, skill_id: int) -> tuple[dict[str, Any], list[st
     ]
     if len(matches) != 1:
         raise ValueError(f"skill {skill_id} must have exactly one binding, got {len(matches)}")
-    clips = matches[0].get("clips")
-    if not isinstance(clips, list) or not clips:
-        raise ValueError(f"skill {skill_id} has an invalid clips array")
-    clip_names = []
-    for item in clips:
-        if isinstance(item, str):
-            clip_name = item
-        elif isinstance(item, dict):
-            clip_name = str(item.get("clip") or "")
-        else:
-            clip_name = ""
-        if not clip_name:
-            raise ValueError(f"skill {skill_id} has an invalid clip entry")
-        clip_names.append(clip_name)
+    clip_names = flatten_bound_clips(matches[0].get("clips"), skill_id)
     # Return the untouched document so playMs/playRate and future per-clip
     # metadata remain available to downstream receipts.
     return document, clip_names
@@ -543,6 +560,180 @@ def build_material_parameter_bindings(
     ]
 
 
+def required_material_sources(
+    systems: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    required: dict[str, dict[str, Any]] = {}
+    for system in systems:
+        source_system_id = str(system.get("sourceSystemId") or "")
+        if not source_system_id:
+            raise ValueError("source system is missing sourceSystemId")
+        for binding in system["graph"]["resourceBindings"]:
+            if binding.get("role") != "material" or not binding.get("objectPath"):
+                continue
+            source_path = str(binding["objectPath"])
+            key = source_path.casefold()
+            row = required.setdefault(
+                key,
+                {
+                    "sourceMaterialPath": source_path,
+                    "sourceSystemIds": set(),
+                },
+            )
+            if row["sourceMaterialPath"] != source_path:
+                raise ValueError(
+                    "material path has inconsistent case-sensitive identities: "
+                    f"{row['sourceMaterialPath']} / {source_path}"
+                )
+            row["sourceSystemIds"].add(source_system_id.casefold())
+    return required
+
+
+def load_resolved_material_catalog(
+    systems: list[dict[str, Any]],
+    catalog_path: Path,
+    character_class: str,
+    skill_id: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Select only exact, action-owned rows from an audited material catalog."""
+    document = json.loads(catalog_path.read_text(encoding="utf-8-sig"))
+    if document.get("schema") != "lostark.unbound-class-particle-resource-catalog":
+        raise ValueError("resolved material catalog schema is invalid")
+    if document.get("formatVersion") != 1:
+        raise ValueError("resolved material catalog formatVersion is invalid")
+    if str(document.get("characterClass") or "").casefold() != character_class.casefold():
+        raise ValueError("resolved material catalog characterClass does not match")
+    if document.get("bindingStatus") != "ACTION_NOTIFY_BOUND":
+        raise ValueError("resolved material catalog is not action-notify bound")
+
+    material_rows = document.get("materialParameterBindings")
+    asset_rows = document.get("assets")
+    if not isinstance(material_rows, list) or not isinstance(asset_rows, list):
+        raise ValueError("resolved material catalog has invalid binding arrays")
+
+    def unique_index(
+        rows: list[dict[str, Any]], key_name: str, label: str
+    ) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        for index, row in enumerate(rows):
+            if not isinstance(row, dict):
+                raise ValueError(f"{label}[{index}] is not an object")
+            raw_key = row.get(key_name)
+            if not isinstance(raw_key, str) or not raw_key:
+                raise ValueError(f"{label}[{index}] has no {key_name}")
+            key = raw_key.casefold()
+            if key in result:
+                raise ValueError(f"resolved material catalog has duplicate {label}: {raw_key}")
+            result[key] = row
+        return result
+
+    material_index = unique_index(
+        material_rows, "sourceMaterialPath", "materialParameterBindings"
+    )
+    asset_index = unique_index(asset_rows, "sourceAssetPath", "assets")
+    required = required_material_sources(systems)
+    selected: list[dict[str, Any]] = []
+    exact_count = 0
+    explicit_fallback_count = 0
+    for key in sorted(required):
+        requirement = required[key]
+        source_path = requirement["sourceMaterialPath"]
+        material = material_index.get(key)
+        asset = asset_index.get(key)
+        if material is None or asset is None:
+            raise ValueError(
+                f"resolved material catalog is missing required material evidence: {source_path}"
+            )
+
+        expected_logical = source_path.split(".", 1)[0]
+        if str(material.get("sourceLogicalPackage") or "").casefold() != expected_logical.casefold():
+            raise ValueError(
+                f"material logical package identity does not match: {source_path}"
+            )
+        if str(asset.get("logicalPackage") or "").casefold() != expected_logical.casefold():
+            raise ValueError(
+                f"material asset logical package identity does not match: {source_path}"
+            )
+        roles = asset.get("roles")
+        if not isinstance(roles, list) or "material" not in {
+            str(role).casefold() for role in roles
+        }:
+            raise ValueError(f"catalog asset is not material evidence: {source_path}")
+        action_ids = asset.get("actionIds")
+        if not isinstance(action_ids, list) or skill_id not in action_ids:
+            raise ValueError(
+                f"catalog material is not owned by action {skill_id}: {source_path}"
+            )
+        catalog_systems = asset.get("sourceSystems")
+        if not isinstance(catalog_systems, list):
+            raise ValueError(f"catalog material has invalid source systems: {source_path}")
+        catalog_system_ids = {str(value).casefold() for value in catalog_systems}
+        if not requirement["sourceSystemIds"].issubset(catalog_system_ids):
+            raise ValueError(
+                f"catalog material is not owned by every selected source system: {source_path}"
+            )
+
+        status = str(material.get("resolutionStatus") or "")
+        asset_status = str(asset.get("resolutionStatus") or "")
+        if status == "RESOLVED_EXACT_SOURCE_PACKAGE":
+            expected_physical = material.get("expectedPhysicalPackage")
+            source_physical = material.get("sourcePhysicalPackage")
+            asset_physical = asset.get("physicalPackage")
+            if not all(
+                isinstance(value, str) and value
+                for value in (expected_physical, source_physical, asset_physical)
+            ):
+                raise ValueError(
+                    f"resolved material has incomplete physical package identity: {source_path}"
+                )
+            physical_identities = {
+                str(expected_physical).casefold(),
+                str(source_physical).casefold(),
+                str(asset_physical).casefold(),
+            }
+            if len(physical_identities) != 1 or asset_status != "RESOLVED_SOURCE_PACKAGE":
+                raise ValueError(
+                    f"resolved material physical package identity does not match: {source_path}"
+                )
+            exact_count += 1
+        elif (
+            status == "UNRESOLVED_MATERIAL_PATH"
+            and asset_status == "ENGINE_DEFAULT_PARTICLE_FALLBACK"
+            and asset.get("physicalPackage") is None
+        ):
+            explicit_fallback_count += 1
+        else:
+            raise ValueError(
+                f"material catalog row is unresolved or ambiguous: {source_path} ({status})"
+            )
+        selected.append(material)
+
+    action_documents = document.get("sourceActionDocuments", [])
+    if not isinstance(action_documents, list):
+        raise ValueError("resolved material catalog has invalid sourceActionDocuments")
+    action_document_hashes = []
+    for index, row in enumerate(action_documents):
+        if not isinstance(row, dict):
+            raise ValueError(f"sourceActionDocuments[{index}] is not an object")
+        digest = row.get("sha256")
+        if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise ValueError(f"sourceActionDocuments[{index}] has an invalid sha256")
+        action_document_hashes.append(digest)
+
+    provenance = {
+        "schema": document["schema"],
+        "formatVersion": document["formatVersion"],
+        "characterClass": document["characterClass"],
+        "bindingStatus": document["bindingStatus"],
+        "catalogSha256": sha256_file(catalog_path),
+        "sourceActionDocumentSha256": sorted(action_document_hashes),
+        "requiredMaterialPathCount": len(selected),
+        "resolvedExactSourcePackageCount": exact_count,
+        "explicitEngineFallbackCount": explicit_fallback_count,
+    }
+    return selected, provenance
+
+
 def resolve_runtime_resource_bindings(
     systems: list[dict[str, Any]],
     material_bindings: list[dict[str, Any]],
@@ -686,6 +877,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--graph-output", type=Path, required=True)
     parser.add_argument("--material-map", type=Path)
     parser.add_argument("--source-package-manifest", type=Path)
+    parser.add_argument("--resolved-material-catalog", type=Path)
     parser.add_argument("--runtime-resources-root", type=Path)
     parser.add_argument("--runtime-effect-relative-root")
     parser.add_argument("--runtime-cook-receipt", type=Path)
@@ -699,6 +891,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.resolved_material_catalog is not None and (
+        args.material_map is not None or args.source_package_manifest is not None
+    ):
+        raise ValueError(
+            "--resolved-material-catalog cannot be combined with "
+            "--material-map or --source-package-manifest"
+        )
     binding_document, bound_clips = load_bound_clips(args.skill_bindings, args.skill_id)
     clip_catalog = parse_animnotify(args.animnotify)
     clips, events, duration = build_timeline(bound_clips, clip_catalog, args.skill_id)
@@ -758,9 +957,18 @@ def main() -> int:
         )
 
     packages = source_package_receipts(graph_index)
-    material_bindings = build_material_parameter_bindings(
-        systems, args.material_map, args.source_package_manifest
-    )
+    material_catalog_evidence = None
+    if args.resolved_material_catalog is not None:
+        material_bindings, material_catalog_evidence = load_resolved_material_catalog(
+            systems,
+            args.resolved_material_catalog,
+            args.character_class,
+            args.skill_id,
+        )
+    else:
+        material_bindings = build_material_parameter_bindings(
+            systems, args.material_map, args.source_package_manifest
+        )
     resolved_material_count = sum(
         str(row["resolutionStatus"]).startswith("RESOLVED_") for row in material_bindings
     )
@@ -800,6 +1008,8 @@ def main() -> int:
             "resolvedRuntimeResourceBindingCount": resolved_runtime_resource_count,
         },
     }
+    if material_catalog_evidence is not None:
+        graph_artifact["materialBindingCatalogEvidence"] = material_catalog_evidence
 
     compact_systems = [
         {
@@ -878,6 +1088,8 @@ def main() -> int:
             "resolvedRuntimeResourceBindingCount": resolved_runtime_resource_count,
         },
     }
+    if material_catalog_evidence is not None:
+        receipt["materialBindingCatalogEvidence"] = material_catalog_evidence
 
     args.graph_output.parent.mkdir(parents=True, exist_ok=True)
     args.graph_output.write_text(

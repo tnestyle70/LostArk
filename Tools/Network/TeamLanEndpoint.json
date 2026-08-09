@@ -1,0 +1,8 @@
+{
+  "schema": "lostark.team-lan-endpoint",
+  "version": 1,
+  "serverBindAddress": "0.0.0.0",
+  "serverHost": "192.168.200.103",
+  "port": 7777,
+  "activeThroughKst": "2026-08-20T23:59:59+09:00"
+}

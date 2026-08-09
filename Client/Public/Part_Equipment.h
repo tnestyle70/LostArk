@@ -10,6 +10,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct DEFERRED_EMISSIVE_OVERRIDE;
+
 /* One visual equipment piece. The slot it fills is data, not behaviour:
 helmet, chest, gloves and boots all do the same thing here. Only the way the
 piece follows the body differs, and that is decided by pSocketBoneName.
@@ -40,6 +42,7 @@ public:
 
 		const float4x4_t* pSocketRootMatrix = { nullptr };
 		string strMaterialProfileId;
+		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };
 	} PART_EQUIPMENT_DESC;
 
 private:
@@ -55,6 +58,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 public:
 	void Set_Visible(bool_t isVisible) { m_isVisible = isVisible; }
@@ -70,10 +74,12 @@ private:
 	f32_t m_fSocketYawDegrees = 0.f;
 	const float4x4_t* m_pSocketRootMatrix = { nullptr };
 	string m_strMaterialProfileId;
+	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 
 private:
 	HRESULT Ready_Components(const PART_EQUIPMENT_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
+	HRESULT Bind_ShadowShaderResources();
 
 public:
 	static unique_ptr<CPart_Equipment> Create(ComPtr<ID3D11Device> pDevice,

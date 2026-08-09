@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -38,13 +39,51 @@ namespace
         uint32_t iCueDurationMs = 0u;
         uint32_t iActionStartTick = 0u;
         uint32_t iCueStartMs = 0u;
-        f32_t fElapsedSeconds = 0.f;
+		std::string strOccurrenceId;
+        f32_t fPlaybackRate = 1.f;
+        f32_t fElapsedCueTimeSeconds = 0.f;
+        f32_t fPendingInitialSampleTimeSeconds = 0.f;
+        bool_t bPendingInitialSeek = true;
         bool_t bFollowAnchorMissing = false;
         std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests;
     };
 
     std::vector<ACTIVE_EFFECT> g_ActiveEffects;
+    std::set<std::string, std::less<>> g_ProductEffectTargets;
     std::string g_strStatus = "Effect presentation service is idle.";
+
+    bool_t Prepare_TargetSet(
+        ComPtr<ID3D11Device> pDevice,
+        ComPtr<ID3D11DeviceContext> pContext,
+        const std::set<std::string, std::less<>>& Targets,
+        std::string& strOutStatus)
+    {
+        if (Targets.empty())
+        {
+            strOutStatus = "No admitted animation Effect targets require prewarm.";
+            return true;
+        }
+        std::vector<std::pair<std::string,
+            std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>>> Documents;
+        Documents.reserve(Targets.size());
+        for (const std::string& EffectId : Targets)
+        {
+            const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Document =
+                Client::CEffectCatalog::Find(EffectId);
+            if (nullptr == Document)
+            {
+                strOutStatus =
+                    "Animation Effect target is absent from the runtime catalog: " +
+                    EffectId;
+                return false;
+            }
+            Documents.emplace_back(EffectId, Document);
+        }
+        return Client::CEffectDocumentRenderer::Prepare_Catalog(
+            std::move(pDevice), std::move(pContext),
+            Client::CEffectCatalog::Get_RuntimeRevision(),
+            Documents, strOutStatus);
+    }
 
     bool Resolve_Anchor(
         const std::shared_ptr<Client::CCharacter>& pOwner,
@@ -196,6 +235,76 @@ namespace
     }
 }
 
+bool_t Client::CEffectPresentationService::Prepare_ProductCues(
+    ComPtr<ID3D11Device> pDevice,
+    ComPtr<ID3D11DeviceContext> pContext,
+    const std::vector<ANIMATION_EFFECT_CUE>& Cues,
+    std::string& strOutStatus)
+{
+    std::set<std::string, std::less<>> StagedTargets =
+        g_ProductEffectTargets;
+    for (const ANIMATION_EFFECT_CUE& Cue : Cues)
+    {
+        if (Cue.strEffectAssetId.empty() ||
+            !CEffectCatalog::Contains(Cue.strEffectAssetId))
+        {
+            strOutStatus =
+                "Animation Effect cue target is not admitted by the catalog.";
+            g_strStatus = strOutStatus;
+            return false;
+        }
+        StagedTargets.insert(Cue.strEffectAssetId);
+    }
+    if (StagedTargets == g_ProductEffectTargets)
+    {
+        strOutStatus = "Animation Effect cue targets are already prepared.";
+        g_strStatus = strOutStatus;
+        return true;
+    }
+    if (!Prepare_TargetSet(
+        std::move(pDevice), std::move(pContext), StagedTargets, strOutStatus))
+    {
+        g_strStatus = "Animation Effect prewarm failed; previous cache preserved: " +
+            strOutStatus;
+        strOutStatus = g_strStatus;
+        return false;
+    }
+    g_ProductEffectTargets = std::move(StagedTargets);
+    g_strStatus = strOutStatus;
+    return true;
+}
+
+bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
+    ComPtr<ID3D11Device> pDevice,
+    ComPtr<ID3D11DeviceContext> pContext,
+    const std::vector<std::string>& AdditionalEffectAssetIds,
+    std::string& strOutStatus)
+{
+    std::set<std::string, std::less<>> StagedTargets =
+        g_ProductEffectTargets;
+    for (const std::string& EffectId : AdditionalEffectAssetIds)
+    {
+        if (EffectId.empty())
+        {
+            strOutStatus = "Additional Effect prewarm target is empty.";
+            g_strStatus = strOutStatus;
+            return false;
+        }
+        StagedTargets.insert(EffectId);
+    }
+    if (!Prepare_TargetSet(
+        std::move(pDevice), std::move(pContext), StagedTargets, strOutStatus))
+    {
+        g_strStatus = "Reloaded Effect prewarm failed; previous cache preserved: " +
+            strOutStatus;
+        strOutStatus = g_strStatus;
+        return false;
+    }
+    g_ProductEffectTargets = std::move(StagedTargets);
+    g_strStatus = strOutStatus;
+    return true;
+}
+
 bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
@@ -205,8 +314,11 @@ bool_t Client::CEffectPresentationService::Spawn(
         CEffectCatalog::Find(Desc.strEffectAssetId);
     if (nullptr == pOwner || nullptr == pDocument ||
         Desc.strAnchorSlotId.empty() ||
+		Desc.strOccurrenceId.empty() ||
 		!std::isfinite(Desc.fPlaybackRate) ||
 		Desc.fPlaybackRate <= 0.f || Desc.fPlaybackRate > 16.f ||
+        !std::isfinite(Desc.fInitialSampleTimeSeconds) ||
+        Desc.fInitialSampleTimeSeconds < 0.f ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
@@ -216,15 +328,24 @@ bool_t Client::CEffectPresentationService::Spawn(
         g_strStatus = strOutStatus;
         return false;
     }
+    const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+        pPrepared = CEffectDocumentRenderer::Find_Prepared(
+            CEffectCatalog::Get_RuntimeRevision(),
+            Desc.strEffectAssetId, *pDocument);
+    if (nullptr == pPrepared)
+    {
+        strOutStatus =
+            "Effect spawn rejected because its admitted animation target was not prewarmed.";
+        g_strStatus = strOutStatus;
+        return false;
+    }
     const bool Duplicate = std::any_of(
         g_ActiveEffects.begin(), g_ActiveEffects.end(),
         [&Desc, &pOwner](const ACTIVE_EFFECT& Effect)
         {
             return Effect.pOwner.lock() == pOwner &&
                 Effect.iActionStartTick == Desc.iActionStartTick &&
-                Effect.iCueStartMs == Desc.iCueStartMs &&
-                Effect.strEffectAssetId == Desc.strEffectAssetId &&
-                Effect.strAnchorSlotId == Desc.strAnchorSlotId;
+				Effect.strOccurrenceId == Desc.strOccurrenceId;
         });
     if (Duplicate)
     {
@@ -241,12 +362,18 @@ bool_t Client::CEffectPresentationService::Spawn(
         return false;
     }
     const float4x4_t Root = Compose_Local(Desc.LocalTransform, Anchor);
+    std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
+        Collect_SourceAnchorRequests(*pDocument);
     CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
     ObjectDesc.pDocument = pDocument.get();
+    ObjectDesc.pPreparedResources = pPrepared;
     ObjectDesc.RootWorld = Root;
-    ObjectDesc.bAutoPlay = true;
+    ObjectDesc.bAutoPlay = false;
+    ObjectDesc.bRequirePreparedResources = true;
 	ObjectDesc.fPlaybackRate = Desc.fPlaybackRate;
     const uint32_t iLevelIndex = CGameInstance::Get().Get_CurrentLevelID();
+    const EFFECT_RENDER_PREWARM_PROBE ProbeBefore =
+        CEffectDocumentRenderer::Get_PrewarmProbe();
     std::shared_ptr<CGameObject> pGameObject;
     if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
         ETOUI(LEVEL::STATIC), L"Prototype_GameObject_EffectObject",
@@ -266,6 +393,25 @@ bool_t Client::CEffectPresentationService::Spawn(
         g_strStatus = strOutStatus;
         return false;
     }
+    const EFFECT_RENDER_PREWARM_PROBE ProbeAfter =
+        CEffectDocumentRenderer::Get_PrewarmProbe();
+    if (ProbeAfter.iCoreBuildCount != ProbeBefore.iCoreBuildCount ||
+        ProbeAfter.iModelDiskLoadCount != ProbeBefore.iModelDiskLoadCount ||
+        ProbeAfter.iTextureDiskLoadCount != ProbeBefore.iTextureDiskLoadCount ||
+		ProbeAfter.iVectorFieldDiskLoadCount !=
+			ProbeBefore.iVectorFieldDiskLoadCount ||
+        ProbeAfter.iSynchronousDocumentStageCount !=
+            ProbeBefore.iSynchronousDocumentStageCount ||
+        ProbeAfter.iPreparedAttachCount !=
+            ProbeBefore.iPreparedAttachCount + 1u)
+    {
+        CGameInstance::Get().Remove_GameObject_from_Layer(
+            iLevelIndex, EFFECT_LAYER, pGameObject);
+        strOutStatus =
+            "Effect spawn violated the prepared no-I/O resource contract.";
+        g_strStatus = strOutStatus;
+        return false;
+    }
 
     ACTIVE_EFFECT Active;
     Active.pObject = pEffect;
@@ -279,9 +425,12 @@ bool_t Client::CEffectPresentationService::Spawn(
     Active.iCueDurationMs = Desc.iCueDurationMs;
     Active.iActionStartTick = Desc.iActionStartTick;
     Active.iCueStartMs = Desc.iCueStartMs;
-    Active.SourceAnchorRequests = Collect_SourceAnchorRequests(*pDocument);
-    pEffect->Set_SourceAnchorWorlds(
-        Resolve_SourceAnchors(pOwner, Active.SourceAnchorRequests));
+	Active.strOccurrenceId = Desc.strOccurrenceId;
+    Active.fPlaybackRate = Desc.fPlaybackRate;
+    Active.fElapsedCueTimeSeconds = Desc.fInitialSampleTimeSeconds;
+    Active.fPendingInitialSampleTimeSeconds =
+        Desc.fInitialSampleTimeSeconds;
+    Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -294,11 +443,24 @@ void Client::CEffectPresentationService::Update(const f32_t fTimeDelta)
     for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
     {
         ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
-        Effect.fElapsedSeconds += (std::max)(0.f, fTimeDelta);
         const std::shared_ptr<CCharacter> pOwner = Effect.pOwner.lock();
+        if (Effect.bPendingInitialSeek && nullptr != Effect.pObject &&
+            !Effect.bFollowAnchorMissing)
+        {
+            Effect.pObject->Set_SampleTime(
+                Effect.fPendingInitialSampleTimeSeconds);
+            Effect.bPendingInitialSeek = false;
+        }
+        else if (nullptr != Effect.pObject && !Effect.bFollowAnchorMissing)
+        {
+            const f32_t fCueDelta =
+                (std::max)(0.f, fTimeDelta) * Effect.fPlaybackRate;
+            Effect.pObject->Advance_Preview(fCueDelta);
+            Effect.fElapsedCueTimeSeconds += fCueDelta;
+        }
         const bool bCueEnded =
             EFFECT_STOP_POLICY::CUE_END == Effect.eStopPolicy &&
-            Effect.fElapsedSeconds * 1000.f >= Effect.iCueDurationMs;
+            Effect.fElapsedCueTimeSeconds * 1000.f >= Effect.iCueDurationMs;
         if (nullptr == pOwner || nullptr == Effect.pObject ||
             Effect.iLevelIndex != iCurrentLevel || bCueEnded ||
             Effect.pObject->Is_Finished() || Effect.bFollowAnchorMissing)
@@ -325,7 +487,8 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
         }
         Effect.pObject->Set_SourceAnchorWorlds(
             Resolve_SourceAnchors(pOwner, Effect.SourceAnchorRequests));
-        if (EFFECT_FOLLOW_POLICY::FOLLOW != Effect.eFollowPolicy)
+        if (EFFECT_FOLLOW_POLICY::FOLLOW != Effect.eFollowPolicy &&
+            !Effect.bPendingInitialSeek)
             continue;
         float4x4_t Anchor{};
         if (!Resolve_Anchor(pOwner, Effect.strAnchorSlotId, Anchor))
@@ -364,6 +527,14 @@ void Client::CEffectPresentationService::Clear_All()
     while (!g_ActiveEffects.empty())
         Remove_At(g_ActiveEffects.size() - 1u);
     g_strStatus = "All runtime Effect instances cleared.";
+}
+
+void Client::CEffectPresentationService::Release_PreparedResources()
+{
+    Clear_All();
+    g_ProductEffectTargets.clear();
+    CEffectDocumentRenderer::Clear_Prepared_Catalog();
+    g_strStatus = "Effect product prewarm resources released.";
 }
 
 const std::string& Client::CEffectPresentationService::Get_Status()

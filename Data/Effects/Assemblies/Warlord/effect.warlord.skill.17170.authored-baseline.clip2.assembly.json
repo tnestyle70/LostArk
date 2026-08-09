@@ -1,0 +1,49 @@
+{
+  "schema": "lostark.effect-assembly",
+  "version": 1,
+  "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip2",
+  "displayName": "effect.warlord.skill.17170.authored-baseline.clip2",
+  "sourceAuthoringVersion": 12,
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "modelCues": [],
+  "componentCues": [
+    {
+      "cueId": "component-00",
+      "componentAssetId": "effect.component.warlord.skill.17170.authored-baseline.clip2.00",
+      "startDelaySeconds": 0.0,
+      "visible": true,
+      "anchor": "root",
+      "localTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sourceDocumentSha256": "53c8ddf3abdf3facc4364c888619072b2b8723d7841bdccf65a6691c841bdebd",
+  "inputSlot": "V",
+  "sourceDocumentFileSha256": "eaee1207386dc79535a102f33fcf1ff92dde2a484ff34257cd72631a664839b8",
+  "sourceActionCues": [],
+  "sourceActionCueSummary": {
+    "cueCount": 0,
+    "channels": {},
+    "byteLosslessPayloadComplete": true
+  }
+}

@@ -30,6 +30,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	m_fSocketYawDegrees = pDesc->fSocketYawDegrees;
 	m_pSocketRootMatrix = pDesc->pSocketRootMatrix;
 	m_strMaterialProfileId = pDesc->strMaterialProfileId;
+	m_pEmissiveOverride = pDesc->pEmissiveOverride;
 
 	/* Both kinds need the body's model: a socketed piece reads one bone from it,
 	a skinned piece borrows its whole palette. */
@@ -81,6 +82,12 @@ void CPart_Equipment::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 }
 
 HRESULT CPart_Equipment::Render()
@@ -105,11 +112,64 @@ HRESULT CPart_Equipment::Render()
 				m_strMaterialProfileId,
 				m_pModelCom->Get_MaterialName(i));
 		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i, Profile)) ||
+				*m_pModelCom, m_pShaderCom, i, Profile,
+				m_pEmissiveOverride)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||
 			FAILED(m_pModelCom->Render(i)))
 			return E_FAIL;
 	}
+	return S_OK;
+}
+
+HRESULT CPart_Equipment::Render_Shadow()
+{
+	constexpr uint32_t ANIMATED_SHADOW_PASS = 1u;
+	constexpr uint32_t STATIC_SHADOW_PASS = 12u;
+	if (FAILED(Bind_ShadowShaderResources()))
+		return E_FAIL;
+
+	if (nullptr == m_pSocketBoneName &&
+		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
+			m_pShaderCom, "g_BoneMatrices", 0)))
+	{
+		return E_FAIL;
+	}
+
+	const uint32_t iShadowPass = nullptr == m_pSocketBoneName ?
+		ANIMATED_SHADOW_PASS : STATIC_SHADOW_PASS;
+	if (nullptr != m_pSocketBoneName)
+	{
+		const float2_t vUVScale(1.f, 1.f);
+		const float2_t vUVOffset(0.f, 0.f);
+		const float4_t vColorTint(1.f, 1.f, 1.f, 1.f);
+		if (FAILED(m_pShaderCom->Bind_RawValue(
+				"g_UVScale", &vUVScale, sizeof(vUVScale))) ||
+			FAILED(m_pShaderCom->Bind_RawValue(
+				"g_UVOffset", &vUVOffset, sizeof(vUVOffset))) ||
+			FAILED(m_pShaderCom->Bind_RawValue(
+				"g_ColorTint", &vColorTint, sizeof(vColorTint))))
+		{
+			return E_FAIL;
+		}
+	}
+	for (uint32_t i = 0; i < m_pModelCom->Get_NumMeshes(); ++i)
+	{
+		if (0 != (m_iHiddenMeshMask & (1u << i)))
+			continue;
+
+		const DEFERRED_MATERIAL_PROFILE Profile =
+			Resolve_DeferredMaterialProfile(
+				m_strMaterialProfileId,
+				m_pModelCom->Get_MaterialName(i));
+		if (FAILED(Bind_DeferredMaterialInputs(
+				*m_pModelCom, m_pShaderCom, i, Profile)) ||
+			FAILED(m_pShaderCom->Begin(iShadowPass)) ||
+			FAILED(m_pModelCom->Render(i)))
+		{
+			return E_FAIL;
+		}
+	}
+
 	return S_OK;
 }
 
@@ -151,6 +211,20 @@ HRESULT CPart_Equipment::Bind_ShaderResources()
 		if (FAILED(m_pShaderCom->Bind_Matrix(
 			"g_WorldInvTransposeMatrix", &Stored)))
 			return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CPart_Equipment::Bind_ShadowShaderResources()
+{
+	if (FAILED(__super::Bind_WorldMatrix(
+		m_pShaderCom, "g_WorldMatrix")) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
 	}
 	return S_OK;
 }

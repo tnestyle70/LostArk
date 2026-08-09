@@ -7,8 +7,10 @@ from build_skill_effect_source_receipt import (
     build_timeline,
     collect_system_graph,
     find_particle_system,
+    flatten_bound_clips,
     load_bound_clips,
     load_graphs,
+    load_resolved_material_catalog,
     parse_animnotify,
     resolve_material_parameters,
     resolve_runtime_resource_bindings,
@@ -17,6 +19,172 @@ from build_skill_effect_source_receipt import (
 
 
 class SkillEffectSourceReceiptTests(unittest.TestCase):
+    @staticmethod
+    def material_catalog_systems():
+        return [
+            {
+                "sourceSystemId": "fx_skill.par_attack",
+                "graph": {
+                    "resourceBindings": [
+                        {
+                            "role": "material",
+                            "objectPath": "fx_m_mi_00.fx_mi.mi_attack",
+                        },
+                        {
+                            "role": "material",
+                            "objectPath": "enginematerials.defaultparticle",
+                        },
+                    ]
+                },
+            }
+        ]
+
+    @staticmethod
+    def resolved_material_catalog_document():
+        return {
+            "schema": "lostark.unbound-class-particle-resource-catalog",
+            "formatVersion": 1,
+            "characterClass": "WARLORD",
+            "bindingStatus": "ACTION_NOTIFY_BOUND",
+            "materialParameterBindings": [
+                {
+                    "sourceMaterialPath": "fx_m_mi_00.fx_mi.mi_attack",
+                    "sourceLogicalPackage": "fx_m_mi_00",
+                    "expectedPhysicalPackage": "material.upk",
+                    "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+                    "sourcePhysicalPackage": "material.upk",
+                    "textures": [],
+                    "scalars": [],
+                    "vectors": [],
+                },
+                {
+                    "sourceMaterialPath": "enginematerials.defaultparticle",
+                    "sourceLogicalPackage": "enginematerials",
+                    "expectedPhysicalPackage": None,
+                    "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+                    "candidateCount": 0,
+                    "candidates": [],
+                },
+            ],
+            "assets": [
+                {
+                    "sourceAssetPath": "fx_m_mi_00.fx_mi.mi_attack",
+                    "logicalPackage": "fx_m_mi_00",
+                    "physicalPackage": "material.upk",
+                    "roles": ["material"],
+                    "actionIds": [17000],
+                    "sourceSystems": ["FX_SKILL.Par_Attack"],
+                    "resolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+                },
+                {
+                    "sourceAssetPath": "enginematerials.defaultparticle",
+                    "logicalPackage": "enginematerials",
+                    "physicalPackage": None,
+                    "roles": ["material"],
+                    "actionIds": [17000],
+                    "sourceSystems": ["FX_SKILL.Par_Attack"],
+                    "resolutionStatus": "ENGINE_DEFAULT_PARTICLE_FALLBACK",
+                },
+            ],
+            "sourceActionDocuments": [{"sha256": "a" * 64}],
+        }
+
+    def test_resolved_material_catalog_selects_exact_action_owned_rows(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "material-catalog.json"
+            path.write_text(
+                json.dumps(self.resolved_material_catalog_document()),
+                encoding="utf-8",
+            )
+
+            rows, evidence = load_resolved_material_catalog(
+                self.material_catalog_systems(), path, "WARLORD", 17000
+            )
+
+            self.assertEqual(2, len(rows))
+            self.assertEqual(2, evidence["requiredMaterialPathCount"])
+            self.assertEqual(1, evidence["resolvedExactSourcePackageCount"])
+            self.assertEqual(1, evidence["explicitEngineFallbackCount"])
+            self.assertRegex(evidence["catalogSha256"], r"^[0-9a-f]{64}$")
+
+    def test_resolved_material_catalog_rejects_duplicate_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.resolved_material_catalog_document()
+            document["materialParameterBindings"].append(
+                dict(document["materialParameterBindings"][0])
+            )
+            path = Path(temporary) / "duplicate-catalog.json"
+            path.write_text(json.dumps(document), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+    def test_resolved_material_catalog_rejects_ambiguous_or_wrong_package(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.resolved_material_catalog_document()
+            material = document["materialParameterBindings"][0]
+            material["resolutionStatus"] = "AMBIGUOUS_MATERIAL_PATH"
+            path = Path(temporary) / "ambiguous-catalog.json"
+            path.write_text(json.dumps(document), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "unresolved or ambiguous"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+            material["resolutionStatus"] = "RESOLVED_EXACT_SOURCE_PACKAGE"
+            material["sourcePhysicalPackage"] = "wrong.upk"
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "physical package identity"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+    def test_resolved_material_catalog_rejects_wrong_contract_or_ownership(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "invalid-catalog.json"
+
+            document = self.resolved_material_catalog_document()
+            document["formatVersion"] = 2
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "formatVersion"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+            document = self.resolved_material_catalog_document()
+            document["assets"][0]["actionIds"] = [17030]
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "not owned by action"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+            document = self.resolved_material_catalog_document()
+            document["assets"][0]["sourceSystems"] = ["fx_skill.par_other"]
+            path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "every selected source system"):
+                load_resolved_material_catalog(
+                    self.material_catalog_systems(), path, "WARLORD", 17000
+                )
+
+    def test_combo_stage_binding_flattens_in_authored_order(self):
+        clips = flatten_bound_clips(
+            [
+                ["attack_01"],
+                [{"clip": "attack_02", "playRate": 1.2}],
+                ["attack_03", {"clip": "attack_03_follow"}],
+            ],
+            17000,
+        )
+
+        self.assertEqual(
+            ["attack_01", "attack_02", "attack_03", "attack_03_follow"],
+            clips,
+        )
+
     def test_bound_clip_objects_preserve_timing_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "sample.skillbindings.json"
@@ -36,6 +204,27 @@ class SkillEffectSourceReceiptTests(unittest.TestCase):
             self.assertEqual(
                 {"clip": "clip_a", "playMs": 500, "playRate": 1.25},
                 document["bindings"][0]["clips"][0],
+            )
+
+    def test_bound_combo_stage_objects_preserve_timing_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "combo.skillbindings.json"
+            path.write_text(json.dumps({
+                "bindings": [{
+                    "skillId": 7,
+                    "clips": [
+                        ["clip_a"],
+                        [{"clip": "clip_b", "playMs": 500}],
+                    ],
+                }],
+            }), encoding="utf-8")
+
+            document, clips = load_bound_clips(path, 7)
+
+            self.assertEqual(["clip_a", "clip_b"], clips)
+            self.assertEqual(
+                {"clip": "clip_b", "playMs": 500},
+                document["bindings"][0]["clips"][1][0],
             )
 
     def test_animnotify_timeline_accumulates_bound_clip_lengths(self):

@@ -59,6 +59,9 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 		FAILED(Rebuild_PlacementLookup()) ||
 		FAILED(Ensure_InstanceCapacity(
 			static_cast<uint32_t>(
+				m_Instances.size()))) ||
+		FAILED(Ensure_ShadowInstanceCapacity(
+			static_cast<uint32_t>(
 				m_Instances.size()))))
 	{
 		return E_FAIL;
@@ -89,16 +92,24 @@ void CMapStaticBatchObject::Late_Update(
 			Engine::EProfilerCounter::MapBatchCount);
 	}
 
-	if (FAILED(Upload_VisibleInstances()) ||
-		m_VisibleInstances.empty())
+	const HRESULT hVisibleResult = Upload_VisibleInstances();
+	if (SUCCEEDED(hVisibleResult) && !m_VisibleInstances.empty())
 	{
-		return;
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::NONBLEND,
+			static_pointer_cast<CGameObject>(
+				shared_from_this()));
 	}
 
-	CGameInstance::Get().Add_RenderObject(
-		RENDERGROUP::NONBLEND,
-		static_pointer_cast<CGameObject>(
-			shared_from_this()));
+	if (CGameInstance::Get().Is_ShadowLightEnabled() &&
+		SUCCEEDED(Upload_ShadowInstances()) &&
+		!m_ShadowInstances.empty())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(
+				shared_from_this()));
+	}
 }
 
 HRESULT CMapStaticBatchObject::Render()
@@ -159,6 +170,47 @@ HRESULT CMapStaticBatchObject::Render()
 	return S_OK;
 }
 
+HRESULT CMapStaticBatchObject::Render_Shadow()
+{
+	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
+	if (m_ShadowInstances.empty())
+		return S_OK;
+
+	if (FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
+
+	const uint32_t iCullPass =
+		CMapAssetRenderUtils::Select_Pass(
+			m_RenderProfile, m_bMirrored);
+	if (iCullPass > 2u)
+		return E_UNEXPECTED;
+
+	const uint32_t iInstanceCount =
+		static_cast<uint32_t>(m_ShadowInstances.size());
+	for (uint32_t iMesh = 0;
+		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
+	{
+		if (FAILED(CMapAssetRenderUtils::Bind_Material(
+				m_pModelCom, m_pShaderCom, iMesh,
+				m_RenderProfile, m_fElapsedTime)) ||
+			FAILED(m_pShaderCom->Begin(
+				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
+			FAILED(m_pModelCom->Render_Instanced(
+				iMesh, m_pShadowInstanceBuffer.Get(),
+				sizeof(VTXMESHINSTANCE), iInstanceCount)))
+		{
+			return E_FAIL;
+		}
+	}
+
+	return S_OK;
+}
+
 HRESULT CMapStaticBatchObject::Update_Instance(
 	uint64_t placementId,
 	const FMapStaticInstance& instance)
@@ -173,6 +225,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 	}
 
 	m_Instances[iter->second] = instance;
+	m_bShadowInstancesDirty = true;
 	return S_OK;
 }
 
@@ -188,6 +241,7 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 			ERROR_NOT_FOUND);
 
 	m_Instances[iter->second].Visible = visible;
+	m_bShadowInstancesDirty = true;
 	return S_OK;
 }
 
@@ -272,6 +326,50 @@ HRESULT CMapStaticBatchObject::Ensure_InstanceCapacity(
 	return S_OK;
 }
 
+HRESULT CMapStaticBatchObject::Ensure_ShadowInstanceCapacity(
+	uint32_t requiredCount)
+{
+	if (0 == requiredCount)
+		return E_INVALIDARG;
+
+	if (requiredCount <= m_iShadowInstanceCapacity &&
+		nullptr != m_pShadowInstanceBuffer)
+	{
+		return S_OK;
+	}
+
+	uint32_t newCapacity = 1u;
+	while (newCapacity < requiredCount)
+		newCapacity <<= 1u;
+
+	const uint64_t byteWidth =
+		static_cast<uint64_t>(newCapacity) *
+		sizeof(VTXMESHINSTANCE);
+	if (byteWidth >
+		(std::numeric_limits<uint32_t>::max)())
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	D3D11_BUFFER_DESC bufferDesc{};
+	bufferDesc.ByteWidth = static_cast<uint32_t>(byteWidth);
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	ComPtr<ID3D11Buffer> stagedBuffer;
+	if (FAILED(m_pDevice->CreateBuffer(
+		&bufferDesc, nullptr, &stagedBuffer)))
+	{
+		return E_FAIL;
+	}
+
+	m_pShadowInstanceBuffer = std::move(stagedBuffer);
+	m_iShadowInstanceCapacity = newCapacity;
+	m_ShadowInstances.reserve(newCapacity);
+	return S_OK;
+}
+
 HRESULT CMapStaticBatchObject::Upload_VisibleInstances()
 {
 	m_VisibleInstances.clear();
@@ -342,6 +440,51 @@ HRESULT CMapStaticBatchObject::Upload_VisibleInstances()
 		m_pInstanceBuffer.Get(),
 		0);
 
+	return S_OK;
+}
+
+HRESULT CMapStaticBatchObject::Upload_ShadowInstances()
+{
+	if (!m_bShadowInstancesDirty)
+		return S_OK;
+
+	m_ShadowInstances.clear();
+	for (const FMapStaticInstance& instance : m_Instances)
+	{
+		if (!instance.Visible)
+			continue;
+
+		VTXMESHINSTANCE gpuInstance{};
+		gpuInstance.World = instance.World;
+		gpuInstance.WorldInvTranspose = instance.WorldInvTranspose;
+		m_ShadowInstances.push_back(gpuInstance);
+	}
+
+	if (m_ShadowInstances.empty())
+	{
+		m_bShadowInstancesDirty = false;
+		return S_OK;
+	}
+	if (FAILED(Ensure_ShadowInstanceCapacity(
+		static_cast<uint32_t>(m_ShadowInstances.size()))))
+	{
+		return E_FAIL;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE mapped{};
+	if (FAILED(m_pContext->Map(
+		m_pShadowInstanceBuffer.Get(), 0,
+		D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+	{
+		return E_FAIL;
+	}
+
+	std::memcpy(
+		mapped.pData,
+		m_ShadowInstances.data(),
+		m_ShadowInstances.size() * sizeof(VTXMESHINSTANCE));
+	m_pContext->Unmap(m_pShadowInstanceBuffer.Get(), 0);
+	m_bShadowInstancesDirty = false;
 	return S_OK;
 }
 

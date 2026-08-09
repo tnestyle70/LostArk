@@ -207,9 +207,9 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 ### 최소 수련장 Area
 
-`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00 -> Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT`를 사용한다. 최초 Character Select는 socket 없이 여섯 class의 3D preview를 제공한다. preview에서 class를 고르고 `Server Play`를 선택하면 tokenized TEST command가 Lobby로 넘어가며, Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤 기존 socket을 one-shot handoff한다. Server Arena에서 `Preview`를 선택하면 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 거쳐 socket 없는 Preview로 재진입한다. 재진입한 Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 읽으며 값이 없거나 `0.0.0.0`이면 `127.0.0.1`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 Client local spawn이 아니라 Server의 disabled placement template 승인을 거치며 presentation asset은 Engine batch prototype commit으로 지연 준비한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
+`dev.training.ground`는 새 Engine Level이 아니라 기존 `LEVEL::DEVELOPMENT`를 사용하는 Debug Map Editor Test 진입이다. 제품 캐릭터 테스트는 `LEVEL::CHARACTER_SELECT -> LV_LOBBY_CLASSSELECT_SL00 -> Lobby-approved WORLD_ID::CHARACTER_SELECT_ARENA -> LEVEL::CHARACTER_SELECT`를 사용한다. 최초 Character Select는 socket 없이 여섯 class의 3D preview를 제공한다. preview에서 class를 고르고 `Server Play`를 선택하면 tokenized TEST command가 Lobby로 넘어가며, Lobby가 port `7777`의 `S2C_ENTER_ACCEPTED` 전체 payload를 검증한 뒤 기존 socket을 one-shot handoff한다. Server Arena에서 `Preview`를 선택하면 현재 socket과 replication을 정리하고 tokenized CHARACTER_SELECT를 거쳐 socket 없는 Preview로 재진입한다. 재진입한 Character Select는 직접 connect/send하지 않고 queued snapshot을 `CClientReplication`으로 소비해 HUD, 우클릭 이동, class quick-slot 스킬을 Server snapshot으로 반영한다. Client host는 process-local `LOSTARK_SERVER_HOST`를 우선하며 값이 없거나 `0.0.0.0`이면 현재 팀 LAN 검증 Server `192.168.200.103`을 사용한다. 연결 실패·거부·5초 승인 timeout은 Lobby에 남고, 진입 후 disconnect는 Lobby로 복귀하며 자동 local gameplay fallback은 없다. `Summon Valtan (Lazy)`는 Client local spawn이 아니라 Server의 disabled placement template 승인을 거치며 presentation asset은 Engine batch prototype commit으로 지연 준비한다. Bern/Valtan map 진입도 Lobby Server 승인이 필수다.
 
-같은 PC 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server와 Client를 함께 실행하고 기본 `127.0.0.1:7777`을 사용한다. LAN 검증은 Git에서 제외되는 `Server.vcxproj.user`에 `--bind-address 0.0.0.0`, `Client.vcxproj.user`에 `LOSTARK_SERVER_HOST=<Server에 도달 가능한 IPv4>`를 설정한다. 서로 다른 장소에서는 Server의 Wi-Fi 사설 IPv4로 직접 접속할 수 없으므로 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint를 Client에 설정한다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. Visual Studio가 이전 `.vcxproj.user`를 캐시할 수 있으므로 변경 후 project Reload 또는 IDE 재시작이 필요하다. endpoint 입력 UI와 자동 LAN discovery는 아직 제공하지 않으며 개인 LAN·VPN·공인 IP를 소스·JSON·공유 project 설정에 커밋하지 않는다. 세부 설정과 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
+2026-08-20 23:59 KST까지 팀 LAN 검증은 `Framework.slnLaunch`의 `Server + Client` profile을 선택해 Server를 `0.0.0.0:7777`에 열고 모든 Client가 `192.168.200.103:7777`으로 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이며 모든 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행해 각 PC의 Git 제외 debugger 설정을 동기화한다. 공유 x64 debugger 설정과 코드 기본값도 같은 endpoint를 사용하므로 동기화 후 `Ctrl+F5`로 시작한다. Visual Studio가 이전 값을 캐시하면 project Reload 또는 IDE 재시작이 필요하다. `0.0.0.0`은 Server bind 주소이지 Client 접속 주소가 아니다. 만료 뒤에는 스크립트를 우회하지 않고 새 endpoint 또는 loopback 복귀 계약을 먼저 갱신한다. 세부 설정과 `10049` 진단은 `.md/TEAM/TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`의 `서로 다른 장소에서 Server와 Client 연결`을 따른다.
 
 - visual admission: `LV_DEV_TRAINING_GROUND.mapassets`의 RCArena 10종만 로드
 - visual placement: authoring 18개를 publisher가 runtime placement로 승격
@@ -221,7 +221,7 @@ Server는 fixed 30 Hz에서 world entity의 transform/action/pattern state를 �
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
-Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 slot이 보이며 여섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, Warlord는 body가 얼굴과 눈만 그려 머리카락이 별도 equipment 파츠이고 총창과 방패 두 무기를 함께 든다. 나머지 네 class는 body/equipment/weapon 형식이다. 여섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V`, Warlord `Q W E R A S D F T X V ALT_V`이며, DimensionMaster에는 `ALT_V`가 없다. `X`와 `Z` 방어 태세 전환은 Warlord만 사용한다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010/17000`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 slot이 보이며 여섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, Warlord는 body가 얼굴과 눈만 그려 머리카락이 별도 equipment 파츠이고 총창과 방패 두 무기를 함께 든다. 나머지 네 class는 body/equipment/weapon 형식이다. 여섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V ALT_V`, Warlord `Q W E R A S D F T X V ALT_V`다. `X`와 `Z` 방어 태세 전환은 Warlord만 사용한다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010/17000`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
 
 Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
@@ -256,19 +256,31 @@ snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encou
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
-F1의 `Effect Tool`은 `Data/Balance/PlayerSkills.json`의 class/input slot/effectId와
-`Data/Effects/Authored/<effectId>.effect.json`을 결합해 All Effects 트리를 만든다. 저작 문서는
-`lostark.effect-authoring` v6으로 저장하며 Element display/group/source/visible, Material Template ID,
-stable resource slot ID를 소유한다. v5 문서는 호환 load 뒤 다음 Save에서 v6으로 승격한다. 현재 등록된
-Template은 실제 Effect HLSL에 대응하는 `effect.standard` 하나이고 Base/Noise/Mask/Emissive/Dissolve
-다섯 input을 제공한다. 원본 추출 근거와 HLSL 구현이 없는 custom Template/slot은 등록하지 않는다.
-All Effects의 스킬 행과 Data Files의 Authored 행은 같은 완성 Effect Document를 여는 두 진입점이며,
-스킬 행은 현재 문서와 같아도 Complete Effect를 0초부터 다시 재생한다. 여러 시각 파츠의 조합 단위는
+F1의 `Effect Tool`은 `Data/Balance/PlayerSkills.json`의 class/input slot과
+`Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 clip ownership을 결합한 뒤,
+해당 clip의 실제 `effectref=asset` animevent가 가리키는 Authored Effect만 All Effects의
+`Active Product Cue`로 재생한다. `PlayerSkills.effectId`나 Imported source 이름을 제품 Effect로
+추측하지 않는다. cue가 없는 행은 fail-closed하며 Source/Imported는 별도 진단 정보로만 표시한다.
+저작 문서는 `lostark.effect-authoring` v12로 저장하며 Element display/group/source/visible,
+Material Template ID, stable resource slot ID를 소유한다. 원본 추출 근거와 HLSL 구현이 없는 custom
+Template/slot은 등록하지 않는다. All Effects의 Product 행과 Data Files의 Authored 행은 같은 완성
+Effect Document를 여는 두 진입점이며, Product Play는 cue의 clip/timing/anchor/local transform과
+follow/stop 정책을 보존한다. 여러 시각 파츠의 조합 단위는
 별도 Effect 중첩이 아니라 한 Document 안의 Mesh/Sprite/Particle/Decal/Trail Element다. Effect Detail의
 연속 수치는 drag 중 local draft만 world preview에 live-stage하고 Apply에서만 active Document에 commit한다.
+분류와 Solo 재생에서는 standalone Mesh, Cascade Mesh Particle, standalone Sprite, Cascade Sprite
+Particle을 서로 구분한다. Sprite `-90도` 보정은 필요한 Authored element에만 저장하며 전역 런타임
+보정으로 넣지 않는다. Debug의 `Publish + Reload Product Test`는 현재 선택한 실제 Product cue의 clean
+Authored 문서만 class-scoped builder와 기존 publisher를 거쳐 transactional Runtime Catalog reload한다.
 저작 UI는 runtime Published 목록을 편집하지 않으며, 제품 재생은 계속 `CEffectCatalog ->
 CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
 `Tools/EffectPipeline/Publish-Effects.ps1`만 수행한다.
+연속 clip을 가진 스킬의 Product Effect는 stage 첫 clip 하나에 합치지 않는다. 각 시각 clip의
+`effectref=asset` cue가 clip-local Authored 문서를 가리키며 Character가 이미 적용하는 `playMs`,
+`playRate`, loop와 late snapshot catch-up을 그대로 사용한다. Character gameplay 준비는 승인된
+animevent cue target 집합을 catalog revision 단위로 transactional prewarm한다. 전투 중 Product
+Spawn은 준비된 bundle만 사용하고 shader compile, model/DDS/vector-field 로드를 수행하지 않으며,
+prepared miss는 동기 fallback 없이 fail-closed한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
 

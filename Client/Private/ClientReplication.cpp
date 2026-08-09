@@ -1,5 +1,6 @@
 #include "ClientReplication.h"
 
+#include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
@@ -620,7 +621,8 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		return false;
 
 	// ?꾩옱 TCP 寃쎈줈???쒖꽌媛 蹂댁옣?쒕떎. 以묐났 ?먮뒗 ??쟾 Tick? ?ㅼ떆 ?곸슜?섏? ?딅뒗??
-	if (snapshot.iServerTick <= m_iLastServerTick)
+	if (!CActionPresentationTimeline::Is_ForwardTick(
+		snapshot.iServerTick, m_iLastServerTick))
 		return true;
 
 	bool allSucceeded = true;
@@ -662,6 +664,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			!character->Apply_NetworkAction(
 				player.eAction,
 				player.iSkillId,
+				snapshot.iServerTick,
 				player.iActionStartTick,
 				player.iComboStage))
 		{

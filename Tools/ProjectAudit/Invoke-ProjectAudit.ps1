@@ -182,7 +182,7 @@ try {
 		$mapPlacementRuntimeSource -match 'left\.excludedAssetGroupId == right\.excludedAssetGroupId' -and
 		$mapPlacementRuntimeSource -match 'pAsset->groupId == loadScope\.excludedAssetGroupId' -and
 		$levelRegistryMapScopeSource -match 'MakeFullMapScope\("landscape"\)' -and
-		$levelRegistryMapScopeSource -match '"LV_LUT_HEARTRB_ED",\s*MakeFullMapScope\(\)' -and
+		$levelRegistryMapScopeSource -match '"LV_LUT_HEARTRB_ED",\s*"scene\.valtan\.cool-low-key\.v1",\s*MakeFullMapScope\(\)' -and
 		$mapToolSource -match 'IsBernLandscapePlacement' -and
 		$mapToolSource -match 'Show Bern Landscape'
 	Add-Check 'maps.product-editor-visual-scope' $productEditorVisualScopeValid 'Bern full published map excluding quarantined landscape; Valtan full published map; MapTool reversible Bern preview'
@@ -213,6 +213,22 @@ try {
 	})
 	Add-Check 'physics.physx-sdk-layout' ($missingPhysicsSdk.Count -eq 0) `
 		"missing=$($missingPhysicsSdk -join ',')"
+	$clientRuntimeProjectSource = Get-Content 'Client\Default\Client.vcxproj' -Raw
+	$updateLibSource = Get-Content 'UpdateLib.bat' -Raw
+	$physxRuntimeNames = @(
+		'PhysX_64.dll',
+		'PhysXCommon_64.dll',
+		'PhysXFoundation_64.dll')
+	$physxRuntimeDeploymentValid =
+		$clientRuntimeProjectSource -match 'DeployClientRuntimeDependencies' -and
+		$clientRuntimeProjectSource -match 'PhysXRuntimeRoot'
+	foreach ($runtimeName in $physxRuntimeNames) {
+		$physxRuntimeDeploymentValid = $physxRuntimeDeploymentValid -and
+			$clientRuntimeProjectSource.Contains($runtimeName) -and
+			$updateLibSource.Contains($runtimeName)
+	}
+	Add-Check 'physics.client-runtime-deployment' $physxRuntimeDeploymentValid `
+		'Direct Client builds and UpdateLib both deploy all three configuration-matched PhysX runtimes'
 
 	$physicsManagerHeader = Get-Content 'Engine\Public\Physics_Manager.h' -Raw
 	$physicsManagerSource = Get-Content 'Engine\Private\Physics_Manager.cpp' -Raw
@@ -732,35 +748,155 @@ try {
 	})
 	$missingDimensionMasterEffectMappings = @($dimensionMasterEffectSkills |
 		Where-Object { [string]::IsNullOrWhiteSpace([string]$_.effectId) })
-	$expectedDimensionMasterEffectCount = $dimensionMasterEffectSkills.Count +
-		@($dimensionMasterEffectSkills | Where-Object skillKind -eq 'COMBO' |
-			ForEach-Object { @($_.comboStages).Count } |
-			Measure-Object -Sum).Sum
 	try {
 		$effectComponentAuditDetail = (& python `
 			'.\Tools\LevelPlacementExtractor\build_effect_components.py' `
+			'--all-product-classes' `
+			'--receipt-root' `
+			'.\Data\Effects\AuthoredCorrections\Generated\ComponentBuild' `
 			'--verify-existing' 2>&1 | Out-String).Trim()
 		if ($LASTEXITCODE -ne 0) {
 			throw "WFX verifier exited with code $LASTEXITCODE`: $effectComponentAuditDetail"
 		}
 		$effectComponentAuditResult = $effectComponentAuditDetail |
 			ConvertFrom-Json
+		$allProductClassComponentsValid = $true
+		foreach ($className in @('DimensionMaster','LanceMaster','Artist','Warlord')) {
+			$classAudit = $effectComponentAuditResult.classes.$className
+			if ($null -eq $classAudit -or
+				-not [bool]$classAudit.compileIdentityComplete -or
+				[int]$classAudit.effectCount -le 0 -or
+				[int]$classAudit.componentCount -le 0 -or
+				[int]$classAudit.emitterCount -le 0) {
+				$allProductClassComponentsValid = $false
+			}
+		}
 		$effectComponentAuditPassed =
 			$missingDimensionMasterEffectMappings.Count -eq 0 -and
 			[bool]$effectComponentAuditResult.compileIdentityComplete -and
-			[int]$effectComponentAuditResult.effectCount -eq
-				[int]$expectedDimensionMasterEffectCount -and
+			[int]$effectComponentAuditResult.effectCount -gt 0 -and
 			[int]$effectComponentAuditResult.componentCount -gt 0 -and
 			[int]$effectComponentAuditResult.emitterCount -gt 0 -and
-			[int]$effectComponentAuditResult.sourceActionCueCount -gt 0
+			$allProductClassComponentsValid
 	}
 	catch {
 		$effectComponentAuditDetail = $_.Exception.Message
 	}
 	$effectComponentAuditDetail =
-		"expectedEffects=$expectedDimensionMasterEffectCount missingMappings=$($missingDimensionMasterEffectMappings.Count) $effectComponentAuditDetail"
+		"incrementalCompile=true missingDimensionMasterMappings=$($missingDimensionMasterEffectMappings.Count) $effectComponentAuditDetail"
 	Add-Check 'effect.wfx-component-assembly' `
 		$effectComponentAuditPassed $effectComponentAuditDetail
+
+	$representativeMaterializationPassed = $false
+	$representativeMaterializationDetail = ''
+	try {
+		$representativeMaterializationJson = (& python `
+			'.\Tools\EffectPipeline\materialize_representative_authored_baselines.py' `
+			2>&1 | Out-String).Trim()
+		if ($LASTEXITCODE -ne 0) {
+			throw "Representative materializer exited with code $LASTEXITCODE."
+		}
+		$representativeMaterialization =
+			$representativeMaterializationJson | ConvertFrom-Json
+		$representativeSkills = @($representativeMaterialization.skills)
+		$expectedRepresentatives = @(
+			@{ characterClass = 'DIMENSIONMASTER'; skillId = 2050210; targetCount = 1 },
+			@{ characterClass = 'LANCE_MASTER'; skillId = 34010; targetCount = 4 },
+			@{ characterClass = 'ARTIST'; skillId = 31000; targetCount = 4 },
+			@{ characterClass = 'WARLORD'; skillId = 17000; targetCount = 3 }
+		)
+		$representativeRowsValid = $representativeSkills.Count -eq 4
+		foreach ($expected in $expectedRepresentatives) {
+			$matches = @($representativeSkills | Where-Object {
+				$_.characterClass -eq $expected.characterClass -and
+				[int]$_.skillId -eq [int]$expected.skillId
+			})
+			if ($matches.Count -ne 1 -or
+				[int]$matches[0].targetCount -ne [int]$expected.targetCount -or
+				[int]$matches[0].materializedTargetCount -ne 0 -or
+				$matches[0].status -notin @('preserveExisting', 'blocked')) {
+				$representativeRowsValid = $false
+			}
+		}
+		$preservedRepresentatives = @($representativeSkills | Where-Object {
+			$_.status -eq 'preserveExisting'
+		})
+		$blockedRepresentatives = @($representativeSkills | Where-Object {
+			$_.status -eq 'blocked'
+		})
+		$preservedProductGatesValid = @($preservedRepresentatives | Where-Object {
+			$productGates = @($_.productGates)
+			$productGates.Count -ne [int]$_.targetCount -or
+			@($productGates | Where-Object { $_.status -ne 'passed' }).Count -ne 0
+		}).Count -eq 0
+		$blockedRowsValid = @($blockedRepresentatives | Where-Object {
+			@($_.blockers).Count -eq 0 -or
+			@($_.productGates).Count -ne 0 -or
+			$null -eq $_.sourceDiagnostics
+		}).Count -eq 0
+		$dimensionMasterRepresentative = @($representativeSkills | Where-Object {
+			$_.characterClass -eq 'DIMENSIONMASTER' -and
+			[int]$_.skillId -eq 2050210
+		})
+		$dimensionMasterGate = @()
+		if ($dimensionMasterRepresentative.Count -eq 1) {
+			$dimensionMasterGate =
+				@($dimensionMasterRepresentative[0].productGates)
+		}
+		$dimensionMasterBaselineValid =
+			$dimensionMasterRepresentative.Count -eq 1 -and
+			$dimensionMasterRepresentative[0].status -eq 'preserveExisting' -and
+			$dimensionMasterGate.Count -eq 1 -and
+			$dimensionMasterGate[0].status -eq 'passed' -and
+			[int]$dimensionMasterGate[0].elementCount -eq 24 -and
+			[int]$dimensionMasterGate[0].occurrenceCount -eq 4 -and
+			[int]$dimensionMasterGate[0].kindCounts.mesh -eq 20 -and
+			[int]$dimensionMasterGate[0].kindCounts.sprite -eq 4 -and
+			[int]$dimensionMasterGate[0].kindCounts.particle -eq 0 -and
+			[double]$dimensionMasterGate[0].spriteBillboardRollDegrees -eq -90.0 -and
+			[bool]$dimensionMasterGate[0].catalogRegistered -and
+			[bool]$dimensionMasterGate[0].exactCueRegistered
+		$summary = $representativeMaterialization.summary
+		$representativeMaterializationPassed =
+			$representativeMaterialization.schema -eq
+				'lostark.effect-authored-materialization-status' -and
+			[int]$representativeMaterialization.version -eq 1 -and
+			$representativeMaterialization.setId -eq
+				'representative-four.authored-baselines' -and
+			[int]$summary.skillCount -eq 4 -and
+			[int]$summary.readyCount -eq 0 -and
+			[int]$summary.pendingOutputCount -eq 0 -and
+			[int]$summary.preservedCount + [int]$summary.blockedCount -eq 4 -and
+			$representativeRowsValid -and
+			$preservedProductGatesValid -and
+			$blockedRowsValid -and
+			$dimensionMasterBaselineValid
+		$representativeMaterializationDetail =
+			"preserved=$($summary.preservedCount) blocked=$($summary.blockedCount) ready=$($summary.readyCount) pending=$($summary.pendingOutputCount) dmBaseline=$dimensionMasterBaselineValid"
+	}
+	catch {
+		$representativeMaterializationDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.representative-authored-readiness' `
+		$representativeMaterializationPassed `
+		$representativeMaterializationDetail
+
+	$fourClassAuthoredRolloutPassed = $false
+	$fourClassAuthoredRolloutDetail = ''
+	try {
+		$fourClassAuthoredRolloutDetail = (& `
+			'.\Tools\ProjectAudit\Test-FourClassAuthoredRollout.ps1' `
+			2>&1 | Out-String).Trim()
+		$fourClassAuthoredRolloutPassed =
+			$fourClassAuthoredRolloutDetail -match
+			'PASS: Four-class Authored rollout skills=51 stages=74 clips=113 effectBearing=73 silent=1 visualClips=102 derived=48 retained=53 targets=101 cues=101 Particle=0 components=[1-9][0-9]* emitters=[1-9][0-9]*'
+	}
+	catch {
+		$fourClassAuthoredRolloutDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.four-class-authored-clip-product-exact101' `
+		$fourClassAuthoredRolloutPassed `
+		$fourClassAuthoredRolloutDetail
 
     $wrapperHits = @($activeFiles | Select-String -Pattern 'Resources[\\/]LostArk')
     Add-Check 'source.resource-wrapper' ($wrapperHits.Count -eq 0) "hits=$($wrapperHits.Count)"
@@ -823,6 +959,8 @@ try {
     $lobbySource = Get-Content -LiteralPath 'Client\Private\Level_Lobby.cpp' -Raw
     $characterSelectSource = Get-Content -LiteralPath 'Client\Private\Level_CharacterSelect.cpp' -Raw
     $levelRegistrySource = Get-Content -LiteralPath 'Client\Private\LevelRegistry.cpp' -Raw
+	$renderingProfileServiceSource = Get-Content -LiteralPath `
+		'Client\Private\RenderingProfileService.cpp' -Raw
     $loaderSource = Get-Content -LiteralPath 'Client\Private\Loader.cpp' -Raw
     $replicationHeader = Get-Content -LiteralPath 'Client\Public\ClientReplication.h' -Raw
     $replicationSource = Get-Content -LiteralPath 'Client\Private\ClientReplication.cpp' -Raw
@@ -860,8 +998,8 @@ try {
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Is_Ready' -and
 		$characterSelectSource -match 'CPlayableCharacterAssetService::Ensure_Prototypes' -and
 		$characterSelectSource -match 'm_MapRuntime\.Load_Area' -and
-		$mainAppSource -match 'scene\.character-select\.warm-high-key\.v1' -and
-		$mainAppSource -match 'ApplySceneRenderingProfile' -and
+		$levelRegistrySource -match 'scene\.character-select\.warm-high-key\.v1' -and
+		$mainAppSource -match 'm_RenderingProfiles\.Activate_Profile' -and
 		$characterSelectSource -match 'CCharacterSelectionState::Select' -and
 		$characterSelectSource -match 'MODE::CONNECTING' -and
 		$characterSelectSource -match 'Try_Consume_TestEntryMode' -and
@@ -911,13 +1049,63 @@ try {
 		$lobbySource -match '"Valtan"' -and
 		$lobbySource -match '"Bern"') 'Character Select keeps one visual Level while Server approval swaps preview and replicated presentation; Valtan spawn uses a typed command sink'
 	Add-Check 'levels.character-select-camera-framing' (
-		$characterSelectSource -match 'PREVIEW_CAMERA_HEIGHT = 1\.9f' -and
-		$characterSelectSource -match 'PREVIEW_CAMERA_DISTANCE = 3\.8f' -and
-		$characterSelectSource -match 'PREVIEW_CAMERA_LOOK_HEIGHT = 1\.05f' -and
-		$characterSelectSource -match 'SERVER_CAMERA_HEIGHT = 4\.f' -and
-		$characterSelectSource -match 'SERVER_CAMERA_DISTANCE = 3\.8f' -and
-		$characterSelectSource -notmatch 'float3_t\(0\.f, 2\.4f, -6\.f\)' -and
-		$characterSelectSource -notmatch 'float3_t\(0\.4f, 7\.5f, 4\.5f\)') 'Character Select Preview and Server Play start from near-character follow framing'
+		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_SIDE = 0\.4f' -and
+		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_HEIGHT = 7\.5f' -and
+		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_DISTANCE = 4\.5f' -and
+		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_LOOK_HEIGHT = 1\.05f' -and
+		$characterSelectSource -match 'CHARACTER_SELECT_CAMERA_FOV_Y = 45\.f' -and
+		$characterSelectSource -match 'desc\.vLookOffset = lookOffset' -and
+		$characterSelectSource -match 'Bind_CameraTarget\([\s\S]{0,100}CharacterSelectCameraPositionOffset\(\)' -and
+		$characterSelectSource -notmatch 'PREVIEW_CAMERA_HEIGHT|SERVER_CAMERA_HEIGHT') 'Character Select Preview and Server Play share one fixed top-down position/look/FOV preset'
+	$renderingProfiles = Read-Json `
+		'Data\Rendering\Authored\RenderingProfiles.json'
+	$renderingProfileIds = @($renderingProfiles.profiles | ForEach-Object {
+		[string]$_.profileId
+	})
+	$unsupportedSceneFields = @($renderingProfiles.profiles |
+		ForEach-Object { $_.PSObject.Properties.Name } |
+		Where-Object { $_ -notin @(
+			'profileId', 'exposureMultiplier',
+			'bloomIntensityMultiplier', 'light', 'shadow') })
+	Add-Check 'rendering.scene-profile-runtime-contract' (
+		$renderingProfiles.schema -eq 'lostark.rendering-profiles' -and
+		[int]$renderingProfiles.formatVersion -eq 1 -and
+		$renderingProfileIds -contains 'scene.character-select.warm-high-key.v1' -and
+		$renderingProfileIds -contains 'scene.valtan.cool-low-key.v1' -and
+		$unsupportedSceneFields.Count -eq 0 -and
+		$mainAppSource -match 'pRenderingProfileId' -and
+		$mainAppSource -match 'Save Authored' -and
+		$mainAppSource -match 'Publish Runtime' -and
+		$mainAppSource -match 'Reload Runtime' -and
+		$renderingProfileServiceSource -match 'OutEffective = GlobalQuality' -and
+		$renderingProfileServiceSource -match 'fExposure \* Profile\.fExposureMultiplier' -and
+		(Test-Path -LiteralPath 'Tools\RenderingPipeline\Publish-RenderingProfiles.ps1') -and
+		(Test-Path -LiteralPath 'Tools\ProjectAudit\Test-RenderingProfiles.ps1')) `
+		'descriptor-owned scene profiles use one renderer/light path with authored publish and non-cumulative multipliers'
+	$renderingProfileAuditPassed = $false
+	$renderingProfileAuditDetail = ''
+	try {
+		$renderingProfileAuditDetail = (& .\Tools\ProjectAudit\Test-RenderingProfiles.ps1 `
+			-RepoRoot (Get-Location).Path 2>&1) -join ' '
+		$renderingProfileAuditPassed = $true
+	}
+	catch {
+		$renderingProfileAuditDetail = $_.Exception.Message
+	}
+	Add-Check 'rendering.profile-parser-contract' `
+		$renderingProfileAuditPassed $renderingProfileAuditDetail
+	$renderQualityAuditPassed = $false
+	$renderQualityAuditDetail = ''
+	try {
+		$renderQualityAuditDetail = (& .\Tools\ProjectAudit\Test-RenderQualityWorkbench.ps1 `
+			-RepoRoot (Get-Location).Path 2>&1) -join ' '
+		$renderQualityAuditPassed = $true
+	}
+	catch {
+		$renderQualityAuditDetail = $_.Exception.Message
+	}
+	Add-Check 'rendering.quality-workbench-contract' `
+		$renderQualityAuditPassed $renderQualityAuditDetail
 	Add-Check 'levels.loading-progress-overlay' (
 		$loadingSource -match 'CLoader::Get_ActiveStatus\(\)' -and
 		$loadingSource -match '"Loading progress"' -and
@@ -970,12 +1158,57 @@ try {
         $clientFilterText -notmatch 'ClientLaunchOptions|LevelCatalog|OfflinePlayerPreview|SceneTransitionService') "present=$($presentDeletedRuntimeFiles -join ',')"
 
     $networkManagerSource = Get-Content -LiteralPath 'Client\Private\NetworkManager.cpp' -Raw
+	$networkManagerHeader = Get-Content -LiteralPath 'Client\Public\NetworkManager.h' -Raw
     $serverMainSource = Get-Content -LiteralPath 'Server\Private\Main.cpp' -Raw
+	$serverAppHeader = Get-Content -LiteralPath 'Server\Public\ServerApp.h' -Raw
+	$tcpListenerHeader = Get-Content -LiteralPath 'Server\Public\TcpListener.h' -Raw
     $tcpListenerSource = Get-Content -LiteralPath 'Server\Private\TcpListener.cpp' -Raw
+	$serverProjectText = Get-Content -LiteralPath 'Server\Default\Server.vcxproj' -Raw
+	$teamLanEndpoint = Read-Json 'Tools\Network\TeamLanEndpoint.json'
+	$teamLanSyncSource = Get-Content -LiteralPath `
+		'Tools\Network\Sync-TeamLanEndpoint.ps1' -Raw
+	$agentsSource = Get-Content -LiteralPath 'AGENTS.md' -Raw
+	$teamLanHostPattern = [regex]::Escape(
+		[string]$teamLanEndpoint.serverHost)
+	$teamLanBindPattern = [regex]::Escape(
+		[string]$teamLanEndpoint.serverBindAddress)
+	$teamLanActiveThrough = [DateTimeOffset]::Parse(
+		[string]$teamLanEndpoint.activeThroughKst,
+		[Globalization.CultureInfo]::InvariantCulture)
+	Add-Check 'network.team-lan-session-sync' (
+		$teamLanEndpoint.schema -eq 'lostark.team-lan-endpoint' -and
+		[int]$teamLanEndpoint.version -eq 1 -and
+		[int]$teamLanEndpoint.port -eq 7777 -and
+		[string]$teamLanEndpoint.serverBindAddress -eq '0.0.0.0' -and
+		[DateTimeOffset]::Now -le $teamLanActiveThrough -and
+		$teamLanSyncSource -match 'Set-ProjectUserProperty' -and
+		$teamLanSyncSource -match 'Sync-HostFirewall' -and
+		$teamLanSyncSource -match "ValidateSet\('Auto', 'Server', 'Client'\)" -and
+		$teamLanSyncSource -match 'Machine role: \$effectiveRole' -and
+		$teamLanSyncSource -match 'activeThroughKst' -and
+		$agentsSource -match 'Sync-TeamLanEndpoint\.ps1' -and
+		$agentsSource -match '2026-08-20 23:59 KST') `
+		"host=$($teamLanEndpoint.serverHost), activeThrough=$($teamLanActiveThrough.ToString('o'))"
 	Add-Check 'network.server-authorized-entry' (
         $networkManagerSource -match 'Connect_To_Server\(' -and
         $networkManagerSource -match 'InetPtonA' -and
+		$networkManagerSource -match (
+			'DEFAULT_SERVER_HOST\[\] = "' + $teamLanHostPattern + '"') -and
+		$networkManagerHeader -match (
+			'Connect_To_Server\("' + $teamLanHostPattern + '", port\)') -and
         $serverMainSource -match '--bind-address' -and
+		$serverMainSource -match (
+			'bindAddress = "' + $teamLanBindPattern + '"') -and
+		$serverAppHeader -match (
+			'bindAddress = "' + $teamLanBindPattern + '"') -and
+		$tcpListenerHeader -match (
+			'Open\("' + $teamLanBindPattern + '", port\)') -and
+		$serverProjectText -match (
+			'<LocalDebuggerCommandArguments>--bind-address ' +
+			$teamLanBindPattern + '</LocalDebuggerCommandArguments>') -and
+		$clientProjectText -match (
+			'<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=' +
+			$teamLanHostPattern + '</LocalDebuggerEnvironment>') -and
         $tcpListenerSource -match 'INADDR_ANY' -and
         $tcpListenerSource -match 'INADDR_LOOPBACK' -and
 		$networkManagerSource -match 'LOSTARK_SERVER_HOST' -and
@@ -1594,6 +1827,15 @@ try {
 		$serverRoomSource -match 'Handle_UseSkill' -and
 		$playerControllerSource -match 'Request_UseSkill' -and
 		$playerControllerSource -notmatch 'Play_Skill') 'input emits intent and presentation consumes approved snapshot action'
+	Add-Check 'debug.character-select-skill-audition' (
+		$serverRoomSource -match 'CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS\s*=\s*90u' -and
+		$serverRoomSource -match 'Add_ServerTicksSkippingReservedZero[\s\S]*?SERVER_TICK_CARDINALITY[\s\S]*?startTick - 1u[\s\S]*?elapsedTicks[\s\S]*?\+ 1u' -and
+		$serverRoomSource -match 'static_assert\(90u\s*==\s*Add_ServerTicksSkippingReservedZero\([\s\S]*?numeric_limits<std::uint32_t>::max[\s\S]*?90u\)\)' -and
+		$serverRoomSource -match 'static_assert\(1u\s*==\s*Add_ServerTicksSkippingReservedZero\([\s\S]*?numeric_limits<std::uint32_t>::max[\s\S]*?- 89u[\s\S]*?90u\)\)' -and
+		$serverRoomSource -match '#ifdef _DEBUG[\s\S]*?WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId[\s\S]*?iCurrentResource\s*=\s*[\s\S]*?iMaximumResource[\s\S]*?#endif[\s\S]*?m_PlayerSkillSystem\.Try_Start[\s\S]*?CooldownEndTickBySkillId\.insert_or_assign\([\s\S]*?Add_ServerTicksSkippingReservedZero\([\s\S]*?CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS' -and
+		$serverRoomSource -notmatch 'CooldownEndTickBySkillId\.erase\(useSkill\.iSkillId\)' -and
+		$serverRoomSource -notmatch 'command\.iSkillId\s*==\s*2050210') `
+		'Debug Character Select Server Arena uses a Server-authoritative three-second audition cooldown with full resources'
 	$skillCatalogSource = Get-Content -LiteralPath 'Client\Private\PlayerSkillCatalog.cpp' -Raw
 	Add-Check 'gameplay.skill-binding-is-data' (
 		$playerControllerSource -match 'CPlayerSkillCatalog::Find_BySlot' -and

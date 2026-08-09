@@ -1,0 +1,2380 @@
+{
+  "schema": "lostark.effect-authored-approximation-receipt",
+  "version": 1,
+  "targetEffectAssetId": "effect.artist.skill.31000.ba1",
+  "targetAuthoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.effect.json",
+  "characterClass": "ARTIST",
+  "productSkillId": 31000,
+  "stageIndex": 0,
+  "stageId": "skill.31000.stage.0",
+  "sourceArtifact": {
+    "sourceSkillId": 31000,
+    "artifactOrigin": "EXISTING_GENERATED_SOURCE_TRUTH",
+    "sourceReceipt": {
+      "path": "Data/Effects/Imported/Artist/CurrentCombat/ProductReceipts/skill.31000.product-source-receipt.json",
+      "sha256": "210874aa7573eb102687cebd470f3c6179afa2e0afe414162287ef08679eda05"
+    },
+    "normalizedGraph": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/ARTIST/all_bound_skills/skills/skill_31000/skill.31000.normalized-effect-graph.json",
+      "sha256": "6c3e5d1766a78e5af88f04d734472ce5bf9044490cc0c3ca3483d88ca1899e3a"
+    },
+    "externalModuleClosure": {
+      "path": "Data/Effects/Imported/Artist/Modules/skill.31000.external-module-closure.json",
+      "sha256": "be16e1e9df4b68dd3a7c38b557d7487192cfb1899139f0a2d53c9f1eab386a38"
+    },
+    "importedDocument": {
+      "path": "Data/Effects/Imported/Artist/Converted/effect.artist.skill.31000.imported.effect.json",
+      "sha256": "85c511f7b793120ce324f8650aca22eee6a9eafda443d5a364ac1f22d8c44e6d",
+      "effectAssetId": "effect.artist.skill.31000.imported"
+    },
+    "conversionReceipt": {
+      "path": "Data/Effects/Imported/Artist/Converted/skill.31000.element-conversion-receipt.json",
+      "sha256": "5bd79239c462113a35dd9b5d44903aa441aa1d9c38b593b4905194df194f1c20"
+    },
+    "generatedSourceReceipt": {
+      "path": "Data/Effects/Imported/Artist/skill.31000.source-receipt.json",
+      "sha256": "1d2a399b855b6e8849c7553893fcc3f49a78397364398e787140da68b4d13247"
+    }
+  },
+  "sourceEventIds": [
+    "source-event-001",
+    "source-event-002",
+    "source-event-003",
+    "source-event-004",
+    "source-event-005",
+    "source-event-006",
+    "source-event-007"
+  ],
+  "sourceIntake": {
+    "status": "AVAILABLE_WITH_BLOCKERS",
+    "blockerDispositions": [
+      {
+        "sourceBlocker": {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        "sourceBlockerCode": "UNRESOLVED_SOURCE_MATERIAL",
+        "sourceBlockerCount": 1,
+        "disposition": "acceptedApproximation",
+        "rationale": "The pragmatic standalone lane preserves this intake fidelity blocker as evidence. Each selected carrier still requires resolved executable resources and an explicit per-element material/module decision; unresolved candidates remain rejected."
+      },
+      {
+        "sourceBlocker": {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 11,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 11
+          }
+        },
+        "sourceBlockerCode": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+        "sourceBlockerCount": 11,
+        "disposition": "acceptedApproximation",
+        "rationale": "The pragmatic standalone lane preserves this intake fidelity blocker as evidence. Each selected carrier still requires resolved executable resources and an explicit per-element material/module decision; unresolved candidates remain rejected."
+      },
+      {
+        "sourceBlocker": {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 4
+        },
+        "sourceBlockerCode": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+        "sourceBlockerCount": 4,
+        "disposition": "acceptedApproximation",
+        "rationale": "The pragmatic standalone lane preserves this intake fidelity blocker as evidence. Each selected carrier still requires resolved executable resources and an explicit per-element material/module decision; unresolved candidates remain rejected."
+      },
+      {
+        "sourceBlocker": {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 20
+        },
+        "sourceBlockerCode": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+        "sourceBlockerCount": 20,
+        "disposition": "acceptedApproximation",
+        "rationale": "The pragmatic standalone lane preserves this intake fidelity blocker as evidence. Each selected carrier still requires resolved executable resources and an explicit per-element material/module decision; unresolved candidates remain rejected."
+      }
+    ]
+  },
+  "sourceTimeline": {
+    "startSeconds": 0.0,
+    "endSeconds": 1.2333,
+    "clips": [
+      {
+        "clip": "sdm_att_battle_1_03",
+        "stageClipIndex": 0,
+        "sourceSkillId": 31000,
+        "sourceLine": 33,
+        "lengthSeconds": 1.2333,
+        "timelineOffsetSeconds": 0.0
+      }
+    ]
+  },
+  "sourceCarrierEquivalence": {
+    "normalizationRule": "drop-id-displayName-groupId-sourceNode-sourcePresentation;stage-local-startDelay.v1",
+    "elementCount": 3,
+    "normalizedContentSha256": "cb7ff9bf796466b2add4a79c327d868915044e33b5d1f3ff821f53d1f39a902c"
+  },
+  "consumerContract": {
+    "outerCueRoot": "Player",
+    "outerCueFollow": true,
+    "innerSnapshotRoot": "root",
+    "innerSnapshotFollow": false
+  },
+  "selectionPolicy": {
+    "rule": "mesh-first.resource-backed.prominence-source-order.v1",
+    "meshFirst": true,
+    "maxMeshPerOccurrence": 5,
+    "maxSpritePerOccurrence": 3,
+    "spriteBillboardRollDegrees": -90.0,
+    "particleOutputAllowed": false,
+    "genericPlaceholderAllowed": false,
+    "crossSkillBorrowingAllowed": false
+  },
+  "occurrences": [
+    {
+      "occurrenceIndex": 0,
+      "occurrenceKey": "event:source-event-001",
+      "sourceEventId": "source-event-001",
+      "sourceEventIds": [
+        "source-event-001"
+      ],
+      "sourceTimelineSeconds": 0.1976,
+      "stageLocalTimeSeconds": 0.1976,
+      "selectionRule": "mesh-first.resource-backed.prominence-source-order.v1",
+      "meshBudget": 5,
+      "spriteBudget": 3,
+      "candidates": [
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8",
+          "sourceOrder": 10,
+          "sourceEventId": "",
+          "occurrenceEventId": "source-event-001",
+          "sourceTimeSeconds": 0.1976,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "PARTICLE_REQUIRED",
+          "reasonCodes": [
+            "burst-cardinality-particle-dependent",
+            "rate-property-particle-dependent",
+            "source-distribution-particle-dependent",
+            "source-module-locationonground-particle-dependent",
+            "source-module-locationprimitive-particle-dependent"
+          ],
+          "fidelityWarningCodes": [
+            "deterministic-distribution-curve-review-required",
+            "deterministic-module-fidelity-review-required",
+            "source-module-literals-review-required"
+          ],
+          "fidelityWarnings": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2766@ref:0",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:17408@ref:1",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1573@ref:3",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2155@ref:4",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1838@ref:5",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:34275@ref:6",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:26937@ref:7",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2035@ref:8",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:1730@ref:9",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:16994@ref:10",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            }
+          ],
+          "sourceElementSha256": "53124574dca32e4d3aa5d4127f445085bf4baf5cbb7480c986adee144d1f9bb3",
+          "resources": [
+            {
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_a_line_005.dds"
+            },
+            {
+              "slotId": "dissolve",
+              "assetId": "Effect/Artist/Textures/fx_m_noise_001.dds"
+            },
+            {
+              "slotId": "emissive",
+              "assetId": "Effect/Artist/Textures/fx_j_mirnoise_01.dds"
+            },
+            {
+              "slotId": "noise",
+              "assetId": "Effect/Artist/Textures/fx_m_noise_008.dds"
+            }
+          ],
+          "materialDecision": "sourceMaterialPreserved",
+          "materialProvenance": {
+            "templateId": "effect.standard",
+            "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_75_tr",
+            "renderProfile": "alpha_two_sided_depth_read",
+            "sourceProfile": {
+              "enabled": true,
+              "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
+              "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+              "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr",
+              "semanticStatus": "reconstructed_profile",
+              "materialEvidenceSource": "NORMALIZED_GRAPH_EXACT",
+              "productAdmissionStatus": "ADMITTED_RECONSTRUCTED_PROFILE",
+              "sourceResourceBindings": [
+                {
+                  "slotId": "base",
+                  "assetId": "Effect/Artist/Textures/fx_a_line_005.dds"
+                },
+                {
+                  "slotId": "dissolve",
+                  "assetId": "Effect/Artist/Textures/fx_m_noise_001.dds"
+                },
+                {
+                  "slotId": "emissive",
+                  "assetId": "Effect/Artist/Textures/fx_j_mirnoise_01.dds"
+                },
+                {
+                  "slotId": "noise",
+                  "assetId": "Effect/Artist/Textures/fx_m_noise_008.dds"
+                }
+              ],
+              "textures": [
+                {
+                  "name": "dissolve_tex_01",
+                  "sourceObjectPath": "fx_tex_05.fx_m_noise_001",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                },
+                {
+                  "name": "emissivetex02",
+                  "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_01",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_mirnoise_01.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                },
+                {
+                  "name": "maintex",
+                  "sourceObjectPath": "fx_tex_00.fx_a_line_005",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_line_005.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                },
+                {
+                  "name": "uv_noise_tex",
+                  "sourceObjectPath": "fx_tex_05.fx_m_noise_008",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_008.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                },
+                {
+                  "name": "uv_noise_tex_02",
+                  "sourceObjectPath": "fx_tex_05.fx_m_noise_008",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_008.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                }
+              ],
+              "scalars": [
+                {
+                  "name": "disslovetex_01_panspeed_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "disslovetex_01_panspeed_y",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "disslovetex_01_tile_x",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "disslovetex_01_tile_y",
+                  "value": 1.5,
+                  "group": ""
+                },
+                {
+                  "name": "dissolve_hardness",
+                  "value": 8.0,
+                  "group": ""
+                },
+                {
+                  "name": "dissolvetex_move_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "dissolvetex_move_y",
+                  "value": 0.10000000149011612,
+                  "group": ""
+                },
+                {
+                  "name": "edge_thin",
+                  "value": 1.100000023841858,
+                  "group": ""
+                },
+                {
+                  "name": "emissive_base",
+                  "value": 0.20000000298023224,
+                  "group": ""
+                },
+                {
+                  "name": "emissive_core_power",
+                  "value": 0.699999988079071,
+                  "group": ""
+                },
+                {
+                  "name": "emissive_core_strength",
+                  "value": 50.0,
+                  "group": ""
+                },
+                {
+                  "name": "emissivetex02_panspeed_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "emissivetex02_panspeed_y",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "emissivetex02_tile_x",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "emissivetex02_tile_y",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_alpha_strength",
+                  "value": 15.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_dynamicpan_x_velue",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_dynamicpan_y_velue",
+                  "value": 0.10000000149011612,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_move_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_move_y",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_rotator",
+                  "value": 2.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_texcoordpower",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_tile_x",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "maintex_tile_y",
+                  "value": 0.30000001192092896,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noise_02_strength",
+                  "value": 0.10000000149011612,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noise_velue",
+                  "value": -0.20000000298023224,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_pan_02_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_pan_02_y",
+                  "value": 0.20000000298023224,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_pan_x",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_pan_y",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_tile_02_x",
+                  "value": 4.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_tile_02_y",
+                  "value": 4.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_tile_x",
+                  "value": 2.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_noisetex_tile_y",
+                  "value": 2.0,
+                  "group": ""
+                },
+                {
+                  "name": "dynamic_uvnoise_x",
+                  "value": 0.10000000149011612,
+                  "group": ""
+                },
+                {
+                  "name": "dynamic_uvnoise_y",
+                  "value": 1.0,
+                  "group": ""
+                },
+                {
+                  "name": "spheremask_strength",
+                  "value": 15.0,
+                  "group": ""
+                },
+                {
+                  "name": "spheremask_strength_max",
+                  "value": 1.0,
+                  "group": ""
+                }
+              ],
+              "vectors": [
+                {
+                  "name": "edge_color",
+                  "value": [
+                    5.0,
+                    5.0,
+                    5.0,
+                    1.0
+                  ],
+                  "group": ""
+                }
+              ],
+              "staticSwitches": [],
+              "dynamicParameterSemantics": [
+                "uv_pan",
+                "dissolve",
+                "uv_pan",
+                "uv_pan"
+              ],
+              "subUVMode": "none"
+            }
+          },
+          "conversionDecision": "reviewedStandaloneApproximation",
+          "sourceModuleStableIds": [
+            "FX_PC_SDM_00:export:2766@ref:0",
+            "FX_BS_08:export:17408@ref:1",
+            "FX_PC_SDM_00:export:3126@ref:2",
+            "FX_PC_SDM_00:export:1573@ref:3",
+            "FX_PC_SDM_00:export:2155@ref:4",
+            "FX_PC_SDM_00:export:1838@ref:5",
+            "BFX_HIGH_00:export:34275@ref:6",
+            "BFX_HIGH_00:export:26937@ref:7",
+            "FX_PC_SDM_00:export:2035@ref:8",
+            "BFX_HIGH_00:export:1730@ref:9",
+            "FX_BS_05:export:16994@ref:10"
+          ],
+          "sourceModuleEvidence": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2766@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "sourceModuleSha256": "0218b5fe25b4598a14e3462b05ae5eba54c660c2d12edd1c2a663fb137c1abdc"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:17408@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "sourceModuleSha256": "745554256a89ac2482931d46bd84aadc68534736f5a20c845372520016dc36aa"
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "sourceModuleSha256": "a0745c874a806be69fea211160a54092c5d7ae681ebbcfd1448c1914e5f7e4fd"
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1573@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "sourceModuleSha256": "8c726e52f51a1dde3877eeb520ec4a42be8bd71a3a59812417ae7f926dae5fd5"
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2155@ref:4",
+              "sourceModuleClassName": "particlemoduleparameterdynamic",
+              "sourceModuleSha256": "bf4dfcc2c91675c72871c8ca3b86df9c54986b61508d282196f6e89301c44897"
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1838@ref:5",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "sourceModuleSha256": "243ff41797a7fb6b565d688357804bed9cf33ce77dd74b64652b60804818e3d8"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:34275@ref:6",
+              "sourceModuleClassName": "particlemodulerotation",
+              "sourceModuleSha256": "da828bf0785354857e693043b79167ee859040bac47c0e5ff30b1020da72ca5d"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:26937@ref:7",
+              "sourceModuleClassName": "particlemoduleorientationaxislock",
+              "sourceModuleSha256": "a269aed873714aee5f9f9e680ff237329830fb849b84d259051ad964bb4a183c"
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2035@ref:8",
+              "sourceModuleClassName": "particlemodulelocationprimitivesphere",
+              "sourceModuleSha256": "4bd84a60137ce31ce56053f0fe720b0644ddd402602033259978f5eacc02ecc3"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:1730@ref:9",
+              "sourceModuleClassName": "efparticlemodulelocationonground",
+              "sourceModuleSha256": "633077ba3661830dadd62258e8f0d13c22bfcfac80550d14facf4a0b485b35b6"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:16994@ref:10",
+              "sourceModuleClassName": "particlemodulespawn",
+              "sourceModuleSha256": "f37fa399ac27d6322bb0ccf0927f941a4e878f1a047b4a45bcb400bc274ef4fb"
+            }
+          ],
+          "removedModuleDispositions": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2766@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:17408@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1573@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2155@ref:4",
+              "sourceModuleClassName": "particlemoduleparameterdynamic",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:1838@ref:5",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:34275@ref:6",
+              "sourceModuleClassName": "particlemodulerotation",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:26937@ref:7",
+              "sourceModuleClassName": "particlemoduleorientationaxislock",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2035@ref:8",
+              "sourceModuleClassName": "particlemodulelocationprimitivesphere",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:1730@ref:9",
+              "sourceModuleClassName": "efparticlemodulelocationonground",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:16994@ref:10",
+              "sourceModuleClassName": "particlemodulespawn",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            }
+          ],
+          "standaloneLifetimeDecision": {
+            "sourceElementTimingSeconds": 0.2555,
+            "sourceEmitterDelaySeconds": 0.0,
+            "sourceEmitterDurationSeconds": 0.0,
+            "sourceEmitterLoopCount": 1,
+            "sourceBurstCount": 0,
+            "sourceBurstTimesSeconds": [],
+            "sourceEarliestBurstSeconds": 0.0,
+            "sourceLatestBurstSeconds": 0.0,
+            "sourceBurstEnvelopeSeconds": 0.0,
+            "targetStartDelayOffsetSeconds": 0.0,
+            "continuousRateEvidence": [
+              {
+                "sourceModuleStableId": "FX_PC_SDM_00:export:2766@ref:0",
+                "sourceModuleClassName": "particlemodulerequired",
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "fde905a4560571527c2b7a38ff72721f431781b90cbab54ae8364941ec38de4f",
+                "maximumAbsoluteValue": 0.0
+              },
+              {
+                "sourceModuleStableId": "FX_BS_05:export:16994@ref:10",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "fe60fde42fb222ddecff37d2af7a720c8b2b6bb18f43f295bf2beaeb1c432063",
+                "maximumAbsoluteValue": 50.0
+              },
+              {
+                "sourceModuleStableId": "FX_BS_05:export:16994@ref:10",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "8019437fcacbe35ea834150bf30fccc6db56aa8734080c7f4aa87e51f1236183",
+                "maximumAbsoluteValue": 0.0
+              }
+            ],
+            "continuousRateIsZero": true,
+            "sourceParticleLifetimeEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_08:export:17408@ref:1",
+                "sourceModuleClassName": "particlemodulelifetime",
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "operation": 2,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "bfbf49262c3efaaceb5e4b788eff0d4ece7fde2d9e90e902edcedfc0223e11e2",
+                "maximumPositiveSeconds": 3.5
+              }
+            ],
+            "decision": "finiteEmissionParticleLifetimeMaximum",
+            "sourceParticleLifetimeMaximumSeconds": 3.5,
+            "targetLifeTimeSeconds": 3.5,
+            "rationale": "Continuous spawn evaluates to zero under a finite emitter loop, so the standalone snapshot uses the maximum positive, hash-pinned ParticleModuleLifetime value plus the finite burst/loop envelope to preserve the complete visual tail. Emitter delay and the earliest burst are baked into standalone start delay."
+          },
+          "standaloneSizeDecision": {
+            "decision": "particleSizeEndpointBake",
+            "representativeDecision": "sourceLookupFirstSampleRepresentative",
+            "axisMapping": "sprite.raw-xy-centimeters.preserve-depth.v1",
+            "minimumPositiveFactor": 0.01,
+            "signedMirrorDisposition": {
+              "disposition": "acceptedApproximation",
+              "rationale": "Standalone Transform scale requires positive components. The selected raw sample remains signed evidence, while the baked factor uses abs and the importer-compatible 0.01 positive floor; source mirror sign is not claimed as source-exact."
+            },
+            "sourceParticleDetailSha256": "5fb419e5d74aaa35f1d96d13be053899b62f4afab342b22b64b10e3989f41274",
+            "sourceParticleStartSize": [
+              0.2,
+              0.2
+            ],
+            "sourceParticleEndSize": [
+              0.0,
+              0.0
+            ],
+            "sourceTransformStartScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceLinearLerpScaleEnabled": false,
+            "sourceTransformEndScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceInitialSizeSamples": [
+              {
+                "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "propertyPath": "startsize",
+                "sourceDistributionSha256": "99de5495203e9eecd85b255f68b8aa67ac8788c7a6acef157276c122e5f7aa85",
+                "operation": 2,
+                "chunkSize": 6,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 0,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  20.0,
+                  20.0,
+                  20.0
+                ]
+              }
+            ],
+            "sourceInitialSignedVector": [
+              20.0,
+              20.0,
+              20.0
+            ],
+            "sourceInitialMappedSignedVector": [
+              20.0,
+              20.0,
+              1.0
+            ],
+            "sourceEvolutionSizeSamples": [],
+            "sourceEvolutionSignedVector": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceEvolutionMappedSignedVector": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceSizeModuleEvidence": [
+              {
+                "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "sourceModuleSha256": "a0745c874a806be69fea211160a54092c5d7ae681ebbcfd1448c1914e5f7e4fd",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_PC_SDM_00:export:3126@ref:2",
+                    "sourceModuleClassName": "particlemodulesize",
+                    "propertyPath": "startsize",
+                    "sourceClass": "",
+                    "operation": 2,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "99de5495203e9eecd85b255f68b8aa67ac8788c7a6acef157276c122e5f7aa85"
+                  }
+                ]
+              }
+            ],
+            "sourceSizeEvolutionModuleEvidence": [],
+            "targetStartScale": [
+              0.2,
+              0.2,
+              1.0
+            ],
+            "targetLinearLerpScaleEnabled": false,
+            "targetEndScale": [
+              0.2,
+              0.2,
+              1.0
+            ],
+            "rationale": "The runtime sourceRecipe particle path uses raw Sprite X/Y or remapped Mesh X/Z/Y size after Element world evaluation; only its Imported-detail fallback synthesizes Mesh depth from the X/Y average. Standalone Mesh/Sprite ignores particle size, so the selected first complete source sample is baked into standalone scale. End scale is used only when a hash-pinned size-over-life module exists and is an explicit linear endpoint approximation."
+          },
+          "standaloneDrawableResourceDecision": {
+            "sourceResourceBindings": [
+              {
+                "sourceOrder": 0,
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_a_line_005.dds",
+                "resourceSha256": "a4b528be031a4df74e173731592a2996ba047d8f33c040e8b5affeecccbbcf35",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+              },
+              {
+                "sourceOrder": 1,
+                "slotId": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_m_noise_001.dds",
+                "resourceSha256": "19843f9ee15e94e629926f45e1887ad6ca9815bfd785527ed8b4ce63692918b8",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+              },
+              {
+                "sourceOrder": 2,
+                "slotId": "emissive",
+                "assetId": "Effect/Artist/Textures/fx_j_mirnoise_01.dds",
+                "resourceSha256": "261021eb4e7612a2b6609a50d5bcb3f9889683d5f097e616585c4fc9e460c069",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+              },
+              {
+                "sourceOrder": 3,
+                "slotId": "noise",
+                "assetId": "Effect/Artist/Textures/fx_m_noise_008.dds",
+                "resourceSha256": "d541f2c21e35300739cead1b32b06d495306154bb23932324eb01b847f8c263b",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+              }
+            ],
+            "sourceResourceBindingsSha256": "d496f4fd3058e5d68b564cdb004d6e775f0e2c8643a0dfb04e35295b51159232",
+            "sourceSlots": [
+              "base",
+              "dissolve",
+              "emissive",
+              "noise"
+            ],
+            "sourceUseModelMaterial": true,
+            "sourceMeshDetailSha256": "f7c3edb25ac758151bc76537e6744510b3863a9242a613485e6859090fdd553e",
+            "decision": "spriteBaseResourcePreserved",
+            "disposition": "sourceResourcePreserved",
+            "baseResource": {
+              "sourceOrder": 0,
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_a_line_005.dds",
+              "resourceSha256": "a4b528be031a4df74e173731592a2996ba047d8f33c040e8b5affeecccbbcf35",
+              "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+            },
+            "targetUseModelMaterial": false,
+            "targetResourceBindings": [
+              {
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_a_line_005.dds"
+              },
+              {
+                "slotId": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_m_noise_001.dds"
+              },
+              {
+                "slotId": "emissive",
+                "assetId": "Effect/Artist/Textures/fx_j_mirnoise_01.dds"
+              },
+              {
+                "slotId": "noise",
+                "assetId": "Effect/Artist/Textures/fx_m_noise_008.dds"
+              }
+            ],
+            "rationale": "The resolved source Base texture remains the executable standalone Sprite carrier.",
+            "targetResourceBindingsSha256": "d496f4fd3058e5d68b564cdb004d6e775f0e2c8643a0dfb04e35295b51159232"
+          },
+          "selectionScore": {
+            "sourceMaterialFidelity": 1,
+            "resourceCount": 4,
+            "emissiveMicrounits": 50000000,
+            "scaleMicrounits": 1000000,
+            "lifetimeMicrounits": 255500
+          },
+          "selectionDecision": "selected",
+          "targetElementId": "authored.approx.s001.sprite01"
+        }
+      ],
+      "selectedSourceElementIds": [
+        "fx_pc_sdm_00.par_o_sdm_att_05_01.particlespriteemitter_8"
+      ],
+      "status": "selected"
+    },
+    {
+      "occurrenceIndex": 1,
+      "candidates": [
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_07_01.particlespriteemitter_12",
+          "sourceOrder": 21,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "PARTICLE_REQUIRED",
+          "reasonCodes": [
+            "burst-cardinality-particle-dependent",
+            "rate-property-particle-dependent",
+            "source-distribution-particle-dependent",
+            "source-module-rotationrate-particle-dependent",
+            "source-module-spawnperunit-particle-dependent"
+          ],
+          "sourceElementSha256": "bba65d5ece02d7e1383fd2baa3755a832248dd283d0ebeae20c6249af27c2503",
+          "selectionDecision": "rejected",
+          "rejectionReason": "source material textures[0].assetId is unresolved: Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fluid_007.dds"
+        }
+      ],
+      "selectedSourceElementIds": [],
+      "status": "blocked",
+      "blocker": "No resolved Mesh or Sprite carrier survived fail-closed validation."
+    },
+    {
+      "occurrenceIndex": 2,
+      "candidates": [
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_01_01.particlespriteemitter_14",
+          "sourceOrder": 4,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "meshParticle",
+          "rendererShape": "mesh",
+          "conversionEligibility": "PARTICLE_REQUIRED",
+          "reasonCodes": [
+            "source-distribution-particle-dependent"
+          ],
+          "sourceElementSha256": "3dad076b72c569659de9caa7232f9d2f14b362498d0152b60de808a11b135e7c",
+          "selectionDecision": "rejected",
+          "rejectionReason": "source material textures[1].assetId is unresolved: Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_environ_067.dds"
+        }
+      ],
+      "selectedSourceElementIds": [],
+      "status": "blocked",
+      "blocker": "No resolved Mesh or Sprite carrier survived fail-closed validation."
+    },
+    {
+      "occurrenceIndex": 3,
+      "occurrenceKey": "event:source-event-007",
+      "sourceEventId": "source-event-007",
+      "sourceEventIds": [
+        "source-event-007",
+        "source-event-007",
+        "source-event-007",
+        "source-event-007"
+      ],
+      "sourceTimelineSeconds": 0.5261,
+      "stageLocalTimeSeconds": 0.5261,
+      "selectionRule": "mesh-first.resource-backed.prominence-source-order.v1",
+      "meshBudget": 5,
+      "spriteBudget": 3,
+      "candidates": [
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_5",
+          "sourceOrder": 25,
+          "sourceEventId": "",
+          "occurrenceEventId": "source-event-007",
+          "sourceTimeSeconds": 0.5261,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "CERTIFIED",
+          "reasonCodes": [
+            "fixed-singleton-cardinality-and-motion"
+          ],
+          "fidelityWarningCodes": [
+            "deterministic-distribution-curve-review-required",
+            "deterministic-module-fidelity-review-required",
+            "source-module-literals-review-required"
+          ],
+          "fidelityWarnings": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2778@ref:0",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:8821@ref:1",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_MN_CNBG_00_T:export:5107@ref:3",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:5092@ref:5",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_04:export:7323@ref:6",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_01:export:11842@ref:7",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:12582@ref:8",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:9",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            }
+          ],
+          "sourceElementSha256": "4f9abdd0d342b8885950a6e26da3292bc3c77a092162b5b3e597f44454510a3e",
+          "resources": [
+            {
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_i_rainbowring_01.dds"
+            }
+          ],
+          "materialDecision": "sourceMaterialPreserved",
+          "materialProvenance": {
+            "templateId": "effect.standard",
+            "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_i_flare_01_ad",
+            "renderProfile": "additive_two_sided_depth_read",
+            "sourceProfile": {
+              "enabled": true,
+              "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+              "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+              "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+              "semanticStatus": "reconstructed_profile",
+              "materialEvidenceSource": "NORMALIZED_GRAPH_EXACT",
+              "productAdmissionStatus": "ADMITTED_RECONSTRUCTED_PROFILE",
+              "sourceResourceBindings": [
+                {
+                  "slotId": "base",
+                  "assetId": "Effect/Artist/Textures/fx_i_rainbowring_01.dds"
+                }
+              ],
+              "textures": [
+                {
+                  "name": "emissive_tex",
+                  "sourceObjectPath": "fx_tex_04.fx_i_rainbowring_01",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_rainbowring_01.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                }
+              ],
+              "scalars": [
+                {
+                  "name": "emissive_desaturation",
+                  "value": 0.30000001192092896,
+                  "group": ""
+                },
+                {
+                  "name": "emissive_power",
+                  "value": 0.0,
+                  "group": ""
+                },
+                {
+                  "name": "uv_scale",
+                  "value": 1.0,
+                  "group": ""
+                }
+              ],
+              "vectors": [],
+              "staticSwitches": [],
+              "dynamicParameterSemantics": [
+                "uv_pan",
+                "dissolve",
+                "uv_pan",
+                "distortion"
+              ],
+              "subUVMode": "none"
+            }
+          },
+          "conversionDecision": "certifiedSingletonStandaloneConversion",
+          "sourceModuleStableIds": [
+            "FX_PC_SDM_00:export:2778@ref:0",
+            "FX_BS_00:export:8821@ref:1",
+            "FX_BS_00:export:15509@ref:2",
+            "FX_MN_CNBG_00_T:export:5107@ref:3",
+            "FX_BS_07:export:9163@ref:4",
+            "FX_BS_07:export:5092@ref:5",
+            "FX_BS_04:export:7323@ref:6",
+            "BFX_HIGH_01:export:11842@ref:7",
+            "BFX_HIGH_00:export:12582@ref:8",
+            "BFX_HIGH_00:export:45470@ref:9"
+          ],
+          "sourceModuleEvidence": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2778@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "sourceModuleSha256": "3a3ca4e4f88f67bdf4df966c2d585671cfd95782a24dbfae03c92bc3bad9beba"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:8821@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "sourceModuleSha256": "82e63eeb7254b8fe8099ed3ec5c494c87440c72832a668829b3410510c69af41"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "sourceModuleSha256": "55d244611559f77ada55c5e313862c6a18a290055b9b51c48f1c796357570e3b"
+            },
+            {
+              "sourceModuleStableId": "FX_MN_CNBG_00_T:export:5107@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "sourceModuleSha256": "4a3004e0a708d8cba2b2f0129412a4fbcf7943aa21681f9691d38e651e8ea888"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "sourceModuleSha256": "f00b915055aab1fa5474f9b9cbf8084995f0bdddc2d4206dc3555db8d25ce534"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:5092@ref:5",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "sourceModuleSha256": "8c9b3fac43daaf2133c8303d45df5b0be5a3ef3b2258013c39e40fbf2669f705"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_04:export:7323@ref:6",
+              "sourceModuleClassName": "particlemoduleparameterdynamic",
+              "sourceModuleSha256": "87bb017abd111d1170c0e91fa7e752380501f6f58f5f4597c4418a2fd1691e48"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_01:export:11842@ref:7",
+              "sourceModuleClassName": "particlemodulelocation",
+              "sourceModuleSha256": "42c69f708cd0b0494449e77f97d6d1c60791b7bba9594c8599d4ff9ee711cf7f"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:12582@ref:8",
+              "sourceModuleClassName": "particlemodulecameraoffset",
+              "sourceModuleSha256": "5ef0e0d49d376e6bd01ec92a33b2f809dbd87fb107e81945971a245ee25c9166"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:9",
+              "sourceModuleClassName": "particlemodulespawn",
+              "sourceModuleSha256": "d28efaa766171b93060af5420954f7a7aca245ac377289fdbbfc25c5d0fc9e22"
+            }
+          ],
+          "removedModuleDispositions": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2778@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:8821@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_MN_CNBG_00_T:export:5107@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_07:export:5092@ref:5",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_04:export:7323@ref:6",
+              "sourceModuleClassName": "particlemoduleparameterdynamic",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_01:export:11842@ref:7",
+              "sourceModuleClassName": "particlemodulelocation",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:12582@ref:8",
+              "sourceModuleClassName": "particlemodulecameraoffset",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:9",
+              "sourceModuleClassName": "particlemodulespawn",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            }
+          ],
+          "standaloneLifetimeDecision": {
+            "sourceElementTimingSeconds": 0.3373,
+            "sourceEmitterDelaySeconds": 0.0,
+            "sourceEmitterDurationSeconds": 0.0,
+            "sourceEmitterLoopCount": 1,
+            "sourceBurstCount": 1,
+            "sourceBurstTimesSeconds": [
+              0.0
+            ],
+            "sourceEarliestBurstSeconds": 0.0,
+            "sourceLatestBurstSeconds": 0.0,
+            "sourceBurstEnvelopeSeconds": 0.0,
+            "targetStartDelayOffsetSeconds": 0.0,
+            "continuousRateEvidence": [
+              {
+                "sourceModuleStableId": "FX_PC_SDM_00:export:2778@ref:0",
+                "sourceModuleClassName": "particlemodulerequired",
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "fde905a4560571527c2b7a38ff72721f431781b90cbab54ae8364941ec38de4f",
+                "maximumAbsoluteValue": 0.0
+              },
+              {
+                "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:9",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "3962af80db66b116d56736e1c481abdabae4257f150399f66fc567fb6e4a5ca9",
+                "maximumAbsoluteValue": 0.0
+              },
+              {
+                "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:9",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "8019437fcacbe35ea834150bf30fccc6db56aa8734080c7f4aa87e51f1236183",
+                "maximumAbsoluteValue": 0.0
+              }
+            ],
+            "continuousRateIsZero": true,
+            "sourceParticleLifetimeEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_00:export:8821@ref:1",
+                "sourceModuleClassName": "particlemodulelifetime",
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "cacfa88fcf4fa2ab122847e2d677fcb910445a8e9d207d3b5123846b29e2cce7",
+                "maximumPositiveSeconds": 0.4000000059604645
+              }
+            ],
+            "decision": "finiteEmissionParticleLifetimeMaximum",
+            "sourceParticleLifetimeMaximumSeconds": 0.4000000059604645,
+            "targetLifeTimeSeconds": 0.4000000059604645,
+            "rationale": "Continuous spawn evaluates to zero under a finite emitter loop, so the standalone snapshot uses the maximum positive, hash-pinned ParticleModuleLifetime value plus the finite burst/loop envelope to preserve the complete visual tail. Emitter delay and the earliest burst are baked into standalone start delay."
+          },
+          "standaloneSizeDecision": {
+            "decision": "particleSizeEndpointBake",
+            "representativeDecision": "sourceLookupFirstSampleRepresentative",
+            "axisMapping": "sprite.raw-xy-centimeters.preserve-depth.v1",
+            "minimumPositiveFactor": 0.01,
+            "signedMirrorDisposition": {
+              "disposition": "acceptedApproximation",
+              "rationale": "Standalone Transform scale requires positive components. The selected raw sample remains signed evidence, while the baked factor uses abs and the importer-compatible 0.01 positive floor; source mirror sign is not claimed as source-exact."
+            },
+            "sourceParticleDetailSha256": "63a50ec0cf2bc2116f315af4f09afbc45aee79d944f5c11a5e5bbb2d0d8066cf",
+            "sourceParticleStartSize": [
+              1.0,
+              0.01
+            ],
+            "sourceParticleEndSize": [
+              1.600000023841858,
+              0.01600000023841858
+            ],
+            "sourceTransformStartScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceLinearLerpScaleEnabled": false,
+            "sourceTransformEndScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceInitialSizeSamples": [
+              {
+                "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "propertyPath": "startsize",
+                "sourceDistributionSha256": "be51c0294e0f93b89ea2d9b0fff9e98ab88d3775e41c5f6b5caad0bb6b9bbbf6",
+                "operation": 1,
+                "chunkSize": 3,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 0,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  100.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            ],
+            "sourceInitialSignedVector": [
+              100.0,
+              0.0,
+              0.0
+            ],
+            "sourceInitialMappedSignedVector": [
+              100.0,
+              0.0,
+              1.0
+            ],
+            "sourceEvolutionSizeSamples": [
+              {
+                "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "propertyPath": "lifemultiplier",
+                "sourceDistributionSha256": "bd5528aa240a632a208e46a08421e8183289112571be904f1eff7be4b5d8e2d8",
+                "operation": 1,
+                "chunkSize": 3,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 20,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  1.600000023841858,
+                  1.600000023841858,
+                  1.600000023841858
+                ]
+              }
+            ],
+            "sourceEvolutionSignedVector": [
+              1.600000023841858,
+              1.600000023841858,
+              1.600000023841858
+            ],
+            "sourceEvolutionMappedSignedVector": [
+              1.600000023841858,
+              1.600000023841858,
+              1.0
+            ],
+            "sourceSizeModuleEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "sourceModuleSha256": "55d244611559f77ada55c5e313862c6a18a290055b9b51c48f1c796357570e3b",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_00:export:15509@ref:2",
+                    "sourceModuleClassName": "particlemodulesize",
+                    "propertyPath": "startsize",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "be51c0294e0f93b89ea2d9b0fff9e98ab88d3775e41c5f6b5caad0bb6b9bbbf6"
+                  }
+                ]
+              },
+              {
+                "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "f00b915055aab1fa5474f9b9cbf8084995f0bdddc2d4206dc3555db8d25ce534",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "bd5528aa240a632a208e46a08421e8183289112571be904f1eff7be4b5d8e2d8"
+                  }
+                ]
+              }
+            ],
+            "sourceSizeEvolutionModuleEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "f00b915055aab1fa5474f9b9cbf8084995f0bdddc2d4206dc3555db8d25ce534",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_07:export:9163@ref:4",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "bd5528aa240a632a208e46a08421e8183289112571be904f1eff7be4b5d8e2d8"
+                  }
+                ]
+              }
+            ],
+            "targetStartScale": [
+              1.0,
+              0.01,
+              1.0
+            ],
+            "targetLinearLerpScaleEnabled": true,
+            "targetEndScale": [
+              1.600000023841858,
+              0.01600000023841858,
+              1.0
+            ],
+            "rationale": "The runtime sourceRecipe particle path uses raw Sprite X/Y or remapped Mesh X/Z/Y size after Element world evaluation; only its Imported-detail fallback synthesizes Mesh depth from the X/Y average. Standalone Mesh/Sprite ignores particle size, so the selected first complete source sample is baked into standalone scale. End scale is used only when a hash-pinned size-over-life module exists and is an explicit linear endpoint approximation."
+          },
+          "standaloneDrawableResourceDecision": {
+            "sourceResourceBindings": [
+              {
+                "sourceOrder": 0,
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_i_rainbowring_01.dds",
+                "resourceSha256": "d53483047deef1d3370ff5370d4e0644c90ce9ab1e8b68d277ecc3c0cbe68b13",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_5"
+              }
+            ],
+            "sourceResourceBindingsSha256": "a7fc6045eee829b07e6b58d07672d67ba5242a764f94a9bafbf7b3544370bb23",
+            "sourceSlots": [
+              "base"
+            ],
+            "sourceUseModelMaterial": true,
+            "sourceMeshDetailSha256": "f7c3edb25ac758151bc76537e6744510b3863a9242a613485e6859090fdd553e",
+            "decision": "spriteBaseResourcePreserved",
+            "disposition": "sourceResourcePreserved",
+            "baseResource": {
+              "sourceOrder": 0,
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_i_rainbowring_01.dds",
+              "resourceSha256": "d53483047deef1d3370ff5370d4e0644c90ce9ab1e8b68d277ecc3c0cbe68b13",
+              "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_5"
+            },
+            "targetUseModelMaterial": false,
+            "targetResourceBindings": [
+              {
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_i_rainbowring_01.dds"
+              }
+            ],
+            "rationale": "The resolved source Base texture remains the executable standalone Sprite carrier.",
+            "targetResourceBindingsSha256": "a7fc6045eee829b07e6b58d07672d67ba5242a764f94a9bafbf7b3544370bb23"
+          },
+          "selectionScore": {
+            "sourceMaterialFidelity": 1,
+            "resourceCount": 1,
+            "emissiveMicrounits": 1000000,
+            "scaleMicrounits": 1000000,
+            "lifetimeMicrounits": 337300
+          },
+          "selectionDecision": "selected",
+          "targetElementId": "authored.approx.s004.sprite01"
+        },
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_10",
+          "sourceOrder": 26,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "CERTIFIED",
+          "reasonCodes": [
+            "fixed-singleton-cardinality-and-motion"
+          ],
+          "sourceElementSha256": "5ce3d5730d219a592791fb74ad26c6dd5de4cc0fc0ef634a03f9d4e29166cb26",
+          "selectionDecision": "rejected",
+          "rejectionReason": "Sprite source has no resolved texture carrier: fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_10"
+        },
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_12",
+          "sourceOrder": 27,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "PARTICLE_REQUIRED",
+          "reasonCodes": [
+            "emitter-loop-count-particle-dependent",
+            "source-distribution-particle-dependent"
+          ],
+          "sourceElementSha256": "72568f0decdd9fbb92702213ead18c2171c5e5441b52f68985101d05502f4c46",
+          "selectionDecision": "rejected",
+          "rejectionReason": "Sprite source has no resolved texture carrier: fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_12"
+        },
+        {
+          "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_16",
+          "sourceOrder": 28,
+          "sourceEventId": "",
+          "occurrenceEventId": "source-event-007",
+          "sourceTimeSeconds": 0.5261,
+          "sourceDocumentKind": "particle",
+          "sourceKind": "spriteParticle",
+          "rendererShape": "sprite",
+          "conversionEligibility": "CERTIFIED",
+          "reasonCodes": [
+            "fixed-singleton-cardinality-and-motion"
+          ],
+          "fidelityWarningCodes": [
+            "deterministic-distribution-curve-review-required",
+            "deterministic-module-fidelity-review-required",
+            "source-module-literals-review-required"
+          ],
+          "fidelityWarnings": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2777@ref:0",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_LOW_01:export:7660@ref:1",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:12578@ref:3",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:7877@ref:4",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+              "warningCodes": [
+                "deterministic-distribution-curve-review-required",
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+              "warningCodes": [
+                "deterministic-module-fidelity-review-required",
+                "source-module-literals-review-required"
+              ]
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:7",
+              "warningCodes": [
+                "source-module-literals-review-required"
+              ]
+            }
+          ],
+          "sourceElementSha256": "e8ebc26884369a3cbe4b14227dcdbaa4cc5f366bd4cf5da164dd91b381e29068",
+          "resources": [
+            {
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_c_glow_008.dds"
+            }
+          ],
+          "materialDecision": "sourceMaterialPreserved",
+          "materialProvenance": {
+            "templateId": "effect.standard",
+            "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_c_pa_lensflare_01_05_ad",
+            "renderProfile": "additive_two_sided_depth_read",
+            "sourceProfile": {
+              "enabled": true,
+              "profileId": "ue3.material.fx.m.fx.c.pa.lensflare.01.ad.ed326b13c7b3",
+              "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+              "parentMaterialPath": "fx_m.fx_c_pa_lensflare_01_ad",
+              "semanticStatus": "reconstructed_profile",
+              "materialEvidenceSource": "NORMALIZED_GRAPH_EXACT",
+              "productAdmissionStatus": "ADMITTED_RECONSTRUCTED_PROFILE",
+              "sourceResourceBindings": [
+                {
+                  "slotId": "base",
+                  "assetId": "Effect/Artist/Textures/fx_c_glow_008.dds"
+                }
+              ],
+              "textures": [
+                {
+                  "name": "lensflaretexture",
+                  "sourceObjectPath": "fx_tex_high_00.fx_c_glow_008",
+                  "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "colorSpace": "linear",
+                  "samplingEvidence": "legacy_default",
+                  "group": ""
+                }
+              ],
+              "scalars": [
+                {
+                  "name": "select texture(0 or 0.5)",
+                  "value": 0.0,
+                  "group": ""
+                }
+              ],
+              "vectors": [],
+              "staticSwitches": [],
+              "dynamicParameterSemantics": [
+                "unbound",
+                "unbound",
+                "unbound",
+                "unbound"
+              ],
+              "subUVMode": "none"
+            }
+          },
+          "conversionDecision": "certifiedSingletonStandaloneConversion",
+          "sourceModuleStableIds": [
+            "FX_PC_SDM_00:export:2777@ref:0",
+            "BFX_LOW_01:export:7660@ref:1",
+            "FX_BS_08:export:28512@ref:2",
+            "FX_BS_08:export:12578@ref:3",
+            "FX_BS_05:export:7877@ref:4",
+            "FX_BS_08:export:30442@ref:5",
+            "FX_BS_03:export:4973@ref:6",
+            "BFX_HIGH_00:export:45470@ref:7"
+          ],
+          "sourceModuleEvidence": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2777@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "sourceModuleSha256": "b72f24acfa18b7eec403436edc6c30fc7efcfa6f89ddb99ebf25c03f98aa7079"
+            },
+            {
+              "sourceModuleStableId": "BFX_LOW_01:export:7660@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "sourceModuleSha256": "97ce50450ae078f37cca83632c404132aff3b82b98c2603e73cbe8fe84d46883"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "sourceModuleSha256": "e9ecaaf69cc88fc7ac9789bb39e472ac3548e03a99dec16afd2d6eca91641b9d"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:12578@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "sourceModuleSha256": "333589508343a2322d4b75afe317f8764a587a0a80f60a91e2a57c96860c826b"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:7877@ref:4",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "sourceModuleSha256": "8d8da7a94bc45c0e3d2ad7375039b4803888956ed718a249f0c43e58e5b57f72"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "sourceModuleSha256": "cb3d69f6530687f0c5ebb324eb0d45040a6e11b128da56a292ec0c1c05dc6db6"
+            },
+            {
+              "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "sourceModuleSha256": "e84dbd9c6ca56ecc0dc9ffecf3636b7bcbc43a7aa75a72d4b5dbb01fac6d466a"
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:7",
+              "sourceModuleClassName": "particlemodulespawn",
+              "sourceModuleSha256": "d14f7b167e8f12fd2f018d0c7b1dc9dafa0a531a44bf9cc05b711ac27e53ec65"
+            }
+          ],
+          "removedModuleDispositions": [
+            {
+              "sourceModuleStableId": "FX_PC_SDM_00:export:2777@ref:0",
+              "sourceModuleClassName": "particlemodulerequired",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_LOW_01:export:7660@ref:1",
+              "sourceModuleClassName": "particlemodulelifetime",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+              "sourceModuleClassName": "particlemodulesize",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:12578@ref:3",
+              "sourceModuleClassName": "particlemodulecolor",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_05:export:7877@ref:4",
+              "sourceModuleClassName": "particlemodulecolorscaleoverlife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+              "sourceModuleClassName": "particlemodulesizemultiplylife",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            },
+            {
+              "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:7",
+              "sourceModuleClassName": "particlemodulespawn",
+              "disposition": "acceptedApproximation",
+              "rationale": "Reviewed first-pass standalone carrier: Cascade spawn multiplicity, random distributions, per-particle curves, and motion are intentionally omitted while the read-only source module remains hash-pinned evidence."
+            }
+          ],
+          "standaloneLifetimeDecision": {
+            "sourceElementTimingSeconds": 0.3373,
+            "sourceEmitterDelaySeconds": 0.0,
+            "sourceEmitterDurationSeconds": 0.0,
+            "sourceEmitterLoopCount": 1,
+            "sourceBurstCount": 1,
+            "sourceBurstTimesSeconds": [
+              0.0
+            ],
+            "sourceEarliestBurstSeconds": 0.0,
+            "sourceLatestBurstSeconds": 0.0,
+            "sourceBurstEnvelopeSeconds": 0.0,
+            "targetStartDelayOffsetSeconds": 0.0,
+            "continuousRateEvidence": [
+              {
+                "sourceModuleStableId": "FX_PC_SDM_00:export:2777@ref:0",
+                "sourceModuleClassName": "particlemodulerequired",
+                "propertyPath": "spawnrate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "fde905a4560571527c2b7a38ff72721f431781b90cbab54ae8364941ec38de4f",
+                "maximumAbsoluteValue": 0.0
+              },
+              {
+                "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:7",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "rate",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "3962af80db66b116d56736e1c481abdabae4257f150399f66fc567fb6e4a5ca9",
+                "maximumAbsoluteValue": 0.0
+              },
+              {
+                "sourceModuleStableId": "BFX_HIGH_00:export:45470@ref:7",
+                "sourceModuleClassName": "particlemodulespawn",
+                "propertyPath": "ratescale",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "8019437fcacbe35ea834150bf30fccc6db56aa8734080c7f4aa87e51f1236183",
+                "maximumAbsoluteValue": 0.0
+              }
+            ],
+            "continuousRateIsZero": true,
+            "sourceParticleLifetimeEvidence": [
+              {
+                "sourceModuleStableId": "BFX_LOW_01:export:7660@ref:1",
+                "sourceModuleClassName": "particlemodulelifetime",
+                "propertyPath": "lifetime",
+                "sourceClass": "",
+                "operation": 1,
+                "defaultMinimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "defaultMaximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "sourceDistributionSha256": "48733e64c99c80b8a8c9785b3e5aebdf6a59c9346c6940078e95fc6d83af9275",
+                "maximumPositiveSeconds": 0.800000011920929
+              }
+            ],
+            "decision": "finiteEmissionParticleLifetimeMaximum",
+            "sourceParticleLifetimeMaximumSeconds": 0.800000011920929,
+            "targetLifeTimeSeconds": 0.800000011920929,
+            "rationale": "Continuous spawn evaluates to zero under a finite emitter loop, so the standalone snapshot uses the maximum positive, hash-pinned ParticleModuleLifetime value plus the finite burst/loop envelope to preserve the complete visual tail. Emitter delay and the earliest burst are baked into standalone start delay."
+          },
+          "standaloneSizeDecision": {
+            "decision": "particleSizeEndpointBake",
+            "representativeDecision": "sourceLookupFirstSampleRepresentative",
+            "axisMapping": "sprite.raw-xy-centimeters.preserve-depth.v1",
+            "minimumPositiveFactor": 0.01,
+            "signedMirrorDisposition": {
+              "disposition": "acceptedApproximation",
+              "rationale": "Standalone Transform scale requires positive components. The selected raw sample remains signed evidence, while the baked factor uses abs and the importer-compatible 0.01 positive floor; source mirror sign is not claimed as source-exact."
+            },
+            "sourceParticleDetailSha256": "36db774321f75c356e40b3a92092363ee6962553dc537a39c526a363dc3bd9df",
+            "sourceParticleStartSize": [
+              2.0,
+              1.5
+            ],
+            "sourceParticleEndSize": [
+              0.0,
+              0.0
+            ],
+            "sourceTransformStartScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceLinearLerpScaleEnabled": false,
+            "sourceTransformEndScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "sourceInitialSizeSamples": [
+              {
+                "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "propertyPath": "startsize",
+                "sourceDistributionSha256": "34f9b51c2b83a466375c7d64807f7b48f7dd0af6938e98fddce9a80d097869b3",
+                "operation": 1,
+                "chunkSize": 3,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 0,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  200.0,
+                  150.0,
+                  0.0
+                ]
+              }
+            ],
+            "sourceInitialSignedVector": [
+              200.0,
+              150.0,
+              0.0
+            ],
+            "sourceInitialMappedSignedVector": [
+              200.0,
+              150.0,
+              1.0
+            ],
+            "sourceEvolutionSizeSamples": [
+              {
+                "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "propertyPath": "lifemultiplier",
+                "sourceDistributionSha256": "be3847aa08eb910dac4f0258d2ac80adfc61a147db6fd041c2c9a0dc9fdb1643",
+                "operation": 1,
+                "chunkSize": 3,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 20,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "propertyPath": "lifemultiplier",
+                "sourceDistributionSha256": "4992a0632248ab6d67e946d998934354a604932db71f0100853c1409050b6184",
+                "operation": 1,
+                "chunkSize": 3,
+                "sampleSource": "lookupTable",
+                "sampleIndex": 1,
+                "rangeBranch": "minimum",
+                "rawSignedVector": [
+                  1.0,
+                  1.0,
+                  1.0
+                ]
+              }
+            ],
+            "sourceEvolutionSignedVector": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "sourceEvolutionMappedSignedVector": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "sourceSizeModuleEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+                "sourceModuleClassName": "particlemodulesize",
+                "sourceModuleSha256": "e9ecaaf69cc88fc7ac9789bb39e472ac3548e03a99dec16afd2d6eca91641b9d",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_08:export:28512@ref:2",
+                    "sourceModuleClassName": "particlemodulesize",
+                    "propertyPath": "startsize",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "34f9b51c2b83a466375c7d64807f7b48f7dd0af6938e98fddce9a80d097869b3"
+                  }
+                ]
+              },
+              {
+                "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "cb3d69f6530687f0c5ebb324eb0d45040a6e11b128da56a292ec0c1c05dc6db6",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "be3847aa08eb910dac4f0258d2ac80adfc61a147db6fd041c2c9a0dc9fdb1643"
+                  }
+                ]
+              },
+              {
+                "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "e84dbd9c6ca56ecc0dc9ffecf3636b7bcbc43a7aa75a72d4b5dbb01fac6d466a",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "4992a0632248ab6d67e946d998934354a604932db71f0100853c1409050b6184"
+                  }
+                ]
+              }
+            ],
+            "sourceSizeEvolutionModuleEvidence": [
+              {
+                "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "cb3d69f6530687f0c5ebb324eb0d45040a6e11b128da56a292ec0c1c05dc6db6",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_08:export:30442@ref:5",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "be3847aa08eb910dac4f0258d2ac80adfc61a147db6fd041c2c9a0dc9fdb1643"
+                  }
+                ]
+              },
+              {
+                "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+                "sourceModuleClassName": "particlemodulesizemultiplylife",
+                "sourceModuleSha256": "e84dbd9c6ca56ecc0dc9ffecf3636b7bcbc43a7aa75a72d4b5dbb01fac6d466a",
+                "distributions": [
+                  {
+                    "sourceModuleStableId": "FX_BS_03:export:4973@ref:6",
+                    "sourceModuleClassName": "particlemodulesizemultiplylife",
+                    "propertyPath": "lifemultiplier",
+                    "sourceClass": "",
+                    "operation": 1,
+                    "defaultMinimum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "defaultMaximum": [
+                      0.0,
+                      0.0,
+                      0.0,
+                      0.0
+                    ],
+                    "sourceDistributionSha256": "4992a0632248ab6d67e946d998934354a604932db71f0100853c1409050b6184"
+                  }
+                ]
+              }
+            ],
+            "targetStartScale": [
+              2.0,
+              1.5,
+              1.0
+            ],
+            "targetLinearLerpScaleEnabled": true,
+            "targetEndScale": [
+              0.02,
+              0.015,
+              1.0
+            ],
+            "rationale": "The runtime sourceRecipe particle path uses raw Sprite X/Y or remapped Mesh X/Z/Y size after Element world evaluation; only its Imported-detail fallback synthesizes Mesh depth from the X/Y average. Standalone Mesh/Sprite ignores particle size, so the selected first complete source sample is baked into standalone scale. End scale is used only when a hash-pinned size-over-life module exists and is an explicit linear endpoint approximation."
+          },
+          "standaloneDrawableResourceDecision": {
+            "sourceResourceBindings": [
+              {
+                "sourceOrder": 0,
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_c_glow_008.dds",
+                "resourceSha256": "bdeebd5157937371168f031d734147290eae84e52dd30e91c86c121957bc8de9",
+                "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_16"
+              }
+            ],
+            "sourceResourceBindingsSha256": "ad80a8d5e50112bc6d2170163189259518527b7fa24e9aa4e6aa8ab96a15ead4",
+            "sourceSlots": [
+              "base"
+            ],
+            "sourceUseModelMaterial": true,
+            "sourceMeshDetailSha256": "f7c3edb25ac758151bc76537e6744510b3863a9242a613485e6859090fdd553e",
+            "decision": "spriteBaseResourcePreserved",
+            "disposition": "sourceResourcePreserved",
+            "baseResource": {
+              "sourceOrder": 0,
+              "slotId": "base",
+              "assetId": "Effect/Artist/Textures/fx_c_glow_008.dds",
+              "resourceSha256": "bdeebd5157937371168f031d734147290eae84e52dd30e91c86c121957bc8de9",
+              "sourceElementId": "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_16"
+            },
+            "targetUseModelMaterial": false,
+            "targetResourceBindings": [
+              {
+                "slotId": "base",
+                "assetId": "Effect/Artist/Textures/fx_c_glow_008.dds"
+              }
+            ],
+            "rationale": "The resolved source Base texture remains the executable standalone Sprite carrier.",
+            "targetResourceBindingsSha256": "ad80a8d5e50112bc6d2170163189259518527b7fa24e9aa4e6aa8ab96a15ead4"
+          },
+          "selectionScore": {
+            "sourceMaterialFidelity": 1,
+            "resourceCount": 1,
+            "emissiveMicrounits": 1000000,
+            "scaleMicrounits": 1000000,
+            "lifetimeMicrounits": 337300
+          },
+          "selectionDecision": "selected",
+          "targetElementId": "authored.approx.s004.sprite02"
+        }
+      ],
+      "selectedSourceElementIds": [
+        "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_5",
+        "fx_pc_sdm_00.par_o_sdm_att_08_01.particlespriteemitter_16"
+      ],
+      "status": "selected"
+    }
+  ],
+  "output": {
+    "elementCount": 3,
+    "meshCount": 0,
+    "spriteCount": 3,
+    "particleCount": 0,
+    "documentSha256": "60ccd8b6deed5b4c8c753d00442335fbf6cc2c26ddaa6d2d4dc4bbcd8b48b754"
+  }
+}

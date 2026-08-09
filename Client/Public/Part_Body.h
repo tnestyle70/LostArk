@@ -10,6 +10,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct DEFERRED_EMISSIVE_OVERRIDE;
+
 /* The character's skinned body. It owns the skeleton and the animation clock, so
 every other part reads its bone palette rather than animating on its own. */
 class CPart_Body final : public CPartObject
@@ -25,6 +27,7 @@ public:
 		uint32_t iHiddenMeshMask = {};
 
 		const char_t* pInitialAnimation = { nullptr };
+		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };
 	} PART_BODY_DESC;
 
 private:
@@ -48,15 +51,18 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_Shadow() override;
 
 private:
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	uint32_t m_iHiddenMeshMask = {};
+	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 
 private:
 	HRESULT Ready_Components(const PART_BODY_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
+	HRESULT Bind_ShadowShaderResources();
 
 public:
 	static unique_ptr<CPart_Body> Create(ComPtr<ID3D11Device> pDevice,

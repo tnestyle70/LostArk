@@ -14,7 +14,9 @@ public:
 public:
 	HRESULT Add_Light(const LIGHT_DESC& LightDesc);
 	HRESULT Replace_SceneLights(vector<LIGHT_DESC> SceneLights);
-	HRESULT Render_Lights(shared_ptr<class CShader> pShader, shared_ptr<class CVIBuffer_Rect> pVIBuffer);
+	HRESULT Render_Lights(shared_ptr<class CShader> pShader,
+		shared_ptr<class CVIBuffer_Rect> pVIBuffer,
+		bool_t bEnableSceneDirectionalShadow);
 	uint32_t Get_SceneLightCount() const {
 		return static_cast<uint32_t>(m_SceneLights.size());
 	}

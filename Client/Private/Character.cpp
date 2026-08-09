@@ -13,10 +13,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace
 {
 	constexpr f32_t CLIP_BLEND_SECONDS = 0.12f;
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr f32_t ACTION_SEEK_EPSILON_SECONDS = 0.0001f;
+	constexpr uint64_t MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE = 256u;
 	constexpr const char_t* ROOT_MOTION_BONE = "b_root";
 	constexpr int32_t ROOT_MOTION_VERTICAL_AXIS = 2;
 }
@@ -212,6 +216,13 @@ bool_t CCharacter::Load_EffectCues()
 			return false;
 		}
 	}
+	if (!CEffectPresentationService::Prepare_ProductCues(
+		m_pDevice, m_pContext, staged.Cues, status))
+	{
+		OutputDebugStringA(("Character Effect cue prewarm isolated: " +
+			status + "\n").c_str());
+		return false;
+	}
 	m_EffectCueDocument = std::move(staged);
 	return true;
 }
@@ -219,8 +230,7 @@ bool_t CCharacter::Load_EffectCues()
 void CCharacter::Reset_EffectCueCursor(
 	const std::uint32_t iActionStartTick)
 {
-	m_strEffectCueClip.clear();
-	m_iPreviousEffectCueTimeMs = UINT32_MAX;
+	m_fPreviousEffectCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
 }
 
@@ -251,16 +261,24 @@ void CCharacter::Spawn_FallbackEffect(
 		!CEffectCatalog::Contains(pDefinition->strEffectId) ||
 		nullptr == m_pBodyModel)
 		return;
-	const char_t* pClipName = m_pBodyModel->Get_AnimationName(
-		m_pBodyModel->Get_CurrentAnimIndex());
-	if (nullptr != pClipName && std::any_of(
-		m_EffectCueDocument.Cues.begin(), m_EffectCueDocument.Cues.end(),
-		[pClipName](const ANIMATION_EFFECT_CUE& Cue)
-		{
-			return Cue.strClipName == pClipName;
-		}))
+	if (nullptr != m_pChain && m_iChainStage >= 0 &&
+		m_iChainStage < static_cast<int32_t>(m_pChain->stages.size()))
 	{
-		return;
+		const std::vector<CLIP_STEP>& Clips =
+			m_pChain->stages[m_iChainStage].clips;
+		const bool_t bHasAuthoredCue = std::any_of(
+			m_EffectCueDocument.Cues.begin(), m_EffectCueDocument.Cues.end(),
+			[&Clips](const ANIMATION_EFFECT_CUE& Cue)
+			{
+				return std::any_of(
+					Clips.begin(), Clips.end(),
+					[&Cue](const CLIP_STEP& Clip)
+					{
+						return Cue.strClipName == Clip.clip;
+					});
+			});
+		if (bHasAuthoredCue)
+			return;
 	}
 	EFFECT_SPAWN_DESC Desc;
 	Desc.strEffectAssetId = pDefinition->strEffectId;
@@ -270,6 +288,7 @@ void CCharacter::Spawn_FallbackEffect(
 	Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	Desc.iActionStartTick = m_iEffectActionStartTick;
 	Desc.iCueStartMs = 0u;
+	Desc.strOccurrenceId = "fallback:skill:" + std::to_string(iSkillId);
 	Desc.fPlaybackRate = Get_EffectPlaybackRate();
 	std::string status;
 	CEffectPresentationService::Spawn(Desc, status);
@@ -277,53 +296,128 @@ void CCharacter::Spawn_FallbackEffect(
 
 void CCharacter::Update_EffectCues()
 {
-	if (nullptr == m_pBodyModel || 0u == m_iEffectActionStartTick)
+	if (nullptr == m_pBodyModel || nullptr == m_pChain ||
+		0u == m_iEffectActionStartTick || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
 		return;
-	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
-	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
-	f32_t fPosition = 0.f;
-	f32_t fDuration = 0.f;
-	if (nullptr == pClipName || !m_pBodyModel->Get_AnimationProgress(
-		iAnimation, fPosition, fDuration))
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	if (!Build_ActiveStageTimeline(Timings))
 		return;
-	const f32_t fTicksPerSecond =
-		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
-	if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
-		return;
-	const uint32_t iCurrentMs = static_cast<uint32_t>((std::max)(
-		0.f, fPosition / fTicksPerSecond * 1000.f));
-	if (m_strEffectCueClip != pClipName ||
-		(UINT32_MAX != m_iPreviousEffectCueTimeMs &&
-			iCurrentMs < m_iPreviousEffectCueTimeMs))
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	const f32_t fCurrentStageWallSeconds = (std::max)(
+		0.f, m_fActionPresentationSeconds);
+	const f32_t fPreviousStageWallSeconds =
+		m_fPreviousEffectCueStageWallSeconds;
+	const std::shared_ptr<CCharacter> Owner =
+		static_pointer_cast<CCharacter>(shared_from_this());
+	for (std::size_t iCue = 0u;
+		iCue < m_EffectCueDocument.Cues.size(); ++iCue)
 	{
-		m_strEffectCueClip = pClipName;
-		m_iPreviousEffectCueTimeMs = UINT32_MAX;
+		const ANIMATION_EFFECT_CUE& Cue = m_EffectCueDocument.Cues[iCue];
+		for (std::size_t iClip = 0u; iClip < Clips.size(); ++iClip)
+		{
+			if (Cue.strClipName != Clips[iClip].clip)
+				continue;
+			f32_t fSourceDurationSeconds = 0.f;
+			f32_t fWallDurationSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_ClipDuration(
+				Timings[iClip], fSourceDurationSeconds, fWallDurationSeconds))
+			{
+				continue;
+			}
+			const f32_t fCueSourceSeconds =
+				static_cast<f32_t>(Cue.iStartMs) * 0.001f;
+			f32_t fFirstOccurrenceWallSeconds = 0.f;
+			if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+				Timings, iClip, fCueSourceSeconds, 0u,
+				fFirstOccurrenceWallSeconds))
+			{
+				continue;
+			}
+
+			uint64_t iFirstEpoch = 0u;
+			uint64_t iLastEpoch = 0u;
+			if (Timings[iClip].bLoop)
+			{
+				if (fCurrentStageWallSeconds <
+					fFirstOccurrenceWallSeconds)
+				{
+					continue;
+				}
+				if (fPreviousStageWallSeconds >=
+					fFirstOccurrenceWallSeconds)
+				{
+					iFirstEpoch = static_cast<uint64_t>(std::floor(
+						(fPreviousStageWallSeconds -
+							fFirstOccurrenceWallSeconds) /
+						fWallDurationSeconds)) + 1u;
+				}
+				iLastEpoch = static_cast<uint64_t>(std::floor((std::max)(
+					0.f, fCurrentStageWallSeconds -
+						fFirstOccurrenceWallSeconds) /
+					fWallDurationSeconds));
+				if (iFirstEpoch > iLastEpoch)
+					continue;
+				if (iLastEpoch - iFirstEpoch + 1u >
+					MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE)
+				{
+					iFirstEpoch = iLastEpoch -
+						MAX_EFFECT_CUE_OCCURRENCES_PER_UPDATE + 1u;
+				}
+			}
+
+			for (uint64_t iEpoch = iFirstEpoch;
+				iEpoch <= iLastEpoch; ++iEpoch)
+			{
+				f32_t fOccurrenceWallSeconds = 0.f;
+				if (!CActionPresentationTimeline::Resolve_CueWallOffset(
+					Timings, iClip, fCueSourceSeconds, iEpoch,
+					fOccurrenceWallSeconds) ||
+					fOccurrenceWallSeconds <=
+						fPreviousStageWallSeconds ||
+					fOccurrenceWallSeconds > fCurrentStageWallSeconds)
+				{
+					continue;
+				}
+				const f32_t fInitialSampleSeconds = (std::max)(0.f,
+					(fCurrentStageWallSeconds - fOccurrenceWallSeconds) *
+						Timings[iClip].fPlayRate);
+				const uint32_t iCueDurationMs =
+					Cue.iEndMs - Cue.iStartMs;
+				if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
+					fInitialSampleSeconds * 1000.f >=
+						static_cast<f32_t>(iCueDurationMs))
+				{
+					continue;
+				}
+
+				EFFECT_SPAWN_DESC Desc;
+				Desc.strEffectAssetId = Cue.strEffectAssetId;
+				Desc.pOwner = Owner;
+				Desc.strAnchorSlotId = Cue.strAnchorSlotId;
+				Desc.LocalTransform = Cue.LocalTransform;
+				Desc.eFollowPolicy = Cue.eFollowPolicy;
+				Desc.eStopPolicy = Cue.eStopPolicy;
+				Desc.iCueDurationMs = iCueDurationMs;
+				Desc.iActionStartTick = m_iEffectActionStartTick;
+				Desc.iCueStartMs = Cue.iStartMs;
+				Desc.strOccurrenceId = "stage:" +
+					std::to_string(m_iChainStage) + "/clip:" +
+					std::to_string(iClip) + "/cue:" +
+					std::to_string(iCue) + "/loop:" +
+					std::to_string(iEpoch);
+				Desc.fPlaybackRate = Timings[iClip].fPlayRate;
+				Desc.fInitialSampleTimeSeconds = fInitialSampleSeconds;
+				std::string status;
+				CEffectPresentationService::Spawn(Desc, status);
+
+				if (iEpoch == (std::numeric_limits<uint64_t>::max)())
+					break;
+			}
+		}
 	}
-	for (const ANIMATION_EFFECT_CUE& Cue : m_EffectCueDocument.Cues)
-	{
-		if (Cue.strClipName != m_strEffectCueClip)
-			continue;
-		const bool_t bCrossed = UINT32_MAX == m_iPreviousEffectCueTimeMs ?
-			Cue.iStartMs <= iCurrentMs :
-			Cue.iStartMs > m_iPreviousEffectCueTimeMs &&
-				Cue.iStartMs <= iCurrentMs;
-		if (!bCrossed)
-			continue;
-		EFFECT_SPAWN_DESC Desc;
-		Desc.strEffectAssetId = Cue.strEffectAssetId;
-		Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
-		Desc.strAnchorSlotId = Cue.strAnchorSlotId;
-		Desc.LocalTransform = Cue.LocalTransform;
-		Desc.eFollowPolicy = Cue.eFollowPolicy;
-		Desc.eStopPolicy = Cue.eStopPolicy;
-		Desc.iCueDurationMs = Cue.iEndMs - Cue.iStartMs;
-		Desc.iActionStartTick = m_iEffectActionStartTick;
-		Desc.iCueStartMs = Cue.iStartMs;
-		Desc.fPlaybackRate = Get_EffectPlaybackRate();
-		std::string status;
-		CEffectPresentationService::Spawn(Desc, status);
-	}
-	m_iPreviousEffectCueTimeMs = iCurrentMs;
+	m_fPreviousEffectCueStageWallSeconds = fCurrentStageWallSeconds;
 }
 
 void CCharacter::Commit_PendingClipChains()
@@ -340,6 +434,125 @@ bool_t CCharacter::Start_Clip(const CLIP_STEP& Step)
 
 	m_pBodyModel->Set_AnimTrackPosition(m_pBodyModel->Get_CurrentAnimIndex(), 0.f);
 	m_pBodyModel->Set_AnimationSpeed(Step.playRate);
+	return true;
+}
+
+bool_t CCharacter::Resolve_ClipTiming(
+	const CLIP_STEP& Step,
+	std::uint32_t& iOutAnimation,
+	f32_t& fOutSourceDurationSeconds) const
+{
+	iOutAnimation = UINT32_MAX;
+	fOutSourceDurationSeconds = 0.f;
+	if (nullptr == m_pBodyModel || Step.clip.empty() ||
+		!std::isfinite(Step.playRate) || Step.playRate <= 0.f)
+	{
+		return false;
+	}
+	for (std::uint32_t iAnimation = 0u;
+		iAnimation < m_pBodyModel->Get_NumAnimations(); ++iAnimation)
+	{
+		const char_t* pName = m_pBodyModel->Get_AnimationName(iAnimation);
+		if (nullptr != pName && Step.clip == pName)
+		{
+			iOutAnimation = iAnimation;
+			break;
+		}
+	}
+	if (UINT32_MAX == iOutAnimation)
+		return false;
+
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iOutAnimation);
+	if (!m_pBodyModel->Get_AnimationProgress(
+		iOutAnimation, fPosition, fDuration) ||
+		!std::isfinite(fDuration) || fDuration <= 0.f ||
+		!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f)
+	{
+		return false;
+	}
+	fOutSourceDurationSeconds = fDuration / fTicksPerSecond;
+	return std::isfinite(fOutSourceDurationSeconds) &&
+		fOutSourceDurationSeconds > 0.f;
+}
+
+bool_t CCharacter::Build_ActiveStageTimeline(
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings,
+	std::vector<std::uint32_t>* pOutAnimations) const
+{
+	OutTimings.clear();
+	if (nullptr != pOutAnimations)
+		pOutAnimations->clear();
+	if (nullptr == m_pChain || m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()))
+	{
+		return false;
+	}
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	OutTimings.reserve(Clips.size());
+	if (nullptr != pOutAnimations)
+		pOutAnimations->reserve(Clips.size());
+	for (const CLIP_STEP& Step : Clips)
+	{
+		std::uint32_t iAnimation = UINT32_MAX;
+		f32_t fModelSourceDurationSeconds = 0.f;
+		if (!Resolve_ClipTiming(
+			Step, iAnimation, fModelSourceDurationSeconds))
+		{
+			OutTimings.clear();
+			if (nullptr != pOutAnimations)
+				pOutAnimations->clear();
+			return false;
+		}
+		OutTimings.push_back({ fModelSourceDurationSeconds,
+			Step.playMs, Step.playRate, Step.loop });
+		if (nullptr != pOutAnimations)
+			pOutAnimations->push_back(iAnimation);
+	}
+	return !OutTimings.empty();
+}
+
+bool_t CCharacter::Seek_ActiveStageForward(const f32_t fActionAgeSeconds)
+{
+	if (nullptr == m_pChain || nullptr == m_pBodyModel ||
+		m_iChainStage < 0 ||
+		m_iChainStage >= static_cast<int32_t>(m_pChain->stages.size()) ||
+		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f)
+	{
+		return false;
+	}
+	const std::vector<CLIP_STEP>& Clips =
+		m_pChain->stages[m_iChainStage].clips;
+	if (Clips.empty())
+		return false;
+
+	std::vector<ACTION_PRESENTATION_CLIP_TIMING> Timings;
+	std::vector<std::uint32_t> Animations;
+	if (!Build_ActiveStageTimeline(Timings, &Animations))
+		return false;
+	ACTION_PRESENTATION_SAMPLE Sample;
+	if (!CActionPresentationTimeline::Resolve_Sample(
+		Timings, fActionAgeSeconds, Sample) ||
+		Sample.iClipIndex >= Clips.size() ||
+		Sample.iClipIndex >= Animations.size())
+	{
+		return false;
+	}
+	const CLIP_STEP& Step = Clips[Sample.iClipIndex];
+	const std::uint32_t iAnimation = Animations[Sample.iClipIndex];
+	if (!Start_Clip(Step))
+		return false;
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+	const f32_t fTrackPosition =
+		Sample.fClipSourceTimeSeconds * fTicksPerSecond;
+	if (!m_pBodyModel->Set_AnimTrackPosition(iAnimation, fTrackPosition))
+		return false;
+	m_pBodyModel->Play_Animation(0.f);
+	m_iChainStep = static_cast<int32_t>(Sample.iClipIndex);
 	return true;
 }
 
@@ -533,11 +746,12 @@ bool_t CCharacter::Advance_ComboStage(const std::uint8_t comboStage)
 bool_t CCharacter::Apply_NetworkAction(
 	const LostArk::Shared::PLAYER_ACTION_STATE action,
 	const LostArk::Shared::SKILL_ID skillId,
+	const std::uint32_t serverTick,
 	const std::uint32_t actionStartTick,
 	const std::uint8_t comboStage)
 {
 	using namespace LostArk::Shared;
-	if (static_cast<std::uint8_t>(action) >=
+	if (0u == serverTick || static_cast<std::uint8_t>(action) >=
 		static_cast<std::uint8_t>(PLAYER_ACTION_STATE::END))
 	{
 		return false;
@@ -546,9 +760,31 @@ bool_t CCharacter::Apply_NetworkAction(
 	{
 		if (INVALID_SKILL_ID == skillId || 0u == actionStartTick)
 			return false;
-		if (m_eNetworkAction == action &&
-			m_iLastNetworkActionStartTick == actionStartTick)
+		f32_t fActionAgeSeconds = 0.f;
+		if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+			serverTick, actionStartTick, SERVER_TICK_HZ,
+			fActionAgeSeconds))
+			return false;
+		const bool_t bSameActionEdge = m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick;
+		if (bSameActionEdge)
 		{
+			if (m_iCurrentEffectSkillId != skillId)
+				return false;
+			const int32_t iExpectedStage = 0u == comboStage ?
+				0 : static_cast<int32_t>(comboStage) - 1;
+			/* A staged Server transition owns a new start tick. Never restart a
+				running stage when a repeated edge arrives. */
+			if (nullptr != m_pChain && m_iChainStage != iExpectedStage)
+				return false;
+			if (nullptr != m_pChain &&
+				fActionAgeSeconds > m_fActionPresentationSeconds +
+					ACTION_SEEK_EPSILON_SECONDS)
+			{
+				if (!Seek_ActiveStageForward(fActionAgeSeconds))
+					return false;
+				m_fActionPresentationSeconds = fActionAgeSeconds;
+			}
 			return true;
 		}
 		/* A newer authoritative edge replaces an ACTIVE action even when the NONE
@@ -566,6 +802,10 @@ bool_t CCharacter::Apply_NetworkAction(
 			comboStage > 0u);
 		if (presented && comboStage > 1u)
 			presented = Advance_ComboStage(comboStage);
+		if (presented)
+			presented = Seek_ActiveStageForward(fActionAgeSeconds);
+		m_fActionPresentationSeconds = presented ?
+			fActionAgeSeconds : 0.f;
 		if (!presented)
 		{
 			/* Presentation data is not network authority. Record this edge once and
@@ -577,6 +817,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_pChain = nullptr;
 			m_iChainStage = 0;
 			m_iChainStep = 0;
+			m_fActionPresentationSeconds = 0.f;
 			Set_Animation(
 				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 				true);
@@ -598,6 +839,7 @@ bool_t CCharacter::Apply_NetworkAction(
 			m_pChain = nullptr;
 			m_iChainStage = 0;
 			m_iChainStep = 0;
+			m_fActionPresentationSeconds = 0.f;
 			Commit_PendingClipChains();
 			Set_Animation(CHARACTER_ANIM::RUN, true);
 		}
@@ -608,6 +850,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_pChain = nullptr;
 		m_iChainStage = 0;
 		m_iChainStep = 0;
+		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
@@ -618,6 +861,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_pChain = nullptr;
 		m_iChainStage = 0;
 		m_iChainStep = 0;
+		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
 		Set_Animation(
 			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
@@ -625,8 +869,37 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
 	}
+	Update_ActionEmissiveOverride(action, skillId);
 	m_eNetworkAction = action;
 	return true;
+}
+
+void CCharacter::Update_ActionEmissiveOverride(
+	const LostArk::Shared::PLAYER_ACTION_STATE action,
+	const LostArk::Shared::SKILL_ID skillId)
+{
+	m_ActionEmissiveOverride = {};
+	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != action ||
+		nullptr == m_pSpec || nullptr == m_pSpec->pSkillSurfaceEmissives)
+	{
+		return;
+	}
+
+	for (uint32_t index = 0u;
+		index < m_pSpec->iNumSkillSurfaceEmissives; ++index)
+	{
+		const SKILL_SURFACE_EMISSIVE_SPEC& spec =
+			m_pSpec->pSkillSurfaceEmissives[index];
+		if (spec.iSkillId != skillId || !std::isfinite(spec.fIntensity) ||
+			spec.fIntensity <= 0.f)
+		{
+			continue;
+		}
+		m_ActionEmissiveOverride.isEnabled = true;
+		m_ActionEmissiveOverride.vColor = spec.vColor;
+		m_ActionEmissiveOverride.fIntensity = spec.fIntensity;
+		return;
+	}
 }
 
 void CCharacter::Apply_NetworkStance(const LostArk::Shared::PLAYER_STANCE_ID stance)
@@ -725,6 +998,11 @@ void CCharacter::Update(f32_t fTimeDelta)
 		m_pLogic->Update_Presentation(*this, fTimeDelta);
 
 	__super::Update(fTimeDelta);
+	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL == m_eNetworkAction &&
+		nullptr != m_pChain && std::isfinite(fTimeDelta) && fTimeDelta > 0.f)
+	{
+		m_fActionPresentationSeconds += fTimeDelta;
+	}
 	if (nullptr != m_pColliderCom)
 		m_pColliderCom->Update(XMLoadFloat4x4(
 			m_pTransformCom->Get_WorldMatrixPtr()));
@@ -791,6 +1069,7 @@ HRESULT CCharacter::Ready_PartObjects()
 	bodyDesc.strShaderTag = m_pSpec->pShaderTag;
 	bodyDesc.iHiddenMeshMask = m_pSpec->iBodyHiddenMeshMask;
 	bodyDesc.pInitialAnimation = m_pSpec->AnimationClips[ETOUI(CHARACTER_ANIM::IDLE)];
+	bodyDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
 
 	if (FAILED(__super::Add_PartObject(
 		m_iPrototypeLevelIndex,
@@ -817,6 +1096,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		equipmentDesc.strShaderTag = m_pSpec->pShaderTag;
 		equipmentDesc.iHiddenMeshMask = m_pSpec->pEquipment[i].iHiddenMeshMask;
 		equipmentDesc.pSkeletonModel = m_pBodyModel;
+		equipmentDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
 
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,
@@ -838,6 +1118,7 @@ HRESULT CCharacter::Ready_PartObjects()
 		weaponDesc.pSkeletonModel = m_pBodyModel;
 		weaponDesc.pSocketBoneName = m_pSpec->pWeapons[i].pSocketBone;
 		weaponDesc.fSocketYawDegrees = m_pSpec->pWeapons[i].fSocketYawDegrees;
+		weaponDesc.pEmissiveOverride = &m_ActionEmissiveOverride;
 
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,

@@ -1,0 +1,42 @@
+{
+  "schema": "lostark.effect-source-material-contract-receipt",
+  "formatVersion": 1,
+  "effectAssetId": "effect.artist.skill.31000.imported",
+  "summary": {
+    "particleElementCount": 27,
+    "materialIdentityCount": 9,
+    "parentProfileGroupCount": 8,
+    "pendingRuntimeOccurrenceCount": 4,
+    "standardRuntimeOccurrenceCount": 23,
+    "parameterNameHeuristicCount": 61,
+    "failureCount": 0,
+    "sourceExactIdentityCount": 9,
+    "runtimeExactProfileCount": 0,
+    "reconstructedProfileCount": 8,
+    "roleResolvedIdentityCount": 0,
+    "roleResolvedRuntimeBindingCount": 0,
+    "blockedNormalBumpRuntimeBindingCount": 0,
+    "fallbackBlockedMaterialIdentityCount": 2,
+    "productAdmissibleMaterialIdentityCount": 7,
+    "productMaterialAdmissionComplete": false
+  },
+  "failures": [],
+  "sources": [
+    {
+      "path": "Data/Effects/Imported/Artist/Converted/effect.artist.skill.31000.imported.effect.json",
+      "sha256": "e53474ec4d0a42af1e200ff1c2a4763e567c474bc5dc86a16f6046fe388aaff3"
+    },
+    {
+      "path": "Data/Effects/Imported/Artist/skill.31000.source-receipt.json",
+      "sha256": "1d2a399b855b6e8849c7553893fcc3f49a78397364398e787140da68b4d13247"
+    },
+    {
+      "path": "Data/Effects/Imported/Artist/Converted/skill.31000.element-conversion-receipt.json",
+      "sha256": "5bd79239c462113a35dd9b5d44903aa441aa1d9c38b593b4905194df194f1c20"
+    },
+    {
+      "path": "Data/Effects/Imported/Artist/Artist.resource-source-manifest.json",
+      "sha256": "f4d76e47b28c648720cfa612627508502bd54916a294e24d31c2afeb03b29c9b"
+    }
+  ]
+}

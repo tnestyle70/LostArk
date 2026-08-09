@@ -30,17 +30,25 @@ public:
 private:
 	ComPtr<ID3D11Device>					m_pDevice = { nullptr };
 	ComPtr<ID3D11DeviceContext>				m_pContext = { nullptr };
+	ComPtr<ID3D11Texture2D>				m_pShadowDepthTexture = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
+	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pBloomDSV = { nullptr };
+	ComPtr<ID3D11DepthStencilView>			m_pSSAODSV = { nullptr };
 	list<shared_ptr<CGameObject>>			m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
 	shared_ptr<class CVIBuffer_Rect>		m_pVIBuffer = { nullptr };
 	shared_ptr<class CShader>				m_pShader = { nullptr };
 
 	float4x4_t								m_WorldMatrix{}, m_ViewMatrix{}, m_ProjMatrix{};
+	uint32_t								m_iShadowMapSize = 2048u;
+	float2_t								m_vShadowTexelSize = {};
 	uint32_t								m_iBloomWidth = {};
 	uint32_t								m_iBloomHeight = {};
 	float2_t								m_vBloomTexelSize = {};
+	uint32_t								m_iSSAOWidth = {};
+	uint32_t								m_iSSAOHeight = {};
+	float2_t								m_vSSAOTexelSize = {};
 	ComPtr<ID3D11Texture2D>				m_pScenePostTextures[2];
 	ComPtr<ID3D11RenderTargetView>		m_pScenePostRTVs[2];
 	ComPtr<ID3D11ShaderResourceView>	m_pScenePostSRVs[2];
@@ -57,6 +65,8 @@ private:
 	HRESULT Render_Priority();
 	HRESULT Render_Shadow();
 	HRESULT Render_NonBlend();
+	HRESULT Render_SSAO();
+	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);
 	HRESULT Render_Lights();
 	HRESULT Render_Combined();
 	HRESULT Render_NonLight();
@@ -74,8 +84,9 @@ private:
 	HRESULT Render_UI();
 
 private:
-	HRESULT Ready_Shadow_DSV();
+	HRESULT Ready_Shadow_Resources();
 	HRESULT Ready_Bloom_DSV();
+	HRESULT Ready_SSAO_DSV();
 	HRESULT Ready_ScenePostTargets(uint32_t iWidth, uint32_t iHeight);
 	void SetUp_ViewportDesc(uint32_t iWidth, uint32_t iHeight);
 

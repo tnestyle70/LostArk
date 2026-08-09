@@ -94,6 +94,16 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 
 	if (!m_bVisible)
 		return;
+	if (MAP_ASSET_RENDER_MODE::DEFERRED ==
+		m_RenderProfile.renderMode &&
+		CGameInstance::Get().Is_ShadowLightEnabled())
+	{
+		/* Shadow visibility follows authored placement visibility, not the
+		camera frustum, so an off-screen caster cannot pop its shadow. */
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::SHADOW,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 	//해당 Asset이 Background인지 여부 체크, sky background는 카메라를 따라 움직이기 때문에,
 	//Frustum Culling에서 제외
 	const bool_t bBackground =
@@ -144,6 +154,34 @@ HRESULT CMapAssetObject::Render()
 			FAILED(m_pShaderCom->Begin(passIndex)) ||
 
 			FAILED(m_pModelCom->Render(meshIndex)))
+		{
+			return E_FAIL;
+		}
+	}
+	return S_OK;
+}
+
+HRESULT CMapAssetObject::Render_Shadow()
+{
+	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
+	if (MAP_ASSET_RENDER_MODE::DEFERRED != m_RenderProfile.renderMode)
+		return S_OK;
+	if (FAILED(Bind_ShadowShaderResources()))
+		return E_FAIL;
+
+	const uint32_t iCullPass = Select_ShaderPass();
+	if (iCullPass > 2u)
+		return E_UNEXPECTED;
+
+	for (uint32_t iMesh = 0;
+		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
+	{
+		if (FAILED(CMapAssetRenderUtils::Bind_Material(
+				m_pModelCom, m_pShaderCom, iMesh,
+				m_RenderProfile, m_fElapsedTime)) ||
+			FAILED(m_pShaderCom->Begin(
+				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
+			FAILED(m_pModelCom->Render(iMesh)))
 		{
 			return E_FAIL;
 		}
@@ -222,6 +260,20 @@ HRESULT CMapAssetObject::Bind_ShaderResources()
 			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
 		return E_FAIL;
 
+	return S_OK;
+}
+
+HRESULT CMapAssetObject::Bind_ShadowShaderResources()
+{
+	if (FAILED(m_pTransformCom->Bind_ShaderResource(
+		m_pShaderCom, "g_WorldMatrix")) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(CGameInstance::Get().Bind_ShadowLight_ShaderResource(
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 
