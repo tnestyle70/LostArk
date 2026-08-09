@@ -122,17 +122,17 @@ Scale, 음수/비균일 Scale, pivot, rotation-rate, motion/orbit, multiplicity,
 | visible WModel/Base 및 hidden fallback-blocked 정책 | PASS |
 | Product runtime catalog candidate ID | PASS, 0 |
 | Candidate JSON format | PASS, 7개 모두 version 13 |
-| 현재 worktree v13 codec로 후보 load | PASS, Debug/Release 각각 7/7; Desktop 정본 Resource root 명시 |
-| 현재 worktree 하네스 무환경 후보 load | EXPECTED FAIL, Debug/Release 각각 0/7; 로컬 Resources 부재와 self-root 미재베이스 |
-| 최신 Desktop self-root harness로 후보 load | PASS, 수동 환경 변수 없이 7/7 |
+| clean `origin/main` 통합본 Engine build/UpdateLib | PASS, Debug/Release |
+| clean `origin/main` 통합본 ClientFrontendHarness build | PASS, Debug/Release |
+| clean `origin/main` 통합본 v13 후보 load | PASS, Debug/Release 각각 7/7; canonical Resource root 명시 |
 | 최신 Desktop `--effect-products-fast` | PASS, Debug/Release 각각 101/101 Load/Validate/Validate_Drawable, failures 0 |
 | 최신 Desktop 전역 ProjectAudit | PASS, 89 checks |
 | v13 codec/playback 선택 컴파일 | PASS, Debug/Release |
-| 이 격리 worktree의 전역 `Invoke-ProjectAudit.ps1` | FAIL(10), 미재베이스 Resources/A authority/G09/publisher 경계 |
+| clean `origin/main` 통합본 전역 `Invoke-ProjectAudit.ps1` | FAIL(5), pending All Effects v13 audit 2 + main baseline A/Artist publisher 3 |
 
-처음 단독 실행에서 보였던 resource/material invalid 오류는 codec 회귀가 아니었다. `ClientFrontendHarness --effect-document` 모드가 `LOSTARK_RESOURCE_ROOT`를 초기화하지 않아 `Tools/ClientFrontendHarness/Bin/.../Resources`를 잘못 찾은 harness 문제였다. 최신 Desktop self-root 수정본에서는 수동 환경 변수 없이 후보 7개와 기존 Product 101개 회귀가 통과한다. 이 worktree에는 다른 dirty harness 변경을 보호하기 위해 해당 소스 파일을 재베이스하지 않았으므로, 로컬 standalone harness 검증은 명시적 Resource root를 사용한다.
+처음 단독 실행에서 보였던 resource/material invalid 오류는 codec 회귀가 아니었다. `ClientFrontendHarness --effect-document` 모드가 `LOSTARK_RESOURCE_ROOT`를 초기화하지 않아 `Tools/ClientFrontendHarness/Bin/.../Resources`를 잘못 찾은 harness 문제였다. clean 통합본에서는 canonical Resource root를 명시해 후보 7개를 Debug/Release 각각 검증했다.
 
-최신 Desktop/source 정본의 전역 ProjectAudit은 89 checks PASS로 닫혔다. 다만 이 격리 worktree에서 재실행한 결과는 FAIL(10)이다. 주요 원인은 `Client/Bin/Resources` 부재로 인한 map/actor/Decal asset 검사 실패, source 세션 소유 `DimensionMaster.ba-r-master-carrier.materialization.json` 부재, 아직 재베이스하지 않은 G09 workbench/cross-document 경계, 그에 따른 FourClass publisher 테스트 오류다. Track B 후보 단위 검증과는 분리된 미재베이스 실패이며 해당 전역 파일을 임의로 보충하지 않았다.
+clean `origin/main` 통합본에서 canonical Resources를 명시한 전역 ProjectAudit은 5건 실패했다. G09 2건은 v13 코어에 대응하는 All Effects/Workbench audit 갱신이 다른 세션에서 완료됐지만 아직 main에 병합되지 않은 경계이고, 나머지 3건은 현재 main의 DimensionMaster authority 및 Artist 31210 manifest/binding publisher 불일치다. 이 실패 파일은 Track B 25개 diff와 겹치지 않으며, 본 브랜치에서 collider/Valtan/monster/UI 또는 전역 publisher 파일을 끌어와 우회하지 않았다.
 
 최신 main 통합 과정에서 전역 worklist가 아직 main에 없다는 의존성도 확인했다. 다른 세션 소유 파일을 함께 올리지 않도록 생성기는 7개 현재 Product 문서의 ID/SHA/group/element 순서를 직접 검증해 `productCarrierInventory` receipt를 만들도록 교정했다. stale 전역 `globalSummary`는 Track B receipt에서 제거했고 전역 rollout/worklist/A 파일은 수정하지 않았다.
 
