@@ -21,6 +21,7 @@
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
+#include <cstring>
 
 namespace
 {
@@ -780,17 +781,58 @@ namespace
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
 
+	/* <Class>_IdentityDescription's rect ended up identical for every class once LanceMaster/
+	Artist/DimensionMaster were lined up on Warlord's values, so one shared rect (rather than
+	one per class) drives where this centers each class's identity blurb. */
+	constexpr f32_t IDENTITY_DESC_X = 19.2857151f;
+	constexpr f32_t IDENTITY_DESC_Y = 568.571472f;
+	constexpr f32_t IDENTITY_DESC_WIDTH = 210.f;
+	constexpr f32_t IDENTITY_DESC_LINE_HEIGHT = 18.f;
+
+	constexpr const char* WARLORD_IDENTITY_DESC[] = {
+		"\xec\xa0\x81\xec\x9d\x84\x20\xea\xb3\xb5\xea\xb2\xa9\xed\x95\xb4\x20\xec\x8b\xa4\xeb\x93\x9c\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80\x20\xeb\x92\xa4",
+		"\x5a\xed\x82\xa4\xeb\xa1\x9c\x20\xec\x9e\x90\xec\x8b\xa0\xec\x9d\x84\x20\xeb\xb3\xb4\xed\x98\xb8\xed\x95\x98\xea\xb3\xa0\x20\x58\xed\x82\xa4\xeb\xa1\x9c\x20\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\xec\x9d\x84\x20\xec\xa7\x80\xec\xbc\x9c",
+		"\xec\xa4\x84\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4",
+	};
+	constexpr const char* LANCEMASTER_IDENTITY_DESC[] = {
+		"\x5a\xed\x82\xa4\xeb\xa5\xbc\x20\xec\x82\xac\xec\x9a\xa9\xed\x95\x98\xec\x97\xac\x20\xeb\x82\x9c\xeb\xac\xb4\xec\x99\x80\x20\xec\xa7\x91\xec\xa4\x91\x20\xec\x8a\xa4\xed\x83\xa0\xec\x8a\xa4\xeb\xa1\x9c",
+		"\xec\x9e\x90\xec\x9c\xa0\xeb\xa1\xad\xea\xb2\x8c\x20\xeb\xb3\x80\xea\xb2\xbd\xed\x95\xa0\x20\xec\x88\x98\x20\xec\x9e\x88\xea\xb3\xa0\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80",
+		"\xed\x9b\x84\x20\xeb\xb3\x80\xea\xb2\xbd\x20\xec\x8b\x9c\x20\xec\xb6\x94\xea\xb0\x80\xed\x9a\xa8\xea\xb3\xbc\xeb\xa5\xbc\x20\xec\x96\xbb\xec\x9d\x84\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+	constexpr const char* ARTIST_IDENTITY_DESC[] = {
+		"\xec\xa0\x81\xec\x9d\x84\x20\xea\xb3\xb5\xea\xb2\xa9\xed\x95\xb4\x20\xec\xa1\xb0\xed\x99\x94\x20\xea\xb2\x8c\xec\x9d\xb4\xec\xa7\x80\xeb\xa5\xbc\x20\xeb\xaa\xa8\xec\x9d\x80\x20\xeb\x92\xa4\x20\x5a\xed\x82\xa4\xeb\xa1\x9c",
+		"\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\xec\x9d\x98\x20\xea\xb3\xb5\xea\xb2\xa9\xeb\xa0\xa5\xec\x9d\x84\x20\xec\xa6\x9d\xea\xb0\x80\xec\x8b\x9c\xed\x82\xa4\xea\xb1\xb0\xeb\x82\x98\x2c\x20\x58\xed\x82\xa4\xeb\xa1\x9c",
+		"\xed\x8c\x8c\xed\x8b\xb0\xec\x9b\x90\x20\xed\x95\x9c\x20\xeb\xaa\x85\xec\x9d\x84\x20\xed\x9a\x8c\xeb\xb3\xb5\xec\x8b\x9c\xed\x82\xac\x20\xec\x88\x98\x20\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+	constexpr const char* DIMENSIONMASTER_IDENTITY_DESC[] = {
+		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xec\x9d\x98\x20\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0\xec\x9d\xb8\x20\x27\xec\xb0\xa8\xec\x9b\x90\xec\x8b\x9c\xea\xb3\x84\x27\xeb\x8a\x94\x20\xec\xa0\x81\xec\x97\x90\xea\xb2\x8c",
+		"\xec\x8a\xa4\xed\x82\xac\xec\x9d\x84\x20\xec\xa0\x81\xec\xa4\x91\xec\x8b\x9c\xed\x82\xac\x20\xeb\x95\x8c\x20\xeb\xa7\x88\xeb\x8b\xa4\x20\xec\x8b\x9c\xea\xb0\x84\xec\x9d\xb4\x20\xea\xb0\x80\xec\x86\x8d\xeb\x90\xa9\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+		"\xec\xb0\xa8\xec\x9b\x90\x20\xec\x8b\x9c\xea\xb3\x84\xeb\x8a\x94\x20\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xea\xb0\x80\x20\xec\x86\x8d\xed\x95\x9c\x20\xec\x8b\x9c\xea\xb0\x84\xea\xb3\xbc\x20\xeb\x8f\x99\xea\xb8\xb0\xed\x99\x94",
+		"\xeb\x90\x98\xec\x96\xb4\x20\xec\x9e\x88\xec\x96\xb4\x2c\x20\xec\xb0\xa8\xec\x9b\x90\xec\x8b\x9c\xea\xb3\x84\xec\x9d\x98\x20\xec\x8b\x9c\xea\xb0\x84\xec\x9d\xb4\x20\xeb\xb9\xa0\xeb\xa5\xb4\xea\xb2\x8c\x20\xed\x9d\x90\xeb\xa5\xb4\xeb\xa9\xb4",
+		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\x20\xeb\xb3\xb8\xec\x9d\xb8\x20\xeb\x98\x90\xed\x95\x9c\x20\xea\xb0\x80\xec\x86\x8d\xeb\x90\x98\xeb\x8a\x94\x20\xed\x8a\xb9\xec\xa7\x95\xec\x9d\x84\x20\xea\xb0\x80\xec\xa7\x80\xea\xb3\xa0",
+		"\xec\x9e\x88\xec\x8a\xb5\xeb\x8b\x88\xeb\x8b\xa4\x2e",
+	};
+
+	struct IDENTITY_DESCRIPTION
+	{
+		const char* pJsonClassName;
+		const char* const* ppLines;
+		int32_t iLineCount;
+	};
+
+	constexpr IDENTITY_DESCRIPTION IDENTITY_DESCRIPTIONS[] = {
+		{ "Warlord", WARLORD_IDENTITY_DESC, static_cast<int32_t>(std::size(WARLORD_IDENTITY_DESC)) },
+		{ "LanceMaster", LANCEMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(LANCEMASTER_IDENTITY_DESC)) },
+		{ "Artist", ARTIST_IDENTITY_DESC, static_cast<int32_t>(std::size(ARTIST_IDENTITY_DESC)) },
+		{ "DimensionMaster", DIMENSIONMASTER_IDENTITY_DESC, static_cast<int32_t>(std::size(DIMENSIONMASTER_IDENTITY_DESC)) },
+	};
+
 	constexpr f32_t ROW_Y_START = 60.f;
 	constexpr f32_t ROW_GAP = 7.f;
 	constexpr f32_t THUMB_W = 134.f;
 	constexpr f32_t THUMB_H = 78.f;
 	constexpr f32_t THUMB_MARGIN_TOP = 10.f;
 	constexpr f32_t THUMB_MARGIN_BOTTOM = 10.f;
-
-	constexpr f32_t CONFIRM_W = 349.f;
-	constexpr f32_t CONFIRM_H = 52.f;
-	constexpr f32_t CONFIRM_X = (REF_WIDTH - CONFIRM_W) * 0.5f;
-	constexpr f32_t CONFIRM_Y = 668.f;
 
 	string Build_ClassSelectAssetPath(const char* pClassName, const char* pFileName)
 	{
@@ -833,23 +875,75 @@ void CLevel_CharacterSelect::Render_ClassList()
 	flight; Render_SelectionPanel's own Selectable list gates the same way. */
 	const bool_t bInteractable = MODE::PREVIEW == m_eMode;
 
-	/* Left panel text: JSON slots only carry images, so the class name and the three yellow
-	section labels are drawn here against the same rects CHUDLayoutTool wrote for
-	<Class>_NameSymbol / _Description / _IdentityID in ClassSelect_Layout.json. Description /
-	IdentityDescription paragraph copy isn't authored anywhere yet, so those two stay
-	image/text-empty for now -- just their marker rects exist. */
+	/* ImGui only ships the one HANYoonGothic330 weight (see ImGuiLayer::Initialize), so "bold"
+	here is the standard faux-bold trick: the same glyphs redrawn a few pixels apart so their
+	strokes overlap and thicken, instead of a real heavier-weight font asset. */
+	const auto Fn_DrawBoldText = [&](f32_t fX, f32_t fY, f32_t fSize, ImU32 iColor, const char* pText)
+	{
+		ImFont* pFont = ImGui::GetFont();
+		const ImVec2 vPos = Fn_ToScreen(fX, fY);
+		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
+		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
+		for (const f32_t (&Offset)[2] : fOffsets)
+		{
+			pDrawList->AddText(pFont, fScreenSize,
+				ImVec2(vPos.x + Offset[0], vPos.y + Offset[1]), iColor, pText);
+		}
+	};
+
+	/* Centers pText within [fRectX, fRectX + fRectWidth) at reference scale, using this text's
+	own font-size metrics (CalcTextSizeA) rather than assuming a fixed glyph width -- Korean
+	glyphs at a non-default size don't have a simple char-count-based width. */
+	const auto Fn_DrawBoldTextCentered = [&](f32_t fRectX, f32_t fRectWidth, f32_t fY, f32_t fSize,
+		ImU32 iColor, const char* pText)
+	{
+		ImFont* pFont = ImGui::GetFont();
+		const f32_t fScreenSize = fSize * (std::min)(fScaleX, fScaleY);
+		const ImVec2 vTextSize = pFont->CalcTextSizeA(fScreenSize, FLT_MAX, 0.f, pText);
+		const f32_t fRectCenterX = fRectX + fRectWidth * 0.5f;
+		const ImVec2 vScreenCenter = Fn_ToScreen(fRectCenterX, fY);
+		constexpr f32_t fOffsets[][2] = { {0.f, 0.f}, {1.f, 0.f}, {0.f, 1.f}, {1.f, 1.f} };
+		for (const f32_t (&Offset)[2] : fOffsets)
+		{
+			pDrawList->AddText(pFont, fScreenSize,
+				ImVec2(vScreenCenter.x - vTextSize.x * 0.5f + Offset[0], vScreenCenter.y + Offset[1]),
+				iColor, pText);
+		}
+	};
+
+	/* Left panel text: JSON slots only carry images, so the class name, the three yellow section
+	labels, and the identity blurb are drawn here against the rects CHUDLayoutTool wrote for
+	<Class>_NameSymbol / _IdentityDescription in ClassSelect_Layout.json. <Class>_Description's
+	rect is currently unused/overlapped by IdentityID after the identity section moved up under
+	the tags, so no text is drawn there. */
 	for (const CLASS_LIST_ENTRY& Entry : CLASS_LIST_ENTRIES)
 	{
 		if (Entry.iSupportedClassIndex != m_iPreviewIndex)
 			continue;
 
-		pDrawList->AddText(Fn_ToScreen(45.f, 264.f), IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
-		pDrawList->AddText(Fn_ToScreen(15.f, 296.f), IM_COL32(255, 220, 140, 255),
+		/* Aligned against Warlord_NameSymbol's current rect (50x50 at y=191.29): text sits to
+		the symbol's right, vertically centered on its 50px height. */
+		Fn_DrawBoldText(72.f, 203.f, 32.f, IM_COL32(255, 255, 255, 255), Entry.pClassLabel);
+		Fn_DrawBoldText(15.f, 262.f, 20.f, IM_COL32(255, 220, 140, 255),
 			"\xec\xa1\xb0\xec\x9e\x91 \xeb\x82\x9c\xec\x9d\xb4\xeb\x8f\x84");
-		pDrawList->AddText(Fn_ToScreen(15.f, 465.f), IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 335.f, 20.f, IM_COL32(255, 220, 140, 255),
 			"\xea\xb8\xb0\xeb\xb3\xb8 \xec\xa0\x95\xeb\xb3\xb4");
-		pDrawList->AddText(Fn_ToScreen(15.f, 600.f), IM_COL32(255, 220, 140, 255),
+		Fn_DrawBoldText(15.f, 453.f, 20.f, IM_COL32(255, 220, 140, 255),
 			"\xec\x95\x84\xec\x9d\xb4\xeb\x8d\xb4\xed\x8b\xb0\xed\x8b\xb0");
+
+		for (const IDENTITY_DESCRIPTION& Desc : IDENTITY_DESCRIPTIONS)
+		{
+			if (0 != strcmp(Desc.pJsonClassName, Entry.pJsonClassName))
+				continue;
+
+			for (int32_t iLine = 0; iLine < Desc.iLineCount; ++iLine)
+			{
+				Fn_DrawBoldTextCentered(IDENTITY_DESC_X, IDENTITY_DESC_WIDTH,
+					IDENTITY_DESC_Y + static_cast<f32_t>(iLine) * IDENTITY_DESC_LINE_HEIGHT,
+					16.f, IM_COL32(220, 220, 220, 255), Desc.ppLines[iLine]);
+			}
+			break;
+		}
 		break;
 	}
 
@@ -949,25 +1043,6 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
 		}
-	}
-
-	{
-		const ImVec2 vConfirmTopLeft = Fn_ToScreen(CONFIRM_X, CONFIRM_Y);
-		const ImVec2 vConfirmBotRight = Fn_ToScreen(CONFIRM_X + CONFIRM_W, CONFIRM_Y + CONFIRM_H);
-
-		if (ID3D11ShaderResourceView* pEdgeSRV =
-			m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/ConfirmEdge.png"))
-		{
-			pDrawList->AddImage(pEdgeSRV, vConfirmTopLeft, vConfirmBotRight);
-		}
-
-		const char* pConfirmLabel = "\xec\xba\x90\xeb\xa6\xad\xed\x84\xb0 \xec\x83\x9d\xec\x84\xb1";
-		const ImVec2 vLabelSize = ImGui::CalcTextSize(pConfirmLabel);
-		pDrawList->AddText(
-			ImVec2(
-				(vConfirmTopLeft.x + vConfirmBotRight.x) * 0.5f - vLabelSize.x * 0.5f,
-				(vConfirmTopLeft.y + vConfirmBotRight.y) * 0.5f - vLabelSize.y * 0.5f),
-			IM_COL32(255, 255, 255, 255), pConfirmLabel);
 	}
 }
 

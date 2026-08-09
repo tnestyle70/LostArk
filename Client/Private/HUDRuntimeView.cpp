@@ -107,6 +107,10 @@ HRESULT Client::CHUDRuntimeView::Load()
 			continue;
 
 		HUD_SLOT Slot{};
+		if (const DATA_JSON_VALUE* pId = SlotValue.Find("id"))
+			if (pId->Is_String())
+				Slot.strId = pId->Get_String();
+
 		Slot.fX = static_cast<f32_t>(pX->Get_Number());
 		Slot.fY = static_cast<f32_t>(pY->Get_Number());
 		Slot.fSizeX = static_cast<f32_t>(pWidth->Get_Number());
@@ -201,6 +205,23 @@ HRESULT Client::CHUDRuntimeView::Load()
 ID3D11ShaderResourceView* Client::CHUDRuntimeView::Load_Texture(const string& strPath)
 {
 	return Get_Or_Load_Texture(strPath);
+}
+
+bool_t Client::CHUDRuntimeView::Get_SlotRect(const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const
+{
+	for (const HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strId)
+			continue;
+
+		fX = Slot.fX;
+		fY = Slot.fY;
+		fWidth = Slot.fSizeX;
+		fHeight = Slot.fSizeY;
+		return true;
+	}
+
+	return false;
 }
 
 ID3D11ShaderResourceView* Client::CHUDRuntimeView::Get_Or_Load_Texture(const string& strPath)

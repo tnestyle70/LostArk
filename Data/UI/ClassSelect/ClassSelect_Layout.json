@@ -5,10 +5,49 @@
   "classes": ["Default", "Warlord", "LanceMaster", "Artist", "DimensionMaster"],
   "slots": [
     {
+      "id": "PanelBgLeft",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": -0.000164270401, "y": -1.4285388, "width": 260, "height": 720 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/PanelBgFlipped.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PanelBgRight",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 929.999817, "y": 4.28571939, "width": 340, "height": 292 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/PanelBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "PanelBgRightBottom",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 949.999939, "y": 235.71431, "width": 340, "height": 70 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/PanelBgBottom.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
       "id": "Frame",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 897.143005, "y": 10, "width": 381, "height": 67 },
+      "rect": { "x": 940.000427, "y": -8.57141113, "width": 381, "height": 67 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -21,7 +60,7 @@
       "id": "DifficultyBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 16.4556274, "y": 435.845032, "width": 279, "height": 17 },
+      "rect": { "x": 3.59847045, "y": 305.845093, "width": 250, "height": 15.2299995 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -31,14 +70,53 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "DifficultyFill",
-      "ownerClass": null,
+      "id": "Warlord_DifficultyFill",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 16.4556274, "y": 436.845032, "width": 164, "height": 12 },
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 146.960007, "height": 10.75 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
         { "path": "UI/ClassSelect/Common/DifficultyMedium.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LanceMaster_DifficultyFill",
+      "ownerClass": "LanceMaster",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 146.960007, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyMedium.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_DifficultyFill",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 97.6800003, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyEasy.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_DifficultyFill",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 5.12712288, "y": 307.764282, "width": 97.6800003, "height": 10.75 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/DifficultyEasy.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
@@ -57,36 +135,23 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "SettingsIcon",
+      "id": "TagsBg",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 94.7064209, "y": 674.647705, "width": 43, "height": 39 },
+      "rect": { "x": -17.8570385, "y": 380.857025, "width": 295, "height": 61 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/ClassSelect/Common/SettingsIcon.png", "hoverPath": "UI/ClassSelect/Common/SettingsIconHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/ClassSelect/Common/InfoIconBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "WatchStoryIcon",
-      "ownerClass": null,
+      "id": "Warlord_Tag_1",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 144.706421, "y": 674.647705, "width": 51, "height": 38 },
-      "rotation": 0,
-      "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [
-        { "path": "UI/ClassSelect/Common/WatchStoryIcon.png", "hoverPath": "UI/ClassSelect/Common/WatchStoryIconHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
-      ],
-      "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
-    },
-    {
-      "id": "Tag_1",
-      "ownerClass": null,
-      "type": 0,
-      "rect": { "x": 9.56295395, "y": 487.1427, "width": 50, "height": 50 },
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -96,10 +161,10 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Tag_2",
-      "ownerClass": null,
+      "id": "Warlord_Tag_2",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 63.5714264, "y": 485.714172, "width": 50, "height": 50 },
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -109,10 +174,10 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Tag_3",
-      "ownerClass": null,
+      "id": "Warlord_Tag_3",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 111.428574, "y": 485.714233, "width": 50, "height": 50 },
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -122,10 +187,10 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Tag_4",
-      "ownerClass": null,
+      "id": "Warlord_Tag_4",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 160.714294, "y": 484.285614, "width": 50, "height": 50 },
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -135,13 +200,184 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
-      "id": "Tag_5",
-      "ownerClass": null,
+      "id": "Warlord_Tag_5",
+      "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 205, "y": 484.285614, "width": 50, "height": 50 },
+      "rect": { "x": 202.142868, "y": 384.285553, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
-      "layers": [],
+      "layers": [
+        { "path": "UI/ClassSelect/Warlord/Tag_28.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LanceMaster_Tag_1",
+      "ownerClass": "LanceMaster",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/LanceMaster/Tag_07.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LanceMaster_Tag_2",
+      "ownerClass": "LanceMaster",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/LanceMaster/Tag_14.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LanceMaster_Tag_3",
+      "ownerClass": "LanceMaster",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/LanceMaster/Tag_08.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "LanceMaster_Tag_4",
+      "ownerClass": "LanceMaster",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/LanceMaster/Tag_26.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_Tag_1",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Artist/Tag_06.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_Tag_2",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Artist/Tag_10.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_Tag_3",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Artist/Tag_27.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_Tag_4",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Artist/Tag_23.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Artist_Tag_5",
+      "ownerClass": "Artist",
+      "type": 0,
+      "rect": { "x": 202.142868, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Artist/Tag_09.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_Tag_1",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 6.70569229, "y": 387.142639, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/Tag_12.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_Tag_2",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 60.7140923, "y": 385.714111, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/Tag_07.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_Tag_3",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 108.571297, "y": 385.714172, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/Tag_02.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_Tag_4",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 157.857101, "y": 384.285553, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/Tag_20.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
@@ -149,7 +385,7 @@
       "id": "Warlord_Illustration",
       "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 10, "y": 50, "width": 222, "height": 205 },
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -162,7 +398,7 @@
       "id": "Warlord_NameSymbol",
       "ownerClass": "Warlord",
       "type": 5,
-      "rect": { "x": 15, "y": 262, "width": 24, "height": 24 },
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -186,7 +422,7 @@
       "id": "Warlord_IdentityID",
       "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 15, "y": 618, "width": 177, "height": 40 },
+      "rect": { "x": 6.42850351, "y": 499.428406, "width": 250, "height": 57 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -199,7 +435,7 @@
       "id": "Warlord_IdentityDescription",
       "ownerClass": "Warlord",
       "type": 0,
-      "rect": { "x": 15, "y": 660, "width": 210, "height": 45 },
+      "rect": { "x": 19.2857151, "y": 568.571472, "width": 210, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -210,7 +446,7 @@
       "id": "LanceMaster_Illustration",
       "ownerClass": "LanceMaster",
       "type": 0,
-      "rect": { "x": 10, "y": 50, "width": 218, "height": 211 },
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -223,7 +459,7 @@
       "id": "LanceMaster_NameSymbol",
       "ownerClass": "LanceMaster",
       "type": 5,
-      "rect": { "x": 15, "y": 262, "width": 24, "height": 24 },
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -247,7 +483,7 @@
       "id": "LanceMaster_IdentityID",
       "ownerClass": "LanceMaster",
       "type": 0,
-      "rect": { "x": 15, "y": 618, "width": 145, "height": 40 },
+      "rect": { "x": 10.7142181, "y": 486.57132, "width": 217, "height": 71 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -260,7 +496,7 @@
       "id": "LanceMaster_IdentityDescription",
       "ownerClass": "LanceMaster",
       "type": 0,
-      "rect": { "x": 15, "y": 660, "width": 210, "height": 45 },
+      "rect": { "x": 19.2857151, "y": 562.857117, "width": 210, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -271,7 +507,7 @@
       "id": "Artist_Illustration",
       "ownerClass": "Artist",
       "type": 0,
-      "rect": { "x": 10, "y": 50, "width": 235, "height": 204 },
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -284,7 +520,7 @@
       "id": "Artist_NameSymbol",
       "ownerClass": "Artist",
       "type": 5,
-      "rect": { "x": 15, "y": 262, "width": 24, "height": 24 },
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -308,7 +544,7 @@
       "id": "Artist_IdentityID",
       "ownerClass": "Artist",
       "type": 0,
-      "rect": { "x": 15, "y": 618, "width": 45, "height": 40 },
+      "rect": { "x": 50.7142143, "y": 485.142822, "width": 125, "height": 94 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -321,7 +557,7 @@
       "id": "Artist_IdentityDescription",
       "ownerClass": "Artist",
       "type": 0,
-      "rect": { "x": 15, "y": 660, "width": 210, "height": 45 },
+      "rect": { "x": 17.8571434, "y": 575.714478, "width": 210, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -332,7 +568,7 @@
       "id": "DimensionMaster_Illustration",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 10, "y": 50, "width": 216, "height": 199 },
+      "rect": { "x": 1.42841005, "y": -12.1428375, "width": 250, "height": 230 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -356,7 +592,7 @@
       "id": "DimensionMaster_IdentityDescription",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 15, "y": 660, "width": 210, "height": 45 },
+      "rect": { "x": 19.2857151, "y": 568.571472, "width": 210, "height": 45 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -367,7 +603,7 @@
       "id": "ClassListEntry_Warlord",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 950, "y": 60, "width": 280, "height": 48 },
+      "rect": { "x": 972.857483, "y": 60, "width": 280, "height": 48 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -378,7 +614,7 @@
       "id": "ClassListEntry_LanceMaster",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 950, "y": 115, "width": 280, "height": 48 },
+      "rect": { "x": 972.857483, "y": 116.428528, "width": 280, "height": 48 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -389,7 +625,7 @@
       "id": "ClassListEntry_Artist",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 950, "y": 170, "width": 280, "height": 48 },
+      "rect": { "x": 972.857483, "y": 170, "width": 280, "height": 48 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -400,10 +636,88 @@
       "id": "ClassListEntry_DimensionMaster",
       "ownerClass": null,
       "type": 0,
-      "rect": { "x": 950, "y": 225, "width": 280, "height": 48 },
+      "rect": { "x": 972.857483, "y": 225, "width": 280, "height": 48 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "SpawnMonsterButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1036.84436, "y": 624.437317, "width": 70, "height": 69 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/SpawnMonsterButton.png", "hoverPath": "UI/ClassSelect/Common/SpawnMonsterButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "BossSpawnButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1099.70178, "y": 624.437317, "width": 70, "height": 69 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/BossSpawnButton.png", "hoverPath": "UI/ClassSelect/Common/BossSpawnButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "SpawnCancelButton",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1165.41553, "y": 624.437317, "width": 70, "height": 69 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/SpawnCancelButton.png", "hoverPath": "UI/ClassSelect/Common/SpawnCancelButtonHover.png", "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "New_Slot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1.42849207, "y": 288.571472, "width": 250, "height": 3 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Warlord/SeparateBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "InfoSeparateBar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1.42849207, "y": 363, "width": 250, "height": 3 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/SeparateBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "IdentitySeparateBar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 1.42849207, "y": 482, "width": 250, "height": 3 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/Common/SeparateBar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     }

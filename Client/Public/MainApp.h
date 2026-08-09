@@ -59,6 +59,7 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	void RenderSkillCooldowns();
 	void RenderCombatHUDText();
 
 #ifdef _DEBUG

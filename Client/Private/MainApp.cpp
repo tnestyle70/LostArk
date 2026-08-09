@@ -35,6 +35,7 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 
 namespace
@@ -316,6 +317,7 @@ HRESULT CMainApp::Render()
 		}
 	#endif
 		RenderCombatHUD();
+		RenderSkillCooldowns();
 #ifdef _DEBUG
 		if (m_bDeveloperToolsVisible)
 		{
@@ -390,16 +392,11 @@ void CMainApp::RenderCombatHUD()
 
 	/* The Combat HUD draws to the always-on-top foreground layer, so it would otherwise show
 	through around/behind the Skill Window (which does not necessarily cover every pixel of the
-	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. Character
-	Select's own ClassSelect_Layout.json panel (Level_CharacterSelect::Render_ClassList) now owns
-	that screen's class/identity preview art, so this rough HUD-region preview would otherwise
-	just collide with it at the same screen position instead of adding anything. */
+	viewport) instead of being hidden by it like a real full-screen menu hides the HUD. */
 	const bool_t skillWindowOpen =
 		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	const bool_t characterSelectOwnsPreview =
-		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel;
 
-	if (!skillWindowOpen && !characterSelectOwnsPreview && nullptr != m_pHUDRuntimeView)
+	if (!skillWindowOpen && nullptr != m_pHUDRuntimeView)
 	{
 		/* Base state only for now -- no gauge/resource-driven stage switching yet. */
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
@@ -408,6 +405,105 @@ void CMainApp::RenderCombatHUD()
 
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
+}
+
+void CMainApp::RenderSkillCooldowns()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
+		return;
+
+	const bool_t skillWindowOpen =
+		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	if (skillWindowOpen || nullptr == m_pHUDRuntimeView)
+		return;
+
+	/* Matches the fixed server tick rate other Client files already redeclare locally
+	(CombatHUDViewModel.cpp, Character.cpp) rather than exposing a Shared constant for it. */
+	constexpr f32_t SERVER_TICK_HZ = 30.f;
+	constexpr f32_t REF_WIDTH = 1280.f;
+	constexpr f32_t REF_HEIGHT = 720.f;
+	constexpr f32_t PI = 3.14159265f;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
+	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	for (const HUD_SKILL_STATE& Skill : player.Skills)
+	{
+		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
+			continue;
+
+		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
+			Skill.iCooldownEndTick - player.iServerTick : 0u;
+		if (0u == remainingTicks)
+			continue;
+
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect("Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+			continue;
+
+		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
+		const f32_t fTotalSeconds = Skill.iCooldownDurationTicks > 0u ?
+			static_cast<f32_t>(Skill.iCooldownDurationTicks) / SERVER_TICK_HZ : fRemainingSeconds;
+		const f32_t fFraction = fTotalSeconds > 0.f ?
+			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
+
+		const ImVec2 vTopLeft(
+			pViewport->WorkPos.x + fX * fScaleX,
+			pViewport->WorkPos.y + fY * fScaleY);
+		const ImVec2 vBotRight(
+			vTopLeft.x + fWidth * fScaleX,
+			vTopLeft.y + fHeight * fScaleY);
+		const ImVec2 vCenter(
+			(vTopLeft.x + vBotRight.x) * 0.5f,
+			(vTopLeft.y + vBotRight.y) * 0.5f);
+		const f32_t fHalfW = (vBotRight.x - vTopLeft.x) * 0.5f;
+		const f32_t fHalfH = (vBotRight.y - vTopLeft.y) * 0.5f;
+		/* Sized past the slot's corners and clipped to its rect below, so the visible edge of
+		the pie traces the square's own border instead of an inscribed circle -- a plain
+		circular-sector fill would leave the corners uncovered while mostly full. */
+		const f32_t fRadius = sqrtf(fHalfW * fHalfW + fHalfH * fHalfH) + 2.f;
+
+		/* Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to
+		nothing as it expires -- the icon starts fully covered right after use and is revealed
+		clockwise, matching the reference cooldown swipe. */
+		const f32_t fStartAngle = -PI * 0.5f;
+		const f32_t fEndAngle = fStartAngle + fFraction * 2.f * PI;
+
+		pDrawList->PushClipRect(vTopLeft, vBotRight, true);
+		pDrawList->PathClear();
+		pDrawList->PathLineTo(vCenter);
+		pDrawList->PathArcTo(vCenter, fRadius, fStartAngle, fEndAngle, 32);
+		pDrawList->PathFillConvex(IM_COL32(0, 0, 0, 150));
+		pDrawList->PopClipRect();
+
+		const int32_t iDisplaySeconds = static_cast<int32_t>(ceilf(fRemainingSeconds));
+		const string strCooldownLabel = std::to_string(iDisplaySeconds) + "s";
+
+		ImFont* pFont = ImGui::GetFont();
+		const f32_t fFontSize = fHeight * fScaleY * 0.34f;
+		const ImVec2 vTextSize =
+			pFont->CalcTextSizeA(fFontSize, FLT_MAX, 0.f, strCooldownLabel.c_str());
+		const ImVec2 vTextPos(
+			vCenter.x - vTextSize.x * 0.5f,
+			vCenter.y - vTextSize.y * 0.5f);
+
+		pDrawList->AddText(pFont, fFontSize, ImVec2(vTextPos.x + 1.f, vTextPos.y + 1.f),
+			IM_COL32(0, 0, 0, 220), strCooldownLabel.c_str());
+		pDrawList->AddText(pFont, fFontSize, vTextPos,
+			IM_COL32(255, 255, 255, 255), strCooldownLabel.c_str());
+	}
 }
 
 void CMainApp::RenderCombatHUDText()
