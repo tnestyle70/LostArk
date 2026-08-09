@@ -755,6 +755,22 @@ try {
 	Add-Check 'effect.artist-31470-source-contract' `
 		$artistSourceContractPassed `
 		$artistSourceContractDetail
+	$artistMaterialContractPassed = $false
+	$artistMaterialContractDetail = ''
+	try {
+		$artistMaterialContractDetail = (& `
+			'.\Tools\ProjectAudit\Test-Artist31470MaterialEvidenceContract.ps1' `
+			2>&1 | Out-String).Trim()
+		$artistMaterialContractPassed =
+			$artistMaterialContractDetail -match
+			'PASS: Artist F 31470 Material evidence mode=shallow recipes=27 occurrences=34'
+	}
+	catch {
+		$artistMaterialContractDetail = $_.Exception.Message
+	}
+	Add-Check 'effect.artist-31470-material-evidence-contract' `
+		$artistMaterialContractPassed `
+		$artistMaterialContractDetail
 	$effectComponentAuditPassed = $false
 	$effectComponentAuditDetail = ''
 	$effectSkillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
